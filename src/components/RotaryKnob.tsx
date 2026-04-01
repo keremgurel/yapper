@@ -11,6 +11,10 @@ interface RotaryKnobProps {
   disabled?: boolean;
 }
 
+const SIZE = 160;
+const KNOB_SIZE = 100;
+const INNER_SIZE = 78;
+
 export default function RotaryKnob({
   value,
   onChange,
@@ -28,19 +32,16 @@ export default function RotaryKnob({
   const totalRotation = 270;
   const degreesPerStep = totalRotation / totalSteps;
   const currentRotation = (value - min) * degreesPerStep - totalRotation / 2;
+  const norm = (value - min) / totalSteps;
 
   const accentColor = "#c8a864";
-  const accentDim = "rgba(200,168,100,0.2)";
-  const accentBright = "rgba(200,168,100,0.5)";
 
   const getAngle = useCallback(
     (e: MouseEvent | TouchEvent, rect: DOMRect) => {
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      const clientX =
-        "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY =
-        "touches" in e ? e.touches[0].clientY : e.clientY;
+      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
     },
     []
@@ -53,7 +54,7 @@ export default function RotaryKnob({
       dragging.current = true;
       startValue.current = currentValue.current;
       const rect = knobRef.current!.getBoundingClientRect();
-      const nativeEvent = "touches" in e ? e.nativeEvent : e.nativeEvent;
+      const nativeEvent = e.nativeEvent;
       startAngle.current = getAngle(nativeEvent as MouseEvent, rect);
     },
     [disabled, getAngle]
@@ -73,21 +74,16 @@ export default function RotaryKnob({
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
       const stepDelta = Math.round(delta / degreesPerStep);
-      const newVal = Math.max(
-        min,
-        Math.min(max, startValue.current + stepDelta)
-      );
+      const newVal = Math.max(min, Math.min(max, startValue.current + stepDelta));
       if (newVal !== currentValue.current) {
         playLuxuryDetent(newVal, min, max);
         currentValue.current = newVal;
         onChange(newVal);
       }
     };
-
     const handleEnd = () => {
       dragging.current = false;
     };
-
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleEnd);
     window.addEventListener("touchmove", handleMove, { passive: false });
@@ -100,106 +96,137 @@ export default function RotaryKnob({
     };
   }, [disabled, min, max, degreesPerStep, getAngle, onChange]);
 
+  // Build tick marks using absolute positioning with trig
   const labelSteps = [30, 45, 60, 75, 90, 105, 120];
-  const tickMarks = [];
+  const tickElements = [];
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const outerR = SIZE / 2 - 2; // where ticks start (outer edge)
+
   for (let s = min; s <= max; s += 5) {
-    const rot = (s - min) * degreesPerStep - totalRotation / 2;
     const isLabel = labelSteps.includes(s);
     const isActive = s <= value;
-    tickMarks.push(
-      <div
+    const tickLen = isLabel ? 14 : 8;
+    const tickW = isLabel ? 3 : 2;
+
+    // Angle: map value to rotation. 0 step = -135deg from top, last step = +135deg
+    const angleDeg = ((s - min) / totalSteps) * totalRotation - totalRotation / 2;
+    // Convert to radians, offset by -90 so 0deg = top
+    const angleRad = ((angleDeg - 90) * Math.PI) / 180;
+
+    const x1 = cx + outerR * Math.cos(angleRad);
+    const y1 = cy + outerR * Math.sin(angleRad);
+    const x2 = cx + (outerR - tickLen) * Math.cos(angleRad);
+    const y2 = cy + (outerR - tickLen) * Math.sin(angleRad);
+
+    tickElements.push(
+      <line
         key={s}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full pointer-events-none"
-        style={{ transform: `translate(-50%, -50%) rotate(${rot}deg)` }}
-      >
-        <div
-          className="absolute left-1/2 -translate-x-1/2 rounded-sm transition-all duration-100"
-          style={{
-            top: isLabel ? "2px" : "6px",
-            width: isLabel ? "3px" : "2px",
-            height: isLabel ? "14px" : "8px",
-            backgroundColor: isActive ? accentColor : "var(--tick-inactive)",
-            boxShadow: isActive ? `0 0 3px ${accentDim}` : "none",
-          }}
-        />
-      </div>
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke={isActive ? accentColor : "var(--tick-inactive)"}
+        strokeWidth={tickW}
+        strokeLinecap="round"
+        style={{
+          filter: isActive ? `drop-shadow(0 0 2px rgba(200,168,100,0.3))` : "none",
+          transition: "stroke 0.1s, filter 0.1s",
+        }}
+      />
     );
   }
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+  // Indicator dot position on the inner ring
+  const indicatorAngleDeg = currentRotation - 90;
+  const indicatorAngleRad = (indicatorAngleDeg * Math.PI) / 180;
+  const indicatorR = INNER_SIZE / 2 - 10;
+  const dotX = cx + indicatorR * Math.cos(indicatorAngleRad);
+  const dotY = cy + indicatorR * Math.sin(indicatorAngleRad);
+
   return (
-    <div className="flex flex-col items-center gap-2.5">
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
       <div
-        className="relative transition-opacity duration-300"
         style={{
-          width: "160px",
-          height: "160px",
+          position: "relative",
+          width: `${SIZE}px`,
+          height: `${SIZE}px`,
           opacity: disabled ? 0.35 : 1,
+          transition: "opacity 0.3s",
         }}
       >
-        {tickMarks}
-        {/* Warm glow ring */}
+        {/* SVG tick marks */}
+        <svg
+          width={SIZE}
+          height={SIZE}
+          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+        >
+          {tickElements}
+        </svg>
+
+        {/* Glow ring */}
         <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-shadow duration-300"
           style={{
-            width: "115px",
-            height: "115px",
-            boxShadow: disabled ? "none" : `0 0 15px ${accentDim}`,
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: `${KNOB_SIZE + 15}px`,
+            height: `${KNOB_SIZE + 15}px`,
+            borderRadius: "50%",
+            boxShadow: disabled ? "none" : `0 0 15px rgba(200,168,100,0.15)`,
+            transition: "box-shadow 0.3s",
           }}
         />
+
         {/* Knob body */}
         <div
           ref={knobRef}
           onMouseDown={handleStart}
           onTouchStart={handleStart}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full select-none flex items-center justify-center"
           style={{
-            width: "100px",
-            height: "100px",
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: `${KNOB_SIZE}px`,
+            height: `${KNOB_SIZE}px`,
+            borderRadius: "50%",
             background:
               "conic-gradient(from 0deg, #b8b8b8, #e8e8e8 15%, #a0a0a0 30%, #d8d8d8 45%, #909090 60%, #c8c8c8 75%, #a8a8a8 90%, #b8b8b8)",
             boxShadow:
               "0 6px 20px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.1)",
             cursor: disabled ? "not-allowed" : "grab",
+            userSelect: "none",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             border: "1px solid rgba(0,0,0,0.08)",
           }}
         >
           {/* Inner recessed ring */}
           <div
-            className="rounded-full flex items-center justify-center relative"
             style={{
-              width: "78px",
-              height: "78px",
+              width: `${INNER_SIZE}px`,
+              height: `${INNER_SIZE}px`,
+              borderRadius: "50%",
               background: "linear-gradient(145deg, #d0d0d0, #b0b0b0)",
               boxShadow:
                 "inset 0 2px 6px rgba(0,0,0,0.15), inset 0 -1px 0 rgba(255,255,255,0.5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            {/* Gold indicator dot */}
-            <div
-              className="absolute rounded-full"
-              style={{
-                width: "6px",
-                height: "6px",
-                backgroundColor: accentColor,
-                boxShadow: `0 0 4px ${accentBright}`,
-                top: "8px",
-                left: "50%",
-                transform: `translateX(-50%) rotate(${currentRotation}deg)`,
-                transformOrigin: `0px ${78 / 2 - 8}px`,
-                transition: dragging.current
-                  ? "none"
-                  : "transform 0.1s ease-out",
-              }}
-            />
             {/* Chrome cap */}
             <div
-              className="rounded-full"
               style={{
                 width: "20px",
                 height: "20px",
+                borderRadius: "50%",
                 background:
                   "radial-gradient(circle at 35% 35%, #f0f0f0, #a0a0a0, #808080)",
                 boxShadow:
@@ -208,11 +235,45 @@ export default function RotaryKnob({
             />
           </div>
         </div>
+
+        {/* SVG indicator dot (rendered on top) */}
+        <svg
+          width={SIZE}
+          height={SIZE}
+          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+        >
+          <circle
+            cx={dotX}
+            cy={dotY}
+            r={3}
+            fill={accentColor}
+            style={{
+              filter: `drop-shadow(0 0 3px rgba(200,168,100,0.5))`,
+              transition: dragging.current ? "none" : "cx 0.1s ease-out, cy 0.1s ease-out",
+            }}
+          />
+        </svg>
       </div>
-      <div className="font-mono text-[26px] font-bold tracking-wider text-foreground">
+
+      <div
+        style={{
+          fontFamily: "'SF Mono', 'Fira Code', monospace",
+          fontSize: "26px",
+          fontWeight: 700,
+          letterSpacing: "2px",
+          color: "var(--foreground)",
+        }}
+      >
         {formatTime(value)}
       </div>
-      <div className="text-[10px] text-slate-500 uppercase tracking-[1.5px]">
+      <div
+        style={{
+          fontSize: "10px",
+          color: "#64748b",
+          textTransform: "uppercase",
+          letterSpacing: "1.5px",
+        }}
+      >
         {disabled ? "LOCKED" : "DRAG TO SET"}
       </div>
     </div>
