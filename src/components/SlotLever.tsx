@@ -89,7 +89,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-500 uppercase">
+      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-700 uppercase dark:text-slate-400">
         Generate
       </div>
       <div
@@ -201,17 +201,13 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         />
       </div>
       <div
-        className="mt-2.5 text-[10px] font-semibold tracking-[1.5px] uppercase"
-        style={{
-          color:
-            phase === "spinning"
-              ? "#f59e0b"
-              : isPastThreshold
-                ? "#f59e0b"
-                : phase === "landed"
-                  ? "#22c55e"
-                  : "#64748b",
-        }}
+        className={`mt-2.5 text-[10px] font-semibold tracking-[1.5px] uppercase ${
+          phase === "spinning" || isPastThreshold
+            ? "text-amber-600 dark:text-amber-400"
+            : phase === "landed"
+              ? "text-green-600 dark:text-green-400"
+              : "text-slate-700 dark:text-slate-400"
+        }`}
       >
         {phase === "spinning"
           ? "SPINNING..."
@@ -222,7 +218,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
               : "PULL"}
       </div>
       <div
-        className={`mt-0.5 animate-bounce text-sm text-slate-500 transition-opacity ${
+        className={`mt-0.5 animate-bounce text-sm text-slate-600 transition-opacity dark:text-slate-400 ${
           phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
         }`}
       >

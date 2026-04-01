@@ -43,13 +43,13 @@ export function playLuxuryDetent(value: number, min = 30, max = 120) {
     const t = ac.currentTime;
     const norm = (value - min) / (max - min);
 
-    // Crispy top-end click — like a Cherry MX switch bottoming out
+    // Crispy top-end click, like a Cherry MX switch bottoming out
     noiseBlip(ac, t, 0.012, 4000 + norm * 1500, 3, 0.13);
 
     // Soft tactile thock body
     noiseBlip(ac, t + 0.001, 0.025, 300 + norm * 80, 1.5, 0.08, "lowpass");
 
-    // Tiny resonant ping — the spring inside the switch
+    // Tiny resonant ping, like the spring inside the switch
     const ping = ac.createOscillator();
     const pingGain = ac.createGain();
     ping.type = "sine";
@@ -65,14 +65,14 @@ export function playLuxuryDetent(value: number, min = 30, max = 120) {
   }
 }
 
-// Slot reel tick — sharp, dry click like a playing card in spokes
+// Slot reel tick, a sharp dry click like a playing card in spokes
 // This fires every 80ms during the spin. No tone, just a crisp snap.
 export function playSlotTick(pitch = 800) {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Ultra-short noise snap — the flap hitting the reel stop
+    // Ultra-short noise snap, like the flap hitting the reel stop
     const len = 0.006;
     const buf = ac.createBuffer(
       1,
@@ -100,31 +100,31 @@ export function playSlotTick(pitch = 800) {
   }
 }
 
-// Slot spin start — silent, the rapid ticks handle the sound
+// Slot spin start, silent because the rapid ticks handle the sound
 export function playSlotSpin() {
-  // intentionally silent — the playSlotTick rapid-fire IS the spin sound
+  // Intentionally silent because playSlotTick is the spin sound.
 }
 
-// Slot landing — just a single satisfying thud, nothing else
+// Slot landing with a single satisfying thud.
 export function playSlotLand() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // One firm clunk — reel locks into place
+    // One firm clunk as the reel locks into place
     noiseBlip(ac, t, 0.025, 300, 1, 0.13, "lowpass");
   } catch {
     // Audio not available
   }
 }
 
-// Lever pull — mechanical ratchet click, like pulling a real slot lever
+// Lever pull with a mechanical ratchet click, like a real slot lever.
 export function playLeverCreak() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Ratchet click — same character as the slot ticks but slightly heavier
+    // Ratchet click with the same character as the slot ticks, but heavier
     const len = 0.008;
     const buf = ac.createBuffer(
       1,
@@ -147,20 +147,20 @@ export function playLeverCreak() {
     src.start(t);
     src.stop(t + len);
 
-    // Low thud body — gives it weight
+    // Low thud body that gives it weight
     noiseBlip(ac, t, 0.012, 300, 1.5, 0.05, "lowpass");
   } catch {
     // Audio not available
   }
 }
 
-// Timer end — rapid clickity burst that decelerates, then a soft chime
+// Timer end with a rapid burst that decelerates, then a soft chime.
 export function playTimerEnd() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Rapid decelerating clicks — same texture as slot ticks
+    // Rapid decelerating clicks with the same texture as slot ticks
     const clicks = 8;
     for (let i = 0; i < clicks; i++) {
       const delay = i * (0.04 + i * 0.008); // accelerating gaps

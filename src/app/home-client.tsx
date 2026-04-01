@@ -19,6 +19,7 @@ import SlotLever from "@/components/SlotLever";
 import RotaryKnob from "@/components/RotaryKnob";
 import TopicReel from "@/components/TopicReel";
 import { HomeFaq } from "@/components/home-faq";
+import { MeshGradient } from "@paper-design/shaders-react";
 
 const YAPPER_DARK_KEY = "yapper-dark";
 const YAPPER_DARK_EVENT = "yapper-dark-pref-changed";
@@ -80,11 +81,208 @@ function clampTimerSeconds(n: number): number {
   );
 }
 
+function wrapCanvasText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (ctx.measureText(next).width <= maxWidth) {
+      current = next;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = word;
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+async function exportRecordingWithOverlays({
+  blob,
+  prompt,
+  timerSeconds,
+  showPromptOverlay,
+  showTimerOverlay,
+}: {
+  blob: Blob;
+  prompt: string;
+  timerSeconds: number;
+  showPromptOverlay: boolean;
+  showTimerOverlay: boolean;
+}): Promise<Blob> {
+  if (!showPromptOverlay && !showTimerOverlay) return blob;
+
+  const sourceUrl = URL.createObjectURL(blob);
+
+  try {
+    const video = document.createElement("video");
+    video.src = sourceUrl;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.volume = 0;
+
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("Could not load recording."));
+    });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 720;
+    canvas.height = video.videoHeight || 1280;
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) {
+      throw new Error("Canvas context unavailable.");
+    }
+
+    const canvasStream = canvas.captureStream(30);
+    const v = video as HTMLVideoElement & {
+      captureStream?: () => MediaStream;
+    };
+    const playbackStream =
+      typeof v.captureStream === "function" ? v.captureStream() : undefined;
+    const mergedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...(playbackStream?.getAudioTracks() ?? []),
+    ]);
+
+    const recorder = new MediaRecorder(mergedStream, {
+      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm",
+    });
+
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+
+    const finished = new Promise<Blob>((resolve) => {
+      recorder.onstop = () => {
+        resolve(new Blob(chunks, { type: "video/webm" }));
+      };
+    });
+
+    const drawFrame = () => {
+      if (video.ended || video.paused) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      if (showPromptOverlay) {
+        const boxX = canvas.width * 0.07;
+        const boxY = canvas.height * 0.06;
+        const boxWidth = canvas.width * 0.86;
+        const boxHeight = canvas.height * 0.2;
+        const radius = 28;
+
+        ctx.fillStyle = "rgba(15, 23, 42, 0.72)";
+        ctx.beginPath();
+        ctx.moveTo(boxX + radius, boxY);
+        ctx.lineTo(boxX + boxWidth - radius, boxY);
+        ctx.quadraticCurveTo(
+          boxX + boxWidth,
+          boxY,
+          boxX + boxWidth,
+          boxY + radius,
+        );
+        ctx.lineTo(boxX + boxWidth, boxY + boxHeight - radius);
+        ctx.quadraticCurveTo(
+          boxX + boxWidth,
+          boxY + boxHeight,
+          boxX + boxWidth - radius,
+          boxY + boxHeight,
+        );
+        ctx.lineTo(boxX + radius, boxY + boxHeight);
+        ctx.quadraticCurveTo(
+          boxX,
+          boxY + boxHeight,
+          boxX,
+          boxY + boxHeight - radius,
+        );
+        ctx.lineTo(boxX, boxY + radius);
+        ctx.quadraticCurveTo(boxX, boxY, boxX + radius, boxY);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `${Math.round(canvas.width * 0.045)}px Georgia, serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const lines = wrapCanvasText(ctx, prompt, boxWidth - 64).slice(0, 3);
+        const lineHeight = canvas.height * 0.045;
+        const startY =
+          boxY + boxHeight / 2 - ((lines.length - 1) * lineHeight) / 2;
+        lines.forEach((line, index) => {
+          ctx.fillText(line, boxX + boxWidth / 2, startY + index * lineHeight);
+        });
+      }
+
+      if (showTimerOverlay) {
+        const secondsLeft = Math.max(
+          0,
+          Math.ceil(timerSeconds - video.currentTime),
+        );
+        ctx.fillStyle = "rgba(15, 23, 42, 0.66)";
+        ctx.beginPath();
+        ctx.roundRect(
+          canvas.width * 0.34,
+          canvas.height * 0.78,
+          canvas.width * 0.32,
+          canvas.height * 0.12,
+          28,
+        );
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `700 ${Math.round(canvas.width * 0.08)}px Geist, sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          `${secondsLeft}s`,
+          canvas.width * 0.5,
+          canvas.height * 0.84,
+        );
+      }
+
+      requestAnimationFrame(drawFrame);
+    };
+
+    recorder.start(200);
+    await video.play();
+    drawFrame();
+
+    await new Promise<void>((resolve) => {
+      video.onended = () => resolve();
+    });
+
+    recorder.stop();
+    mergedStream.getTracks().forEach((track) => track.stop());
+    return await finished;
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 export default function HomeClient() {
-  const [topic, setTopic] = useState<Topic>(() =>
-    getRandomTopic(null, "All", "All"),
-  );
+  const [topic, setTopic] = useState<Topic>(topics[0]);
   const [spinning, setSpinning] = useState(false);
+
+  // Randomize on mount to avoid hydration mismatch from Math.random()
+  const didInit = useRef(false);
+  useEffect(() => {
+    if (!didInit.current) {
+      didInit.current = true;
+      setTopic(getRandomTopic(null, "All", "All"));
+    }
+  }, []);
   const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
   const [difficulty, setDifficulty] = useState<Difficulty | "All">("All");
@@ -109,13 +307,18 @@ export default function HomeClient() {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [isPreparingDownload, setIsPreparingDownload] = useState(false);
+  const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
+  const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const timeInputRef = useRef<HTMLInputElement>(null);
 
   // Whether we're in "active session" (timer running or paused)
   const inSession = isRunning || isPaused;
@@ -166,6 +369,11 @@ export default function HomeClient() {
     setPromptEditorOpen(false);
   }, [promptDraft]);
 
+  const cancelPromptDraft = useCallback(() => {
+    setPromptDraft(customPromptText ?? topic.text);
+    setPromptEditorOpen(false);
+  }, [customPromptText, topic.text]);
+
   const openTimeEditor = useCallback(() => {
     setTimeDraft(String(timerSeconds));
     setTimeEditorOpen(true);
@@ -174,6 +382,7 @@ export default function HomeClient() {
   const saveTimeDraft = useCallback(() => {
     const parsed = parseInt(timeDraft, 10);
     if (Number.isNaN(parsed)) {
+      setTimeDraft(String(timerSeconds));
       setTimeEditorOpen(false);
       return;
     }
@@ -181,19 +390,20 @@ export default function HomeClient() {
     setTimerSeconds(v);
     if (!isRunning) setTimeLeft(v);
     setTimeEditorOpen(false);
-  }, [timeDraft, isRunning]);
+  }, [timeDraft, isRunning, timerSeconds]);
+
+  const cancelTimeDraft = useCallback(() => {
+    setTimeDraft(String(timerSeconds));
+    setTimeEditorOpen(false);
+  }, [timerSeconds]);
 
   useEffect(() => {
-    if (!promptEditorOpen && !timeEditorOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setPromptEditorOpen(false);
-        setTimeEditorOpen(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [promptEditorOpen, timeEditorOpen]);
+    if (!timeEditorOpen) return;
+    requestAnimationFrame(() => {
+      timeInputRef.current?.focus();
+      timeInputRef.current?.select();
+    });
+  }, [timeEditorOpen]);
 
   // ── Timer ──
   useEffect(() => {
@@ -226,11 +436,16 @@ export default function HomeClient() {
     setIsRunning(true);
     setIsPaused(false);
     setTimerDone(false);
-    setRecordedUrl(null);
+    setPromptEditorOpen(false);
+    setTimeEditorOpen(false);
+    setRecordedBlob(null);
+    setIsPreparingDownload(false);
+    setIsExportingVideo(false);
 
     // Auto-start recording if stream is active
     if (streamRef.current) {
       chunksRef.current = [];
+      setIsPreparingDownload(true);
       const recorder = new MediaRecorder(streamRef.current, {
         mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
           ? "video/webm;codecs=vp9,opus"
@@ -242,7 +457,8 @@ export default function HomeClient() {
       };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "video/webm" });
-        setRecordedUrl(URL.createObjectURL(blob));
+        setRecordedBlob(blob);
+        setIsPreparingDownload(false);
       };
       recorder.start();
       setIsRecording(true);
@@ -257,6 +473,8 @@ export default function HomeClient() {
     setIsPaused(false);
     setTimerDone(false);
     setTimeLeft(timerSeconds);
+    setIsPreparingDownload(false);
+    setIsExportingVideo(false);
     if (recorderRef.current?.state === "recording") {
       recorderRef.current.stop();
       setIsRecording(false);
@@ -389,25 +607,66 @@ export default function HomeClient() {
   }, [cameraOn, attachStream]);
 
   // Download recording
-  const downloadRecording = () => {
-    if (!recordedUrl) return;
-    const a = document.createElement("a");
-    a.href = recordedUrl;
-    a.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
-    a.click();
-  };
+  const downloadRecording = useCallback(async () => {
+    if (!recordedBlob || isExportingVideo) return;
+
+    setIsExportingVideo(true);
+
+    try {
+      const exportedBlob = await exportRecordingWithOverlays({
+        blob: recordedBlob,
+        prompt: customPromptText ?? topic.text,
+        timerSeconds,
+        showPromptOverlay: includePromptOverlay,
+        showTimerOverlay: includeTimerOverlay,
+      });
+      const a = document.createElement("a");
+      const url = URL.createObjectURL(exportedBlob);
+      a.href = url;
+      a.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      setIsExportingVideo(false);
+    }
+  }, [
+    recordedBlob,
+    isExportingVideo,
+    customPromptText,
+    topic.text,
+    timerSeconds,
+    includePromptOverlay,
+    includeTimerOverlay,
+  ]);
 
   const timerColor =
     timeLeft <= 10
-      ? "text-red-500"
+      ? "text-red-600 dark:text-red-500"
       : timeLeft <= 30
-        ? "text-amber-500"
-        : "text-white";
+        ? "text-amber-600 dark:text-amber-500"
+        : cameraOn
+          ? "text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.75)]"
+          : "text-slate-900 dark:text-white";
 
   const formatSecondsDisplay = (s: number) => `${Math.max(0, Math.floor(s))}s`;
 
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
+
+  const toolChromePanel =
+    "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/35 dark:shadow-none";
+
+  const selectClass =
+    "min-w-0 flex-1 cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] outline-none backdrop-blur-md sm:flex-none " +
+    (cameraOn
+      ? "border-white/10 bg-black/30 text-white"
+      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/30 dark:text-white");
+
+  const sessionBtnIdle =
+    "cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 " +
+    (cameraOn
+      ? "border-white/10 bg-black/30 text-white"
+      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/30 dark:text-white");
 
   return (
     <div className="flex min-h-screen flex-col transition-colors duration-300">
@@ -417,7 +676,7 @@ export default function HomeClient() {
           <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
             Y
           </div>
-          <span className="text-foreground text-[18px] font-extrabold tracking-tight">
+          <span className="font-display text-foreground text-[22px] font-semibold tracking-[0.02em]">
             yapper
           </span>
           <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
@@ -435,17 +694,36 @@ export default function HomeClient() {
       </header>
 
       {/* Headline */}
-      <div className="px-6 pt-6 pb-4 text-center">
-        <h1 className="text-foreground mb-2 text-[22px] font-extrabold tracking-tight md:text-[28px]">
-          Pull the lever. Start talking.
+      <div className="px-6 pt-10 pb-16 text-center md:pt-14 md:pb-24">
+        <div className="mb-5 flex justify-center">
+          <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2.5 shadow-[0_8px_30px_rgba(15,23,42,0.08)] backdrop-blur-md dark:border-white/12 dark:bg-zinc-800/90 dark:shadow-[0_10px_35px_rgba(0,0,0,0.35)]">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-red-500 text-[13px] font-semibold text-white shadow-[0_0_18px_rgba(249,115,22,0.45)]">
+              Y
+            </span>
+            <span className="font-display text-[18px] font-semibold tracking-[0.01em] text-slate-900 dark:text-zinc-50">
+              Pull the lever. Start talking.
+            </span>
+            <span
+              className="text-[15px] font-medium text-slate-600 dark:text-zinc-400"
+              aria-hidden
+            >
+              →
+            </span>
+          </div>
+        </div>
+        <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.88] font-semibold tracking-[-0.03em] md:text-[72px]">
+          Free Topic Generator
+          <br />
+          for Speech Practice
         </h1>
-        <p className="text-foreground/85 mx-auto mb-4 max-w-xl text-[14px] leading-relaxed text-slate-600 md:text-[15px] dark:text-slate-400">
-          A free random topic generator for impromptu speaking practice, table
-          topics, and speech prompts. No sign-up, no paywall.
+        <p className="text-foreground/85 mx-auto mb-7 max-w-2xl text-[16px] leading-relaxed text-slate-600 md:mb-8 md:text-[19px] dark:text-slate-400">
+          Practice public speaking alone with random speech topics, table
+          topics, a built-in timer, and optional camera/mic recording. No
+          sign-up, no paywall, and no setup friction.
         </p>
         <a
           href="#practice"
-          className="border-border bg-background text-foreground hover:bg-muted/80 inline-flex items-center justify-center rounded-full border px-6 py-2.5 text-[13px] font-semibold shadow-sm transition-colors"
+          className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-900 px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(15,23,42,0.25)] transition-colors hover:bg-slate-800 dark:border-white/15 dark:bg-white dark:text-slate-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] dark:hover:bg-zinc-100"
         >
           Jump to practice
         </a>
@@ -454,9 +732,9 @@ export default function HomeClient() {
       {/* ═══ CAMERA CONTAINER ═══ */}
       <main
         id="practice"
-        className="flex flex-1 flex-col items-center justify-center px-4 pb-4"
+        className="flex flex-1 flex-col items-center justify-center px-4 pt-0 pb-4 md:pt-2"
       >
-        <div className="shadow-container relative h-[min(82svh,860px)] max-h-[calc(100svh-140px)] w-full max-w-[min(1200px,100%)] overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-100 md:aspect-[16/9] md:h-auto md:max-h-[calc(100vh-200px)] dark:border-white/[0.07] dark:bg-[oklch(0.16_0_0)]">
+        <div className="shadow-container relative h-[min(82svh,860px)] max-h-[calc(100svh-140px)] w-full max-w-[min(1200px,100%)] overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 md:aspect-[16/9] md:h-auto md:max-h-[calc(100vh-200px)] dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none">
           {/* Video feed (background) */}
           {cameraOn && (
             <video
@@ -468,9 +746,17 @@ export default function HomeClient() {
             />
           )}
 
-          {/* Dark overlay when camera is off */}
+          {/* Shader background when camera is off */}
           {!cameraOn && (
-            <div className="absolute inset-0 bg-gradient-to-b from-slate-200 via-slate-100 to-slate-50 dark:from-[oklch(0.20_0_0)] dark:via-[oklch(0.17_0_0)] dark:to-[oklch(0.15_0_0)]" />
+            <div className="absolute inset-0">
+              <MeshGradient
+                className="absolute inset-0 h-full w-full"
+                colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
+                speed={0.3}
+                distortion={0.4}
+                swirl={0.3}
+              />
+            </div>
           )}
 
           {/* Semi-transparent overlay to keep text readable over video */}
@@ -479,11 +765,15 @@ export default function HomeClient() {
           {/* ── Top controls ── */}
           <div className="absolute inset-x-4 top-4 z-20 flex items-start justify-between gap-3">
             {isRecording && (
-              <div className="absolute top-0 left-0 flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1 backdrop-blur-md md:static md:flex-none">
+              <div
+                className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${
+                  cameraOn
+                    ? "border-white/10 bg-black/40 text-white"
+                    : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white"
+                }`}
+              >
                 <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-                <span className="font-mono text-xs font-semibold text-white">
-                  REC
-                </span>
+                <span className="font-mono text-xs font-semibold">REC</span>
               </div>
             )}
             <div
@@ -494,7 +784,7 @@ export default function HomeClient() {
               <select
                 value={category}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="min-w-0 flex-1 cursor-pointer rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white backdrop-blur-md outline-none sm:flex-none"
+                className={selectClass}
               >
                 {["All", ...CATEGORIES].map((o) => (
                   <option key={o} value={o}>
@@ -505,7 +795,7 @@ export default function HomeClient() {
               <select
                 value={difficulty}
                 onChange={(e) => handleDifficultyChange(e.target.value)}
-                className="min-w-0 flex-1 cursor-pointer rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white backdrop-blur-md outline-none sm:flex-none"
+                className={selectClass}
               >
                 {["All", ...DIFFICULTIES].map((o) => (
                   <option key={o} value={o}>
@@ -517,10 +807,12 @@ export default function HomeClient() {
             <div className="flex shrink-0 gap-2">
               <button
                 onClick={toggleMic}
-                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 backdrop-blur-md transition-all duration-200 ${
+                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 ${
                   micOn
-                    ? "bg-white/15 hover:bg-white/25"
-                    : "border-red-400/30 bg-red-500/80 hover:bg-red-400/80"
+                    ? cameraOn
+                      ? "border border-white/10 bg-white/15 text-white hover:bg-white/25"
+                      : "border border-slate-200 bg-white/95 text-slate-800 shadow-sm hover:bg-slate-50 dark:border-white/15 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
+                    : "border border-red-400/40 bg-red-500 text-white hover:bg-red-400"
                 }`}
                 title={micOn ? "Mute" : "Unmute"}
               >
@@ -530,7 +822,7 @@ export default function HomeClient() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="white"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -546,7 +838,7 @@ export default function HomeClient() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="white"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -561,10 +853,10 @@ export default function HomeClient() {
               </button>
               <button
                 onClick={toggleCamera}
-                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 backdrop-blur-md transition-all duration-200 ${
+                className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 ${
                   cameraOn
-                    ? "bg-white/15 hover:bg-white/25"
-                    : "border-red-400/30 bg-red-500/80 hover:bg-red-400/80"
+                    ? "border border-white/10 bg-white/15 text-white hover:bg-white/25"
+                    : "border border-red-400/40 bg-red-500 text-white hover:bg-red-400"
                 }`}
                 title={cameraOn ? "Camera off" : "Camera on"}
               >
@@ -574,7 +866,7 @@ export default function HomeClient() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="white"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -588,7 +880,7 @@ export default function HomeClient() {
                     height="16"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="white"
+                    stroke="currentColor"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -601,62 +893,98 @@ export default function HomeClient() {
             </div>
           </div>
 
-          {/* ── Content overlay — topic pinned to top, buttons at bottom ── */}
+          {/* Content overlay: topic near top, controls at bottom */}
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
-            {/* Topic card — pinned near top, same level as filters */}
+            {/* Topic card near top, same level as filters */}
             <div className="w-full max-w-[560px]">
               <TopicReel
                 topic={topic}
                 spinning={spinning}
                 reelBlurbs={reelBlurbs}
                 promptOverride={customPromptText}
+                promptDraft={promptDraft}
+                promptEditing={promptEditorOpen}
                 promptEditable={canEditPrompt}
                 onPromptDoubleTap={openPromptEditor}
+                onPromptDraftChange={setPromptDraft}
+                onPromptSave={savePromptDraft}
+                onPromptCancel={cancelPromptDraft}
               />
             </div>
 
-            {/* Timer — centered (seconds); double-tap to type duration when idle) */}
+            {/* Timer centered in seconds. Double-tap to type duration when idle. */}
             <div className="flex flex-col items-center gap-1">
-              <div
-                role={canEditTime ? "button" : undefined}
-                tabIndex={canEditTime ? 0 : undefined}
-                title={
-                  canEditTime
-                    ? "Double-tap to set seconds (" +
-                      TIMER_MIN_SECONDS +
-                      "–" +
-                      TIMER_MAX_SECONDS +
-                      ")"
-                    : undefined
-                }
-                onDoubleClick={handleTimerDoubleClick}
-                onTouchEnd={handleTimerTouchEnd}
-                onKeyDown={(e) => {
-                  if (
-                    canEditTime &&
-                    (e.key === "Enter" || e.key === " ") &&
-                    e.target === e.currentTarget
-                  ) {
-                    e.preventDefault();
-                    openTimeEditor();
+              {timeEditorOpen ? (
+                <div className="flex flex-col items-center gap-1">
+                  <input
+                    ref={timeInputRef}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={timeDraft}
+                    onChange={(e) => setTimeDraft(e.target.value)}
+                    onBlur={saveTimeDraft}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        saveTimeDraft();
+                      }
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        cancelTimeDraft();
+                      }
+                    }}
+                    className={`w-[170px] bg-transparent p-0 text-center font-mono text-[36px] leading-none font-bold tracking-[2px] outline-none md:text-[52px] ${timerColor}`}
+                  />
+                </div>
+              ) : (
+                <div
+                  role={canEditTime ? "button" : undefined}
+                  tabIndex={canEditTime ? 0 : undefined}
+                  title={
+                    canEditTime
+                      ? "Double-tap to set seconds (" +
+                        TIMER_MIN_SECONDS +
+                        " to " +
+                        TIMER_MAX_SECONDS +
+                        ")"
+                      : undefined
                   }
-                }}
-                className={`font-mono text-[36px] leading-none font-bold tracking-[2px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} touch-manipulation outline-none ${
-                  canEditTime
-                    ? "cursor-pointer rounded-lg px-2 focus-visible:ring-2 focus-visible:ring-blue-400/60"
-                    : ""
-                } ${isRunning && timeLeft <= 10 ? "animate-pulse" : ""}`}
-              >
-                {formatSecondsDisplay(timeLeft)}
-              </div>
-              {canEditTime && (
-                <span className="text-[10px] font-medium tracking-wide text-slate-500 uppercase">
+                  onDoubleClick={handleTimerDoubleClick}
+                  onTouchEnd={handleTimerTouchEnd}
+                  onKeyDown={(e) => {
+                    if (
+                      canEditTime &&
+                      (e.key === "Enter" || e.key === " ") &&
+                      e.target === e.currentTarget
+                    ) {
+                      e.preventDefault();
+                      openTimeEditor();
+                    }
+                  }}
+                  className={`font-mono text-[36px] leading-none font-bold tracking-[2px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} touch-manipulation outline-none ${
+                    canEditTime
+                      ? "cursor-pointer rounded-lg px-2 focus-visible:ring-2 focus-visible:ring-blue-400/60"
+                      : ""
+                  } ${isRunning && timeLeft <= 10 ? "animate-pulse" : ""}`}
+                >
+                  {formatSecondsDisplay(timeLeft)}
+                </div>
+              )}
+              {canEditTime && !timeEditorOpen && (
+                <span
+                  className={`text-[10px] font-medium tracking-wide uppercase ${
+                    cameraOn
+                      ? "text-white/95 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]"
+                      : "text-slate-700 dark:text-slate-400"
+                  }`}
+                >
                   Seconds · double-tap to type
                 </span>
               )}
             </div>
 
-            {/* Buttons + mobile controls — pinned to bottom */}
+            {/* Buttons and mobile controls pinned to bottom */}
             <div className="flex w-full flex-col items-center gap-3">
               <div
                 className={`flex items-end justify-center gap-3 transition-all duration-500 md:hidden ${
@@ -665,10 +993,10 @@ export default function HomeClient() {
                     : "scale-100 opacity-100"
                 }`}
               >
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+                <div className={toolChromePanel}>
                   <SlotLever onPull={generateTopic} />
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+                <div className={toolChromePanel}>
                   <RotaryKnob
                     value={timerSeconds}
                     onChange={handleKnobChange}
@@ -692,24 +1020,47 @@ export default function HomeClient() {
                   <>
                     <button
                       onClick={pauseTimer}
-                      className={`cursor-pointer rounded-full border border-white/10 px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 ${
+                      className={`cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 ${
                         isPaused
                           ? "border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                          : "bg-black/30 text-white"
+                          : sessionBtnIdle
                       }`}
                     >
                       {isPaused ? "Resume" : "Pause"}
                     </button>
-                    <button
-                      onClick={resetTimer}
-                      className="cursor-pointer rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md transition-opacity hover:opacity-80"
-                    >
+                    <button onClick={resetTimer} className={sessionBtnIdle}>
                       Reset
                     </button>
                   </>
                 )}
                 {timerDone && (
                   <>
+                    {recordedBlob && (
+                      <div className="flex flex-wrap items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white/95 px-3 py-2 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/35">
+                        <label className="flex items-center gap-2 text-[12px] font-medium text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={includePromptOverlay}
+                            onChange={(e) =>
+                              setIncludePromptOverlay(e.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          Prompt overlay
+                        </label>
+                        <label className="flex items-center gap-2 text-[12px] font-medium text-slate-700 dark:text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={includeTimerOverlay}
+                            onChange={(e) =>
+                              setIncludeTimerOverlay(e.target.checked)
+                            }
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          Timer overlay
+                        </label>
+                      </div>
+                    )}
                     <button
                       onClick={() => {
                         resetTimer();
@@ -719,12 +1070,21 @@ export default function HomeClient() {
                     >
                       Try Another
                     </button>
-                    {recordedUrl && (
+                    {(isPreparingDownload || recordedBlob) && (
                       <button
                         onClick={downloadRecording}
-                        className="cursor-pointer rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md transition-opacity hover:opacity-80"
+                        disabled={!recordedBlob || isExportingVideo}
+                        className={`${sessionBtnIdle} ${
+                          recordedBlob && !isExportingVideo
+                            ? ""
+                            : "cursor-default opacity-70 hover:opacity-70"
+                        }`}
                       >
-                        Download
+                        {isPreparingDownload
+                          ? "Preparing video..."
+                          : isExportingVideo
+                            ? "Exporting video..."
+                            : "Download video"}
                       </button>
                     )}
                   </>
@@ -741,7 +1101,7 @@ export default function HomeClient() {
                 : "scale-100 opacity-100"
             }`}
           >
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+            <div className={toolChromePanel}>
               <SlotLever onPull={generateTopic} />
             </div>
           </div>
@@ -754,7 +1114,7 @@ export default function HomeClient() {
                 : "scale-100 opacity-100"
             }`}
           >
-            <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+            <div className={toolChromePanel}>
               <RotaryKnob
                 value={timerSeconds}
                 onChange={handleKnobChange}
@@ -773,124 +1133,6 @@ export default function HomeClient() {
       <footer className="border-border border-t py-4 text-center text-[11px] text-slate-500/70 dark:text-slate-500/50">
         yapper · ypr.app
       </footer>
-
-      {promptEditorOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setPromptEditorOpen(false);
-          }}
-        >
-          <div
-            className="border-border bg-background w-full max-w-md rounded-2xl border p-5 shadow-xl"
-            role="dialog"
-            aria-labelledby="prompt-editor-title"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <h3
-              id="prompt-editor-title"
-              className="text-foreground mb-2 text-sm font-semibold"
-            >
-              Your prompt
-            </h3>
-            <p className="mb-3 text-[12px] text-slate-500">
-              This replaces the current topic until you pull the lever again or
-              change filters.
-            </p>
-            <textarea
-              value={promptDraft}
-              onChange={(e) => setPromptDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  savePromptDraft();
-                }
-              }}
-              rows={4}
-              className="border-border bg-muted/30 text-foreground focus:ring-ring w-full resize-y rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2"
-              placeholder="Type your speaking prompt…"
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setPromptEditorOpen(false)}
-                className="border-border hover:bg-muted cursor-pointer rounded-lg border bg-transparent px-4 py-2 text-[13px] text-slate-600 transition-colors dark:text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={savePromptDraft}
-                className="cursor-pointer rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-opacity hover:opacity-90"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {timeEditorOpen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setTimeEditorOpen(false);
-          }}
-        >
-          <div
-            className="border-border bg-background w-full max-w-sm rounded-2xl border p-5 shadow-xl"
-            role="dialog"
-            aria-labelledby="time-editor-title"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <h3
-              id="time-editor-title"
-              className="text-foreground mb-2 text-sm font-semibold"
-            >
-              Timer (seconds)
-            </h3>
-            <p className="mb-3 text-[12px] text-slate-500">
-              Enter a duration from {TIMER_MIN_SECONDS} to {TIMER_MAX_SECONDS}{" "}
-              seconds.
-            </p>
-            <input
-              type="number"
-              min={TIMER_MIN_SECONDS}
-              max={TIMER_MAX_SECONDS}
-              step={1}
-              value={timeDraft}
-              onChange={(e) => setTimeDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  saveTimeDraft();
-                }
-              }}
-              className="border-border bg-muted/30 text-foreground focus:ring-ring w-full rounded-xl border px-3 py-2 font-mono text-lg outline-none focus:ring-2"
-              autoFocus
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setTimeEditorOpen(false)}
-                className="border-border hover:bg-muted cursor-pointer rounded-lg border bg-transparent px-4 py-2 text-[13px] text-slate-600 transition-colors dark:text-slate-300"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveTimeDraft}
-                className="cursor-pointer rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 px-4 py-2 text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.35)] transition-opacity hover:opacity-90"
-              >
-                Set
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

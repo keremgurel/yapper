@@ -1,9 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Geist_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bodySans = Manrope({
+  variable: "--font-body-sans",
   subsets: ["latin"],
 });
 
@@ -12,10 +12,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const displaySerif = Cormorant_Garamond({
+  variable: "--font-display-serif",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+});
+
 const siteUrl = "https://ypr.app";
-const title = "Yapper | Free Random Topic Generator for Speech Practice";
+const title = "Yapper | Free Topic Generator for Speech Practice";
 const description =
-  "Practice impromptu speaking with a free random speech topic generator and built-in timer. Perfect for table topics, speech prompts, and public speaking practice online — no sign-up. Your audio and video stay on your device; nothing is stored on our servers.";
+  "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -65,6 +71,11 @@ export const metadata: Metadata = {
     title,
     description,
   },
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   formatDetection: {
     email: false,
     address: false,
@@ -89,7 +100,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bodySans.variable} ${displaySerif.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -24,7 +24,8 @@
   --color-card: var(--card);
   --color-border: var(--border);
   --color-muted: var(--muted);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-body-sans);
+  --font-display: var(--font-display-serif);
   --font-mono: var(--font-geist-mono);
 }
 
@@ -35,10 +36,14 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans, system-ui, sans-serif);
+  font-family: var(--font-body-sans, system-ui, sans-serif);
   transition:
     background-color 0.3s,
     color 0.3s;
+}
+
+.font-display {
+  font-family: var(--font-display-serif, Georgia, serif);
 }
 
 /* Shadow utilities */

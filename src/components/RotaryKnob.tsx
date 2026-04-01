@@ -160,16 +160,7 @@ export default function RotaryKnob({
         gap: "8px",
       }}
     >
-      <div
-        style={{
-          fontSize: "9px",
-          color: "#64748b",
-          textTransform: "uppercase",
-          letterSpacing: "2px",
-          fontWeight: 600,
-          marginBottom: "2px",
-        }}
-      >
+      <div className="mb-0.5 text-[9px] font-semibold tracking-[2px] text-slate-700 uppercase dark:text-slate-400">
         Timer
       </div>
       <div
@@ -290,25 +281,10 @@ export default function RotaryKnob({
         </svg>
       </div>
 
-      <div
-        style={{
-          fontFamily: "'SF Mono', 'Fira Code', monospace",
-          fontSize: "22px",
-          fontWeight: 700,
-          letterSpacing: "2px",
-          color: "var(--foreground)",
-        }}
-      >
+      <div className="font-mono text-[22px] font-bold tracking-[2px] text-slate-900 dark:text-[var(--foreground)]">
         {formatSeconds(value)}
       </div>
-      <div
-        style={{
-          fontSize: "10px",
-          color: "#64748b",
-          textTransform: "uppercase",
-          letterSpacing: "1.5px",
-        }}
-      >
+      <div className="text-[10px] tracking-[1.5px] text-slate-700 uppercase dark:text-slate-400">
         {disabled ? "LOCKED" : "DRAG TO SET"}
       </div>
     </div>

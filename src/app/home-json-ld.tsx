@@ -3,7 +3,7 @@ const SITE = "https://ypr.app";
 const faqEntries: { name: string; text: string }[] = [
   {
     name: "Is Yapper really free?",
-    text: "Yes — completely free. No account, no subscription, and no credit card.",
+    text: "Yes, completely free. No account, no subscription, and no credit card.",
   },
   {
     name: "Do you store my video or audio?",
@@ -15,11 +15,11 @@ const faqEntries: { name: string; text: string }[] = [
   },
   {
     name: "What is impromptu speaking practice?",
-    text: "Speaking off the cuff with a random prompt and a timer — useful for public speaking, interviews, ESL practice, and building confidence.",
+    text: "Speaking off the cuff with a random prompt and a timer that is useful for public speaking, interviews, ESL practice, and building confidence.",
   },
   {
     name: "Can I use this for Toastmasters table topics?",
-    text: "Yes. Table topics are short impromptu speeches — Yapper provides random topics and a timer for solo practice.",
+    text: "Yes. Table topics are short impromptu speeches, and Yapper provides random topics and a timer for solo practice.",
   },
   {
     name: "Do I need to sign up or create an account?",
@@ -39,7 +39,7 @@ const faqEntries: { name: string; text: string }[] = [
   },
   {
     name: "Is this useful for practicing public speaking alone?",
-    text: "Yes — Yapper gives you a topic, a timer, and an optional camera so you can practice solo anywhere.",
+    text: "Yes. Yapper gives you a topic, a timer, and an optional camera so you can practice solo anywhere.",
   },
   {
     name: "Can I use Yapper on my phone?",
@@ -47,11 +47,11 @@ const faqEntries: { name: string; text: string }[] = [
   },
   {
     name: "Is this good for ESL or English speaking practice?",
-    text: "Yes. Random topics force you to think and express ideas in English on the spot — the exact skill IELTS, TOEFL, and CELPIP speaking tests measure.",
+    text: "Yes. Random topics force you to think and express ideas in English on the spot, which is the exact skill IELTS, TOEFL, and CELPIP speaking tests measure.",
   },
   {
     name: "How is Yapper different from other speech topic generators?",
-    text: "Yapper adds a built-in timer, optional camera/mic recording, difficulty levels, custom prompts, and a privacy-first design — a complete practice environment, not just a list.",
+    text: "Yapper adds a built-in timer, optional camera and mic recording, difficulty levels, custom prompts, and a privacy-first design. It is a complete practice environment, not just a list.",
   },
   {
     name: "Can I use Yapper for debate practice?",
@@ -59,7 +59,7 @@ const faqEntries: { name: string; text: string }[] = [
   },
   {
     name: "What are good 1-minute speech topics?",
-    text: "Yapper generates hundreds — set the timer to 60 seconds, pull the lever, and get a topic perfectly scoped for a 1-minute impromptu speech.",
+    text: "Yapper generates hundreds. Set the timer to 60 seconds, pull the lever, and get a topic that is well scoped for a 1-minute impromptu speech.",
   },
   {
     name: "Will Yapper add AI feedback or coaching in the future?",
@@ -84,7 +84,7 @@ const graph = [
     url: SITE,
     name: "Yapper",
     description:
-      "Free random topic generator for impromptu speaking practice, table topics, and speech prompts — in your browser.",
+      "Free random topic generator for impromptu speaking practice, table topics, and speech prompts in your browser.",
     publisher: { "@id": `${SITE}/#organization` },
     inLanguage: "en",
   },
