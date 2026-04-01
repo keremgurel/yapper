@@ -1,29 +1,26 @@
 "use client";
 
 import type { Topic } from "@/data/topics";
-import topics from "@/data/topics";
 
 interface TopicReelProps {
   topic: Topic;
   spinning: boolean;
+  reelBlurbs: string[];
 }
 
-export default function TopicReel({ topic, spinning }: TopicReelProps) {
-  const reelItems = spinning
-    ? Array.from(
-        { length: 5 },
-        () => topics[Math.floor(Math.random() * topics.length)].text
-      )
-    : [];
-
+export default function TopicReel({
+  topic,
+  spinning,
+  reelBlurbs,
+}: TopicReelProps) {
   return (
-    <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl px-7 py-7 w-full text-center overflow-hidden relative h-[150px] flex flex-col items-center justify-center">
+    <div className="relative flex h-[150px] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/30 px-7 py-7 text-center backdrop-blur-md">
       {spinning ? (
         <div className="animate-reel-spin flex flex-col gap-4">
-          {reelItems.map((t, i) => (
+          {reelBlurbs.map((t, i) => (
             <p
               key={i}
-              className="text-lg font-serif text-white opacity-30 blur-[2px] m-0"
+              className="m-0 font-serif text-lg text-white opacity-30 blur-[2px]"
             >
               {t}
             </p>
@@ -31,15 +28,15 @@ export default function TopicReel({ topic, spinning }: TopicReelProps) {
         </div>
       ) : (
         <>
-          <div className="flex justify-center gap-2 mb-4 animate-fade-slide-in [animation-delay:50ms]">
-            <span className="text-[10px] font-semibold text-blue-300 bg-blue-400/15 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+          <div className="animate-fade-slide-in mb-4 flex justify-center gap-2 [animation-delay:50ms]">
+            <span className="rounded-full bg-blue-400/15 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-blue-300 uppercase">
               {topic.category}
             </span>
-            <span className="text-[10px] font-semibold text-slate-300 bg-white/10 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+            <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-slate-300 uppercase">
               {topic.difficulty}
             </span>
           </div>
-          <p className="text-xl leading-relaxed font-medium text-white font-serif m-0 animate-fade-slide-in [animation-delay:100ms]">
+          <p className="animate-fade-slide-in m-0 font-serif text-xl leading-relaxed font-medium text-white [animation-delay:100ms]">
             {topic.text}
           </p>
         </>

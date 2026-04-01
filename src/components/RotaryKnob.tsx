@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { playLuxuryDetent } from "@/lib/audio";
 
 interface RotaryKnobProps {
@@ -24,6 +24,7 @@ export default function RotaryKnob({
 }: RotaryKnobProps) {
   const knobRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const [isDraggingKnob, setIsDraggingKnob] = useState(false);
   const startAngle = useRef(0);
   const startValue = useRef(value);
   const currentValue = useRef(value);
@@ -32,32 +33,29 @@ export default function RotaryKnob({
   const totalRotation = 270;
   const degreesPerStep = totalRotation / totalSteps;
   const currentRotation = (value - min) * degreesPerStep - totalRotation / 2;
-  const norm = (value - min) / totalSteps;
 
   const accentColor = "#c8a864";
 
-  const getAngle = useCallback(
-    (e: MouseEvent | TouchEvent, rect: DOMRect) => {
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-      return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
-    },
-    []
-  );
+  const getAngle = useCallback((e: MouseEvent | TouchEvent, rect: DOMRect) => {
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
+  }, []);
 
   const handleStart = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
       if (disabled) return;
       e.preventDefault();
       dragging.current = true;
+      setIsDraggingKnob(true);
       startValue.current = currentValue.current;
       const rect = knobRef.current!.getBoundingClientRect();
       const nativeEvent = e.nativeEvent;
       startAngle.current = getAngle(nativeEvent as MouseEvent, rect);
     },
-    [disabled, getAngle]
+    [disabled, getAngle],
   );
 
   useEffect(() => {
@@ -74,7 +72,10 @@ export default function RotaryKnob({
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
       const stepDelta = Math.round(delta / degreesPerStep);
-      const newVal = Math.max(min, Math.min(max, startValue.current + stepDelta));
+      const newVal = Math.max(
+        min,
+        Math.min(max, startValue.current + stepDelta),
+      );
       if (newVal !== currentValue.current) {
         playLuxuryDetent(newVal, min, max);
         currentValue.current = newVal;
@@ -83,6 +84,7 @@ export default function RotaryKnob({
     };
     const handleEnd = () => {
       dragging.current = false;
+      setIsDraggingKnob(false);
     };
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleEnd);
@@ -97,7 +99,7 @@ export default function RotaryKnob({
   }, [disabled, min, max, degreesPerStep, getAngle, onChange]);
 
   // Build tick marks using absolute positioning with trig
-  const labelSteps = [30, 45, 60, 75, 90, 105, 120];
+  const labelSteps = [30, 45, 60, 75, 90];
   const tickElements = [];
   const cx = SIZE / 2;
   const cy = SIZE / 2;
@@ -110,7 +112,8 @@ export default function RotaryKnob({
     const tickW = isLabel ? 3 : 2;
 
     // Angle: map value to rotation. 0 step = -135deg from top, last step = +135deg
-    const angleDeg = ((s - min) / totalSteps) * totalRotation - totalRotation / 2;
+    const angleDeg =
+      ((s - min) / totalSteps) * totalRotation - totalRotation / 2;
     // Convert to radians, offset by -90 so 0deg = top
     const angleRad = ((angleDeg - 90) * Math.PI) / 180;
 
@@ -130,10 +133,12 @@ export default function RotaryKnob({
         strokeWidth={tickW}
         strokeLinecap="round"
         style={{
-          filter: isActive ? `drop-shadow(0 0 2px rgba(200,168,100,0.3))` : "none",
+          filter: isActive
+            ? `drop-shadow(0 0 2px rgba(200,168,100,0.3))`
+            : "none",
           transition: "stroke 0.1s, filter 0.1s",
         }}
-      />
+      />,
     );
   }
 
@@ -148,7 +153,14 @@ export default function RotaryKnob({
   const dotY = cy + indicatorR * Math.sin(indicatorAngleRad);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "8px",
+      }}
+    >
       <div
         style={{
           fontSize: "9px",
@@ -174,7 +186,12 @@ export default function RotaryKnob({
         <svg
           width={SIZE}
           height={SIZE}
-          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
         >
           {tickElements}
         </svg>
@@ -252,7 +269,12 @@ export default function RotaryKnob({
         <svg
           width={SIZE}
           height={SIZE}
-          style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            pointerEvents: "none",
+          }}
         >
           <circle
             cx={dotX}
@@ -261,7 +283,9 @@ export default function RotaryKnob({
             fill={accentColor}
             style={{
               filter: `drop-shadow(0 0 3px rgba(200,168,100,0.5))`,
-              transition: dragging.current ? "none" : "cx 0.1s ease-out, cy 0.1s ease-out",
+              transition: isDraggingKnob
+                ? "none"
+                : "cx 0.1s ease-out, cy 0.1s ease-out",
             }}
           />
         </svg>

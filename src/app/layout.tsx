@@ -28,8 +28,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Yapper — Random Speaking Topics",
-    description:
-      "Free random topic generator for impromptu speaking practice.",
+    description: "Free random topic generator for impromptu speaking practice.",
   },
 };
 
@@ -51,7 +50,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
 }

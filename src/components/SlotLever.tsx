@@ -12,6 +12,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
   const [phase, setPhase] = useState<
     "idle" | "pulling" | "spinning" | "landed"
   >("idle");
+  const [isDragging, setIsDragging] = useState(false);
   const dragging = useRef(false);
   const startY = useRef(0);
   const lastCreak = useRef(0);
@@ -24,12 +25,12 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       if (phase !== "idle") return;
       e.preventDefault();
       dragging.current = true;
-      const clientY =
-        "touches" in e ? e.touches[0].clientY : e.clientY;
+      setIsDragging(true);
+      const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       startY.current = clientY - pullRef.current;
       setPhase("pulling");
     },
-    [phase]
+    [phase],
   );
 
   useEffect(() => {
@@ -42,10 +43,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       e.preventDefault();
       const clientY =
         "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
-      const delta = Math.max(
-        0,
-        Math.min(maxPull, clientY - startY.current)
-      );
+      const delta = Math.max(0, Math.min(maxPull, clientY - startY.current));
       setPullY(delta);
       const now = Date.now();
       if (delta > 15 && now - lastCreak.current > 80) {
@@ -57,6 +55,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
     const handleEnd = () => {
       if (!dragging.current) return;
       dragging.current = false;
+      setIsDragging(false);
       if (pullRef.current >= threshold) {
         setPhase("spinning");
         playSlotSpin();
@@ -90,18 +89,22 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="text-[9px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2">
+      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-500 uppercase">
         Generate
       </div>
-      <div className="relative flex flex-col items-center" style={{ width: "56px", height: "160px" }}>
+      <div
+        className="relative flex flex-col items-center"
+        style={{ width: "56px", height: "160px" }}
+      >
         {/* Top mounting plate */}
         <div
-          className="rounded-t-[5px] z-[2]"
+          className="z-[2] rounded-t-[5px]"
           style={{
             width: "40px",
             height: "18px",
             background: "linear-gradient(to bottom, #4a5568, #2d3748)",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
+            boxShadow:
+              "0 2px 4px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)",
           }}
         />
         {/* Shaft */}
@@ -123,7 +126,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
               background: isPastThreshold
                 ? "linear-gradient(to bottom, #4a5568, #f59e0b)"
                 : "linear-gradient(to bottom, #4a5568, #718096)",
-              transition: dragging.current
+              transition: isDragging
                 ? "none"
                 : "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
               boxShadow: isPastThreshold
@@ -153,13 +156,13 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
             top: `${18 + progress * 115}px`,
             left: "50%",
             transform: "translateX(-50%)",
-            transition: dragging.current
+            transition: isDragging
               ? "none"
               : "top 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
           }}
         >
           <div
-            className="rounded-full flex items-center justify-center"
+            className="flex items-center justify-center rounded-full"
             style={{
               width: "44px",
               height: "44px",
@@ -171,10 +174,8 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
                 ? "0 4px 16px rgba(217,119,6,0.5), inset 0 1px 0 rgba(255,255,255,0.3)"
                 : "0 4px 12px rgba(0,0,0,0.3), inset 0 2px 0 rgba(255,255,255,0.4)",
               cursor:
-                phase === "idle" || phase === "pulling"
-                  ? "grab"
-                  : "default",
-              transition: dragging.current ? "none" : "all 0.3s",
+                phase === "idle" || phase === "pulling" ? "grab" : "default",
+              transition: isDragging ? "none" : "all 0.3s",
             }}
           >
             <div
@@ -200,28 +201,28 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         />
       </div>
       <div
-        className="mt-2.5 text-[10px] font-semibold uppercase tracking-[1.5px]"
+        className="mt-2.5 text-[10px] font-semibold tracking-[1.5px] uppercase"
         style={{
           color:
             phase === "spinning"
               ? "#f59e0b"
               : isPastThreshold
-              ? "#f59e0b"
-              : phase === "landed"
-              ? "#22c55e"
-              : "#64748b",
+                ? "#f59e0b"
+                : phase === "landed"
+                  ? "#22c55e"
+                  : "#64748b",
         }}
       >
         {phase === "spinning"
           ? "SPINNING..."
           : phase === "landed"
-          ? "LANDED!"
-          : isPastThreshold
-          ? "RELEASE!"
-          : "PULL"}
+            ? "LANDED!"
+            : isPastThreshold
+              ? "RELEASE!"
+              : "PULL"}
       </div>
       <div
-        className={`mt-0.5 text-sm text-slate-500 animate-bounce transition-opacity ${
+        className={`mt-0.5 animate-bounce text-sm text-slate-500 transition-opacity ${
           phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
         }`}
       >

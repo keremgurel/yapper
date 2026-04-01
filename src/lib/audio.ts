@@ -13,9 +13,13 @@ function noiseBlip(
   freq: number,
   q: number,
   volume: number,
-  type: BiquadFilterType = "bandpass"
+  type: BiquadFilterType = "bandpass",
 ) {
-  const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * duration), ac.sampleRate);
+  const buf = ac.createBuffer(
+    1,
+    Math.ceil(ac.sampleRate * duration),
+    ac.sampleRate,
+  );
   const data = buf.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   const src = ac.createBufferSource();
@@ -70,7 +74,11 @@ export function playSlotTick(pitch = 800) {
 
     // Ultra-short noise snap — the flap hitting the reel stop
     const len = 0.006;
-    const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+    const buf = ac.createBuffer(
+      1,
+      Math.ceil(ac.sampleRate * len),
+      ac.sampleRate,
+    );
     const data = buf.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
       // Decaying impulse, not steady noise
@@ -118,7 +126,11 @@ export function playLeverCreak() {
 
     // Ratchet click — same character as the slot ticks but slightly heavier
     const len = 0.008;
-    const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+    const buf = ac.createBuffer(
+      1,
+      Math.ceil(ac.sampleRate * len),
+      ac.sampleRate,
+    );
     const data = buf.getChannelData(0);
     for (let i = 0; i < data.length; i++) {
       data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
@@ -153,7 +165,11 @@ export function playTimerEnd() {
     for (let i = 0; i < clicks; i++) {
       const delay = i * (0.04 + i * 0.008); // accelerating gaps
       const len = 0.006;
-      const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+      const buf = ac.createBuffer(
+        1,
+        Math.ceil(ac.sampleRate * len),
+        ac.sampleRate,
+      );
       const data = buf.getChannelData(0);
       for (let j = 0; j < data.length; j++) {
         data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);

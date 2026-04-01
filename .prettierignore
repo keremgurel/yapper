@@ -1,0 +1,23 @@
+# dependencies
+node_modules
+
+# build / cache
+.next
+out
+build
+coverage
+*.tsbuildinfo
+
+# lockfiles (large, auto-generated)
+package-lock.json
+
+# generated
+next-env.d.ts
+
+# misc
+.vercel
+.DS_Store
+
+# workspace agent docs (leave formatting to authors)
+AGENTS.md
+CLAUDE.md

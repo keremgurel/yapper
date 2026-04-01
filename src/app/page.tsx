@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useSyncExternalStore,
+} from "react";
 import topics, {
   CATEGORIES,
   DIFFICULTIES,
@@ -13,10 +19,36 @@ import SlotLever from "@/components/SlotLever";
 import RotaryKnob from "@/components/RotaryKnob";
 import TopicReel from "@/components/TopicReel";
 
+const YAPPER_DARK_KEY = "yapper-dark";
+const YAPPER_DARK_EVENT = "yapper-dark-pref-changed";
+
+function subscribeDarkMode(onChange: () => void) {
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const handler = () => onChange();
+  window.addEventListener("storage", handler);
+  window.addEventListener(YAPPER_DARK_EVENT, handler);
+  mq.addEventListener("change", handler);
+  return () => {
+    window.removeEventListener("storage", handler);
+    window.removeEventListener(YAPPER_DARK_EVENT, handler);
+    mq.removeEventListener("change", handler);
+  };
+}
+
+function getDarkModeSnapshot(): boolean {
+  const stored = localStorage.getItem(YAPPER_DARK_KEY);
+  if (stored !== null) return stored === "true";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+function getDarkModeServerSnapshot(): boolean {
+  return true;
+}
+
 function getRandomTopic(
   exclude: Topic | null,
   category: Category | "All",
-  difficulty: Difficulty | "All"
+  difficulty: Difficulty | "All",
 ): Topic {
   let pool = topics;
   if (category !== "All") pool = pool.filter((t) => t.category === category);
@@ -30,11 +62,19 @@ function getRandomTopic(
   return t;
 }
 
+function pickReelBlurbs(): string[] {
+  return Array.from(
+    { length: 5 },
+    () => topics[Math.floor(Math.random() * topics.length)].text,
+  );
+}
+
 export default function Home() {
   const [topic, setTopic] = useState<Topic>(() =>
-    getRandomTopic(null, "All", "All")
+    getRandomTopic(null, "All", "All"),
   );
   const [spinning, setSpinning] = useState(false);
+  const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
   const [difficulty, setDifficulty] = useState<Difficulty | "All">("All");
   const [timerSeconds, setTimerSeconds] = useState(60);
@@ -42,7 +82,11 @@ export default function Home() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timerDone, setTimerDone] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const darkMode = useSyncExternalStore(
+    subscribeDarkMode,
+    getDarkModeSnapshot,
+    getDarkModeServerSnapshot,
+  );
 
   // Camera/mic state
   const [cameraOn, setCameraOn] = useState(false);
@@ -59,33 +103,22 @@ export default function Home() {
   // Whether we're in "active session" (timer running or paused)
   const inSession = isRunning || isPaused;
 
-  // ── Dark mode ──
-  useEffect(() => {
-    const stored = localStorage.getItem("yapper-dark");
-    if (stored !== null) {
-      setDarkMode(stored === "true");
-    } else {
-      setDarkMode(
-        window.matchMedia("(prefers-color-scheme: dark)").matches
-      );
-    }
-  }, []);
-
   useEffect(() => {
     document.documentElement.classList.toggle("dark", darkMode);
-    localStorage.setItem("yapper-dark", String(darkMode));
   }, [darkMode]);
 
   // ── Topic generation ──
   const generateTopic = useCallback(() => {
+    setReelBlurbs(pickReelBlurbs());
     setSpinning(true);
     const tickInterval = setInterval(
       () => playSlotTick(600 + Math.random() * 400),
-      80
+      80,
     );
     setTimeout(() => {
       clearInterval(tickInterval);
       setSpinning(false);
+      setReelBlurbs([]);
       setTopic((prev) => getRandomTopic(prev, category, difficulty));
     }, 600);
   }, [category, difficulty]);
@@ -187,7 +220,9 @@ export default function Home() {
     if (cameraOn) {
       // Turn off camera
       streamRef.current?.getVideoTracks().forEach((t) => t.stop());
-      streamRef.current?.getVideoTracks().forEach((t) => streamRef.current!.removeTrack(t));
+      streamRef.current
+        ?.getVideoTracks()
+        .forEach((t) => streamRef.current!.removeTrack(t));
       setCameraOn(false);
       // If mic is also off, kill the whole stream
       if (!micOn) {
@@ -199,7 +234,9 @@ export default function Home() {
       try {
         if (streamRef.current) {
           // Add video track to existing stream
-          const vidStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const vidStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
           const videoTrack = vidStream.getVideoTracks()[0];
           streamRef.current.addTrack(videoTrack);
         } else {
@@ -225,7 +262,9 @@ export default function Home() {
   const toggleMic = useCallback(async () => {
     if (micOn) {
       streamRef.current?.getAudioTracks().forEach((t) => t.stop());
-      streamRef.current?.getAudioTracks().forEach((t) => streamRef.current!.removeTrack(t));
+      streamRef.current
+        ?.getAudioTracks()
+        .forEach((t) => streamRef.current!.removeTrack(t));
       setMicOn(false);
       if (!cameraOn) {
         streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -234,7 +273,9 @@ export default function Home() {
     } else {
       try {
         if (streamRef.current) {
-          const audStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+          });
           const audioTrack = audStream.getAudioTracks()[0];
           streamRef.current.addTrack(audioTrack);
         } else {
@@ -275,36 +316,40 @@ export default function Home() {
     timeLeft <= 10
       ? "text-red-500"
       : timeLeft <= 30
-      ? "text-amber-500"
-      : "text-white";
+        ? "text-amber-500"
+        : "text-white";
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-300">
+    <div className="flex min-h-screen flex-col transition-colors duration-300">
       {/* Header */}
-      <header className="flex justify-between items-center px-6 py-3 border-b border-border">
+      <header className="border-border flex items-center justify-between border-b px-6 py-3">
         <div className="flex items-center gap-2">
-          <div className="w-[28px] h-[28px] rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-sm font-black text-white">
+          <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
             Y
           </div>
-          <span className="text-[18px] font-extrabold text-foreground tracking-tight">
+          <span className="text-foreground text-[18px] font-extrabold tracking-tight">
             yapper
           </span>
-          <span className="text-[11px] text-slate-500 ml-1">ypr.app</span>
+          <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
         </div>
         <button
-          onClick={() => setDarkMode((d) => !d)}
-          className="bg-transparent border border-border rounded-lg px-3 py-1 cursor-pointer text-[12px] text-slate-500 hover:bg-muted transition-colors"
+          onClick={() => {
+            const next = !darkMode;
+            localStorage.setItem(YAPPER_DARK_KEY, String(next));
+            window.dispatchEvent(new Event(YAPPER_DARK_EVENT));
+          }}
+          className="border-border hover:bg-muted cursor-pointer rounded-lg border bg-transparent px-3 py-1 text-[12px] text-slate-500 transition-colors"
         >
           {darkMode ? "Light" : "Dark"}
         </button>
       </header>
 
       {/* Headline */}
-      <div className="text-center pt-6 pb-4 px-6">
-        <h1 className="text-[26px] font-extrabold text-foreground tracking-tight mb-1">
+      <div className="px-6 pt-6 pb-4 text-center">
+        <h1 className="text-foreground mb-1 text-[26px] font-extrabold tracking-tight">
           Pull the lever. Start talking.
         </h1>
         <p className="text-[14px] text-slate-500">
@@ -313,8 +358,9 @@ export default function Home() {
       </div>
 
       {/* ═══ CAMERA CONTAINER ═══ */}
-      <main className="flex-1 flex items-center justify-center px-4 pb-4">
-        <div className="relative w-full max-w-[920px] rounded-2xl overflow-hidden bg-gray-900 border border-white/10"
+      <main className="flex flex-1 items-center justify-center px-4 pb-4">
+        <div
+          className="relative w-full max-w-[920px] overflow-hidden rounded-2xl border border-white/10 bg-gray-900"
           style={{ aspectRatio: "16/9", maxHeight: "calc(100vh - 200px)" }}
         >
           {/* Video feed (background) */}
@@ -324,7 +370,7 @@ export default function Home() {
               autoPlay
               playsInline
               muted
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           )}
 
@@ -334,39 +380,43 @@ export default function Home() {
           )}
 
           {/* Semi-transparent overlay to keep text readable over video */}
-          {cameraOn && (
-            <div className="absolute inset-0 bg-black/30" />
-          )}
+          {cameraOn && <div className="absolute inset-0 bg-black/30" />}
 
           {/* ── Top-left: Filters + REC indicator ── */}
           <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
             {isRecording && (
-              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-white text-xs font-mono font-semibold">REC</span>
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/40 px-3 py-1 backdrop-blur-md">
+                <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+                <span className="font-mono text-xs font-semibold text-white">
+                  REC
+                </span>
               </div>
             )}
             <div
               className={`flex gap-2 transition-all duration-500 ${
-                inSession ? "opacity-0 pointer-events-none" : "opacity-100"
+                inSession ? "pointer-events-none opacity-0" : "opacity-100"
               }`}
             >
               <select
                 value={category}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white cursor-pointer outline-none"
+                className="cursor-pointer rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white backdrop-blur-md outline-none"
               >
                 {["All", ...CATEGORIES].map((o) => (
-                  <option key={o} value={o}>{o === "All" ? "All Topics" : o}</option>
+                  <option key={o} value={o}>
+                    {o === "All" ? "All Topics" : o}
+                  </option>
                 ))}
               </select>
               <select
                 value={difficulty}
                 onChange={(e) => handleDifficultyChange(e.target.value)}
-                className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white cursor-pointer outline-none"
+                className="cursor-pointer rounded-lg border border-white/10 bg-black/30 px-2.5 py-1.5 text-[11px] text-white backdrop-blur-md outline-none"
               >
                 {["All", ...DIFFICULTIES].map((o) => (
-                  <option key={o} value={o}>{o === "All" ? "All Levels" : o}</option>
+                  <option key={o} value={o}>
+                    {o === "All" ? "All Levels" : o}
+                  </option>
                 ))}
               </select>
             </div>
@@ -376,39 +426,82 @@ export default function Home() {
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             <button
               onClick={toggleMic}
-              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md border border-white/10 ${
-                micOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500/80 hover:bg-red-400/80 border-red-400/30"
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 backdrop-blur-md transition-all duration-200 ${
+                micOn
+                  ? "bg-white/15 hover:bg-white/25"
+                  : "border-red-400/30 bg-red-500/80 hover:bg-red-400/80"
               }`}
               title={micOn ? "Mute" : "Unmute"}
             >
               {micOn ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <line x1="1" y1="1" x2="23" y2="23" />
                   <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
                   <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
-                  <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
                 </svg>
               )}
             </button>
             <button
               onClick={toggleCamera}
-              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md border border-white/10 ${
-                cameraOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500/80 hover:bg-red-400/80 border-red-400/30"
+              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/10 backdrop-blur-md transition-all duration-200 ${
+                cameraOn
+                  ? "bg-white/15 hover:bg-white/25"
+                  : "border-red-400/30 bg-red-500/80 hover:bg-red-400/80"
               }`}
               title={cameraOn ? "Camera off" : "Camera on"}
             >
               {cameraOn ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M23 7l-7 5 7 5V7z" />
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                 </svg>
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
@@ -420,12 +513,16 @@ export default function Home() {
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-between p-6 pt-14 pb-5">
             {/* Topic card — pinned near top */}
             <div className="w-full max-w-[500px]">
-              <TopicReel topic={topic} spinning={spinning} />
+              <TopicReel
+                topic={topic}
+                spinning={spinning}
+                reelBlurbs={reelBlurbs}
+              />
             </div>
 
             {/* Timer — centered */}
             <div
-              className={`text-[52px] font-bold font-mono tracking-[4px] leading-none transition-colors duration-300 drop-shadow-lg ${timerColor} ${
+              className={`font-mono text-[52px] leading-none font-bold tracking-[4px] drop-shadow-lg transition-colors duration-300 ${timerColor} ${
                 isRunning && timeLeft <= 10 ? "animate-pulse" : ""
               }`}
             >
@@ -433,11 +530,11 @@ export default function Home() {
             </div>
 
             {/* Buttons — pinned to bottom */}
-            <div className="flex gap-2 items-center">
+            <div className="flex items-center gap-2">
               {!isRunning && !timerDone && (
                 <button
                   onClick={startTimer}
-                  className="px-8 py-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[14px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
+                  className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Start
                 </button>
@@ -446,9 +543,9 @@ export default function Home() {
                 <>
                   <button
                     onClick={pauseTimer}
-                    className={`px-5 py-2.5 rounded-full text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 backdrop-blur-md border border-white/10 ${
+                    className={`cursor-pointer rounded-full border border-white/10 px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 ${
                       isPaused
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-400/30"
+                        ? "border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 text-white"
                         : "bg-black/30 text-white"
                     }`}
                   >
@@ -456,7 +553,7 @@ export default function Home() {
                   </button>
                   <button
                     onClick={resetTimer}
-                    className="px-5 py-2.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                    className="cursor-pointer rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md transition-opacity hover:opacity-80"
                   >
                     Reset
                   </button>
@@ -469,14 +566,14 @@ export default function Home() {
                       resetTimer();
                       generateTopic();
                     }}
-                    className="px-8 py-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[14px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
+                    className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                   >
                     Try Another
                   </button>
                   {recordedUrl && (
                     <button
                       onClick={downloadRecording}
-                      className="px-5 py-2.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                      className="cursor-pointer rounded-full border border-white/10 bg-black/30 px-5 py-2.5 text-[13px] font-semibold text-white backdrop-blur-md transition-opacity hover:opacity-80"
                     >
                       Download
                     </button>
@@ -489,26 +586,30 @@ export default function Home() {
           {/* ── Lever (left, glass container, fades during session) ── */}
           <div
             className={`absolute bottom-16 left-5 z-10 transition-all duration-500 ${
-              inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
+              inSession
+                ? "pointer-events-none scale-90 opacity-0"
+                : "scale-100 opacity-100"
             }`}
           >
-            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
               <SlotLever onPull={generateTopic} />
             </div>
           </div>
 
           {/* ── Knob (right, glass container, fades during session) ── */}
           <div
-            className={`absolute bottom-16 right-5 z-10 transition-all duration-500 ${
-              inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
+            className={`absolute right-5 bottom-16 z-10 transition-all duration-500 ${
+              inSession
+                ? "pointer-events-none scale-90 opacity-0"
+                : "scale-100 opacity-100"
             }`}
           >
-            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3">
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
               <RotaryKnob
                 value={timerSeconds}
                 onChange={handleKnobChange}
                 min={30}
-                max={120}
+                max={90}
                 disabled={isRunning}
               />
             </div>
@@ -517,7 +618,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-2 text-[11px] text-slate-500/60">
+      <footer className="py-2 text-center text-[11px] text-slate-500/60">
         yapper · ypr.app
       </footer>
     </div>
