@@ -90,7 +90,10 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="relative flex flex-col items-center" style={{ width: "56px", height: "190px" }}>
+      <div className="text-[9px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2">
+        Generate
+      </div>
+      <div className="relative flex flex-col items-center" style={{ width: "56px", height: "160px" }}>
         {/* Top mounting plate */}
         <div
           className="rounded-t-[5px] z-[2]"
@@ -106,7 +109,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
           className="relative rounded-sm"
           style={{
             width: "8px",
-            height: "130px",
+            height: "105px",
             background: "linear-gradient(to right, #1a202c, #2d3748, #1a202c)",
             boxShadow: "inset 0 2px 6px rgba(0,0,0,0.5)",
           }}

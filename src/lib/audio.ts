@@ -61,132 +61,127 @@ export function playLuxuryDetent(value: number, min = 30, max = 120) {
   }
 }
 
-// Slot machine reel flap tick — each symbol passing the window
+// Slot reel tick — sharp, dry click like a playing card in spokes
+// This fires every 80ms during the spin. No tone, just a crisp snap.
 export function playSlotTick(pitch = 800) {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Short filtered noise pop — plastic flap hitting the stop
-    noiseBlip(ac, t, 0.015, pitch, 5, 0.07);
-
-    // Subtle mechanical body
-    noiseBlip(ac, t, 0.02, 200, 2, 0.03, "lowpass");
-  } catch {
-    // Audio not available
-  }
-}
-
-// Slot machine spin — mechanical whirring reel sound
-export function playSlotSpin() {
-  try {
-    const ac = getAudioCtx();
-    const t = ac.currentTime;
-
-    // Broadband mechanical whir (filtered noise sweep)
-    const dur = 0.5;
-    const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+    // Ultra-short noise snap — the flap hitting the reel stop
+    const len = 0.006;
+    const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    for (let i = 0; i < data.length; i++) {
+      // Decaying impulse, not steady noise
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    }
     const src = ac.createBufferSource();
     src.buffer = buf;
-    const filter = ac.createBiquadFilter();
-    filter.type = "bandpass";
-    filter.frequency.setValueAtTime(1200, t);
-    filter.frequency.exponentialRampToValueAtTime(300, t + dur);
-    filter.Q.value = 2;
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = pitch;
     const gain = ac.createGain();
-    gain.gain.setValueAtTime(0.06, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(filter).connect(gain).connect(ac.destination);
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + len);
+    src.connect(hp).connect(gain).connect(ac.destination);
     src.start(t);
-    src.stop(t + dur);
-
-    // Low rumble of the mechanism
-    const rumble = ac.createOscillator();
-    const rumbleGain = ac.createGain();
-    rumble.type = "sine";
-    rumble.frequency.setValueAtTime(80, t);
-    rumble.frequency.exponentialRampToValueAtTime(40, t + dur);
-    rumbleGain.gain.setValueAtTime(0.04, t);
-    rumbleGain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    rumble.connect(rumbleGain).connect(ac.destination);
-    rumble.start(t);
-    rumble.stop(t + dur);
+    src.stop(t + len);
   } catch {
     // Audio not available
   }
 }
 
-// Slot machine landing — satisfying mechanical clunk + bell ding
+// Slot spin start — silent, the rapid ticks handle the sound
+export function playSlotSpin() {
+  // intentionally silent — the playSlotTick rapid-fire IS the spin sound
+}
+
+// Slot landing — just a single satisfying thud, nothing else
 export function playSlotLand() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Heavy mechanical clunk — reel locking into place
-    noiseBlip(ac, t, 0.04, 400, 1.5, 0.18, "lowpass");
-    noiseBlip(ac, t + 0.005, 0.025, 2000, 4, 0.08);
-
-    // Classic slot machine bell ding
-    const bell = ac.createOscillator();
-    const bellGain = ac.createGain();
-    bell.type = "sine";
-    bell.frequency.setValueAtTime(2200, t + 0.04);
-    bell.frequency.exponentialRampToValueAtTime(2000, t + 0.5);
-    bellGain.gain.setValueAtTime(0.1, t + 0.04);
-    bellGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    bell.connect(bellGain).connect(ac.destination);
-    bell.start(t + 0.04);
-    bell.stop(t + 0.5);
-
-    // Bell overtone for shimmer
-    const shimmer = ac.createOscillator();
-    const shimmerGain = ac.createGain();
-    shimmer.type = "sine";
-    shimmer.frequency.value = 4400;
-    shimmerGain.gain.setValueAtTime(0.04, t + 0.05);
-    shimmerGain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-    shimmer.connect(shimmerGain).connect(ac.destination);
-    shimmer.start(t + 0.05);
-    shimmer.stop(t + 0.35);
+    // One firm clunk — reel locks into place
+    noiseBlip(ac, t, 0.025, 300, 1, 0.13, "lowpass");
   } catch {
     // Audio not available
   }
 }
 
-// Lever ratchet — metallic spring tension as you pull
+// Lever pull — mechanical ratchet click, like pulling a real slot lever
 export function playLeverCreak() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Short metallic ratchet click
-    noiseBlip(ac, t, 0.008, 3500, 8, 0.05);
+    // Ratchet click — same character as the slot ticks but slightly heavier
+    const len = 0.008;
+    const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const hp = ac.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 1200;
+    const gain = ac.createGain();
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + len);
+    src.connect(hp).connect(gain).connect(ac.destination);
+    src.start(t);
+    src.stop(t + len);
 
-    // Spring tension creak — filtered noise with resonance
-    noiseBlip(ac, t + 0.003, 0.04, 800, 6, 0.03, "bandpass");
+    // Low thud body — gives it weight
+    noiseBlip(ac, t, 0.012, 300, 1.5, 0.05, "lowpass");
   } catch {
     // Audio not available
   }
 }
 
-// Gentle chime when timer ends
+// Timer end — rapid clickity burst that decelerates, then a soft chime
 export function playTimerEnd() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
-    [523, 659, 784, 1047].forEach((freq, i) => {
-      const osc = ac.createOscillator();
+
+    // Rapid decelerating clicks — same texture as slot ticks
+    const clicks = 8;
+    for (let i = 0; i < clicks; i++) {
+      const delay = i * (0.04 + i * 0.008); // accelerating gaps
+      const len = 0.006;
+      const buf = ac.createBuffer(1, Math.ceil(ac.sampleRate * len), ac.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let j = 0; j < data.length; j++) {
+        data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
+      }
+      const src = ac.createBufferSource();
+      src.buffer = buf;
+      const hp = ac.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 1000 + i * 100;
       const gain = ac.createGain();
-      osc.type = "sine";
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.08, t + i * 0.15);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.15 + 0.8);
-      osc.connect(gain).connect(ac.destination);
-      osc.start(t + i * 0.15);
-      osc.stop(t + i * 0.15 + 0.8);
-    });
+      gain.gain.setValueAtTime(0.1, t + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + delay + len);
+      src.connect(hp).connect(gain).connect(ac.destination);
+      src.start(t + delay);
+      src.stop(t + delay + len);
+    }
+
+    // Soft finishing chime after the clicks
+    const chimeDelay = 0.5;
+    const chime = ac.createOscillator();
+    const chimeGain = ac.createGain();
+    chime.type = "sine";
+    chime.frequency.value = 880;
+    chimeGain.gain.setValueAtTime(0.06, t + chimeDelay);
+    chimeGain.gain.exponentialRampToValueAtTime(0.001, t + chimeDelay + 0.5);
+    chime.connect(chimeGain).connect(ac.destination);
+    chime.start(t + chimeDelay);
+    chime.stop(t + chimeDelay + 0.5);
   } catch {
     // Audio not available
   }

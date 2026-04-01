@@ -11,9 +11,9 @@ interface RotaryKnobProps {
   disabled?: boolean;
 }
 
-const SIZE = 160;
-const KNOB_SIZE = 100;
-const INNER_SIZE = 78;
+const SIZE = 140;
+const KNOB_SIZE = 88;
+const INNER_SIZE = 68;
 
 export default function RotaryKnob({
   value,
@@ -148,7 +148,19 @@ export default function RotaryKnob({
   const dotY = cy + indicatorR * Math.sin(indicatorAngleRad);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+      <div
+        style={{
+          fontSize: "9px",
+          color: "#64748b",
+          textTransform: "uppercase",
+          letterSpacing: "2px",
+          fontWeight: 600,
+          marginBottom: "2px",
+        }}
+      >
+        Timer
+      </div>
       <div
         style={{
           position: "relative",
@@ -258,7 +270,7 @@ export default function RotaryKnob({
       <div
         style={{
           fontFamily: "'SF Mono', 'Fira Code', monospace",
-          fontSize: "26px",
+          fontSize: "22px",
           fontWeight: 700,
           letterSpacing: "2px",
           color: "var(--foreground)",

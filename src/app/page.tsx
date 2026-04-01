@@ -12,7 +12,6 @@ import { playSlotTick, playTimerEnd } from "@/lib/audio";
 import SlotLever from "@/components/SlotLever";
 import RotaryKnob from "@/components/RotaryKnob";
 import TopicReel from "@/components/TopicReel";
-import Recorder from "@/components/Recorder";
 
 function getRandomTopic(
   exclude: Topic | null,
@@ -31,40 +30,6 @@ function getRandomTopic(
   return t;
 }
 
-function FilterDropdown({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  options: readonly string[];
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-[10px] text-slate-500 uppercase tracking-[1.5px] font-semibold">
-        {label}
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-card border border-border rounded-lg px-3 py-2 pr-8 text-[13px] text-foreground cursor-pointer outline-none min-w-[130px] bg-[length:12px_12px] bg-[position:right_10px_center] bg-no-repeat"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-        }}
-      >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 export default function Home() {
   const [topic, setTopic] = useState<Topic>(() =>
     getRandomTopic(null, "All", "All")
@@ -78,18 +43,31 @@ export default function Home() {
   const [isPaused, setIsPaused] = useState(false);
   const [timerDone, setTimerDone] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Sync dark mode class with localStorage
+  // Camera/mic state
+  const [cameraOn, setCameraOn] = useState(false);
+  const [micOn, setMicOn] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
+
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  // Whether we're in "active session" (timer running or paused)
+  const inSession = isRunning || isPaused;
+
+  // ── Dark mode ──
   useEffect(() => {
     const stored = localStorage.getItem("yapper-dark");
     if (stored !== null) {
       setDarkMode(stored === "true");
     } else {
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      setDarkMode(prefersDark);
+      setDarkMode(
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      );
     }
   }, []);
 
@@ -98,6 +76,7 @@ export default function Home() {
     localStorage.setItem("yapper-dark", String(darkMode));
   }, [darkMode]);
 
+  // ── Topic generation ──
   const generateTopic = useCallback(() => {
     setSpinning(true);
     const tickInterval = setInterval(
@@ -123,7 +102,7 @@ export default function Home() {
     setTopic(getRandomTopic(topic, category, diff));
   };
 
-  // Timer logic
+  // ── Timer ──
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -133,6 +112,11 @@ export default function Home() {
             setIsRunning(false);
             setTimerDone(true);
             playTimerEnd();
+            // Stop recording when timer ends
+            if (recorderRef.current?.state === "recording") {
+              recorderRef.current.stop();
+              setIsRecording(false);
+            }
             return 0;
           }
           return t - 1;
@@ -149,6 +133,27 @@ export default function Home() {
     setIsRunning(true);
     setIsPaused(false);
     setTimerDone(false);
+    setRecordedUrl(null);
+
+    // Auto-start recording if stream is active
+    if (streamRef.current) {
+      chunksRef.current = [];
+      const recorder = new MediaRecorder(streamRef.current, {
+        mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+          ? "video/webm;codecs=vp9,opus"
+          : "video/webm",
+      });
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "video/webm" });
+        setRecordedUrl(URL.createObjectURL(blob));
+      };
+      recorder.start();
+      setIsRecording(true);
+    }
   };
 
   const pauseTimer = () => setIsPaused((p) => !p);
@@ -159,6 +164,10 @@ export default function Home() {
     setIsPaused(false);
     setTimerDone(false);
     setTimeLeft(timerSeconds);
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setIsRecording(false);
+    }
   };
 
   const handleKnobChange = (val: number) => {
@@ -166,12 +175,108 @@ export default function Home() {
     if (!isRunning) setTimeLeft(val);
   };
 
+  // ── Camera/Mic ──
+  const attachStream = useCallback(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, []);
+
+  const toggleCamera = useCallback(async () => {
+    if (cameraOn) {
+      // Turn off camera
+      streamRef.current?.getVideoTracks().forEach((t) => t.stop());
+      streamRef.current?.getVideoTracks().forEach((t) => streamRef.current!.removeTrack(t));
+      setCameraOn(false);
+      // If mic is also off, kill the whole stream
+      if (!micOn) {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    } else {
+      // Turn on camera
+      try {
+        if (streamRef.current) {
+          // Add video track to existing stream
+          const vidStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const videoTrack = vidStream.getVideoTracks()[0];
+          streamRef.current.addTrack(videoTrack);
+        } else {
+          // Create new stream
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: micOn,
+          });
+          streamRef.current = stream;
+          if (!micOn) {
+            stream.getAudioTracks().forEach((t) => t.stop());
+            stream.getAudioTracks().forEach((t) => stream.removeTrack(t));
+          }
+        }
+        setCameraOn(true);
+        requestAnimationFrame(() => attachStream());
+      } catch {
+        alert("Camera access is required.");
+      }
+    }
+  }, [cameraOn, micOn, attachStream]);
+
+  const toggleMic = useCallback(async () => {
+    if (micOn) {
+      streamRef.current?.getAudioTracks().forEach((t) => t.stop());
+      streamRef.current?.getAudioTracks().forEach((t) => streamRef.current!.removeTrack(t));
+      setMicOn(false);
+      if (!cameraOn) {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+    } else {
+      try {
+        if (streamRef.current) {
+          const audStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioTrack = audStream.getAudioTracks()[0];
+          streamRef.current.addTrack(audioTrack);
+        } else {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: cameraOn,
+          });
+          streamRef.current = stream;
+          if (!cameraOn) {
+            stream.getVideoTracks().forEach((t) => t.stop());
+            stream.getVideoTracks().forEach((t) => stream.removeTrack(t));
+          }
+        }
+        setMicOn(true);
+      } catch {
+        alert("Microphone access is required.");
+      }
+    }
+  }, [micOn, cameraOn]);
+
+  // Re-attach video when camera toggles on
+  useEffect(() => {
+    if (cameraOn) {
+      requestAnimationFrame(() => attachStream());
+    }
+  }, [cameraOn, attachStream]);
+
+  // Download recording
+  const downloadRecording = () => {
+    if (!recordedUrl) return;
+    const a = document.createElement("a");
+    a.href = recordedUrl;
+    a.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
+    a.click();
+  };
+
   const timerColor =
     timeLeft <= 10
       ? "text-red-500"
       : timeLeft <= 30
       ? "text-amber-500"
-      : "text-foreground";
+      : "text-white";
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -179,116 +284,227 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-300">
       {/* Header */}
-      <header className="flex justify-between items-center px-6 py-3.5 border-b border-border">
+      <header className="flex justify-between items-center px-6 py-3 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="w-[30px] h-[30px] rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-base font-black text-white">
+          <div className="w-[28px] h-[28px] rounded-lg bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center text-sm font-black text-white">
             Y
           </div>
-          <span className="text-[19px] font-extrabold text-foreground tracking-tight">
+          <span className="text-[18px] font-extrabold text-foreground tracking-tight">
             yapper
           </span>
           <span className="text-[11px] text-slate-500 ml-1">ypr.app</span>
         </div>
         <button
           onClick={() => setDarkMode((d) => !d)}
-          className="bg-transparent border border-border rounded-lg px-3 py-1.5 cursor-pointer text-[13px] text-slate-500 hover:bg-muted transition-colors"
+          className="bg-transparent border border-border rounded-lg px-3 py-1 cursor-pointer text-[12px] text-slate-500 hover:bg-muted transition-colors"
         >
           {darkMode ? "Light" : "Dark"}
         </button>
       </header>
 
-      {/* Filters */}
-      <div className="flex justify-center gap-3 px-6 py-3.5 flex-wrap">
-        <FilterDropdown
-          label="Category"
-          value={category}
-          options={["All", ...CATEGORIES]}
-          onChange={handleCategoryChange}
-        />
-        <FilterDropdown
-          label="Difficulty"
-          value={difficulty}
-          options={["All", ...DIFFICULTIES]}
-          onChange={handleDifficultyChange}
-        />
+      {/* Headline */}
+      <div className="text-center pt-6 pb-4 px-6">
+        <h1 className="text-[26px] font-extrabold text-foreground tracking-tight mb-1">
+          Pull the lever. Start talking.
+        </h1>
+        <p className="text-[14px] text-slate-500">
+          Random topic generator for impromptu speaking practice.
+        </p>
       </div>
 
-      {/* Main */}
-      <main className="flex-1 flex items-center justify-center px-6 py-5">
-        <div className="grid grid-cols-[auto_minmax(280px,480px)_auto] items-center gap-10 max-md:grid-cols-1 max-md:gap-6 max-md:justify-items-center">
-          {/* Lever */}
-          <div className="flex flex-col items-center">
-            <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
-              GENERATE
+      {/* ═══ CAMERA CONTAINER ═══ */}
+      <main className="flex-1 flex items-center justify-center px-4 pb-4">
+        <div className="relative w-full max-w-[920px] rounded-2xl overflow-hidden bg-gray-900 border border-white/10"
+          style={{ aspectRatio: "16/9", maxHeight: "calc(100vh - 200px)" }}
+        >
+          {/* Video feed (background) */}
+          {cameraOn && (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+
+          {/* Dark overlay when camera is off */}
+          {!cameraOn && (
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-800 to-gray-900" />
+          )}
+
+          {/* Semi-transparent overlay to keep text readable over video */}
+          {cameraOn && (
+            <div className="absolute inset-0 bg-black/30" />
+          )}
+
+          {/* ── Recording indicator ── */}
+          {isRecording && (
+            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-white text-xs font-mono font-semibold">REC</span>
             </div>
-            <SlotLever onPull={generateTopic} />
+          )}
+
+          {/* ── Mic / Camera toggles (always visible, top-right) ── */}
+          <div className="absolute top-4 right-4 z-20 flex gap-2">
+            <button
+              onClick={toggleMic}
+              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-sm ${
+                micOn
+                  ? "bg-white/20 hover:bg-white/30"
+                  : "bg-red-500/80 hover:bg-red-400/80"
+              }`}
+              title={micOn ? "Mute" : "Unmute"}
+            >
+              {micOn ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
+                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
+                  <line x1="12" y1="19" x2="12" y2="23" /><line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={toggleCamera}
+              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-sm ${
+                cameraOn
+                  ? "bg-white/20 hover:bg-white/30"
+                  : "bg-red-500/80 hover:bg-red-400/80"
+              }`}
+              title={cameraOn ? "Camera off" : "Camera on"}
+            >
+              {cameraOn ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 7l-7 5 7 5V7z" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              )}
+            </button>
           </div>
 
-          {/* Center column */}
-          <div className="flex flex-col items-center gap-5 w-full">
-            <TopicReel topic={topic} spinning={spinning} />
+          {/* ── Filters (top-center, fade out during session) ── */}
+          <div
+            className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 transition-all duration-500 ${
+              inSession ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
+          >
+            <select
+              value={category}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2.5 py-1 text-[11px] text-white cursor-pointer outline-none"
+            >
+              {["All", ...CATEGORIES].map((o) => (
+                <option key={o} value={o}>{o === "All" ? "All Topics" : o}</option>
+              ))}
+            </select>
+            <select
+              value={difficulty}
+              onChange={(e) => handleDifficultyChange(e.target.value)}
+              className="bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2.5 py-1 text-[11px] text-white cursor-pointer outline-none"
+            >
+              {["All", ...DIFFICULTIES].map((o) => (
+                <option key={o} value={o}>{o === "All" ? "All Levels" : o}</option>
+              ))}
+            </select>
+          </div>
 
-            {/* Timer display */}
-            <div className="flex flex-col items-center gap-3">
-              <div
-                className={`text-[44px] font-bold font-mono tracking-[4px] transition-colors duration-300 ${timerColor} ${
-                  isRunning && timeLeft <= 10 ? "animate-pulse" : ""
-                }`}
-              >
-                {formatTime(timeLeft)}
-              </div>
-              <div className="flex gap-2 items-center">
-                {!isRunning && !timerDone && (
+          {/* ── Content overlay ── */}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6">
+            {/* Topic card — always visible */}
+            <div className="w-full max-w-[500px] mb-6">
+              <TopicReel topic={topic} spinning={spinning} />
+            </div>
+
+            {/* Timer — always visible */}
+            <div
+              className={`text-[48px] font-bold font-mono tracking-[4px] leading-none transition-colors duration-300 mb-4 drop-shadow-lg ${timerColor} ${
+                isRunning && timeLeft <= 10 ? "animate-pulse" : ""
+              }`}
+            >
+              {formatTime(timeLeft)}
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-2 items-center mb-4">
+              {!isRunning && !timerDone && (
+                <button
+                  onClick={startTimer}
+                  className="px-7 py-2.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
+                >
+                  Start
+                </button>
+              )}
+              {isRunning && (
+                <>
                   <button
-                    onClick={startTimer}
-                    className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
+                    onClick={pauseTimer}
+                    className={`px-5 py-2.5 rounded-full text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
+                      isPaused
+                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                        : "bg-white/20 backdrop-blur-sm text-white"
+                    }`}
                   >
-                    Start
+                    {isPaused ? "Resume" : "Pause"}
                   </button>
-                )}
-                {isRunning && (
-                  <>
-                    <button
-                      onClick={pauseTimer}
-                      className={`px-4 py-2.5 rounded-[10px] text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
-                        isPaused
-                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                          : "bg-muted text-foreground"
-                      }`}
-                    >
-                      {isPaused ? "Resume" : "Pause"}
-                    </button>
-                    <button
-                      onClick={resetTimer}
-                      className="px-4 py-2.5 rounded-[10px] bg-muted text-foreground text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
-                    >
-                      Reset
-                    </button>
-                  </>
-                )}
-                {timerDone && (
+                  <button
+                    onClick={resetTimer}
+                    className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                  >
+                    Reset
+                  </button>
+                </>
+              )}
+              {timerDone && (
+                <>
                   <button
                     onClick={() => {
                       resetTimer();
                       generateTopic();
                     }}
-                    className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
+                    className="px-7 py-2.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
                   >
                     Try Another
                   </button>
-                )}
-
-                {/* Record button — sits inline with timer controls */}
-                <Recorder />
-              </div>
+                  {recordedUrl && (
+                    <button
+                      onClick={downloadRecording}
+                      className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      Download
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          {/* Knob */}
-          <div className="flex flex-col items-center">
-            <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
-              TIMER
-            </div>
+          {/* ── Lever (bottom-left, fades during session) ── */}
+          <div
+            className={`absolute bottom-4 left-6 z-10 transition-all duration-500 ${
+              inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
+            }`}
+          >
+            <SlotLever onPull={generateTopic} />
+          </div>
+
+          {/* ── Knob (bottom-right, fades during session) ── */}
+          <div
+            className={`absolute bottom-4 right-6 z-10 transition-all duration-500 ${
+              inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
+            }`}
+          >
             <RotaryKnob
               value={timerSeconds}
               onChange={handleKnobChange}
@@ -301,7 +517,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center py-3.5 text-xs text-slate-500 border-t border-border">
+      <footer className="text-center py-2 text-[11px] text-slate-500/60">
         yapper · ypr.app
       </footer>
     </div>
