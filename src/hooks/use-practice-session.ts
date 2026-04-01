@@ -59,6 +59,7 @@ export function usePracticeSession() {
     "portrait",
   );
   const [exportProgress, setExportProgress] = useState(0);
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
 
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -71,6 +72,24 @@ export function usePracticeSession() {
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
+  const effectiveVideoFormat = isMobileDevice ? "portrait" : videoFormat;
+
+  useEffect(() => {
+    const query = window.matchMedia("(pointer: coarse)");
+
+    const updateDeviceMode = () => {
+      setIsMobileDevice(query.matches || window.innerWidth < 768);
+    };
+
+    updateDeviceMode();
+    query.addEventListener("change", updateDeviceMode);
+    window.addEventListener("resize", updateDeviceMode);
+
+    return () => {
+      query.removeEventListener("change", updateDeviceMode);
+      window.removeEventListener("resize", updateDeviceMode);
+    };
+  }, []);
 
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
@@ -293,13 +312,13 @@ export function usePracticeSession() {
     try {
       if (streamRef.current) {
         const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(videoFormat),
+          video: getPreferredVideoConstraints(effectiveVideoFormat),
         });
         const videoTrack = videoStream.getVideoTracks()[0];
         streamRef.current.addTrack(videoTrack);
       } else {
         const nextStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(videoFormat),
+          video: getPreferredVideoConstraints(effectiveVideoFormat),
           audio: micOn,
         });
         streamRef.current = nextStream;
@@ -315,7 +334,7 @@ export function usePracticeSession() {
     } catch {
       alert("Camera access is required.");
     }
-  }, [attachStream, cameraOn, micOn, videoFormat]);
+  }, [attachStream, cameraOn, effectiveVideoFormat, micOn]);
 
   const toggleMic = useCallback(async () => {
     if (micOn) {
@@ -342,7 +361,9 @@ export function usePracticeSession() {
       } else {
         const nextStream = await navigator.mediaDevices.getUserMedia({
           audio: true,
-          video: cameraOn ? getPreferredVideoConstraints(videoFormat) : false,
+          video: cameraOn
+            ? getPreferredVideoConstraints(effectiveVideoFormat)
+            : false,
         });
         streamRef.current = nextStream;
         if (!cameraOn) {
@@ -356,7 +377,7 @@ export function usePracticeSession() {
     } catch {
       alert("Microphone access is required.");
     }
-  }, [cameraOn, micOn, videoFormat]);
+  }, [cameraOn, effectiveVideoFormat, micOn]);
 
   useEffect(() => {
     if (cameraOn) {
@@ -380,7 +401,7 @@ export function usePracticeSession() {
               timerSeconds,
               showPromptOverlay: includePromptOverlay,
               showTimerOverlay: includeTimerOverlay,
-              format: videoFormat,
+              format: effectiveVideoFormat,
               onProgress: (progress) => setExportProgress(progress),
             });
 
@@ -403,7 +424,7 @@ export function usePracticeSession() {
     recordedBlob,
     timerSeconds,
     topic.text,
-    videoFormat,
+    effectiveVideoFormat,
   ]);
 
   return {
@@ -430,7 +451,7 @@ export function usePracticeSession() {
     includePromptOverlay,
     includeTimerOverlay,
     isExportingVideo,
-    videoFormat,
+    videoFormat: effectiveVideoFormat,
     exportProgress,
     inSession,
     canEditPrompt,
@@ -459,6 +480,13 @@ export function usePracticeSession() {
     toggleCamera,
     toggleMic,
     downloadRecording,
-    setVideoFormat,
+    setVideoFormat: (format: "portrait" | "landscape") => {
+      if (isMobileDevice) {
+        setVideoFormat("portrait");
+        return;
+      }
+
+      setVideoFormat(format);
+    },
   };
 }
