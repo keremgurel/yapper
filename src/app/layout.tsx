@@ -29,7 +29,7 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
-const siteUrl = "https://ypr.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
 const title = "Yapper | Free Topic Generator for Speech Practice";
 const description =
   "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.";
@@ -76,11 +76,20 @@ export const metadata: Metadata = {
     siteName: "Yapper",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Yapper - Free Topic Generator for Speech Practice",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title,
     description,
+    images: ["/og.png"],
   },
   icons: {
     icon: "/favicon.svg",

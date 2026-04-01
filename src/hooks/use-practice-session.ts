@@ -180,7 +180,9 @@ export function usePracticeSession() {
       intervalRef.current = setInterval(() => {
         setTimeLeft((current) => {
           if (current <= 1) {
-            clearInterval(intervalRef.current!);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+            }
             setIsRunning(false);
             setTimerDone(true);
             playTimerEnd();
@@ -216,25 +218,54 @@ export function usePracticeSession() {
     chunksRef.current = [];
     setIsPreparingDownload(true);
 
-    const recorder = new MediaRecorder(streamRef.current, {
-      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : "video/webm",
-      videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
-      audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
-    });
+    try {
+      const mimeTypes = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+        "video/mp4",
+      ];
 
-    recorderRef.current = recorder;
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunksRef.current.push(event.data);
-    };
-    recorder.onstop = () => {
-      const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
-      setRecordedBlob(nextBlob);
+      let selectedMimeType = "video/webm";
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      const recorder = new MediaRecorder(streamRef.current, {
+        mimeType: selectedMimeType,
+        videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
+      });
+
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const nextBlob = new Blob(chunksRef.current, {
+          type: selectedMimeType,
+        });
+        setRecordedBlob(nextBlob);
+        setIsPreparingDownload(false);
+      };
+      recorder.onerror = () => {
+        setIsPreparingDownload(false);
+        setIsRecording(false);
+        alert(
+          "Recording failed. Please check your camera/microphone permissions and try again.",
+        );
+      };
+      recorder.start();
+      setIsRecording(true);
+    } catch {
       setIsPreparingDownload(false);
-    };
-    recorder.start();
-    setIsRecording(true);
+      alert(
+        "Could not start recording. Your browser may not support video recording, or camera/microphone access was denied.",
+      );
+    }
   }, [timerSeconds]);
 
   const pauseTimer = useCallback(() => {
@@ -297,9 +328,11 @@ export function usePracticeSession() {
   const toggleCamera = useCallback(async () => {
     if (cameraOn) {
       streamRef.current?.getVideoTracks().forEach((track) => track.stop());
-      streamRef.current
-        ?.getVideoTracks()
-        .forEach((track) => streamRef.current!.removeTrack(track));
+      if (streamRef.current) {
+        streamRef.current
+          .getVideoTracks()
+          .forEach((track) => streamRef.current?.removeTrack(track));
+      }
       setCameraOn(false);
 
       if (!micOn) {
@@ -339,9 +372,11 @@ export function usePracticeSession() {
   const toggleMic = useCallback(async () => {
     if (micOn) {
       streamRef.current?.getAudioTracks().forEach((track) => track.stop());
-      streamRef.current
-        ?.getAudioTracks()
-        .forEach((track) => streamRef.current!.removeTrack(track));
+      if (streamRef.current) {
+        streamRef.current
+          .getAudioTracks()
+          .forEach((track) => streamRef.current?.removeTrack(track));
+      }
       setMicOn(false);
 
       if (!cameraOn) {

@@ -9,6 +9,10 @@ import {
   getRelatedBlogPosts,
 } from "@/lib/blog";
 
+function safeJsonLdStringify(obj: unknown): string {
+  return JSON.stringify(obj).replace(/</g, "\\u003c");
+}
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
@@ -120,11 +124,13 @@ export default async function BlogPostPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(articleJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLdStringify(breadcrumbJsonLd),
+        }}
       />
       <main className="bg-background min-h-screen">
         <BlogPostShell post={post} relatedPosts={relatedPosts} />
