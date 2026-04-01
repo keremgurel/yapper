@@ -17,7 +17,7 @@ export default function TopicReel({ topic, spinning }: TopicReelProps) {
     : [];
 
   return (
-    <div className="bg-card border border-border rounded-2xl px-7 py-9 w-full text-center shadow-card overflow-hidden relative min-h-[130px] flex flex-col items-center justify-center">
+    <div className="bg-card border border-border rounded-2xl px-7 py-9 w-full text-center shadow-card overflow-hidden relative h-[180px] flex flex-col items-center justify-center">
       {spinning ? (
         <div className="animate-reel-spin flex flex-col gap-4">
           {reelItems.map((t, i) => (

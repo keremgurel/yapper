@@ -214,87 +214,89 @@ export default function Home() {
       </div>
 
       {/* Main */}
-      <main className="flex-1 flex flex-row items-center justify-center px-6 py-5 gap-10 flex-wrap">
-        {/* Lever */}
-        <div className="flex flex-col items-center">
-          <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
-            GENERATE
-          </div>
-          <SlotLever onPull={generateTopic} />
-        </div>
-
-        {/* Center column */}
-        <div className="flex flex-col items-center gap-5 max-w-[480px] flex-1 min-w-[260px]">
-          <TopicReel topic={topic} spinning={spinning} />
-
-          {/* Timer display */}
-          <div className="flex flex-col items-center gap-3">
-            <div
-              className={`text-[44px] font-bold font-mono tracking-[4px] transition-colors duration-300 ${timerColor} ${
-                isRunning && timeLeft <= 10 ? "animate-pulse" : ""
-              }`}
-            >
-              {formatTime(timeLeft)}
+      <main className="flex-1 flex items-center justify-center px-6 py-5">
+        <div className="grid grid-cols-[auto_minmax(280px,480px)_auto] items-center gap-10 max-md:grid-cols-1 max-md:gap-6 max-md:justify-items-center">
+          {/* Lever */}
+          <div className="flex flex-col items-center">
+            <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
+              GENERATE
             </div>
-            <div className="flex gap-2">
-              {!isRunning && !timerDone && (
-                <button
-                  onClick={startTimer}
-                  className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
-                >
-                  Start
-                </button>
-              )}
-              {isRunning && (
-                <>
+            <SlotLever onPull={generateTopic} />
+          </div>
+
+          {/* Center column */}
+          <div className="flex flex-col items-center gap-5 w-full">
+            <TopicReel topic={topic} spinning={spinning} />
+
+            {/* Timer display */}
+            <div className="flex flex-col items-center gap-3">
+              <div
+                className={`text-[44px] font-bold font-mono tracking-[4px] transition-colors duration-300 ${timerColor} ${
+                  isRunning && timeLeft <= 10 ? "animate-pulse" : ""
+                }`}
+              >
+                {formatTime(timeLeft)}
+              </div>
+              <div className="flex gap-2 items-center">
+                {!isRunning && !timerDone && (
                   <button
-                    onClick={pauseTimer}
-                    className={`px-4 py-2.5 rounded-[10px] text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
-                      isPaused
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                        : "bg-muted text-foreground"
-                    }`}
+                    onClick={startTimer}
+                    className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
                   >
-                    {isPaused ? "Resume" : "Pause"}
+                    Start
                   </button>
+                )}
+                {isRunning && (
+                  <>
+                    <button
+                      onClick={pauseTimer}
+                      className={`px-4 py-2.5 rounded-[10px] text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
+                        isPaused
+                          ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                          : "bg-muted text-foreground"
+                      }`}
+                    >
+                      {isPaused ? "Resume" : "Pause"}
+                    </button>
+                    <button
+                      onClick={resetTimer}
+                      className="px-4 py-2.5 rounded-[10px] bg-muted text-foreground text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      Reset
+                    </button>
+                  </>
+                )}
+                {timerDone && (
                   <button
-                    onClick={resetTimer}
-                    className="px-4 py-2.5 rounded-[10px] bg-muted text-foreground text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      resetTimer();
+                      generateTopic();
+                    }}
+                    className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
                   >
-                    Reset
+                    Try Another
                   </button>
-                </>
-              )}
-              {timerDone && (
-                <button
-                  onClick={() => {
-                    resetTimer();
-                    generateTopic();
-                  }}
-                  className="px-6 py-2.5 rounded-[10px] bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_8px_rgba(37,99,235,0.3)] hover:opacity-90 transition-opacity"
-                >
-                  Try Another
-                </button>
-              )}
+                )}
+
+                {/* Record button — sits inline with timer controls */}
+                <Recorder />
+              </div>
             </div>
           </div>
 
-          {/* Recorder */}
-          <Recorder />
-        </div>
-
-        {/* Knob */}
-        <div className="flex flex-col items-center">
-          <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
-            TIMER
+          {/* Knob */}
+          <div className="flex flex-col items-center">
+            <div className="text-[10px] text-slate-500 uppercase tracking-[2px] font-semibold mb-2.5">
+              TIMER
+            </div>
+            <RotaryKnob
+              value={timerSeconds}
+              onChange={handleKnobChange}
+              min={30}
+              max={120}
+              disabled={isRunning}
+            />
           </div>
-          <RotaryKnob
-            value={timerSeconds}
-            onChange={handleKnobChange}
-            min={30}
-            max={120}
-            disabled={isRunning}
-          />
         </div>
       </main>
 
