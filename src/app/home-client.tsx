@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useState,
-  useRef,
-  useCallback,
-  useEffect,
-  useSyncExternalStore,
-} from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import topics, {
   CATEGORIES,
   DIFFICULTIES,
@@ -19,34 +13,10 @@ import SlotLever from "@/components/SlotLever";
 import RotaryKnob from "@/components/RotaryKnob";
 import TopicReel from "@/components/TopicReel";
 import { HomeFaq } from "@/components/home-faq";
+import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
 import { MeshGradient } from "@paper-design/shaders-react";
-
-const YAPPER_DARK_KEY = "yapper-dark";
-const YAPPER_DARK_EVENT = "yapper-dark-pref-changed";
-
-function subscribeDarkMode(onChange: () => void) {
-  const mq = window.matchMedia("(prefers-color-scheme: dark)");
-  const handler = () => onChange();
-  window.addEventListener("storage", handler);
-  window.addEventListener(YAPPER_DARK_EVENT, handler);
-  mq.addEventListener("change", handler);
-  return () => {
-    window.removeEventListener("storage", handler);
-    window.removeEventListener(YAPPER_DARK_EVENT, handler);
-    mq.removeEventListener("change", handler);
-  };
-}
-
-function getDarkModeSnapshot(): boolean {
-  const stored = localStorage.getItem(YAPPER_DARK_KEY);
-  if (stored !== null) return stored === "true";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-function getDarkModeServerSnapshot(): boolean {
-  return true;
-}
+import OnboardingDoodles from "@/components/OnboardingDoodles";
 
 function getRandomTopic(
   exclude: Topic | null,
@@ -127,7 +97,9 @@ async function exportRecordingWithOverlays({
     video.src = sourceUrl;
     video.playsInline = true;
     video.preload = "auto";
+    video.muted = true;
     video.volume = 0;
+    video.playbackRate = 4;
 
     await new Promise<void>((resolve, reject) => {
       video.onloadedmetadata = () => resolve();
@@ -298,11 +270,6 @@ export default function HomeClient() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [timerDone, setTimerDone] = useState(false);
-  const darkMode = useSyncExternalStore(
-    subscribeDarkMode,
-    getDarkModeSnapshot,
-    getDarkModeServerSnapshot,
-  );
 
   // Camera/mic state
   const [cameraOn, setCameraOn] = useState(false);
@@ -323,10 +290,6 @@ export default function HomeClient() {
 
   // Whether we're in "active session" (timer running or paused)
   const inSession = isRunning || isPaused;
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", darkMode);
-  }, [darkMode]);
 
   // ── Topic generation ──
   const generateTopic = useCallback(() => {
@@ -682,16 +645,9 @@ export default function HomeClient() {
           </span>
           <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
         </div>
-        <button
-          onClick={() => {
-            const next = !darkMode;
-            localStorage.setItem(YAPPER_DARK_KEY, String(next));
-            window.dispatchEvent(new Event(YAPPER_DARK_EVENT));
-          }}
-          className="border-border hover:bg-muted cursor-pointer rounded-lg border bg-transparent px-3 py-1 text-[12px] text-slate-500 transition-colors"
-        >
-          {darkMode ? "Light" : "Dark"}
-        </button>
+        <div className="origin-right scale-[0.5]">
+          <CinematicThemeSwitcher />
+        </div>
       </header>
 
       {/* Headline */}
@@ -722,20 +678,30 @@ export default function HomeClient() {
           topics, a built-in timer, and optional camera/mic recording. No
           sign-up, no paywall, and no setup friction.
         </p>
-        <a
-          href="#practice"
-          className="inline-flex items-center justify-center rounded-lg border border-white/10 bg-slate-900 px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(15,23,42,0.25)] transition-colors hover:bg-slate-800 dark:border-white/15 dark:bg-white dark:text-slate-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] dark:hover:bg-zinc-100"
+        <button
+          onClick={() => {
+            const el = document.getElementById("practice");
+            if (el) {
+              const rect = el.getBoundingClientRect();
+              const elCenter = window.scrollY + rect.top + rect.height / 2;
+              window.scrollTo({
+                top: elCenter - window.innerHeight / 2,
+                behavior: "smooth",
+              });
+            }
+          }}
+          className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-slate-900 px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(15,23,42,0.25)] transition-colors hover:bg-slate-800 dark:border-white/15 dark:bg-white dark:text-slate-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] dark:hover:bg-zinc-100"
         >
           Jump to practice
-        </a>
+        </button>
       </div>
 
       {/* ═══ CAMERA CONTAINER ═══ */}
       <main
         id="practice"
-        className="flex flex-1 flex-col items-center justify-center px-4 pt-0 pb-4 md:pt-2"
+        className="relative flex flex-1 flex-col items-center justify-center overflow-visible px-4 pt-0 pb-16 md:pt-2 md:pb-20"
       >
-        <div className="shadow-container relative h-[min(82svh,860px)] max-h-[calc(100svh-140px)] w-full max-w-[min(1200px,100%)] overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 md:aspect-[16/9] md:h-auto md:max-h-[calc(100vh-200px)] dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none">
+        <div className="shadow-container relative h-[min(90svh,860px)] max-h-[calc(100svh-100px)] w-full max-w-[min(1200px,100%)] overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 md:aspect-[16/9] md:h-auto md:max-h-[calc(100vh-200px)] dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none">
           {/* Video feed (background) */}
           {cameraOn && (
             <video
@@ -1126,6 +1092,9 @@ export default function HomeClient() {
             </div>
           </div>
         </div>
+
+        {/* Onboarding doodle annotations (first visit only, outside container) */}
+        {!inSession && <OnboardingDoodles />}
       </main>
 
       <HomeFaq />

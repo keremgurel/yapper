@@ -6,6 +6,7 @@ import {
   Plus_Jakarta_Sans,
 } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "next-themes";
 
 const bodySans = Manrope({
   variable: "--font-body-sans",
@@ -113,14 +114,17 @@ export default function RootLayout({
       className={`${bodySans.variable} ${displaySans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{if(localStorage.getItem('yapper-dark')==='true'||(!localStorage.getItem('yapper-dark')&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch{}`,
-          }}
-        />
-      </head>
-      <body className="flex min-h-full flex-col">{children}</body>
+      <body className="flex min-h-full flex-col">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange={false}
+          storageKey="yapper-theme"
+        >
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
