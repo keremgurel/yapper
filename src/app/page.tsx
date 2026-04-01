@@ -510,8 +510,8 @@ export default function Home() {
           </div>
 
           {/* ── Content overlay — topic pinned to top, buttons at bottom ── */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-14 pb-4 md:px-6">
-            {/* Topic card — pinned near top */}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-4 pb-4 md:px-6">
+            {/* Topic card — pinned near top, same level as filters */}
             <div className="w-full max-w-[500px]">
               <TopicReel
                 topic={topic}
@@ -585,7 +585,7 @@ export default function Home() {
 
           {/* ── Lever (left, desktop only inside container) ── */}
           <div
-            className={`absolute bottom-16 left-5 z-10 hidden transition-all duration-500 md:block ${
+            className={`absolute bottom-4 left-4 z-10 hidden transition-all duration-500 md:block ${
               inSession
                 ? "pointer-events-none scale-90 opacity-0"
                 : "scale-100 opacity-100"
@@ -598,7 +598,7 @@ export default function Home() {
 
           {/* ── Knob (right, desktop only inside container) ── */}
           <div
-            className={`absolute right-5 bottom-16 z-10 hidden transition-all duration-500 md:block ${
+            className={`absolute right-4 bottom-4 z-10 hidden transition-all duration-500 md:block ${
               inSession
                 ? "pointer-events-none scale-90 opacity-0"
                 : "scale-100 opacity-100"
