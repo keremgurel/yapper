@@ -1,3 +1,8 @@
+"use client";
+
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
+
 const introSections: { title: string; body: string }[] = [
   {
     title: "How to use Yapper",
@@ -13,7 +18,7 @@ const introSections: { title: string; body: string }[] = [
   },
 ];
 
-const faqItems: { q: string; a: string }[] = [
+const faqSection1: { q: string; a: string }[] = [
   {
     q: "Is Yapper really free?",
     a: "Yes, completely free. No account, no subscription, and no credit card. We built this so anyone can practice speaking without friction. If it helps you, that is enough.",
@@ -46,6 +51,9 @@ const faqItems: { q: string; a: string }[] = [
     q: "Can I write my own speaking prompt?",
     a: "Yes. Before starting a session, double-tap the topic card to open the prompt editor. Type whatever you want to talk about, whether that is an interview question, a presentation topic, or anything else. Your custom prompt replaces the random one until you pull the lever again.",
   },
+];
+
+const faqSection2: { q: string; a: string }[] = [
   {
     q: "What timer options are available?",
     a: "You can set the timer anywhere from 30 to 90 seconds using the rotary knob, or double-tap the timer display to type an exact number. 60 seconds is the default, and it is a good sweet spot for impromptu speaking practice.",
@@ -80,13 +88,119 @@ const faqItems: { q: string; a: string }[] = [
   },
 ];
 
+function FaqItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="border-b border-slate-200/80 last:border-0 dark:border-white/[0.07]">
+      <button
+        onClick={() => setOpen(!open)}
+        className="group flex w-full items-center justify-between py-5 text-left"
+      >
+        <span className="text-foreground pr-4 text-[14px] font-medium transition-colors group-hover:text-blue-500 dark:group-hover:text-blue-400">
+          {q}
+        </span>
+        <div
+          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all duration-200 ${
+            open
+              ? "rotate-45 bg-gray-900 dark:bg-white"
+              : "bg-slate-100 dark:bg-white/10"
+          }`}
+        >
+          <svg
+            className={`h-3 w-3 transition-colors ${
+              open
+                ? "text-white dark:text-gray-900"
+                : "text-slate-400 dark:text-slate-500"
+            }`}
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2.5}
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 4.5v15m7.5-7.5h-15"
+            />
+          </svg>
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <p className="max-w-xl pb-5 text-[13px] leading-relaxed text-slate-500 dark:text-slate-400">
+              {a}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function FaqBlock({
+  label,
+  heading,
+  headingAccent,
+  items,
+}: {
+  label: string;
+  heading: string;
+  headingAccent: string;
+  items: { q: string; a: string }[];
+}) {
+  return (
+    <div className="grid gap-10 lg:grid-cols-[1fr_1.5fr] lg:gap-20">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.5 }}
+      >
+        <p className="text-xs font-semibold tracking-[0.15em] text-amber-600 uppercase dark:text-amber-400">
+          {label}
+        </p>
+        <h2
+          className="mt-3 text-3xl leading-[1.1] font-bold tracking-[-0.02em] sm:text-[40px]"
+          style={{ fontFamily: "var(--font-jakarta), sans-serif" }}
+        >
+          {heading}
+          <br />
+          <span className="text-slate-400 dark:text-slate-500">
+            {headingAccent}
+          </span>
+        </h2>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.5, delay: 0.08 }}
+      >
+        {items.map((item) => (
+          <FaqItem key={item.q} {...item} />
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 export function HomeFaq() {
   return (
     <section
-      className="bg-background mt-20 w-full px-4 py-20 md:mt-28 md:px-8 md:py-24"
+      className="bg-background w-full px-4 py-20 md:px-8 md:py-24"
       aria-labelledby="practice-guide-heading"
     >
       <div className="mx-auto max-w-5xl">
+        {/* Intro cards */}
         <div className="mx-auto mb-12 max-w-3xl text-center md:mb-14">
           <h2
             id="practice-guide-heading"
@@ -100,7 +214,7 @@ export function HomeFaq() {
           </p>
         </div>
 
-        <div className="mb-20 grid gap-4 md:grid-cols-3 md:gap-5">
+        <div className="mb-24 grid gap-4 md:grid-cols-3 md:gap-5">
           {introSections.map((section) => (
             <article
               key={section.title}
@@ -116,48 +230,22 @@ export function HomeFaq() {
           ))}
         </div>
 
-        <div className="mx-auto max-w-3xl">
-          <h2
-            id="faq-heading"
-            className="text-foreground mb-2 text-center text-[24px] font-extrabold tracking-tight md:text-[32px]"
-          >
-            Frequently asked questions
-          </h2>
-          <p className="mx-auto mb-10 max-w-2xl text-center text-[15px] leading-relaxed text-slate-500 md:text-[16px] dark:text-slate-400">
-            Straight answers about privacy, cost, recording, and how Yapper fits
-            impromptu speaking practice.
-          </p>
-          <div className="divide-border divide-y rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-sm dark:border-white/[0.07] dark:bg-white/[0.025]">
-            {faqItems.map((item) => (
-              <details
-                key={item.q}
-                className="group transition-colors open:bg-slate-50/60 dark:open:bg-white/[0.03]"
-              >
-                <summary className="text-foreground hover:bg-muted/40 cursor-pointer list-none px-5 py-4 text-left text-[15px] font-semibold transition-colors [&::-webkit-details-marker]:hidden">
-                  <span className="flex items-center justify-between gap-4">
-                    {item.q}
-                    <svg
-                      className="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 group-open:rotate-180"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      aria-hidden
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
-                  </span>
-                </summary>
-                <div className="text-foreground px-5 pb-5 text-[14px] leading-relaxed">
-                  {item.a}
-                </div>
-              </details>
-            ))}
-          </div>
+        {/* FAQ Section 1 */}
+        <FaqBlock
+          label="FAQ"
+          heading="Questions?"
+          headingAccent="Answers."
+          items={faqSection1}
+        />
+
+        {/* FAQ Section 2 */}
+        <div className="mt-20">
+          <FaqBlock
+            label="Still curious?"
+            heading="Keep asking."
+            headingAccent="We don't mind."
+            items={faqSection2}
+          />
         </div>
       </div>
     </section>

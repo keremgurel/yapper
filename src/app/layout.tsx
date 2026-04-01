@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Geist_Mono, Manrope } from "next/font/google";
+import {
+  Geist_Mono,
+  Inter_Tight,
+  Manrope,
+  Plus_Jakarta_Sans,
+} from "next/font/google";
 import "./globals.css";
 
 const bodySans = Manrope({
@@ -12,10 +17,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const displaySerif = Cormorant_Garamond({
-  variable: "--font-display-serif",
+const displaySans = Inter_Tight({
+  variable: "--font-display-sans",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
+  subsets: ["latin"],
 });
 
 const siteUrl = "https://ypr.app";
@@ -100,7 +110,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bodySans.variable} ${displaySerif.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${bodySans.variable} ${displaySans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

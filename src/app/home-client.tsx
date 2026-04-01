@@ -19,6 +19,7 @@ import SlotLever from "@/components/SlotLever";
 import RotaryKnob from "@/components/RotaryKnob";
 import TopicReel from "@/components/TopicReel";
 import { HomeFaq } from "@/components/home-faq";
+import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
 import { MeshGradient } from "@paper-design/shaders-react";
 
 const YAPPER_DARK_KEY = "yapper-dark";
@@ -1130,9 +1131,7 @@ export default function HomeClient() {
       <HomeFaq />
 
       {/* Footer */}
-      <footer className="border-border border-t py-4 text-center text-[11px] text-slate-500/70 dark:text-slate-500/50">
-        yapper · ypr.app
-      </footer>
+      <FooterTapedDesign />
     </div>
   );
 }

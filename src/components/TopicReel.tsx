@@ -71,7 +71,7 @@ export default function TopicReel({
           {reelBlurbs.map((t, i) => (
             <p
               key={i}
-              className="m-0 font-serif text-lg text-slate-400 opacity-70 blur-[2px] dark:text-white dark:opacity-30"
+              className="m-0 font-sans text-lg text-slate-400 opacity-70 blur-[2px] dark:text-white dark:opacity-30"
             >
               {t}
             </p>
@@ -102,7 +102,7 @@ export default function TopicReel({
               }
             }}
             rows={3}
-            className="w-full resize-none bg-transparent p-0 text-center font-serif text-xl leading-relaxed font-medium text-slate-900 outline-none dark:text-white"
+            className="w-full resize-none bg-transparent p-0 text-center font-sans text-xl leading-relaxed font-medium text-slate-900 outline-none dark:text-white"
             placeholder="Type your speaking prompt"
             autoFocus
           />
@@ -153,7 +153,7 @@ export default function TopicReel({
               </>
             )}
           </div>
-          <p className="animate-fade-slide-in m-0 max-h-[88px] overflow-y-auto font-serif text-xl leading-relaxed font-medium text-slate-900 [animation-delay:100ms] dark:text-white">
+          <p className="animate-fade-slide-in m-0 max-h-[88px] overflow-y-auto font-sans text-xl leading-relaxed font-medium text-slate-900 [animation-delay:100ms] dark:text-white">
             {displayText}
           </p>
         </div>
