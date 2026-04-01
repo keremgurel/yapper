@@ -338,22 +338,46 @@ export default function Home() {
             <div className="absolute inset-0 bg-black/30" />
           )}
 
-          {/* ── Recording indicator ── */}
-          {isRecording && (
-            <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-white text-xs font-mono font-semibold">REC</span>
+          {/* ── Top-left: Filters + REC indicator ── */}
+          <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+            {isRecording && (
+              <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-white text-xs font-mono font-semibold">REC</span>
+              </div>
+            )}
+            <div
+              className={`flex gap-2 transition-all duration-500 ${
+                inSession ? "opacity-0 pointer-events-none" : "opacity-100"
+              }`}
+            >
+              <select
+                value={category}
+                onChange={(e) => handleCategoryChange(e.target.value)}
+                className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white cursor-pointer outline-none"
+              >
+                {["All", ...CATEGORIES].map((o) => (
+                  <option key={o} value={o}>{o === "All" ? "All Topics" : o}</option>
+                ))}
+              </select>
+              <select
+                value={difficulty}
+                onChange={(e) => handleDifficultyChange(e.target.value)}
+                className="bg-black/30 backdrop-blur-md border border-white/10 rounded-lg px-2.5 py-1.5 text-[11px] text-white cursor-pointer outline-none"
+              >
+                {["All", ...DIFFICULTIES].map((o) => (
+                  <option key={o} value={o}>{o === "All" ? "All Levels" : o}</option>
+                ))}
+              </select>
             </div>
-          )}
+          </div>
 
-          {/* ── Mic / Camera toggles (always visible, top-right) ── */}
+          {/* ── Top-right: Mic / Camera toggles ── */}
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             <button
               onClick={toggleMic}
-              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-sm ${
-                micOn
-                  ? "bg-white/20 hover:bg-white/30"
-                  : "bg-red-500/80 hover:bg-red-400/80"
+              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md border border-white/10 ${
+                micOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500/80 hover:bg-red-400/80 border-red-400/30"
               }`}
               title={micOn ? "Mute" : "Unmute"}
             >
@@ -374,10 +398,8 @@ export default function Home() {
             </button>
             <button
               onClick={toggleCamera}
-              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-sm ${
-                cameraOn
-                  ? "bg-white/20 hover:bg-white/30"
-                  : "bg-red-500/80 hover:bg-red-400/80"
+              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-all duration-200 backdrop-blur-md border border-white/10 ${
+                cameraOn ? "bg-white/15 hover:bg-white/25" : "bg-red-500/80 hover:bg-red-400/80 border-red-400/30"
               }`}
               title={cameraOn ? "Camera off" : "Camera on"}
             >
@@ -394,54 +416,28 @@ export default function Home() {
             </button>
           </div>
 
-          {/* ── Filters (top-center, fade out during session) ── */}
-          <div
-            className={`absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2 transition-all duration-500 ${
-              inSession ? "opacity-0 pointer-events-none" : "opacity-100"
-            }`}
-          >
-            <select
-              value={category}
-              onChange={(e) => handleCategoryChange(e.target.value)}
-              className="bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2.5 py-1 text-[11px] text-white cursor-pointer outline-none"
-            >
-              {["All", ...CATEGORIES].map((o) => (
-                <option key={o} value={o}>{o === "All" ? "All Topics" : o}</option>
-              ))}
-            </select>
-            <select
-              value={difficulty}
-              onChange={(e) => handleDifficultyChange(e.target.value)}
-              className="bg-black/40 backdrop-blur-sm border border-white/15 rounded-lg px-2.5 py-1 text-[11px] text-white cursor-pointer outline-none"
-            >
-              {["All", ...DIFFICULTIES].map((o) => (
-                <option key={o} value={o}>{o === "All" ? "All Levels" : o}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* ── Content overlay ── */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-6">
-            {/* Topic card — always visible */}
-            <div className="w-full max-w-[500px] mb-6">
+          {/* ── Content overlay — topic pinned to top, buttons at bottom ── */}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-between p-6 pt-14 pb-5">
+            {/* Topic card — pinned near top */}
+            <div className="w-full max-w-[500px]">
               <TopicReel topic={topic} spinning={spinning} />
             </div>
 
-            {/* Timer — always visible */}
+            {/* Timer — centered */}
             <div
-              className={`text-[48px] font-bold font-mono tracking-[4px] leading-none transition-colors duration-300 mb-4 drop-shadow-lg ${timerColor} ${
+              className={`text-[52px] font-bold font-mono tracking-[4px] leading-none transition-colors duration-300 drop-shadow-lg ${timerColor} ${
                 isRunning && timeLeft <= 10 ? "animate-pulse" : ""
               }`}
             >
               {formatTime(timeLeft)}
             </div>
 
-            {/* Buttons */}
-            <div className="flex gap-2 items-center mb-4">
+            {/* Buttons — pinned to bottom */}
+            <div className="flex gap-2 items-center">
               {!isRunning && !timerDone && (
                 <button
                   onClick={startTimer}
-                  className="px-7 py-2.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
+                  className="px-8 py-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[14px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
                 >
                   Start
                 </button>
@@ -450,17 +446,17 @@ export default function Home() {
                 <>
                   <button
                     onClick={pauseTimer}
-                    className={`px-5 py-2.5 rounded-full text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 ${
+                    className={`px-5 py-2.5 rounded-full text-[13px] font-semibold cursor-pointer transition-opacity hover:opacity-80 backdrop-blur-md border border-white/10 ${
                       isPaused
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                        : "bg-white/20 backdrop-blur-sm text-white"
+                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white border-blue-400/30"
+                        : "bg-black/30 text-white"
                     }`}
                   >
                     {isPaused ? "Resume" : "Pause"}
                   </button>
                   <button
                     onClick={resetTimer}
-                    className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                    className="px-5 py-2.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
                   >
                     Reset
                   </button>
@@ -473,14 +469,14 @@ export default function Home() {
                       resetTimer();
                       generateTopic();
                     }}
-                    className="px-7 py-2.5 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[13px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
+                    className="px-8 py-3 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white text-[14px] font-semibold cursor-pointer shadow-[0_2px_12px_rgba(37,99,235,0.4)] hover:opacity-90 transition-opacity"
                   >
                     Try Another
                   </button>
                   {recordedUrl && (
                     <button
                       onClick={downloadRecording}
-                      className="px-5 py-2.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
+                      className="px-5 py-2.5 rounded-full bg-black/30 backdrop-blur-md border border-white/10 text-white text-[13px] font-semibold cursor-pointer hover:opacity-80 transition-opacity"
                     >
                       Download
                     </button>
@@ -490,28 +486,32 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Lever (bottom-left, fades during session) ── */}
+          {/* ── Lever (left, glass container, fades during session) ── */}
           <div
-            className={`absolute bottom-4 left-6 z-10 transition-all duration-500 ${
+            className={`absolute bottom-16 left-5 z-10 transition-all duration-500 ${
               inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
             }`}
           >
-            <SlotLever onPull={generateTopic} />
+            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3">
+              <SlotLever onPull={generateTopic} />
+            </div>
           </div>
 
-          {/* ── Knob (bottom-right, fades during session) ── */}
+          {/* ── Knob (right, glass container, fades during session) ── */}
           <div
-            className={`absolute bottom-4 right-6 z-10 transition-all duration-500 ${
+            className={`absolute bottom-16 right-5 z-10 transition-all duration-500 ${
               inSession ? "opacity-0 pointer-events-none scale-90" : "opacity-100 scale-100"
             }`}
           >
-            <RotaryKnob
-              value={timerSeconds}
-              onChange={handleKnobChange}
-              min={30}
-              max={120}
-              disabled={isRunning}
-            />
+            <div className="bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3">
+              <RotaryKnob
+                value={timerSeconds}
+                onChange={handleKnobChange}
+                min={30}
+                max={120}
+                disabled={isRunning}
+              />
+            </div>
           </div>
         </div>
       </main>

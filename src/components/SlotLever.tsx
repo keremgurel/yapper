@@ -220,11 +220,13 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
           ? "RELEASE!"
           : "PULL"}
       </div>
-      {phase === "idle" && pullY === 0 && (
-        <div className="mt-0.5 text-sm text-slate-500 animate-bounce">
-          ↓
-        </div>
-      )}
+      <div
+        className={`mt-0.5 text-sm text-slate-500 animate-bounce transition-opacity ${
+          phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        ↓
+      </div>
     </div>
   );
 }
