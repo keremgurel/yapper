@@ -63,6 +63,12 @@ export const Component = () => {
                 >
                   FAQ
                 </Link>
+                <Link
+                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  href="/blog"
+                >
+                  Blog
+                </Link>
               </div>
             </div>
 
