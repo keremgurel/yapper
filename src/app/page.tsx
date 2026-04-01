@@ -235,14 +235,14 @@ export default function Home() {
         if (streamRef.current) {
           // Add video track to existing stream
           const vidStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: { facingMode: "user" },
           });
           const videoTrack = vidStream.getVideoTracks()[0];
           streamRef.current.addTrack(videoTrack);
         } else {
           // Create new stream
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
+            video: { facingMode: "user" },
             audio: micOn,
           });
           streamRef.current = stream;
@@ -281,7 +281,7 @@ export default function Home() {
         } else {
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: true,
-            video: cameraOn,
+            video: cameraOn ? { facingMode: "user" } : false,
           });
           streamRef.current = stream;
           if (!cameraOn) {
@@ -349,19 +349,19 @@ export default function Home() {
 
       {/* Headline */}
       <div className="px-6 pt-6 pb-4 text-center">
-        <h1 className="text-foreground mb-1 text-[26px] font-extrabold tracking-tight">
+        <h1 className="text-foreground mb-1 text-[20px] font-extrabold tracking-tight md:text-[26px]">
           Pull the lever. Start talking.
         </h1>
-        <p className="text-[14px] text-slate-500">
+        <p className="text-[13px] text-slate-500 md:text-[14px]">
           Random topic generator for impromptu speaking practice.
         </p>
       </div>
 
       {/* ═══ CAMERA CONTAINER ═══ */}
-      <main className="flex flex-1 items-center justify-center px-4 pb-4">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 pb-4">
         <div
-          className="relative w-full max-w-[920px] overflow-hidden rounded-2xl border border-white/10 bg-gray-900"
-          style={{ aspectRatio: "16/9", maxHeight: "calc(100vh - 200px)" }}
+          className="relative aspect-[3/4] w-full max-w-[920px] overflow-hidden rounded-2xl border border-white/10 bg-gray-900 md:aspect-[16/9]"
+          style={{ maxHeight: "calc(100vh - 200px)" }}
         >
           {/* Video feed (background) */}
           {cameraOn && (
@@ -510,7 +510,7 @@ export default function Home() {
           </div>
 
           {/* ── Content overlay — topic pinned to top, buttons at bottom ── */}
-          <div className="absolute inset-0 z-10 flex flex-col items-center justify-between p-6 pt-14 pb-5">
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-14 pb-4 md:px-6">
             {/* Topic card — pinned near top */}
             <div className="w-full max-w-[500px]">
               <TopicReel
@@ -522,7 +522,7 @@ export default function Home() {
 
             {/* Timer — centered */}
             <div
-              className={`font-mono text-[52px] leading-none font-bold tracking-[4px] drop-shadow-lg transition-colors duration-300 ${timerColor} ${
+              className={`font-mono text-[36px] leading-none font-bold tracking-[4px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} ${
                 isRunning && timeLeft <= 10 ? "animate-pulse" : ""
               }`}
             >
@@ -583,9 +583,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Lever (left, glass container, fades during session) ── */}
+          {/* ── Lever (left, desktop only inside container) ── */}
           <div
-            className={`absolute bottom-16 left-5 z-10 transition-all duration-500 ${
+            className={`absolute bottom-16 left-5 z-10 hidden transition-all duration-500 md:block ${
               inSession
                 ? "pointer-events-none scale-90 opacity-0"
                 : "scale-100 opacity-100"
@@ -596,9 +596,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Knob (right, glass container, fades during session) ── */}
+          {/* ── Knob (right, desktop only inside container) ── */}
           <div
-            className={`absolute right-5 bottom-16 z-10 transition-all duration-500 ${
+            className={`absolute right-5 bottom-16 z-10 hidden transition-all duration-500 md:block ${
               inSession
                 ? "pointer-events-none scale-90 opacity-0"
                 : "scale-100 opacity-100"
@@ -613,6 +613,28 @@ export default function Home() {
                 disabled={isRunning}
               />
             </div>
+          </div>
+        </div>
+
+        {/* ── Mobile controls row (below camera) ── */}
+        <div
+          className={`mt-3 flex items-center justify-center gap-4 transition-all duration-500 md:hidden ${
+            inSession
+              ? "pointer-events-none scale-95 opacity-0"
+              : "scale-100 opacity-100"
+          }`}
+        >
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+            <SlotLever onPull={generateTopic} />
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-3 backdrop-blur-md">
+            <RotaryKnob
+              value={timerSeconds}
+              onChange={handleKnobChange}
+              min={30}
+              max={90}
+              disabled={isRunning}
+            />
           </div>
         </div>
       </main>
