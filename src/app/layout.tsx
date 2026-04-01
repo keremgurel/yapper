@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -12,24 +12,73 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = "https://ypr.app";
+const title = "Yapper | Free Random Topic Generator for Speech Practice";
+const description =
+  "Practice impromptu speaking with a free random speech topic generator and built-in timer. Perfect for table topics, speech prompts, and public speaking practice online — no sign-up. Your audio and video stay on your device; nothing is stored on our servers.";
+
 export const metadata: Metadata = {
-  title: "Yapper — Random Speaking Topics",
-  description:
-    "Free random topic generator for impromptu speaking practice. No sign-up, no paywall, no friction. Just pull the lever and start talking.",
-  metadataBase: new URL("https://ypr.app"),
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: title,
+    template: "%s | Yapper",
+  },
+  description,
+  applicationName: "Yapper",
+  authors: [{ name: "Yapper", url: siteUrl }],
+  creator: "Yapper",
+  keywords: [
+    "random topic generator",
+    "impromptu speaking practice",
+    "speech topic generator",
+    "random speech topic generator",
+    "table topics questions",
+    "toastmasters table topics",
+    "impromptu speech topics",
+    "speaking prompts",
+    "public speaking practice online",
+    "free speaking practice",
+    "impromptu speech prompts",
+    "random speaking topics",
+    "1 minute speech topics",
+    "ESL speaking practice online free",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  alternates: {
+    canonical: siteUrl,
+  },
+  category: "education",
   openGraph: {
-    title: "Yapper — Random Speaking Topics",
-    description:
-      "Free random topic generator for impromptu speaking practice. Pull the lever and start talking.",
-    url: "https://ypr.app",
+    title,
+    description,
+    url: siteUrl,
     siteName: "Yapper",
     type: "website",
+    locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Yapper — Random Speaking Topics",
-    description: "Free random topic generator for impromptu speaking practice.",
+    title,
+    description,
   },
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#282828" },
+  ],
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

@@ -10,12 +10,12 @@
 }
 
 .dark {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --card: #1e293b;
-  --border: #334155;
-  --muted: #334155;
-  --tick-inactive: #3f3f46;
+  --background: oklch(0.1822 0 0);
+  --foreground: #e4e4e7;
+  --card: oklch(0.205 0 0);
+  --border: oklch(0.27 0 0);
+  --muted: oklch(0.23 0 0);
+  --tick-inactive: #52525b;
 }
 
 @theme inline {
@@ -26,6 +26,10 @@
   --color-muted: var(--muted);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -39,10 +43,26 @@ body {
 
 /* Shadow utilities */
 .shadow-card {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .dark .shadow-card {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.shadow-container {
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04);
+}
+.dark .shadow-container {
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 /* Animations */

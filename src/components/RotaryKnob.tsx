@@ -19,7 +19,7 @@ export default function RotaryKnob({
   value,
   onChange,
   min = 30,
-  max = 120,
+  max = 90,
   disabled = false,
 }: RotaryKnobProps) {
   const knobRef = useRef<HTMLDivElement>(null);
@@ -142,8 +142,7 @@ export default function RotaryKnob({
     );
   }
 
-  const formatTime = (s: number) =>
-    `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  const formatSeconds = (s: number) => `${Math.round(s)}s`;
 
   // Indicator dot position on the inner ring
   const indicatorAngleDeg = currentRotation - 90;
@@ -300,7 +299,7 @@ export default function RotaryKnob({
           color: "var(--foreground)",
         }}
       >
-        {formatTime(value)}
+        {formatSeconds(value)}
       </div>
       <div
         style={{
