@@ -27,14 +27,21 @@ export async function exportRecordingWithOverlays({
   timerSeconds,
   showPromptOverlay,
   showTimerOverlay,
+  format = "portrait",
+  onProgress,
 }: {
   blob: Blob;
   prompt: string;
   timerSeconds: number;
   showPromptOverlay: boolean;
   showTimerOverlay: boolean;
+  format?: "portrait" | "landscape";
+  onProgress?: (percent: number) => void;
 }): Promise<Blob> {
   if (!showPromptOverlay && !showTimerOverlay) return blob;
+
+  const videoBitsPerSecond = format === "landscape" ? 16_000_000 : 14_000_000;
+  const audioBitsPerSecond = 192_000;
 
   const sourceUrl = URL.createObjectURL(blob);
 
@@ -45,7 +52,6 @@ export async function exportRecordingWithOverlays({
     video.preload = "auto";
     video.muted = true;
     video.volume = 0;
-    video.playbackRate = 4;
 
     await new Promise<void>((resolve, reject) => {
       video.onloadedmetadata = () => resolve();
@@ -53,8 +59,10 @@ export async function exportRecordingWithOverlays({
     });
 
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 720;
-    canvas.height = video.videoHeight || 1280;
+    const targetW = format === "landscape" ? 1920 : 1080;
+    const targetH = format === "landscape" ? 1080 : 1920;
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
@@ -78,6 +86,8 @@ export async function exportRecordingWithOverlays({
       mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
         ? "video/webm;codecs=vp9,opus"
         : "video/webm",
+      videoBitsPerSecond,
+      audioBitsPerSecond,
     });
 
     const chunks: Blob[] = [];
@@ -94,8 +104,21 @@ export async function exportRecordingWithOverlays({
     const drawFrame = () => {
       if (video.ended || video.paused) return;
 
+      const progress =
+        video.duration > 0 ? (video.currentTime / video.duration) * 100 : 0;
+      onProgress?.(progress);
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Object-fit cover: scale source to fill target, center-crop
+      const srcW = video.videoWidth || canvas.width;
+      const srcH = video.videoHeight || canvas.height;
+      const scale = Math.max(canvas.width / srcW, canvas.height / srcH);
+      const drawW = srcW * scale;
+      const drawH = srcH * scale;
+      const drawX = (canvas.width - drawW) / 2;
+      const drawY = (canvas.height - drawH) / 2;
+      ctx.drawImage(video, drawX, drawY, drawW, drawH);
 
       if (showPromptOverlay) {
         const boxX = canvas.width * 0.07;
@@ -192,4 +215,8 @@ export async function exportRecordingWithOverlays({
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
+}
+
+export async function exportAudioOnly(blob: Blob): Promise<Blob> {
+  return blob;
 }

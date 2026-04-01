@@ -7,6 +7,7 @@ import {
 import RotaryKnob from "@/components/RotaryKnob";
 import SlotLever from "@/components/SlotLever";
 import TopicReel from "@/components/TopicReel";
+import CompletionScreen from "@/components/CompletionScreen";
 import { MeshGradient } from "@paper-design/shaders-react";
 
 interface PracticeStageProps {
@@ -30,9 +31,6 @@ interface PracticeStageProps {
   isRecording: boolean;
   recordedBlob: Blob | null;
   isPreparingDownload: boolean;
-  includePromptOverlay: boolean;
-  includeTimerOverlay: boolean;
-  isExportingVideo: boolean;
   inSession: boolean;
   canEditPrompt: boolean;
   canEditTime: boolean;
@@ -58,8 +56,6 @@ interface PracticeStageProps {
   onMicToggle: () => void;
   onCameraToggle: () => void;
   onDownloadRecording: () => void;
-  onPromptOverlayToggle: (value: boolean) => void;
-  onTimerOverlayToggle: (value: boolean) => void;
 }
 
 export default function PracticeStage({
@@ -83,9 +79,6 @@ export default function PracticeStage({
   isRecording,
   recordedBlob,
   isPreparingDownload,
-  includePromptOverlay,
-  includeTimerOverlay,
-  isExportingVideo,
   inSession,
   canEditPrompt,
   canEditTime,
@@ -111,8 +104,6 @@ export default function PracticeStage({
   onMicToggle,
   onCameraToggle,
   onDownloadRecording,
-  onPromptOverlayToggle,
-  onTimerOverlayToggle,
 }: PracticeStageProps) {
   const toolChromePanel =
     "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/35 dark:shadow-none";
@@ -438,62 +429,15 @@ export default function PracticeStage({
               )}
 
               {timerDone && (
-                <>
-                  {recordedBlob && (
-                    <div className="flex flex-wrap items-center justify-center gap-2 rounded-full border border-slate-200/90 bg-white/95 px-3 py-2 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/35">
-                      <label className="flex items-center gap-2 text-[12px] font-medium text-slate-700 dark:text-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={includePromptOverlay}
-                          onChange={(e) =>
-                            onPromptOverlayToggle(e.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-slate-300"
-                        />
-                        Prompt overlay
-                      </label>
-                      <label className="flex items-center gap-2 text-[12px] font-medium text-slate-700 dark:text-slate-200">
-                        <input
-                          type="checkbox"
-                          checked={includeTimerOverlay}
-                          onChange={(e) =>
-                            onTimerOverlayToggle(e.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-slate-300"
-                        />
-                        Timer overlay
-                      </label>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => {
-                      onReset();
-                      onGenerateTopic();
-                    }}
-                    className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
-                  >
-                    Try Another
-                  </button>
-
-                  {(isPreparingDownload || recordedBlob) && (
-                    <button
-                      onClick={onDownloadRecording}
-                      disabled={!recordedBlob || isExportingVideo}
-                      className={`${sessionBtnIdle} ${
-                        recordedBlob && !isExportingVideo
-                          ? ""
-                          : "cursor-default opacity-70 hover:opacity-70"
-                      }`}
-                    >
-                      {isPreparingDownload
-                        ? "Preparing video..."
-                        : isExportingVideo
-                          ? "Exporting video..."
-                          : "Download video"}
-                    </button>
-                  )}
-                </>
+                <button
+                  onClick={() => {
+                    onReset();
+                    onGenerateTopic();
+                  }}
+                  className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                >
+                  Try Another
+                </button>
               )}
             </div>
           </div>
@@ -528,6 +472,23 @@ export default function PracticeStage({
             />
           </div>
         </div>
+
+        {/* Completion screen overlay */}
+        {timerDone && (
+          <CompletionScreen
+            prompt={customPromptText ?? topic.text}
+            timerSeconds={timerSeconds}
+            cameraOn={cameraOn}
+            micOn={micOn}
+            recordedBlob={recordedBlob}
+            isPreparingDownload={isPreparingDownload}
+            onTryAnother={() => {
+              onReset();
+              onGenerateTopic();
+            }}
+            onDownload={onDownloadRecording}
+          />
+        )}
       </div>
     </main>
   );

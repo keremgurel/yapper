@@ -1,11 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import topics, {
-  type Category,
-  type Difficulty,
-  type Topic,
-} from "@/data/topics";
+import { type Category, type Difficulty, type Topic } from "@/data/topics";
 import { playSlotTick, playTimerEnd } from "@/lib/audio";
 import {
   clampTimerSeconds,
@@ -14,8 +10,29 @@ import {
 } from "@/lib/practice-helpers";
 import { exportRecordingWithOverlays } from "@/lib/video-export";
 
+const RECORDING_VIDEO_BITS_PER_SECOND = 12_000_000;
+const RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
+
+function getPreferredVideoConstraints(format: "portrait" | "landscape") {
+  return format === "landscape"
+    ? {
+        facingMode: "user",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30, max: 60 },
+      }
+    : {
+        facingMode: "user",
+        width: { ideal: 1080 },
+        height: { ideal: 1920 },
+        frameRate: { ideal: 30, max: 60 },
+      };
+}
+
 export function usePracticeSession() {
-  const [topic, setTopic] = useState<Topic>(topics[0]);
+  const [topic, setTopic] = useState<Topic>(() =>
+    getRandomTopic(null, "All", "All"),
+  );
   const [spinning, setSpinning] = useState(false);
   const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
@@ -38,8 +55,11 @@ export function usePracticeSession() {
   const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
   const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [videoFormat, setVideoFormat] = useState<"portrait" | "landscape">(
+    "portrait",
+  );
+  const [exportProgress, setExportProgress] = useState(0);
 
-  const didInit = useRef(false);
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,13 +71,6 @@ export function usePracticeSession() {
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
-
-  useEffect(() => {
-    if (!didInit.current) {
-      didInit.current = true;
-      setTopic(getRandomTopic(null, "All", "All"));
-    }
-  }, []);
 
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
@@ -188,6 +201,8 @@ export function usePracticeSession() {
       mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
         ? "video/webm;codecs=vp9,opus"
         : "video/webm",
+      videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
+      audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
     });
 
     recorderRef.current = recorder;
@@ -278,13 +293,13 @@ export function usePracticeSession() {
     try {
       if (streamRef.current) {
         const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
+          video: getPreferredVideoConstraints(videoFormat),
         });
         const videoTrack = videoStream.getVideoTracks()[0];
         streamRef.current.addTrack(videoTrack);
       } else {
         const nextStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
+          video: getPreferredVideoConstraints(videoFormat),
           audio: micOn,
         });
         streamRef.current = nextStream;
@@ -300,7 +315,7 @@ export function usePracticeSession() {
     } catch {
       alert("Camera access is required.");
     }
-  }, [attachStream, cameraOn, micOn]);
+  }, [attachStream, cameraOn, micOn, videoFormat]);
 
   const toggleMic = useCallback(async () => {
     if (micOn) {
@@ -327,7 +342,7 @@ export function usePracticeSession() {
       } else {
         const nextStream = await navigator.mediaDevices.getUserMedia({
           audio: true,
-          video: cameraOn ? { facingMode: "user" } : false,
+          video: cameraOn ? getPreferredVideoConstraints(videoFormat) : false,
         });
         streamRef.current = nextStream;
         if (!cameraOn) {
@@ -341,7 +356,7 @@ export function usePracticeSession() {
     } catch {
       alert("Microphone access is required.");
     }
-  }, [cameraOn, micOn]);
+  }, [cameraOn, micOn, videoFormat]);
 
   useEffect(() => {
     if (cameraOn) {
@@ -353,15 +368,21 @@ export function usePracticeSession() {
     if (!recordedBlob || isExportingVideo) return;
 
     setIsExportingVideo(true);
+    setExportProgress(0);
 
     try {
-      const exportedBlob = await exportRecordingWithOverlays({
-        blob: recordedBlob,
-        prompt: customPromptText ?? topic.text,
-        timerSeconds,
-        showPromptOverlay: includePromptOverlay,
-        showTimerOverlay: includeTimerOverlay,
-      });
+      const exportedBlob =
+        !cameraOn && micOn
+          ? recordedBlob
+          : await exportRecordingWithOverlays({
+              blob: recordedBlob,
+              prompt: customPromptText ?? topic.text,
+              timerSeconds,
+              showPromptOverlay: includePromptOverlay,
+              showTimerOverlay: includeTimerOverlay,
+              format: videoFormat,
+              onProgress: (progress) => setExportProgress(progress),
+            });
 
       const downloadUrl = URL.createObjectURL(exportedBlob);
       const anchor = document.createElement("a");
@@ -377,9 +398,12 @@ export function usePracticeSession() {
     includePromptOverlay,
     includeTimerOverlay,
     isExportingVideo,
+    cameraOn,
+    micOn,
     recordedBlob,
     timerSeconds,
     topic.text,
+    videoFormat,
   ]);
 
   return {
@@ -406,6 +430,8 @@ export function usePracticeSession() {
     includePromptOverlay,
     includeTimerOverlay,
     isExportingVideo,
+    videoFormat,
+    exportProgress,
     inSession,
     canEditPrompt,
     canEditTime,
@@ -433,5 +459,6 @@ export function usePracticeSession() {
     toggleCamera,
     toggleMic,
     downloadRecording,
+    setVideoFormat,
   };
 }

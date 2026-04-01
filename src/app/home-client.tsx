@@ -62,9 +62,6 @@ export default function HomeClient() {
         isRecording={session.isRecording}
         recordedBlob={session.recordedBlob}
         isPreparingDownload={session.isPreparingDownload}
-        includePromptOverlay={session.includePromptOverlay}
-        includeTimerOverlay={session.includeTimerOverlay}
-        isExportingVideo={session.isExportingVideo}
         inSession={session.inSession}
         canEditPrompt={session.canEditPrompt}
         canEditTime={session.canEditTime}
@@ -90,8 +87,6 @@ export default function HomeClient() {
         onMicToggle={session.toggleMic}
         onCameraToggle={session.toggleCamera}
         onDownloadRecording={session.downloadRecording}
-        onPromptOverlayToggle={session.setIncludePromptOverlay}
-        onTimerOverlayToggle={session.setIncludeTimerOverlay}
       />
 
       <HomeFaq />
