@@ -6,63 +6,15 @@ import { MeshGradient } from "@paper-design/shaders-react";
 interface PracticeSettingsPanelProps {
   open: boolean;
   videoFormat: "portrait" | "landscape";
-  includePromptOverlay: boolean;
-  includeTimerOverlay: boolean;
   isCompactDevice: boolean;
   onFormatChange: (format: "portrait" | "landscape") => void;
-  onPromptOverlayToggle: (value: boolean) => void;
-  onTimerOverlayToggle: (value: boolean) => void;
-}
-
-function ToggleRow({
-  label,
-  description,
-  active,
-  onToggle,
-}: {
-  label: string;
-  description: string;
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      className="flex w-full items-center justify-between rounded-[24px] border border-white/12 bg-black/18 px-4 py-4 text-left backdrop-blur-xl transition-transform duration-300 hover:scale-[1.01] hover:bg-black/24"
-    >
-      <div className="max-w-[80%]">
-        <p className="font-display text-[17px] font-semibold text-white">
-          {label}
-        </p>
-        <p className="mt-1 text-[13px] leading-relaxed text-white/55">
-          {description}
-        </p>
-      </div>
-      <div
-        className={`relative h-7 w-12 rounded-full transition-colors duration-300 ${
-          active ? "bg-blue-500" : "bg-white/12"
-        }`}
-      >
-        <div
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.3)] transition-all duration-300 ${
-            active ? "left-6" : "left-1"
-          }`}
-        />
-      </div>
-    </button>
-  );
 }
 
 export default function PracticeSettingsPanel({
   open,
   videoFormat,
-  includePromptOverlay,
-  includeTimerOverlay,
   isCompactDevice,
   onFormatChange,
-  onPromptOverlayToggle,
-  onTimerOverlayToggle,
 }: PracticeSettingsPanelProps) {
   return (
     <AnimatePresence>
@@ -124,7 +76,7 @@ export default function PracticeSettingsPanel({
               </div>
             </div>
 
-            <div className="mt-8 grid flex-1 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="mt-8 flex-1">
               <div className="rounded-[28px] border border-white/12 bg-black/18 p-4 backdrop-blur-xl md:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -200,33 +152,6 @@ export default function PracticeSettingsPanel({
                     </div>
                   </button>
                 </div>
-              </div>
-
-              <div className="flex flex-col gap-4 rounded-[28px] border border-white/12 bg-black/18 p-4 backdrop-blur-xl md:p-5">
-                <div>
-                  <p className="text-[11px] font-semibold tracking-[0.2em] text-white/40 uppercase">
-                    Recording Overlays
-                  </p>
-                  <p className="mt-2 text-[14px] leading-relaxed text-white/58">
-                    These settings control what stays visible during the take
-                    and in the downloaded recording. You can expand this panel
-                    later with more camera controls.
-                  </p>
-                </div>
-
-                <ToggleRow
-                  label="Prompt overlay"
-                  description="Keep the topic visible while recording and in the saved clip."
-                  active={includePromptOverlay}
-                  onToggle={() => onPromptOverlayToggle(!includePromptOverlay)}
-                />
-
-                <ToggleRow
-                  label="Timer overlay"
-                  description="Show the countdown during the take and in the saved clip."
-                  active={includeTimerOverlay}
-                  onToggle={() => onTimerOverlayToggle(!includeTimerOverlay)}
-                />
               </div>
             </div>
           </motion.div>

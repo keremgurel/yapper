@@ -8,7 +8,6 @@ import {
   getRandomTopic,
   pickReelBlurbs,
 } from "@/lib/practice-helpers";
-import { startLiveStageRecording } from "@/lib/live-stage-recorder";
 
 const RECORDING_VIDEO_BITS_PER_SECOND = 12_000_000;
 const RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
@@ -80,8 +79,6 @@ export function usePracticeSession(initialTopic: Topic) {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
-  const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
-  const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
   const [videoFormat, setVideoFormatState] = useState<"portrait" | "landscape">(
     "landscape",
   );
@@ -94,11 +91,9 @@ export function usePracticeSession(initialTopic: Topic) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const recorderCleanupRef = useRef<(() => void) | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timeInputRef = useRef<HTMLInputElement>(null);
   const appliedVideoFormatRef = useRef<"portrait" | "landscape" | null>(null);
-  const timeLeftRef = useRef(60);
 
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
@@ -254,10 +249,6 @@ export function usePracticeSession(initialTopic: Topic) {
     });
   }, [timeEditorOpen]);
 
-  useEffect(() => {
-    timeLeftRef.current = timeLeft;
-  }, [timeLeft]);
-
   const clearRecordedMedia = useCallback(() => {
     setRecordedBlob(null);
     setRecordedUrl((current) => {
@@ -298,13 +289,10 @@ export function usePracticeSession(initialTopic: Topic) {
       return;
     }
 
-    recorderCleanupRef.current?.();
-    recorderCleanupRef.current = null;
     recorderRef.current = null;
   }, []);
 
   const startTimer = useCallback(() => {
-    timeLeftRef.current = timerSeconds;
     setTimeLeft(timerSeconds);
     setIsRunning(true);
     setIsPaused(false);
@@ -319,31 +307,14 @@ export function usePracticeSession(initialTopic: Topic) {
 
     chunksRef.current = [];
     setIsPreparingDownload(true);
-
-    const startRecorder = async () => {
-      if (cameraOn) {
-        const liveRecorder = await startLiveStageRecording({
-          sourceStream: streamRef.current!,
-          prompt: customPromptText ?? topic.text,
-          format: effectiveVideoFormat,
-          showPromptOverlay: includePromptOverlay,
-          showTimerOverlay: includeTimerOverlay,
-          categoryLabel: customPromptText ? "Custom" : topic.category,
-          difficultyLabel: customPromptText ? "Your prompt" : topic.difficulty,
-          getTimeLeft: () => timeLeftRef.current,
-        });
-        recorderRef.current = liveRecorder.recorder;
-        recorderCleanupRef.current = liveRecorder.cleanup;
-      } else {
-        recorderRef.current = new MediaRecorder(streamRef.current!, {
-          mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-            ? "video/webm;codecs=vp9,opus"
-            : "video/webm",
-          videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
-          audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
-        });
-        recorderCleanupRef.current = null;
-      }
+    try {
+      recorderRef.current = new MediaRecorder(streamRef.current, {
+        mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+          ? "video/webm;codecs=vp9,opus"
+          : "video/webm",
+        videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
+        audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
+      });
 
       recorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
@@ -351,8 +322,6 @@ export function usePracticeSession(initialTopic: Topic) {
       recorderRef.current.onstop = () => {
         const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
         const nextUrl = URL.createObjectURL(nextBlob);
-        recorderCleanupRef.current?.();
-        recorderCleanupRef.current = null;
         recorderRef.current = null;
         setIsRecording(false);
         setRecordedBlob(nextBlob);
@@ -364,29 +333,14 @@ export function usePracticeSession(initialTopic: Topic) {
       };
       recorderRef.current.start(200);
       setIsRecording(true);
-    };
-
-    startRecorder().catch(() => {
-      recorderCleanupRef.current?.();
-      recorderCleanupRef.current = null;
+    } catch {
       recorderRef.current = null;
       setIsPreparingDownload(false);
       setIsRunning(false);
       setIsPaused(false);
       alert("Recording could not be started.");
-    });
-  }, [
-    cameraOn,
-    clearRecordedMedia,
-    customPromptText,
-    effectiveVideoFormat,
-    includePromptOverlay,
-    includeTimerOverlay,
-    timerSeconds,
-    topic.category,
-    topic.difficulty,
-    topic.text,
-  ]);
+    }
+  }, [clearRecordedMedia, timerSeconds]);
 
   const pauseTimer = useCallback(() => {
     setIsPaused((current) => !current);
@@ -528,7 +482,6 @@ export function usePracticeSession(initialTopic: Topic) {
 
   useEffect(() => {
     return () => {
-      recorderCleanupRef.current?.();
       if (recordedUrl) URL.revokeObjectURL(recordedUrl);
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
@@ -567,8 +520,6 @@ export function usePracticeSession(initialTopic: Topic) {
     recordedBlob,
     recordedUrl,
     isPreparingDownload,
-    includePromptOverlay,
-    includeTimerOverlay,
     videoFormat: effectiveVideoFormat,
     isCompactDevice,
     settingsOpen,
@@ -579,8 +530,6 @@ export function usePracticeSession(initialTopic: Topic) {
     timeInputRef,
     setPromptDraft,
     setTimeDraft,
-    setIncludePromptOverlay,
-    setIncludeTimerOverlay,
     generateTopic,
     handleCategoryChange,
     handleDifficultyChange,

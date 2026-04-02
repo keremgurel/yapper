@@ -68,8 +68,6 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         recordedBlob={session.recordedBlob}
         recordedUrl={session.recordedUrl}
         isPreparingDownload={session.isPreparingDownload}
-        includePromptOverlay={session.includePromptOverlay}
-        includeTimerOverlay={session.includeTimerOverlay}
         videoFormat={session.videoFormat}
         isCompactDevice={session.isCompactDevice}
         settingsOpen={session.settingsOpen}
@@ -101,8 +99,6 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         onOpenSettings={session.openSettings}
         onCloseSettings={session.closeSettings}
         onFormatChange={session.setVideoFormat}
-        onPromptOverlayToggle={session.setIncludePromptOverlay}
-        onTimerOverlayToggle={session.setIncludeTimerOverlay}
       />
 
       <HomeFaq />

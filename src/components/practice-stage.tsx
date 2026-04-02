@@ -33,8 +33,6 @@ interface PracticeStageProps {
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   isPreparingDownload: boolean;
-  includePromptOverlay: boolean;
-  includeTimerOverlay: boolean;
   videoFormat: "portrait" | "landscape";
   isCompactDevice: boolean;
   settingsOpen: boolean;
@@ -66,8 +64,6 @@ interface PracticeStageProps {
   onOpenSettings: () => void;
   onCloseSettings: () => void;
   onFormatChange: (format: "portrait" | "landscape") => void;
-  onPromptOverlayToggle: (value: boolean) => void;
-  onTimerOverlayToggle: (value: boolean) => void;
 }
 
 export default function PracticeStage({
@@ -92,8 +88,6 @@ export default function PracticeStage({
   recordedBlob,
   recordedUrl,
   isPreparingDownload,
-  includePromptOverlay,
-  includeTimerOverlay,
   videoFormat,
   isCompactDevice,
   settingsOpen,
@@ -125,8 +119,6 @@ export default function PracticeStage({
   onOpenSettings,
   onCloseSettings,
   onFormatChange,
-  onPromptOverlayToggle,
-  onTimerOverlayToggle,
 }: PracticeStageProps) {
   const toolChromePanel =
     "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-black/45 dark:shadow-none";
@@ -163,8 +155,6 @@ export default function PracticeStage({
     videoFormat === "portrait"
       ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
       : "aspect-[16/9] h-auto max-h-full w-full";
-  const showPromptInLiveStage = includePromptOverlay || !inSession || !cameraOn;
-  const showTimerInLiveStage = includeTimerOverlay || !inSession || !cameraOn;
 
   return (
     <main
@@ -377,13 +367,7 @@ export default function PracticeStage({
         </div>
 
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
-          <div
-            className={`w-full max-w-[560px] transition-opacity duration-300 ${
-              showPromptInLiveStage
-                ? "opacity-100"
-                : "pointer-events-none opacity-0"
-            }`}
-          >
+          <div className="w-full max-w-[560px]">
             <TopicReel
               topic={topic}
               spinning={spinning}
@@ -399,13 +383,7 @@ export default function PracticeStage({
             />
           </div>
 
-          <div
-            className={`flex flex-col items-center gap-1 transition-opacity duration-300 ${
-              showTimerInLiveStage
-                ? "opacity-100"
-                : "pointer-events-none opacity-0"
-            }`}
-          >
+          <div className="flex flex-col items-center gap-1">
             {timeEditorOpen ? (
               <div className="flex flex-col items-center gap-1">
                 <input
@@ -589,12 +567,8 @@ export default function PracticeStage({
         <PracticeSettingsPanel
           open={settingsOpen}
           videoFormat={videoFormat}
-          includePromptOverlay={includePromptOverlay}
-          includeTimerOverlay={includeTimerOverlay}
           isCompactDevice={isCompactDevice}
           onFormatChange={onFormatChange}
-          onPromptOverlayToggle={onPromptOverlayToggle}
-          onTimerOverlayToggle={onTimerOverlayToggle}
         />
       </div>
     </main>
