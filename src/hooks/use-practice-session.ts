@@ -356,7 +356,30 @@ export function usePracticeSession(initialTopic: Topic) {
     setIsPreparingDownload(false);
     clearRecordedMedia();
     resetRecorderState();
-  }, [clearRecordedMedia, resetRecorderState, timerSeconds]);
+
+    const videoTrack = streamRef.current?.getVideoTracks()[0];
+
+    if (!cameraOn) return;
+
+    if (videoTrack && videoTrack.readyState === "live") {
+      requestAnimationFrame(() => {
+        attachStream();
+      });
+      return;
+    }
+
+    replaceVideoTrack(effectiveVideoFormat).catch(() => {
+      alert("Camera preview could not be restored.");
+    });
+  }, [
+    attachStream,
+    cameraOn,
+    clearRecordedMedia,
+    effectiveVideoFormat,
+    replaceVideoTrack,
+    resetRecorderState,
+    timerSeconds,
+  ]);
 
   const handleKnobChange = useCallback(
     (value: number) => {

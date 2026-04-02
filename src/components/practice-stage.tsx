@@ -120,25 +120,14 @@ export default function PracticeStage({
   onCloseSettings,
   onFormatChange,
 }: PracticeStageProps) {
-  const toolChromePanel =
-    "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-black/45 dark:shadow-none";
+  const overlayGlass =
+    "border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_20px_44px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
+  const toolChromePanel = `rounded-[28px] p-3 ${overlayGlass}`;
 
-  const selectClass =
-    "min-w-0 flex-1 cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] outline-none backdrop-blur-xl sm:flex-none " +
-    (cameraOn
-      ? "border-white/12 bg-black/42 text-white"
-      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white");
+  const selectClass = `min-w-0 flex-1 cursor-pointer rounded-2xl px-3 py-2 text-[11px] font-medium text-white outline-none sm:flex-none ${overlayGlass}`;
 
-  const sessionBtnIdle =
-    "cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-xl transition-opacity hover:opacity-80 " +
-    (cameraOn
-      ? "border-white/12 bg-black/42 text-white"
-      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white");
-  const toolbarIconButtonClass =
-    "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border backdrop-blur-xl transition-all duration-300 " +
-    (cameraOn
-      ? "border-white/12 bg-black/42 text-white hover:bg-black/52"
-      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm hover:bg-slate-50 dark:border-white/15 dark:bg-white/22 dark:text-white dark:hover:bg-white/28");
+  const sessionBtnIdle = `cursor-pointer rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-80 ${overlayGlass}`;
+  const toolbarIconButtonClass = `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 hover:bg-white/16 ${overlayGlass}`;
 
   const timerColor =
     timeLeft <= 10
@@ -194,9 +183,7 @@ export default function PracticeStage({
           {isRecording && (
             <div
               className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${
-                cameraOn
-                  ? "border-white/10 bg-black/40 text-white"
-                  : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white"
+                cameraOn ? overlayGlass : overlayGlass
               }`}
             >
               <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
@@ -240,7 +227,7 @@ export default function PracticeStage({
               className={
                 micOn
                   ? toolbarIconButtonClass
-                  : "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-400/40 bg-red-500 text-white backdrop-blur-md transition-all duration-200 hover:bg-red-400"
+                  : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
               }
               title={micOn ? "Mute" : "Unmute"}
             >
@@ -285,7 +272,7 @@ export default function PracticeStage({
               className={
                 cameraOn
                   ? toolbarIconButtonClass
-                  : "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-400/40 bg-red-500 text-white backdrop-blur-md transition-all duration-200 hover:bg-red-400"
+                  : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
               }
               title={cameraOn ? "Camera off" : "Camera on"}
             >
@@ -430,7 +417,7 @@ export default function PracticeStage({
                 }}
                 className={`font-mono text-[36px] leading-none font-bold tracking-[2px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} touch-manipulation outline-none ${
                   canEditTime
-                    ? "cursor-pointer rounded-lg px-2 focus-visible:ring-2 focus-visible:ring-blue-400/60"
+                    ? "cursor-pointer rounded-lg px-2 focus-visible:ring-2 focus-visible:ring-white/50"
                     : ""
                 } ${isRunning && timeLeft <= 10 ? "animate-pulse" : ""}`}
               >
@@ -439,13 +426,7 @@ export default function PracticeStage({
             )}
 
             {canEditTime && !timeEditorOpen && (
-              <span
-                className={`text-[10px] font-medium tracking-wide uppercase ${
-                  cameraOn
-                    ? "text-white/95 drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)]"
-                    : "text-slate-700 dark:text-slate-400"
-                }`}
-              >
+              <span className="text-[10px] font-medium tracking-wide text-white/76 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]">
                 Seconds · double-tap to type
               </span>
             )}

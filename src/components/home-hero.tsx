@@ -35,8 +35,9 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
       </p>
 
       <button
+        type="button"
         onClick={onJumpToPractice}
-        className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-slate-900 px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(15,23,42,0.25)] transition-colors hover:bg-slate-800 dark:border-white/15 dark:bg-white dark:text-slate-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] dark:hover:bg-zinc-100"
+        className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-slate-800 bg-slate-900 px-8 py-3.5 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(15,23,42,0.35)] transition-colors hover:bg-slate-800 hover:text-white dark:border-white/25 dark:bg-white dark:text-slate-900 dark:shadow-[0_2px_12px_rgba(0,0,0,0.2)] dark:hover:bg-zinc-100 dark:hover:text-slate-900"
       >
         Jump to practice
       </button>

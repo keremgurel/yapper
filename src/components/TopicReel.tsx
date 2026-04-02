@@ -32,6 +32,8 @@ export default function TopicReel({
 }: TopicReelProps) {
   const lastTapRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const glassPanelClass =
+    "relative flex h-[150px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
 
   const tryDoubleTap = useCallback(() => {
     if (!promptEditable || spinning || promptEditing) return;
@@ -65,20 +67,21 @@ export default function TopicReel({
   const isCustom = promptOverride !== null;
 
   return (
-    <div className="relative flex h-[150px] w-full flex-col items-center justify-center overflow-hidden rounded-2xl border border-slate-200/90 bg-white/95 px-7 py-7 text-center shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-black/30 dark:shadow-none">
+    <div className={glassPanelClass}>
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),transparent_38%,rgba(255,255,255,0.04))]" />
       {spinning ? (
-        <div className="animate-reel-spin flex flex-col gap-4">
+        <div className="animate-reel-spin relative flex flex-col gap-4">
           {reelBlurbs.map((t, i) => (
             <p
               key={i}
-              className="m-0 font-sans text-lg text-slate-400 opacity-70 blur-[2px] dark:text-white dark:opacity-30"
+              className="m-0 font-sans text-lg text-white/56 opacity-80 blur-[2px]"
             >
               {t}
             </p>
           ))}
         </div>
       ) : promptEditing ? (
-        <div className="flex w-full flex-col items-center justify-center">
+        <div className="relative flex w-full flex-col items-center justify-center">
           <textarea
             ref={textareaRef}
             value={promptDraft}
@@ -102,7 +105,7 @@ export default function TopicReel({
               }
             }}
             rows={3}
-            className="w-full resize-none bg-transparent p-0 text-center font-sans text-xl leading-relaxed font-medium text-slate-900 outline-none dark:text-white"
+            className="w-full resize-none bg-transparent p-0 text-center font-sans text-xl leading-relaxed font-medium text-white outline-none placeholder:text-white/38"
             placeholder="Type your speaking prompt"
             autoFocus
           />
@@ -128,32 +131,32 @@ export default function TopicReel({
           }}
           className={`flex w-full touch-manipulation flex-col items-center justify-center outline-none ${
             promptEditable
-              ? "cursor-pointer rounded-xl select-none focus-visible:ring-2 focus-visible:ring-blue-500/70 dark:focus-visible:ring-blue-400/60"
+              ? "cursor-pointer rounded-xl select-none focus-visible:ring-2 focus-visible:ring-white/50"
               : ""
           }`}
         >
           <div className="animate-fade-slide-in mb-4 flex justify-center gap-2 [animation-delay:50ms]">
             {isCustom ? (
               <>
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-900 uppercase dark:bg-amber-400/15 dark:text-amber-200">
+                <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
                   Custom
                 </span>
-                <span className="rounded-full bg-slate-200/90 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-slate-700 uppercase dark:bg-white/10 dark:text-slate-300">
+                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
                   Your prompt
                 </span>
               </>
             ) : (
               <>
-                <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-blue-800 uppercase dark:bg-blue-400/15 dark:text-blue-300">
+                <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
                   {topic.category}
                 </span>
-                <span className="rounded-full bg-slate-200/90 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-slate-700 uppercase dark:bg-white/10 dark:text-slate-300">
+                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
                   {topic.difficulty}
                 </span>
               </>
             )}
           </div>
-          <p className="animate-fade-slide-in m-0 max-h-[88px] overflow-y-auto font-sans text-xl leading-relaxed font-medium text-slate-900 [animation-delay:100ms] dark:text-white">
+          <p className="animate-fade-slide-in m-0 max-h-[88px] overflow-y-auto font-sans text-xl leading-relaxed font-medium text-white [animation-delay:100ms]">
             {displayText}
           </p>
         </div>

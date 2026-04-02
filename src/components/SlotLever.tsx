@@ -89,7 +89,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-700 uppercase dark:text-slate-400">
+      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-950 uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
         Generate
       </div>
       <div
@@ -201,14 +201,14 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         />
       </div>
       <div
-        className={`mt-2.5 flex h-[14px] w-[7rem] shrink-0 items-center justify-center text-center text-[10px] font-semibold tracking-[1.5px] uppercase ${
+        className={`mt-2.5 flex h-[14px] w-[7rem] shrink-0 items-center justify-center text-center text-[10px] font-semibold tracking-[1.5px] uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
           phase === "landed"
-            ? "text-green-600 dark:text-green-400"
+            ? "text-emerald-800 dark:text-emerald-300"
             : phase === "spinning"
-              ? "text-slate-700 dark:text-slate-400"
+              ? "text-slate-950 dark:text-white/90"
               : isPastThreshold
-                ? "text-amber-600 dark:text-amber-400"
-                : "text-slate-700 dark:text-slate-400"
+                ? "text-amber-800 dark:text-amber-300"
+                : "text-slate-950 dark:text-white/90"
         }`}
         aria-live="polite"
       >
@@ -223,7 +223,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         )}
       </div>
       <div
-        className={`mt-0.5 animate-bounce text-sm text-slate-600 transition-opacity dark:text-slate-400 ${
+        className={`mt-0.5 animate-bounce text-sm text-slate-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] transition-opacity dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
           phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
         }`}
       >
