@@ -66,6 +66,7 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         micOn={session.micOn}
         isRecording={session.isRecording}
         recordedBlob={session.recordedBlob}
+        recordedUrl={session.recordedUrl}
         isPreparingDownload={session.isPreparingDownload}
         includePromptOverlay={session.includePromptOverlay}
         includeTimerOverlay={session.includeTimerOverlay}

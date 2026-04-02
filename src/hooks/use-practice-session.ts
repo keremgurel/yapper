@@ -17,23 +17,24 @@ async function resetTrackZoom(track: MediaStreamTrack | undefined) {
   if (!track || track.kind !== "video") return;
 
   const configurableTrack = track as MediaStreamTrack & {
-    getCapabilities?: () => MediaTrackCapabilities & {
-      zoom?: { min?: number };
-    };
+    getCapabilities?: () => MediaTrackCapabilities;
     applyConstraints: (constraints: MediaTrackConstraints) => Promise<void>;
   };
-  const capabilities = configurableTrack.getCapabilities?.();
+  const capabilities = configurableTrack.getCapabilities?.() as
+    | unknown
+    | undefined;
+  const zoomCapability = (
+    capabilities as { zoom?: { min?: number } } | undefined
+  )?.zoom;
   const minZoom =
-    typeof capabilities?.zoom === "object" && capabilities.zoom
-      ? capabilities.zoom.min
-      : undefined;
+    typeof zoomCapability?.min === "number" ? zoomCapability.min : undefined;
 
   if (typeof minZoom !== "number") return;
 
   try {
     await configurableTrack.applyConstraints({
-      advanced: [{ zoom: minZoom }],
-    });
+      advanced: [{ zoom: minZoom } as MediaTrackConstraintSet],
+    } as MediaTrackConstraints);
   } catch {
     // Ignore zoom reset failures. Browsers vary on support here.
   }
@@ -77,6 +78,7 @@ export function usePracticeSession(initialTopic: Topic) {
   const [micOn, setMicOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
   const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
   const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
@@ -256,6 +258,14 @@ export function usePracticeSession(initialTopic: Topic) {
     timeLeftRef.current = timeLeft;
   }, [timeLeft]);
 
+  const clearRecordedMedia = useCallback(() => {
+    setRecordedBlob(null);
+    setRecordedUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  }, []);
+
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -302,7 +312,7 @@ export function usePracticeSession(initialTopic: Topic) {
     setSettingsOpen(false);
     setPromptEditorOpen(false);
     setTimeEditorOpen(false);
-    setRecordedBlob(null);
+    clearRecordedMedia();
     setIsPreparingDownload(false);
 
     if (!streamRef.current) return;
@@ -340,11 +350,16 @@ export function usePracticeSession(initialTopic: Topic) {
       };
       recorderRef.current.onstop = () => {
         const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
+        const nextUrl = URL.createObjectURL(nextBlob);
         recorderCleanupRef.current?.();
         recorderCleanupRef.current = null;
         recorderRef.current = null;
         setIsRecording(false);
         setRecordedBlob(nextBlob);
+        setRecordedUrl((current) => {
+          if (current) URL.revokeObjectURL(current);
+          return nextUrl;
+        });
         setIsPreparingDownload(false);
       };
       recorderRef.current.start(200);
@@ -362,6 +377,7 @@ export function usePracticeSession(initialTopic: Topic) {
     });
   }, [
     cameraOn,
+    clearRecordedMedia,
     customPromptText,
     effectiveVideoFormat,
     includePromptOverlay,
@@ -384,8 +400,9 @@ export function usePracticeSession(initialTopic: Topic) {
     setSettingsOpen(false);
     setTimeLeft(timerSeconds);
     setIsPreparingDownload(false);
+    clearRecordedMedia();
     resetRecorderState();
-  }, [resetRecorderState, timerSeconds]);
+  }, [clearRecordedMedia, resetRecorderState, timerSeconds]);
 
   const handleKnobChange = useCallback(
     (value: number) => {
@@ -512,9 +529,10 @@ export function usePracticeSession(initialTopic: Topic) {
   useEffect(() => {
     return () => {
       recorderCleanupRef.current?.();
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
       streamRef.current?.getTracks().forEach((track) => track.stop());
     };
-  }, []);
+  }, [recordedUrl]);
 
   const downloadRecording = useCallback(() => {
     if (!recordedBlob) return;
@@ -547,6 +565,7 @@ export function usePracticeSession(initialTopic: Topic) {
     micOn,
     isRecording,
     recordedBlob,
+    recordedUrl,
     isPreparingDownload,
     includePromptOverlay,
     includeTimerOverlay,

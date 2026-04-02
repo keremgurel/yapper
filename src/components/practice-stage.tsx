@@ -31,6 +31,7 @@ interface PracticeStageProps {
   micOn: boolean;
   isRecording: boolean;
   recordedBlob: Blob | null;
+  recordedUrl: string | null;
   isPreparingDownload: boolean;
   includePromptOverlay: boolean;
   includeTimerOverlay: boolean;
@@ -89,6 +90,7 @@ export default function PracticeStage({
   micOn,
   isRecording,
   recordedBlob,
+  recordedUrl,
   isPreparingDownload,
   includePromptOverlay,
   includeTimerOverlay,
@@ -574,6 +576,7 @@ export default function PracticeStage({
             cameraOn={cameraOn}
             micOn={micOn}
             recordedBlob={recordedBlob}
+            recordedUrl={recordedUrl}
             isPreparingDownload={isPreparingDownload}
             onTryAnother={() => {
               onReset();
