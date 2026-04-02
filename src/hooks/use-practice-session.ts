@@ -8,7 +8,7 @@ import {
   getRandomTopic,
   pickReelBlurbs,
 } from "@/lib/practice-helpers";
-import { exportRecordingWithOverlays } from "@/lib/video-export";
+import { startLiveStageRecording } from "@/lib/live-stage-recorder";
 
 const RECORDING_VIDEO_BITS_PER_SECOND = 12_000_000;
 const RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
@@ -43,12 +43,14 @@ function getPreferredVideoConstraints(format: "portrait" | "landscape") {
   return format === "landscape"
     ? {
         facingMode: "user",
+        aspectRatio: { ideal: 16 / 9 },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         frameRate: { ideal: 30, max: 60 },
       }
     : {
         facingMode: "user",
+        aspectRatio: { ideal: 9 / 16 },
         width: { ideal: 1080 },
         height: { ideal: 1920 },
         frameRate: { ideal: 30, max: 60 },
@@ -78,11 +80,9 @@ export function usePracticeSession(initialTopic: Topic) {
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
   const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
   const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
-  const [isExportingVideo, setIsExportingVideo] = useState(false);
-  const [videoFormat, setVideoFormat] = useState<"portrait" | "landscape">(
+  const [videoFormat, setVideoFormatState] = useState<"portrait" | "landscape">(
     "landscape",
   );
-  const [exportProgress, setExportProgress] = useState(0);
   const [isCompactDevice, setIsCompactDevice] = useState(false);
   const [hasCustomizedFormat, setHasCustomizedFormat] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -92,14 +92,20 @@ export function usePracticeSession(initialTopic: Topic) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderCleanupRef = useRef<(() => void) | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timeInputRef = useRef<HTMLInputElement>(null);
   const appliedVideoFormatRef = useRef<"portrait" | "landscape" | null>(null);
+  const timeLeftRef = useRef(60);
 
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
-  const effectiveVideoFormat = videoFormat;
+  const effectiveVideoFormat = hasCustomizedFormat
+    ? videoFormat
+    : isCompactDevice
+      ? "portrait"
+      : "landscape";
 
   useEffect(() => {
     const query = window.matchMedia("(pointer: coarse)");
@@ -118,10 +124,44 @@ export function usePracticeSession(initialTopic: Topic) {
     };
   }, []);
 
-  useEffect(() => {
-    if (hasCustomizedFormat) return;
-    setVideoFormat(isCompactDevice ? "portrait" : "landscape");
-  }, [hasCustomizedFormat, isCompactDevice]);
+  const attachStream = useCallback(() => {
+    if (!videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = null;
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.play().catch(() => {});
+  }, []);
+
+  const replaceVideoTrack = useCallback(
+    async (format: "portrait" | "landscape") => {
+      const previousStream = streamRef.current;
+      const audioTracks = previousStream?.getAudioTracks() ?? [];
+
+      videoRef.current?.pause();
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      previousStream?.getVideoTracks().forEach((track) => {
+        previousStream.removeTrack(track);
+        track.stop();
+      });
+
+      const nextVideoStream = await navigator.mediaDevices.getUserMedia({
+        video: getPreferredVideoConstraints(format),
+      });
+      const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
+      await resetTrackZoom(nextVideoTrack);
+
+      const nextStream = new MediaStream();
+      audioTracks.forEach((track) => nextStream.addTrack(track));
+      nextStream.addTrack(nextVideoTrack);
+      streamRef.current = nextStream;
+      appliedVideoFormatRef.current = format;
+
+      requestAnimationFrame(() => attachStream());
+    },
+    [attachStream],
+  );
 
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
@@ -213,6 +253,10 @@ export function usePracticeSession(initialTopic: Topic) {
   }, [timeEditorOpen]);
 
   useEffect(() => {
+    timeLeftRef.current = timeLeft;
+  }, [timeLeft]);
+
+  useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((current) => {
@@ -237,7 +281,20 @@ export function usePracticeSession(initialTopic: Topic) {
     };
   }, [isPaused, isRunning, timeLeft]);
 
+  const resetRecorderState = useCallback(() => {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    recorderCleanupRef.current?.();
+    recorderCleanupRef.current = null;
+    recorderRef.current = null;
+  }, []);
+
   const startTimer = useCallback(() => {
+    timeLeftRef.current = timerSeconds;
     setTimeLeft(timerSeconds);
     setIsRunning(true);
     setIsPaused(false);
@@ -247,33 +304,73 @@ export function usePracticeSession(initialTopic: Topic) {
     setTimeEditorOpen(false);
     setRecordedBlob(null);
     setIsPreparingDownload(false);
-    setIsExportingVideo(false);
 
     if (!streamRef.current) return;
 
     chunksRef.current = [];
     setIsPreparingDownload(true);
 
-    const recorder = new MediaRecorder(streamRef.current, {
-      mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : "video/webm",
-      videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
-      audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
-    });
+    const startRecorder = async () => {
+      if (cameraOn) {
+        const liveRecorder = await startLiveStageRecording({
+          sourceStream: streamRef.current!,
+          prompt: customPromptText ?? topic.text,
+          format: effectiveVideoFormat,
+          showPromptOverlay: includePromptOverlay,
+          showTimerOverlay: includeTimerOverlay,
+          categoryLabel: customPromptText ? "Custom" : topic.category,
+          difficultyLabel: customPromptText ? "Your prompt" : topic.difficulty,
+          getTimeLeft: () => timeLeftRef.current,
+        });
+        recorderRef.current = liveRecorder.recorder;
+        recorderCleanupRef.current = liveRecorder.cleanup;
+      } else {
+        recorderRef.current = new MediaRecorder(streamRef.current!, {
+          mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+            ? "video/webm;codecs=vp9,opus"
+            : "video/webm",
+          videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
+          audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
+        });
+        recorderCleanupRef.current = null;
+      }
 
-    recorderRef.current = recorder;
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) chunksRef.current.push(event.data);
+      recorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) chunksRef.current.push(event.data);
+      };
+      recorderRef.current.onstop = () => {
+        const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
+        recorderCleanupRef.current?.();
+        recorderCleanupRef.current = null;
+        recorderRef.current = null;
+        setIsRecording(false);
+        setRecordedBlob(nextBlob);
+        setIsPreparingDownload(false);
+      };
+      recorderRef.current.start(200);
+      setIsRecording(true);
     };
-    recorder.onstop = () => {
-      const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
-      setRecordedBlob(nextBlob);
+
+    startRecorder().catch(() => {
+      recorderCleanupRef.current?.();
+      recorderCleanupRef.current = null;
+      recorderRef.current = null;
       setIsPreparingDownload(false);
-    };
-    recorder.start();
-    setIsRecording(true);
-  }, [timerSeconds]);
+      setIsRunning(false);
+      setIsPaused(false);
+      alert("Recording could not be started.");
+    });
+  }, [
+    cameraOn,
+    customPromptText,
+    effectiveVideoFormat,
+    includePromptOverlay,
+    includeTimerOverlay,
+    timerSeconds,
+    topic.category,
+    topic.difficulty,
+    topic.text,
+  ]);
 
   const pauseTimer = useCallback(() => {
     setIsPaused((current) => !current);
@@ -287,12 +384,8 @@ export function usePracticeSession(initialTopic: Topic) {
     setSettingsOpen(false);
     setTimeLeft(timerSeconds);
     setIsPreparingDownload(false);
-    setIsExportingVideo(false);
-    if (recorderRef.current?.state === "recording") {
-      recorderRef.current.stop();
-      setIsRecording(false);
-    }
-  }, [timerSeconds]);
+    resetRecorderState();
+  }, [resetRecorderState, timerSeconds]);
 
   const handleKnobChange = useCallback(
     (value: number) => {
@@ -325,33 +418,6 @@ export function usePracticeSession(initialTopic: Topic) {
       }
     },
     [isRunning, openTimeEditor],
-  );
-
-  const attachStream = useCallback(() => {
-    if (!videoRef.current || !streamRef.current) return;
-    videoRef.current.srcObject = streamRef.current;
-    videoRef.current.play().catch(() => {});
-  }, []);
-
-  const replaceVideoTrack = useCallback(
-    async (format: "portrait" | "landscape") => {
-      const nextVideoStream = await navigator.mediaDevices.getUserMedia({
-        video: getPreferredVideoConstraints(format),
-      });
-      const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
-      await resetTrackZoom(nextVideoTrack);
-
-      const currentStream = streamRef.current ?? new MediaStream();
-      currentStream.getVideoTracks().forEach((track) => {
-        currentStream.removeTrack(track);
-        track.stop();
-      });
-      currentStream.addTrack(nextVideoTrack);
-      streamRef.current = currentStream;
-      appliedVideoFormatRef.current = format;
-      requestAnimationFrame(() => attachStream());
-    },
-    [attachStream],
   );
 
   const toggleCamera = useCallback(async () => {
@@ -413,6 +479,8 @@ export function usePracticeSession(initialTopic: Topic) {
           nextStream
             .getVideoTracks()
             .forEach((track) => nextStream.removeTrack(track));
+        } else {
+          appliedVideoFormatRef.current = effectiveVideoFormat;
         }
       }
       setMicOn(true);
@@ -441,47 +509,23 @@ export function usePracticeSession(initialTopic: Topic) {
     });
   }, [cameraOn, effectiveVideoFormat, isRunning, replaceVideoTrack]);
 
-  const downloadRecording = useCallback(async () => {
-    if (!recordedBlob || isExportingVideo) return;
+  useEffect(() => {
+    return () => {
+      recorderCleanupRef.current?.();
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
-    setIsExportingVideo(true);
-    setExportProgress(0);
+  const downloadRecording = useCallback(() => {
+    if (!recordedBlob) return;
 
-    try {
-      const exportedBlob =
-        !cameraOn && micOn
-          ? recordedBlob
-          : await exportRecordingWithOverlays({
-              blob: recordedBlob,
-              prompt: customPromptText ?? topic.text,
-              timerSeconds,
-              showPromptOverlay: includePromptOverlay,
-              showTimerOverlay: includeTimerOverlay,
-              format: effectiveVideoFormat,
-              onProgress: (progress) => setExportProgress(progress),
-            });
-
-      const downloadUrl = URL.createObjectURL(exportedBlob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-    } finally {
-      setIsExportingVideo(false);
-    }
-  }, [
-    customPromptText,
-    includePromptOverlay,
-    includeTimerOverlay,
-    isExportingVideo,
-    cameraOn,
-    micOn,
-    recordedBlob,
-    timerSeconds,
-    topic.text,
-    effectiveVideoFormat,
-  ]);
+    const downloadUrl = URL.createObjectURL(recordedBlob);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  }, [recordedBlob]);
 
   return {
     topic,
@@ -506,9 +550,7 @@ export function usePracticeSession(initialTopic: Topic) {
     isPreparingDownload,
     includePromptOverlay,
     includeTimerOverlay,
-    isExportingVideo,
     videoFormat: effectiveVideoFormat,
-    exportProgress,
     isCompactDevice,
     settingsOpen,
     inSession,
@@ -543,7 +585,7 @@ export function usePracticeSession(initialTopic: Topic) {
     toggleSettings: () => setSettingsOpen((current) => !current),
     setVideoFormat: (format: "portrait" | "landscape") => {
       setHasCustomizedFormat(true);
-      setVideoFormat(format);
+      setVideoFormatState(format);
     },
   };
 }

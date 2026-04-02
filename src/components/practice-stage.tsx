@@ -161,6 +161,8 @@ export default function PracticeStage({
     videoFormat === "portrait"
       ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
       : "aspect-[16/9] h-auto max-h-full w-full";
+  const showPromptInLiveStage = includePromptOverlay || !inSession || !cameraOn;
+  const showTimerInLiveStage = includeTimerOverlay || !inSession || !cameraOn;
 
   return (
     <main
@@ -373,7 +375,13 @@ export default function PracticeStage({
         </div>
 
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
-          <div className="w-full max-w-[560px]">
+          <div
+            className={`w-full max-w-[560px] transition-opacity duration-300 ${
+              showPromptInLiveStage
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+          >
             <TopicReel
               topic={topic}
               spinning={spinning}
@@ -389,7 +397,13 @@ export default function PracticeStage({
             />
           </div>
 
-          <div className="flex flex-col items-center gap-1">
+          <div
+            className={`flex flex-col items-center gap-1 transition-opacity duration-300 ${
+              showTimerInLiveStage
+                ? "opacity-100"
+                : "pointer-events-none opacity-0"
+            }`}
+          >
             {timeEditorOpen ? (
               <div className="flex flex-col items-center gap-1">
                 <input

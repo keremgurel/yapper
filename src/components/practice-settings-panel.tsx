@@ -205,25 +205,25 @@ export default function PracticeSettingsPanel({
               <div className="flex flex-col gap-4 rounded-[28px] border border-white/12 bg-black/18 p-4 backdrop-blur-xl md:p-5">
                 <div>
                   <p className="text-[11px] font-semibold tracking-[0.2em] text-white/40 uppercase">
-                    Export Overlays
+                    Recording Overlays
                   </p>
                   <p className="mt-2 text-[14px] leading-relaxed text-white/58">
-                    These settings control what gets burned into the downloaded
-                    recording. You can expand this panel later with more camera
-                    controls.
+                    These settings control what stays visible during the take
+                    and in the downloaded recording. You can expand this panel
+                    later with more camera controls.
                   </p>
                 </div>
 
                 <ToggleRow
                   label="Prompt overlay"
-                  description="Keep the topic visible on the saved clip."
+                  description="Keep the topic visible while recording and in the saved clip."
                   active={includePromptOverlay}
                   onToggle={() => onPromptOverlayToggle(!includePromptOverlay)}
                 />
 
                 <ToggleRow
                   label="Timer overlay"
-                  description="Show the countdown in the exported video."
+                  description="Show the countdown during the take and in the saved clip."
                   active={includeTimerOverlay}
                   onToggle={() => onTimerOverlayToggle(!includeTimerOverlay)}
                 />
