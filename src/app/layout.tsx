@@ -83,9 +83,9 @@ export const metadata: Metadata = {
     description,
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
   },
   formatDetection: {
     email: false,
@@ -114,6 +114,12 @@ export default function RootLayout({
       className={`${bodySans.variable} ${displaySans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Explicit favicon tags to avoid browser/metadata inconsistencies. */}
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+      </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider
           attribute="class"
