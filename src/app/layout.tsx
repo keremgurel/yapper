@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import {
   Geist_Mono,
   Inter_Tight,
@@ -115,6 +116,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-09JET8C3M0"
+          strategy="beforeInteractive"
+        />
+        <Script id="google-analytics" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-09JET8C3M0');`}
+        </Script>
         {/* Explicit favicon tags to avoid browser/metadata inconsistencies. */}
         <link rel="icon" href="/favicon.ico" type="image/x-icon" />
         <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
