@@ -118,37 +118,46 @@ export function playSlotLand() {
   }
 }
 
-// Lever pull with a mechanical ratchet click, like a real slot lever.
+function toneBurst(
+  ac: AudioContext,
+  t: number,
+  frequency: number,
+  endFrequency: number,
+  duration: number,
+  volume: number,
+  type: OscillatorType = "triangle",
+) {
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, t);
+  osc.frequency.exponentialRampToValueAtTime(
+    Math.max(1, endFrequency),
+    t + duration,
+  );
+  gain.gain.setValueAtTime(volume, t);
+  gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(t);
+  osc.stop(t + duration);
+}
+
+// Lever pull with one weighted mechanical cha-chunk.
 export function playLeverCreak() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Ratchet click with the same character as the slot ticks, but heavier
-    const len = 0.008;
-    const buf = ac.createBuffer(
-      1,
-      Math.ceil(ac.sampleRate * len),
-      ac.sampleRate,
-    );
-    const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-    }
-    const src = ac.createBufferSource();
-    src.buffer = buf;
-    const hp = ac.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = 1200;
-    const gain = ac.createGain();
-    gain.gain.setValueAtTime(0.09, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + len);
-    src.connect(hp).connect(gain).connect(ac.destination);
-    src.start(t);
-    src.stop(t + len);
+    // Main weighted thunk.
+    noiseBlip(ac, t, 0.04, 160, 0.9, 0.13, "lowpass");
+    toneBurst(ac, t, 140, 82, 0.075, 0.04, "triangle");
 
-    // Low thud body that gives it weight
-    noiseBlip(ac, t, 0.012, 300, 1.5, 0.05, "lowpass");
+    // Mid mechanical clack, more switch than sci-fi zap.
+    noiseBlip(ac, t + 0.012, 0.016, 950, 1.8, 0.055, "bandpass");
+    toneBurst(ac, t + 0.014, 320, 190, 0.04, 0.018, "triangle");
+
+    // Tiny wood-and-metal tail.
+    noiseBlip(ac, t + 0.03, 0.024, 420, 1.1, 0.022, "lowpass");
   } catch {
     // Audio not available
   }

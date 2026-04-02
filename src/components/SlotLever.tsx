@@ -15,7 +15,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
   const [isDragging, setIsDragging] = useState(false);
   const dragging = useRef(false);
   const startY = useRef(0);
-  const lastCreak = useRef(0);
+  const thresholdSoundPlayed = useRef(false);
   const pullRef = useRef(0);
   const maxPull = 120;
   const threshold = 70;
@@ -28,6 +28,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       setIsDragging(true);
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       startY.current = clientY - pullRef.current;
+      thresholdSoundPlayed.current = false;
       setPhase("pulling");
     },
     [phase],
@@ -45,10 +46,12 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const delta = Math.max(0, Math.min(maxPull, clientY - startY.current));
       setPullY(delta);
-      const now = Date.now();
-      if (delta > 15 && now - lastCreak.current > 80) {
+
+      if (delta >= threshold && !thresholdSoundPlayed.current) {
         playLeverCreak();
-        lastCreak.current = now;
+        thresholdSoundPlayed.current = true;
+      } else if (delta < threshold - 10) {
+        thresholdSoundPlayed.current = false;
       }
     };
 
@@ -56,6 +59,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       if (!dragging.current) return;
       dragging.current = false;
       setIsDragging(false);
+
       if (pullRef.current >= threshold) {
         setPhase("spinning");
         playSlotSpin();
