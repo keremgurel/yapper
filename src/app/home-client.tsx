@@ -92,6 +92,7 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         onKnobChange={session.handleKnobChange}
         onStart={session.startTimer}
         onPause={session.pauseTimer}
+        onFinish={session.finishTimer}
         onReset={session.resetTimer}
         onMicToggle={session.toggleMic}
         onCameraToggle={session.toggleCamera}

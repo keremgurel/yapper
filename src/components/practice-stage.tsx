@@ -57,6 +57,7 @@ interface PracticeStageProps {
   onKnobChange: (value: number) => void;
   onStart: () => void;
   onPause: () => void;
+  onFinish: () => void;
   onReset: () => void;
   onMicToggle: () => void;
   onCameraToggle: () => void;
@@ -112,6 +113,7 @@ export default function PracticeStage({
   onKnobChange,
   onStart,
   onPause,
+  onFinish,
   onReset,
   onMicToggle,
   onCameraToggle,
@@ -475,6 +477,12 @@ export default function PracticeStage({
                     }`}
                   >
                     {isPaused ? "Resume" : "Pause"}
+                  </button>
+                  <button
+                    onClick={onFinish}
+                    className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                  >
+                    Finish
                   </button>
                   <button onClick={onReset} className={sessionBtnIdle}>
                     Reset

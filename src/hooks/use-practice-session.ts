@@ -57,6 +57,62 @@ function getPreferredVideoConstraints(format: "portrait" | "landscape") {
       };
 }
 
+function getVideoConstraintCandidates(format: "portrait" | "landscape") {
+  const shared = {
+    facingMode: "user",
+    frameRate: { ideal: 30, max: 60 },
+    resizeMode: "crop-and-scale" as ConstrainDOMString,
+  };
+
+  return format === "landscape"
+    ? [
+        {
+          ...shared,
+          width: { exact: 1920 },
+          height: { exact: 1080 },
+          aspectRatio: { exact: 16 / 9 },
+        },
+        {
+          ...shared,
+          width: { exact: 1280 },
+          height: { exact: 720 },
+          aspectRatio: { exact: 16 / 9 },
+        },
+        getPreferredVideoConstraints(format),
+      ]
+    : [
+        {
+          ...shared,
+          width: { exact: 1080 },
+          height: { exact: 1920 },
+          aspectRatio: { exact: 9 / 16 },
+        },
+        {
+          ...shared,
+          width: { exact: 720 },
+          height: { exact: 1280 },
+          aspectRatio: { exact: 9 / 16 },
+        },
+        getPreferredVideoConstraints(format),
+      ];
+}
+
+async function requestVideoStream(format: "portrait" | "landscape") {
+  let lastError: unknown;
+
+  for (const constraints of getVideoConstraintCandidates(format)) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: constraints,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
 export function usePracticeSession(initialTopic: Topic) {
   const [topic, setTopic] = useState<Topic>(initialTopic);
   const [spinning, setSpinning] = useState(false);
@@ -143,9 +199,7 @@ export function usePracticeSession(initialTopic: Topic) {
         track.stop();
       });
 
-      const nextVideoStream = await navigator.mediaDevices.getUserMedia({
-        video: getPreferredVideoConstraints(format),
-      });
+      const nextVideoStream = await requestVideoStream(format);
       const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
       await resetTrackZoom(nextVideoTrack);
 
@@ -346,6 +400,23 @@ export function usePracticeSession(initialTopic: Topic) {
     setIsPaused((current) => !current);
   }, []);
 
+  const finishTimer = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setIsRunning(false);
+    setIsPaused(false);
+    setTimerDone(true);
+    setSettingsOpen(false);
+
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    recorderRef.current = null;
+    setIsPreparingDownload(false);
+  }, []);
+
   const resetTimer = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     setIsRunning(false);
@@ -461,12 +532,28 @@ export function usePracticeSession(initialTopic: Topic) {
         const audioTrack = audioStream.getAudioTracks()[0];
         streamRef.current.addTrack(audioTrack);
       } else {
-        const nextStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: cameraOn
-            ? getPreferredVideoConstraints(effectiveVideoFormat)
-            : false,
-        });
+        const nextStream = cameraOn
+          ? await (async () => {
+              const nextVideoStream =
+                await requestVideoStream(effectiveVideoFormat);
+              const nextAudioStream = await navigator.mediaDevices.getUserMedia(
+                {
+                  audio: true,
+                },
+              );
+              const mergedStream = new MediaStream();
+              nextVideoStream
+                .getVideoTracks()
+                .forEach((track) => mergedStream.addTrack(track));
+              nextAudioStream
+                .getAudioTracks()
+                .forEach((track) => mergedStream.addTrack(track));
+              return mergedStream;
+            })()
+          : await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: false,
+            });
         streamRef.current = nextStream;
         if (!cameraOn) {
           nextStream.getVideoTracks().forEach((track) => track.stop());
@@ -564,6 +651,7 @@ export function usePracticeSession(initialTopic: Topic) {
     cancelTimeDraft,
     startTimer,
     pauseTimer,
+    finishTimer,
     resetTimer,
     handleKnobChange,
     handleTimerDoubleClick,
