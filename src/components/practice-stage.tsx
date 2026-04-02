@@ -8,6 +8,7 @@ import RotaryKnob from "@/components/RotaryKnob";
 import SlotLever from "@/components/SlotLever";
 import TopicReel from "@/components/TopicReel";
 import CompletionScreen from "@/components/CompletionScreen";
+import PracticeSettingsPanel from "@/components/practice-settings-panel";
 import { MeshGradient } from "@paper-design/shaders-react";
 
 interface PracticeStageProps {
@@ -31,6 +32,11 @@ interface PracticeStageProps {
   isRecording: boolean;
   recordedBlob: Blob | null;
   isPreparingDownload: boolean;
+  includePromptOverlay: boolean;
+  includeTimerOverlay: boolean;
+  videoFormat: "portrait" | "landscape";
+  isCompactDevice: boolean;
+  settingsOpen: boolean;
   inSession: boolean;
   canEditPrompt: boolean;
   canEditTime: boolean;
@@ -56,6 +62,11 @@ interface PracticeStageProps {
   onMicToggle: () => void;
   onCameraToggle: () => void;
   onDownloadRecording: () => void;
+  onOpenSettings: () => void;
+  onCloseSettings: () => void;
+  onFormatChange: (format: "portrait" | "landscape") => void;
+  onPromptOverlayToggle: (value: boolean) => void;
+  onTimerOverlayToggle: (value: boolean) => void;
 }
 
 export default function PracticeStage({
@@ -79,6 +90,11 @@ export default function PracticeStage({
   isRecording,
   recordedBlob,
   isPreparingDownload,
+  includePromptOverlay,
+  includeTimerOverlay,
+  videoFormat,
+  isCompactDevice,
+  settingsOpen,
   inSession,
   canEditPrompt,
   canEditTime,
@@ -104,21 +120,31 @@ export default function PracticeStage({
   onMicToggle,
   onCameraToggle,
   onDownloadRecording,
+  onOpenSettings,
+  onCloseSettings,
+  onFormatChange,
+  onPromptOverlayToggle,
+  onTimerOverlayToggle,
 }: PracticeStageProps) {
   const toolChromePanel =
-    "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur dark:border-white/10 dark:bg-black/35 dark:shadow-none";
+    "rounded-2xl border border-slate-200/90 bg-white/95 p-3 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-black/45 dark:shadow-none";
 
   const selectClass =
-    "min-w-0 flex-1 cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] outline-none backdrop-blur-md sm:flex-none " +
+    "min-w-0 flex-1 cursor-pointer rounded-lg border px-2.5 py-1.5 text-[11px] outline-none backdrop-blur-xl sm:flex-none " +
     (cameraOn
-      ? "border-white/10 bg-black/30 text-white"
-      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/30 dark:text-white");
+      ? "border-white/12 bg-black/42 text-white"
+      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white");
 
   const sessionBtnIdle =
-    "cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 " +
+    "cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-xl transition-opacity hover:opacity-80 " +
     (cameraOn
-      ? "border-white/10 bg-black/30 text-white"
-      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/30 dark:text-white");
+      ? "border-white/12 bg-black/42 text-white"
+      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm dark:border-white/10 dark:bg-black/40 dark:text-white");
+  const toolbarIconButtonClass =
+    "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border backdrop-blur-xl transition-all duration-300 " +
+    (cameraOn
+      ? "border-white/12 bg-black/42 text-white hover:bg-black/52"
+      : "border-slate-200 bg-white/95 text-slate-800 shadow-sm hover:bg-slate-50 dark:border-white/15 dark:bg-white/22 dark:text-white dark:hover:bg-white/28");
 
   const timerColor =
     timeLeft <= 10
@@ -128,38 +154,49 @@ export default function PracticeStage({
         : cameraOn
           ? "text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.75)]"
           : "text-slate-900 dark:text-white";
+  const stageFrameClass = isCompactDevice
+    ? "aspect-[9/16] w-[min(calc(100vw-2rem),calc((100dvh-1.5rem)*9/16))] max-h-[calc(100dvh-1.5rem)] lg:w-[min(calc((100vh-200px)*9/16),100%)]"
+    : "aspect-[16/9] w-full max-w-[min(1200px,100%)] max-h-[calc(100dvh-1.5rem)] md:h-auto md:max-h-[calc(100vh-200px)]";
+  const recordingViewportClass =
+    videoFormat === "portrait"
+      ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
+      : "aspect-[16/9] h-auto max-h-full w-full";
 
   return (
     <main
       id="practice"
-      className="relative flex flex-1 flex-col items-center justify-center overflow-visible px-4 pt-0 pb-16 md:pt-2 md:pb-20"
+      className="relative flex flex-1 flex-col items-center justify-start overflow-visible px-4 pt-0 pb-6 sm:pb-16 md:justify-center md:pt-2 md:pb-20"
     >
-      <div className="shadow-container relative h-[min(90svh,860px)] max-h-[calc(100svh-100px)] w-full max-w-[min(1200px,100%)] overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 md:aspect-[16/9] md:h-auto md:max-h-[calc(100vh-200px)] dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none">
-        {cameraOn && (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="absolute inset-0 h-full w-full object-cover"
+      <div
+        className={`shadow-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none ${stageFrameClass}`}
+      >
+        <div className="absolute inset-0">
+          <MeshGradient
+            className="absolute inset-0 h-full w-full"
+            colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
+            speed={0.3}
+            distortion={0.4}
+            swirl={0.3}
           />
-        )}
+        </div>
 
-        {!cameraOn && (
-          <div className="absolute inset-0">
-            <MeshGradient
-              className="absolute inset-0 h-full w-full"
-              colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
-              speed={0.3}
-              distortion={0.4}
-              swirl={0.3}
-            />
+        {cameraOn && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className={recordingViewportClass}>
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="h-full w-full bg-black object-contain"
+              />
+            </div>
           </div>
         )}
 
-        {cameraOn && <div className="absolute inset-0 bg-black/30" />}
+        {cameraOn && <div className="absolute inset-0 bg-black/18" />}
 
-        <div className="absolute inset-x-4 top-4 z-20 flex items-start justify-between gap-3">
+        <div className="absolute inset-x-4 top-4 z-50 flex items-start justify-between gap-3">
           {isRecording && (
             <div
               className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${
@@ -203,16 +240,14 @@ export default function PracticeStage({
             </select>
           </div>
 
-          <div className="flex shrink-0 gap-2">
+          <div className="relative z-50 flex shrink-0 gap-2">
             <button
               onClick={onMicToggle}
-              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 ${
+              className={
                 micOn
-                  ? cameraOn
-                    ? "border border-white/10 bg-white/15 text-white hover:bg-white/25"
-                    : "border border-slate-200 bg-white/95 text-slate-800 shadow-sm hover:bg-slate-50 dark:border-white/15 dark:bg-white/15 dark:text-white dark:hover:bg-white/25"
-                  : "border border-red-400/40 bg-red-500 text-white hover:bg-red-400"
-              }`}
+                  ? toolbarIconButtonClass
+                  : "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-400/40 bg-red-500 text-white backdrop-blur-md transition-all duration-200 hover:bg-red-400"
+              }
               title={micOn ? "Mute" : "Unmute"}
             >
               {micOn ? (
@@ -253,11 +288,11 @@ export default function PracticeStage({
 
             <button
               onClick={onCameraToggle}
-              className={`flex h-9 w-9 cursor-pointer items-center justify-center rounded-full backdrop-blur-md transition-all duration-200 ${
+              className={
                 cameraOn
-                  ? "border border-white/10 bg-white/15 text-white hover:bg-white/25"
-                  : "border border-red-400/40 bg-red-500 text-white hover:bg-red-400"
-              }`}
+                  ? toolbarIconButtonClass
+                  : "flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-red-400/40 bg-red-500 text-white backdrop-blur-md transition-all duration-200 hover:bg-red-400"
+              }
               title={cameraOn ? "Camera off" : "Camera on"}
             >
               {cameraOn ? (
@@ -287,6 +322,50 @@ export default function PracticeStage({
                 >
                   <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
                   <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              )}
+            </button>
+
+            <button
+              onClick={settingsOpen ? onCloseSettings : onOpenSettings}
+              disabled={inSession}
+              className={`${toolbarIconButtonClass} ${inSession ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
+              aria-label={
+                settingsOpen
+                  ? "Close recording settings"
+                  : "Open recording settings"
+              }
+              title={
+                settingsOpen ? "Close recording settings" : "Recording settings"
+              }
+            >
+              {settingsOpen ? (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4.6H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.49.68.99 1.51 1H21a2 2 0 1 1 0 4h-.09c-.83.01-1.31.52-1.51 1Z" />
                 </svg>
               )}
             </button>
@@ -489,6 +568,17 @@ export default function PracticeStage({
             onDownload={onDownloadRecording}
           />
         )}
+
+        <PracticeSettingsPanel
+          open={settingsOpen}
+          videoFormat={videoFormat}
+          includePromptOverlay={includePromptOverlay}
+          includeTimerOverlay={includeTimerOverlay}
+          isCompactDevice={isCompactDevice}
+          onFormatChange={onFormatChange}
+          onPromptOverlayToggle={onPromptOverlayToggle}
+          onTimerOverlayToggle={onTimerOverlayToggle}
+        />
       </div>
     </main>
   );

@@ -13,6 +13,32 @@ import { exportRecordingWithOverlays } from "@/lib/video-export";
 const RECORDING_VIDEO_BITS_PER_SECOND = 12_000_000;
 const RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
 
+async function resetTrackZoom(track: MediaStreamTrack | undefined) {
+  if (!track || track.kind !== "video") return;
+
+  const configurableTrack = track as MediaStreamTrack & {
+    getCapabilities?: () => MediaTrackCapabilities & {
+      zoom?: { min?: number };
+    };
+    applyConstraints: (constraints: MediaTrackConstraints) => Promise<void>;
+  };
+  const capabilities = configurableTrack.getCapabilities?.();
+  const minZoom =
+    typeof capabilities?.zoom === "object" && capabilities.zoom
+      ? capabilities.zoom.min
+      : undefined;
+
+  if (typeof minZoom !== "number") return;
+
+  try {
+    await configurableTrack.applyConstraints({
+      advanced: [{ zoom: minZoom }],
+    });
+  } catch {
+    // Ignore zoom reset failures. Browsers vary on support here.
+  }
+}
+
 function getPreferredVideoConstraints(format: "portrait" | "landscape") {
   return format === "landscape"
     ? {
@@ -29,10 +55,8 @@ function getPreferredVideoConstraints(format: "portrait" | "landscape") {
       };
 }
 
-export function usePracticeSession() {
-  const [topic, setTopic] = useState<Topic>(() =>
-    getRandomTopic(null, "All", "All"),
-  );
+export function usePracticeSession(initialTopic: Topic) {
+  const [topic, setTopic] = useState<Topic>(initialTopic);
   const [spinning, setSpinning] = useState(false);
   const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
@@ -56,10 +80,12 @@ export function usePracticeSession() {
   const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
   const [videoFormat, setVideoFormat] = useState<"portrait" | "landscape">(
-    "portrait",
+    "landscape",
   );
   const [exportProgress, setExportProgress] = useState(0);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isCompactDevice, setIsCompactDevice] = useState(false);
+  const [hasCustomizedFormat, setHasCustomizedFormat] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,17 +94,18 @@ export function usePracticeSession() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timeInputRef = useRef<HTMLInputElement>(null);
+  const appliedVideoFormatRef = useRef<"portrait" | "landscape" | null>(null);
 
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
-  const effectiveVideoFormat = isMobileDevice ? "portrait" : videoFormat;
+  const effectiveVideoFormat = videoFormat;
 
   useEffect(() => {
     const query = window.matchMedia("(pointer: coarse)");
 
     const updateDeviceMode = () => {
-      setIsMobileDevice(query.matches || window.innerWidth < 768);
+      setIsCompactDevice(query.matches || window.innerWidth < 1024);
     };
 
     updateDeviceMode();
@@ -91,8 +118,14 @@ export function usePracticeSession() {
     };
   }, []);
 
+  useEffect(() => {
+    if (hasCustomizedFormat) return;
+    setVideoFormat(isCompactDevice ? "portrait" : "landscape");
+  }, [hasCustomizedFormat, isCompactDevice]);
+
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
+    setSettingsOpen(false);
     setReelBlurbs(pickReelBlurbs());
     setSpinning(true);
     const tickInterval = setInterval(
@@ -112,6 +145,7 @@ export function usePracticeSession() {
       const nextCategory = value as Category | "All";
       setCategory(nextCategory);
       setCustomPromptText(null);
+      setSettingsOpen(false);
       setTopic(getRandomTopic(topic, nextCategory, difficulty));
     },
     [difficulty, topic],
@@ -122,12 +156,14 @@ export function usePracticeSession() {
       const nextDifficulty = value as Difficulty | "All";
       setDifficulty(nextDifficulty);
       setCustomPromptText(null);
+      setSettingsOpen(false);
       setTopic(getRandomTopic(topic, category, nextDifficulty));
     },
     [category, topic],
   );
 
   const openPromptEditor = useCallback(() => {
+    setSettingsOpen(false);
     setPromptDraft(customPromptText ?? topic.text);
     setPromptEditorOpen(true);
   }, [customPromptText, topic.text]);
@@ -144,6 +180,7 @@ export function usePracticeSession() {
   }, [customPromptText, topic.text]);
 
   const openTimeEditor = useCallback(() => {
+    setSettingsOpen(false);
     setTimeDraft(String(timerSeconds));
     setTimeEditorOpen(true);
   }, [timerSeconds]);
@@ -205,6 +242,7 @@ export function usePracticeSession() {
     setIsRunning(true);
     setIsPaused(false);
     setTimerDone(false);
+    setSettingsOpen(false);
     setPromptEditorOpen(false);
     setTimeEditorOpen(false);
     setRecordedBlob(null);
@@ -246,6 +284,7 @@ export function usePracticeSession() {
     setIsRunning(false);
     setIsPaused(false);
     setTimerDone(false);
+    setSettingsOpen(false);
     setTimeLeft(timerSeconds);
     setIsPreparingDownload(false);
     setIsExportingVideo(false);
@@ -294,12 +333,34 @@ export function usePracticeSession() {
     videoRef.current.play().catch(() => {});
   }, []);
 
+  const replaceVideoTrack = useCallback(
+    async (format: "portrait" | "landscape") => {
+      const nextVideoStream = await navigator.mediaDevices.getUserMedia({
+        video: getPreferredVideoConstraints(format),
+      });
+      const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
+      await resetTrackZoom(nextVideoTrack);
+
+      const currentStream = streamRef.current ?? new MediaStream();
+      currentStream.getVideoTracks().forEach((track) => {
+        currentStream.removeTrack(track);
+        track.stop();
+      });
+      currentStream.addTrack(nextVideoTrack);
+      streamRef.current = currentStream;
+      appliedVideoFormatRef.current = format;
+      requestAnimationFrame(() => attachStream());
+    },
+    [attachStream],
+  );
+
   const toggleCamera = useCallback(async () => {
     if (cameraOn) {
       streamRef.current?.getVideoTracks().forEach((track) => track.stop());
       streamRef.current
         ?.getVideoTracks()
         .forEach((track) => streamRef.current!.removeTrack(track));
+      appliedVideoFormatRef.current = null;
       setCameraOn(false);
 
       if (!micOn) {
@@ -310,31 +371,12 @@ export function usePracticeSession() {
     }
 
     try {
-      if (streamRef.current) {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(effectiveVideoFormat),
-        });
-        const videoTrack = videoStream.getVideoTracks()[0];
-        streamRef.current.addTrack(videoTrack);
-      } else {
-        const nextStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(effectiveVideoFormat),
-          audio: micOn,
-        });
-        streamRef.current = nextStream;
-        if (!micOn) {
-          nextStream.getAudioTracks().forEach((track) => track.stop());
-          nextStream
-            .getAudioTracks()
-            .forEach((track) => nextStream.removeTrack(track));
-        }
-      }
+      await replaceVideoTrack(effectiveVideoFormat);
       setCameraOn(true);
-      requestAnimationFrame(() => attachStream());
     } catch {
       alert("Camera access is required.");
     }
-  }, [attachStream, cameraOn, effectiveVideoFormat, micOn]);
+  }, [cameraOn, effectiveVideoFormat, micOn, replaceVideoTrack]);
 
   const toggleMic = useCallback(async () => {
     if (micOn) {
@@ -384,6 +426,20 @@ export function usePracticeSession() {
       requestAnimationFrame(() => attachStream());
     }
   }, [attachStream, cameraOn]);
+
+  useEffect(() => {
+    if (
+      !cameraOn ||
+      isRunning ||
+      appliedVideoFormatRef.current === effectiveVideoFormat
+    ) {
+      return;
+    }
+
+    replaceVideoTrack(effectiveVideoFormat).catch(() => {
+      alert("Camera settings could not be updated.");
+    });
+  }, [cameraOn, effectiveVideoFormat, isRunning, replaceVideoTrack]);
 
   const downloadRecording = useCallback(async () => {
     if (!recordedBlob || isExportingVideo) return;
@@ -453,6 +509,8 @@ export function usePracticeSession() {
     isExportingVideo,
     videoFormat: effectiveVideoFormat,
     exportProgress,
+    isCompactDevice,
+    settingsOpen,
     inSession,
     canEditPrompt,
     canEditTime,
@@ -480,12 +538,11 @@ export function usePracticeSession() {
     toggleCamera,
     toggleMic,
     downloadRecording,
+    openSettings: () => setSettingsOpen(true),
+    closeSettings: () => setSettingsOpen(false),
+    toggleSettings: () => setSettingsOpen((current) => !current),
     setVideoFormat: (format: "portrait" | "landscape") => {
-      if (isMobileDevice) {
-        setVideoFormat("portrait");
-        return;
-      }
-
+      setHasCustomizedFormat(true);
       setVideoFormat(format);
     },
   };

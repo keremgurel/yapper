@@ -31,6 +31,9 @@ export default function CompletionScreen({
   const hasVideo = !!recordedBlob && cameraOn;
   const hasAudioOnly = !!recordedBlob && !cameraOn && micOn;
   const hasRecording = hasVideo || hasAudioOnly;
+  const expectsRecording = cameraOn || micOn;
+  const canShowDownload =
+    expectsRecording && (isPreparingDownload || hasRecording);
 
   return (
     <>
@@ -104,11 +107,11 @@ export default function CompletionScreen({
             style={{ animation: "cs-up 0.4s ease-out 0.6s both" }}
           >
             {/* Download */}
-            {hasRecording && (
+            {canShowDownload && (
               <button
                 type="button"
                 onClick={onDownload}
-                disabled={isPreparingDownload}
+                disabled={isPreparingDownload || !recordedBlob}
                 className="w-full cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 py-3 text-[14px] font-semibold text-white shadow-[0_4px_20px_rgba(37,99,235,0.3)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isPreparingDownload

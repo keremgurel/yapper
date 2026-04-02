@@ -110,10 +110,13 @@ export async function exportRecordingWithOverlays({
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Object-fit cover: scale source to fill target, center-crop
+      // Keep the full camera frame visible so exports never introduce crop-based zoom.
       const srcW = video.videoWidth || canvas.width;
       const srcH = video.videoHeight || canvas.height;
-      const scale = Math.max(canvas.width / srcW, canvas.height / srcH);
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const scale = Math.min(canvas.width / srcW, canvas.height / srcH);
       const drawW = srcW * scale;
       const drawH = srcH * scale;
       const drawX = (canvas.width - drawW) / 2;
