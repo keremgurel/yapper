@@ -3,8 +3,11 @@
   "configurations": [
     {
       "name": "yapper-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "-p", "3001"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 22 && npm run dev -- -p 3001"
+      ],
       "port": 3001
     }
   ]

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { playLeverCreak, playSlotSpin, playSlotLand } from "@/lib/audio";
+import {
+  playLeverCreak,
+  playLeverRelease,
+  preloadLeverSound,
+  playSlotSpin,
+  playSlotLand,
+} from "@/lib/audio";
 
 interface SlotLeverProps {
   onPull: () => void;
@@ -26,6 +32,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       e.preventDefault();
       dragging.current = true;
       setIsDragging(true);
+      preloadLeverSound();
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       startY.current = clientY - pullRef.current;
       thresholdSoundPlayed.current = false;
@@ -62,6 +69,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
       if (pullRef.current >= threshold) {
         setPhase("spinning");
+        playLeverRelease();
         playSlotSpin();
         setPullY(0);
         setTimeout(() => {

@@ -56,7 +56,7 @@ function FormatButton({
     <button
       type="button"
       onClick={onClick}
-      className={`group relative flex cursor-pointer items-center gap-4 overflow-hidden rounded-[28px] border px-5 py-5 text-left transition-all duration-300 ${
+      className={`group relative flex cursor-pointer items-center gap-3 overflow-hidden rounded-[22px] border px-4 py-3.5 text-left transition-all duration-300 md:gap-4 md:rounded-[28px] md:px-5 md:py-5 ${
         active
           ? "border-white/36 bg-[linear-gradient(135deg,rgba(255,255,255,0.28),rgba(255,255,255,0.12))] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_28px_60px_rgba(15,23,42,0.18)] backdrop-blur-3xl"
           : "border-white/14 bg-[linear-gradient(180deg,rgba(8,12,22,0.46),rgba(8,12,22,0.2))] backdrop-blur-xl hover:border-white/24 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0.06))]"
@@ -73,7 +73,7 @@ function FormatButton({
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex items-center gap-3">
           <p
-            className={`font-display text-[24px] leading-none font-semibold transition-colors duration-300 ${
+            className={`font-display text-[20px] leading-none font-semibold transition-colors duration-300 md:text-[24px] ${
               active ? "text-white" : "text-white/78"
             }`}
           >
@@ -151,7 +151,7 @@ export default function PracticeSettingsPanel({
           </motion.div>
 
           <motion.div
-            className="relative flex h-full items-center px-6 py-8 md:px-10"
+            className="relative h-full overflow-y-auto overscroll-contain px-5 pt-16 pb-6 md:flex md:items-center md:overflow-y-visible md:px-10 md:pt-8 md:pb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 14 }}
@@ -161,21 +161,21 @@ export default function PracticeSettingsPanel({
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            <div className="mx-auto grid w-full max-w-[1120px] items-start gap-10 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,380px)] md:gap-14">
-              <div className="space-y-8">
-                <div className="space-y-4">
+            <div className="mx-auto grid w-full max-w-[1120px] items-start gap-6 md:grid-cols-[minmax(0,1.1fr)_minmax(320px,380px)] md:gap-14">
+              <div className="space-y-5 md:space-y-8">
+                <div className="space-y-3 md:space-y-4">
                   <div className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-white/8 px-3 py-1.5 text-[10px] font-semibold tracking-[0.2em] text-white/76 uppercase shadow-[inset_0_1px_0_rgba(255,255,255,0.24)] backdrop-blur-xl">
                     <span className="h-2 w-2 rounded-full bg-blue-300 shadow-[0_0_10px_rgba(147,197,253,0.7)]" />
                     Recording setup
                   </div>
 
-                  <div className="space-y-4">
-                    <h3 className="font-display max-w-[620px] text-[38px] leading-[0.92] font-semibold tracking-[-0.06em] text-white md:text-[64px]">
+                  <div className="space-y-2 md:space-y-4">
+                    <h3 className="font-display max-w-[620px] text-[26px] leading-[0.92] font-semibold tracking-[-0.06em] text-white md:text-[64px]">
                       Set the frame,
                       <br />
                       then start talking.
                     </h3>
-                    <p className="max-w-[560px] text-[16px] leading-relaxed text-white/64 md:text-[18px]">
+                    <p className="max-w-[560px] text-[14px] leading-relaxed text-white/64 md:text-[18px]">
                       Choose the shape that matches where the clip will live.
                       Turn on camera or mic only if you want a replay later. At
                       the end, you can watch it back and download it if it is
@@ -184,7 +184,7 @@ export default function PracticeSettingsPanel({
                   </div>
                 </div>
 
-                <div className="grid gap-6 md:max-w-[640px]">
+                <div className="hidden gap-6 md:grid md:max-w-[640px]">
                   <InstructionRow
                     icon={<Camera className="h-4.5 w-4.5" strokeWidth={2.2} />}
                     title="Recording is optional"
@@ -207,22 +207,22 @@ export default function PracticeSettingsPanel({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-3">
+              <div className="space-y-3 md:space-y-4">
+                <div className="space-y-2 md:space-y-3">
                   <p className="text-[10px] font-semibold tracking-[0.2em] text-white/42 uppercase">
                     Frame
                   </p>
-                  <h4 className="font-display text-[30px] leading-none font-semibold tracking-[-0.05em] text-white md:text-[36px]">
+                  <h4 className="font-display text-[24px] leading-none font-semibold tracking-[-0.05em] text-white md:text-[36px]">
                     Pick the take format.
                   </h4>
-                  <p className="text-[15px] leading-relaxed text-white/54">
+                  <p className="text-[13px] leading-relaxed text-white/54 md:text-[15px]">
                     {isCompactDevice
                       ? "Phones and tablets usually feel best in vertical."
                       : "Desktop usually feels best in horizontal."}
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-2.5 md:space-y-3">
                   <FormatButton
                     active={videoFormat === "landscape"}
                     label="Horizontal"
@@ -241,7 +241,7 @@ export default function PracticeSettingsPanel({
                   />
                 </div>
 
-                <p className="pt-2 text-[13px] leading-relaxed text-white/49">
+                <p className="hidden pt-2 text-[13px] leading-relaxed text-white/49 md:block">
                   Tip: horizontal is the default on desktop. Vertical is the
                   better choice when the final clip is meant to live on a phone
                   screen.

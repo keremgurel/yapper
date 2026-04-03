@@ -118,49 +118,63 @@ export function playSlotLand() {
   }
 }
 
-function toneBurst(
-  ac: AudioContext,
-  t: number,
-  frequency: number,
-  endFrequency: number,
-  duration: number,
-  volume: number,
-  type: OscillatorType = "triangle",
-) {
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(frequency, t);
-  osc.frequency.exponentialRampToValueAtTime(
-    Math.max(1, endFrequency),
-    t + duration,
-  );
-  gain.gain.setValueAtTime(volume, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  osc.connect(gain).connect(ac.destination);
-  osc.start(t);
-  osc.stop(t + duration);
+// Lever pull sound from sample file.
+let leverBuffer: AudioBuffer | null = null;
+let leverFetchPromise: Promise<void> | null = null;
+
+function ensureLeverBuffer(): Promise<void> {
+  if (leverBuffer) return Promise.resolve();
+  if (leverFetchPromise) return leverFetchPromise;
+  leverFetchPromise = fetch("/audio/lever-pull.mp3")
+    .then((res) => res.arrayBuffer())
+    .then((buf) => getAudioCtx().decodeAudioData(buf))
+    .then((decoded) => {
+      leverBuffer = decoded;
+    })
+    .catch(() => {
+      leverFetchPromise = null;
+    });
+  return leverFetchPromise;
 }
 
-// Lever pull with one weighted mechanical cha-chunk.
-export function playLeverCreak() {
+// Split point: first click 0–0.7s, second click 0.7–1.44s.
+const LEVER_SPLIT = 0.7;
+
+// Preload on first interaction so playback is instant.
+export function preloadLeverSound() {
+  ensureLeverBuffer();
+}
+
+function playLeverSlice(offset: number, duration?: number) {
   try {
     const ac = getAudioCtx();
-    const t = ac.currentTime;
-
-    // Main weighted thunk.
-    noiseBlip(ac, t, 0.04, 160, 0.9, 0.13, "lowpass");
-    toneBurst(ac, t, 140, 82, 0.075, 0.04, "triangle");
-
-    // Mid mechanical clack, more switch than sci-fi zap.
-    noiseBlip(ac, t + 0.012, 0.016, 950, 1.8, 0.055, "bandpass");
-    toneBurst(ac, t + 0.014, 320, 190, 0.04, 0.018, "triangle");
-
-    // Tiny wood-and-metal tail.
-    noiseBlip(ac, t + 0.03, 0.024, 420, 1.1, 0.022, "lowpass");
+    const play = () => {
+      if (!leverBuffer) return;
+      const src = ac.createBufferSource();
+      src.buffer = leverBuffer;
+      const gain = ac.createGain();
+      gain.gain.value = 0.7;
+      src.connect(gain).connect(ac.destination);
+      src.start(0, offset, duration);
+    };
+    if (leverBuffer) {
+      play();
+    } else {
+      ensureLeverBuffer().then(play);
+    }
   } catch {
     // Audio not available
   }
+}
+
+// First click: plays when lever crosses threshold during pull.
+export function playLeverCreak() {
+  playLeverSlice(0, LEVER_SPLIT);
+}
+
+// Second click: plays when lever is released past threshold.
+export function playLeverRelease() {
+  playLeverSlice(LEVER_SPLIT);
 }
 
 // Timer end with a rapid burst that decelerates, then a soft chime.

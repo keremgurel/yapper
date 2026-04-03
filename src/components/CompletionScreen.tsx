@@ -596,16 +596,16 @@ export default function CompletionScreen({
         }
       `}</style>
 
-      <div className="absolute inset-0 z-30 flex items-center justify-center overflow-hidden rounded-[inherit] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_22%),linear-gradient(180deg,rgba(4,7,14,0.64),rgba(4,7,14,0.84))] p-3 backdrop-blur-md sm:p-4 md:p-8">
+      <div className="absolute inset-0 z-30 overflow-x-hidden overflow-y-auto rounded-[inherit] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_22%),linear-gradient(180deg,rgba(4,7,14,0.64),rgba(4,7,14,0.84))] p-2 backdrop-blur-md sm:flex sm:items-center sm:justify-center sm:p-4 md:p-8">
         <div
-          className="relative flex h-full max-h-[820px] w-full max-w-[1080px] flex-col overflow-hidden rounded-[34px] border border-white/12 bg-[linear-gradient(180deg,rgba(11,15,26,0.96),rgba(7,10,18,0.98))] shadow-[0_48px_140px_rgba(0,0,0,0.5)] md:flex-row"
+          className="relative flex w-full max-w-[1080px] flex-col overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(11,15,26,0.96),rgba(7,10,18,0.98))] shadow-[0_48px_140px_rgba(0,0,0,0.5)] sm:rounded-[34px] md:max-h-[820px] md:flex-row"
           style={{
             animation: "completion-enter 0.48s cubic-bezier(.22,1,.36,1) both",
           }}
         >
           {/* Left Column: Info & Actions */}
-          <div className="custom-scrollbar flex h-auto flex-col justify-between border-b border-white/8 bg-white/1 p-5 sm:p-6 md:h-full md:w-[340px] md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
-            <div className="space-y-6">
+          <div className="custom-scrollbar flex h-auto flex-col justify-between border-b border-white/8 bg-white/1 p-4 sm:p-6 md:h-full md:w-[340px] md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
+            <div className="space-y-4 sm:space-y-6">
               <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.15em] text-emerald-400 uppercase">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
@@ -616,34 +616,34 @@ export default function CompletionScreen({
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h2 className="font-display text-[32px] leading-[1.1] font-bold tracking-tight text-white sm:text-[42px]">
+              <div className="space-y-2 sm:space-y-3">
+                <h2 className="font-display text-[28px] leading-[1.1] font-bold tracking-tight text-white sm:text-[42px]">
                   Great job.
                 </h2>
-                <p className="text-[14px] leading-relaxed text-white/50 sm:text-[15px]">
+                <p className="text-[13px] leading-relaxed text-white/50 sm:text-[15px]">
                   Take a moment to watch your performance. Look for pacing,
                   clarity, and confidence.
                 </p>
               </div>
 
-              <div className="rounded-[22px] border border-white/8 bg-white/3 p-4 sm:p-5">
-                <p className="mb-2 text-[10px] font-bold tracking-[0.18em] text-white/30 uppercase">
+              <div className="rounded-[18px] border border-white/8 bg-white/3 p-3.5 sm:rounded-[22px] sm:p-5">
+                <p className="mb-1.5 text-[10px] font-bold tracking-[0.18em] text-white/30 uppercase sm:mb-2">
                   Your prompt
                 </p>
-                <p className="text-[17px] leading-snug font-semibold text-white/90 sm:text-[19px]">
+                <p className="text-[15px] leading-snug font-semibold text-white/90 sm:text-[19px]">
                   {prompt}
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 space-y-3">
-              <div className="flex flex-col gap-3">
+            <div className="mt-5 space-y-2.5 sm:mt-8 sm:space-y-3">
+              <div className="flex flex-col gap-2.5 sm:gap-3">
                 {canShowDownload && (
                   <button
                     type="button"
                     onClick={onDownload}
                     disabled={isPreparingDownload || !recordedBlob}
-                    className="group relative flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-blue-600 px-7 py-4 text-[14px] font-bold text-white transition-all duration-300 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="group relative flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-blue-600 px-6 py-3 text-[13px] font-bold text-white transition-all duration-300 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:px-7 sm:py-4 sm:text-[14px]"
                   >
                     <Download className="h-4 w-4" />
                     <span>
@@ -659,7 +659,7 @@ export default function CompletionScreen({
                 <button
                   type="button"
                   onClick={onTryAnother}
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-7 py-4 text-[14px] font-bold text-white/80 backdrop-blur-xl transition-all duration-300 hover:bg-white/12 hover:text-white"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-6 py-3 text-[13px] font-bold text-white/80 backdrop-blur-xl transition-all duration-300 hover:bg-white/12 hover:text-white sm:px-7 sm:py-4 sm:text-[14px]"
                 >
                   <RotateCcw className="h-4 w-4" />
                   <span>Try another round</span>
@@ -699,7 +699,7 @@ export default function CompletionScreen({
                   )}
                 </div>
 
-                <div className="rounded-[28px] border border-white/5 bg-white/2 p-6 text-center">
+                <div className="hidden rounded-[28px] border border-white/5 bg-white/2 p-6 text-center sm:block">
                   <p className="text-[14px] leading-relaxed text-white/40">
                     Use this replay to evaluate your pacing and word choice.
                     Practicing consistently is the best way to build speaking

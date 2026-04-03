@@ -1,3 +1,7 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { CATEGORIES, DIFFICULTIES, type Topic } from "@/data/topics";
 import {
   TIMER_MAX_SECONDS,
@@ -9,6 +13,13 @@ import SlotLever from "@/components/SlotLever";
 import TopicReel from "@/components/TopicReel";
 import CompletionScreen from "@/components/CompletionScreen";
 import PracticeSettingsPanel from "@/components/practice-settings-panel";
+import {
+  AnimatedMicIcon,
+  AnimatedCameraIcon,
+  AnimatedPausePlayIcon,
+  AnimatedStopIcon,
+  AnimatedResetIcon,
+} from "@/components/animated-icons";
 import { MeshGradient } from "@paper-design/shaders-react";
 
 interface PracticeStageProps {
@@ -128,8 +139,29 @@ export default function PracticeStage({
 
   const selectClass = `min-w-0 flex-1 cursor-pointer rounded-2xl px-3 py-2 text-[11px] font-medium text-white outline-none sm:flex-none ${overlayGlass}`;
 
-  const sessionBtnIdle = `cursor-pointer rounded-full px-5 py-2.5 text-[13px] font-semibold text-white transition-opacity hover:opacity-80 ${overlayGlass}`;
   const toolbarIconButtonClass = `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 hover:bg-white/16 ${overlayGlass}`;
+
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleStartWithCountdown = useCallback(() => {
+    setCountdown(3);
+  }, []);
+
+  useEffect(() => {
+    if (countdown === null || countdown === 0) return;
+    countdownRef.current = setTimeout(() => {
+      if (countdown === 1) {
+        setCountdown(null);
+        onStart();
+      } else {
+        setCountdown((c) => (c !== null ? c - 1 : null));
+      }
+    }, 800);
+    return () => {
+      if (countdownRef.current) clearTimeout(countdownRef.current);
+    };
+  }, [countdown, onStart]);
 
   const timerColor =
     timeLeft <= 10
@@ -195,7 +227,9 @@ export default function PracticeStage({
 
           <div
             className={`flex min-w-0 flex-1 flex-wrap gap-2 pr-20 transition-all duration-500 md:pr-0 ${
-              inSession ? "pointer-events-none opacity-0" : "opacity-100"
+              inSession || settingsOpen || timerDone
+                ? "pointer-events-none opacity-0"
+                : "opacity-100"
             }`}
           >
             <select
@@ -223,7 +257,9 @@ export default function PracticeStage({
             </select>
           </div>
 
-          <div className="relative z-50 flex shrink-0 gap-2">
+          <div
+            className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${timerDone ? "pointer-events-none opacity-0 md:pointer-events-auto md:opacity-100" : ""}`}
+          >
             <button
               onClick={onMicToggle}
               className={
@@ -233,40 +269,7 @@ export default function PracticeStage({
               }
               title={micOn ? "Mute" : "Unmute"}
             >
-              {micOn ? (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                  <line x1="12" y1="19" x2="12" y2="23" />
-                  <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-              ) : (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                  <path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6" />
-                  <path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17" />
-                  <line x1="12" y1="19" x2="12" y2="23" />
-                  <line x1="8" y1="23" x2="16" y2="23" />
-                </svg>
-              )}
+              <AnimatedMicIcon muted={!micOn} />
             </button>
 
             <button
@@ -278,35 +281,7 @@ export default function PracticeStage({
               }
               title={cameraOn ? "Camera off" : "Camera on"}
             >
-              {cameraOn ? (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M23 7l-7 5 7 5V7z" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              ) : (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              )}
+              <AnimatedCameraIcon off={!cameraOn} />
             </button>
 
             <button
@@ -457,37 +432,75 @@ export default function PracticeStage({
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {!isRunning && !timerDone && (
+              {!isRunning && !timerDone && countdown === null && (
                 <button
-                  onClick={onStart}
+                  onClick={handleStartWithCountdown}
                   className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Start
                 </button>
               )}
 
+              <AnimatePresence mode="wait">
+                {countdown !== null && countdown > 0 && (
+                  <motion.div
+                    key="countdown-container"
+                    className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-500 to-blue-600 shadow-[0_4px_24px_rgba(37,99,235,0.5)]"
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    <AnimatePresence mode="wait">
+                      <motion.span
+                        key={countdown}
+                        className="font-display text-[24px] font-bold text-white"
+                        initial={{ opacity: 0, scale: 0.5, y: 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 1.4, y: -8 }}
+                        transition={{
+                          duration: 0.35,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                      >
+                        {countdown}
+                      </motion.span>
+                    </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {isRunning && (
-                <>
-                  <button
+                <div className="flex items-center gap-3">
+                  <motion.button
                     onClick={onPause}
-                    className={`cursor-pointer rounded-full border px-5 py-2.5 text-[13px] font-semibold backdrop-blur-md transition-opacity hover:opacity-80 ${
+                    whileTap={{ scale: 0.85 }}
+                    className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 ${
                       isPaused
-                        ? "border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 text-white"
-                        : sessionBtnIdle
+                        ? "border border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 shadow-[0_4px_20px_rgba(37,99,235,0.4)]"
+                        : overlayGlass
                     }`}
+                    title={isPaused ? "Resume" : "Pause"}
                   >
-                    {isPaused ? "Resume" : "Pause"}
-                  </button>
-                  <button
+                    <AnimatedPausePlayIcon paused={isPaused} />
+                  </motion.button>
+                  <motion.button
                     onClick={onFinish}
-                    className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                    whileTap={{ scale: 0.85 }}
+                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                    title="Finish"
                   >
-                    Finish
-                  </button>
-                  <button onClick={onReset} className={sessionBtnIdle}>
-                    Reset
-                  </button>
-                </>
+                    <AnimatedStopIcon />
+                  </motion.button>
+                  <motion.button
+                    onClick={onReset}
+                    whileTap={{ scale: 0.85 }}
+                    className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white ${overlayGlass}`}
+                    title="Reset"
+                  >
+                    <AnimatedResetIcon />
+                  </motion.button>
+                </div>
               )}
 
               {timerDone && (
