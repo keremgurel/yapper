@@ -1,10 +1,7 @@
 import { getJsonLdFaqEntries } from "@/data/faq";
+import { getSiteUrl, safeJsonLdStringify } from "@/lib/json-ld";
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
-
-function safeJsonLdStringify(obj: unknown): string {
-  return JSON.stringify(obj).replace(/</g, "\\u003c");
-}
+const SITE = getSiteUrl();
 
 const faqEntries = getJsonLdFaqEntries();
 

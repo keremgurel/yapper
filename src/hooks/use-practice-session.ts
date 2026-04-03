@@ -141,6 +141,7 @@ export function usePracticeSession(initialTopic: Topic) {
   const [isCompactDevice, setIsCompactDevice] = useState(false);
   const [hasCustomizedFormat, setHasCustomizedFormat] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -409,7 +410,7 @@ export function usePracticeSession(initialTopic: Topic) {
         setIsRecording(false);
         setIsRunning(false);
         setIsPaused(false);
-        alert(
+        setMediaError(
           "Recording failed. Please check your camera/microphone permissions and try again.",
         );
       };
@@ -420,7 +421,7 @@ export function usePracticeSession(initialTopic: Topic) {
       setIsPreparingDownload(false);
       setIsRunning(false);
       setIsPaused(false);
-      alert(
+      setMediaError(
         "Could not start recording. Your browser may not support video recording, or camera/microphone access was denied.",
       );
     }
@@ -470,7 +471,7 @@ export function usePracticeSession(initialTopic: Topic) {
     }
 
     replaceVideoTrack(effectiveVideoFormat).catch(() => {
-      alert("Camera preview could not be restored.");
+      setMediaError("Camera preview could not be restored.");
     });
   }, [
     attachStream,
@@ -537,7 +538,7 @@ export function usePracticeSession(initialTopic: Topic) {
       await replaceVideoTrack(effectiveVideoFormat);
       setCameraOn(true);
     } catch {
-      alert("Camera access is required.");
+      setMediaError("Camera access is required.");
     }
   }, [cameraOn, effectiveVideoFormat, micOn, replaceVideoTrack]);
 
@@ -600,7 +601,7 @@ export function usePracticeSession(initialTopic: Topic) {
       }
       setMicOn(true);
     } catch {
-      alert("Microphone access is required.");
+      setMediaError("Microphone access is required.");
     }
   }, [cameraOn, effectiveVideoFormat, micOn]);
 
@@ -620,7 +621,7 @@ export function usePracticeSession(initialTopic: Topic) {
     }
 
     replaceVideoTrack(effectiveVideoFormat).catch(() => {
-      alert("Camera settings could not be updated.");
+      setMediaError("Camera settings could not be updated.");
     });
   }, [cameraOn, effectiveVideoFormat, isRunning, replaceVideoTrack]);
 
@@ -664,6 +665,8 @@ export function usePracticeSession(initialTopic: Topic) {
     recordedBlob,
     recordedUrl,
     isPreparingDownload,
+    mediaError,
+    clearMediaError: () => setMediaError(null),
     videoFormat: effectiveVideoFormat,
     isCompactDevice,
     settingsOpen,

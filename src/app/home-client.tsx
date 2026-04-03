@@ -50,6 +50,19 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
 
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
+      {session.mediaError && (
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200">
+          <span className="shrink-0">⚠️</span>
+          <p className="flex-1">{session.mediaError}</p>
+          <button
+            onClick={session.clearMediaError}
+            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/30"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       <ErrorBoundary
         fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
       >

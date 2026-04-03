@@ -8,18 +8,11 @@ import {
   getBlogPostSlugs,
   getRelatedBlogPosts,
 } from "@/lib/blog";
-
-function safeJsonLdStringify(obj: unknown): string {
-  return JSON.stringify(obj).replace(/</g, "\\u003c");
-}
+import { getSiteUrl, safeJsonLdStringify } from "@/lib/json-ld";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
-}
 
 export function generateStaticParams() {
   return getBlogPostSlugs().map((slug) => ({ slug }));

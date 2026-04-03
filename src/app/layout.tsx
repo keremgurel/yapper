@@ -8,6 +8,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
+import { getSiteUrl } from "@/lib/json-ld";
 
 const bodySans = Manrope({
   variable: "--font-body-sans",
@@ -30,7 +31,7 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
+const siteUrl = getSiteUrl();
 const title = "Yapper | Free Topic Generator for Speech Practice";
 const description =
   "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.";
