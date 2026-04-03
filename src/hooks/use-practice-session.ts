@@ -8,31 +8,113 @@ import {
   getRandomTopic,
   pickReelBlurbs,
 } from "@/lib/practice-helpers";
-import { exportRecordingWithOverlays } from "@/lib/video-export";
 
 const RECORDING_VIDEO_BITS_PER_SECOND = 12_000_000;
 const RECORDING_AUDIO_BITS_PER_SECOND = 192_000;
+
+async function resetTrackZoom(track: MediaStreamTrack | undefined) {
+  if (!track || track.kind !== "video") return;
+
+  const configurableTrack = track as MediaStreamTrack & {
+    getCapabilities?: () => MediaTrackCapabilities;
+    applyConstraints: (constraints: MediaTrackConstraints) => Promise<void>;
+  };
+  const capabilities = configurableTrack.getCapabilities?.() as
+    | unknown
+    | undefined;
+  const zoomCapability = (
+    capabilities as { zoom?: { min?: number } } | undefined
+  )?.zoom;
+  const minZoom =
+    typeof zoomCapability?.min === "number" ? zoomCapability.min : undefined;
+
+  if (typeof minZoom !== "number") return;
+
+  try {
+    await configurableTrack.applyConstraints({
+      advanced: [{ zoom: minZoom } as MediaTrackConstraintSet],
+    } as MediaTrackConstraints);
+  } catch {
+    // Ignore zoom reset failures. Browsers vary on support here.
+  }
+}
 
 function getPreferredVideoConstraints(format: "portrait" | "landscape") {
   return format === "landscape"
     ? {
         facingMode: "user",
+        aspectRatio: { ideal: 16 / 9 },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         frameRate: { ideal: 30, max: 60 },
       }
     : {
         facingMode: "user",
+        aspectRatio: { ideal: 9 / 16 },
         width: { ideal: 1080 },
         height: { ideal: 1920 },
         frameRate: { ideal: 30, max: 60 },
       };
 }
 
-export function usePracticeSession() {
-  const [topic, setTopic] = useState<Topic>(() =>
-    getRandomTopic(null, "All", "All"),
-  );
+function getVideoConstraintCandidates(format: "portrait" | "landscape") {
+  const shared = {
+    facingMode: "user",
+    frameRate: { ideal: 30, max: 60 },
+    resizeMode: "crop-and-scale" as ConstrainDOMString,
+  };
+
+  return format === "landscape"
+    ? [
+        {
+          ...shared,
+          width: { exact: 1920 },
+          height: { exact: 1080 },
+          aspectRatio: { exact: 16 / 9 },
+        },
+        {
+          ...shared,
+          width: { exact: 1280 },
+          height: { exact: 720 },
+          aspectRatio: { exact: 16 / 9 },
+        },
+        getPreferredVideoConstraints(format),
+      ]
+    : [
+        {
+          ...shared,
+          width: { exact: 1080 },
+          height: { exact: 1920 },
+          aspectRatio: { exact: 9 / 16 },
+        },
+        {
+          ...shared,
+          width: { exact: 720 },
+          height: { exact: 1280 },
+          aspectRatio: { exact: 9 / 16 },
+        },
+        getPreferredVideoConstraints(format),
+      ];
+}
+
+async function requestVideoStream(format: "portrait" | "landscape") {
+  let lastError: unknown;
+
+  for (const constraints of getVideoConstraintCandidates(format)) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        video: constraints,
+      });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+}
+
+export function usePracticeSession(initialTopic: Topic) {
+  const [topic, setTopic] = useState<Topic>(initialTopic);
   const [spinning, setSpinning] = useState(false);
   const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
@@ -51,15 +133,14 @@ export function usePracticeSession() {
   const [micOn, setMicOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
-  const [includePromptOverlay, setIncludePromptOverlay] = useState(true);
-  const [includeTimerOverlay, setIncludeTimerOverlay] = useState(true);
-  const [isExportingVideo, setIsExportingVideo] = useState(false);
-  const [videoFormat, setVideoFormat] = useState<"portrait" | "landscape">(
-    "portrait",
+  const [videoFormat, setVideoFormatState] = useState<"portrait" | "landscape">(
+    "landscape",
   );
-  const [exportProgress, setExportProgress] = useState(0);
-  const [isMobileDevice, setIsMobileDevice] = useState(false);
+  const [isCompactDevice, setIsCompactDevice] = useState(false);
+  const [hasCustomizedFormat, setHasCustomizedFormat] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -68,17 +149,22 @@ export function usePracticeSession() {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timeInputRef = useRef<HTMLInputElement>(null);
+  const appliedVideoFormatRef = useRef<"portrait" | "landscape" | null>(null);
 
   const inSession = isRunning || isPaused;
   const canEditPrompt = !inSession && !spinning;
   const canEditTime = !isRunning;
-  const effectiveVideoFormat = isMobileDevice ? "portrait" : videoFormat;
+  const effectiveVideoFormat = hasCustomizedFormat
+    ? videoFormat
+    : isCompactDevice
+      ? "portrait"
+      : "landscape";
 
   useEffect(() => {
     const query = window.matchMedia("(pointer: coarse)");
 
     const updateDeviceMode = () => {
-      setIsMobileDevice(query.matches || window.innerWidth < 768);
+      setIsCompactDevice(query.matches || window.innerWidth < 1024);
     };
 
     updateDeviceMode();
@@ -91,8 +177,46 @@ export function usePracticeSession() {
     };
   }, []);
 
+  const attachStream = useCallback(() => {
+    if (!videoRef.current || !streamRef.current) return;
+    videoRef.current.srcObject = null;
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.play().catch(() => {});
+  }, []);
+
+  const replaceVideoTrack = useCallback(
+    async (format: "portrait" | "landscape") => {
+      const previousStream = streamRef.current;
+      const audioTracks = previousStream?.getAudioTracks() ?? [];
+
+      videoRef.current?.pause();
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      previousStream?.getVideoTracks().forEach((track) => {
+        previousStream.removeTrack(track);
+        track.stop();
+      });
+
+      const nextVideoStream = await requestVideoStream(format);
+      const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
+      await resetTrackZoom(nextVideoTrack);
+
+      const nextStream = new MediaStream();
+      audioTracks.forEach((track) => nextStream.addTrack(track));
+      nextStream.addTrack(nextVideoTrack);
+      streamRef.current = nextStream;
+      appliedVideoFormatRef.current = format;
+
+      requestAnimationFrame(() => attachStream());
+    },
+    [attachStream],
+  );
+
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
+    setSettingsOpen(false);
     setReelBlurbs(pickReelBlurbs());
     setSpinning(true);
     const tickInterval = setInterval(
@@ -112,6 +236,7 @@ export function usePracticeSession() {
       const nextCategory = value as Category | "All";
       setCategory(nextCategory);
       setCustomPromptText(null);
+      setSettingsOpen(false);
       setTopic(getRandomTopic(topic, nextCategory, difficulty));
     },
     [difficulty, topic],
@@ -122,12 +247,14 @@ export function usePracticeSession() {
       const nextDifficulty = value as Difficulty | "All";
       setDifficulty(nextDifficulty);
       setCustomPromptText(null);
+      setSettingsOpen(false);
       setTopic(getRandomTopic(topic, category, nextDifficulty));
     },
     [category, topic],
   );
 
   const openPromptEditor = useCallback(() => {
+    setSettingsOpen(false);
     setPromptDraft(customPromptText ?? topic.text);
     setPromptEditorOpen(true);
   }, [customPromptText, topic.text]);
@@ -144,6 +271,7 @@ export function usePracticeSession() {
   }, [customPromptText, topic.text]);
 
   const openTimeEditor = useCallback(() => {
+    setSettingsOpen(false);
     setTimeDraft(String(timerSeconds));
     setTimeEditorOpen(true);
   }, [timerSeconds]);
@@ -175,6 +303,14 @@ export function usePracticeSession() {
     });
   }, [timeEditorOpen]);
 
+  const clearRecordedMedia = useCallback(() => {
+    setRecordedBlob(null);
+    setRecordedUrl((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return null;
+    });
+  }, []);
+
   useEffect(() => {
     if (isRunning && !isPaused && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -202,22 +338,31 @@ export function usePracticeSession() {
     };
   }, [isPaused, isRunning, timeLeft]);
 
+  const resetRecorderState = useCallback(() => {
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    recorderRef.current = null;
+  }, []);
+
   const startTimer = useCallback(() => {
     setTimeLeft(timerSeconds);
     setIsRunning(true);
     setIsPaused(false);
     setTimerDone(false);
+    setSettingsOpen(false);
     setPromptEditorOpen(false);
     setTimeEditorOpen(false);
-    setRecordedBlob(null);
+    clearRecordedMedia();
     setIsPreparingDownload(false);
-    setIsExportingVideo(false);
 
     if (!streamRef.current) return;
 
     chunksRef.current = [];
     setIsPreparingDownload(true);
-
     try {
       const mimeTypes = [
         "video/webm;codecs=vp9,opus",
@@ -248,28 +393,58 @@ export function usePracticeSession() {
         const nextBlob = new Blob(chunksRef.current, {
           type: selectedMimeType,
         });
+        const nextUrl = URL.createObjectURL(nextBlob);
+        recorderRef.current = null;
+        setIsRecording(false);
         setRecordedBlob(nextBlob);
+        setRecordedUrl((current) => {
+          if (current) URL.revokeObjectURL(current);
+          return nextUrl;
+        });
         setIsPreparingDownload(false);
       };
       recorder.onerror = () => {
+        recorderRef.current = null;
         setIsPreparingDownload(false);
         setIsRecording(false);
+        setIsRunning(false);
+        setIsPaused(false);
         alert(
           "Recording failed. Please check your camera/microphone permissions and try again.",
         );
       };
-      recorder.start();
+      recorder.start(200);
       setIsRecording(true);
     } catch {
+      recorderRef.current = null;
       setIsPreparingDownload(false);
+      setIsRunning(false);
+      setIsPaused(false);
       alert(
         "Could not start recording. Your browser may not support video recording, or camera/microphone access was denied.",
       );
     }
-  }, [timerSeconds]);
+  }, [clearRecordedMedia, timerSeconds]);
 
   const pauseTimer = useCallback(() => {
     setIsPaused((current) => !current);
+  }, []);
+
+  const finishTimer = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    setIsRunning(false);
+    setIsPaused(false);
+    setTimerDone(true);
+    setSettingsOpen(false);
+
+    if (recorderRef.current?.state === "recording") {
+      recorderRef.current.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    recorderRef.current = null;
+    setIsPreparingDownload(false);
   }, []);
 
   const resetTimer = useCallback(() => {
@@ -277,14 +452,35 @@ export function usePracticeSession() {
     setIsRunning(false);
     setIsPaused(false);
     setTimerDone(false);
+    setSettingsOpen(false);
     setTimeLeft(timerSeconds);
     setIsPreparingDownload(false);
-    setIsExportingVideo(false);
-    if (recorderRef.current?.state === "recording") {
-      recorderRef.current.stop();
-      setIsRecording(false);
+    clearRecordedMedia();
+    resetRecorderState();
+
+    const videoTrack = streamRef.current?.getVideoTracks()[0];
+
+    if (!cameraOn) return;
+
+    if (videoTrack && videoTrack.readyState === "live") {
+      requestAnimationFrame(() => {
+        attachStream();
+      });
+      return;
     }
-  }, [timerSeconds]);
+
+    replaceVideoTrack(effectiveVideoFormat).catch(() => {
+      alert("Camera preview could not be restored.");
+    });
+  }, [
+    attachStream,
+    cameraOn,
+    clearRecordedMedia,
+    effectiveVideoFormat,
+    replaceVideoTrack,
+    resetRecorderState,
+    timerSeconds,
+  ]);
 
   const handleKnobChange = useCallback(
     (value: number) => {
@@ -319,12 +515,6 @@ export function usePracticeSession() {
     [isRunning, openTimeEditor],
   );
 
-  const attachStream = useCallback(() => {
-    if (!videoRef.current || !streamRef.current) return;
-    videoRef.current.srcObject = streamRef.current;
-    videoRef.current.play().catch(() => {});
-  }, []);
-
   const toggleCamera = useCallback(async () => {
     if (cameraOn) {
       streamRef.current?.getVideoTracks().forEach((track) => track.stop());
@@ -333,6 +523,7 @@ export function usePracticeSession() {
           .getVideoTracks()
           .forEach((track) => streamRef.current?.removeTrack(track));
       }
+      appliedVideoFormatRef.current = null;
       setCameraOn(false);
 
       if (!micOn) {
@@ -343,31 +534,12 @@ export function usePracticeSession() {
     }
 
     try {
-      if (streamRef.current) {
-        const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(effectiveVideoFormat),
-        });
-        const videoTrack = videoStream.getVideoTracks()[0];
-        streamRef.current.addTrack(videoTrack);
-      } else {
-        const nextStream = await navigator.mediaDevices.getUserMedia({
-          video: getPreferredVideoConstraints(effectiveVideoFormat),
-          audio: micOn,
-        });
-        streamRef.current = nextStream;
-        if (!micOn) {
-          nextStream.getAudioTracks().forEach((track) => track.stop());
-          nextStream
-            .getAudioTracks()
-            .forEach((track) => nextStream.removeTrack(track));
-        }
-      }
+      await replaceVideoTrack(effectiveVideoFormat);
       setCameraOn(true);
-      requestAnimationFrame(() => attachStream());
     } catch {
       alert("Camera access is required.");
     }
-  }, [attachStream, cameraOn, effectiveVideoFormat, micOn]);
+  }, [cameraOn, effectiveVideoFormat, micOn, replaceVideoTrack]);
 
   const toggleMic = useCallback(async () => {
     if (micOn) {
@@ -394,18 +566,36 @@ export function usePracticeSession() {
         const audioTrack = audioStream.getAudioTracks()[0];
         streamRef.current.addTrack(audioTrack);
       } else {
-        const nextStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: cameraOn
-            ? getPreferredVideoConstraints(effectiveVideoFormat)
-            : false,
-        });
+        const nextStream = cameraOn
+          ? await (async () => {
+              const nextVideoStream =
+                await requestVideoStream(effectiveVideoFormat);
+              const nextAudioStream = await navigator.mediaDevices.getUserMedia(
+                {
+                  audio: true,
+                },
+              );
+              const mergedStream = new MediaStream();
+              nextVideoStream
+                .getVideoTracks()
+                .forEach((track) => mergedStream.addTrack(track));
+              nextAudioStream
+                .getAudioTracks()
+                .forEach((track) => mergedStream.addTrack(track));
+              return mergedStream;
+            })()
+          : await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: false,
+            });
         streamRef.current = nextStream;
         if (!cameraOn) {
           nextStream.getVideoTracks().forEach((track) => track.stop());
           nextStream
             .getVideoTracks()
             .forEach((track) => nextStream.removeTrack(track));
+        } else {
+          appliedVideoFormatRef.current = effectiveVideoFormat;
         }
       }
       setMicOn(true);
@@ -420,47 +610,37 @@ export function usePracticeSession() {
     }
   }, [attachStream, cameraOn]);
 
-  const downloadRecording = useCallback(async () => {
-    if (!recordedBlob || isExportingVideo) return;
-
-    setIsExportingVideo(true);
-    setExportProgress(0);
-
-    try {
-      const exportedBlob =
-        !cameraOn && micOn
-          ? recordedBlob
-          : await exportRecordingWithOverlays({
-              blob: recordedBlob,
-              prompt: customPromptText ?? topic.text,
-              timerSeconds,
-              showPromptOverlay: includePromptOverlay,
-              showTimerOverlay: includeTimerOverlay,
-              format: effectiveVideoFormat,
-              onProgress: (progress) => setExportProgress(progress),
-            });
-
-      const downloadUrl = URL.createObjectURL(exportedBlob);
-      const anchor = document.createElement("a");
-      anchor.href = downloadUrl;
-      anchor.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
-    } finally {
-      setIsExportingVideo(false);
+  useEffect(() => {
+    if (
+      !cameraOn ||
+      isRunning ||
+      appliedVideoFormatRef.current === effectiveVideoFormat
+    ) {
+      return;
     }
-  }, [
-    customPromptText,
-    includePromptOverlay,
-    includeTimerOverlay,
-    isExportingVideo,
-    cameraOn,
-    micOn,
-    recordedBlob,
-    timerSeconds,
-    topic.text,
-    effectiveVideoFormat,
-  ]);
+
+    replaceVideoTrack(effectiveVideoFormat).catch(() => {
+      alert("Camera settings could not be updated.");
+    });
+  }, [cameraOn, effectiveVideoFormat, isRunning, replaceVideoTrack]);
+
+  useEffect(() => {
+    return () => {
+      if (recordedUrl) URL.revokeObjectURL(recordedUrl);
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, [recordedUrl]);
+
+  const downloadRecording = useCallback(() => {
+    if (!recordedBlob) return;
+
+    const downloadUrl = URL.createObjectURL(recordedBlob);
+    const anchor = document.createElement("a");
+    anchor.href = downloadUrl;
+    anchor.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+  }, [recordedBlob]);
 
   return {
     topic,
@@ -482,12 +662,11 @@ export function usePracticeSession() {
     micOn,
     isRecording,
     recordedBlob,
+    recordedUrl,
     isPreparingDownload,
-    includePromptOverlay,
-    includeTimerOverlay,
-    isExportingVideo,
     videoFormat: effectiveVideoFormat,
-    exportProgress,
+    isCompactDevice,
+    settingsOpen,
     inSession,
     canEditPrompt,
     canEditTime,
@@ -495,8 +674,6 @@ export function usePracticeSession() {
     timeInputRef,
     setPromptDraft,
     setTimeDraft,
-    setIncludePromptOverlay,
-    setIncludeTimerOverlay,
     generateTopic,
     handleCategoryChange,
     handleDifficultyChange,
@@ -508,6 +685,7 @@ export function usePracticeSession() {
     cancelTimeDraft,
     startTimer,
     pauseTimer,
+    finishTimer,
     resetTimer,
     handleKnobChange,
     handleTimerDoubleClick,
@@ -515,13 +693,12 @@ export function usePracticeSession() {
     toggleCamera,
     toggleMic,
     downloadRecording,
+    openSettings: () => setSettingsOpen(true),
+    closeSettings: () => setSettingsOpen(false),
+    toggleSettings: () => setSettingsOpen((current) => !current),
     setVideoFormat: (format: "portrait" | "landscape") => {
-      if (isMobileDevice) {
-        setVideoFormat("portrait");
-        return;
-      }
-
-      setVideoFormat(format);
+      setHasCustomizedFormat(true);
+      setVideoFormatState(format);
     },
   };
 }

@@ -15,7 +15,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
   const [isDragging, setIsDragging] = useState(false);
   const dragging = useRef(false);
   const startY = useRef(0);
-  const lastCreak = useRef(0);
+  const thresholdSoundPlayed = useRef(false);
   const pullRef = useRef(0);
   const maxPull = 120;
   const threshold = 70;
@@ -28,6 +28,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       setIsDragging(true);
       const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
       startY.current = clientY - pullRef.current;
+      thresholdSoundPlayed.current = false;
       setPhase("pulling");
     },
     [phase],
@@ -45,10 +46,12 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const delta = Math.max(0, Math.min(maxPull, clientY - startY.current));
       setPullY(delta);
-      const now = Date.now();
-      if (delta > 15 && now - lastCreak.current > 80) {
+
+      if (delta >= threshold && !thresholdSoundPlayed.current) {
         playLeverCreak();
-        lastCreak.current = now;
+        thresholdSoundPlayed.current = true;
+      } else if (delta < threshold - 10) {
+        thresholdSoundPlayed.current = false;
       }
     };
 
@@ -56,6 +59,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       if (!dragging.current) return;
       dragging.current = false;
       setIsDragging(false);
+
       if (pullRef.current >= threshold) {
         setPhase("spinning");
         playSlotSpin();
@@ -89,7 +93,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
 
   return (
     <div className="flex flex-col items-center select-none">
-      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-700 uppercase dark:text-slate-400">
+      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-950 uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
         Generate
       </div>
       <div
@@ -201,24 +205,29 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         />
       </div>
       <div
-        className={`mt-2.5 text-[10px] font-semibold tracking-[1.5px] uppercase ${
-          phase === "spinning" || isPastThreshold
-            ? "text-amber-600 dark:text-amber-400"
-            : phase === "landed"
-              ? "text-green-600 dark:text-green-400"
-              : "text-slate-700 dark:text-slate-400"
+        className={`mt-2.5 flex h-[14px] w-[7rem] shrink-0 items-center justify-center text-center text-[10px] font-semibold tracking-[1.5px] uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
+          phase === "landed"
+            ? "text-emerald-800 dark:text-emerald-300"
+            : phase === "spinning"
+              ? "text-slate-950 dark:text-white/90"
+              : isPastThreshold
+                ? "text-amber-800 dark:text-amber-300"
+                : "text-slate-950 dark:text-white/90"
         }`}
+        aria-live="polite"
       >
-        {phase === "spinning"
-          ? "SPINNING..."
-          : phase === "landed"
-            ? "LANDED!"
-            : isPastThreshold
-              ? "RELEASE!"
-              : "PULL"}
+        {phase === "spinning" ? (
+          <span className="sr-only">Generating topic</span>
+        ) : phase === "landed" ? (
+          "LANDED!"
+        ) : isPastThreshold ? (
+          "RELEASE!"
+        ) : (
+          "PULL"
+        )}
       </div>
       <div
-        className={`mt-0.5 animate-bounce text-sm text-slate-600 transition-opacity dark:text-slate-400 ${
+        className={`mt-0.5 animate-bounce text-sm text-slate-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] transition-opacity dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
           phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
         }`}
       >

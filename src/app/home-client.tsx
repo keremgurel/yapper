@@ -10,9 +10,14 @@ import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
 import { usePracticeSession } from "@/hooks/use-practice-session";
+import type { Topic } from "@/data/topics";
 
-export default function HomeClient() {
-  const session = usePracticeSession();
+interface HomeClientProps {
+  initialTopic: Topic;
+}
+
+export default function HomeClient({ initialTopic }: HomeClientProps) {
+  const session = usePracticeSession(initialTopic);
 
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
@@ -66,7 +71,11 @@ export default function HomeClient() {
           micOn={session.micOn}
           isRecording={session.isRecording}
           recordedBlob={session.recordedBlob}
+          recordedUrl={session.recordedUrl}
           isPreparingDownload={session.isPreparingDownload}
+          videoFormat={session.videoFormat}
+          isCompactDevice={session.isCompactDevice}
+          settingsOpen={session.settingsOpen}
           inSession={session.inSession}
           canEditPrompt={session.canEditPrompt}
           canEditTime={session.canEditTime}
@@ -88,10 +97,14 @@ export default function HomeClient() {
           onKnobChange={session.handleKnobChange}
           onStart={session.startTimer}
           onPause={session.pauseTimer}
+          onFinish={session.finishTimer}
           onReset={session.resetTimer}
           onMicToggle={session.toggleMic}
           onCameraToggle={session.toggleCamera}
           onDownloadRecording={session.downloadRecording}
+          onOpenSettings={session.openSettings}
+          onCloseSettings={session.closeSettings}
+          onFormatChange={session.setVideoFormat}
         />
       </ErrorBoundary>
 

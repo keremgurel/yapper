@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import {
   Geist_Mono,
   Inter_Tight,
@@ -92,9 +93,9 @@ export const metadata: Metadata = {
     images: ["/og.png"],
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/favicon.ico",
   },
   formatDetection: {
     email: false,
@@ -123,6 +124,22 @@ export default function RootLayout({
       className={`${bodySans.variable} ${displaySans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-09JET8C3M0"
+          strategy="beforeInteractive"
+        />
+        <Script id="google-analytics" strategy="beforeInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-09JET8C3M0');`}
+        </Script>
+        {/* Explicit favicon tags to avoid browser/metadata inconsistencies. */}
+        <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
+        <link rel="apple-touch-icon" href="/favicon.ico" />
+      </head>
       <body className="flex min-h-full flex-col">
         <ThemeProvider
           attribute="class"

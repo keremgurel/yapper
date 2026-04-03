@@ -25,8 +25,8 @@ export default function RotaryKnob({
   const knobRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const [isDraggingKnob, setIsDraggingKnob] = useState(false);
-  const startAngle = useRef(0);
-  const startValue = useRef(value);
+  const lastAngle = useRef(0);
+  const accumulatedRotation = useRef(0);
   const currentValue = useRef(value);
 
   const totalSteps = max - min;
@@ -50,12 +50,13 @@ export default function RotaryKnob({
       e.preventDefault();
       dragging.current = true;
       setIsDraggingKnob(true);
-      startValue.current = currentValue.current;
       const rect = knobRef.current.getBoundingClientRect();
       const nativeEvent = e.nativeEvent;
-      startAngle.current = getAngle(nativeEvent as MouseEvent, rect);
+      lastAngle.current = getAngle(nativeEvent as MouseEvent, rect);
+      accumulatedRotation.current =
+        (currentValue.current - min) * degreesPerStep;
     },
-    [disabled, getAngle],
+    [degreesPerStep, disabled, getAngle, min],
   );
 
   useEffect(() => {
@@ -68,14 +69,19 @@ export default function RotaryKnob({
       e.preventDefault();
       const rect = knobRef.current.getBoundingClientRect();
       const angle = getAngle(e, rect);
-      let delta = angle - startAngle.current;
+      let delta = angle - lastAngle.current;
       if (delta > 180) delta -= 360;
       if (delta < -180) delta += 360;
-      const stepDelta = Math.round(delta / degreesPerStep);
-      const newVal = Math.max(
-        min,
-        Math.min(max, startValue.current + stepDelta),
+      lastAngle.current = angle;
+
+      accumulatedRotation.current = Math.max(
+        0,
+        Math.min(totalRotation, accumulatedRotation.current + delta),
       );
+
+      const newVal =
+        min + Math.round(accumulatedRotation.current / degreesPerStep);
+
       if (newVal !== currentValue.current) {
         playLuxuryDetent(newVal, min, max);
         currentValue.current = newVal;
@@ -96,7 +102,7 @@ export default function RotaryKnob({
       window.removeEventListener("touchmove", handleMove);
       window.removeEventListener("touchend", handleEnd);
     };
-  }, [disabled, min, max, degreesPerStep, getAngle, onChange]);
+  }, [degreesPerStep, disabled, getAngle, max, min, onChange, totalRotation]);
 
   // Build tick marks using absolute positioning with trig
   const labelSteps = [30, 45, 60, 75, 90];
@@ -160,7 +166,7 @@ export default function RotaryKnob({
         gap: "8px",
       }}
     >
-      <div className="mb-0.5 text-[9px] font-semibold tracking-[2px] text-slate-700 uppercase dark:text-slate-400">
+      <div className="mb-0.5 text-[9px] font-semibold tracking-[2px] text-white/80 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
         Timer
       </div>
       <div
@@ -281,10 +287,10 @@ export default function RotaryKnob({
         </svg>
       </div>
 
-      <div className="font-mono text-[22px] font-bold tracking-[2px] text-slate-900 dark:text-[var(--foreground)]">
+      <div className="font-mono text-[22px] font-bold tracking-[2px] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
         {formatSeconds(value)}
       </div>
-      <div className="text-[10px] tracking-[1.5px] text-slate-700 uppercase dark:text-slate-400">
+      <div className="text-[10px] tracking-[1.5px] text-white/78 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
         {disabled ? "LOCKED" : "DRAG TO SET"}
       </div>
     </div>
