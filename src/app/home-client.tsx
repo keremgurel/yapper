@@ -50,7 +50,9 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
 
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
-      <ErrorBoundary fallback={<PracticeErrorFallback />}>
+      <ErrorBoundary
+        fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
+      >
         <PracticeStage
           topic={session.topic}
           spinning={session.spinning}

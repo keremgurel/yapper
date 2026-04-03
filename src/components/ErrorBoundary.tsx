@@ -4,7 +4,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
-  fallback?: ReactNode;
+  fallback?: ReactNode | ((props: { reset: () => void }) => ReactNode);
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
 }
 
@@ -34,7 +34,10 @@ export class ErrorBoundary extends Component<
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback;
+        const reset = () => this.setState({ hasError: false, error: null });
+        return typeof this.props.fallback === "function"
+          ? this.props.fallback({ reset })
+          : this.props.fallback;
       }
 
       return (
@@ -60,7 +63,7 @@ export class ErrorBoundary extends Component<
   }
 }
 
-export function PracticeErrorFallback() {
+export function PracticeErrorFallback({ reset }: { reset?: () => void }) {
   return (
     <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900">
       <div className="text-5xl">🎤</div>
@@ -69,15 +72,25 @@ export function PracticeErrorFallback() {
       </h3>
       <p className="max-w-md text-sm text-slate-600 dark:text-slate-400">
         There was a problem with the video recording or camera access. Please
-        refresh the page and ensure your browser has permission to use the
-        camera and microphone.
+        try again, or refresh the page and ensure your browser has permission to
+        use the camera and microphone.
       </p>
-      <button
-        onClick={() => window.location.reload()}
-        className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-      >
-        Refresh Page
-      </button>
+      <div className="flex gap-3">
+        {reset && (
+          <button
+            onClick={reset}
+            className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            Try Again
+          </button>
+        )}
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg border border-slate-300 bg-white px-6 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+        >
+          Refresh Page
+        </button>
+      </div>
     </div>
   );
 }
