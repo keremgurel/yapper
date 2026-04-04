@@ -101,8 +101,13 @@ export async function exportRecordingWithOverlays({
       };
     });
 
+    let animationFrameId: number | null = null;
+    let isExporting = true;
+
     const drawFrame = () => {
-      if (video.ended || video.paused) return;
+      if (!isExporting || video.ended || video.paused) {
+        return;
+      }
 
       const progress =
         video.duration > 0 ? (video.currentTime / video.duration) * 100 : 0;
@@ -201,7 +206,7 @@ export async function exportRecordingWithOverlays({
         );
       }
 
-      requestAnimationFrame(drawFrame);
+      animationFrameId = requestAnimationFrame(drawFrame);
     };
 
     recorder.start(200);
@@ -212,14 +217,14 @@ export async function exportRecordingWithOverlays({
       video.onended = () => resolve();
     });
 
+    isExporting = false;
+    if (animationFrameId !== null) {
+      cancelAnimationFrame(animationFrameId);
+    }
     recorder.stop();
     mergedStream.getTracks().forEach((track) => track.stop());
     return await finished;
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
-}
-
-export async function exportAudioOnly(blob: Blob): Promise<Blob> {
-  return blob;
 }

@@ -8,14 +8,11 @@ import {
   getBlogPostSlugs,
   getRelatedBlogPosts,
 } from "@/lib/blog";
+import { getSiteUrl, safeJsonLdStringify } from "@/lib/json-ld";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
-
-function getSiteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
-}
 
 export function generateStaticParams() {
   return getBlogPostSlugs().map((slug) => ({ slug }));
@@ -120,11 +117,13 @@ export default async function BlogPostPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(articleJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLdStringify(breadcrumbJsonLd),
+        }}
       />
       <main className="bg-background min-h-screen">
         <BlogPostShell post={post} relatedPosts={relatedPosts} />
