@@ -177,6 +177,18 @@ function VideoPlayer({
     }
   };
 
+  const handlePointerMove = () => {
+    if (!playing) return;
+    setOverlayVisible(true);
+    scheduleHide();
+  };
+
+  const handlePointerLeave = () => {
+    if (!playing || scrubbing) return;
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    setOverlayVisible(false);
+  };
+
   /* --- scrubbing --- */
   const seekFromX = useCallback(
     (clientX: number) => {
@@ -209,7 +221,11 @@ function VideoPlayer({
   const show = overlayVisible;
 
   return (
-    <div className="absolute inset-0 flex flex-col">
+    <div
+      className="absolute inset-0 flex flex-col"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+    >
       {/* Video fills entire container */}
       <video
         ref={videoRef}
