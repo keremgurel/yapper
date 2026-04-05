@@ -57,59 +57,10 @@ function getPreferredVideoConstraints(format: "portrait" | "landscape") {
       };
 }
 
-function getVideoConstraintCandidates(format: "portrait" | "landscape") {
-  const shared = {
-    facingMode: "user",
-    frameRate: { ideal: 30, max: 60 },
-  };
-
-  return format === "landscape"
-    ? [
-        {
-          ...shared,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          aspectRatio: { ideal: 16 / 9 },
-        },
-        {
-          ...shared,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          aspectRatio: { ideal: 16 / 9 },
-        },
-        getPreferredVideoConstraints(format),
-      ]
-    : [
-        {
-          ...shared,
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-          aspectRatio: { ideal: 9 / 16 },
-        },
-        {
-          ...shared,
-          width: { ideal: 720 },
-          height: { ideal: 1280 },
-          aspectRatio: { ideal: 9 / 16 },
-        },
-        getPreferredVideoConstraints(format),
-      ];
-}
-
 async function requestVideoStream(format: "portrait" | "landscape") {
-  let lastError: unknown;
-
-  for (const constraints of getVideoConstraintCandidates(format)) {
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        video: constraints,
-      });
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  throw lastError;
+  return navigator.mediaDevices.getUserMedia({
+    video: getPreferredVideoConstraints(format),
+  });
 }
 
 export function usePracticeSession(initialTopic: Topic) {
