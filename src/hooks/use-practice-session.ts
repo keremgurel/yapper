@@ -61,37 +61,36 @@ function getVideoConstraintCandidates(format: "portrait" | "landscape") {
   const shared = {
     facingMode: "user",
     frameRate: { ideal: 30, max: 60 },
-    resizeMode: "crop-and-scale" as ConstrainDOMString,
   };
 
   return format === "landscape"
     ? [
         {
           ...shared,
-          width: { exact: 1920 },
-          height: { exact: 1080 },
-          aspectRatio: { exact: 16 / 9 },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          aspectRatio: { ideal: 16 / 9 },
         },
         {
           ...shared,
-          width: { exact: 1280 },
-          height: { exact: 720 },
-          aspectRatio: { exact: 16 / 9 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          aspectRatio: { ideal: 16 / 9 },
         },
         getPreferredVideoConstraints(format),
       ]
     : [
         {
           ...shared,
-          width: { exact: 1080 },
-          height: { exact: 1920 },
-          aspectRatio: { exact: 9 / 16 },
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
+          aspectRatio: { ideal: 9 / 16 },
         },
         {
           ...shared,
-          width: { exact: 720 },
-          height: { exact: 1280 },
-          aspectRatio: { exact: 9 / 16 },
+          width: { ideal: 720 },
+          height: { ideal: 1280 },
+          aspectRatio: { ideal: 9 / 16 },
         },
         getPreferredVideoConstraints(format),
       ];
