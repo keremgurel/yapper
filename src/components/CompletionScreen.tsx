@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Pause, Play, RotateCcw, Share2 } from "lucide-react";
+import { Download, Pause, Play, Share2 } from "lucide-react";
 import {
   AudioPlayerProvider,
   useAudioPlayer,
@@ -17,7 +17,6 @@ interface CompletionScreenProps {
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   isPreparingDownload: boolean;
-  onTryAnother: () => void;
   onDownload: () => void;
 }
 
@@ -90,7 +89,6 @@ function VideoPlayer({
   prompt,
   onShare,
   onDownload,
-  onTryAnother,
   canDownload,
   isPreparingDownload,
 }: {
@@ -98,7 +96,6 @@ function VideoPlayer({
   prompt: string;
   onShare: () => void;
   onDownload: () => void;
-  onTryAnother: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
 }) {
@@ -126,6 +123,8 @@ function VideoPlayer({
       setPlaying(false);
       setOverlayVisible(true);
     };
+    // If metadata is already loaded, grab the duration immediately
+    onDur();
     v.addEventListener("timeupdate", onTime);
     v.addEventListener("loadedmetadata", onDur);
     v.addEventListener("durationchange", onDur);
@@ -159,21 +158,34 @@ function VideoPlayer({
     };
   }, [playing, scrubbing, scheduleHide]);
 
-  const togglePlay = () => {
+  const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) v.play().catch(() => {});
     else v.pause();
-  };
+  }, []);
+
+  /* --- spacebar play/pause --- */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePlay]);
 
   const handleTap = () => {
-    if (!playing) return;
-    if (overlayVisible) {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      setOverlayVisible(false);
-    } else {
-      setOverlayVisible(true);
+    togglePlay();
+    setOverlayVisible(true);
+    if (!playing) {
+      // Was paused, now playing — auto-hide after a bit
       scheduleHide();
+    } else {
+      // Was playing, now paused — keep overlay visible
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
   };
 
@@ -263,7 +275,7 @@ function VideoPlayer({
           togglePlay();
           if (!playing) scheduleHide();
         }}
-        className={`absolute inset-0 z-20 m-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 ${glass} ${show ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}`}
+        className={`absolute inset-0 z-20 m-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 outline-none ${glass} ${show ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}`}
       >
         {playing ? (
           <Pause className="h-6 w-6" strokeWidth={2.2} />
@@ -323,14 +335,6 @@ function VideoPlayer({
             >
               <Share2 className="h-4 w-4" strokeWidth={2.2} />
             </button>
-            <button
-              type="button"
-              onClick={onTryAnother}
-              className={iconBtn}
-              title="Try another"
-            >
-              <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
-            </button>
           </div>
         </div>
       </div>
@@ -347,7 +351,6 @@ function AudioReplayControls({
   waveformData,
   onShare,
   onDownload,
-  onTryAnother,
   canDownload,
   isPreparingDownload,
 }: {
@@ -355,7 +358,6 @@ function AudioReplayControls({
   waveformData: number[];
   onShare: () => void;
   onDownload: () => void;
-  onTryAnother: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
 }) {
@@ -503,16 +505,6 @@ function AudioReplayControls({
           <Share2 className="h-4 w-4" strokeWidth={2.2} />
         </button>
       </div>
-
-      {/* Try another */}
-      <button
-        type="button"
-        onClick={onTryAnother}
-        className="flex cursor-pointer items-center gap-1.5 text-[13px] font-medium text-white/50 transition-colors hover:text-white/80"
-      >
-        <RotateCcw className="h-3.5 w-3.5" />
-        Try another
-      </button>
     </div>
   );
 }
@@ -528,7 +520,6 @@ export default function CompletionScreen({
   recordedBlob,
   recordedUrl,
   isPreparingDownload,
-  onTryAnother,
   onDownload,
 }: CompletionScreenProps) {
   const hasVideo = !!recordedUrl && cameraOn;
@@ -579,7 +570,6 @@ export default function CompletionScreen({
             prompt={prompt}
             onShare={handleShare}
             onDownload={onDownload}
-            onTryAnother={onTryAnother}
             canDownload={canDownload}
             isPreparingDownload={isPreparingDownload}
           />
@@ -597,7 +587,6 @@ export default function CompletionScreen({
                 waveformData={waveformData}
                 onShare={handleShare}
                 onDownload={onDownload}
-                onTryAnother={onTryAnother}
                 canDownload={canDownload}
                 isPreparingDownload={isPreparingDownload}
               />
@@ -616,19 +605,9 @@ export default function CompletionScreen({
                 </p>
               </>
             ) : (
-              <>
-                <p className="max-w-[260px] text-center text-[15px] leading-relaxed text-white/40">
-                  Enable camera or mic before your session to replay it here.
-                </p>
-                <button
-                  type="button"
-                  onClick={onTryAnother}
-                  className="flex cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-white/6 px-6 py-3 text-[13px] font-semibold text-white/80 transition-colors hover:bg-white/12"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Try another
-                </button>
-              </>
+              <p className="max-w-[260px] text-center text-[15px] leading-relaxed text-white/40">
+                Enable camera or mic before your session to replay it here.
+              </p>
             )}
           </div>
         )}

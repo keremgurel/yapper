@@ -258,15 +258,16 @@ export default function PracticeStage({
           </div>
 
           <div
-            className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${timerDone ? "pointer-events-none opacity-0 md:pointer-events-auto md:opacity-100" : ""}`}
+            className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${timerDone ? "pointer-events-none opacity-0" : ""}`}
           >
             <button
               onClick={onMicToggle}
-              className={
+              disabled={isRecording}
+              className={`${
                 micOn
                   ? toolbarIconButtonClass
                   : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
-              }
+              } ${isRecording ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
               title={micOn ? "Mute" : "Unmute"}
             >
               <AnimatedMicIcon muted={!micOn} />
@@ -274,11 +275,12 @@ export default function PracticeStage({
 
             <button
               onClick={onCameraToggle}
-              className={
+              disabled={isRecording}
+              className={`${
                 cameraOn
                   ? toolbarIconButtonClass
                   : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
-              }
+              } ${isRecording ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
               title={cameraOn ? "Camera off" : "Camera on"}
             >
               <AnimatedCameraIcon off={!cameraOn} />
@@ -328,6 +330,31 @@ export default function PracticeStage({
               )}
             </button>
           </div>
+
+          {timerDone && (
+            <button
+              onClick={() => {
+                onReset();
+                onGenerateTopic();
+              }}
+              className={`${toolbarIconButtonClass} w-auto gap-1.5 px-4 text-xs font-medium`}
+              title="New Session"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 0 12 6 6 0 0 1-6-6H4a8 8 0 1 0 8-8Z" />
+              </svg>
+              New Session
+            </button>
+          )}
         </div>
 
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
@@ -558,10 +585,6 @@ export default function PracticeStage({
             recordedBlob={recordedBlob}
             recordedUrl={recordedUrl}
             isPreparingDownload={isPreparingDownload}
-            onTryAnother={() => {
-              onReset();
-              onGenerateTopic();
-            }}
             onDownload={onDownloadRecording}
           />
         )}
