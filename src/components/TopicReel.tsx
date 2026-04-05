@@ -1,46 +1,33 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import type { Topic } from "@/data/topics";
+import { usePracticeSession } from "@/contexts/practice-session";
 
-interface TopicReelProps {
-  topic: Topic;
-  spinning: boolean;
-  reelBlurbs: string[];
-  promptOverride: string | null;
-  promptDraft: string;
-  promptEditing?: boolean;
-  onPromptDoubleTap?: () => void;
-  onPromptDraftChange?: (value: string) => void;
-  onPromptSave?: () => void;
-  onPromptCancel?: () => void;
-  promptEditable?: boolean;
-  hasGeneratedTopic?: boolean;
-}
+export default function TopicReel() {
+  const {
+    topic,
+    spinning,
+    reelBlurbs,
+    customPromptText,
+    promptDraft,
+    promptEditorOpen,
+    canEditPrompt,
+    hasGeneratedTopic,
+    openPromptEditor,
+    setPromptDraft,
+    savePromptDraft,
+    cancelPromptDraft,
+  } = usePracticeSession();
 
-export default function TopicReel({
-  topic,
-  spinning,
-  reelBlurbs,
-  promptOverride,
-  promptDraft,
-  promptEditing = false,
-  onPromptDoubleTap,
-  onPromptDraftChange,
-  onPromptSave,
-  onPromptCancel,
-  promptEditable = false,
-  hasGeneratedTopic = true,
-}: TopicReelProps) {
   const lastTapRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const glassPanelClass =
     "relative flex h-[150px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
 
   const tryDoubleTap = useCallback(() => {
-    if (!promptEditable || spinning || promptEditing) return;
-    onPromptDoubleTap?.();
-  }, [promptEditable, spinning, promptEditing, onPromptDoubleTap]);
+    if (!canEditPrompt || spinning || promptEditorOpen) return;
+    openPromptEditor();
+  }, [canEditPrompt, spinning, promptEditorOpen, openPromptEditor]);
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -52,7 +39,7 @@ export default function TopicReel({
 
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
-      if (!promptEditable || spinning) return;
+      if (!canEditPrompt || spinning) return;
       const now = Date.now();
       if (now - lastTapRef.current < 320) {
         e.preventDefault();
@@ -62,11 +49,11 @@ export default function TopicReel({
         lastTapRef.current = now;
       }
     },
-    [promptEditable, spinning, tryDoubleTap],
+    [canEditPrompt, spinning, tryDoubleTap],
   );
 
-  const displayText = promptOverride ?? topic.text;
-  const isCustom = promptOverride !== null;
+  const displayText = customPromptText ?? topic.text;
+  const isCustom = customPromptText !== null;
   const promptSizeClass =
     displayText.length < 40
       ? "text-[22px] md:text-[26px]"
@@ -90,15 +77,15 @@ export default function TopicReel({
             </p>
           ))}
         </div>
-      ) : !hasGeneratedTopic && !promptEditing ? (
+      ) : !hasGeneratedTopic && !promptEditorOpen ? (
         <div
-          role={promptEditable ? "button" : undefined}
-          tabIndex={promptEditable ? 0 : undefined}
+          role={canEditPrompt ? "button" : undefined}
+          tabIndex={canEditPrompt ? 0 : undefined}
           onDoubleClick={handleDoubleClick}
           onTouchEnd={handleTouchEnd}
           onKeyDown={(e) => {
             if (
-              promptEditable &&
+              canEditPrompt &&
               (e.key === "Enter" || e.key === " ") &&
               !spinning
             ) {
@@ -107,7 +94,7 @@ export default function TopicReel({
             }
           }}
           className={`flex w-full touch-manipulation flex-col items-center justify-center gap-3 px-2 outline-none ${
-            promptEditable ? "cursor-pointer select-none" : ""
+            canEditPrompt ? "cursor-pointer select-none" : ""
           }`}
         >
           <p className="m-0 text-center font-sans text-[15px] leading-snug font-medium text-white/90">
@@ -118,13 +105,13 @@ export default function TopicReel({
             Double-tap prompt to write your own
           </span>
         </div>
-      ) : promptEditing ? (
+      ) : promptEditorOpen ? (
         <div className="relative flex w-full flex-col items-center justify-center">
           <textarea
             ref={textareaRef}
             value={promptDraft}
-            onChange={(e) => onPromptDraftChange?.(e.target.value)}
-            onBlur={() => onPromptSave?.()}
+            onChange={(e) => setPromptDraft(e.target.value)}
+            onBlur={() => savePromptDraft()}
             onFocus={(e) => {
               if (e.target.value.length === 0) return;
               e.target.setSelectionRange(
@@ -135,11 +122,11 @@ export default function TopicReel({
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 e.preventDefault();
-                onPromptCancel?.();
+                cancelPromptDraft();
               }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                onPromptSave?.();
+                savePromptDraft();
               }
             }}
             rows={3}
@@ -150,16 +137,16 @@ export default function TopicReel({
         </div>
       ) : (
         <div
-          role={promptEditable ? "button" : undefined}
-          tabIndex={promptEditable ? 0 : undefined}
+          role={canEditPrompt ? "button" : undefined}
+          tabIndex={canEditPrompt ? 0 : undefined}
           title={
-            promptEditable ? "Double-tap to write your own prompt" : undefined
+            canEditPrompt ? "Double-tap to write your own prompt" : undefined
           }
           onDoubleClick={handleDoubleClick}
           onTouchEnd={handleTouchEnd}
           onKeyDown={(e) => {
             if (
-              promptEditable &&
+              canEditPrompt &&
               (e.key === "Enter" || e.key === " ") &&
               !spinning
             ) {
@@ -168,7 +155,7 @@ export default function TopicReel({
             }
           }}
           className={`flex w-full touch-manipulation flex-col items-center justify-center outline-none ${
-            promptEditable
+            canEditPrompt
               ? "cursor-pointer rounded-xl select-none focus-visible:ring-2 focus-visible:ring-white/50"
               : ""
           }`}

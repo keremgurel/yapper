@@ -8,18 +8,7 @@ import {
   useAudioPlayerTime,
 } from "@/components/ui/audio-player";
 import { Waveform } from "@/components/ui/waveform";
-
-interface CompletionScreenProps {
-  prompt: string;
-  timerSeconds?: number;
-  cameraOn: boolean;
-  micOn: boolean;
-  recordedBlob: Blob | null;
-  recordedUrl: string | null;
-  isPreparingDownload: boolean;
-  onDownload: () => void;
-  onNewSession: () => void;
-}
+import { usePracticeSession } from "@/contexts/practice-session";
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
@@ -534,16 +523,26 @@ function AudioReplayControls({
 /*  Main CompletionScreen                                             */
 /* ------------------------------------------------------------------ */
 
-export default function CompletionScreen({
-  prompt,
-  cameraOn,
-  micOn,
-  recordedBlob,
-  recordedUrl,
-  isPreparingDownload,
-  onDownload,
-  onNewSession,
-}: CompletionScreenProps) {
+export default function CompletionScreen() {
+  const {
+    topic,
+    customPromptText,
+    cameraOn,
+    micOn,
+    recordedBlob,
+    recordedUrl,
+    isPreparingDownload,
+    downloadRecording,
+    resetTimer,
+    generateTopic,
+  } = usePracticeSession();
+
+  const prompt = customPromptText ?? topic.text;
+  const onDownload = downloadRecording;
+  const onNewSession = () => {
+    resetTimer();
+    generateTopic();
+  };
   const hasVideo = !!recordedUrl && cameraOn;
   const hasAudioOnly = !!recordedUrl && !cameraOn && micOn;
   const hasRecording = hasVideo || hasAudioOnly;

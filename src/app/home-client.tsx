@@ -5,7 +5,7 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
-import { usePracticeSession } from "@/hooks/use-practice-session";
+import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
 interface HomeClientProps {
@@ -13,8 +13,6 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ initialTopic }: HomeClientProps) {
-  const session = usePracticeSession(initialTopic);
-
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -46,57 +44,9 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
 
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
-      <PracticeStage
-        topic={session.topic}
-        spinning={session.spinning}
-        reelBlurbs={session.reelBlurbs}
-        category={session.category}
-        difficulty={session.difficulty}
-        timerSeconds={session.timerSeconds}
-        timeLeft={session.timeLeft}
-        customPromptText={session.customPromptText}
-        promptDraft={session.promptDraft}
-        promptEditorOpen={session.promptEditorOpen}
-        timeEditorOpen={session.timeEditorOpen}
-        timeDraft={session.timeDraft}
-        isRunning={session.isRunning}
-        isPaused={session.isPaused}
-        timerDone={session.timerDone}
-        cameraOn={session.cameraOn}
-        micOn={session.micOn}
-        isRecording={session.isRecording}
-        recordedBlob={session.recordedBlob}
-        recordedUrl={session.recordedUrl}
-        isPreparingDownload={session.isPreparingDownload}
-        isCompactDevice={session.isCompactDevice}
-        hasGeneratedTopic={session.hasGeneratedTopic}
-        inSession={session.inSession}
-        canEditPrompt={session.canEditPrompt}
-        canEditTime={session.canEditTime}
-        videoRef={session.videoRef}
-        timeInputRef={session.timeInputRef}
-        onCategoryChange={session.handleCategoryChange}
-        onDifficultyChange={session.handleDifficultyChange}
-        onPromptEditStart={session.openPromptEditor}
-        onPromptDraftChange={session.setPromptDraft}
-        onPromptSave={session.savePromptDraft}
-        onPromptCancel={session.cancelPromptDraft}
-        onTimeEditStart={session.openTimeEditor}
-        onTimeDraftChange={session.setTimeDraft}
-        onTimeSave={session.saveTimeDraft}
-        onTimeCancel={session.cancelTimeDraft}
-        onTimeDoubleClick={session.handleTimerDoubleClick}
-        onTimeTouchEnd={session.handleTimerTouchEnd}
-        onGenerateTopic={session.generateTopic}
-        onKnobChange={session.handleKnobChange}
-        onStart={session.startTimer}
-        onPause={session.pauseTimer}
-        onFinish={session.finishTimer}
-        onReset={session.resetTimer}
-        onMicToggle={session.toggleMic}
-        onCameraToggle={session.toggleCamera}
-        onDownloadRecording={session.downloadRecording}
-      />
+      <PracticeSessionProvider initialTopic={initialTopic}>
+        <PracticeStage />
+      </PracticeSessionProvider>
 
       <HomeFaq />
       <FooterTapedDesign />

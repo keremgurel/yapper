@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { CATEGORIES, DIFFICULTIES, type Topic } from "@/data/topics";
+import { CATEGORIES, DIFFICULTIES } from "@/data/topics";
 import {
   TIMER_MAX_SECONDS,
   TIMER_MIN_SECONDS,
@@ -19,110 +19,45 @@ import {
   AnimatedResetIcon,
 } from "@/components/animated-icons";
 import { MeshGradient } from "@paper-design/shaders-react";
+import { usePracticeSession } from "@/contexts/practice-session";
 
-interface PracticeStageProps {
-  topic: Topic;
-  spinning: boolean;
-  reelBlurbs: string[];
-  category: string;
-  difficulty: string;
-  timerSeconds: number;
-  timeLeft: number;
-  customPromptText: string | null;
-  promptDraft: string;
-  promptEditorOpen: boolean;
-  timeEditorOpen: boolean;
-  timeDraft: string;
-  isRunning: boolean;
-  isPaused: boolean;
-  timerDone: boolean;
-  cameraOn: boolean;
-  micOn: boolean;
-  isRecording: boolean;
-  recordedBlob: Blob | null;
-  recordedUrl: string | null;
-  isPreparingDownload: boolean;
-  isCompactDevice: boolean;
-  hasGeneratedTopic: boolean;
-  inSession: boolean;
-  canEditPrompt: boolean;
-  canEditTime: boolean;
-  videoRef: React.RefObject<HTMLVideoElement | null>;
-  timeInputRef: React.RefObject<HTMLInputElement | null>;
-  onCategoryChange: (value: string) => void;
-  onDifficultyChange: (value: string) => void;
-  onPromptEditStart: () => void;
-  onPromptDraftChange: (value: string) => void;
-  onPromptSave: () => void;
-  onPromptCancel: () => void;
-  onTimeEditStart: () => void;
-  onTimeDraftChange: (value: string) => void;
-  onTimeSave: () => void;
-  onTimeCancel: () => void;
-  onTimeDoubleClick: (event: React.MouseEvent) => void;
-  onTimeTouchEnd: (event: React.TouchEvent) => void;
-  onGenerateTopic: () => void;
-  onKnobChange: (value: number) => void;
-  onStart: () => void;
-  onPause: () => void;
-  onFinish: () => void;
-  onReset: () => void;
-  onMicToggle: () => void;
-  onCameraToggle: () => void;
-  onDownloadRecording: () => void;
-}
+export default function PracticeStage() {
+  const {
+    category,
+    difficulty,
+    timerSeconds,
+    timeLeft,
+    timeEditorOpen,
+    timeDraft,
+    isRunning,
+    isPaused,
+    timerDone,
+    cameraOn,
+    micOn,
+    isRecording,
+    isCompactDevice,
+    inSession,
+    canEditTime,
+    videoRef,
+    timeInputRef,
+    handleCategoryChange,
+    handleDifficultyChange,
+    openTimeEditor,
+    setTimeDraft,
+    saveTimeDraft,
+    cancelTimeDraft,
+    handleTimerDoubleClick,
+    handleTimerTouchEnd,
+    handleKnobChange,
+    generateTopic,
+    startTimer,
+    pauseTimer,
+    finishTimer,
+    resetTimer,
+    toggleCamera,
+    toggleMic,
+  } = usePracticeSession();
 
-export default function PracticeStage({
-  topic,
-  spinning,
-  reelBlurbs,
-  category,
-  difficulty,
-  timerSeconds,
-  timeLeft,
-  customPromptText,
-  promptDraft,
-  promptEditorOpen,
-  timeEditorOpen,
-  timeDraft,
-  isRunning,
-  isPaused,
-  timerDone,
-  cameraOn,
-  micOn,
-  isRecording,
-  recordedBlob,
-  recordedUrl,
-  isPreparingDownload,
-  isCompactDevice,
-  hasGeneratedTopic,
-  inSession,
-  canEditPrompt,
-  canEditTime,
-  videoRef,
-  timeInputRef,
-  onCategoryChange,
-  onDifficultyChange,
-  onPromptEditStart,
-  onPromptDraftChange,
-  onPromptSave,
-  onPromptCancel,
-  onTimeEditStart,
-  onTimeDraftChange,
-  onTimeSave,
-  onTimeCancel,
-  onTimeDoubleClick,
-  onTimeTouchEnd,
-  onGenerateTopic,
-  onKnobChange,
-  onStart,
-  onPause,
-  onFinish,
-  onReset,
-  onMicToggle,
-  onCameraToggle,
-  onDownloadRecording,
-}: PracticeStageProps) {
   const overlayGlass =
     "border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_20px_44px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
   const toolChromePanel = `rounded-[28px] p-3 ${overlayGlass}`;
@@ -178,9 +113,7 @@ export default function PracticeStage({
         <div className="absolute inset-x-4 top-4 z-50 flex items-start justify-between gap-3">
           {isRecording && (
             <div
-              className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${
-                cameraOn ? overlayGlass : overlayGlass
-              }`}
+              className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${overlayGlass}`}
             >
               <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
               <span className="font-mono text-xs font-semibold">REC</span>
@@ -196,7 +129,7 @@ export default function PracticeStage({
           >
             <select
               value={category}
-              onChange={(e) => onCategoryChange(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className={selectClass}
             >
               {["All", ...CATEGORIES].map((option) => (
@@ -208,7 +141,7 @@ export default function PracticeStage({
 
             <select
               value={difficulty}
-              onChange={(e) => onDifficultyChange(e.target.value)}
+              onChange={(e) => handleDifficultyChange(e.target.value)}
               className={selectClass}
             >
               {["All", ...DIFFICULTIES].map((option) => (
@@ -223,7 +156,7 @@ export default function PracticeStage({
             className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${timerDone ? "pointer-events-none opacity-0" : ""}`}
           >
             <button
-              onClick={onMicToggle}
+              onClick={toggleMic}
               disabled={isRecording}
               className={`${
                 micOn
@@ -236,7 +169,7 @@ export default function PracticeStage({
             </button>
 
             <button
-              onClick={onCameraToggle}
+              onClick={toggleCamera}
               disabled={isRecording}
               className={`${
                 cameraOn
@@ -252,8 +185,8 @@ export default function PracticeStage({
           {timerDone && (
             <button
               onClick={() => {
-                onReset();
-                onGenerateTopic();
+                resetTimer();
+                generateTopic();
               }}
               className={`${toolbarIconButtonClass} hidden w-auto gap-1.5 px-4 text-xs font-medium md:flex`}
               title="New Session"
@@ -277,20 +210,7 @@ export default function PracticeStage({
 
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
           <div className="w-full max-w-[560px]">
-            <TopicReel
-              topic={topic}
-              spinning={spinning}
-              reelBlurbs={reelBlurbs}
-              promptOverride={customPromptText}
-              promptDraft={promptDraft}
-              promptEditing={promptEditorOpen}
-              promptEditable={canEditPrompt}
-              hasGeneratedTopic={hasGeneratedTopic}
-              onPromptDoubleTap={onPromptEditStart}
-              onPromptDraftChange={onPromptDraftChange}
-              onPromptSave={onPromptSave}
-              onPromptCancel={onPromptCancel}
-            />
+            <TopicReel />
           </div>
 
           <div className="flex flex-col items-center gap-1">
@@ -302,16 +222,16 @@ export default function PracticeStage({
                   inputMode="numeric"
                   pattern="[0-9]*"
                   value={timeDraft}
-                  onChange={(e) => onTimeDraftChange(e.target.value)}
-                  onBlur={onTimeSave}
+                  onChange={(e) => setTimeDraft(e.target.value)}
+                  onBlur={saveTimeDraft}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      onTimeSave();
+                      saveTimeDraft();
                     }
                     if (e.key === "Escape") {
                       e.preventDefault();
-                      onTimeCancel();
+                      cancelTimeDraft();
                     }
                   }}
                   className={`w-[170px] bg-transparent p-0 text-center font-mono text-[36px] leading-none font-bold tracking-[2px] outline-none md:text-[52px] ${timerColor}`}
@@ -326,8 +246,8 @@ export default function PracticeStage({
                     ? `Double-tap to set seconds (${TIMER_MIN_SECONDS} to ${TIMER_MAX_SECONDS})`
                     : undefined
                 }
-                onDoubleClick={onTimeDoubleClick}
-                onTouchEnd={onTimeTouchEnd}
+                onDoubleClick={handleTimerDoubleClick}
+                onTouchEnd={handleTimerTouchEnd}
                 onKeyDown={(e) => {
                   if (
                     canEditTime &&
@@ -335,7 +255,7 @@ export default function PracticeStage({
                     e.target === e.currentTarget
                   ) {
                     e.preventDefault();
-                    onTimeEditStart();
+                    openTimeEditor();
                   }
                 }}
                 className={`font-mono text-[36px] leading-none font-bold tracking-[2px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} touch-manipulation outline-none ${
@@ -358,12 +278,12 @@ export default function PracticeStage({
               }`}
             >
               <div className={toolChromePanel}>
-                <SlotLever onPull={onGenerateTopic} />
+                <SlotLever onPull={generateTopic} />
               </div>
               <div className={toolChromePanel}>
                 <RotaryKnob
                   value={timerSeconds}
-                  onChange={onKnobChange}
+                  onChange={handleKnobChange}
                   min={TIMER_MIN_SECONDS}
                   max={TIMER_MAX_SECONDS}
                   disabled={isRunning}
@@ -374,7 +294,7 @@ export default function PracticeStage({
             <div className="flex flex-wrap items-center justify-center gap-2">
               {!isRunning && !timerDone && (
                 <button
-                  onClick={onStart}
+                  onClick={startTimer}
                   className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Start
@@ -384,7 +304,7 @@ export default function PracticeStage({
               {isRunning && (
                 <div className="flex items-center gap-3">
                   <motion.button
-                    onClick={onPause}
+                    onClick={pauseTimer}
                     whileTap={{ scale: 0.85 }}
                     className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 ${
                       isPaused
@@ -396,7 +316,7 @@ export default function PracticeStage({
                     <AnimatedPausePlayIcon paused={isPaused} />
                   </motion.button>
                   <motion.button
-                    onClick={onFinish}
+                    onClick={finishTimer}
                     whileTap={{ scale: 0.85 }}
                     className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                     title="Finish"
@@ -404,7 +324,7 @@ export default function PracticeStage({
                     <AnimatedStopIcon />
                   </motion.button>
                   <motion.button
-                    onClick={onReset}
+                    onClick={resetTimer}
                     whileTap={{ scale: 0.85 }}
                     className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white ${overlayGlass}`}
                     title="Reset"
@@ -417,8 +337,8 @@ export default function PracticeStage({
               {timerDone && (
                 <button
                   onClick={() => {
-                    onReset();
-                    onGenerateTopic();
+                    resetTimer();
+                    generateTopic();
                   }}
                   className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
@@ -437,7 +357,7 @@ export default function PracticeStage({
           }`}
         >
           <div className={toolChromePanel}>
-            <SlotLever onPull={onGenerateTopic} />
+            <SlotLever onPull={generateTopic} />
           </div>
         </div>
 
@@ -451,7 +371,7 @@ export default function PracticeStage({
           <div className={toolChromePanel}>
             <RotaryKnob
               value={timerSeconds}
-              onChange={onKnobChange}
+              onChange={handleKnobChange}
               min={TIMER_MIN_SECONDS}
               max={TIMER_MAX_SECONDS}
               disabled={isRunning}
@@ -459,23 +379,7 @@ export default function PracticeStage({
           </div>
         </div>
 
-        {/* Completion screen overlay */}
-        {timerDone && (
-          <CompletionScreen
-            prompt={customPromptText ?? topic.text}
-            timerSeconds={timerSeconds}
-            cameraOn={cameraOn}
-            micOn={micOn}
-            recordedBlob={recordedBlob}
-            recordedUrl={recordedUrl}
-            isPreparingDownload={isPreparingDownload}
-            onDownload={onDownloadRecording}
-            onNewSession={() => {
-              onReset();
-              onGenerateTopic();
-            }}
-          />
-        )}
+        {timerDone && <CompletionScreen />}
       </div>
     </main>
   );
