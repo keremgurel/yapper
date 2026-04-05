@@ -68,9 +68,7 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         recordedBlob={session.recordedBlob}
         recordedUrl={session.recordedUrl}
         isPreparingDownload={session.isPreparingDownload}
-        videoFormat={session.videoFormat}
         isCompactDevice={session.isCompactDevice}
-        settingsOpen={session.settingsOpen}
         hasGeneratedTopic={session.hasGeneratedTopic}
         inSession={session.inSession}
         canEditPrompt={session.canEditPrompt}
@@ -98,9 +96,6 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         onMicToggle={session.toggleMic}
         onCameraToggle={session.toggleCamera}
         onDownloadRecording={session.downloadRecording}
-        onOpenSettings={session.openSettings}
-        onCloseSettings={session.closeSettings}
-        onFormatChange={session.setVideoFormat}
       />
 
       <HomeFaq />

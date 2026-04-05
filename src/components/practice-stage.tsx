@@ -11,7 +11,6 @@ import RotaryKnob from "@/components/RotaryKnob";
 import SlotLever from "@/components/SlotLever";
 import TopicReel from "@/components/TopicReel";
 import CompletionScreen from "@/components/CompletionScreen";
-import PracticeSettingsPanel from "@/components/practice-settings-panel";
 import {
   AnimatedMicIcon,
   AnimatedCameraIcon,
@@ -43,9 +42,7 @@ interface PracticeStageProps {
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   isPreparingDownload: boolean;
-  videoFormat: "portrait" | "landscape";
   isCompactDevice: boolean;
-  settingsOpen: boolean;
   hasGeneratedTopic: boolean;
   inSession: boolean;
   canEditPrompt: boolean;
@@ -73,9 +70,6 @@ interface PracticeStageProps {
   onMicToggle: () => void;
   onCameraToggle: () => void;
   onDownloadRecording: () => void;
-  onOpenSettings: () => void;
-  onCloseSettings: () => void;
-  onFormatChange: (format: "portrait" | "landscape") => void;
 }
 
 export default function PracticeStage({
@@ -100,9 +94,7 @@ export default function PracticeStage({
   recordedBlob,
   recordedUrl,
   isPreparingDownload,
-  videoFormat,
   isCompactDevice,
-  settingsOpen,
   hasGeneratedTopic,
   inSession,
   canEditPrompt,
@@ -130,9 +122,6 @@ export default function PracticeStage({
   onMicToggle,
   onCameraToggle,
   onDownloadRecording,
-  onOpenSettings,
-  onCloseSettings,
-  onFormatChange,
 }: PracticeStageProps) {
   const overlayGlass =
     "border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_20px_44px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
@@ -200,7 +189,7 @@ export default function PracticeStage({
 
           <div
             className={`flex min-w-0 flex-1 flex-wrap gap-2 pr-20 transition-all duration-500 md:pr-0 ${
-              inSession || settingsOpen || timerDone
+              inSession || timerDone
                 ? "pointer-events-none opacity-0"
                 : "opacity-100"
             }`}
@@ -257,50 +246,6 @@ export default function PracticeStage({
               title={cameraOn ? "Camera off" : "Camera on"}
             >
               <AnimatedCameraIcon off={!cameraOn} />
-            </button>
-
-            <button
-              onClick={settingsOpen ? onCloseSettings : onOpenSettings}
-              disabled={inSession}
-              className={`${toolbarIconButtonClass} ${inSession ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
-              aria-label={
-                settingsOpen
-                  ? "Close recording settings"
-                  : "Open recording settings"
-              }
-              title={
-                settingsOpen ? "Close recording settings" : "Recording settings"
-              }
-            >
-              {settingsOpen ? (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              ) : (
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8.92 4.6H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.49.68.99 1.51 1H21a2 2 0 1 1 0 4h-.09c-.83.01-1.31.52-1.51 1Z" />
-                </svg>
-              )}
             </button>
           </div>
 
@@ -537,13 +482,6 @@ export default function PracticeStage({
             }}
           />
         )}
-
-        <PracticeSettingsPanel
-          open={settingsOpen}
-          videoFormat={videoFormat}
-          isCompactDevice={isCompactDevice}
-          onFormatChange={onFormatChange}
-        />
       </div>
     </main>
   );
