@@ -67,6 +67,14 @@ export default function TopicReel({
 
   const displayText = promptOverride ?? topic.text;
   const isCustom = promptOverride !== null;
+  const promptSizeClass =
+    displayText.length < 40
+      ? "text-[22px] md:text-[26px]"
+      : displayText.length < 80
+        ? "text-[18px] md:text-[22px]"
+        : displayText.length < 140
+          ? "text-[15px] md:text-[18px]"
+          : "text-[13px] md:text-[15px]";
 
   return (
     <div className={glassPanelClass}>
@@ -83,7 +91,25 @@ export default function TopicReel({
           ))}
         </div>
       ) : !hasGeneratedTopic && !promptEditing ? (
-        <div className="flex w-full flex-col items-center justify-center gap-3 px-2">
+        <div
+          role={promptEditable ? "button" : undefined}
+          tabIndex={promptEditable ? 0 : undefined}
+          onDoubleClick={handleDoubleClick}
+          onTouchEnd={handleTouchEnd}
+          onKeyDown={(e) => {
+            if (
+              promptEditable &&
+              (e.key === "Enter" || e.key === " ") &&
+              !spinning
+            ) {
+              e.preventDefault();
+              tryDoubleTap();
+            }
+          }}
+          className={`flex w-full touch-manipulation flex-col items-center justify-center gap-3 px-2 outline-none ${
+            promptEditable ? "cursor-pointer select-none" : ""
+          }`}
+        >
           <p className="m-0 text-center font-sans text-[15px] leading-snug font-medium text-white/90">
             Choose your time, enable camera&thinsp;/&thinsp;mic to save the
             session, and pull the lever to generate a random topic.
@@ -168,7 +194,9 @@ export default function TopicReel({
               </>
             )}
           </div>
-          <p className="animate-fade-slide-in m-0 font-sans text-[15px] leading-relaxed font-medium text-white [animation-delay:100ms]">
+          <p
+            className={`animate-fade-slide-in m-0 font-sans leading-relaxed font-medium text-white [animation-delay:100ms] ${promptSizeClass}`}
+          >
             {displayText}
           </p>
         </div>

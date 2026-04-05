@@ -347,12 +347,6 @@ export default function PracticeStage({
                 {formatSecondsDisplay(timeLeft)}
               </div>
             )}
-
-            {canEditTime && !timeEditorOpen && (
-              <span className="text-[10px] font-medium tracking-wide text-white/76 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.65)]">
-                Seconds · double-tap to type
-              </span>
-            )}
           </div>
 
           <div className="flex w-full flex-col items-center gap-3">
