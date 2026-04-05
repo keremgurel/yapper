@@ -113,8 +113,7 @@ function AudioReplayControls({
   const iconButtonClass = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-300 hover:scale-[1.03] hover:text-white ${controlGlass}`;
 
   const duration = player.duration ?? 0;
-  const progress =
-    duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+  const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
 
   useEffect(() => {
     if (!player.activeItem) {
@@ -207,7 +206,7 @@ function AudioReplayControls({
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-[12px] font-medium tabular-nums text-white/54">
+        <span className="text-[12px] font-medium text-white/54 tabular-nums">
           {formatDuration(currentTime)}
         </span>
         <div className="min-w-0 flex-1">
@@ -227,7 +226,7 @@ function AudioReplayControls({
             />
           </button>
         </div>
-        <span className="text-[12px] font-medium tabular-nums text-white/54">
+        <span className="text-[12px] font-medium text-white/54 tabular-nums">
           {formatDuration(duration)}
         </span>
       </div>
@@ -252,11 +251,7 @@ function AudioReplayControls({
         </button>
 
         {onShare && (
-          <button
-            type="button"
-            onClick={onShare}
-            className={iconButtonClass}
-          >
+          <button type="button" onClick={onShare} className={iconButtonClass}>
             <Share2 className="h-4 w-4" strokeWidth={2.2} />
           </button>
         )}
