@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Download, Pause, Play, Share2 } from "lucide-react";
+import { Download, Pause, Play, RotateCcw, Share2 } from "lucide-react";
 import {
   AudioPlayerProvider,
   useAudioPlayer,
@@ -18,6 +18,7 @@ interface CompletionScreenProps {
   recordedUrl: string | null;
   isPreparingDownload: boolean;
   onDownload: () => void;
+  onNewSession: () => void;
 }
 
 function formatTime(seconds: number) {
@@ -89,6 +90,7 @@ function VideoPlayer({
   prompt,
   onShare,
   onDownload,
+  onNewSession,
   canDownload,
   isPreparingDownload,
 }: {
@@ -96,6 +98,7 @@ function VideoPlayer({
   prompt: string;
   onShare: () => void;
   onDownload: () => void;
+  onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
 }) {
@@ -335,6 +338,14 @@ function VideoPlayer({
             >
               <Share2 className="h-4 w-4" strokeWidth={2.2} />
             </button>
+            <button
+              type="button"
+              onClick={onNewSession}
+              className={`${iconBtn} md:hidden`}
+              title="New Session"
+            >
+              <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
+            </button>
           </div>
         </div>
       </div>
@@ -351,6 +362,7 @@ function AudioReplayControls({
   waveformData,
   onShare,
   onDownload,
+  onNewSession,
   canDownload,
   isPreparingDownload,
 }: {
@@ -358,6 +370,7 @@ function AudioReplayControls({
   waveformData: number[];
   onShare: () => void;
   onDownload: () => void;
+  onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
 }) {
@@ -504,6 +517,14 @@ function AudioReplayControls({
         >
           <Share2 className="h-4 w-4" strokeWidth={2.2} />
         </button>
+        <button
+          type="button"
+          onClick={onNewSession}
+          className={`${iconBtn} md:hidden`}
+          title="New Session"
+        >
+          <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
+        </button>
       </div>
     </div>
   );
@@ -521,6 +542,7 @@ export default function CompletionScreen({
   recordedUrl,
   isPreparingDownload,
   onDownload,
+  onNewSession,
 }: CompletionScreenProps) {
   const hasVideo = !!recordedUrl && cameraOn;
   const hasAudioOnly = !!recordedUrl && !cameraOn && micOn;
@@ -570,6 +592,7 @@ export default function CompletionScreen({
             prompt={prompt}
             onShare={handleShare}
             onDownload={onDownload}
+            onNewSession={onNewSession}
             canDownload={canDownload}
             isPreparingDownload={isPreparingDownload}
           />
@@ -587,6 +610,7 @@ export default function CompletionScreen({
                 waveformData={waveformData}
                 onShare={handleShare}
                 onDownload={onDownload}
+                onNewSession={onNewSession}
                 canDownload={canDownload}
                 isPreparingDownload={isPreparingDownload}
               />

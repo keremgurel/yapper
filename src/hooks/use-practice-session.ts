@@ -40,17 +40,18 @@ async function resetTrackZoom(track: MediaStreamTrack | undefined) {
 }
 
 function getPreferredVideoConstraints(format: "portrait" | "landscape") {
+  // Don't constrain aspectRatio — iOS front cameras are natively 4:3 and will
+  // crop/zoom to satisfy an aspect ratio hint, losing field of view.
+  // Instead we request a resolution hint and let object-contain handle display.
   return format === "landscape"
     ? {
         facingMode: "user",
-        aspectRatio: { ideal: 16 / 9 },
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         frameRate: { ideal: 30, max: 60 },
       }
     : {
         facingMode: "user",
-        aspectRatio: { ideal: 9 / 16 },
         width: { ideal: 1080 },
         height: { ideal: 1920 },
         frameRate: { ideal: 30, max: 60 },

@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { CATEGORIES, DIFFICULTIES, type Topic } from "@/data/topics";
 import {
   TIMER_MAX_SECONDS,
@@ -140,28 +139,6 @@ export default function PracticeStage({
   const selectClass = `min-w-0 flex-1 cursor-pointer rounded-2xl px-3 py-2 text-[11px] font-medium text-white outline-none sm:flex-none ${overlayGlass}`;
 
   const toolbarIconButtonClass = `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 hover:bg-white/16 ${overlayGlass}`;
-
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const countdownRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleStartWithCountdown = useCallback(() => {
-    setCountdown(3);
-  }, []);
-
-  useEffect(() => {
-    if (countdown === null || countdown === 0) return;
-    countdownRef.current = setTimeout(() => {
-      if (countdown === 1) {
-        setCountdown(null);
-        onStart();
-      } else {
-        setCountdown((c) => (c !== null ? c - 1 : null));
-      }
-    }, 800);
-    return () => {
-      if (countdownRef.current) clearTimeout(countdownRef.current);
-    };
-  }, [countdown, onStart]);
 
   const timerColor =
     timeLeft <= 10
@@ -337,7 +314,7 @@ export default function PracticeStage({
                 onReset();
                 onGenerateTopic();
               }}
-              className={`${toolbarIconButtonClass} w-auto gap-1.5 px-4 text-xs font-medium`}
+              className={`${toolbarIconButtonClass} hidden w-auto gap-1.5 px-4 text-xs font-medium md:flex`}
               title="New Session"
             >
               <svg
@@ -459,43 +436,14 @@ export default function PracticeStage({
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {!isRunning && !timerDone && countdown === null && (
+              {!isRunning && !timerDone && (
                 <button
-                  onClick={handleStartWithCountdown}
+                  onClick={onStart}
                   className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Start
                 </button>
               )}
-
-              <AnimatePresence mode="wait">
-                {countdown !== null && countdown > 0 && (
-                  <motion.div
-                    key="countdown-container"
-                    className="flex h-[52px] w-[52px] items-center justify-center rounded-full border border-white/20 bg-gradient-to-br from-blue-500 to-blue-600 shadow-[0_4px_24px_rgba(37,99,235,0.5)]"
-                    initial={{ opacity: 0, scale: 0.6 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
-                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <AnimatePresence mode="wait">
-                      <motion.span
-                        key={countdown}
-                        className="font-display text-[24px] font-bold text-white"
-                        initial={{ opacity: 0, scale: 0.5, y: 8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 1.4, y: -8 }}
-                        transition={{
-                          duration: 0.35,
-                          ease: [0.22, 1, 0.36, 1],
-                        }}
-                      >
-                        {countdown}
-                      </motion.span>
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
 
               {isRunning && (
                 <div className="flex items-center gap-3">
@@ -586,6 +534,10 @@ export default function PracticeStage({
             recordedUrl={recordedUrl}
             isPreparingDownload={isPreparingDownload}
             onDownload={onDownloadRecording}
+            onNewSession={() => {
+              onReset();
+              onGenerateTopic();
+            }}
           />
         )}
 
