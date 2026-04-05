@@ -15,6 +15,7 @@ interface TopicReelProps {
   onPromptSave?: () => void;
   onPromptCancel?: () => void;
   promptEditable?: boolean;
+  hasGeneratedTopic?: boolean;
 }
 
 export default function TopicReel({
@@ -29,6 +30,7 @@ export default function TopicReel({
   onPromptSave,
   onPromptCancel,
   promptEditable = false,
+  hasGeneratedTopic = true,
 }: TopicReelProps) {
   const lastTapRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,6 +82,16 @@ export default function TopicReel({
             </p>
           ))}
         </div>
+      ) : !hasGeneratedTopic && !promptEditing ? (
+        <div className="flex w-full flex-col items-center justify-center gap-3 px-2">
+          <p className="m-0 text-center font-sans text-[15px] leading-snug font-medium text-white/90">
+            Choose your time, enable camera&thinsp;/&thinsp;mic to save the
+            session, and pull the lever to generate a random topic.
+          </p>
+          <span className="text-[11px] font-medium tracking-wide text-white/50 uppercase">
+            Double-tap prompt to write your own
+          </span>
+        </div>
       ) : promptEditing ? (
         <div className="relative flex w-full flex-col items-center justify-center">
           <textarea
@@ -105,7 +117,7 @@ export default function TopicReel({
               }
             }}
             rows={3}
-            className="w-full resize-none bg-transparent p-0 text-center font-sans text-xl leading-relaxed font-medium text-white outline-none placeholder:text-white/38"
+            className="w-full resize-none bg-transparent p-0 text-center font-sans text-[15px] leading-relaxed font-medium text-white outline-none placeholder:text-white/38"
             placeholder="Type your speaking prompt"
             autoFocus
           />
@@ -135,7 +147,7 @@ export default function TopicReel({
               : ""
           }`}
         >
-          <div className="animate-fade-slide-in mb-4 flex justify-center gap-2 [animation-delay:50ms]">
+          <div className="animate-fade-slide-in mb-3 flex justify-center gap-2 [animation-delay:50ms]">
             {isCustom ? (
               <>
                 <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
@@ -156,7 +168,7 @@ export default function TopicReel({
               </>
             )}
           </div>
-          <p className="animate-fade-slide-in m-0 max-h-[88px] overflow-y-auto font-sans text-xl leading-relaxed font-medium text-white [animation-delay:100ms]">
+          <p className="animate-fade-slide-in m-0 font-sans text-[15px] leading-relaxed font-medium text-white [animation-delay:100ms]">
             {displayText}
           </p>
         </div>

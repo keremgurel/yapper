@@ -92,6 +92,7 @@ export function usePracticeSession(initialTopic: Topic) {
   const [isCompactDevice, setIsCompactDevice] = useState(false);
   const [hasCustomizedFormat, setHasCustomizedFormat] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hasGeneratedTopic, setHasGeneratedTopic] = useState(false);
 
   const lastTimerTapRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -168,6 +169,7 @@ export function usePracticeSession(initialTopic: Topic) {
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
     setSettingsOpen(false);
+    setHasGeneratedTopic(true);
     setReelBlurbs(pickReelBlurbs());
     setSpinning(true);
     const tickInterval = setInterval(
@@ -188,6 +190,7 @@ export function usePracticeSession(initialTopic: Topic) {
       setCategory(nextCategory);
       setCustomPromptText(null);
       setSettingsOpen(false);
+      setHasGeneratedTopic(true);
       setTopic(getRandomTopic(topic, nextCategory, difficulty));
     },
     [difficulty, topic],
@@ -199,6 +202,7 @@ export function usePracticeSession(initialTopic: Topic) {
       setDifficulty(nextDifficulty);
       setCustomPromptText(null);
       setSettingsOpen(false);
+      setHasGeneratedTopic(true);
       setTopic(getRandomTopic(topic, category, nextDifficulty));
     },
     [category, topic],
@@ -213,6 +217,7 @@ export function usePracticeSession(initialTopic: Topic) {
   const savePromptDraft = useCallback(() => {
     const trimmed = promptDraft.trim();
     setCustomPromptText(trimmed.length > 0 ? trimmed : null);
+    if (trimmed.length > 0) setHasGeneratedTopic(true);
     setPromptEditorOpen(false);
   }, [promptDraft]);
 
@@ -584,6 +589,7 @@ export function usePracticeSession(initialTopic: Topic) {
     videoFormat: effectiveVideoFormat,
     isCompactDevice,
     settingsOpen,
+    hasGeneratedTopic,
     inSession,
     canEditPrompt,
     canEditTime,

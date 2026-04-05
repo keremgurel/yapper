@@ -71,6 +71,7 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         videoFormat={session.videoFormat}
         isCompactDevice={session.isCompactDevice}
         settingsOpen={session.settingsOpen}
+        hasGeneratedTopic={session.hasGeneratedTopic}
         inSession={session.inSession}
         canEditPrompt={session.canEditPrompt}
         canEditTime={session.canEditTime}

@@ -46,6 +46,7 @@ interface PracticeStageProps {
   videoFormat: "portrait" | "landscape";
   isCompactDevice: boolean;
   settingsOpen: boolean;
+  hasGeneratedTopic: boolean;
   inSession: boolean;
   canEditPrompt: boolean;
   canEditTime: boolean;
@@ -102,6 +103,7 @@ export default function PracticeStage({
   videoFormat,
   isCompactDevice,
   settingsOpen,
+  hasGeneratedTopic,
   inSession,
   canEditPrompt,
   canEditTime,
@@ -151,10 +153,6 @@ export default function PracticeStage({
   const stageFrameClass = isCompactDevice
     ? "aspect-[9/16] w-[min(calc(100vw-2rem),calc((100dvh-1.5rem)*9/16))] max-h-[calc(100dvh-1.5rem)] lg:w-[min(calc((100vh-200px)*9/16),100%)]"
     : "aspect-[16/9] w-full max-w-[min(1200px,100%)] max-h-[calc(100dvh-1.5rem)] md:h-auto md:max-h-[calc(100vh-200px)]";
-  const recordingViewportClass =
-    videoFormat === "portrait"
-      ? "aspect-[9/16] h-full max-h-full w-auto max-w-full"
-      : "aspect-[16/9] h-auto max-h-full w-full";
 
   return (
     <main
@@ -162,7 +160,7 @@ export default function PracticeStage({
       className="relative flex flex-1 flex-col items-center justify-start overflow-visible px-4 pt-0 pb-6 sm:pb-16 md:justify-center md:pt-2 md:pb-20"
     >
       <div
-        className={`shadow-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-100 dark:border-white/[0.08] dark:bg-[oklch(0.16_0_0)] dark:bg-none ${stageFrameClass}`}
+        className={`shadow-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-linear-to-b from-white to-slate-100 dark:border-white/8 dark:bg-[oklch(0.16_0_0)] dark:bg-none ${stageFrameClass}`}
       >
         <div className="absolute inset-0">
           <MeshGradient
@@ -175,16 +173,14 @@ export default function PracticeStage({
         </div>
 
         {cameraOn && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className={recordingViewportClass}>
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full bg-black object-contain"
-              />
-            </div>
+          <div className="absolute inset-0">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="h-full w-full bg-black object-cover"
+            />
           </div>
         )}
 
@@ -344,6 +340,7 @@ export default function PracticeStage({
               promptDraft={promptDraft}
               promptEditing={promptEditorOpen}
               promptEditable={canEditPrompt}
+              hasGeneratedTopic={hasGeneratedTopic}
               onPromptDoubleTap={onPromptEditStart}
               onPromptDraftChange={onPromptDraftChange}
               onPromptSave={onPromptSave}
@@ -439,7 +436,7 @@ export default function PracticeStage({
               {!isRunning && !timerDone && (
                 <button
                   onClick={onStart}
-                  className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                  className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Start
                 </button>
@@ -452,7 +449,7 @@ export default function PracticeStage({
                     whileTap={{ scale: 0.85 }}
                     className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 ${
                       isPaused
-                        ? "border border-blue-400/30 bg-gradient-to-br from-blue-500 to-blue-600 shadow-[0_4px_20px_rgba(37,99,235,0.4)]"
+                        ? "border border-blue-400/30 bg-linear-to-br from-blue-500 to-blue-600 shadow-[0_4px_20px_rgba(37,99,235,0.4)]"
                         : overlayGlass
                     }`}
                     title={isPaused ? "Resume" : "Pause"}
@@ -462,7 +459,7 @@ export default function PracticeStage({
                   <motion.button
                     onClick={onFinish}
                     whileTap={{ scale: 0.85 }}
-                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                     title="Finish"
                   >
                     <AnimatedStopIcon />
@@ -484,7 +481,7 @@ export default function PracticeStage({
                     onReset();
                     onGenerateTopic();
                   }}
-                  className="cursor-pointer rounded-full bg-gradient-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
+                  className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
                 >
                   Try Another
                 </button>
