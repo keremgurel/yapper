@@ -1,560 +1,534 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, Pause, Play, Share2 } from "lucide-react";
 import {
-  Download,
-  Expand,
-  Pause,
-  Play,
-  RotateCcw,
-  Share2,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+  AudioPlayerProvider,
+  useAudioPlayer,
+  useAudioPlayerTime,
+} from "@/components/ui/audio-player";
+import { Waveform } from "@/components/ui/waveform";
 
 interface CompletionScreenProps {
   prompt: string;
-  timerSeconds: number;
+  timerSeconds?: number;
   cameraOn: boolean;
   micOn: boolean;
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   isPreparingDownload: boolean;
-  onTryAnother: () => void;
   onDownload: () => void;
 }
 
-function formatDuration(seconds: number) {
-  const safeSeconds = Math.max(0, Math.floor(seconds));
-  const minutes = Math.floor(safeSeconds / 60);
-  const remainder = safeSeconds % 60;
-  return `${minutes}:${String(remainder).padStart(2, "0")}`;
+function formatTime(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-function formatTakeDuration(seconds: number) {
-  if (seconds < 60) return `${seconds}s take`;
-  const minutes = Math.floor(seconds / 60);
-  const remainder = seconds % 60;
-  return remainder === 0
-    ? `${minutes}m take`
-    : `${minutes}m ${remainder}s take`;
+/* ------------------------------------------------------------------ */
+/*  Waveform data extraction                                          */
+/* ------------------------------------------------------------------ */
+
+function useWaveformData(blob: Blob | null, barCount = 100) {
+  const [data, setData] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!blob) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const buf = await blob.arrayBuffer();
+        const ctx = new AudioContext();
+        const audio = await ctx.decodeAudioData(buf);
+        const ch = audio.getChannelData(0);
+        const block = Math.floor(ch.length / barCount);
+        const bars: number[] = [];
+        for (let i = 0; i < barCount; i++) {
+          let sum = 0;
+          const start = i * block;
+          for (let j = 0; j < block; j++) sum += Math.abs(ch[start + j]);
+          bars.push(sum / block);
+        }
+        const max = Math.max(...bars, 0.01);
+        if (!cancelled) setData(bars.map((v) => v / max));
+        await ctx.close();
+      } catch {
+        if (!cancelled)
+          setData(
+            Array.from({ length: barCount }, () => 0.1 + Math.random() * 0.5),
+          );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blob, barCount]);
+
+  return data;
 }
 
-function ReplayPlayer({
+/* ------------------------------------------------------------------ */
+/*  Shared                                                            */
+/* ------------------------------------------------------------------ */
+
+const glass =
+  "border border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_38px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
+
+const iconBtn = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-200 hover:text-white active:scale-95 ${glass}`;
+
+/* ------------------------------------------------------------------ */
+/*  Video player – full-bleed with overlay                            */
+/* ------------------------------------------------------------------ */
+
+function VideoPlayer({
   src,
-  video = true,
+  prompt,
   onShare,
+  onDownload,
+  canDownload,
+  isPreparingDownload,
 }: {
   src: string;
-  video?: boolean;
-  onShare?: () => void;
+  prompt: string;
+  onShare: () => void;
+  onDownload: () => void;
+  canDownload: boolean;
+  isPreparingDownload: boolean;
 }) {
-  const mediaRef = useRef<HTMLVideoElement | HTMLAudioElement>(null);
-  const trackRef = useRef<HTMLButtonElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [playing, setPlaying] = useState(false);
+  const [time, setTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const [overlayVisible, setOverlayVisible] = useState(true);
 
-  const [isInteracting, setIsInteracting] = useState(true);
-  const interactionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progress = duration > 0 ? Math.min(time / duration, 1) : 0;
 
-  const controlGlass =
-    "border border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_38px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
-  const iconButtonClass = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-300 hover:scale-[1.03] hover:text-white ${controlGlass}`;
-
-  const resetInteractionTimer = () => {
-    setIsInteracting(true);
-    if (interactionTimeoutRef.current) {
-      clearTimeout(interactionTimeoutRef.current);
-    }
-    interactionTimeoutRef.current = setTimeout(() => {
-      setIsInteracting(false);
-    }, 2500);
-  };
-
+  /* --- media event listeners --- */
   useEffect(() => {
-    // Start the hide timer if playing, scrubbing stops, or speed menu closes
-    if (isPlaying && !isScrubbing && !showSpeedMenu) {
-      if (interactionTimeoutRef.current) {
-        clearTimeout(interactionTimeoutRef.current);
-      }
-      interactionTimeoutRef.current = setTimeout(() => {
-        setIsInteracting(false);
-      }, 2500);
-    } else {
-      if (interactionTimeoutRef.current) {
-        clearTimeout(interactionTimeoutRef.current);
-      }
-    }
-    return () => {
-      if (interactionTimeoutRef.current) {
-        clearTimeout(interactionTimeoutRef.current);
-      }
+    const v = videoRef.current;
+    if (!v) return;
+    const onTime = () => setTime(v.currentTime);
+    const onDur = () =>
+      setDuration(Number.isFinite(v.duration) ? v.duration : 0);
+    const onPlay = () => setPlaying(true);
+    const onPause = () => {
+      setPlaying(false);
+      setOverlayVisible(true);
     };
-  }, [isPlaying, isScrubbing, showSpeedMenu]);
-
-  const handlePointerMove = () => {
-    if (isPlaying && !isScrubbing && !showSpeedMenu) {
-      resetInteractionTimer();
-    } else {
-      setIsInteracting(true);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (isPlaying && !isScrubbing && !showSpeedMenu) {
-      if (interactionTimeoutRef.current) {
-        clearTimeout(interactionTimeoutRef.current);
-      }
-      setIsInteracting(false);
-    }
-  };
-
-  const handlePlayerClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      if (isPlaying) {
-        if (isInteracting) {
-          if (interactionTimeoutRef.current)
-            clearTimeout(interactionTimeoutRef.current);
-          setIsInteracting(false);
-        } else {
-          resetInteractionTimer();
-        }
-      }
-    }
-  };
-
-  const showControls =
-    !isPlaying || isScrubbing || showSpeedMenu || isInteracting;
-
-  useEffect(() => {
-    const media = mediaRef.current;
-    if (!media) return;
-
-    const syncTime = () => setCurrentTime(media.currentTime);
-    const syncDuration = () =>
-      setDuration(Number.isFinite(media.duration) ? media.duration : 0);
-    const markPlay = () => setIsPlaying(true);
-    const markPause = () => setIsPlaying(false);
-
-    media.addEventListener("timeupdate", syncTime);
-    media.addEventListener("loadedmetadata", syncDuration);
-    media.addEventListener("durationchange", syncDuration);
-    media.addEventListener("play", markPlay);
-    media.addEventListener("pause", markPause);
-    media.addEventListener("ended", markPause);
-
+    // If metadata is already loaded, grab the duration immediately
+    onDur();
+    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("loadedmetadata", onDur);
+    v.addEventListener("durationchange", onDur);
+    v.addEventListener("play", onPlay);
+    v.addEventListener("pause", onPause);
+    v.addEventListener("ended", onPause);
     return () => {
-      media.removeEventListener("timeupdate", syncTime);
-      media.removeEventListener("loadedmetadata", syncDuration);
-      media.removeEventListener("durationchange", syncDuration);
-      media.removeEventListener("play", markPlay);
-      media.removeEventListener("pause", markPause);
-      media.removeEventListener("ended", markPause);
+      v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("loadedmetadata", onDur);
+      v.removeEventListener("durationchange", onDur);
+      v.removeEventListener("play", onPlay);
+      v.removeEventListener("pause", onPause);
+      v.removeEventListener("ended", onPause);
     };
   }, []);
 
+  /* --- auto-hide overlay --- */
+  const scheduleHide = useCallback(() => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => setOverlayVisible(false), 2200);
+  }, []);
+
   useEffect(() => {
-    if (mediaRef.current) {
-      mediaRef.current.playbackRate = playbackRate;
+    if (playing && !scrubbing) {
+      scheduleHide();
+    } else {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
-  }, [playbackRate]);
-
-  useEffect(() => {
-    if (!isScrubbing) return;
-
-    const handlePointerMoveGlobal = (event: PointerEvent) => {
-      const media = mediaRef.current;
-      const track = trackRef.current;
-      if (!media || !track || duration <= 0) return;
-
-      const rect = track.getBoundingClientRect();
-      const ratio = Math.min(
-        Math.max((event.clientX - rect.left) / rect.width, 0),
-        1,
-      );
-      const nextTime = ratio * duration;
-      media.currentTime = nextTime;
-      setCurrentTime(nextTime);
-    };
-
-    const stopScrub = () => {
-      setIsScrubbing(false);
-    };
-
-    window.addEventListener("pointermove", handlePointerMoveGlobal);
-    window.addEventListener("pointerup", stopScrub);
-
     return () => {
-      window.removeEventListener("pointermove", handlePointerMoveGlobal);
-      window.removeEventListener("pointerup", stopScrub);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
-  }, [duration, isScrubbing]);
+  }, [playing, scrubbing, scheduleHide]);
 
-  const seekFromClientX = (clientX: number) => {
-    const media = mediaRef.current;
-    const track = trackRef.current;
-    if (!media || !track || duration <= 0) return;
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) v.play().catch(() => {});
+    else v.pause();
+  }, []);
 
-    const rect = track.getBoundingClientRect();
-    const ratio = Math.min(Math.max((clientX - rect.left) / rect.width, 0), 1);
-    const nextTime = ratio * duration;
-    media.currentTime = nextTime;
-    setCurrentTime(nextTime);
-  };
+  /* --- spacebar play/pause --- */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlay();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [togglePlay]);
 
-  const togglePlayback = () => {
-    const media = mediaRef.current;
-    if (!media) return;
-
-    if (media.paused) {
-      media.play().catch(() => {});
-      return;
+  const handleTap = () => {
+    togglePlay();
+    setOverlayVisible(true);
+    if (!playing) {
+      // Was paused, now playing — auto-hide after a bit
+      scheduleHide();
+    } else {
+      // Was playing, now paused — keep overlay visible
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
-
-    media.pause();
   };
 
-  const toggleMute = () => {
-    const media = mediaRef.current;
-    if (!media) return;
-
-    media.muted = !media.muted;
-    setIsMuted(media.muted);
+  const handlePointerMove = () => {
+    if (!playing) return;
+    setOverlayVisible(true);
+    scheduleHide();
   };
 
-  const restart = () => {
-    const media = mediaRef.current;
-    if (!media) return;
-
-    media.currentTime = 0;
-    media.play().catch(() => {});
+  const handlePointerLeave = () => {
+    if (!playing || scrubbing) return;
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    setOverlayVisible(false);
   };
 
-  const enterFullscreen = async () => {
-    const media = mediaRef.current;
-    if (!media || !video || !("requestFullscreen" in media)) return;
+  /* --- scrubbing --- */
+  const seekFromX = useCallback(
+    (clientX: number) => {
+      const el = trackRef.current;
+      const v = videoRef.current;
+      if (!el || !v || duration <= 0) return;
+      const rect = el.getBoundingClientRect();
+      const ratio = Math.max(
+        0,
+        Math.min((clientX - rect.left) / rect.width, 1),
+      );
+      v.currentTime = ratio * duration;
+      setTime(v.currentTime);
+    },
+    [duration],
+  );
 
-    await (media as HTMLVideoElement).requestFullscreen?.().catch(() => {});
-  };
+  useEffect(() => {
+    if (!scrubbing) return;
+    const move = (e: PointerEvent) => seekFromX(e.clientX);
+    const up = () => setScrubbing(false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [scrubbing, seekFromX]);
 
-  const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+  const show = overlayVisible;
 
   return (
     <div
+      className="absolute inset-0 flex flex-col"
       onPointerMove={handlePointerMove}
-      onMouseLeave={handleMouseLeave}
-      className="group relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,19,0.96),rgba(4,6,12,0.98))] shadow-[0_26px_80px_rgba(0,0,0,0.28)]"
+      onPointerLeave={handlePointerLeave}
     >
-      {video ? (
-        <div className="relative cursor-pointer" onClick={handlePlayerClick}>
-          <video
-            ref={mediaRef as React.RefObject<HTMLVideoElement>}
-            src={src}
-            playsInline
-            preload="metadata"
-            className="aspect-video w-full bg-black object-contain"
-          />
+      {/* Video fills entire container */}
+      <video
+        ref={videoRef}
+        src={src}
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full bg-black object-contain"
+        onClick={handleTap}
+      />
 
-          <div
-            className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(7,10,18,0.58),transparent)] transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
-          />
-          <div
-            className={`pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(7,10,18,0.82))] transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
-          />
+      {/* Top gradient */}
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 z-10 h-40 bg-[linear-gradient(180deg,rgba(0,0,0,0.7),transparent)] transition-opacity duration-300 ${show ? "opacity-100" : "opacity-0"}`}
+      />
 
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayback();
-            }}
-            className={`absolute inset-0 m-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 hover:scale-[1.04] ${controlGlass} ${showControls ? "scale-100 opacity-100" : "scale-90 opacity-0"}`}
-          >
-            {isPlaying ? (
-              <Pause className="h-6 w-6" strokeWidth={2.2} />
-            ) : (
-              <Play className="ml-1 h-6 w-6" strokeWidth={2.2} />
+      {/* Bottom gradient */}
+      <div
+        className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 h-48 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.8))] transition-opacity duration-300 ${show ? "opacity-100" : "opacity-0"}`}
+      />
+
+      {/* Prompt overlay – top */}
+      <div
+        className={`absolute inset-x-0 top-0 z-20 p-5 transition-all duration-300 ${show ? "translate-y-0 opacity-100" : "-translate-y-3 opacity-0"}`}
+      >
+        <p className="max-w-[480px] text-[14px] leading-snug font-medium text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] sm:text-[16px]">
+          {prompt}
+        </p>
+      </div>
+
+      {/* Center play button */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          togglePlay();
+          if (!playing) scheduleHide();
+        }}
+        className={`absolute inset-0 z-20 m-auto flex h-16 w-16 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 outline-none ${glass} ${show ? "scale-100 opacity-100" : "pointer-events-none scale-90 opacity-0"}`}
+      >
+        {playing ? (
+          <Pause className="h-6 w-6" strokeWidth={2.2} />
+        ) : (
+          <Play className="ml-1 h-6 w-6" strokeWidth={2.2} />
+        )}
+      </button>
+
+      {/* Bottom bar */}
+      <div
+        className={`absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 p-4 transition-all duration-300 ${show ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`}
+      >
+        {/* Scrub bar */}
+        <div
+          ref={trackRef}
+          className="relative h-6 w-full cursor-pointer touch-none"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            setScrubbing(true);
+            seekFromX(e.clientX);
+          }}
+        >
+          <span className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-white/20" />
+          <span
+            className="absolute top-1/2 left-0 h-1 -translate-y-1/2 rounded-full bg-white"
+            style={{ width: `${progress * 100}%` }}
+          />
+          <span
+            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/60 bg-white shadow-md"
+            style={{ left: `${progress * 100}%` }}
+          />
+        </div>
+
+        {/* Controls row */}
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] font-medium text-white/60 tabular-nums">
+            {formatTime(time)} / {formatTime(duration)}
+          </span>
+
+          <div className="flex items-center gap-2">
+            {canDownload && (
+              <button
+                type="button"
+                onClick={onDownload}
+                disabled={isPreparingDownload}
+                className={`${iconBtn} disabled:opacity-40`}
+                title="Download"
+              >
+                <Download className="h-4 w-4" strokeWidth={2.2} />
+              </button>
             )}
-          </button>
-
-          <div
-            className={`absolute right-4 bottom-4 left-4 flex flex-col gap-3 transition-all duration-300 ${showControls ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0"}`}
-          >
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  togglePlayback();
-                }}
-                className={iconButtonClass}
-              >
-                {isPlaying ? (
-                  <Pause className="h-4.5 w-4.5" strokeWidth={2.2} />
-                ) : (
-                  <Play className="ml-0.5 h-4.5 w-4.5" strokeWidth={2.2} />
-                )}
-              </button>
-
-              <div
-                className="min-w-0 flex-1"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  ref={trackRef}
-                  onPointerDown={(event) => {
-                    event.preventDefault();
-                    setIsScrubbing(true);
-                    seekFromClientX(event.clientX);
-                  }}
-                  className="relative block h-6 w-full cursor-pointer touch-none"
-                  aria-label="Seek through recording"
-                >
-                  <span className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/14" />
-                  <span
-                    className="absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,#ffffff,#b8d8ff)]"
-                    style={{ width: `${progress * 100}%` }}
-                  />
-                  <span
-                    className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/50 bg-white shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
-                    style={{ left: `${progress * 100}%` }}
-                  />
-                </button>
-
-                <div className="mt-1 flex items-center justify-between text-[12px] font-medium text-white/54">
-                  <span>{formatDuration(currentTime)}</span>
-                  <span>{formatDuration(duration || 0)}</span>
-                </div>
-              </div>
-
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowSpeedMenu(!showSpeedMenu);
-                  }}
-                  className={`${iconButtonClass} px-3 text-[12px] font-bold`}
-                >
-                  {playbackRate}x
-                </button>
-                {showSpeedMenu && (
-                  <div
-                    className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-white/12 bg-slate-900/90 shadow-xl backdrop-blur-xl"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {[0.5, 1, 1.25, 1.5, 2].map((rate) => (
-                      <button
-                        key={rate}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPlaybackRate(rate);
-                          setShowSpeedMenu(false);
-                        }}
-                        className={`px-4 py-2 text-[12px] font-medium transition-colors hover:bg-white/10 ${
-                          playbackRate === rate
-                            ? "bg-blue-600 text-white"
-                            : "text-white/60"
-                        }`}
-                      >
-                        {rate}x
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleMute();
-                }}
-                className={iconButtonClass}
-              >
-                {isMuted ? (
-                  <VolumeX className="h-4 w-4" strokeWidth={2.2} />
-                ) : (
-                  <Volume2 className="h-4 w-4" strokeWidth={2.2} />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  enterFullscreen();
-                }}
-                className={`${iconButtonClass} hidden sm:flex`}
-              >
-                <Expand className="h-4 w-4" strokeWidth={2.2} />
-              </button>
-
-              {onShare && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onShare();
-                  }}
-                  className={iconButtonClass}
-                >
-                  <Share2 className="h-4 w-4" strokeWidth={2.2} />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-7 px-6 py-8">
-          <div className="space-y-2">
-            <p className="text-[10px] font-semibold tracking-[0.22em] text-white/42 uppercase">
-              Audio Replay
-            </p>
-            <h3 className="font-display text-[30px] leading-none font-semibold tracking-[-0.05em] text-white">
-              Listen before you save.
-            </h3>
-          </div>
-
-          <div className="flex h-[120px] items-end justify-between gap-2">
-            {Array.from({ length: 24 }).map((_, index) => (
-              <span
-                key={index}
-                className="w-full rounded-full bg-[linear-gradient(180deg,rgba(110,231,183,0.92),rgba(59,130,246,0.28))]"
-                style={{
-                  height: `${22 + ((index * 29) % 74)}px`,
-                  opacity: 0.25 + (index % 5) * 0.13,
-                }}
-              />
-            ))}
-          </div>
-
-          <audio
-            ref={mediaRef as React.RefObject<HTMLAudioElement>}
-            src={src}
-            preload="metadata"
-            className="hidden"
-          />
-
-          <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={togglePlayback}
-              className={iconButtonClass}
+              onClick={onShare}
+              className={iconBtn}
+              title="Share"
             >
-              {isPlaying ? (
-                <Pause className="h-4.5 w-4.5" strokeWidth={2.2} />
-              ) : (
-                <Play className="ml-0.5 h-4.5 w-4.5" strokeWidth={2.2} />
-              )}
-            </button>
-
-            <div className="min-w-0 flex-1">
-              <button
-                type="button"
-                ref={trackRef}
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  setIsScrubbing(true);
-                  seekFromClientX(event.clientX);
-                }}
-                className="relative block h-6 w-full cursor-pointer touch-none"
-                aria-label="Seek through recording"
-              >
-                <span className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-white/14" />
-                <span
-                  className="absolute top-1/2 left-0 h-1.5 -translate-y-1/2 rounded-full bg-[linear-gradient(90deg,#ffffff,#b8d8ff)]"
-                  style={{ width: `${progress * 100}%` }}
-                />
-                <span
-                  className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/50 bg-white shadow-[0_10px_22px_rgba(0,0,0,0.28)]"
-                  style={{ left: `${progress * 100}%` }}
-                />
-              </button>
-
-              <div className="mt-1 flex items-center justify-between text-[12px] font-medium text-white/54">
-                <span>{formatDuration(currentTime)}</span>
-                <span>{formatDuration(duration || 0)}</span>
-              </div>
-            </div>
-
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
-                className={`${iconButtonClass} px-3 text-[12px] font-bold`}
-              >
-                {playbackRate}x
-              </button>
-              {showSpeedMenu && (
-                <div className="absolute bottom-full left-1/2 mb-2 flex -translate-x-1/2 flex-col overflow-hidden rounded-xl border border-white/12 bg-slate-900/90 shadow-xl backdrop-blur-xl">
-                  {[0.5, 1, 1.25, 1.5, 2].map((rate) => (
-                    <button
-                      key={rate}
-                      type="button"
-                      onClick={() => {
-                        setPlaybackRate(rate);
-                        setShowSpeedMenu(false);
-                      }}
-                      className={`px-4 py-2 text-[12px] font-medium transition-colors hover:bg-white/10 ${
-                        playbackRate === rate
-                          ? "bg-blue-600 text-white"
-                          : "text-white/60"
-                      }`}
-                    >
-                      {rate}x
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={toggleMute}
-              className={iconButtonClass}
-            >
-              {isMuted ? (
-                <VolumeX className="h-4 w-4" strokeWidth={2.2} />
-              ) : (
-                <Volume2 className="h-4 w-4" strokeWidth={2.2} />
-              )}
-            </button>
-
-            <button type="button" onClick={restart} className={iconButtonClass}>
-              <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
+              <Share2 className="h-4 w-4" strokeWidth={2.2} />
             </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Audio player – centred waveform                                   */
+/* ------------------------------------------------------------------ */
+
+function AudioReplayControls({
+  src,
+  waveformData,
+  onShare,
+  onDownload,
+  canDownload,
+  isPreparingDownload,
+}: {
+  src: string;
+  waveformData: number[];
+  onShare: () => void;
+  onDownload: () => void;
+  canDownload: boolean;
+  isPreparingDownload: boolean;
+}) {
+  const player = useAudioPlayer();
+  const currentTime = useAudioPlayerTime();
+  const scrubRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  const duration = player.duration ?? 0;
+  const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+
+  useEffect(() => {
+    if (!player.activeItem) {
+      player.play({ id: "replay", src });
+    }
+  }, [player, src]);
+
+  const seekFromX = useCallback(
+    (clientX: number) => {
+      const el = scrubRef.current;
+      if (!el || duration <= 0) return;
+      const rect = el.getBoundingClientRect();
+      const ratio = Math.max(
+        0,
+        Math.min((clientX - rect.left) / rect.width, 1),
+      );
+      player.seek(ratio * duration);
+    },
+    [duration, player],
+  );
+
+  useEffect(() => {
+    if (!dragging) return;
+    const move = (e: PointerEvent) => seekFromX(e.clientX);
+    const up = () => setDragging(false);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, [dragging, seekFromX]);
+
+  return (
+    <div className="flex flex-col items-center gap-6">
+      {/* Waveform scrubber */}
+      <div
+        ref={scrubRef}
+        className="relative w-full max-w-[400px] cursor-pointer select-none"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          setDragging(true);
+          const wasPlaying = player.isPlaying;
+          player.pause();
+          seekFromX(e.clientX);
+          if (wasPlaying) {
+            const up = () => {
+              player.play();
+              window.removeEventListener("pointerup", up);
+            };
+            window.addEventListener("pointerup", up);
+          }
+        }}
+      >
+        <Waveform
+          data={waveformData}
+          height={64}
+          barWidth={3}
+          barGap={2}
+          barRadius={2}
+          barColor="rgba(255,255,255,0.22)"
+          fadeEdges={false}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{ clipPath: `inset(0 ${100 - progress * 100}% 0 0)` }}
+        >
+          <Waveform
+            data={waveformData}
+            height={64}
+            barWidth={3}
+            barGap={2}
+            barRadius={2}
+            barColor="rgba(255,255,255,0.82)"
+            fadeEdges={false}
+          />
+        </div>
+      </div>
+
+      {/* Time + progress bar */}
+      <div className="flex w-full max-w-[400px] items-center gap-3">
+        <span className="text-[11px] text-white/50 tabular-nums">
+          {formatTime(currentTime)}
+        </span>
+        <div
+          className="relative h-1 min-w-0 flex-1 cursor-pointer rounded-full bg-white/14"
+          onPointerDown={(e) => {
+            e.preventDefault();
+            setDragging(true);
+            seekFromX(e.clientX);
+          }}
+        >
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-white/80"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+        <span className="text-[11px] text-white/50 tabular-nums">
+          {formatTime(duration)}
+        </span>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-3">
+        {canDownload && (
+          <button
+            type="button"
+            onClick={onDownload}
+            disabled={isPreparingDownload}
+            className={`${iconBtn} disabled:opacity-40`}
+            title="Download"
+          >
+            <Download className="h-4 w-4" strokeWidth={2.2} />
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => (player.isPlaying ? player.pause() : player.play())}
+          className={`flex h-14 w-14 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-200 active:scale-95 ${glass}`}
+        >
+          {player.isPlaying ? (
+            <Pause className="h-5 w-5" strokeWidth={2.2} />
+          ) : (
+            <Play className="ml-0.5 h-5 w-5" strokeWidth={2.2} />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onShare}
+          className={iconBtn}
+          title="Share"
+        >
+          <Share2 className="h-4 w-4" strokeWidth={2.2} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main CompletionScreen                                             */
+/* ------------------------------------------------------------------ */
+
 export default function CompletionScreen({
   prompt,
-  timerSeconds,
   cameraOn,
   micOn,
   recordedBlob,
   recordedUrl,
   isPreparingDownload,
-  onTryAnother,
   onDownload,
 }: CompletionScreenProps) {
   const hasVideo = !!recordedUrl && cameraOn;
   const hasAudioOnly = !!recordedUrl && !cameraOn && micOn;
   const hasRecording = hasVideo || hasAudioOnly;
   const expectsRecording = cameraOn || micOn;
-  const canShowDownload =
-    expectsRecording && (isPreparingDownload || hasRecording);
+  const canDownload = expectsRecording && (isPreparingDownload || hasRecording);
+
+  const waveformData = useWaveformData(hasAudioOnly ? recordedBlob : null);
 
   const handleShare = async () => {
     if (!recordedUrl || !recordedBlob) return;
@@ -569,147 +543,74 @@ export default function CompletionScreen({
           text: `Check out my practice take on: "${prompt}"`,
         });
       }
-    } catch (err) {
-      console.error("Error sharing:", err);
+    } catch {
+      /* user cancelled share */
     }
   };
 
   return (
     <>
       <style>{`
-        @keyframes completion-enter {
-          from { opacity: 0; transform: translateY(24px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.2);
+        @keyframes completion-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
       `}</style>
 
-      <div className="absolute inset-0 z-30 overflow-x-hidden overflow-y-auto rounded-[inherit] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_22%),linear-gradient(180deg,rgba(4,7,14,0.64),rgba(4,7,14,0.84))] p-2 backdrop-blur-md sm:flex sm:items-center sm:justify-center sm:p-4 md:p-8">
-        <div
-          className="relative flex w-full max-w-[1080px] flex-col overflow-hidden rounded-[28px] border border-white/12 bg-[linear-gradient(180deg,rgba(11,15,26,0.96),rgba(7,10,18,0.98))] shadow-[0_48px_140px_rgba(0,0,0,0.5)] sm:rounded-[34px] md:max-h-[820px] md:flex-row"
-          style={{
-            animation: "completion-enter 0.48s cubic-bezier(.22,1,.36,1) both",
-          }}
-        >
-          {/* Left Column: Info & Actions */}
-          <div className="custom-scrollbar flex h-auto flex-col justify-between border-b border-white/8 bg-white/1 p-4 sm:p-6 md:h-full md:w-[340px] md:shrink-0 md:overflow-y-auto md:border-r md:border-b-0">
-            <div className="space-y-4 sm:space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold tracking-[0.15em] text-emerald-400 uppercase">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
-                  Review Take
-                </div>
-                <div className="inline-flex items-center rounded-full border border-white/12 bg-white/6 px-3 py-1.5 text-[11px] font-bold text-white/60">
-                  {formatTakeDuration(timerSeconds)}
-                </div>
-              </div>
+      <div
+        className="absolute inset-0 z-30 rounded-[inherit] bg-black/95"
+        style={{
+          animation: "completion-fade-in 0.35s cubic-bezier(.22,1,.36,1) both",
+        }}
+      >
+        {/* ── Video mode ── */}
+        {hasVideo && recordedUrl && (
+          <VideoPlayer
+            src={recordedUrl}
+            prompt={prompt}
+            onShare={handleShare}
+            onDownload={onDownload}
+            canDownload={canDownload}
+            isPreparingDownload={isPreparingDownload}
+          />
+        )}
 
-              <div className="space-y-2 sm:space-y-3">
-                <h2 className="font-display text-[28px] leading-[1.1] font-bold tracking-tight text-white sm:text-[42px]">
-                  Great job.
-                </h2>
-                <p className="text-[13px] leading-relaxed text-white/50 sm:text-[15px]">
-                  Take a moment to watch your performance. Look for pacing,
-                  clarity, and confidence.
+        {/* ── Audio-only mode ── */}
+        {hasAudioOnly && recordedUrl && (
+          <div className="flex h-full flex-col items-center justify-center px-6">
+            <p className="mb-8 max-w-[360px] text-center text-[15px] leading-snug font-medium text-white/70">
+              {prompt}
+            </p>
+            <AudioPlayerProvider>
+              <AudioReplayControls
+                src={recordedUrl}
+                waveformData={waveformData}
+                onShare={handleShare}
+                onDownload={onDownload}
+                canDownload={canDownload}
+                isPreparingDownload={isPreparingDownload}
+              />
+            </AudioPlayerProvider>
+          </div>
+        )}
+
+        {/* ── No recording / preparing ── */}
+        {!hasRecording && (
+          <div className="flex h-full flex-col items-center justify-center gap-6 px-6">
+            {expectsRecording ? (
+              <>
+                <div className="h-10 w-10 animate-pulse rounded-full bg-white/10" />
+                <p className="text-[14px] text-white/40">
+                  Preparing your recording...
                 </p>
-              </div>
-
-              <div className="rounded-[18px] border border-white/8 bg-white/3 p-3.5 sm:rounded-[22px] sm:p-5">
-                <p className="mb-1.5 text-[10px] font-bold tracking-[0.18em] text-white/30 uppercase sm:mb-2">
-                  Your prompt
-                </p>
-                <p className="text-[15px] leading-snug font-semibold text-white/90 sm:text-[19px]">
-                  {prompt}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-2.5 sm:mt-8 sm:space-y-3">
-              <div className="flex flex-col gap-2.5 sm:gap-3">
-                {canShowDownload && (
-                  <button
-                    type="button"
-                    onClick={onDownload}
-                    disabled={isPreparingDownload || !recordedBlob}
-                    className="group relative flex cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-blue-600 px-6 py-3 text-[13px] font-bold text-white transition-all duration-300 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 sm:px-7 sm:py-4 sm:text-[14px]"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>
-                      {isPreparingDownload
-                        ? "Preparing..."
-                        : hasVideo
-                          ? "Download video"
-                          : "Download audio"}
-                    </span>
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={onTryAnother}
-                  className="flex cursor-pointer items-center justify-center gap-2 rounded-full border border-white/12 bg-white/6 px-6 py-3 text-[13px] font-bold text-white/80 backdrop-blur-xl transition-all duration-300 hover:bg-white/12 hover:text-white sm:px-7 sm:py-4 sm:text-[14px]"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  <span>Try another round</span>
-                </button>
-              </div>
-              <p className="text-center text-[12px] text-white/30">
-                Recordings are temporary and not stored.
+              </>
+            ) : (
+              <p className="max-w-[260px] text-center text-[15px] leading-relaxed text-white/40">
+                Enable camera or mic before your session to replay it here.
               </p>
-            </div>
+            )}
           </div>
-
-          {/* Right Column: Player */}
-          <div className="flex min-h-0 flex-1 flex-col bg-black/20">
-            <div className="custom-scrollbar flex-1 overflow-y-auto p-4 sm:p-6 md:p-10">
-              <div className="mx-auto flex h-full max-w-[720px] flex-col justify-center space-y-8">
-                <div>
-                  {hasRecording && recordedUrl ? (
-                    <ReplayPlayer
-                      src={recordedUrl}
-                      video={hasVideo}
-                      onShare={handleShare}
-                    />
-                  ) : expectsRecording ? (
-                    <div className="flex aspect-video w-full flex-col items-center justify-center rounded-[30px] border border-dashed border-white/20 bg-white/2">
-                      <div className="mb-4 h-12 w-12 animate-pulse rounded-full bg-white/10" />
-                      <p className="text-sm font-medium text-white/40">
-                        Preparing your recording...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex aspect-video w-full items-center justify-center rounded-[30px] border border-white/10 bg-white/2 p-8 text-center">
-                      <p className="max-w-[280px] text-[15px] leading-relaxed text-white/40">
-                        Enable camera or mic to record your take and watch it
-                        back here.
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="hidden rounded-[28px] border border-white/5 bg-white/2 p-6 text-center sm:block">
-                  <p className="text-[14px] leading-relaxed text-white/40">
-                    Use this replay to evaluate your pacing and word choice.
-                    Practicing consistently is the best way to build speaking
-                    confidence.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </>
   );
