@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Download,
   Expand,
@@ -11,6 +11,12 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import {
+  AudioPlayerProvider,
+  useAudioPlayer,
+  useAudioPlayerTime,
+} from "@/components/ui/audio-player";
+import { Waveform } from "@/components/ui/waveform";
 
 interface CompletionScreenProps {
   prompt: string;
@@ -38,6 +44,249 @@ function formatTakeDuration(seconds: number) {
   return remainder === 0
     ? `${minutes}m take`
     : `${minutes}m ${remainder}s take`;
+}
+
+function useWaveformData(blob: Blob | null, barCount = 100) {
+  const [data, setData] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!blob) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioCtx = new AudioContext();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const channelData = audioBuffer.getChannelData(0);
+        const blockSize = Math.floor(channelData.length / barCount);
+        const bars: number[] = [];
+
+        for (let i = 0; i < barCount; i++) {
+          let sum = 0;
+          const start = i * blockSize;
+          for (let j = 0; j < blockSize; j++) {
+            sum += Math.abs(channelData[start + j]);
+          }
+          bars.push(sum / blockSize);
+        }
+
+        const maxVal = Math.max(...bars, 0.01);
+        const normalized = bars.map((v) => v / maxVal);
+
+        if (!cancelled) setData(normalized);
+        await audioCtx.close();
+      } catch {
+        if (!cancelled) {
+          setData(
+            Array.from({ length: barCount }, () => 0.1 + Math.random() * 0.5),
+          );
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [blob, barCount]);
+
+  return data;
+}
+
+function AudioReplayControls({
+  src,
+  waveformData,
+  onShare,
+}: {
+  src: string;
+  waveformData: number[];
+  onShare?: () => void;
+}) {
+  const player = useAudioPlayer();
+  const currentTime = useAudioPlayerTime();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const controlGlass =
+    "border border-white/16 bg-[linear-gradient(180deg,rgba(255,255,255,0.18),rgba(255,255,255,0.08))] shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_38px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
+  const iconButtonClass = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-300 hover:scale-[1.03] hover:text-white ${controlGlass}`;
+
+  const duration = player.duration ?? 0;
+  const progress =
+    duration > 0 ? Math.min(currentTime / duration, 1) : 0;
+
+  useEffect(() => {
+    if (!player.activeItem) {
+      player.play({ id: "replay", src });
+    }
+  }, [player, src]);
+
+  const handleScrub = useCallback(
+    (clientX: number) => {
+      const container = containerRef.current;
+      if (!container || duration <= 0) return;
+      const rect = container.getBoundingClientRect();
+      const ratio = Math.max(
+        0,
+        Math.min((clientX - rect.left) / rect.width, 1),
+      );
+      player.seek(ratio * duration);
+    },
+    [duration, player],
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onMove = (e: PointerEvent) => handleScrub(e.clientX);
+    const onUp = () => setIsDragging(false);
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [isDragging, handleScrub]);
+
+  return (
+    <div className="space-y-6 px-6 py-8">
+      <div className="space-y-2">
+        <p className="text-[10px] font-semibold tracking-[0.22em] text-white/42 uppercase">
+          Audio Replay
+        </p>
+        <h3 className="font-display text-[30px] leading-none font-semibold tracking-[-0.05em] text-white">
+          Listen before you save.
+        </h3>
+      </div>
+
+      <div
+        ref={containerRef}
+        className="relative cursor-pointer select-none"
+        onPointerDown={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+          const wasPlaying = player.isPlaying;
+          player.pause();
+          handleScrub(e.clientX);
+          if (wasPlaying) {
+            const onUp = () => {
+              player.play();
+              window.removeEventListener("pointerup", onUp);
+            };
+            window.addEventListener("pointerup", onUp);
+          }
+        }}
+      >
+        <Waveform
+          data={waveformData}
+          height={80}
+          barWidth={3}
+          barGap={2}
+          barRadius={2}
+          barColor="rgba(255,255,255,0.28)"
+          fadeEdges={false}
+        />
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+          style={{
+            clipPath: `inset(0 ${100 - progress * 100}% 0 0)`,
+          }}
+        >
+          <Waveform
+            data={waveformData}
+            height={80}
+            barWidth={3}
+            barGap={2}
+            barRadius={2}
+            barColor="rgba(255,255,255,0.85)"
+            fadeEdges={false}
+          />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <span className="text-[12px] font-medium tabular-nums text-white/54">
+          {formatDuration(currentTime)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+              handleScrub(e.clientX);
+            }}
+            className="relative block h-1.5 w-full cursor-pointer touch-none rounded-full bg-white/14"
+            aria-label="Seek through recording"
+          >
+            <span
+              className="absolute inset-y-0 left-0 rounded-full bg-white"
+              style={{ width: `${progress * 100}%` }}
+            />
+          </button>
+        </div>
+        <span className="text-[12px] font-medium tabular-nums text-white/54">
+          {formatDuration(duration)}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-center gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            if (player.isPlaying) {
+              player.pause();
+            } else {
+              player.play();
+            }
+          }}
+          className={iconButtonClass}
+        >
+          {player.isPlaying ? (
+            <Pause className="h-4.5 w-4.5" strokeWidth={2.2} />
+          ) : (
+            <Play className="ml-0.5 h-4.5 w-4.5" strokeWidth={2.2} />
+          )}
+        </button>
+
+        {onShare && (
+          <button
+            type="button"
+            onClick={onShare}
+            className={iconButtonClass}
+          >
+            <Share2 className="h-4 w-4" strokeWidth={2.2} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AudioReplayPlayer({
+  src,
+  blob,
+  onShare,
+}: {
+  src: string;
+  blob: Blob | null;
+  onShare?: () => void;
+}) {
+  const waveformData = useWaveformData(blob);
+
+  return (
+    <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,11,19,0.96),rgba(4,6,12,0.98))] shadow-[0_26px_80px_rgba(0,0,0,0.28)]">
+      <AudioPlayerProvider>
+        <AudioReplayControls
+          src={src}
+          waveformData={waveformData}
+          onShare={onShare}
+        />
+      </AudioPlayerProvider>
+    </div>
+  );
 }
 
 function ReplayPlayer({
@@ -676,10 +925,16 @@ export default function CompletionScreen({
             <div className="custom-scrollbar flex-1 overflow-y-auto p-4 sm:p-6 md:p-10">
               <div className="mx-auto flex h-full max-w-[720px] flex-col justify-center space-y-8">
                 <div>
-                  {hasRecording && recordedUrl ? (
+                  {hasVideo && recordedUrl ? (
                     <ReplayPlayer
                       src={recordedUrl}
-                      video={hasVideo}
+                      video
+                      onShare={handleShare}
+                    />
+                  ) : hasAudioOnly && recordedUrl ? (
+                    <AudioReplayPlayer
+                      src={recordedUrl}
+                      blob={recordedBlob}
                       onShare={handleShare}
                     />
                   ) : expectsRecording ? (
