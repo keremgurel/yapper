@@ -201,7 +201,23 @@ export function useMediaStream() {
   // --- Reattach stream after reset ---
 
   const reattachStream = useCallback(
-    (isCameraOn: boolean) => {
+    async (isCameraOn: boolean) => {
+      // Re-establish audio tracks if dead or missing
+      if (streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        if (!audioTrack || audioTrack.readyState !== "live") {
+          if (audioTrack) streamRef.current.removeTrack(audioTrack);
+          try {
+            const freshAudio = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+            });
+            streamRef.current.addTrack(freshAudio.getAudioTracks()[0]);
+          } catch {
+            // Will fail at next startRecording instead
+          }
+        }
+      }
+
       if (!isCameraOn) return;
 
       const videoTrack = streamRef.current?.getVideoTracks()[0];

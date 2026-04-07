@@ -56,6 +56,7 @@ export default function PracticeStage() {
     resetTimer,
     toggleCamera,
     toggleMic,
+    hasGeneratedTopic,
   } = usePracticeSession();
 
   const overlayGlass =
@@ -153,7 +154,7 @@ export default function PracticeStage() {
           </div>
 
           <div
-            className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${timerDone ? "pointer-events-none opacity-0" : ""}`}
+            className={`relative z-50 flex shrink-0 gap-2 transition-all duration-500 ${inSession || timerDone ? "hidden" : ""}`}
           >
             <button
               onClick={toggleMic}
@@ -208,7 +209,9 @@ export default function PracticeStage() {
           )}
         </div>
 
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4">
+        <div
+          className={`absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4 ${timerDone ? "invisible" : ""}`}
+        >
           <div className="w-full max-w-[560px]">
             <TopicReel />
           </div>
@@ -270,29 +273,31 @@ export default function PracticeStage() {
           </div>
 
           <div className="flex w-full flex-col items-center gap-3">
-            <div
-              className={`flex items-end justify-center gap-3 transition-all duration-500 md:hidden ${
-                inSession
-                  ? "pointer-events-none scale-95 opacity-0"
-                  : "scale-100 opacity-100"
-              }`}
-            >
-              <div className={toolChromePanel}>
-                <SlotLever onPull={generateTopic} />
+            {!timerDone && (
+              <div
+                className={`flex items-end justify-center gap-3 transition-all duration-500 md:hidden ${
+                  inSession
+                    ? "pointer-events-none scale-95 opacity-0"
+                    : "scale-100 opacity-100"
+                }`}
+              >
+                <div className={toolChromePanel}>
+                  <SlotLever onPull={generateTopic} />
+                </div>
+                <div className={toolChromePanel}>
+                  <RotaryKnob
+                    value={timerSeconds}
+                    onChange={handleKnobChange}
+                    min={TIMER_MIN_SECONDS}
+                    max={TIMER_MAX_SECONDS}
+                    disabled={isRunning}
+                  />
+                </div>
               </div>
-              <div className={toolChromePanel}>
-                <RotaryKnob
-                  value={timerSeconds}
-                  onChange={handleKnobChange}
-                  min={TIMER_MIN_SECONDS}
-                  max={TIMER_MAX_SECONDS}
-                  disabled={isRunning}
-                />
-              </div>
-            </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {!isRunning && !timerDone && (
+              {!isRunning && !timerDone && hasGeneratedTopic && (
                 <button
                   onClick={startTimer}
                   className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
@@ -349,35 +354,39 @@ export default function PracticeStage() {
           </div>
         </div>
 
-        <div
-          className={`absolute bottom-4 left-4 z-10 hidden transition-all duration-500 md:block ${
-            inSession
-              ? "pointer-events-none scale-90 opacity-0"
-              : "scale-100 opacity-100"
-          }`}
-        >
-          <div className={toolChromePanel}>
-            <SlotLever onPull={generateTopic} />
+        {!timerDone && (
+          <div
+            className={`absolute bottom-4 left-4 z-10 hidden transition-all duration-500 md:block ${
+              inSession
+                ? "pointer-events-none scale-90 opacity-0"
+                : "scale-100 opacity-100"
+            }`}
+          >
+            <div className={toolChromePanel}>
+              <SlotLever onPull={generateTopic} />
+            </div>
           </div>
-        </div>
+        )}
 
-        <div
-          className={`absolute right-4 bottom-4 z-10 hidden transition-all duration-500 md:block ${
-            inSession
-              ? "pointer-events-none scale-90 opacity-0"
-              : "scale-100 opacity-100"
-          }`}
-        >
-          <div className={toolChromePanel}>
-            <RotaryKnob
-              value={timerSeconds}
-              onChange={handleKnobChange}
-              min={TIMER_MIN_SECONDS}
-              max={TIMER_MAX_SECONDS}
-              disabled={isRunning}
-            />
+        {!timerDone && (
+          <div
+            className={`absolute right-4 bottom-4 z-10 hidden transition-all duration-500 md:block ${
+              inSession
+                ? "pointer-events-none scale-90 opacity-0"
+                : "scale-100 opacity-100"
+            }`}
+          >
+            <div className={toolChromePanel}>
+              <RotaryKnob
+                value={timerSeconds}
+                onChange={handleKnobChange}
+                min={TIMER_MIN_SECONDS}
+                max={TIMER_MAX_SECONDS}
+                disabled={isRunning}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {timerDone && <CompletionScreen />}
       </div>

@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { Download, Pause, Play, RotateCcw, Share2 } from "lucide-react";
 import {
   AudioPlayerProvider,
   useAudioPlayer,
-  useAudioPlayerTime,
+  AudioPlayerProgress,
+  AudioPlayerTime,
+  AudioPlayerDuration,
 } from "@/components/ui/audio-player";
-import { Waveform } from "@/components/ui/waveform";
 import { usePracticeSession } from "@/contexts/practice-session";
 
 function formatTime(seconds: number) {
@@ -15,50 +17,6 @@ function formatTime(seconds: number) {
   const m = Math.floor(safe / 60);
   const s = safe % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-/* ------------------------------------------------------------------ */
-/*  Waveform data extraction                                          */
-/* ------------------------------------------------------------------ */
-
-function useWaveformData(blob: Blob | null, barCount = 100) {
-  const [data, setData] = useState<number[]>([]);
-
-  useEffect(() => {
-    if (!blob) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const buf = await blob.arrayBuffer();
-        const ctx = new AudioContext();
-        const audio = await ctx.decodeAudioData(buf);
-        const ch = audio.getChannelData(0);
-        const block = Math.floor(ch.length / barCount);
-        const bars: number[] = [];
-        for (let i = 0; i < barCount; i++) {
-          let sum = 0;
-          const start = i * block;
-          for (let j = 0; j < block; j++) sum += Math.abs(ch[start + j]);
-          bars.push(sum / block);
-        }
-        const max = Math.max(...bars, 0.01);
-        if (!cancelled) setData(bars.map((v) => v / max));
-        await ctx.close();
-      } catch {
-        if (!cancelled)
-          setData(
-            Array.from({ length: barCount }, () => 0.1 + Math.random() * 0.5),
-          );
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [blob, barCount]);
-
-  return data;
 }
 
 /* ------------------------------------------------------------------ */
@@ -348,7 +306,6 @@ function VideoPlayer({
 
 function AudioReplayControls({
   src,
-  waveformData,
   onShare,
   onDownload,
   onNewSession,
@@ -356,7 +313,6 @@ function AudioReplayControls({
   isPreparingDownload,
 }: {
   src: string;
-  waveformData: number[];
   onShare: () => void;
   onDownload: () => void;
   onNewSession: () => void;
@@ -364,12 +320,6 @@ function AudioReplayControls({
   isPreparingDownload: boolean;
 }) {
   const player = useAudioPlayer();
-  const currentTime = useAudioPlayerTime();
-  const scrubRef = useRef<HTMLDivElement>(null);
-  const [dragging, setDragging] = useState(false);
-
-  const duration = player.duration ?? 0;
-  const progress = duration > 0 ? Math.min(currentTime / duration, 1) : 0;
 
   useEffect(() => {
     if (!player.activeItem) {
@@ -377,99 +327,15 @@ function AudioReplayControls({
     }
   }, [player, src]);
 
-  const seekFromX = useCallback(
-    (clientX: number) => {
-      const el = scrubRef.current;
-      if (!el || duration <= 0) return;
-      const rect = el.getBoundingClientRect();
-      const ratio = Math.max(
-        0,
-        Math.min((clientX - rect.left) / rect.width, 1),
-      );
-      player.seek(ratio * duration);
-    },
-    [duration, player],
-  );
-
-  useEffect(() => {
-    if (!dragging) return;
-    const move = (e: PointerEvent) => seekFromX(e.clientX);
-    const up = () => setDragging(false);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-  }, [dragging, seekFromX]);
-
   return (
-    <div className="flex flex-col items-center gap-6">
-      {/* Waveform scrubber */}
-      <div
-        ref={scrubRef}
-        className="relative w-full max-w-[400px] cursor-pointer select-none"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          setDragging(true);
-          const wasPlaying = player.isPlaying;
-          player.pause();
-          seekFromX(e.clientX);
-          if (wasPlaying) {
-            const up = () => {
-              player.play();
-              window.removeEventListener("pointerup", up);
-            };
-            window.addEventListener("pointerup", up);
-          }
-        }}
-      >
-        <Waveform
-          data={waveformData}
-          height={64}
-          barWidth={3}
-          barGap={2}
-          barRadius={2}
-          barColor="rgba(255,255,255,0.22)"
-          fadeEdges={false}
-        />
-        <div
-          className="pointer-events-none absolute inset-0 overflow-hidden"
-          style={{ clipPath: `inset(0 ${100 - progress * 100}% 0 0)` }}
-        >
-          <Waveform
-            data={waveformData}
-            height={64}
-            barWidth={3}
-            barGap={2}
-            barRadius={2}
-            barColor="rgba(255,255,255,0.82)"
-            fadeEdges={false}
-          />
-        </div>
-      </div>
+    <div className="flex w-full max-w-[400px] flex-col items-center gap-6">
+      {/* Progress slider */}
+      <AudioPlayerProgress className="w-full" />
 
-      {/* Time + progress bar */}
-      <div className="flex w-full max-w-[400px] items-center gap-3">
-        <span className="text-[11px] text-white/50 tabular-nums">
-          {formatTime(currentTime)}
-        </span>
-        <div
-          className="relative h-1 min-w-0 flex-1 cursor-pointer rounded-full bg-white/14"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            setDragging(true);
-            seekFromX(e.clientX);
-          }}
-        >
-          <span
-            className="absolute inset-y-0 left-0 rounded-full bg-white/80"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-        <span className="text-[11px] text-white/50 tabular-nums">
-          {formatTime(duration)}
-        </span>
+      {/* Time labels */}
+      <div className="flex w-full items-center justify-between">
+        <AudioPlayerTime className="text-[12px] text-white/50" />
+        <AudioPlayerDuration className="text-[12px] text-white/50" />
       </div>
 
       {/* Controls */}
@@ -509,7 +375,7 @@ function AudioReplayControls({
         <button
           type="button"
           onClick={onNewSession}
-          className={`${iconBtn} md:hidden`}
+          className={iconBtn}
           title="New Session"
         >
           <RotateCcw className="h-4 w-4" strokeWidth={2.2} />
@@ -549,8 +415,6 @@ export default function CompletionScreen() {
   const expectsRecording = cameraOn || micOn;
   const canDownload = expectsRecording && (isPreparingDownload || hasRecording);
 
-  const waveformData = useWaveformData(hasAudioOnly ? recordedBlob : null);
-
   const handleShare = async () => {
     if (!recordedUrl || !recordedBlob) return;
     try {
@@ -579,7 +443,7 @@ export default function CompletionScreen() {
       `}</style>
 
       <div
-        className="absolute inset-0 z-30 rounded-[inherit] bg-black/95"
+        className="absolute inset-0 z-30 rounded-[inherit] bg-black/60 backdrop-blur-3xl"
         style={{
           animation: "completion-fade-in 0.35s cubic-bezier(.22,1,.36,1) both",
         }}
@@ -600,13 +464,12 @@ export default function CompletionScreen() {
         {/* ── Audio-only mode ── */}
         {hasAudioOnly && recordedUrl && (
           <div className="flex h-full flex-col items-center justify-center px-6">
-            <p className="mb-8 max-w-[360px] text-center text-[15px] leading-snug font-medium text-white/70">
+            <p className="mb-8 max-w-[460px] text-center text-[20px] leading-snug font-semibold text-white/80">
               {prompt}
             </p>
             <AudioPlayerProvider>
               <AudioReplayControls
                 src={recordedUrl}
-                waveformData={waveformData}
                 onShare={handleShare}
                 onDownload={onDownload}
                 onNewSession={onNewSession}
@@ -628,9 +491,45 @@ export default function CompletionScreen() {
                 </p>
               </>
             ) : (
-              <p className="max-w-[260px] text-center text-[15px] leading-relaxed text-white/40">
-                Enable camera or mic before your session to replay it here.
-              </p>
+              <div className="flex flex-col items-center gap-5">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/5">
+                  <svg
+                    width="34"
+                    height="34"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-white/50"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-[22px] font-semibold text-white/80">
+                    Session complete
+                  </p>
+                  <p className="max-w-[400px] text-center text-[17px] leading-relaxed text-white/45">
+                    &ldquo;{prompt}&rdquo;
+                  </p>
+                </div>
+
+                <p className="text-[14px] text-white/30">
+                  Enable camera or mic to save a replay
+                </p>
+
+                <button
+                  type="button"
+                  onClick={onNewSession}
+                  className="mt-2 flex cursor-pointer items-center gap-2 rounded-full border border-white/12 bg-white/6 px-7 py-3.5 text-[15px] font-semibold text-white/80 transition-colors hover:bg-white/12"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  New Session
+                </button>
+              </div>
             )}
           </div>
         )}

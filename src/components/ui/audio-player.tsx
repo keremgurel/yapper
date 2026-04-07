@@ -337,7 +337,7 @@ export const AudioPlayerProgress = ({
         <SliderPrimitive.Range className="bg-primary absolute h-full" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
-        className="relative flex h-0 w-0 items-center justify-center opacity-0 group-hover/player:opacity-100 focus-visible:opacity-100 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+        className="relative flex h-0 w-0 items-center justify-center focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
         data-slot="slider-thumb"
       >
         <div className="bg-foreground absolute size-3 rounded-full" />
@@ -373,7 +373,7 @@ export const AudioPlayerDuration = ({
     >
       {player.duration !== null &&
       player.duration !== undefined &&
-      !Number.isNaN(player.duration)
+      Number.isFinite(player.duration)
         ? formatTime(player.duration)
         : "--:--"}
     </span>

@@ -177,6 +177,81 @@ export function playLeverRelease() {
   playLeverSlice(LEVER_SPLIT);
 }
 
+// Soft descending tone when the user stops recording manually.
+// A gentle two-note "done" that mirrors the start sound but resolves downward.
+export function playStopRecording() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+
+    // Warm body thud
+    noiseBlip(ac, t, 0.035, 220, 1.2, 0.08, "lowpass");
+
+    // First tone — higher, stepping down
+    const t1 = ac.createOscillator();
+    const g1 = ac.createGain();
+    t1.type = "sine";
+    t1.frequency.value = 880;
+    g1.gain.setValueAtTime(0.07, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    t1.connect(g1).connect(ac.destination);
+    t1.start(t);
+    t1.stop(t + 0.12);
+
+    // Second tone — lower, resolving downward for a "finished" feel
+    const t2 = ac.createOscillator();
+    const g2 = ac.createGain();
+    t2.type = "sine";
+    t2.frequency.value = 587;
+    g2.gain.setValueAtTime(0.06, t + 0.07);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    t2.connect(g2).connect(ac.destination);
+    t2.start(t + 0.07);
+    t2.stop(t + 0.22);
+  } catch {
+    // Audio not available
+  }
+}
+
+// Satisfying "go" chime when the user starts speaking.
+// A bright ascending two-tone ping with a warm body, like tapping a crystal glass.
+export function playStartRecording() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+
+    // Warm body thud to ground the sound
+    noiseBlip(ac, t, 0.04, 250, 1.2, 0.1, "lowpass");
+
+    // First tone — a confident mid-pitch ping
+    const t1 = ac.createOscillator();
+    const g1 = ac.createGain();
+    t1.type = "sine";
+    t1.frequency.value = 660;
+    g1.gain.setValueAtTime(0.09, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    t1.connect(g1).connect(ac.destination);
+    t1.start(t);
+    t1.stop(t + 0.15);
+
+    // Second tone — higher, resolving upward for a positive feel
+    const t2 = ac.createOscillator();
+    const g2 = ac.createGain();
+    t2.type = "sine";
+    t2.frequency.value = 990;
+    g2.gain.setValueAtTime(0.07, t + 0.08);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    t2.connect(g2).connect(ac.destination);
+    t2.start(t + 0.08);
+    t2.stop(t + 0.25);
+
+    // Crisp top-end sparkle
+    noiseBlip(ac, t + 0.005, 0.015, 5000, 4, 0.06);
+  } catch {
+    // Audio not available
+  }
+}
+
 // Timer end with a rapid burst that decelerates, then a soft chime.
 export function playTimerEnd() {
   try {

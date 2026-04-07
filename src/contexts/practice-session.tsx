@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useMemo } from "react";
 import type { Topic } from "@/data/topics";
 import type { Category, Difficulty } from "@/data/topics";
+import { playStartRecording, playStopRecording } from "@/lib/audio";
 import { useCompactDevice } from "@/hooks/use-compact-device";
 import { useTopicGenerator } from "@/hooks/use-topic-generator";
 import { usePromptEditor } from "@/hooks/use-prompt-editor";
@@ -118,6 +119,7 @@ export function PracticeSessionProvider({
     timerEditor.closeEditor();
     media.clearRecordedMedia();
     timer.start();
+    playStartRecording();
     try {
       media.startRecording();
     } catch {
@@ -129,6 +131,7 @@ export function PracticeSessionProvider({
   const finishTimer = useCallback(() => {
     timer.finish();
     media.stopRecording();
+    playStopRecording();
   }, [timer, media]);
 
   const resetTimer = useCallback(() => {
