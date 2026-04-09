@@ -83,6 +83,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
+    creator: "@ypr.app",
+    site: "@ypr.app",
   },
   icons: {
     icon: "/favicon.ico",
