@@ -74,6 +74,30 @@ export const Component = () => {
 
             <div className="flex flex-col gap-1 md:gap-4">
               <h4 className="font-display text-md text-neutral/50 font-semibold whitespace-nowrap uppercase">
+                Social
+              </h4>
+              <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
+                <a
+                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  href="https://www.tiktok.com/@ypr.app"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  TikTok
+                </a>
+                <a
+                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  href="https://www.instagram.com/ypr.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Instagram
+                </a>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 md:gap-4">
+              <h4 className="font-display text-md text-neutral/50 font-semibold whitespace-nowrap uppercase">
                 Partners
               </h4>
               <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
