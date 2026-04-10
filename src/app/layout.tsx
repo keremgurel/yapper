@@ -78,6 +78,14 @@ export const metadata: Metadata = {
     siteName: "Yapper",
     type: "website",
     locale: "en_US",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "Yapper - Improve your speech and articulation",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -85,6 +93,7 @@ export const metadata: Metadata = {
     description,
     creator: "@ypr.app",
     site: "@ypr.app",
+    images: ["/og.png"],
   },
   icons: {
     icon: "/favicon.ico",
