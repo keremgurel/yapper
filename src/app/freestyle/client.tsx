@@ -1,23 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ErrorBoundary,
-  PracticeErrorFallback,
-} from "@/components/ErrorBoundary";
-import HomeHero from "@/components/home-hero";
+import FreestyleHero from "@/components/freestyle-hero";
 import PracticeStage from "@/components/practice-stage";
-import { HomeFaq } from "@/components/home-faq";
+import { FreestyleFaq } from "@/components/freestyle-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
-interface HomeClientProps {
+interface FreestyleClientProps {
   initialTopic: Topic;
 }
 
-export default function HomeClient({ initialTopic }: HomeClientProps) {
+export default function FreestyleClient({
+  initialTopic,
+}: FreestyleClientProps) {
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -34,20 +32,25 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
     <div className="flex min-h-screen flex-col transition-colors duration-300">
       <header className="border-border flex items-center justify-between border-b px-6 py-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
-            Y
-          </div>
-          <span className="font-display text-foreground text-[22px] font-semibold tracking-[0.02em]">
-            yapper
-          </span>
+          <Link
+            href="/freestyle"
+            className="flex items-center gap-2 no-underline"
+          >
+            <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+              Y
+            </div>
+            <span className="font-display text-foreground text-[22px] font-semibold tracking-[0.02em]">
+              yapper
+            </span>
+          </Link>
           <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/freestyle"
+            href="/"
             className="text-[13px] font-medium text-slate-500 transition-colors hover:text-slate-300"
           >
-            Freestyle
+            Random Topic
           </Link>
           <div className="origin-right scale-[0.5]">
             <CinematicThemeSwitcher />
@@ -55,17 +58,13 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
         </div>
       </header>
 
-      <HomeHero onJumpToPractice={handleJumpToPractice} />
+      <FreestyleHero onJumpToPractice={handleJumpToPractice} />
 
-      <PracticeSessionProvider initialTopic={initialTopic}>
-        <ErrorBoundary
-          fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
-        >
-          <PracticeStage />
-        </ErrorBoundary>
+      <PracticeSessionProvider initialTopic={initialTopic} mode="freestyle">
+        <PracticeStage />
       </PracticeSessionProvider>
 
-      <HomeFaq />
+      <FreestyleFaq />
       <FooterTapedDesign />
     </div>
   );

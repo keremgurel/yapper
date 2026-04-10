@@ -391,6 +391,7 @@ function AudioReplayControls({
 
 export default function CompletionScreen() {
   const {
+    mode,
     topic,
     customPromptText,
     cameraOn,
@@ -403,11 +404,14 @@ export default function CompletionScreen() {
     generateTopic,
   } = usePracticeSession();
 
-  const prompt = customPromptText ?? topic.text;
+  const isFreestyle = mode === "freestyle";
+  const prompt = isFreestyle
+    ? "Freestyle session"
+    : (customPromptText ?? topic.text);
   const onDownload = downloadRecording;
   const onNewSession = () => {
     resetTimer();
-    generateTopic();
+    if (!isFreestyle) generateTopic();
   };
   const hasVideo = !!recordedUrl && cameraOn;
   const hasAudioOnly = !!recordedUrl && !cameraOn && micOn;

@@ -11,7 +11,12 @@ import { useSessionTimer } from "@/hooks/use-session-timer";
 import { useTimerEditor } from "@/hooks/use-timer-editor";
 import { useMediaStream } from "@/hooks/use-media-stream";
 
+export type PracticeMode = "topic" | "freestyle";
+
 interface PracticeSessionContextValue {
+  // Mode
+  mode: PracticeMode;
+
   // Topic
   topic: Topic;
   spinning: boolean;
@@ -83,9 +88,11 @@ const PracticeSessionContext =
 
 export function PracticeSessionProvider({
   initialTopic,
+  mode = "topic",
   children,
 }: {
   initialTopic: Topic;
+  mode?: PracticeMode;
   children: React.ReactNode;
 }) {
   const isCompactDevice = useCompactDevice();
@@ -143,6 +150,7 @@ export function PracticeSessionProvider({
 
   const value = useMemo<PracticeSessionContextValue>(
     () => ({
+      mode,
       topic: topicGen.topic,
       spinning: topicGen.spinning,
       reelBlurbs: topicGen.reelBlurbs,
@@ -202,6 +210,7 @@ export function PracticeSessionProvider({
       isCompactDevice,
     }),
     [
+      mode,
       topicGen,
       promptEditor,
       timer,
