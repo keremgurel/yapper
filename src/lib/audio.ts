@@ -118,46 +118,135 @@ export function playSlotLand() {
   }
 }
 
-function toneBurst(
-  ac: AudioContext,
-  t: number,
-  frequency: number,
-  endFrequency: number,
-  duration: number,
-  volume: number,
-  type: OscillatorType = "triangle",
-) {
-  const osc = ac.createOscillator();
-  const gain = ac.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(frequency, t);
-  osc.frequency.exponentialRampToValueAtTime(
-    Math.max(1, endFrequency),
-    t + duration,
-  );
-  gain.gain.setValueAtTime(volume, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-  osc.connect(gain).connect(ac.destination);
-  osc.start(t);
-  osc.stop(t + duration);
+// Lever pull sound from sample file.
+let leverBuffer: AudioBuffer | null = null;
+let leverFetchPromise: Promise<void> | null = null;
+
+function ensureLeverBuffer(): Promise<void> {
+  if (leverBuffer) return Promise.resolve();
+  if (leverFetchPromise) return leverFetchPromise;
+  leverFetchPromise = fetch("/audio/lever-pull.mp3")
+    .then((res) => res.arrayBuffer())
+    .then((buf) => getAudioCtx().decodeAudioData(buf))
+    .then((decoded) => {
+      leverBuffer = decoded;
+    })
+    .catch(() => {
+      leverFetchPromise = null;
+    });
+  return leverFetchPromise;
 }
 
-// Lever pull with one weighted mechanical cha-chunk.
+// Split point: first click 0–0.7s, second click 0.7–1.44s.
+const LEVER_SPLIT = 0.7;
+
+// Preload on first interaction so playback is instant.
+export function preloadLeverSound() {
+  ensureLeverBuffer();
+}
+
+function playLeverSlice(offset: number, duration?: number) {
+  try {
+    const ac = getAudioCtx();
+    const play = () => {
+      if (!leverBuffer) return;
+      const src = ac.createBufferSource();
+      src.buffer = leverBuffer;
+      const gain = ac.createGain();
+      gain.gain.value = 0.7;
+      src.connect(gain).connect(ac.destination);
+      src.start(0, offset, duration);
+    };
+    if (leverBuffer) {
+      play();
+    } else {
+      ensureLeverBuffer().then(play);
+    }
+  } catch {
+    // Audio not available
+  }
+}
+
+// First click: plays when lever crosses threshold during pull.
 export function playLeverCreak() {
+  playLeverSlice(0, LEVER_SPLIT);
+}
+
+// Second click: plays when lever is released past threshold.
+export function playLeverRelease() {
+  playLeverSlice(LEVER_SPLIT);
+}
+
+// Soft descending tone when the user stops recording manually.
+// A gentle two-note "done" that mirrors the start sound but resolves downward.
+export function playStopRecording() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Main weighted thunk.
-    noiseBlip(ac, t, 0.04, 160, 0.9, 0.13, "lowpass");
-    toneBurst(ac, t, 140, 82, 0.075, 0.04, "triangle");
+    // Warm body thud
+    noiseBlip(ac, t, 0.035, 220, 1.2, 0.08, "lowpass");
 
-    // Mid mechanical clack, more switch than sci-fi zap.
-    noiseBlip(ac, t + 0.012, 0.016, 950, 1.8, 0.055, "bandpass");
-    toneBurst(ac, t + 0.014, 320, 190, 0.04, 0.018, "triangle");
+    // First tone — higher, stepping down
+    const t1 = ac.createOscillator();
+    const g1 = ac.createGain();
+    t1.type = "sine";
+    t1.frequency.value = 880;
+    g1.gain.setValueAtTime(0.07, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    t1.connect(g1).connect(ac.destination);
+    t1.start(t);
+    t1.stop(t + 0.12);
 
-    // Tiny wood-and-metal tail.
-    noiseBlip(ac, t + 0.03, 0.024, 420, 1.1, 0.022, "lowpass");
+    // Second tone — lower, resolving downward for a "finished" feel
+    const t2 = ac.createOscillator();
+    const g2 = ac.createGain();
+    t2.type = "sine";
+    t2.frequency.value = 587;
+    g2.gain.setValueAtTime(0.06, t + 0.07);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    t2.connect(g2).connect(ac.destination);
+    t2.start(t + 0.07);
+    t2.stop(t + 0.22);
+  } catch {
+    // Audio not available
+  }
+}
+
+// Satisfying "go" chime when the user starts speaking.
+// A bright ascending two-tone ping with a warm body, like tapping a crystal glass.
+export function playStartRecording() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+
+    // Warm body thud to ground the sound
+    noiseBlip(ac, t, 0.04, 250, 1.2, 0.1, "lowpass");
+
+    // First tone — a confident mid-pitch ping
+    const t1 = ac.createOscillator();
+    const g1 = ac.createGain();
+    t1.type = "sine";
+    t1.frequency.value = 660;
+    g1.gain.setValueAtTime(0.09, t);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    t1.connect(g1).connect(ac.destination);
+    t1.start(t);
+    t1.stop(t + 0.15);
+
+    // Second tone — higher, resolving upward for a positive feel
+    const t2 = ac.createOscillator();
+    const g2 = ac.createGain();
+    t2.type = "sine";
+    t2.frequency.value = 990;
+    g2.gain.setValueAtTime(0.07, t + 0.08);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    t2.connect(g2).connect(ac.destination);
+    t2.start(t + 0.08);
+    t2.stop(t + 0.25);
+
+    // Crisp top-end sparkle
+    noiseBlip(ac, t + 0.005, 0.015, 5000, 4, 0.06);
   } catch {
     // Audio not available
   }

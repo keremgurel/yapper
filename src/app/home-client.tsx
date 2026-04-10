@@ -9,7 +9,7 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
-import { usePracticeSession } from "@/hooks/use-practice-session";
+import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
 interface HomeClientProps {
@@ -17,8 +17,6 @@ interface HomeClientProps {
 }
 
 export default function HomeClient({ initialTopic }: HomeClientProps) {
-  const session = usePracticeSession(initialTopic);
-
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -50,78 +48,13 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
 
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
-      {session.mediaError && (
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200">
-          <span className="shrink-0">⚠️</span>
-          <p className="flex-1">{session.mediaError}</p>
-          <button
-            onClick={session.clearMediaError}
-            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/30"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <ErrorBoundary
-        fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
-      >
-        <PracticeStage
-          topic={session.topic}
-          spinning={session.spinning}
-          reelBlurbs={session.reelBlurbs}
-          category={session.category}
-          difficulty={session.difficulty}
-          timerSeconds={session.timerSeconds}
-          timeLeft={session.timeLeft}
-          customPromptText={session.customPromptText}
-          promptDraft={session.promptDraft}
-          promptEditorOpen={session.promptEditorOpen}
-          timeEditorOpen={session.timeEditorOpen}
-          timeDraft={session.timeDraft}
-          isRunning={session.isRunning}
-          isPaused={session.isPaused}
-          timerDone={session.timerDone}
-          cameraOn={session.cameraOn}
-          micOn={session.micOn}
-          isRecording={session.isRecording}
-          recordedBlob={session.recordedBlob}
-          recordedUrl={session.recordedUrl}
-          isPreparingDownload={session.isPreparingDownload}
-          videoFormat={session.videoFormat}
-          isCompactDevice={session.isCompactDevice}
-          settingsOpen={session.settingsOpen}
-          inSession={session.inSession}
-          canEditPrompt={session.canEditPrompt}
-          canEditTime={session.canEditTime}
-          videoRef={session.videoRef}
-          timeInputRef={session.timeInputRef}
-          onCategoryChange={session.handleCategoryChange}
-          onDifficultyChange={session.handleDifficultyChange}
-          onPromptEditStart={session.openPromptEditor}
-          onPromptDraftChange={session.setPromptDraft}
-          onPromptSave={session.savePromptDraft}
-          onPromptCancel={session.cancelPromptDraft}
-          onTimeEditStart={session.openTimeEditor}
-          onTimeDraftChange={session.setTimeDraft}
-          onTimeSave={session.saveTimeDraft}
-          onTimeCancel={session.cancelTimeDraft}
-          onTimeDoubleClick={session.handleTimerDoubleClick}
-          onTimeTouchEnd={session.handleTimerTouchEnd}
-          onGenerateTopic={session.generateTopic}
-          onKnobChange={session.handleKnobChange}
-          onStart={session.startTimer}
-          onPause={session.pauseTimer}
-          onFinish={session.finishTimer}
-          onReset={session.resetTimer}
-          onMicToggle={session.toggleMic}
-          onCameraToggle={session.toggleCamera}
-          onDownloadRecording={session.downloadRecording}
-          onOpenSettings={session.openSettings}
-          onCloseSettings={session.closeSettings}
-          onFormatChange={session.setVideoFormat}
-        />
-      </ErrorBoundary>
+      <PracticeSessionProvider initialTopic={initialTopic}>
+        <ErrorBoundary
+          fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
+        >
+          <PracticeStage />
+        </ErrorBoundary>
+      </PracticeSessionProvider>
 
       <HomeFaq />
       <FooterTapedDesign />
