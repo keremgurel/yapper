@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
-import { ArrowLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { CATEGORIES, DIFFICULTIES } from "@/data/topics";
 import {
   TIMER_MAX_SECONDS,
@@ -158,16 +157,6 @@ export default function PracticeStage() {
         {cameraOn && <div className="absolute inset-0 bg-black/18" />}
 
         <div className="absolute inset-x-4 top-4 z-50 flex items-start justify-between gap-3">
-          {isFreestyle && !inSession && !timerDone && (
-            <Link
-              href="/"
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium text-white/80 no-underline transition-all hover:text-white ${overlayGlass}`}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back
-            </Link>
-          )}
-
           {isRecording && (
             <div
               className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${overlayGlass}`}
@@ -241,7 +230,7 @@ export default function PracticeStage() {
             </button>
 
             <div
-              className={`flex gap-2 transition-all duration-500 ${inSession || timerDone ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`flex gap-2 transition-all duration-500 ${timerDone ? "hidden" : inSession ? "pointer-events-none opacity-0" : "opacity-100"}`}
             >
               <button
                 onClick={toggleMic}
@@ -269,29 +258,29 @@ export default function PracticeStage() {
                 <AnimatedCameraIcon off={!cameraOn} />
               </button>
             </div>
-          </div>
 
-          {timerDone && (
-            <button
-              onClick={handleNewSession}
-              className={`${toolbarIconButtonClass} hidden w-auto gap-1.5 px-4 text-xs font-medium md:flex`}
-              title="New Session"
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {timerDone && (
+              <button
+                onClick={handleNewSession}
+                className={`${toolbarIconButtonClass} hidden w-auto gap-1.5 px-4 text-xs font-medium md:flex`}
+                title="New Session"
               >
-                <path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 0 12 6 6 0 0 1-6-6H4a8 8 0 1 0 8-8Z" />
-              </svg>
-              New Session
-            </button>
-          )}
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 0 12 6 6 0 0 1-6-6H4a8 8 0 1 0 8-8Z" />
+                </svg>
+                New Session
+              </button>
+            )}
+          </div>
         </div>
 
         <div
