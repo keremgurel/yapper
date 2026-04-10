@@ -46,11 +46,11 @@ export default function RotaryKnob({
 
   const handleStart = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (disabled) return;
+      if (disabled || !knobRef.current) return;
       e.preventDefault();
       dragging.current = true;
       setIsDraggingKnob(true);
-      const rect = knobRef.current!.getBoundingClientRect();
+      const rect = knobRef.current.getBoundingClientRect();
       const nativeEvent = e.nativeEvent;
       lastAngle.current = getAngle(nativeEvent as MouseEvent, rect);
       accumulatedRotation.current =
@@ -65,9 +65,9 @@ export default function RotaryKnob({
 
   useEffect(() => {
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!dragging.current || disabled) return;
+      if (!dragging.current || disabled || !knobRef.current) return;
       e.preventDefault();
-      const rect = knobRef.current!.getBoundingClientRect();
+      const rect = knobRef.current.getBoundingClientRect();
       const angle = getAngle(e, rect);
       let delta = angle - lastAngle.current;
       if (delta > 180) delta -= 360;

@@ -57,6 +57,8 @@ export default function PracticeStage() {
     toggleCamera,
     toggleMic,
     hasGeneratedTopic,
+    mediaError,
+    clearMediaError,
   } = usePracticeSession();
 
   const overlayGlass =
@@ -84,6 +86,18 @@ export default function PracticeStage() {
       id="practice"
       className="relative flex flex-1 flex-col items-center justify-start overflow-visible px-4 pt-0 pb-6 sm:pb-16 md:justify-center md:pt-2 md:pb-20"
     >
+      {mediaError && (
+        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200">
+          <span className="shrink-0">⚠️</span>
+          <p className="flex-1">{mediaError}</p>
+          <button
+            onClick={clearMediaError}
+            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/30"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div
         className={`shadow-container relative overflow-hidden rounded-3xl border border-slate-200/90 bg-linear-to-b from-white to-slate-100 dark:border-white/8 dark:bg-[oklch(0.16_0_0)] dark:bg-none ${stageFrameClass}`}
       >

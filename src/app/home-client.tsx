@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  ErrorBoundary,
+  PracticeErrorFallback,
+} from "@/components/ErrorBoundary";
 import HomeHero from "@/components/home-hero";
 import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
@@ -45,7 +49,11 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
       <PracticeSessionProvider initialTopic={initialTopic}>
-        <PracticeStage />
+        <ErrorBoundary
+          fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
+        >
+          <PracticeStage />
+        </ErrorBoundary>
       </PracticeSessionProvider>
 
       <HomeFaq />

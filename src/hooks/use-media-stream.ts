@@ -15,6 +15,7 @@ export function useMediaStream() {
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -83,19 +84,35 @@ export function useMediaStream() {
     chunksRef.current = [];
     setIsPreparingDownload(true);
     try {
-      recorderRef.current = new MediaRecorder(streamRef.current, {
-        mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-          ? "video/webm;codecs=vp9,opus"
-          : "video/webm",
+      const mimeTypes = [
+        "video/webm;codecs=vp9,opus",
+        "video/webm;codecs=vp8,opus",
+        "video/webm",
+        "video/mp4",
+      ];
+
+      let selectedMimeType = "video/webm";
+      for (const mimeType of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(mimeType)) {
+          selectedMimeType = mimeType;
+          break;
+        }
+      }
+
+      const recorder = new MediaRecorder(streamRef.current, {
+        mimeType: selectedMimeType,
         videoBitsPerSecond: RECORDING_VIDEO_BITS_PER_SECOND,
         audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
       });
 
-      recorderRef.current.ondataavailable = (event) => {
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
-      recorderRef.current.onstop = () => {
-        const nextBlob = new Blob(chunksRef.current, { type: "video/webm" });
+      recorder.onstop = () => {
+        const nextBlob = new Blob(chunksRef.current, {
+          type: selectedMimeType,
+        });
         const nextUrl = URL.createObjectURL(nextBlob);
         recorderRef.current = null;
         setIsRecording(false);
@@ -106,12 +123,22 @@ export function useMediaStream() {
         });
         setIsPreparingDownload(false);
       };
-      recorderRef.current.start(200);
+      recorder.onerror = () => {
+        recorderRef.current = null;
+        setIsPreparingDownload(false);
+        setIsRecording(false);
+        setMediaError(
+          "Recording failed. Please check your camera/microphone permissions and try again.",
+        );
+      };
+      recorder.start(200);
       setIsRecording(true);
     } catch {
       recorderRef.current = null;
       setIsPreparingDownload(false);
-      throw new Error("Recording could not be started.");
+      setMediaError(
+        "Could not start recording. Your browser may not support video recording, or camera/microphone access was denied.",
+      );
     }
   }, []);
 
@@ -120,9 +147,11 @@ export function useMediaStream() {
   const toggleCamera = useCallback(async () => {
     if (cameraOn) {
       streamRef.current?.getVideoTracks().forEach((track) => track.stop());
-      streamRef.current
-        ?.getVideoTracks()
-        .forEach((track) => streamRef.current!.removeTrack(track));
+      if (streamRef.current) {
+        streamRef.current
+          .getVideoTracks()
+          .forEach((track) => streamRef.current?.removeTrack(track));
+      }
       setCameraOn(false);
 
       if (!micOn) {
@@ -136,16 +165,18 @@ export function useMediaStream() {
       await replaceVideoTrack();
       setCameraOn(true);
     } catch {
-      alert("Camera access is required.");
+      setMediaError("Camera access is required.");
     }
   }, [cameraOn, micOn, replaceVideoTrack]);
 
   const toggleMic = useCallback(async () => {
     if (micOn) {
       streamRef.current?.getAudioTracks().forEach((track) => track.stop());
-      streamRef.current
-        ?.getAudioTracks()
-        .forEach((track) => streamRef.current!.removeTrack(track));
+      if (streamRef.current) {
+        streamRef.current
+          .getAudioTracks()
+          .forEach((track) => streamRef.current?.removeTrack(track));
+      }
       setMicOn(false);
 
       if (!cameraOn) {
@@ -194,7 +225,7 @@ export function useMediaStream() {
       }
       setMicOn(true);
     } catch {
-      alert("Microphone access is required.");
+      setMediaError("Microphone access is required.");
     }
   }, [cameraOn, micOn]);
 
@@ -230,7 +261,7 @@ export function useMediaStream() {
       }
 
       replaceVideoTrack().catch(() => {
-        alert("Camera preview could not be restored.");
+        setMediaError("Camera preview could not be restored.");
       });
     },
     [attachStream, replaceVideoTrack],
@@ -271,6 +302,8 @@ export function useMediaStream() {
     recordedBlob,
     recordedUrl,
     isPreparingDownload,
+    mediaError,
+    clearMediaError: useCallback(() => setMediaError(null), []),
     videoRef,
     toggleCamera,
     toggleMic,

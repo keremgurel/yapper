@@ -24,7 +24,9 @@ export function useSessionTimer(opts: { onTimerExpired?: () => void }) {
       intervalRef.current = setInterval(() => {
         setTimeLeft((current) => {
           if (current <= 1) {
-            clearInterval(intervalRef.current!);
+            if (intervalRef.current) {
+              clearInterval(intervalRef.current);
+            }
             setIsRunning(false);
             setTimerDone(true);
             playTimerEnd();

@@ -59,6 +59,8 @@ interface PracticeSessionContextValue {
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   isPreparingDownload: boolean;
+  mediaError: string | null;
+  clearMediaError: () => void;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   toggleCamera: () => Promise<void>;
   toggleMic: () => Promise<void>;
@@ -120,12 +122,7 @@ export function PracticeSessionProvider({
     media.clearRecordedMedia();
     timer.start();
     playStartRecording();
-    try {
-      media.startRecording();
-    } catch {
-      timer.reset();
-      alert("Recording could not be started.");
-    }
+    media.startRecording();
   }, [promptEditor, timerEditor, media, timer]);
 
   const finishTimer = useCallback(() => {
@@ -188,6 +185,8 @@ export function PracticeSessionProvider({
       recordedBlob: media.recordedBlob,
       recordedUrl: media.recordedUrl,
       isPreparingDownload: media.isPreparingDownload,
+      mediaError: media.mediaError,
+      clearMediaError: media.clearMediaError,
       videoRef: media.videoRef,
       toggleCamera: media.toggleCamera,
       toggleMic: media.toggleMic,

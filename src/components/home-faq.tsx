@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { getFaqSection1, getFaqSection2 } from "@/data/faq";
 
 const introSections: { title: string; body: string }[] = [
   {
@@ -18,75 +19,8 @@ const introSections: { title: string; body: string }[] = [
   },
 ];
 
-const faqSection1: { q: string; a: string }[] = [
-  {
-    q: "Is Yapper really free?",
-    a: "Yes, completely free. No account, no subscription, and no credit card. We built this so anyone can practice speaking without friction. If it helps you, that is enough.",
-  },
-  {
-    q: "Do you store my video or audio?",
-    a: "No. Nothing you say or record is uploaded to our servers or stored in the cloud. Your mic and camera stay entirely in your browser, and we never see or keep your recordings.",
-  },
-  {
-    q: "What happens to my recording after I practice?",
-    a: "Only you can download it, and only after you finish if you want that file. If you skip download or close the tab, that recording is gone forever. No one else can replay it, and there is nothing to recover later. That is a feature, because nothing is at stake and you can go for it.",
-  },
-  {
-    q: "What is impromptu speaking practice?",
-    a: "It is speaking off the cuff. You get a prompt, then you talk for a set time, such as 30 to 90 seconds, without a script. It is a widely used method for building public speaking confidence, performing in interviews, practicing ESL fluency, and thinking clearly under pressure. Yapper gives you random speech topics and a built-in timer so you can practice anytime, anywhere.",
-  },
-  {
-    q: "Can I use this for Toastmasters table topics?",
-    a: "Absolutely. Table topics are short impromptu speeches, and that is exactly what Yapper is built for. Pull the lever for a random topic, set your timer to 1 to 2 minutes, and practice just like a meeting role without needing a club room. Many Toastmasters members use random generators like this to prep between meetings.",
-  },
-  {
-    q: "Do I need to sign up or create an account?",
-    a: "No. Open the page, turn on camera or mic if you want, set your timer, and hit Start. That is it. No forms, no email, and no passwords.",
-  },
-  {
-    q: "How does the random topic generator work?",
-    a: "Yapper has hundreds of curated speech topics across categories like General, Technology, Business, Society, Fun, Debate, and Hot Takes, each with an Easy, Medium, or Hard difficulty level. Pull the lever and the slot machine picks one at random. You can filter by category or difficulty, or write your own prompt by double-tapping the topic card.",
-  },
-  {
-    q: "Can I write my own speaking prompt?",
-    a: "Yes. Before starting a session, double-tap the topic card to open the prompt editor. Type whatever you want to talk about, whether that is an interview question, a presentation topic, or anything else. Your custom prompt replaces the random one until you pull the lever again.",
-  },
-];
-
-const faqSection2: { q: string; a: string }[] = [
-  {
-    q: "What timer options are available?",
-    a: "You can set the timer anywhere from 30 to 90 seconds using the rotary knob, or double-tap the timer display to type an exact number. 60 seconds is the default, and it is a good sweet spot for impromptu speaking practice.",
-  },
-  {
-    q: "Is this useful for practicing public speaking alone?",
-    a: "That is exactly the scenario we designed for. Most people do not have an audience on demand. Yapper gives you a topic, a timer, and optionally a camera so you can practice solo on your couch, at your desk, or anywhere else. It is one of the easiest ways to practice public speaking alone without needing another person.",
-  },
-  {
-    q: "Can I use Yapper on my phone?",
-    a: "Yes. Yapper works in any modern mobile browser, including Safari, Chrome, and Firefox. The camera and mic features work on mobile too. No app download is needed.",
-  },
-  {
-    q: "Is this good for ESL or English speaking practice?",
-    a: "Very much so. Yapper is used by English learners to practice fluency, reduce filler words, and build speaking confidence. The random topics force you to think and express ideas in English on the spot, which is exactly the skill IELTS, TOEFL, and CELPIP speaking sections test.",
-  },
-  {
-    q: "How is Yapper different from other speech topic generators?",
-    a: "Most random topic generators are just a list with a button. Yapper adds a built-in timer, optional camera and mic recording, difficulty levels, topic categories, custom prompts, and a privacy-first design where nothing leaves your browser. It is a complete practice environment, not just a list.",
-  },
-  {
-    q: "Can I use Yapper for debate practice?",
-    a: "Yes. We have a dedicated Debate category with topics designed to have two clear sides. Hot Takes is another great option for debate-style practice because the prompts are intentionally provocative and push you to argue a position.",
-  },
-  {
-    q: "What are good 1-minute speech topics?",
-    a: "Yapper generates hundreds of them across many categories. Set the timer to 60 seconds, pull the lever, and you will get a topic that is well scoped for a 1-minute impromptu speech, from lighthearted questions like 'What is the most overrated food?' to thought-provoking prompts like 'Should voting be mandatory?'",
-  },
-  {
-    q: "Will Yapper add AI feedback or coaching in the future?",
-    a: "We are exploring it. The free practice tool will always remain free. Future features like AI-powered speaking feedback, structured coaching for CELPIP or TOEFL prep, and progress tracking are on the roadmap, but the core random topic generator with timer and recording will stay free.",
-  },
-];
+const faqSection1 = getFaqSection1();
+const faqSection2 = getFaqSection2();
 
 function FaqItem({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
