@@ -127,14 +127,22 @@ function VideoPlayer({
     return () => window.removeEventListener("keydown", onKey);
   }, [togglePlay]);
 
+  const isTouchRef = useRef(false);
+
   const handleTap = () => {
+    // On touch devices: first tap reveals overlay, second tap toggles play.
+    // On desktop (mouse): always toggle play since hover shows overlay.
+    if (isTouchRef.current && playing && !overlayVisible) {
+      setOverlayVisible(true);
+      scheduleHide();
+      return;
+    }
+
     togglePlay();
     setOverlayVisible(true);
     if (!playing) {
-      // Was paused, now playing - auto-hide after a bit
       scheduleHide();
     } else {
-      // Was playing, now paused - keep overlay visible
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
   };
@@ -185,6 +193,9 @@ function VideoPlayer({
   return (
     <div
       className="absolute inset-0 flex flex-col"
+      onPointerDown={(e) => {
+        if (e.pointerType === "touch") isTouchRef.current = true;
+      }}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
     >
@@ -194,7 +205,10 @@ function VideoPlayer({
         src={src}
         playsInline
         preload="metadata"
-        className="absolute inset-0 h-full w-full bg-black object-contain"
+        className="absolute inset-0 h-full w-full -scale-x-100 bg-black object-contain"
+        onPointerDown={(e) => {
+          if (e.pointerType === "touch") isTouchRef.current = true;
+        }}
         onClick={handleTap}
       />
 

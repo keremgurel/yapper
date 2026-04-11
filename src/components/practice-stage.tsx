@@ -149,7 +149,7 @@ export default function PracticeStage() {
               autoPlay
               playsInline
               muted
-              className="h-full w-full bg-black object-cover"
+              className="h-full w-full -scale-x-100 bg-black object-cover"
             />
           </div>
         )}
@@ -230,7 +230,7 @@ export default function PracticeStage() {
             </button>
 
             <div
-              className={`flex gap-2 transition-all duration-500 ${timerDone ? "hidden" : inSession ? "pointer-events-none opacity-0" : "opacity-100"}`}
+              className={`flex gap-2 overflow-hidden transition-all duration-500 ${timerDone ? "hidden" : inSession ? "pointer-events-none w-0 opacity-0" : "opacity-100"}`}
             >
               <button
                 onClick={toggleMic}

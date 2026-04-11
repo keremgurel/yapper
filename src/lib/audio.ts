@@ -65,6 +65,46 @@ export function playLuxuryDetent(value: number, min = 30, max = 120) {
   }
 }
 
+// Premium aluminum button press, like tapping a machined metal surface.
+// Short bright impact with metallic ring-out.
+export function playAluminumClick() {
+  try {
+    const ac = getAudioCtx();
+    const t = ac.currentTime;
+
+    // Initial impact: tight transient snap
+    noiseBlip(ac, t, 0.008, 5500, 5, 0.1);
+
+    // Metallic body: mid-frequency thock gives it weight
+    noiseBlip(ac, t + 0.001, 0.018, 800, 2, 0.07, "lowpass");
+
+    // Aluminum ring: a fast-decaying sine at a high metallic pitch
+    const ring = ac.createOscillator();
+    const ringGain = ac.createGain();
+    ring.type = "sine";
+    ring.frequency.setValueAtTime(4200, t);
+    ring.frequency.exponentialRampToValueAtTime(3200, t + 0.04);
+    ringGain.gain.setValueAtTime(0.04, t);
+    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+    ring.connect(ringGain).connect(ac.destination);
+    ring.start(t);
+    ring.stop(t + 0.05);
+
+    // Subtle second harmonic for richness
+    const h2 = ac.createOscillator();
+    const h2Gain = ac.createGain();
+    h2.type = "sine";
+    h2.frequency.value = 6800;
+    h2Gain.gain.setValueAtTime(0.015, t);
+    h2Gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
+    h2.connect(h2Gain).connect(ac.destination);
+    h2.start(t);
+    h2.stop(t + 0.025);
+  } catch {
+    // Audio not available
+  }
+}
+
 // Slot reel tick, a sharp dry click like a playing card in spokes
 // This fires every 80ms during the spin. No tone, just a crisp snap.
 export function playSlotTick(pitch = 800) {

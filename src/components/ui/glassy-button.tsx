@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { playAluminumClick } from "@/lib/audio";
 
 /* ── shared styling logic ── */
 
@@ -80,7 +81,10 @@ export function GlassyIconButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        playAluminumClick();
+        onClick?.();
+      }}
       {...handlers}
       className={className}
       style={{
@@ -153,7 +157,10 @@ export function GlassyButton({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        playAluminumClick();
+        onClick?.();
+      }}
       {...handlers}
       className={className}
       style={{
