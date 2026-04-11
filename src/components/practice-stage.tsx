@@ -295,7 +295,7 @@ export default function PracticeStage() {
                   Freestyle
                 </p>
                 <p className="mt-1 text-center text-[12px] text-white/35">
-                  No topic — just speak
+                  No topic, just speak
                 </p>
               </div>
             </div>

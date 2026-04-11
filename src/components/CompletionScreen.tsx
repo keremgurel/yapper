@@ -131,10 +131,10 @@ function VideoPlayer({
     togglePlay();
     setOverlayVisible(true);
     if (!playing) {
-      // Was paused, now playing — auto-hide after a bit
+      // Was paused, now playing - auto-hide after a bit
       scheduleHide();
     } else {
-      // Was playing, now paused — keep overlay visible
+      // Was playing, now paused - keep overlay visible
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     }
   };

@@ -13,11 +13,13 @@ import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-des
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
-interface HomeClientProps {
+interface RandomTopicClientProps {
   initialTopic: Topic;
 }
 
-export default function HomeClient({ initialTopic }: HomeClientProps) {
+export default function RandomTopicClient({
+  initialTopic,
+}: RandomTopicClientProps) {
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -32,27 +34,28 @@ export default function HomeClient({ initialTopic }: HomeClientProps) {
 
   return (
     <div className="flex min-h-screen flex-col transition-colors duration-300">
-      <header className="border-border flex items-center justify-between border-b px-6 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
-            Y
-          </div>
-          <span className="font-display text-foreground text-[22px] font-semibold tracking-[0.02em]">
-            yapper
-          </span>
-          <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
+      <header className="border-border flex items-center justify-between border-b px-3 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 no-underline">
+            <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+              Y
+            </div>
+            <span className="font-display text-foreground hidden text-[22px] font-semibold tracking-[0.02em] sm:inline">
+              yapper
+            </span>
+          </Link>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="rounded-full bg-white/10 px-3 py-1.5 text-[13px] font-medium text-white">
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="rounded-full bg-white/10 px-2 py-1.5 text-[13px] font-medium text-white sm:px-3">
             Random Topic
           </span>
           <Link
-            href="/freestyle"
-            className="rounded-full px-3 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300"
+            href="/freestyle-speech"
+            className="rounded-full px-2 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300 sm:px-3"
           >
             Freestyle
           </Link>
-          <div className="ml-2 origin-right scale-[0.5]">
+          <div className="ml-1 origin-right scale-[0.5] sm:ml-2">
             <CinematicThemeSwitcher />
           </div>
         </div>

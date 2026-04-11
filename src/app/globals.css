@@ -47,6 +47,114 @@
   color: #0f172a; /* slate-900 */
 }
 
+/* Hero badge & description - class-based theming */
+.hero-badge-prominent {
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+}
+
+.hero-badge-prominent span:nth-child(2) {
+  color: #0f172a;
+}
+
+.hero-badge-prominent span:nth-child(3) {
+  color: #475569;
+}
+
+.dark .hero-badge-prominent {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(39, 39, 42, 0.9);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+}
+
+.dark .hero-badge-prominent span:nth-child(2) {
+  color: #fafafa;
+}
+
+.dark .hero-badge-prominent span:nth-child(3) {
+  color: #a1a1aa;
+}
+
+.hero-description {
+  color: #64748b;
+}
+
+.dark .hero-description {
+  color: #a1a1aa;
+}
+
+/* Mode dropdown - class-based theming (not dark: variants) */
+.mode-dropdown-trigger {
+  border: none;
+  background: transparent;
+  color: #475569;
+}
+
+.mode-dropdown-trigger:hover {
+  color: #1e293b;
+}
+
+.mode-dropdown-chevron {
+  color: #94a3b8;
+}
+
+.mode-dropdown-menu {
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+}
+
+.mode-dropdown-item {
+  color: #64748b;
+}
+
+.mode-dropdown-item:hover {
+  background-color: #f8fafc;
+  color: #334155;
+}
+
+.mode-dropdown-item-active {
+  color: #0f172a;
+}
+
+.mode-dropdown-item-border {
+  border-top: 1px solid #f1f5f9;
+}
+
+.dark .mode-dropdown-trigger {
+  color: #a1a1aa;
+}
+
+.dark .mode-dropdown-trigger:hover {
+  color: #fafafa;
+}
+
+.dark .mode-dropdown-chevron {
+  color: #71717a;
+}
+
+.dark .mode-dropdown-menu {
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: #18181b;
+}
+
+.dark .mode-dropdown-item {
+  color: #a1a1aa;
+}
+
+.dark .mode-dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #e4e4e7;
+}
+
+.dark .mode-dropdown-item-active {
+  color: #ffffff;
+}
+
+.dark .mode-dropdown-item-border {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

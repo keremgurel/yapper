@@ -53,15 +53,15 @@ export const Component = () => {
               <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
                 <Link
                   className="text-neutral/50 font-medium whitespace-nowrap"
-                  href="/#practice"
+                  href="/random-topic-generator"
                 >
-                  Practice
+                  Random Topics
                 </Link>
                 <Link
                   className="text-neutral/50 font-medium whitespace-nowrap"
-                  href="/#faq"
+                  href="/freestyle-speech"
                 >
-                  FAQ
+                  Freestyle
                 </Link>
                 <Link
                   className="text-neutral/50 font-medium whitespace-nowrap"
