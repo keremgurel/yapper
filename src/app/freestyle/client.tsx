@@ -30,32 +30,34 @@ export default function FreestyleClient({
 
   return (
     <div className="flex min-h-screen flex-col transition-colors duration-300">
-      <header className="border-border flex items-center justify-between border-b px-6 py-3">
-        <div className="flex items-center gap-2">
+      <header className="border-border flex items-center justify-between border-b px-3 py-3 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2">
           <Link
             href="/freestyle"
             className="flex items-center gap-2 no-underline"
           >
-            <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+            <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
               Y
             </div>
             <span className="font-display text-foreground text-[22px] font-semibold tracking-[0.02em]">
               yapper
             </span>
           </Link>
-          <span className="ml-1 text-[11px] text-slate-500">ypr.app</span>
+          <span className="ml-1 hidden text-[11px] text-slate-500 sm:inline">
+            ypr.app
+          </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Link
             href="/"
-            className="rounded-full px-3 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300"
+            className="rounded-full px-2 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300 sm:px-3"
           >
             Random Topic
           </Link>
-          <span className="rounded-full bg-white/10 px-3 py-1.5 text-[13px] font-medium text-white">
+          <span className="rounded-full bg-white/10 px-2 py-1.5 text-[13px] font-medium text-white sm:px-3">
             Freestyle
           </span>
-          <div className="ml-2 origin-right scale-[0.5]">
+          <div className="ml-1 origin-right scale-[0.5] sm:ml-2">
             <CinematicThemeSwitcher />
           </div>
         </div>
