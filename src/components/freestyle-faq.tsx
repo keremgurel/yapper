@@ -109,7 +109,7 @@ export function FreestyleFaq() {
       className="bg-background w-full px-4 py-20 md:px-8 md:py-24"
       aria-labelledby="freestyle-guide-heading"
     >
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-[1200px]">
         {/* Intro cards */}
         <div className="mx-auto mb-12 max-w-3xl text-center md:mb-14">
           <h2

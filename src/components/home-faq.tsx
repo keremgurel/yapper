@@ -1,21 +1,25 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import Image from "next/image";
 import { useState } from "react";
 import { getFaqSection1, getFaqSection2 } from "@/data/faq";
 
-const introSections: { title: string; body: string }[] = [
+const steps: { title: string; body: string; image: string }[] = [
   {
-    title: "How to use Yapper",
-    body: "Turn on your camera and mic first if you want a recording, then pick a category, set your timer, pull the lever, and start speaking. It is built for impromptu speaking practice, public speaking alone, and quick table topics reps with zero setup.",
+    title: "Pick your mode",
+    body: "Choose between random topics or freestyle mode. Set your timer, turn on your camera and mic if you want a recording, and get ready to speak.",
+    image: "/step-pick-mode.png",
   },
   {
-    title: "Why people use it",
-    body: "Yapper is a random topic generator made for real speaking practice, not just browsing prompts. Use it for impromptu speech topics, interview speaking practice, 1 minute speech topics, English speaking confidence, or Toastmasters table topics between meetings.",
+    title: "Pull the lever",
+    body: "Hit the generate button to get a random speech topic. Use it for impromptu speech topics, interview practice, table topics, or 1-minute speech prompts.",
+    image: "/step-pull-lever.png",
   },
   {
-    title: "Private by default",
-    body: "Your speech topics, camera feed, mic input, and recordings stay in your browser. Nothing is uploaded to our servers, which makes Yapper a low-pressure way to practice public speaking online without an account or a coach watching.",
+    title: "Start speaking",
+    body: "Everything stays in your browser. No uploads, no accounts, no coach watching. Just a low-pressure way to practice public speaking online.",
+    image: "/step-start-speaking.png",
   },
 ];
 
@@ -133,35 +137,78 @@ export function HomeFaq() {
       className="bg-background w-full px-4 py-20 md:px-8 md:py-24"
       aria-labelledby="practice-guide-heading"
     >
-      <div className="mx-auto max-w-5xl">
-        {/* Intro cards */}
-        <div className="mx-auto mb-12 max-w-3xl text-center md:mb-14">
-          <h2
-            id="practice-guide-heading"
-            className="text-foreground mb-3 text-[24px] font-extrabold tracking-tight md:text-[34px]"
+      <div className="mx-auto max-w-[1200px]">
+        {/* Steps timeline */}
+        <div className="mb-24 grid items-start gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
+          {/* Left heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.5 }}
+            className="lg:sticky lg:top-32"
           >
-            How to practice impromptu speaking with Yapper
-          </h2>
-          <p className="mx-auto max-w-2xl text-[15px] leading-relaxed text-slate-500 md:text-[16px] dark:text-slate-400">
-            Use Yapper as a random topic generator for impromptu speaking
-            practice, table topics, and public speaking practice online.
-          </p>
-        </div>
-
-        <div className="mb-24 grid gap-4 md:grid-cols-3 md:gap-5">
-          {introSections.map((section) => (
-            <article
-              key={section.title}
-              className="rounded-3xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-sm dark:border-white/[0.07] dark:bg-white/[0.025]"
+            <h2
+              id="practice-guide-heading"
+              className="text-foreground text-[32px] leading-[1.15] font-extrabold tracking-tight md:text-[42px]"
+              style={{ fontFamily: "var(--font-jakarta), sans-serif" }}
             >
-              <h3 className="text-foreground mb-3 text-[18px] font-bold tracking-tight md:text-[20px]">
-                {section.title}
-              </h3>
-              <p className="text-[14px] leading-7 text-slate-600 dark:text-slate-400">
-                {section.body}
-              </p>
-            </article>
-          ))}
+              Get started in
+              <br />3 simple steps.
+            </h2>
+            <p className="mt-4 max-w-xs text-[15px] leading-relaxed text-slate-500 dark:text-slate-400">
+              Use Yapper as a random topic generator for impromptu speaking
+              practice, table topics, and public speaking practice online.
+            </p>
+          </motion.div>
+
+          {/* Right timeline */}
+          <div className="relative flex flex-col gap-0">
+            {steps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-40px" }}
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="relative flex gap-5"
+              >
+                {/* Timeline column */}
+                <div className="flex flex-col items-center">
+                  {/* Number circle */}
+                  <div className="z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[13px] font-semibold text-white dark:bg-white dark:text-gray-900">
+                    {i + 1}
+                  </div>
+                  {/* Dashed connector */}
+                  {i < steps.length - 1 && (
+                    <div className="w-px flex-1 border-l-[1.5px] border-dashed border-slate-300 dark:border-slate-600" />
+                  )}
+                </div>
+
+                {/* Step content */}
+                <div className="flex-1 pb-12">
+                  {/* Visual card */}
+                  <div className="relative mb-6 overflow-hidden rounded-2xl">
+                    <Image
+                      src={step.image}
+                      alt={step.title}
+                      width={600}
+                      height={400}
+                      className="h-auto w-full object-cover"
+                    />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-foreground text-[17px] font-bold tracking-tight">
+                      {step.title}
+                    </h3>
+                    <p className="mx-auto mt-1.5 max-w-sm text-[14px] leading-relaxed text-slate-500 dark:text-slate-400">
+                      {step.body}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
         </div>
 
         {/* FAQ Section 1 */}

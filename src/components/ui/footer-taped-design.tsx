@@ -20,8 +20,8 @@ export const Component = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="px- text-base-content mx-auto my-8 max-w-5xl">
-      <div className="relative mx-auto flex max-w-5xl flex-col rounded-3xl bg-white px-4 py-10">
+    <footer className="px- text-base-content mx-auto my-8 max-w-[1200px]">
+      <div className="relative mx-auto flex max-w-[1200px] flex-col rounded-3xl bg-white px-4 py-10">
         <div className="absolute -top-4 -left-8 hidden h-[36px] w-[80px] scale-75 md:block">
           {tape}
         </div>

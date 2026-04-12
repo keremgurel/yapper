@@ -65,41 +65,65 @@ export function playLuxuryDetent(value: number, min = 30, max = 120) {
   }
 }
 
-// Premium aluminum button press, like tapping a machined metal surface.
-// Short bright impact with metallic ring-out.
+// Chunky mechanical key press. Shaped noise only, no sine oscillators,
+// so it sounds organic instead of robotic. Think: thick PBT spacebar
+// bottoming out on a gasket-mount board.
 export function playAluminumClick() {
   try {
     const ac = getAudioCtx();
     const t = ac.currentTime;
 
-    // Initial impact: tight transient snap
-    noiseBlip(ac, t, 0.008, 5500, 5, 0.1);
+    // Build one long noise buffer and carve different layers from it
+    const rate = ac.sampleRate;
+    const len = 0.08;
+    const frames = Math.ceil(rate * len);
+    const noiseBuf = ac.createBuffer(1, frames, rate);
+    const raw = noiseBuf.getChannelData(0);
+    for (let i = 0; i < frames; i++) {
+      // Shape the amplitude: sharp attack, fast initial drop, slow tail
+      const p = i / frames;
+      const envelope = p < 0.02 ? p / 0.02 : Math.exp(-p * 28);
+      raw[i] = (Math.random() * 2 - 1) * envelope;
+    }
 
-    // Metallic body: mid-frequency thock gives it weight
-    noiseBlip(ac, t + 0.001, 0.018, 800, 2, 0.07, "lowpass");
+    // ---- Layer 1: the CHUNK -- low-end thock (sub-300Hz) ----
+    const thockSrc = ac.createBufferSource();
+    thockSrc.buffer = noiseBuf;
+    const thockLp = ac.createBiquadFilter();
+    thockLp.type = "lowpass";
+    thockLp.frequency.value = 280;
+    thockLp.Q.value = 0.7;
+    const thockGain = ac.createGain();
+    thockGain.gain.value = 0.35;
+    thockSrc.connect(thockLp).connect(thockGain).connect(ac.destination);
+    thockSrc.start(t);
+    thockSrc.stop(t + len);
 
-    // Aluminum ring: a fast-decaying sine at a high metallic pitch
-    const ring = ac.createOscillator();
-    const ringGain = ac.createGain();
-    ring.type = "sine";
-    ring.frequency.setValueAtTime(4200, t);
-    ring.frequency.exponentialRampToValueAtTime(3200, t + 0.04);
-    ringGain.gain.setValueAtTime(0.04, t);
-    ringGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-    ring.connect(ringGain).connect(ac.destination);
-    ring.start(t);
-    ring.stop(t + 0.05);
+    // ---- Layer 2: mid clack -- the plastic-on-plastic contact ----
+    const clackSrc = ac.createBufferSource();
+    clackSrc.buffer = noiseBuf;
+    const clackBp = ac.createBiquadFilter();
+    clackBp.type = "bandpass";
+    clackBp.frequency.value = 900;
+    clackBp.Q.value = 1.2;
+    const clackGain = ac.createGain();
+    clackGain.gain.value = 0.15;
+    clackSrc.connect(clackBp).connect(clackGain).connect(ac.destination);
+    clackSrc.start(t);
+    clackSrc.stop(t + len);
 
-    // Subtle second harmonic for richness
-    const h2 = ac.createOscillator();
-    const h2Gain = ac.createGain();
-    h2.type = "sine";
-    h2.frequency.value = 6800;
-    h2Gain.gain.setValueAtTime(0.015, t);
-    h2Gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
-    h2.connect(h2Gain).connect(ac.destination);
-    h2.start(t);
-    h2.stop(t + 0.025);
+    // ---- Layer 3: top-end texture -- just enough crispness ----
+    const topSrc = ac.createBufferSource();
+    topSrc.buffer = noiseBuf;
+    const topHp = ac.createBiquadFilter();
+    topHp.type = "highpass";
+    topHp.frequency.value = 3000;
+    topHp.Q.value = 0.5;
+    const topGain = ac.createGain();
+    topGain.gain.value = 0.06;
+    topSrc.connect(topHp).connect(topGain).connect(ac.destination);
+    topSrc.start(t);
+    topSrc.stop(t + len);
   } catch {
     // Audio not available
   }

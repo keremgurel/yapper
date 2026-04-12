@@ -9,7 +9,9 @@ import HomeHero from "@/components/home-hero";
 import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
-import { Component as FooterTapedDesign } from "@/components/ui/footer-taped-design";
+import Waitlist from "@/components/waitlist";
+import { Component as Footer } from "@/components/ui/footer-taped-design";
+
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
@@ -71,8 +73,9 @@ export default function RandomTopicClient({
         </ErrorBoundary>
       </PracticeSessionProvider>
 
+      <Waitlist variant="full" />
       <HomeFaq />
-      <FooterTapedDesign />
+      <Footer />
     </div>
   );
 }

@@ -101,7 +101,7 @@ export default function PracticeStage() {
     ? "h-[100dvh] w-screen max-h-none max-w-none"
     : isCompactDevice
       ? "aspect-[9/16] w-[min(calc(100vw-2rem),calc((100dvh-1.5rem)*9/16))] max-h-[calc(100dvh-1.5rem)] lg:w-[min(calc((100vh-200px)*9/16),100%)]"
-      : "aspect-[16/9] w-full max-w-[min(1200px,100%)] max-h-[calc(100dvh-1.5rem)] md:h-auto md:max-h-[calc(100vh-200px)]";
+      : "aspect-[16/9] w-full max-w-[min(1400px,100%)] max-h-[calc(100dvh-1.5rem)] md:h-auto md:max-h-[calc(100vh-200px)]";
 
   const handleNewSession = () => {
     resetTimer();
