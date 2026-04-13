@@ -18,6 +18,26 @@ import { useTheme } from "next-themes";
 import { SparklesCore } from "@/components/sparkles";
 
 /* ------------------------------------------------------------------ */
+/*  Shared submit helper                                               */
+/* ------------------------------------------------------------------ */
+
+async function submitWaitlist(email: string): Promise<string> {
+  const res = await fetch("/api/waitlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = (await res.json().catch(() => ({}))) as {
+    success?: boolean;
+    error?: string;
+  };
+  if (!res.ok || !data.success) {
+    throw new Error(data.error ?? "Something went wrong. Please try again.");
+  }
+  return "You're on the list! We'll be in touch.";
+}
+
+/* ------------------------------------------------------------------ */
 /*  Feature items for the "what's coming" column                       */
 /* ------------------------------------------------------------------ */
 
@@ -72,9 +92,8 @@ function WaitlistForm() {
       setLoading(true);
       setMessage("");
       try {
-        // TODO: wire up to email collection backend
-        await new Promise((r) => setTimeout(r, 500));
-        setMessage("You're on the list! We'll be in touch.");
+        const successMsg = await submitWaitlist(email);
+        setMessage(successMsg);
         setEmail("");
       } catch (err) {
         setMessage(
@@ -216,9 +235,8 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
       setLoading(true);
       setMessage("");
       try {
-        // TODO: wire up to email collection backend
-        await new Promise((r) => setTimeout(r, 500));
-        setMessage("You're on the list! We'll be in touch.");
+        const successMsg = await submitWaitlist(email);
+        setMessage(successMsg);
         setEmail("");
       } catch (err) {
         setMessage(
