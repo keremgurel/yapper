@@ -1,9 +1,16 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef } from "react";
 import type { Topic } from "@/data/topics";
 import type { Category, Difficulty } from "@/data/topics";
 import { playStartRecording, playStopRecording } from "@/lib/audio";
+import {
+  trackSessionStarted,
+  trackSessionCompleted,
+  trackSessionReset,
+  trackSessionPaused,
+  trackMediaToggle,
+} from "@/lib/analytics";
 import { useCompactDevice } from "@/hooks/use-compact-device";
 import { useTopicGenerator } from "@/hooks/use-topic-generator";
 import { usePromptEditor } from "@/hooks/use-prompt-editor";
@@ -98,6 +105,7 @@ export function PracticeSessionProvider({
   const isCompactDevice = useCompactDevice();
   const topicGen = useTopicGenerator(initialTopic);
   const media = useMediaStream();
+  const sessionStartTimeRef = useRef<number>(0);
 
   const timer = useSessionTimer({
     onTimerExpired: () => {
@@ -130,20 +138,71 @@ export function PracticeSessionProvider({
     timer.start();
     playStartRecording();
     media.startRecording();
-  }, [promptEditor, timerEditor, media, timer]);
+    sessionStartTimeRef.current = Date.now();
+    trackSessionStarted({
+      mode,
+      timerSeconds: timer.timerSeconds,
+      cameraOn: media.cameraOn,
+      micOn: media.micOn,
+      category: topicGen.category,
+      difficulty: topicGen.difficulty,
+      topicText:
+        mode === "topic"
+          ? (topicGen.customPromptText ?? topicGen.topic.text)
+          : undefined,
+    });
+  }, [promptEditor, timerEditor, media, timer, mode, topicGen]);
 
   const finishTimer = useCallback(() => {
+    const elapsed = Math.round(
+      (Date.now() - sessionStartTimeRef.current) / 1000,
+    );
     timer.finish();
     media.stopRecording();
     playStopRecording();
-  }, [timer, media]);
+    trackSessionCompleted({
+      mode,
+      timerSeconds: timer.timerSeconds,
+      elapsedSeconds: elapsed,
+      finishedEarly: elapsed < timer.timerSeconds,
+      cameraOn: media.cameraOn,
+      micOn: media.micOn,
+      hadRecording: media.cameraOn || media.micOn,
+    });
+  }, [timer, media, mode]);
 
   const resetTimer = useCallback(() => {
+    if (timer.isRunning || timer.isPaused) {
+      const elapsed = Math.round(
+        (Date.now() - sessionStartTimeRef.current) / 1000,
+      );
+      trackSessionReset({
+        mode,
+        elapsedSeconds: elapsed,
+        timerSeconds: timer.timerSeconds,
+      });
+    }
     timer.reset();
     media.stopRecording();
     media.clearRecordedMedia();
     media.reattachStream(media.cameraOn);
-  }, [timer, media]);
+  }, [timer, media, mode]);
+
+  const pauseTimer = useCallback(() => {
+    timer.pause();
+    trackSessionPaused({ action: timer.isPaused ? "resume" : "pause" });
+  }, [timer]);
+
+  const wrappedToggleCamera = useCallback(async () => {
+    await media.toggleCamera();
+    // After toggle, the new state is the opposite of current
+    trackMediaToggle({ media: "camera", enabled: !media.cameraOn });
+  }, [media]);
+
+  const wrappedToggleMic = useCallback(async () => {
+    await media.toggleMic();
+    trackMediaToggle({ media: "mic", enabled: !media.micOn });
+  }, [media]);
 
   const canEditPrompt = !timer.inSession && !topicGen.spinning;
   const canEditTime = !timer.isRunning;
@@ -196,12 +255,12 @@ export function PracticeSessionProvider({
       mediaError: media.mediaError,
       clearMediaError: media.clearMediaError,
       videoRef: media.videoRef,
-      toggleCamera: media.toggleCamera,
-      toggleMic: media.toggleMic,
+      toggleCamera: wrappedToggleCamera,
+      toggleMic: wrappedToggleMic,
       downloadRecording: media.downloadRecording,
 
       startTimer,
-      pauseTimer: timer.pause,
+      pauseTimer,
       finishTimer,
       resetTimer,
 
@@ -217,8 +276,11 @@ export function PracticeSessionProvider({
       timerEditor,
       media,
       startTimer,
+      pauseTimer,
       finishTimer,
       resetTimer,
+      wrappedToggleCamera,
+      wrappedToggleMic,
       canEditPrompt,
       canEditTime,
       isCompactDevice,

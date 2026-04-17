@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
+import { getPostHogClient } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
@@ -55,6 +56,17 @@ export async function POST(req: Request) {
         { status: 502 },
       );
     }
+
+    const posthog = getPostHogClient();
+    posthog.capture({
+      distinctId: trimmed,
+      event: "waitlist_joined",
+      properties: { email: trimmed, source: "api" },
+    });
+    posthog.identify({
+      distinctId: trimmed,
+      properties: { email: trimmed, waitlist: true },
+    });
 
     return NextResponse.json({ success: true });
   } catch (e) {

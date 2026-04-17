@@ -1,6 +1,7 @@
 "use client";
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import posthog from "posthog-js";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -28,6 +29,9 @@ export class ErrorBoundary extends Component<
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+    posthog.captureException(error, {
+      extra: { componentStack: errorInfo.componentStack },
+    });
     this.props.onError?.(error, errorInfo);
   }
 

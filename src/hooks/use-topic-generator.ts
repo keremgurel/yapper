@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { type Category, type Difficulty, type Topic } from "@/data/topics";
 import { playSlotTick } from "@/lib/audio";
 import { getRandomTopic, pickReelBlurbs } from "@/lib/practice-helpers";
+import { trackTopicGenerated, trackFilterChanged } from "@/lib/analytics";
 
 export function useTopicGenerator(initialTopic: Topic) {
   const [topic, setTopic] = useState<Topic>(initialTopic);
@@ -19,6 +20,7 @@ export function useTopicGenerator(initialTopic: Topic) {
     setHasGeneratedTopic(true);
     setReelBlurbs(pickReelBlurbs());
     setSpinning(true);
+    trackTopicGenerated({ category, difficulty });
     const tickInterval = setInterval(
       () => playSlotTick(600 + Math.random() * 400),
       80,
@@ -38,6 +40,7 @@ export function useTopicGenerator(initialTopic: Topic) {
       setCustomPromptText(null);
       setHasGeneratedTopic(true);
       setTopic(getRandomTopic(topic, nextCategory, difficulty));
+      trackFilterChanged({ filter: "category", value: nextCategory });
     },
     [difficulty, topic],
   );
@@ -49,6 +52,7 @@ export function useTopicGenerator(initialTopic: Topic) {
       setCustomPromptText(null);
       setHasGeneratedTopic(true);
       setTopic(getRandomTopic(topic, category, nextDifficulty));
+      trackFilterChanged({ filter: "difficulty", value: nextDifficulty });
     },
     [category, topic],
   );

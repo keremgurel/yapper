@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import Script from "next/script";
+import AnalyticsProvider from "@/components/analytics-provider";
 import {
   Geist_Mono,
   Inter_Tight,
@@ -144,6 +146,9 @@ gtag('config', 'G-09JET8C3M0');`}
         <link rel="apple-touch-icon" href="/favicon.ico" />
       </head>
       <body className="flex min-h-full flex-col">
+        <Suspense fallback={null}>
+          <AnalyticsProvider />
+        </Suspense>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
