@@ -37,6 +37,8 @@ For production (Vercel), add the same env vars in your Vercel project settings.
 | `mode_changed`         | User switches Random/Freestyle on landing | `mode`                                                                                         |
 | `fullscreen_toggled`   | User enters/exits fullscreen              | `entered`                                                                                      |
 | `blog_post_viewed`     | User opens a blog post                    | `slug`, `title`                                                                                |
+| `waitlist_joined`      | Server-side confirmation of waitlist API  | `email`                                                                                        |
+| `$exception`           | Uncaught React errors via ErrorBoundary   | auto                                                                                           |
 
 Plus all **autocaptured** events (clicks, inputs) and **session recordings** are enabled by default.
 
