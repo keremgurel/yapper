@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { clampTimerSeconds } from "@/lib/practice-helpers";
+import { trackTimerAdjusted } from "@/lib/analytics";
 
 export function useTimerEditor(opts: {
   timerSeconds: number;
@@ -39,6 +40,7 @@ export function useTimerEditor(opts: {
     const nextSeconds = clampTimerSeconds(parsed);
     opts.onTimerSecondsChange(nextSeconds);
     if (!opts.isRunning) opts.onTimeLeftChange(nextSeconds);
+    trackTimerAdjusted({ seconds: nextSeconds });
     setTimeEditorOpen(false);
   }, [opts, timeDraft]);
 

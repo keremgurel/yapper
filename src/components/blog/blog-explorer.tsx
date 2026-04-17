@@ -5,6 +5,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import type { BlogPostMeta } from "@/lib/blog";
 import { formatBlogDate } from "@/lib/blog-format";
 import Link from "next/link";
+import { trackBlogPostViewed } from "@/lib/analytics";
 
 type BlogExplorerProps = {
   featuredPost: BlogPostMeta | null;
@@ -28,6 +29,9 @@ function PostCard({ post }: { post: BlogPostMeta }) {
           <Link
             href={`/blog/${post.slug}`}
             className="after:absolute after:inset-0"
+            onClick={() =>
+              trackBlogPostViewed({ slug: post.slug, title: post.title })
+            }
           >
             {post.title}
           </Link>
@@ -73,6 +77,9 @@ function FeaturedCard({ post }: { post: BlogPostMeta }) {
     <Link
       href={`/blog/${post.slug}`}
       className="group relative block overflow-hidden rounded-[2rem] border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-8 shadow-[0_30px_70px_rgba(245,158,11,0.12)] transition-all duration-300 hover:shadow-[0_35px_80px_rgba(245,158,11,0.18)] sm:p-10 dark:border-amber-800/50 dark:from-amber-950/20 dark:via-zinc-900 dark:to-orange-950/20"
+      onClick={() =>
+        trackBlogPostViewed({ slug: post.slug, title: post.title })
+      }
     >
       <div className="pointer-events-none absolute -top-20 -right-20 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(245,158,11,0.2),transparent_70%)]" />
       <div className="pointer-events-none absolute -bottom-16 -left-16 h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(239,68,68,0.1),transparent_68%)]" />

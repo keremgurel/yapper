@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
+import { trackModeChanged } from "@/lib/analytics";
 import {
   ErrorBoundary,
   PracticeErrorFallback,
@@ -27,6 +28,10 @@ interface LandingClientProps {
 
 export default function LandingClient({ initialTopic }: LandingClientProps) {
   const [mode, setMode] = useState<SpeechMode>("random");
+  const handleModeChange = useCallback((newMode: SpeechMode) => {
+    setMode(newMode);
+    trackModeChanged({ mode: newMode });
+  }, []);
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -54,7 +59,7 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
           </Link>
         </div>
         <div className="absolute left-1/2 z-50 -translate-x-1/2">
-          <GlassyModeDropdown mode={mode} onChange={setMode} />
+          <GlassyModeDropdown mode={mode} onChange={handleModeChange} />
         </div>
         <div className="origin-right scale-[0.5]">
           <CinematicThemeSwitcher />

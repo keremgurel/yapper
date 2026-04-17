@@ -11,6 +11,10 @@ import {
   AudioPlayerDuration,
 } from "@/components/ui/audio-player";
 import { usePracticeSession } from "@/contexts/practice-session";
+import {
+  trackRecordingDownloaded,
+  trackRecordingShared,
+} from "@/lib/analytics";
 
 function formatTime(seconds: number) {
   const safe = Math.max(0, Math.floor(seconds));
@@ -422,7 +426,10 @@ export default function CompletionScreen() {
   const prompt = isFreestyle
     ? "Freestyle session"
     : (customPromptText ?? topic.text);
-  const onDownload = downloadRecording;
+  const onDownload = () => {
+    downloadRecording();
+    trackRecordingDownloaded({ hasVideo: cameraOn });
+  };
   const onNewSession = () => {
     resetTimer();
     if (!isFreestyle) generateTopic();
@@ -445,6 +452,7 @@ export default function CompletionScreen() {
           title: "My Yapper Take",
           text: `Check out my practice take on: "${prompt}"`,
         });
+        trackRecordingShared();
       }
     } catch {
       /* user cancelled share */

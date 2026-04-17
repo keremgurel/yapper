@@ -22,6 +22,8 @@ import { SparklesCore } from "@/components/sparkles";
 /* ------------------------------------------------------------------ */
 
 async function submitWaitlist(email: string): Promise<string> {
+  const { trackWaitlistSubmitted, identifyUser } =
+    await import("@/lib/analytics");
   const res = await fetch("/api/waitlist", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -32,8 +34,11 @@ async function submitWaitlist(email: string): Promise<string> {
     error?: string;
   };
   if (!res.ok || !data.success) {
+    trackWaitlistSubmitted({ success: false });
     throw new Error(data.error ?? "Something went wrong. Please try again.");
   }
+  trackWaitlistSubmitted({ success: true });
+  identifyUser(email, { email, waitlist: true });
   return "You're on the list! We'll be in touch.";
 }
 
