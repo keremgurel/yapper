@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import type { Topic } from "@/data/topics";
 import type { Category, Difficulty } from "@/data/topics";
 import { playStartRecording, playStopRecording } from "@/lib/audio";
@@ -106,10 +113,14 @@ export function PracticeSessionProvider({
   const topicGen = useTopicGenerator(initialTopic);
   const media = useMediaStream();
   const sessionStartTimeRef = useRef<number>(0);
+  const endSessionRef = useRef<((reason: "auto" | "manual") => void) | null>(
+    null,
+  );
 
   const timer = useSessionTimer({
     onTimerExpired: () => {
       media.stopRecording();
+      endSessionRef.current?.("auto");
     },
   });
 
@@ -153,23 +164,35 @@ export function PracticeSessionProvider({
     });
   }, [promptEditor, timerEditor, media, timer, mode, topicGen]);
 
+  const endSession = useCallback(
+    (endReason: "auto" | "manual") => {
+      const elapsed = Math.round(
+        (Date.now() - sessionStartTimeRef.current) / 1000,
+      );
+      trackSessionCompleted({
+        mode,
+        timerSeconds: timer.timerSeconds,
+        elapsedSeconds: elapsed,
+        finishedEarly: elapsed < timer.timerSeconds,
+        cameraOn: media.cameraOn,
+        micOn: media.micOn,
+        hadRecording: media.cameraOn || media.micOn,
+        endReason,
+      });
+    },
+    [mode, timer.timerSeconds, media.cameraOn, media.micOn],
+  );
+
+  useEffect(() => {
+    endSessionRef.current = endSession;
+  }, [endSession]);
+
   const finishTimer = useCallback(() => {
-    const elapsed = Math.round(
-      (Date.now() - sessionStartTimeRef.current) / 1000,
-    );
     timer.finish();
     media.stopRecording();
     playStopRecording();
-    trackSessionCompleted({
-      mode,
-      timerSeconds: timer.timerSeconds,
-      elapsedSeconds: elapsed,
-      finishedEarly: elapsed < timer.timerSeconds,
-      cameraOn: media.cameraOn,
-      micOn: media.micOn,
-      hadRecording: media.cameraOn || media.micOn,
-    });
-  }, [timer, media, mode]);
+    endSession("manual");
+  }, [timer, media, endSession]);
 
   const resetTimer = useCallback(() => {
     if (timer.isRunning || timer.isPaused) {

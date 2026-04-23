@@ -76,6 +76,7 @@ export function trackSessionCompleted(props: {
   cameraOn: boolean;
   micOn: boolean;
   hadRecording: boolean;
+  endReason: "auto" | "manual";
 }) {
   track("session_completed", props);
 }
