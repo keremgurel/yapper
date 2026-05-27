@@ -6,9 +6,11 @@ export function safeJsonLdStringify(obj: unknown): string {
   return JSON.stringify(obj).replace(/</g, "\\u003c");
 }
 
+export const SITE_URL = "https://ypr.app";
+
 /**
- * Canonical site URL, configurable via NEXT_PUBLIC_SITE_URL.
+ * Canonical site URL used for metadata and structured data.
  */
 export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://ypr.app";
+  return SITE_URL;
 }
