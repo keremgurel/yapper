@@ -1,8 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getAllBlogPosts } from "@/lib/blog";
-
-const SITE_URL = "https://ypr.app";
+import { SITE_URL } from "@/lib/json-ld";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogPosts = getAllBlogPosts().map((post) => ({
