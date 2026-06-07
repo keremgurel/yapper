@@ -40,3 +40,22 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env.local
+
+# === OpenClaw workspace runtime files (NOT part of this project) ===
+# OpenClaw runs this repo as an agent workspace and drops its own operating /
+# runtime files into the project root. They belong to the ~/.openclaw repo and
+# must never be tracked here. Anchored to root so legit nested files are safe.
+#
+# NOTE: AGENTS.md is deliberately NOT ignored — it's a standard repo-convention
+# file (this repo tracks its own). OpenClaw only drops a boilerplate AGENTS.md
+# when a repo lacks one, so keeping a real AGENTS.md tracked prevents that.
+/SOUL.md
+/IDENTITY.md
+/TOOLS.md
+/USER.md
+/HEARTBEAT.md
+/MEMORY.md
+/HANDOFF.md
+/INTEGRATION_TEST.md
+/.openclaw/
+/memory/
