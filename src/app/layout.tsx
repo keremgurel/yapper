@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import AnalyticsProvider from "@/components/analytics-provider";
 import {
   Geist_Mono,
@@ -158,6 +159,7 @@ gtag('config', 'G-09JET8C3M0');`}
         >
           {children}
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
