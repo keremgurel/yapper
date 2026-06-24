@@ -13,6 +13,7 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import { FreestyleFaq } from "@/components/freestyle-faq";
 import Waitlist from "@/components/waitlist";
+import HomeFutureSections from "@/components/home-future-sections";
 import TrainingEntryCard from "@/components/training/training-entry-card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
@@ -88,6 +89,7 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
       </PracticeSessionProvider>
 
       {/* What's coming + waitlist form */}
+      <HomeFutureSections />
       <TrainingEntryCard />
 
       <Waitlist variant="full" />

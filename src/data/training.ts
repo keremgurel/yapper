@@ -1,4 +1,5 @@
 export type TrainingCategory = "Mindset" | "Retrieval" | "Voice" | "Structure";
+export type TrainingStatus = "Free now" | "Coming" | "Credits later";
 
 export type TrainingDrill = {
   id: string;
@@ -24,6 +25,22 @@ export type TrainingProtocol = {
   cadence: string;
   blogHref: string;
   drills: TrainingDrill[];
+};
+
+export type ProgramFamily = {
+  slug: string;
+  title: string;
+  skill: string;
+  prompt: string;
+  sampleTask: string;
+  duration: string;
+  status: TrainingStatus;
+  accent: "cyan" | "orange" | "emerald" | "fuchsia" | "amber" | "rose";
+};
+
+export type InspirationFeature = {
+  title: string;
+  description: string;
 };
 
 export const fluencyProtocol: TrainingProtocol = {
@@ -121,3 +138,117 @@ export const fluencyProtocol: TrainingProtocol = {
 };
 
 export const trainingProtocols: TrainingProtocol[] = [fluencyProtocol];
+
+export const programFamilies: ProgramFamily[] = [
+  {
+    slug: "freestyle-reps",
+    title: "Freestyle reps",
+    skill: "Spontaneous camera presence",
+    prompt: "Open camera. Pick a lane. Talk without hiding behind a script.",
+    sampleTask:
+      "Record a 90-second take on what you are thinking about this week.",
+    duration: "1-3 min",
+    status: "Free now",
+    accent: "cyan",
+  },
+  {
+    slug: "explain-after-reading",
+    title: "Explain after reading",
+    skill: "Comprehension into speech",
+    prompt: "Read something short, close it, then explain it like a human.",
+    sampleTask:
+      "Read one paragraph about creator monetization, then explain the point in 60 seconds.",
+    duration: "3-8 min",
+    status: "Coming",
+    accent: "emerald",
+  },
+  {
+    slug: "read-aloud",
+    title: "Read aloud",
+    skill: "Articulation, pacing, and vocal control",
+    prompt: "Turn written words into clean on-camera delivery.",
+    sampleTask:
+      "Read a dense paragraph twice: once for clarity, once for emphasis.",
+    duration: "2-5 min",
+    status: "Coming",
+    accent: "amber",
+  },
+  {
+    slug: "interview-prep",
+    title: "Interview prep",
+    skill: "Structured answers under pressure",
+    prompt: "Practice concise answers without sounding rehearsed.",
+    sampleTask:
+      "Answer: tell me about a time you changed your mind after getting better evidence.",
+    duration: "5-12 min",
+    status: "Coming",
+    accent: "fuchsia",
+  },
+  {
+    slug: "dating-social",
+    title: "Dating and social",
+    skill: "Warmth, stories, and playful answers",
+    prompt: "Get smoother at the small moments where people actually connect.",
+    sampleTask:
+      "Tell a 45-second story about a tiny inconvenience that says something about you.",
+    duration: "2-6 min",
+    status: "Coming",
+    accent: "rose",
+  },
+  {
+    slug: "conflict-handling",
+    title: "Conflict handling",
+    skill: "Calm disagreement",
+    prompt: "Say the hard thing clearly without spiraling or over-explaining.",
+    sampleTask:
+      "Respond to: I feel like you ignored what I asked for. Keep it direct and calm.",
+    duration: "3-8 min",
+    status: "Coming",
+    accent: "orange",
+  },
+  {
+    slug: "creator-camera-drills",
+    title: "Creator camera drills",
+    skill: "Hooks, framing, and take energy",
+    prompt: "Practice the on-camera moves that make short-form ideas land.",
+    sampleTask:
+      "Pitch one saved content idea with a hook, payoff, and one crisp example.",
+    duration: "2-10 min",
+    status: "Coming",
+    accent: "cyan",
+  },
+  {
+    slug: fluencyProtocol.slug,
+    title: fluencyProtocol.title,
+    skill: "Word retrieval and speech compression",
+    prompt: fluencyProtocol.description,
+    sampleTask:
+      "Run the four-drill warmup, then immediately record a random-topic rep.",
+    duration: fluencyProtocol.duration,
+    status: "Free now",
+    accent: "emerald",
+  },
+];
+
+export const inspirationFeatures: InspirationFeature[] = [
+  {
+    title: "Save the source",
+    description:
+      "Paste TikTok, Instagram, or YouTube Shorts links into content pillars instead of losing them in a notes app.",
+  },
+  {
+    title: "Study the format",
+    description:
+      "Later, Yapper will transcribe clips, pull hooks, detect repeatable formats, and surface why a video works.",
+  },
+  {
+    title: "Write the yap",
+    description:
+      "Turn saved inspiration into bullets, scripts, and recording prompts for your next camera rep.",
+  },
+  {
+    title: "Track creators",
+    description:
+      "Keep favorite creators and top-performing videos close when you want to practice a style on purpose.",
+  },
+];

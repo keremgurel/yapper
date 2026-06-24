@@ -12,15 +12,15 @@ export default function TrainingEntryCard() {
           </div>
           <div className="relative">
             <p className="font-mono text-xs font-black tracking-[0.22em] text-cyan-700 uppercase dark:text-cyan-300/80">
-              New training library
+              Training programs
             </p>
             <h2 className="font-display mt-3 text-3xl leading-none font-black tracking-[-0.055em] text-slate-950 sm:text-5xl dark:text-white">
-              Don’t just start the timer. Train the skill underneath it.
+              The first protocol is live. The bigger library is mapped.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/64">
-              Start with the Fluency on steroids protocol: four drills for word
-              retrieval, vocal control, and summarizing under pressure. More
-              protocols will plug into the same library over time.
+              Fluency on steroids is available now. Next up: explain after
+              reading, read-aloud, interviews, social reps, conflict handling,
+              and creator camera drills.
             </p>
           </div>
           <Link

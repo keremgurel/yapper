@@ -4,9 +4,9 @@ import LandingClient from "./landing-client";
 import { getRandomTopic } from "@/lib/practice-helpers";
 
 export const metadata: Metadata = {
-  title: "Free Random Topic Generator for Speech Practice | Yapper",
+  title: "Camera Speaking Practice | Yapper",
   description:
-    "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.",
+    "Practice speaking on camera with free random-topic and freestyle reps. Future Yapper training programs will cover interviews, creator drills, read-aloud, and more.",
   alternates: {
     canonical: "https://ypr.app",
   },

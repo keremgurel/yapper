@@ -13,7 +13,7 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
             Y
           </span>
           <span className="font-display text-[18px] font-semibold tracking-[0.01em]">
-            Pull the lever. Start talking.
+            Free camera practice, no sign-up.
           </span>
           <span className="text-[15px] font-medium" aria-hidden>
             →
@@ -21,16 +21,16 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
         </div>
       </div>
 
-      <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.88] font-semibold tracking-[-0.03em] md:text-[72px]">
-        Free Topic Generator
+      <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.98] font-semibold tracking-[-0.03em] md:text-[72px] md:leading-[0.88]">
+        Practice speaking on camera
         <br />
-        for Speech Practice
+        until yapping feels natural.
       </h1>
 
       <p className="hero-description mx-auto mb-7 max-w-2xl text-[16px] leading-relaxed md:mb-8 md:text-[19px]">
-        Practice public speaking alone with random speech topics, table topics,
-        a built-in timer, and optional camera or mic recording. No sign-up, no
-        paywall, and no setup friction.
+        Start with the free wedge: random-topic reps or freestyle camera
+        practice with a built-in timer and optional recording. More training
+        programs are coming, but the first rep is already here.
       </p>
 
       <GlassyButton onClick={onJumpToPractice} height={48}>

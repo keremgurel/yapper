@@ -34,9 +34,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | Free Topic Generator for Speech Practice";
+const title = "Yapper | Camera Speaking Practice";
 const description =
-  "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.";
+  "Practice speaking on camera with free random-topic and freestyle reps. Yapper is building training programs, inspiration workflows, and credit-based feedback.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -58,6 +58,9 @@ export const metadata: Metadata = {
     "impromptu speech topics",
     "speaking prompts",
     "public speaking practice online",
+    "camera speaking practice",
+    "creator speaking practice",
+    "interview speaking practice",
     "free speaking practice",
     "impromptu speech prompts",
     "random speaking topics",
