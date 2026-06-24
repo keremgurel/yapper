@@ -34,9 +34,9 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | Free Topic Generator for Speech Practice";
+const title = "Yapper | Free Random Topic Generator for Speech Practice";
 const description =
-  "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.";
+  "Free random topic generator for impromptu speaking practice, speech prompts, table topics questions, and public speaking practice online. Practice with a timer and optional camera recording while Yapper builds richer training programs.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -50,6 +50,7 @@ export const metadata: Metadata = {
   creator: "Yapper",
   keywords: [
     "random topic generator",
+    "free random topic generator",
     "impromptu speaking practice",
     "speech topic generator",
     "random speech topic generator",
@@ -57,7 +58,12 @@ export const metadata: Metadata = {
     "toastmasters table topics",
     "impromptu speech topics",
     "speaking prompts",
+    "speech prompts",
     "public speaking practice online",
+    "speaking practice app free",
+    "camera speaking practice",
+    "creator speaking practice",
+    "interview speaking practice",
     "free speaking practice",
     "impromptu speech prompts",
     "random speaking topics",

@@ -49,23 +49,23 @@ async function submitWaitlist(email: string): Promise<string> {
 const FEATURES = [
   {
     icon: AudioWaveform,
-    title: "Filler word detection",
-    desc: "Spots every um, uh, like, and you know so you can cut them out.",
+    title: "Training programs",
+    desc: "Guided practice categories for the speaking situations people ask for most.",
   },
   {
     icon: Gauge,
-    title: "Pacing analysis",
-    desc: "Tracks your words-per-minute and flags when you rush or drag.",
+    title: "Clear statuses",
+    desc: "Know what is free now, what is a guide, and what is still coming.",
   },
   {
     icon: BrainCircuit,
-    title: "Structure scoring",
-    desc: "Evaluates how clearly you open, transition, and close your speech.",
+    title: "Better prep flows",
+    desc: "More structured reps for reading, interviews, social practice, and conflict.",
   },
   {
     icon: MessageSquareText,
-    title: "Personalized tips",
-    desc: "Actionable feedback tailored to your speaking patterns after each take.",
+    title: "Free reps stay",
+    desc: "The random topic generator and freestyle practice remain the core surface.",
   },
 ];
 
@@ -285,7 +285,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
             letterSpacing: "-3px",
           }}
         >
-          AI speech coaching is coming
+          More training styles are coming
         </h2>
         <p
           className="mx-auto mt-6 max-w-[420px] leading-[1.5]"
@@ -295,8 +295,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
             letterSpacing: "-0.64px",
           }}
         >
-          Get early access to personalized feedback on filler words, pacing, and
-          delivery. Join the waitlist.
+          Get early access when more guided speaking programs open.
         </p>
 
         {/* Email form - button inside input, matching reference exactly */}
@@ -415,8 +414,8 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
               className="w-full text-[14px] font-medium md:w-4/5"
               style={{ color: "rgba(255, 255, 255, 0.4)" }}
             >
-              Free topic generator for speech practice. Random prompts, built-in
-              timer, and optional recording.
+              Camera-speaking practice for people who want to get better at
+              yapping on purpose.
             </p>
           </div>
 
@@ -442,6 +441,13 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
                   style={{ color: "rgba(255, 255, 255, 0.4)" }}
                 >
                   Freestyle
+                </Link>
+                <Link
+                  className="font-medium whitespace-nowrap hover:text-white"
+                  href="/training"
+                  style={{ color: "rgba(255, 255, 255, 0.4)" }}
+                >
+                  Training
                 </Link>
                 <Link
                   className="font-medium whitespace-nowrap hover:text-white"
@@ -608,11 +614,11 @@ export default function Waitlist({
             Coming soon
           </p>
           <h2 className="waitlist-heading font-display mb-3 text-[26px] leading-[1.2] font-semibold tracking-[-0.02em] sm:text-[32px]">
-            AI-powered speech coaching
+            Guided programs after the free rep
           </h2>
           <p className="waitlist-subtext mb-8 text-[14px] leading-[1.7] sm:text-[15px]">
-            Practice is step one. Soon, Yapper will listen to your recordings
-            and give you real feedback.
+            Practice is step one. The waitlist is for more guided speaking
+            programs while the free generator and freestyle reps stay simple.
           </p>
 
           <ul className="flex flex-col gap-5">
@@ -643,8 +649,8 @@ export default function Waitlist({
             Get early access
           </h3>
           <p className="waitlist-subtext mb-6 text-[14px] leading-[1.6]">
-            Be first to try it. Waitlist members get priority access when we
-            launch.
+            Tell us you want the next layer of guided speaking programs after
+            the free practice rep.
           </p>
           <WaitlistForm />
         </div>

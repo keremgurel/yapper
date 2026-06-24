@@ -6,7 +6,7 @@ import { getRandomTopic } from "@/lib/practice-helpers";
 export const metadata: Metadata = {
   title: "Free Random Topic Generator for Speech Practice | Yapper",
   description:
-    "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.",
+    "Free random topic generator for speech practice, impromptu speech topics, table topics questions, and public speaking practice online. Practice on camera with Yapper's timer, optional recording, and future training drills.",
   alternates: {
     canonical: "https://ypr.app",
   },

@@ -13,7 +13,7 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
             Y
           </span>
           <span className="font-display text-[18px] font-semibold tracking-[0.01em]">
-            Pull the lever. Start talking.
+            Free random topic generator, no sign-up.
           </span>
           <span className="text-[15px] font-medium" aria-hidden>
             →
@@ -21,16 +21,17 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
         </div>
       </div>
 
-      <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.88] font-semibold tracking-[-0.03em] md:text-[72px]">
+      <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.98] font-semibold tracking-[-0.03em] md:text-[72px] md:leading-[0.88]">
         Free Topic Generator
         <br />
         for Speech Practice
       </h1>
 
       <p className="hero-description mx-auto mb-7 max-w-2xl text-[16px] leading-relaxed md:mb-8 md:text-[19px]">
-        Practice public speaking alone with random speech topics, table topics,
-        a built-in timer, and optional camera or mic recording. No sign-up, no
-        paywall, and no setup friction.
+        Generate random speech topics, table topics questions, and impromptu
+        speaking prompts with a built-in timer and optional camera recording.
+        Yapper is growing into richer training programs, but the free practice
+        rep stays front and center.
       </p>
 
       <GlassyButton onClick={onJumpToPractice} height={48}>

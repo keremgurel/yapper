@@ -10,6 +10,8 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import Waitlist from "@/components/waitlist";
+import TrainingEntryCard from "@/components/training/training-entry-card";
+import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 import { PracticeSessionProvider } from "@/contexts/practice-session";
@@ -46,6 +48,9 @@ export default function RandomTopicClient({
               yapper
             </span>
           </Link>
+          <div className="hidden sm:block">
+            <TrainingNavDropdown />
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <span className="rounded-full bg-white/10 px-2 py-1.5 text-[13px] font-medium text-white sm:px-3">
@@ -72,6 +77,8 @@ export default function RandomTopicClient({
           <PracticeStage />
         </ErrorBoundary>
       </PracticeSessionProvider>
+
+      <TrainingEntryCard />
 
       <Waitlist variant="full" />
       <HomeFaq />

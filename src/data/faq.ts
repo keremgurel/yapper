@@ -113,9 +113,9 @@ export const faqEntries: FaqEntry[] = [
   {
     question: "Will Yapper add AI feedback or coaching in the future?",
     shortAnswer:
-      "It's on the roadmap. The free practice tool will always remain free. AI feedback and exam prep coaching are planned as optional future features.",
+      "Feedback is planned for later as an optional credit-based layer. The free camera practice tool will stay free.",
     fullAnswer:
-      "We are exploring it. The free practice tool will always remain free. Future features like AI-powered speaking feedback, structured coaching for CELPIP or TOEFL prep, and progress tracking are on the roadmap, but the core random topic generator with timer and recording will stay free.",
+      "We are exploring credit-based feedback for guided tasks. The free practice tool will remain free: random topics, freestyle reps, timer, and optional recording. Future feedback should help you fix one specific thing and run the task again, not block the core practice flow.",
   },
 ];
 
