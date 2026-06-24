@@ -6,6 +6,7 @@ import PracticeStage from "@/components/practice-stage";
 import { FreestyleFaq } from "@/components/freestyle-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import Waitlist from "@/components/waitlist";
+import TrainingEntryCard from "@/components/training/training-entry-card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 import { PracticeSessionProvider } from "@/contexts/practice-session";
@@ -64,6 +65,8 @@ export default function FreestyleSpeechClient({
       <PracticeSessionProvider initialTopic={initialTopic} mode="freestyle">
         <PracticeStage />
       </PracticeSessionProvider>
+
+      <TrainingEntryCard />
 
       <Waitlist variant="full" />
       <FreestyleFaq />

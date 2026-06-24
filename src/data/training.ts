@@ -1,0 +1,123 @@
+export type TrainingCategory = "Mindset" | "Retrieval" | "Voice" | "Structure";
+
+export type TrainingDrill = {
+  id: string;
+  title: string;
+  category: TrainingCategory;
+  protocol: string;
+  duration: string;
+  level: "Starter" | "Intermediate" | "Advanced";
+  outcome: string;
+  whyItWorks: string;
+  steps: string[];
+  cue: string;
+  avoid: string;
+};
+
+export type TrainingProtocol = {
+  slug: string;
+  title: string;
+  eyebrow: string;
+  description: string;
+  promise: string;
+  duration: string;
+  cadence: string;
+  blogHref: string;
+  drills: TrainingDrill[];
+};
+
+export const fluencyProtocol: TrainingProtocol = {
+  slug: "fluency-on-steroids",
+  title: "Fluency on steroids",
+  eyebrow: "Protocol 01",
+  description:
+    "A four-drill routine for faster word retrieval, smoother vocal control, and cleaner summaries under pressure.",
+  promise:
+    "Use this before a random topic or freestyle rep when your brain feels slow, your voice gets tight, or your thoughts come out messy.",
+  duration: "12 minutes",
+  cadence: "3-5x/week",
+  blogHref: "/blog/fluency-practice-drills",
+  drills: [
+    {
+      id: "clear-freeze-label",
+      title: "Clear the freeze label",
+      category: "Mindset",
+      protocol: "Fluency on steroids",
+      duration: "90 sec",
+      level: "Starter",
+      outcome:
+        "Enter the rep with a behavior you can perform instead of an identity you have to fight.",
+      whyItWorks:
+        "A hidden label like “I always freeze” adds a second task: speak and disprove the story. This drill narrows the job before you start.",
+      steps: [
+        "Write the old label in one plain sentence.",
+        "Replace it with one observable behavior.",
+        "Start the speaking rep immediately after the replacement sentence.",
+      ],
+      cue: "Swap “I am underconfident” for “I can start with one clear sentence.”",
+      avoid:
+        "Do not turn this into therapy cosplay. One label, one replacement, then speak.",
+    },
+    {
+      id: "rapid-speed-reading",
+      title: "Rapid speed-reading",
+      category: "Retrieval",
+      protocol: "Fluency on steroids",
+      duration: "5 pages",
+      level: "Starter",
+      outcome:
+        "Push word retrieval and articulation above normal conversation speed so regular speech feels less chaotic.",
+      whyItWorks:
+        "Fast out-loud reading creates a controlled sprint: your eyes, brain, breath, and mouth have to coordinate without inventing the content.",
+      steps: [
+        "Choose an easy book, article, or note.",
+        "Read out loud faster than comfortable while keeping words recognizable.",
+        "Repeat one messy sentence cleaner, then keep moving.",
+      ],
+      cue: "Five pages. Fast enough to stretch you, clear enough that another person could still understand you.",
+      avoid:
+        "Do not fake speed by mumbling. If endings disappear, slow down one notch and articulate.",
+    },
+    {
+      id: "smooth-pitch-gliding",
+      title: "Smooth pitch gliding",
+      category: "Voice",
+      protocol: "Fluency on steroids",
+      duration: "3 min",
+      level: "Intermediate",
+      outcome:
+        "Keep your voice alive under pressure instead of flattening into one nervous note.",
+      whyItWorks:
+        "Deliberate pitch and volume movement builds control. When pressure rises, your voice has practiced places to go.",
+      steps: [
+        "Pick one sentence you can repeat without thinking.",
+        "Say it slowly while gliding pitch up and down inside the sentence.",
+        "Repeat with volume changes, then with emphasis on different words.",
+      ],
+      cue: "Try: “The point I want to make is simple: clarity beats speed.”",
+      avoid:
+        "Do not perform a cartoon voice. The glide should be controlled enough to still sound like you.",
+    },
+    {
+      id: "three-step-summary",
+      title: "The 3-step summary",
+      category: "Structure",
+      protocol: "Fluency on steroids",
+      duration: "1 paragraph",
+      level: "Starter",
+      outcome:
+        "Compress information into a clean spoken point instead of dragging every thought into the answer.",
+      whyItWorks:
+        "Rambling is often failed compression. This drill trains the sequence: find the point, explain why it matters, land the takeaway.",
+      steps: [
+        "Read one paragraph once.",
+        "Close the page or turn away from the screen.",
+        "Summarize out loud: main idea, context, conclusion.",
+      ],
+      cue: "Main idea: what it says. Context: why it matters. Conclusion: what to remember.",
+      avoid: "Do not recite the paragraph. Compression is the rep.",
+    },
+  ],
+};
+
+export const trainingProtocols: TrainingProtocol[] = [fluencyProtocol];

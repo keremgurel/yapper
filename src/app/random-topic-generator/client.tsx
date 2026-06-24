@@ -10,6 +10,7 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import Waitlist from "@/components/waitlist";
+import TrainingEntryCard from "@/components/training/training-entry-card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 import { PracticeSessionProvider } from "@/contexts/practice-session";
@@ -72,6 +73,8 @@ export default function RandomTopicClient({
           <PracticeStage />
         </ErrorBoundary>
       </PracticeSessionProvider>
+
+      <TrainingEntryCard />
 
       <Waitlist variant="full" />
       <HomeFaq />
