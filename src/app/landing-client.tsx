@@ -13,10 +13,9 @@ import PracticeStage from "@/components/practice-stage";
 import { HomeFaq } from "@/components/home-faq";
 import { FreestyleFaq } from "@/components/freestyle-faq";
 import Waitlist from "@/components/waitlist";
-import HomeFutureSections from "@/components/home-future-sections";
-import TrainingEntryCard from "@/components/training/training-entry-card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
+import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
 import {
   GlassyModeDropdown,
   type SpeechMode,
@@ -59,12 +58,20 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
               yapper
             </span>
           </Link>
+          <div className="hidden sm:block">
+            <TrainingNavDropdown />
+          </div>
         </div>
         <div className="absolute left-1/2 z-50 -translate-x-1/2">
           <GlassyModeDropdown mode={mode} onChange={handleModeChange} />
         </div>
-        <div className="origin-right scale-[0.5]">
-          <CinematicThemeSwitcher />
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="sm:hidden">
+            <TrainingNavDropdown />
+          </div>
+          <div className="origin-right scale-[0.5]">
+            <CinematicThemeSwitcher />
+          </div>
         </div>
       </header>
 
@@ -87,10 +94,6 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
           <PracticeStage />
         </ErrorBoundary>
       </PracticeSessionProvider>
-
-      {/* What's coming + waitlist form */}
-      <HomeFutureSections />
-      <TrainingEntryCard />
 
       <Waitlist variant="full" />
 

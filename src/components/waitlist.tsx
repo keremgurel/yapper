@@ -50,22 +50,22 @@ const FEATURES = [
   {
     icon: AudioWaveform,
     title: "Training programs",
-    desc: "Guided challenges for interviews, creator takes, read-aloud, dating, and conflict.",
+    desc: "Guided practice categories for the speaking situations people ask for most.",
   },
   {
     icon: Gauge,
-    title: "Inspiration library",
-    desc: "Save TikTok, Instagram, and Shorts links into pillars before turning them into reps.",
+    title: "Clear statuses",
+    desc: "Know what is free now, what is a guide, and what is still coming.",
   },
   {
     icon: BrainCircuit,
-    title: "Feedback credits",
-    desc: "Later, spend credits on one task review with one specific fix to run back.",
+    title: "Better prep flows",
+    desc: "More structured reps for reading, interviews, social practice, and conflict.",
   },
   {
     icon: MessageSquareText,
-    title: "Creator workflows",
-    desc: "Study favorite creators, pull formats, and turn ideas into camera-ready prompts.",
+    title: "Free reps stay",
+    desc: "The random topic generator and freestyle practice remain the core surface.",
   },
 ];
 
@@ -285,7 +285,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
             letterSpacing: "-3px",
           }}
         >
-          The full training lab is coming
+          More training styles are coming
         </h2>
         <p
           className="mx-auto mt-6 max-w-[420px] leading-[1.5]"
@@ -295,8 +295,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
             letterSpacing: "-0.64px",
           }}
         >
-          Get early access to programs, the inspiration library, and
-          credit-based task feedback when those workflows open.
+          Get early access when more guided speaking programs open.
         </p>
 
         {/* Email form - button inside input, matching reference exactly */}
@@ -615,11 +614,11 @@ export default function Waitlist({
             Coming soon
           </p>
           <h2 className="waitlist-heading font-display mb-3 text-[26px] leading-[1.2] font-semibold tracking-[-0.02em] sm:text-[32px]">
-            Programs, Lab, and feedback credits
+            Guided programs after the free rep
           </h2>
           <p className="waitlist-subtext mb-8 text-[14px] leading-[1.7] sm:text-[15px]">
-            Practice is step one. The waitlist is for the bigger system: guided
-            programs, inspiration workflows, and credit-based feedback.
+            Practice is step one. The waitlist is for more guided speaking
+            programs while the free generator and freestyle reps stay simple.
           </p>
 
           <ul className="flex flex-col gap-5">
@@ -650,8 +649,8 @@ export default function Waitlist({
             Get early access
           </h3>
           <p className="waitlist-subtext mb-6 text-[14px] leading-[1.6]">
-            Tell us you want the next layer: programs, the inspiration library,
-            and paid feedback credits after the free practice wedge.
+            Tell us you want the next layer of guided speaking programs after
+            the free practice rep.
           </p>
           <WaitlistForm />
         </div>

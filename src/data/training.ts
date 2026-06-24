@@ -1,5 +1,5 @@
 export type TrainingCategory = "Mindset" | "Retrieval" | "Voice" | "Structure";
-export type TrainingStatus = "Free now" | "Coming" | "Credits later";
+export type TrainingStatus = "Free now" | "Coming";
 
 export type TrainingDrill = {
   id: string;
@@ -36,11 +36,15 @@ export type ProgramFamily = {
   duration: string;
   status: TrainingStatus;
   accent: "cyan" | "orange" | "emerald" | "fuchsia" | "amber" | "rose";
+  href: string;
 };
 
-export type InspirationFeature = {
+export type TrainingNavItem = {
   title: string;
   description: string;
+  status: "Free now" | "Free guide" | "Coming";
+  href: string;
+  group: "Practice now" | "Guided drills" | "Coming programs";
 };
 
 export const fluencyProtocol: TrainingProtocol = {
@@ -141,6 +145,19 @@ export const trainingProtocols: TrainingProtocol[] = [fluencyProtocol];
 
 export const programFamilies: ProgramFamily[] = [
   {
+    slug: "random-topic-generator",
+    title: "Random topic generator",
+    skill: "Impromptu speaking and table topics",
+    prompt:
+      "Generate a prompt, set a timer, and practice turning first thoughts into a clear answer.",
+    sampleTask:
+      "Pull a random table topic and answer it for 60 seconds with the timer running.",
+    duration: "1-5 min",
+    status: "Free now",
+    accent: "orange",
+    href: "/",
+  },
+  {
     slug: "freestyle-reps",
     title: "Freestyle reps",
     skill: "Spontaneous camera presence",
@@ -150,6 +167,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-3 min",
     status: "Free now",
     accent: "cyan",
+    href: "/freestyle-speech",
   },
   {
     slug: "explain-after-reading",
@@ -157,10 +175,11 @@ export const programFamilies: ProgramFamily[] = [
     skill: "Comprehension into speech",
     prompt: "Read something short, close it, then explain it like a human.",
     sampleTask:
-      "Read one paragraph about creator monetization, then explain the point in 60 seconds.",
+      "Read one paragraph about workplace communication, then explain the point in 60 seconds.",
     duration: "3-8 min",
     status: "Coming",
     accent: "emerald",
+    href: "/training#programs",
   },
   {
     slug: "read-aloud",
@@ -172,6 +191,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "2-5 min",
     status: "Coming",
     accent: "amber",
+    href: "/training#programs",
   },
   {
     slug: "interview-prep",
@@ -183,6 +203,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "5-12 min",
     status: "Coming",
     accent: "fuchsia",
+    href: "/training#programs",
   },
   {
     slug: "dating-social",
@@ -194,6 +215,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "2-6 min",
     status: "Coming",
     accent: "rose",
+    href: "/training#programs",
   },
   {
     slug: "conflict-handling",
@@ -205,6 +227,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "3-8 min",
     status: "Coming",
     accent: "orange",
+    href: "/training#programs",
   },
   {
     slug: "creator-camera-drills",
@@ -216,6 +239,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "2-10 min",
     status: "Coming",
     accent: "cyan",
+    href: "/training#programs",
   },
   {
     slug: fluencyProtocol.slug,
@@ -227,28 +251,77 @@ export const programFamilies: ProgramFamily[] = [
     duration: fluencyProtocol.duration,
     status: "Free now",
     accent: "emerald",
+    href: fluencyProtocol.blogHref,
   },
 ];
 
-export const inspirationFeatures: InspirationFeature[] = [
+export const trainingNavItems: TrainingNavItem[] = [
   {
-    title: "Save the source",
+    title: "Random topic generator",
     description:
-      "Paste TikTok, Instagram, or YouTube Shorts links into content pillars instead of losing them in a notes app.",
+      "Pull a speech prompt, set the timer, and practice an impromptu answer.",
+    status: "Free now",
+    href: "/",
+    group: "Practice now",
   },
   {
-    title: "Study the format",
-    description:
-      "Later, Yapper will transcribe clips, pull hooks, detect repeatable formats, and surface why a video works.",
+    title: "Freestyle speaking",
+    description: "Open a blank rep when you already know what you want to say.",
+    status: "Free now",
+    href: "/freestyle-speech",
+    group: "Practice now",
   },
   {
-    title: "Write the yap",
+    title: "Fluency drills",
     description:
-      "Turn saved inspiration into bullets, scripts, and recording prompts for your next camera rep.",
+      "A quick warmup for word retrieval, voice control, and cleaner summaries.",
+    status: "Free guide",
+    href: fluencyProtocol.blogHref,
+    group: "Guided drills",
   },
   {
-    title: "Track creators",
+    title: "Explain after reading",
     description:
-      "Keep favorite creators and top-performing videos close when you want to practice a style on purpose.",
+      "Read a short piece, close it, then explain the point out loud.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
+  },
+  {
+    title: "Read aloud",
+    description: "Train articulation, pacing, emphasis, and vocal steadiness.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
+  },
+  {
+    title: "Interview prep",
+    description: "Practice structured answers without sounding rehearsed.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
+  },
+  {
+    title: "Dating/social practice",
+    description:
+      "Build warmer stories, playful answers, and everyday presence.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
+  },
+  {
+    title: "Conflict handling",
+    description: "Rehearse direct, calm answers for tense conversations.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
+  },
+  {
+    title: "Creator camera drills",
+    description:
+      "Practice hooks, framing, and inspiration pillars for camera takes.",
+    status: "Coming",
+    href: "/training#programs",
+    group: "Coming programs",
   },
 ];

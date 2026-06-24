@@ -19,8 +19,8 @@ export default function TrainingEntryCard() {
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/64">
               Fluency on steroids is available now. Next up: explain after
-              reading, read-aloud, interviews, social reps, conflict handling,
-              and creator camera drills.
+              reading, read-aloud, interviews, social reps, and conflict
+              handling.
             </p>
           </div>
           <Link
