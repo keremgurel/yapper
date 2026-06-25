@@ -9,8 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
-import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
+import TrainingLayout from "@/app/training-layout";
 import {
   fluencyProtocol,
   programFamilies,
@@ -90,24 +89,7 @@ function ProgramCard({ program }: { program: ProgramFamily }) {
 
 export default function TrainingHub() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8fafc] text-slate-950 dark:bg-[#0f1117] dark:text-white">
-      <header className="border-border flex items-center justify-between border-b px-3 py-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 no-underline">
-            <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
-              Y
-            </div>
-            <span className="font-display text-foreground hidden text-[22px] font-semibold tracking-[0.02em] sm:inline">
-              yapper
-            </span>
-          </Link>
-          <TrainingNavDropdown />
-        </div>
-        <div className="origin-right scale-[0.5]">
-          <CinematicThemeSwitcher />
-        </div>
-      </header>
-
+    <TrainingLayout>
       <section className="relative px-4 pt-16 pb-12 sm:px-6 sm:pt-20 lg:px-8">
         <div className="pointer-events-none absolute inset-0 opacity-[0.14] dark:opacity-[0.22]">
           <div className="absolute top-[-12rem] left-[-8rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400 blur-3xl" />
@@ -133,13 +115,13 @@ export default function TrainingHub() {
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
-                  href="/"
+                  href="/training/random-topic-generator"
                   className="rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.22)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
                 >
                   Start random topic
                 </Link>
                 <Link
-                  href="/freestyle-speech"
+                  href="/training/freestyle-speech"
                   className="rounded-full border border-slate-900/15 bg-white/55 px-5 py-3 text-sm font-bold text-slate-800 no-underline backdrop-blur transition-colors hover:bg-white dark:border-white/12 dark:bg-white/8 dark:text-white/80 dark:hover:bg-white/12"
                 >
                   Start freestyle
@@ -225,10 +207,10 @@ export default function TrainingHub() {
                 </span>
               </div>
               <Link
-                href={fluencyProtocol.blogHref}
+                href="/training/fluency-on-steroids"
                 className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 no-underline transition-transform hover:-translate-y-0.5"
               >
-                Read the drills
+                Open fluency drills
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -273,6 +255,6 @@ export default function TrainingHub() {
           </div>
         </div>
       </section>
-    </main>
+    </TrainingLayout>
   );
 }

@@ -15,12 +15,12 @@ export default function TrainingEntryCard() {
               Training programs
             </p>
             <h2 className="font-display mt-3 text-3xl leading-none font-black tracking-[-0.055em] text-slate-950 sm:text-5xl dark:text-white">
-              The first protocol is live. The bigger library is mapped.
+              Training now has real pages, not vague sections.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/64">
-              Fluency on steroids is available now. Next up: explain after
-              reading, read-aloud, interviews, social reps, and conflict
-              handling.
+              Random topic and freestyle speech are live under Training. Fluency
+              drills have a real guide, and future styles have honest waitlist
+              pages.
             </p>
           </div>
           <Link

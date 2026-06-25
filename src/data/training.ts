@@ -155,11 +155,11 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-5 min",
     status: "Free now",
     accent: "orange",
-    href: "/",
+    href: "/training/random-topic-generator",
   },
   {
-    slug: "freestyle-reps",
-    title: "Freestyle reps",
+    slug: "freestyle-speech",
+    title: "Freestyle speech",
     skill: "Spontaneous camera presence",
     prompt: "Open camera. Pick a lane. Talk without hiding behind a script.",
     sampleTask:
@@ -167,7 +167,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-3 min",
     status: "Free now",
     accent: "cyan",
-    href: "/freestyle-speech",
+    href: "/training/freestyle-speech",
   },
   {
     slug: "explain-after-reading",
@@ -179,7 +179,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "3-8 min",
     status: "Coming",
     accent: "emerald",
-    href: "/training#programs",
+    href: "/training/explain-after-reading",
   },
   {
     slug: "read-aloud",
@@ -191,7 +191,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "2-5 min",
     status: "Coming",
     accent: "amber",
-    href: "/training#programs",
+    href: "/training/read-aloud",
   },
   {
     slug: "interview-prep",
@@ -203,11 +203,11 @@ export const programFamilies: ProgramFamily[] = [
     duration: "5-12 min",
     status: "Coming",
     accent: "fuchsia",
-    href: "/training#programs",
+    href: "/training/interview-prep",
   },
   {
-    slug: "dating-social",
-    title: "Dating and social",
+    slug: "dating",
+    title: "Dating practice",
     skill: "Warmth, stories, and playful answers",
     prompt: "Get smoother at the small moments where people actually connect.",
     sampleTask:
@@ -215,11 +215,11 @@ export const programFamilies: ProgramFamily[] = [
     duration: "2-6 min",
     status: "Coming",
     accent: "rose",
-    href: "/training#programs",
+    href: "/training/dating",
   },
   {
-    slug: "conflict-handling",
-    title: "Conflict handling",
+    slug: "conflict",
+    title: "Conflict practice",
     skill: "Calm disagreement",
     prompt: "Say the hard thing clearly without spiraling or over-explaining.",
     sampleTask:
@@ -227,19 +227,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "3-8 min",
     status: "Coming",
     accent: "orange",
-    href: "/training#programs",
-  },
-  {
-    slug: "creator-camera-drills",
-    title: "Creator camera drills",
-    skill: "Hooks, framing, and take energy",
-    prompt: "Practice the on-camera moves that make short-form ideas land.",
-    sampleTask:
-      "Pitch one saved content idea with a hook, payoff, and one crisp example.",
-    duration: "2-10 min",
-    status: "Coming",
-    accent: "cyan",
-    href: "/training#programs",
+    href: "/training/conflict",
   },
   {
     slug: fluencyProtocol.slug,
@@ -251,7 +239,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: fluencyProtocol.duration,
     status: "Free now",
     accent: "emerald",
-    href: fluencyProtocol.blogHref,
+    href: "/training/fluency-on-steroids",
   },
 ];
 
@@ -261,14 +249,14 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "Pull a speech prompt, set the timer, and practice an impromptu answer.",
     status: "Free now",
-    href: "/",
+    href: "/training/random-topic-generator",
     group: "Practice now",
   },
   {
     title: "Freestyle speaking",
     description: "Open a blank rep when you already know what you want to say.",
     status: "Free now",
-    href: "/freestyle-speech",
+    href: "/training/freestyle-speech",
     group: "Practice now",
   },
   {
@@ -276,7 +264,7 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "A quick warmup for word retrieval, voice control, and cleaner summaries.",
     status: "Free guide",
-    href: fluencyProtocol.blogHref,
+    href: "/training/fluency-on-steroids",
     group: "Guided drills",
   },
   {
@@ -284,21 +272,21 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "Read a short piece, close it, then explain the point out loud.",
     status: "Coming",
-    href: "/training#programs",
+    href: "/training/explain-after-reading",
     group: "Coming programs",
   },
   {
     title: "Read aloud",
     description: "Train articulation, pacing, emphasis, and vocal steadiness.",
     status: "Coming",
-    href: "/training#programs",
+    href: "/training/read-aloud",
     group: "Coming programs",
   },
   {
     title: "Interview prep",
     description: "Practice structured answers without sounding rehearsed.",
     status: "Coming",
-    href: "/training#programs",
+    href: "/training/interview-prep",
     group: "Coming programs",
   },
   {
@@ -306,22 +294,14 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "Build warmer stories, playful answers, and everyday presence.",
     status: "Coming",
-    href: "/training#programs",
+    href: "/training/dating",
     group: "Coming programs",
   },
   {
-    title: "Conflict handling",
+    title: "Conflict practice",
     description: "Rehearse direct, calm answers for tense conversations.",
     status: "Coming",
-    href: "/training#programs",
-    group: "Coming programs",
-  },
-  {
-    title: "Creator camera drills",
-    description:
-      "Practice hooks, framing, and inspiration pillars for camera takes.",
-    status: "Coming",
-    href: "/training#programs",
+    href: "/training/conflict",
     group: "Coming programs",
   },
 ];
