@@ -230,6 +230,18 @@ export const programFamilies: ProgramFamily[] = [
     href: "/training/conflict",
   },
   {
+    slug: "creator-camera-drills",
+    title: "Creator camera drills",
+    skill: "Hooks, framing, and take energy",
+    prompt: "Practice the on-camera moves that make short-form ideas land.",
+    sampleTask:
+      "Pitch one saved content idea with a hook, payoff, and one crisp example.",
+    duration: "2-10 min",
+    status: "Coming",
+    accent: "cyan",
+    href: "/training/creator-camera-drills",
+  },
+  {
     slug: fluencyProtocol.slug,
     title: fluencyProtocol.title,
     skill: "Word retrieval and speech compression",
@@ -302,6 +314,14 @@ export const trainingNavItems: TrainingNavItem[] = [
     description: "Rehearse direct, calm answers for tense conversations.",
     status: "Coming",
     href: "/training/conflict",
+    group: "Coming programs",
+  },
+  {
+    title: "Creator camera drills",
+    description:
+      "Practice hooks, framing, and inspiration pillars for camera takes.",
+    status: "Coming",
+    href: "/training/creator-camera-drills",
     group: "Coming programs",
   },
 ];
