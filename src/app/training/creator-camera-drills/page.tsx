@@ -15,7 +15,7 @@ export default function CreatorCameraDrillsPage() {
   return (
     <TrainingPageShell program={program}>
       <DrillPracticeFlow
-        eyebrow="Creator camera MVP"
+        eyebrow="Creator camera rep"
         title="Hook, payoff, example."
         intro="Practice short-form camera reps with a clear opening, a useful point, and enough specificity to sound real."
         prompts={creatorCameraPrompts}

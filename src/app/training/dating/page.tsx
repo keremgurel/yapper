@@ -13,7 +13,7 @@ export default function DatingPage() {
   return (
     <TrainingPageShell program={{ ...program, href: "/training/dating" }}>
       <DrillPracticeFlow
-        eyebrow="Dating/social MVP"
+        eyebrow="Dating/social rep"
         title="Warm, specific, not over-performed."
         intro="Use low-stakes reps to practice playful answers, short stories, and comfortable follow-up questions."
         prompts={datingSocialPrompts}

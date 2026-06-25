@@ -13,7 +13,7 @@ export default function InterviewPrepPage() {
   return (
     <TrainingPageShell program={program}>
       <DrillPracticeFlow
-        eyebrow="Interview MVP"
+        eyebrow="Interview rep"
         title="Answer with shape, not script."
         intro="Practice turning interview prompts into concise answers with a situation, action, result, and lesson."
         prompts={interviewPrepPrompts}

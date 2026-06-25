@@ -13,7 +13,7 @@ export default function ReadAloudPage() {
   return (
     <TrainingPageShell program={program}>
       <DrillPracticeFlow
-        eyebrow="Read aloud MVP"
+        eyebrow="Read aloud rep"
         title="Clarity first, then emphasis."
         intro="Read-aloud practice trains articulation without making you invent content. Repeat the same passage for accuracy, then natural flow."
         prompts={readAloudPassages}

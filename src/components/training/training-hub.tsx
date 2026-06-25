@@ -48,7 +48,7 @@ const guidedPrograms = programFamilies.filter(
 
 function ProgramCard({ program }: { program: ProgramFamily }) {
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-900/8 bg-white/68 p-5 shadow-[0_16px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/8 dark:bg-white/[0.045] dark:shadow-none">
+    <article className="relative overflow-hidden border-t border-slate-900/10 py-5 dark:border-white/10">
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b ${accentStyles[program.accent]}`}
       />
@@ -72,7 +72,7 @@ function ProgramCard({ program }: { program: ProgramFamily }) {
         <p className="mt-4 text-sm leading-6 text-slate-700 dark:text-white/62">
           {program.prompt}
         </p>
-        <p className="mt-4 rounded-2xl border border-slate-900/8 bg-slate-950/[0.035] p-4 text-sm leading-6 font-bold dark:border-white/8 dark:bg-white/[0.035]">
+        <p className="mt-4 border-l-2 border-slate-950/12 pl-4 text-sm leading-6 font-bold text-slate-700 dark:border-white/18 dark:text-white/62">
           {program.sampleTask}
         </p>
         <Link
@@ -144,8 +144,8 @@ export default function TrainingHub() {
               },
               {
                 icon: Sparkles,
-                title: "Coming",
-                text: "New guided programs are labeled as future, not active tools.",
+                title: "Guided drills",
+                text: "Each category opens into a focused prompt bank and the same clean recording flow.",
               },
             ].map((item) => (
               <div
@@ -244,8 +244,8 @@ export default function TrainingHub() {
               Useful categories, clearly marked.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/62">
-              These are the next training styles in the product map. They are
-              here for orientation only until the actual workflows exist.
+              Choose the context you want to rehearse. Each drill keeps the
+              setup lean: one prompt, one rep, one recording flow.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

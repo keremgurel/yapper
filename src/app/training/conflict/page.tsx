@@ -13,7 +13,7 @@ export default function ConflictPage() {
   return (
     <TrainingPageShell program={program}>
       <DrillPracticeFlow
-        eyebrow="Conflict MVP"
+        eyebrow="Conflict rep"
         title="Clear, calm, and brief."
         intro="Practice tense sentences before you need them, so disagreement stays direct instead of spiraling."
         prompts={conflictPrompts}
