@@ -39,11 +39,7 @@ const livePrograms = programFamilies.filter((program) =>
 const guidedPrograms = programFamilies.filter(
   (program) =>
     program.status === "Free now" &&
-    ![
-      "random-topic-generator",
-      "freestyle-speech",
-      "creator-camera-drills",
-    ].includes(program.slug),
+    !["random-topic-generator", "freestyle-speech"].includes(program.slug),
 );
 
 function ProgramCard({ program }: { program: ProgramFamily }) {
@@ -109,9 +105,9 @@ export default function TrainingHub() {
             </div>
             <div className="max-w-xl lg:justify-self-end">
               <p className="text-lg leading-8 text-slate-700 dark:text-white/68">
-                Yapper is free random-topic and freestyle practice today. This
-                hub keeps the training styles organized, marks what is live, and
-                routes you back to the working practice flows.
+                Yapper brings every speaking drill into one practice map: random
+                prompts, freestyle reps, guided categories, and focused warmups
+                all route into live recording flows.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
@@ -135,12 +131,12 @@ export default function TrainingHub() {
               {
                 icon: Camera,
                 title: "Free practice",
-                text: "Random topic generator and freestyle camera reps are live.",
+                text: "Random topics and freestyle camera reps are ready whenever you are.",
               },
               {
                 icon: Flame,
                 title: "Free guide",
-                text: "Fluency drills are available as a practical warmup guide.",
+                text: "Fluency drills give you a practical warmup before bigger reps.",
               },
               {
                 icon: Sparkles,

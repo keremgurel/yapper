@@ -126,8 +126,8 @@ export default function TrainingNavDropdown() {
                   Train every kind of yap.
                 </h2>
                 <p className="mt-4 text-sm leading-6 text-white/64">
-                  Start with free reps now: random topics, freestyle speaking,
-                  and a fluency warmup guide. More guided programs come later.
+                  Start with random topics, freestyle speaking, fluency warmups,
+                  or a guided drill for the moment you want to rehearse.
                 </p>
               </div>
               <Link
