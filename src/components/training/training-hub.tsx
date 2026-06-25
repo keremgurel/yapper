@@ -20,8 +20,8 @@ import {
 const statusStyles: Record<TrainingStatus, string> = {
   "Free now":
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
-  Coming:
-    "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-white/52",
+  "Free guide":
+    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
 };
 
 const accentStyles: Record<ProgramFamily["accent"], string> = {
@@ -33,16 +33,20 @@ const accentStyles: Record<ProgramFamily["accent"], string> = {
   rose: "from-rose-400/24 to-rose-400/0",
 };
 
-const livePrograms = programFamilies.filter(
-  (program) => program.status === "Free now",
+const livePrograms = programFamilies.filter((program) =>
+  ["random-topic-generator", "freestyle-speech"].includes(program.slug),
 );
-const comingPrograms = programFamilies.filter(
-  (program) => program.status === "Coming",
+const guidedPrograms = programFamilies.filter(
+  (program) =>
+    program.status === "Free now" &&
+    ![
+      "random-topic-generator",
+      "freestyle-speech",
+      "creator-camera-drills",
+    ].includes(program.slug),
 );
 
 function ProgramCard({ program }: { program: ProgramFamily }) {
-  const isLive = program.status === "Free now";
-
   return (
     <article className="relative overflow-hidden rounded-2xl border border-slate-900/8 bg-white/68 p-5 shadow-[0_16px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/8 dark:bg-white/[0.045] dark:shadow-none">
       <div
@@ -73,13 +77,9 @@ function ProgramCard({ program }: { program: ProgramFamily }) {
         </p>
         <Link
           href={program.href}
-          className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black no-underline transition-transform hover:-translate-y-0.5 ${
-            isLive
-              ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
-              : "border border-slate-900/12 bg-white/55 text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72"
-          }`}
+          className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black no-underline transition-transform hover:-translate-y-0.5 ${"bg-slate-950 text-white dark:bg-white dark:text-slate-950"}`}
         >
-          {isLive ? "Start" : "Details"}
+          Start
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -238,7 +238,7 @@ export default function TrainingHub() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-6">
             <p className="font-mono text-xs font-black tracking-[0.18em] text-orange-700 uppercase dark:text-orange-300">
-              Coming programs
+              Guided drills
             </p>
             <h2 className="font-display mt-3 text-4xl leading-none font-black sm:text-5xl">
               Useful categories, clearly marked.
@@ -249,7 +249,7 @@ export default function TrainingHub() {
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {comingPrograms.map((program) => (
+            {guidedPrograms.map((program) => (
               <ProgramCard key={program.slug} program={program} />
             ))}
           </div>

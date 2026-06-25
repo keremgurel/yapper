@@ -1,30 +1,24 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  CheckCircle2,
-  Clock3,
-  Hourglass,
-  Mic2,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3, Mic2, Sparkles } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
-import Waitlist from "@/components/waitlist";
 import type { ProgramFamily, TrainingStatus } from "@/data/training";
 
 const statusStyles: Record<TrainingStatus, string> = {
   "Free now":
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
-  Coming:
-    "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-white/52",
+  "Free guide":
+    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
 };
 
 export default function TrainingPageShell({
   program,
+  children,
 }: {
   program: ProgramFamily;
+  children?: React.ReactNode;
 }) {
-  const isLive = program.status === "Free now";
+  const isPractice = program.status === "Free now";
 
   return (
     <TrainingLayout>
@@ -32,12 +26,8 @@ export default function TrainingPageShell({
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-900/10 bg-white/70 px-3 py-1.5 text-[11px] font-black tracking-[0.18em] text-slate-600 uppercase shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8 dark:text-white/55">
-              {isLive ? (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              ) : (
-                <Hourglass className="h-3.5 w-3.5" />
-              )}
-              {isLive ? "Available now" : "Coming soon"}
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {isPractice ? "Practice available now" : "Free guide"}
             </div>
             <h1 className="font-display max-w-4xl text-5xl leading-[0.96] font-black text-balance sm:text-7xl sm:leading-[0.9]">
               {program.title}
@@ -67,23 +57,13 @@ export default function TrainingPageShell({
             <p className="mt-5 rounded-2xl border border-slate-900/8 bg-slate-950/[0.035] p-4 text-sm leading-6 font-bold dark:border-white/8 dark:bg-white/[0.035]">
               {program.sampleTask}
             </p>
-            {isLive ? (
-              <Link
-                href={program.href}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.2)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
-              >
-                Open tool
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            ) : (
-              <a
-                href="#waitlist"
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.2)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
-              >
-                Join waitlist
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            )}
+            <Link
+              href={program.href}
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.2)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
+            >
+              {isPractice ? "Open drill" : "Open guide"}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
@@ -92,10 +72,10 @@ export default function TrainingPageShell({
         <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-3">
           {[
             {
-              title: isLive ? "Real practice flow" : "Honest preview",
-              text: isLive
-                ? "This page routes to the working Yapper tool. No fake demo layer."
-                : "This is a value page for the future drill, not a pretend playable product.",
+              title: isPractice ? "Real practice flow" : "Practical guide",
+              text: isPractice
+                ? "This drill has a prompt bank, timer, and optional camera/mic recording flow."
+                : "This page is a working written protocol you can run immediately.",
               icon: Mic2,
             },
             {
@@ -123,11 +103,7 @@ export default function TrainingPageShell({
         </div>
       </section>
 
-      {!isLive && (
-        <section id="waitlist">
-          <Waitlist variant="full" />
-        </section>
-      )}
+      {children}
     </TrainingLayout>
   );
 }

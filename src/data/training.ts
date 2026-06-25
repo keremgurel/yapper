@@ -1,5 +1,5 @@
 export type TrainingCategory = "Mindset" | "Retrieval" | "Voice" | "Structure";
-export type TrainingStatus = "Free now" | "Coming";
+export type TrainingStatus = "Free now" | "Free guide";
 
 export type TrainingDrill = {
   id: string;
@@ -42,9 +42,9 @@ export type ProgramFamily = {
 export type TrainingNavItem = {
   title: string;
   description: string;
-  status: "Free now" | "Free guide" | "Coming";
+  status: TrainingStatus;
   href: string;
-  group: "Practice now" | "Guided drills" | "Coming programs";
+  group: "Practice now" | "Guided drills";
 };
 
 export const fluencyProtocol: TrainingProtocol = {
@@ -177,7 +177,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Read one paragraph about workplace communication, then explain the point in 60 seconds.",
     duration: "3-8 min",
-    status: "Coming",
+    status: "Free now",
     accent: "emerald",
     href: "/training/explain-after-reading",
   },
@@ -189,7 +189,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Read a dense paragraph twice: once for clarity, once for emphasis.",
     duration: "2-5 min",
-    status: "Coming",
+    status: "Free now",
     accent: "amber",
     href: "/training/read-aloud",
   },
@@ -201,7 +201,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Answer: tell me about a time you changed your mind after getting better evidence.",
     duration: "5-12 min",
-    status: "Coming",
+    status: "Free now",
     accent: "fuchsia",
     href: "/training/interview-prep",
   },
@@ -213,7 +213,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Tell a 45-second story about a tiny inconvenience that says something about you.",
     duration: "2-6 min",
-    status: "Coming",
+    status: "Free now",
     accent: "rose",
     href: "/training/dating",
   },
@@ -225,7 +225,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Respond to: I feel like you ignored what I asked for. Keep it direct and calm.",
     duration: "3-8 min",
-    status: "Coming",
+    status: "Free now",
     accent: "orange",
     href: "/training/conflict",
   },
@@ -237,7 +237,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Pitch one saved content idea with a hook, payoff, and one crisp example.",
     duration: "2-10 min",
-    status: "Coming",
+    status: "Free now",
     accent: "cyan",
     href: "/training/creator-camera-drills",
   },
@@ -249,7 +249,7 @@ export const programFamilies: ProgramFamily[] = [
     sampleTask:
       "Run the four-drill warmup, then immediately record a random-topic rep.",
     duration: fluencyProtocol.duration,
-    status: "Free now",
+    status: "Free guide",
     accent: "emerald",
     href: "/training/fluency-on-steroids",
   },
@@ -283,45 +283,45 @@ export const trainingNavItems: TrainingNavItem[] = [
     title: "Explain after reading",
     description:
       "Read a short piece, close it, then explain the point out loud.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/explain-after-reading",
-    group: "Coming programs",
+    group: "Guided drills",
   },
   {
     title: "Read aloud",
     description: "Train articulation, pacing, emphasis, and vocal steadiness.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/read-aloud",
-    group: "Coming programs",
+    group: "Guided drills",
   },
   {
     title: "Interview prep",
     description: "Practice structured answers without sounding rehearsed.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/interview-prep",
-    group: "Coming programs",
+    group: "Guided drills",
   },
   {
     title: "Dating/social practice",
     description:
       "Build warmer stories, playful answers, and everyday presence.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/dating",
-    group: "Coming programs",
+    group: "Guided drills",
   },
   {
-    title: "Conflict practice",
+    title: "Conflict handling",
     description: "Rehearse direct, calm answers for tense conversations.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/conflict",
-    group: "Coming programs",
+    group: "Guided drills",
   },
   {
     title: "Creator camera drills",
     description:
       "Practice hooks, framing, and inspiration pillars for camera takes.",
-    status: "Coming",
+    status: "Free now",
     href: "/training/creator-camera-drills",
-    group: "Coming programs",
+    group: "Guided drills",
   },
 ];
