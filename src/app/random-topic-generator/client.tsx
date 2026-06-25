@@ -57,7 +57,7 @@ export default function RandomTopicClient({
             Random Topic
           </span>
           <Link
-            href="/freestyle-speech"
+            href="/training/freestyle-speech"
             className="rounded-full px-2 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300 sm:px-3"
           >
             Freestyle

@@ -50,7 +50,7 @@ export default function FreestyleSpeechClient({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Link
-            href="/random-topic-generator"
+            href="/training/random-topic-generator"
             className="rounded-full px-2 py-1.5 text-[13px] font-medium text-slate-500 no-underline transition-colors hover:text-slate-300 sm:px-3"
           >
             Random Topic

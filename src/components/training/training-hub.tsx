@@ -9,8 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
-import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
+import TrainingLayout from "@/app/training-layout";
 import {
   fluencyProtocol,
   programFamilies,
@@ -21,8 +20,8 @@ import {
 const statusStyles: Record<TrainingStatus, string> = {
   "Free now":
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
-  Coming:
-    "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-white/52",
+  "Free guide":
+    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
 };
 
 const accentStyles: Record<ProgramFamily["accent"], string> = {
@@ -34,18 +33,18 @@ const accentStyles: Record<ProgramFamily["accent"], string> = {
   rose: "from-rose-400/24 to-rose-400/0",
 };
 
-const livePrograms = programFamilies.filter(
-  (program) => program.status === "Free now",
+const livePrograms = programFamilies.filter((program) =>
+  ["random-topic-generator", "freestyle-speech"].includes(program.slug),
 );
-const comingPrograms = programFamilies.filter(
-  (program) => program.status === "Coming",
+const guidedPrograms = programFamilies.filter(
+  (program) =>
+    program.status === "Free now" &&
+    !["random-topic-generator", "freestyle-speech"].includes(program.slug),
 );
 
 function ProgramCard({ program }: { program: ProgramFamily }) {
-  const isLive = program.status === "Free now";
-
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-slate-900/8 bg-white/68 p-5 shadow-[0_16px_60px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/8 dark:bg-white/[0.045] dark:shadow-none">
+    <article className="relative overflow-hidden border-t border-slate-900/10 py-5 dark:border-white/10">
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b ${accentStyles[program.accent]}`}
       />
@@ -69,18 +68,14 @@ function ProgramCard({ program }: { program: ProgramFamily }) {
         <p className="mt-4 text-sm leading-6 text-slate-700 dark:text-white/62">
           {program.prompt}
         </p>
-        <p className="mt-4 rounded-2xl border border-slate-900/8 bg-slate-950/[0.035] p-4 text-sm leading-6 font-bold dark:border-white/8 dark:bg-white/[0.035]">
+        <p className="mt-4 border-l-2 border-slate-950/12 pl-4 text-sm leading-6 font-bold text-slate-700 dark:border-white/18 dark:text-white/62">
           {program.sampleTask}
         </p>
         <Link
           href={program.href}
-          className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black no-underline transition-transform hover:-translate-y-0.5 ${
-            isLive
-              ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
-              : "border border-slate-900/12 bg-white/55 text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72"
-          }`}
+          className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black no-underline transition-transform hover:-translate-y-0.5 ${"bg-slate-950 text-white dark:bg-white dark:text-slate-950"}`}
         >
-          {isLive ? "Start" : "Details"}
+          Start
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -90,24 +85,7 @@ function ProgramCard({ program }: { program: ProgramFamily }) {
 
 export default function TrainingHub() {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8fafc] text-slate-950 dark:bg-[#0f1117] dark:text-white">
-      <header className="border-border flex items-center justify-between border-b px-3 py-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 no-underline">
-            <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
-              Y
-            </div>
-            <span className="font-display text-foreground hidden text-[22px] font-semibold tracking-[0.02em] sm:inline">
-              yapper
-            </span>
-          </Link>
-          <TrainingNavDropdown />
-        </div>
-        <div className="origin-right scale-[0.5]">
-          <CinematicThemeSwitcher />
-        </div>
-      </header>
-
+    <TrainingLayout>
       <section className="relative px-4 pt-16 pb-12 sm:px-6 sm:pt-20 lg:px-8">
         <div className="pointer-events-none absolute inset-0 opacity-[0.14] dark:opacity-[0.22]">
           <div className="absolute top-[-12rem] left-[-8rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400 blur-3xl" />
@@ -127,19 +105,19 @@ export default function TrainingHub() {
             </div>
             <div className="max-w-xl lg:justify-self-end">
               <p className="text-lg leading-8 text-slate-700 dark:text-white/68">
-                Yapper is free random-topic and freestyle practice today. This
-                hub keeps the training styles organized, marks what is live, and
-                routes you back to the working practice flows.
+                Yapper brings every speaking drill into one practice map: random
+                prompts, freestyle reps, guided categories, and focused warmups
+                all route into live recording flows.
               </p>
               <div className="mt-7 flex flex-wrap gap-3">
                 <Link
-                  href="/"
+                  href="/training/random-topic-generator"
                   className="rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.22)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
                 >
                   Start random topic
                 </Link>
                 <Link
-                  href="/freestyle-speech"
+                  href="/training/freestyle-speech"
                   className="rounded-full border border-slate-900/15 bg-white/55 px-5 py-3 text-sm font-bold text-slate-800 no-underline backdrop-blur transition-colors hover:bg-white dark:border-white/12 dark:bg-white/8 dark:text-white/80 dark:hover:bg-white/12"
                 >
                   Start freestyle
@@ -153,17 +131,17 @@ export default function TrainingHub() {
               {
                 icon: Camera,
                 title: "Free practice",
-                text: "Random topic generator and freestyle camera reps are live.",
+                text: "Random topics and freestyle camera reps are ready whenever you are.",
               },
               {
                 icon: Flame,
                 title: "Free guide",
-                text: "Fluency drills are available as a practical warmup guide.",
+                text: "Fluency drills give you a practical warmup before bigger reps.",
               },
               {
                 icon: Sparkles,
-                title: "Coming",
-                text: "New guided programs are labeled as future, not active tools.",
+                title: "Guided drills",
+                text: "Each category opens into a focused prompt bank and the same clean recording flow.",
               },
             ].map((item) => (
               <div
@@ -225,10 +203,10 @@ export default function TrainingHub() {
                 </span>
               </div>
               <Link
-                href={fluencyProtocol.blogHref}
+                href="/training/fluency-on-steroids"
                 className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 no-underline transition-transform hover:-translate-y-0.5"
               >
-                Read the drills
+                Open fluency drills
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
@@ -256,23 +234,23 @@ export default function TrainingHub() {
         <div className="mx-auto max-w-6xl">
           <div className="mb-6">
             <p className="font-mono text-xs font-black tracking-[0.18em] text-orange-700 uppercase dark:text-orange-300">
-              Coming programs
+              Guided drills
             </p>
             <h2 className="font-display mt-3 text-4xl leading-none font-black sm:text-5xl">
               Useful categories, clearly marked.
             </h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/62">
-              These are the next training styles in the product map. They are
-              here for orientation only until the actual workflows exist.
+              Choose the context you want to rehearse. Each drill keeps the
+              setup lean: one prompt, one rep, one recording flow.
             </p>
           </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {comingPrograms.map((program) => (
+            {guidedPrograms.map((program) => (
               <ProgramCard key={program.slug} program={program} />
             ))}
           </div>
         </div>
       </section>
-    </main>
+    </TrainingLayout>
   );
 }

@@ -25,11 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { trainingNavItems, type TrainingNavItem } from "@/data/training";
 
-const groups: TrainingNavItem["group"][] = [
-  "Practice now",
-  "Guided drills",
-  "Coming programs",
-];
+const groups: TrainingNavItem["group"][] = ["Practice now", "Guided drills"];
 
 const iconByTitle: Record<string, ComponentType<{ className?: string }>> = {
   "Random topic generator": Shuffle,
@@ -48,8 +44,6 @@ const statusStyles: Record<TrainingNavItem["status"], string> = {
     "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
   "Free guide":
     "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
-  Coming:
-    "border-slate-500/20 bg-slate-500/10 text-slate-600 dark:text-white/52",
 };
 
 function TrainingNavLink({ item }: { item: TrainingNavItem }) {
@@ -132,8 +126,8 @@ export default function TrainingNavDropdown() {
                   Train every kind of yap.
                 </h2>
                 <p className="mt-4 text-sm leading-6 text-white/64">
-                  Start with free reps now: random topics, freestyle speaking,
-                  and a fluency warmup guide. More guided programs come later.
+                  Start with random topics, freestyle speaking, fluency warmups,
+                  or a guided drill for the moment you want to rehearse.
                 </p>
               </div>
               <Link
