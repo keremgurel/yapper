@@ -169,3 +169,11 @@ ship as new routes so existing pages stay stable.
   adoption) while keeping the home's aesthetic; theme-token based + responsive.
 - Verified live in Chrome (light). Build green.
 - Next: light/dark polish sweep across new routes; small killer features.
+
+### Iteration 11 — Copy idea as script (shipped)
+
+- `lib/inspiration/idea-format.ts` `ideaToScript` formats a draft into a clean,
+  paste-ready outline (title, hook options, key points, example, CTA).
+- "Copy script" button in the idea editor (clipboard + "Copied" confirmation),
+  so ideation output is usable in a teleprompter/notes. Format validated by test.
+- Verified live in Chrome (light). Build green.

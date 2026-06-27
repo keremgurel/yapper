@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowUpRight, Trash2 } from "lucide-react";
+import CopyScriptButton from "@/components/ideation/copy-script-button";
 import EditableList from "@/components/ideation/editable-list";
 import { useIdeas } from "@/components/ideation/ideas-context";
 import type { Idea } from "@/lib/inspiration/ideas";
@@ -23,17 +24,20 @@ export default function IdeaEditor({
           placeholder="Idea title"
           className="text-foreground w-full bg-transparent text-2xl font-black tracking-tight outline-none"
         />
-        <button
-          type="button"
-          onClick={() => {
-            deleteIdea(idea.id);
-            onDeleted();
-          }}
-          className="text-foreground/40 shrink-0 rounded-lg p-2 hover:text-red-500"
-          aria-label="Delete idea"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <CopyScriptButton idea={idea} />
+          <button
+            type="button"
+            onClick={() => {
+              deleteIdea(idea.id);
+              onDeleted();
+            }}
+            className="text-foreground/40 rounded-lg p-2 hover:text-red-500"
+            aria-label="Delete idea"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {idea.sourceTitle && (
