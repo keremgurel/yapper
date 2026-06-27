@@ -120,3 +120,17 @@ ship as new routes so existing pages stay stable.
 - This makes editing-by-transcript real: the core of the Record→Edit vision.
 - Next: wire Record → Edit (open a practice recording in /studio); later ffmpeg
   export, then polish + a unified create hub.
+
+### Iteration 7 — Wire Record → Edit (shipped)
+
+- "Edit this take" (scissors) button on the recording completion screen hands the
+  recorded video to Studio via an in-memory handoff (`lib/studio/handoff.ts`);
+  client-side nav preserves it, so no store/query needed.
+- `lib/studio/load-source.ts`: robust StudioSource loader that fixes the
+  MediaRecorder webm `duration: Infinity` bug (force-seek to compute duration);
+  the uploader now uses it too.
+- StudioProvider consumes the pending recording on mount and loads it.
+- Connects the vision loop: Record → Edit now flows directly.
+- Build green; full record→edit flow needs a real camera recording so not
+  automated end-to-end, but each piece is verified and the page renders.
+- Next: ffmpeg.wasm export (isolated), then a polish pass + unified Create hub.

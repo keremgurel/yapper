@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -23,6 +24,8 @@ import {
 } from "@/lib/studio/transcript-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
+import { consumePendingVideo } from "@/lib/studio/handoff";
+import { loadVideoSource } from "@/lib/studio/load-source";
 import {
   newWordId,
   type Clip,
@@ -100,6 +103,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setSelectedClipId(null);
     resetTranscript();
   }, [resetTranscript]);
+
+  // Pick up a recording handed over from the practice flow (Record -> Edit).
+  useEffect(() => {
+    const blob = consumePendingVideo();
+    if (!blob) return;
+    loadVideoSource(blob, "Practice take")
+      .then(loadSource)
+      .catch(() => {});
+  }, [loadSource]);
 
   const splitAt = useCallback((sourceTime: number) => {
     setClips((prev) => splitAtSource(prev, sourceTime));

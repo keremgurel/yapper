@@ -1,8 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { Download, Pause, Play, RotateCcw, Share2 } from "lucide-react";
+import {
+  Download,
+  Pause,
+  Play,
+  RotateCcw,
+  Scissors,
+  Share2,
+} from "lucide-react";
+import { setPendingVideo } from "@/lib/studio/handoff";
 import {
   AudioPlayerProvider,
   useAudioPlayer,
@@ -41,6 +50,7 @@ function VideoPlayer({
   prompt,
   onShare,
   onDownload,
+  onEdit,
   onNewSession,
   canDownload,
   isPreparingDownload,
@@ -49,6 +59,7 @@ function VideoPlayer({
   prompt: string;
   onShare: () => void;
   onDownload: () => void;
+  onEdit?: () => void;
   onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
@@ -284,6 +295,16 @@ function VideoPlayer({
           </span>
 
           <div className="flex items-center gap-2">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className={iconBtn}
+                title="Edit this take in Studio"
+              >
+                <Scissors className="h-4 w-4" strokeWidth={2.2} />
+              </button>
+            )}
             {canDownload && (
               <button
                 type="button"
@@ -422,6 +443,7 @@ export default function CompletionScreen() {
     generateTopic,
   } = usePracticeSession();
 
+  const router = useRouter();
   const isFreestyle = mode === "freestyle";
   const prompt = isFreestyle
     ? "Freestyle session"
@@ -429,6 +451,11 @@ export default function CompletionScreen() {
   const onDownload = () => {
     downloadRecording();
     trackRecordingDownloaded({ hasVideo: cameraOn });
+  };
+  const onEdit = () => {
+    if (!recordedBlob) return;
+    setPendingVideo(recordedBlob);
+    router.push("/studio");
   };
   const onNewSession = () => {
     resetTimer();
@@ -481,6 +508,7 @@ export default function CompletionScreen() {
             prompt={prompt}
             onShare={handleShare}
             onDownload={onDownload}
+            onEdit={recordedBlob ? onEdit : undefined}
             onNewSession={onNewSession}
             canDownload={canDownload}
             isPreparingDownload={isPreparingDownload}

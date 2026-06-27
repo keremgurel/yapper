@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { loadVideoSource } from "@/lib/studio/load-source";
 
 export default function VideoUploader() {
   const { loadSource } = useStudio();
@@ -17,13 +18,9 @@ export default function VideoUploader() {
       return;
     }
     setError("");
-    const url = URL.createObjectURL(file);
-    const probe = document.createElement("video");
-    probe.preload = "metadata";
-    probe.onloadedmetadata = () =>
-      loadSource({ url, name: file.name, duration: probe.duration });
-    probe.onerror = () => setError("Could not read that video file.");
-    probe.src = url;
+    loadVideoSource(file, file.name)
+      .then(loadSource)
+      .catch(() => setError("Could not read that video file."));
   };
 
   return (
