@@ -16,8 +16,8 @@ export default function StudioTranscript({
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
 
   return (
-    <div className="border-border bg-card flex max-h-[70vh] min-h-48 flex-col overflow-hidden rounded-2xl border lg:max-h-none">
-      <div className="border-border flex items-center justify-between border-b px-4 py-3">
+    <div className="bg-card flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-3">
         <p className="text-foreground text-sm font-black">Transcript</p>
         {transcribeStatus === "done" && (
           <span className="text-foreground/45 text-xs">

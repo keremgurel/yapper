@@ -234,3 +234,16 @@ ship as new routes so existing pages stay stable.
 - Stopping the autonomous loop here: the create flow is broad, cohesive, undoable,
   and polished; the main remaining item (ffmpeg export) carries cross-origin-
   isolation risk that shouldn't be pushed unattended. Handing back to Kerem.
+
+### Iteration 13 — Studio full-screen layout + filmstrip timeline (Kerem feedback)
+
+- Studio is now a FULL-SCREEN editor (h-dvh): big preview + transport + timeline
+  on the left, transcript panel on the right.
+- **Resizable** transcript panel via a drag handle (`use-resizable-panel`);
+  stacks below the preview on mobile.
+- **Vertical (9:16) video** now displays tall and centered (`max-h-full
+max-w-full`) instead of being letterboxed in a 16:9 box.
+- **Filmstrip timeline** (`use-filmstrip`): generates frame thumbnails in-browser
+  and lays them out per clip; taller track with a scrub ruler + draggable playhead.
+- Scrub verified live: clicking/dragging the ruler seeks and the preview + time
+  update. (Tested by injecting a real vertical webm via the file input.)

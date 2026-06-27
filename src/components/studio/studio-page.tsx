@@ -7,20 +7,11 @@ import StudioWorkspace from "@/components/studio/studio-workspace";
 export default function StudioPage() {
   return (
     <StudioProvider>
-      <div className="bg-background min-h-screen">
+      <div className="bg-background flex h-[100dvh] flex-col overflow-hidden">
         <TrainingHeader />
-        <div className="px-4 py-8 sm:px-6 lg:px-8">
-          <div className="mx-auto mb-6 max-w-4xl">
-            <h1 className="text-foreground text-3xl font-black tracking-tight">
-              Studio
-            </h1>
-            <p className="text-foreground/55 mt-1 text-sm">
-              Transcript-aware video editing in your browser. Trim, split, and
-              cut silences — no upload, no account.
-            </p>
-          </div>
+        <main className="flex min-h-0 flex-1 flex-col">
           <StudioWorkspace />
-        </div>
+        </main>
       </div>
     </StudioProvider>
   );
