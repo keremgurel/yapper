@@ -1,5 +1,51 @@
 # Overnight autonomous build log
 
+## ☀️ Final summary (for Kerem, morning)
+
+Built the whole Phase 2 creation flow overnight — **auth-free, keyless, local-first,
+no AI-feedback yet** — shipped to `main` across 12 green-gated iterations (each
+passed build + lint + typecheck before pushing; new features are additive routes
+so the existing site stayed stable the whole time).
+
+**What's live (try these in order):**
+
+- **`/inspiration`** — swipe-file library. Folders by content pillar; paste a
+  YouTube/TikTok/Instagram link → auto-detects platform, pulls title/author/
+  thumbnail (oEmbed/OG) + best-effort YouTube transcript. Search, per-item notes,
+  folder rename, local-first persistence. "Turn into idea" on any card.
+- **`/ideation`** — turn a saved clip (or a blank) into a structured draft:
+  hook options, key points, example, CTA. "Copy script" to clipboard.
+- **`/studio`** — in-browser video editor. Upload a video (or arrive via
+  "Edit this take"): on-device **Whisper transcription** (loads from CDN at
+  runtime, nothing uploaded), then **edit by editing the transcript** — select
+  words → cut the video, "remove fillers", "remove earlier takes", plus
+  Web-Audio **silence removal**, split/trim, skip-cuts preview, **undo/redo**
+  - keyboard shortcuts.
+- **Record → Edit** — the practice recording completion screen now has an
+  "Edit this take" button that opens it in Studio.
+- **`/create`** — hub that tells the Inspiration → Ideas → Record → Edit story.
+  A **Create** dropdown (works on mobile) + a home-page section make it
+  discoverable. The home/training redesign + theme fix from before are also live.
+
+**Known limits / decisions:**
+
+- YouTube caption transcripts are best-effort (Google blocks server fetches from
+  datacenter IPs); the reliable transcript path is Studio's on-device Whisper.
+- Studio editing is **non-destructive preview** (an edit-decision list). Rendering
+  the edited result to a downloadable file (**ffmpeg.wasm export**) is the main
+  thing left — I deliberately did NOT ship it autonomously because it needs
+  cross-origin isolation (COOP/COEP) that can break GTM/PostHog/embeds. Worth
+  doing carefully with you (single-threaded ffmpeg-core, or scoped to /studio).
+- Persistence is `localStorage` per browser; great for a no-auth tool, but data
+  is device-local. IndexedDB / sync would come with accounts later.
+
+**Suggested next steps:** (1) greenlight ffmpeg export; (2) try the flow on your
+phone and tell me what to tighten; (3) decide if Studio should be promoted in the
+top nav; (4) richer per-pillar ideation templates. The per-iteration detail is
+below.
+
+---
+
 Mission: move Yapper toward the Phase 2 vision (Inspiration → Ideation → Record →
 Edit → Publish) — **auth-free, keyless, no AI-feedback yet**. Each iteration:
 PM (pick highest-value step) → Engineer (build) → Reviewer (review + fix). All on
@@ -177,3 +223,14 @@ ship as new routes so existing pages stay stable.
 - "Copy script" button in the idea editor (clipboard + "Copied" confirmation),
   so ideation output is usable in a teleprompter/notes. Format validated by test.
 - Verified live in Chrome (light). Build green.
+
+### Iteration 12 — Dark-mode verification sweep (no code changes needed)
+
+- Toggled dark and reviewed /, /create, /inspiration, /ideation, /studio,
+  /training, and a drill page. All render correctly in dark — the theme tokens +
+  class-based `dark:` variant hold everywhere; no contrast/overlap/invisible-text
+  issues found. Create dropdown opens correctly in dark.
+- Added the morning final-summary at the top of this log.
+- Stopping the autonomous loop here: the create flow is broad, cohesive, undoable,
+  and polished; the main remaining item (ffmpeg export) carries cross-origin-
+  isolation risk that shouldn't be pushed unattended. Handing back to Kerem.
