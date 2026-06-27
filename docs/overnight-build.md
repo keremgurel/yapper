@@ -46,3 +46,13 @@ ship as new routes so existing pages stay stable.
   come from the editor's in-browser Whisper. TikTok/IG metadata works; transcript
   not attempted there yet.
 - Next: polish inspiration (search, notes, drag-to-folder), then start the editor.
+
+### Iteration 2 — Inspiration polish (shipped)
+
+- Search/filter across title, author, note, and transcript.
+- Per-item notes (inline add/edit, persisted) via a focused `ItemNote` component.
+- Folder rename (double-click or pencil) alongside delete in the sidebar.
+- Loading skeletons before the local store hydrates (no empty-state flash).
+- Cards bottom-align their actions for an even grid.
+- Next: Ideation step (saved item → hook/points draft, template-based), then the
+  transcript-based editor.

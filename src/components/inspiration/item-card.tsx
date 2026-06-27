@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ExternalLink, FileText, Trash2 } from "lucide-react";
 import PlatformBadge from "@/components/inspiration/platform-badge";
+import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
@@ -64,7 +65,9 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
           </>
         )}
 
-        <div className="mt-3 flex items-center gap-2 pt-2">
+        <ItemNote id={item.id} note={item.note} />
+
+        <div className="mt-auto flex items-center gap-2 pt-3">
           <select
             value={item.pillarId ?? ""}
             onChange={(e) => moveItem(item.id, e.target.value || null)}

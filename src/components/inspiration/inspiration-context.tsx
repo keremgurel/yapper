@@ -37,6 +37,7 @@ interface InspirationContextValue {
   ) => void;
   deleteItem: (id: string) => void;
   moveItem: (id: string, pillarId: string | null) => void;
+  setItemNote: (id: string, note: string) => void;
 }
 
 const InspirationContext = createContext<InspirationContextValue | null>(null);
@@ -126,6 +127,15 @@ export function InspirationProvider({
     );
   }, []);
 
+  const setItemNote = useCallback((id: string, note: string) => {
+    const trimmed = note.trim();
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === id ? { ...it, note: trimmed || undefined } : it,
+      ),
+    );
+  }, []);
+
   const value = useMemo<InspirationContextValue>(
     () => ({
       ready,
@@ -139,6 +149,7 @@ export function InspirationProvider({
       addItem,
       deleteItem,
       moveItem,
+      setItemNote,
     }),
     [
       ready,
@@ -151,6 +162,7 @@ export function InspirationProvider({
       addItem,
       deleteItem,
       moveItem,
+      setItemNote,
     ],
   );
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FolderPlus, Layers, Trash2 } from "lucide-react";
+import { FolderPlus, Layers, Pencil, Trash2 } from "lucide-react";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
 
 export default function PillarSidebar() {
@@ -11,10 +11,23 @@ export default function PillarSidebar() {
     activePillarId,
     setActivePillarId,
     addPillar,
+    renamePillar,
     deletePillar,
   } = useInspiration();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+
+  const startRename = (id: string, current: string) => {
+    setEditingId(id);
+    setEditName(current);
+  };
+
+  const commitRename = () => {
+    if (editingId) renamePillar(editingId, editName);
+    setEditingId(null);
+  };
 
   const countFor = (id: string | null) =>
     id === null
@@ -53,26 +66,52 @@ export default function PillarSidebar() {
         Content pillars
       </p>
 
-      {pillars.map((pillar) => (
-        <div key={pillar.id} className="group/row relative">
-          <button
-            type="button"
-            onClick={() => setActivePillarId(pillar.id)}
-            className={rowClass(activePillarId === pillar.id)}
-          >
-            <span className="truncate">{pillar.name}</span>
-            <span className="text-xs opacity-60">{countFor(pillar.id)}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => deletePillar(pillar.id)}
-            className="text-foreground/40 absolute top-1/2 right-2 hidden -translate-y-1/2 rounded p-1 group-hover/row:block hover:text-red-500"
-            aria-label={`Delete ${pillar.name}`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      ))}
+      {pillars.map((pillar) =>
+        editingId === pillar.id ? (
+          <input
+            key={pillar.id}
+            value={editName}
+            autoFocus
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setEditingId(null);
+            }}
+            className="border-border bg-background text-foreground rounded-xl border px-3 py-2 text-sm outline-none"
+          />
+        ) : (
+          <div key={pillar.id} className="group/row relative">
+            <button
+              type="button"
+              onClick={() => setActivePillarId(pillar.id)}
+              onDoubleClick={() => startRename(pillar.id, pillar.name)}
+              className={rowClass(activePillarId === pillar.id)}
+            >
+              <span className="truncate">{pillar.name}</span>
+              <span className="text-xs opacity-60">{countFor(pillar.id)}</span>
+            </button>
+            <div className="absolute top-1/2 right-2 hidden -translate-y-1/2 items-center gap-1 group-hover/row:flex">
+              <button
+                type="button"
+                onClick={() => startRename(pillar.id, pillar.name)}
+                className={`rounded p-1 ${activePillarId === pillar.id ? "text-background/70 hover:text-background" : "text-foreground/40 hover:text-foreground"}`}
+                aria-label={`Rename ${pillar.name}`}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => deletePillar(pillar.id)}
+                className={`rounded p-1 hover:text-red-500 ${activePillarId === pillar.id ? "text-background/70" : "text-foreground/40"}`}
+                aria-label={`Delete ${pillar.name}`}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ),
+      )}
 
       {adding ? (
         <input
