@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import CreateNavDropdown from "@/components/create/create-nav-dropdown";
 import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 
@@ -16,27 +17,12 @@ export default function TrainingHeader() {
           </span>
         </Link>
         <TrainingNavDropdown />
-        <Link
-          href="/inspiration"
-          className="text-foreground/70 hover:bg-muted hover:text-foreground hidden rounded-full px-3 py-2 text-[13px] font-bold no-underline transition-colors sm:inline-flex"
-        >
-          Inspiration
-        </Link>
-        <Link
-          href="/ideation"
-          className="text-foreground/70 hover:bg-muted hover:text-foreground hidden rounded-full px-3 py-2 text-[13px] font-bold no-underline transition-colors sm:inline-flex"
-        >
-          Ideas
-        </Link>
-        <Link
-          href="/studio"
-          className="text-foreground/70 hover:bg-muted hover:text-foreground hidden rounded-full px-3 py-2 text-[13px] font-bold no-underline transition-colors sm:inline-flex"
-        >
-          Studio
-        </Link>
       </div>
-      <div className="origin-right scale-[0.5]">
-        <CinematicThemeSwitcher />
+      <div className="flex items-center gap-2">
+        <CreateNavDropdown />
+        <div className="origin-right scale-[0.5]">
+          <CinematicThemeSwitcher />
+        </div>
       </div>
     </header>
   );

@@ -134,3 +134,16 @@ ship as new routes so existing pages stay stable.
 - Build green; full record→edit flow needs a real camera recording so not
   automated end-to-end, but each piece is verified and the page renders.
 - Next: ffmpeg.wasm export (isolated), then a polish pass + unified Create hub.
+
+### Iteration 8 — Create hub + cohesive nav (shipped)
+
+- New `/create` hub: the Inspiration → Ideas → Record → Edit flow as numbered
+  step cards with copy, plus SEO metadata — makes the new tools discoverable and
+  the story legible.
+- Replaced the three desktop-only header links (Inspiration/Ideas/Studio — which
+  were invisible on mobile) with a single theme-aware **Create** dropdown that
+  works on every screen size, fixing the mobile nav gap. Footer links to /create.
+- Shared `data/create-nav.ts` keeps the dropdown + hub in sync; `CreateIcon`
+  maps icon keys to lucide icons.
+- Verified live in Chrome (hub + dropdown). Build green (41 routes).
+- Next: optional careful ffmpeg export; otherwise more polish / killer features.
