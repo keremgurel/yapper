@@ -160,3 +160,12 @@ ship as new routes so existing pages stay stable.
 - History reducer validated with node assertions (undo/redo/no-op/future-clear).
 - Build green. Editing is now safely reversible.
 - Next: discoverability (surface the Create flow), more polish, careful export.
+
+### Iteration 10 — Home discoverability (shipped)
+
+- Reusable `CreateFlowSection` added to the home page (after the practice stage):
+  an "The full workflow" section with the four Inspiration → Ideas → Record → Edit
+  step cards + a CTA to /create. Surfaces the new tools beyond the menu (SEO +
+  adoption) while keeping the home's aesthetic; theme-token based + responsive.
+- Verified live in Chrome (light). Build green.
+- Next: light/dark polish sweep across new routes; small killer features.
