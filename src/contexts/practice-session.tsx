@@ -38,6 +38,7 @@ interface PracticeSessionContextValue {
   category: Category | "All";
   difficulty: Difficulty | "All";
   hasGeneratedTopic: boolean;
+  hasPool: boolean;
   customPromptText: string | null;
   generateTopic: () => void;
   handleCategoryChange: (value: string) => void;
@@ -103,14 +104,18 @@ const PracticeSessionContext =
 export function PracticeSessionProvider({
   initialTopic,
   mode = "topic",
+  topicPool,
+  initialGenerated = false,
   children,
 }: {
   initialTopic: Topic;
   mode?: PracticeMode;
+  topicPool?: Topic[];
+  initialGenerated?: boolean;
   children: React.ReactNode;
 }) {
   const isCompactDevice = useCompactDevice();
-  const topicGen = useTopicGenerator(initialTopic);
+  const topicGen = useTopicGenerator(initialTopic, topicPool, initialGenerated);
   const media = useMediaStream();
   const sessionStartTimeRef = useRef<number>(0);
   const endSessionRef = useRef<((reason: "auto" | "manual") => void) | null>(
@@ -239,6 +244,7 @@ export function PracticeSessionProvider({
       category: topicGen.category,
       difficulty: topicGen.difficulty,
       hasGeneratedTopic: topicGen.hasGeneratedTopic,
+      hasPool: topicGen.hasPool,
       customPromptText: topicGen.customPromptText,
       generateTopic: topicGen.generateTopic,
       handleCategoryChange: topicGen.handleCategoryChange,

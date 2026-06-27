@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Make the `dark:` variant follow the app theme class (set by next-themes)
+   instead of the OS `prefers-color-scheme`. The app toggles a `.dark` class on
+   <html>, so all `dark:` utilities should key off that class to stay in sync
+   with the CSS variables and the in-app theme switcher. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #f8fafc;
   --foreground: #1e293b;

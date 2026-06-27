@@ -3,22 +3,32 @@
 import { useCallback, useState } from "react";
 import { type Category, type Difficulty, type Topic } from "@/data/topics";
 import { playSlotTick } from "@/lib/audio";
-import { getRandomTopic, pickReelBlurbs } from "@/lib/practice-helpers";
+import {
+  getRandomFromPool,
+  getRandomTopic,
+  pickReelBlurbs,
+} from "@/lib/practice-helpers";
 import { trackTopicGenerated, trackFilterChanged } from "@/lib/analytics";
 
-export function useTopicGenerator(initialTopic: Topic) {
+export function useTopicGenerator(
+  initialTopic: Topic,
+  pool?: Topic[],
+  initialGenerated = false,
+) {
   const [topic, setTopic] = useState<Topic>(initialTopic);
   const [spinning, setSpinning] = useState(false);
   const [reelBlurbs, setReelBlurbs] = useState<string[]>([]);
   const [category, setCategory] = useState<Category | "All">("All");
   const [difficulty, setDifficulty] = useState<Difficulty | "All">("All");
-  const [hasGeneratedTopic, setHasGeneratedTopic] = useState(false);
+  const [hasGeneratedTopic, setHasGeneratedTopic] = useState(initialGenerated);
   const [customPromptText, setCustomPromptText] = useState<string | null>(null);
+
+  const hasPool = !!pool && pool.length > 0;
 
   const generateTopic = useCallback(() => {
     setCustomPromptText(null);
     setHasGeneratedTopic(true);
-    setReelBlurbs(pickReelBlurbs());
+    setReelBlurbs(pickReelBlurbs(pool));
     setSpinning(true);
     trackTopicGenerated({ category, difficulty });
     const tickInterval = setInterval(
@@ -29,9 +39,13 @@ export function useTopicGenerator(initialTopic: Topic) {
       clearInterval(tickInterval);
       setSpinning(false);
       setReelBlurbs([]);
-      setTopic((prev) => getRandomTopic(prev, category, difficulty));
+      setTopic((prev) =>
+        hasPool
+          ? getRandomFromPool(pool!, prev)
+          : getRandomTopic(prev, category, difficulty),
+      );
     }, 600);
-  }, [category, difficulty]);
+  }, [category, difficulty, pool, hasPool]);
 
   const handleCategoryChange = useCallback(
     (value: string) => {
@@ -64,6 +78,7 @@ export function useTopicGenerator(initialTopic: Topic) {
     category,
     difficulty,
     hasGeneratedTopic,
+    hasPool,
     customPromptText,
     setCustomPromptText,
     setHasGeneratedTopic,

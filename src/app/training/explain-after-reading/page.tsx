@@ -1,20 +1,25 @@
 import type { Metadata } from "next";
-import ExplainAfterReadingFlow from "@/components/training/explain-after-reading-flow";
-import TrainingPageShell from "@/components/training/training-page-shell";
-import { explainAfterReadingPrompts } from "@/data/drill-prompts";
-import { programFamilies } from "@/data/training";
-const program = programFamilies.find(
-  (item) => item.slug === "explain-after-reading",
-)!;
+import DrillJsonLd from "@/components/training/drill-json-ld";
+import DrillPracticePage from "@/components/training/drill-practice-page";
+import { getDrill } from "@/data/drills";
+import { getRandomFromPool } from "@/lib/practice-helpers";
+
+const drill = getDrill("explain-after-reading")!;
+
 export const metadata: Metadata = {
-  title: "Explain after reading Training",
-  description: program.prompt,
+  title: "Explain After Reading: Free Speaking Practice | Yapper",
+  description:
+    "Free explain-after-reading speech drill. Read a short passage, hide it, and explain the main idea out loud with a timer and optional recording.",
   alternates: { canonical: "https://ypr.app/training/explain-after-reading" },
 };
+
 export default function ExplainAfterReadingPage() {
+  const initialTopic = getRandomFromPool(drill.pool, null);
+
   return (
-    <TrainingPageShell program={program}>
-      <ExplainAfterReadingFlow prompts={explainAfterReadingPrompts} />
-    </TrainingPageShell>
+    <>
+      <DrillJsonLd drill={drill} />
+      <DrillPracticePage drill={drill} initialTopic={initialTopic} />
+    </>
   );
 }

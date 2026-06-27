@@ -1,32 +1,25 @@
 import type { Metadata } from "next";
-import DrillPracticeFlow from "@/components/training/drill-practice-flow";
-import TrainingPageShell from "@/components/training/training-page-shell";
-import { creatorCameraPrompts } from "@/data/drill-prompts";
-import { programFamilies } from "@/data/training";
-const program = programFamilies.find(
-  (item) => item.slug === "creator-camera-drills",
-)!;
+import DrillJsonLd from "@/components/training/drill-json-ld";
+import DrillPracticePage from "@/components/training/drill-practice-page";
+import { getDrill } from "@/data/drills";
+import { getRandomFromPool } from "@/lib/practice-helpers";
+
+const drill = getDrill("creator-camera-drills")!;
+
 export const metadata: Metadata = {
-  title: "Creator camera drills Training",
-  description: program.prompt,
+  title: "Creator Camera Drills: Practice On-Camera | Yapper",
+  description:
+    "Free creator camera drills. Practice hooks, payoffs, and crisp examples on camera with a timer, then rewatch your takes. No sign-up.",
   alternates: { canonical: "https://ypr.app/training/creator-camera-drills" },
 };
+
 export default function CreatorCameraDrillsPage() {
+  const initialTopic = getRandomFromPool(drill.pool, null);
+
   return (
-    <TrainingPageShell program={program}>
-      <DrillPracticeFlow
-        eyebrow="Creator camera rep"
-        title="Hook, payoff, example."
-        intro="Practice short-form camera reps with a clear opening, a useful point, and enough specificity to sound real."
-        prompts={creatorCameraPrompts}
-        suggestedTime="45-90 sec"
-        instructions={[
-          "Start with the hook in one sentence.",
-          "Give the payoff before background context.",
-          "Use one concrete example, not a list of abstractions.",
-          "End cleanly with the takeaway or next action.",
-        ]}
-      />
-    </TrainingPageShell>
+    <>
+      <DrillJsonLd drill={drill} />
+      <DrillPracticePage drill={drill} initialTopic={initialTopic} />
+    </>
   );
 }

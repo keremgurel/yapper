@@ -27,10 +27,20 @@ export function getRandomTopic(
   return nextTopic;
 }
 
-export function pickReelBlurbs(): string[] {
+export function getRandomFromPool(pool: Topic[], exclude: Topic | null): Topic {
+  if (pool.length === 0) return getRandomTopic(exclude, "All", "All");
+  let nextTopic: Topic;
+  do {
+    nextTopic = pool[Math.floor(Math.random() * pool.length)];
+  } while (nextTopic === exclude && pool.length > 1);
+  return nextTopic;
+}
+
+export function pickReelBlurbs(pool?: Topic[]): string[] {
+  const source = pool && pool.length > 0 ? pool : topics;
   return Array.from(
     { length: 5 },
-    () => topics[Math.floor(Math.random() * topics.length)].text,
+    () => source[Math.floor(Math.random() * source.length)].text,
   );
 }
 

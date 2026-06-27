@@ -1,23 +1,27 @@
 "use client";
 
-import FreestyleHero from "@/components/freestyle-hero";
+import {
+  ErrorBoundary,
+  PracticeErrorFallback,
+} from "@/components/ErrorBoundary";
 import PracticeStage from "@/components/practice-stage";
-import { FreestyleFaq } from "@/components/freestyle-faq";
 import Waitlist from "@/components/waitlist";
+import DrillPracticeHero from "@/components/training/drill-practice-hero";
+import DrillSeoSections from "@/components/training/drill-seo-sections";
 import TrainingEntryCard from "@/components/training/training-entry-card";
 import TrainingHeader from "@/components/training/training-header";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
-
 import { PracticeSessionProvider } from "@/contexts/practice-session";
+import type { DrillContent } from "@/data/drills";
 import type { Topic } from "@/data/topics";
 
-interface FreestyleSpeechClientProps {
-  initialTopic: Topic;
-}
-
-export default function FreestyleSpeechClient({
+export default function DrillPracticePage({
+  drill,
   initialTopic,
-}: FreestyleSpeechClientProps) {
+}: {
+  drill: DrillContent;
+  initialTopic: Topic;
+}) {
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -34,16 +38,30 @@ export default function FreestyleSpeechClient({
     <div className="flex min-h-screen flex-col transition-colors duration-300">
       <TrainingHeader />
 
-      <FreestyleHero onJumpToPractice={handleJumpToPractice} />
+      <DrillPracticeHero
+        eyebrow={drill.heroEyebrow}
+        titleTop={drill.heroTitleTop}
+        titleBottom={drill.heroTitleBottom}
+        description={drill.heroDescription}
+        onJumpToPractice={handleJumpToPractice}
+      />
 
-      <PracticeSessionProvider initialTopic={initialTopic} mode="freestyle">
-        <PracticeStage />
+      <PracticeSessionProvider
+        initialTopic={initialTopic}
+        topicPool={drill.pool}
+        initialGenerated
+      >
+        <ErrorBoundary
+          fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
+        >
+          <PracticeStage />
+        </ErrorBoundary>
       </PracticeSessionProvider>
 
-      <TrainingEntryCard />
+      <DrillSeoSections drill={drill} />
 
+      <TrainingEntryCard />
       <Waitlist variant="full" />
-      <FreestyleFaq />
       <Footer />
     </div>
   );

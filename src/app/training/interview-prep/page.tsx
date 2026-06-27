@@ -1,30 +1,25 @@
 import type { Metadata } from "next";
-import DrillPracticeFlow from "@/components/training/drill-practice-flow";
-import TrainingPageShell from "@/components/training/training-page-shell";
-import { interviewPrepPrompts } from "@/data/drill-prompts";
-import { programFamilies } from "@/data/training";
-const program = programFamilies.find((item) => item.slug === "interview-prep")!;
+import DrillJsonLd from "@/components/training/drill-json-ld";
+import DrillPracticePage from "@/components/training/drill-practice-page";
+import { getDrill } from "@/data/drills";
+import { getRandomFromPool } from "@/lib/practice-helpers";
+
+const drill = getDrill("interview-prep")!;
+
 export const metadata: Metadata = {
-  title: "Interview prep Training",
-  description: program.prompt,
+  title: "Interview Answer Practice: Free & No Sign-Up | Yapper",
+  description:
+    "Free interview answer practice. Get behavioral questions, set a timer, and record concise STAR-style answers, then review your delivery.",
   alternates: { canonical: "https://ypr.app/training/interview-prep" },
 };
+
 export default function InterviewPrepPage() {
+  const initialTopic = getRandomFromPool(drill.pool, null);
+
   return (
-    <TrainingPageShell program={program}>
-      <DrillPracticeFlow
-        eyebrow="Interview rep"
-        title="Answer with shape, not script."
-        intro="Practice turning interview prompts into concise answers with a situation, action, result, and lesson."
-        prompts={interviewPrepPrompts}
-        suggestedTime="90-120 sec"
-        instructions={[
-          "Take 15 seconds to choose one real example.",
-          "Open with the headline before you explain the background.",
-          "Use situation, action, result, and lesson as a loose spine.",
-          "End with what the example proves about how you work now.",
-        ]}
-      />
-    </TrainingPageShell>
+    <>
+      <DrillJsonLd drill={drill} />
+      <DrillPracticePage drill={drill} initialTopic={initialTopic} />
+    </>
   );
 }

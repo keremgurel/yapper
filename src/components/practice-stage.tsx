@@ -60,6 +60,7 @@ export default function PracticeStage() {
     toggleCamera,
     toggleMic,
     hasGeneratedTopic,
+    hasPool,
     mediaError,
     clearMediaError,
   } = usePracticeSession();
@@ -166,7 +167,7 @@ export default function PracticeStage() {
             </div>
           )}
 
-          {!isFreestyle && (
+          {!isFreestyle && !hasPool && (
             <div
               className={`flex min-w-0 flex-1 flex-wrap gap-2 pr-20 transition-all duration-500 md:pr-0 ${
                 inSession || timerDone

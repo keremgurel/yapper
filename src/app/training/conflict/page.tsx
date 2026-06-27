@@ -1,30 +1,25 @@
 import type { Metadata } from "next";
-import DrillPracticeFlow from "@/components/training/drill-practice-flow";
-import TrainingPageShell from "@/components/training/training-page-shell";
-import { conflictPrompts } from "@/data/drill-prompts";
-import { programFamilies } from "@/data/training";
-const program = programFamilies.find((item) => item.slug === "conflict")!;
+import DrillJsonLd from "@/components/training/drill-json-ld";
+import DrillPracticePage from "@/components/training/drill-practice-page";
+import { getDrill } from "@/data/drills";
+import { getRandomFromPool } from "@/lib/practice-helpers";
+
+const drill = getDrill("conflict")!;
+
 export const metadata: Metadata = {
-  title: "Conflict handling Training",
-  description: program.prompt,
+  title: "Conflict Handling Speaking Practice | Yapper",
+  description:
+    "Free conflict practice. Rehearse calm, direct responses to tense scenarios out loud with a timer and optional recording, no sign-up.",
   alternates: { canonical: "https://ypr.app/training/conflict" },
 };
+
 export default function ConflictPage() {
+  const initialTopic = getRandomFromPool(drill.pool, null);
+
   return (
-    <TrainingPageShell program={program}>
-      <DrillPracticeFlow
-        eyebrow="Conflict rep"
-        title="Clear, calm, and brief."
-        intro="Practice tense sentences before you need them, so disagreement stays direct instead of spiraling."
-        prompts={conflictPrompts}
-        suggestedTime="60-90 sec"
-        instructions={[
-          "Start by naming what you heard or what happened.",
-          "State your view in one plain sentence without piling on extra evidence.",
-          "Ask for the next behavior or decision you want.",
-          "Keep your pace slower than normal and leave space after the hard sentence.",
-        ]}
-      />
-    </TrainingPageShell>
+    <>
+      <DrillJsonLd drill={drill} />
+      <DrillPracticePage drill={drill} initialTopic={initialTopic} />
+    </>
   );
 }

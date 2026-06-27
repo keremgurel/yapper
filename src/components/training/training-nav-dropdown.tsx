@@ -10,7 +10,6 @@ import {
   ChevronDown,
   Flame,
   HeartHandshake,
-  MessageCircle,
   Mic,
   Shuffle,
   Sparkles,
@@ -39,11 +38,9 @@ const iconByTitle: Record<string, ComponentType<{ className?: string }>> = {
   "Creator camera drills": Camera,
 };
 
-const statusStyles: Record<TrainingNavItem["status"], string> = {
-  "Free now":
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
-  "Free guide":
-    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
+const statusDot: Record<TrainingNavItem["status"], string> = {
+  "Free now": "bg-emerald-500",
+  "Free guide": "bg-cyan-400",
 };
 
 function TrainingNavLink({ item }: { item: TrainingNavItem }) {
@@ -52,23 +49,22 @@ function TrainingNavLink({ item }: { item: TrainingNavItem }) {
   return (
     <Link
       href={item.href}
-      className="group flex min-w-0 gap-3 rounded-2xl p-3 text-left no-underline transition-colors hover:bg-slate-950/[0.045] dark:hover:bg-white/[0.065]"
+      className="group hover:bg-muted flex min-w-0 items-start gap-3 rounded-2xl p-2.5 text-left no-underline transition-colors"
     >
-      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-900/8 bg-white/72 text-slate-800 shadow-sm dark:border-white/10 dark:bg-white/[0.075] dark:text-white">
+      <span className="border-border bg-muted text-foreground/75 group-hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors">
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-black text-slate-950 dark:text-white">
+        <span className="flex items-center gap-1.5">
+          <span className="text-foreground truncate text-[13px] font-bold">
             {item.title}
           </span>
           <span
-            className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase ${statusStyles[item.status]}`}
-          >
-            {item.status}
-          </span>
+            className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusDot[item.status]}`}
+            title={item.status}
+          />
         </span>
-        <span className="mt-1 block text-[12px] leading-5 text-slate-600 dark:text-white/56">
+        <span className="text-foreground/55 mt-0.5 line-clamp-1 block text-[11.5px] leading-4">
           {item.description}
         </span>
       </span>
@@ -82,64 +78,41 @@ export default function TrainingNavDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-full border border-slate-900/8 bg-white/55 px-3 py-2 text-[13px] font-bold text-slate-700 shadow-sm backdrop-blur transition-colors hover:bg-white dark:border-white/10 dark:bg-white/[0.055] dark:text-white/74 dark:hover:bg-white/[0.09]"
+          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-colors"
         >
-          <Sparkles className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-300" />
-          <span className="hidden sm:inline">Training</span>
-          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+          <Sparkles className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
+          <span>Training</span>
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
         sideOffset={12}
-        className="w-[calc(100vw-1.5rem)] max-w-[960px] overflow-hidden rounded-[1.5rem] border-slate-900/10 bg-[#f8fafc]/96 p-0 shadow-[0_28px_100px_rgba(15,23,42,0.22)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#12141b]/96"
+        className="border-border bg-card max-h-[min(80vh,640px)] w-[min(92vw,560px)] overflow-y-auto rounded-3xl p-3 shadow-[0_28px_100px_rgba(15,23,42,0.22)]"
       >
-        <div className="grid gap-0 lg:grid-cols-[1fr_310px]">
-          <div className="grid gap-3 p-3 sm:grid-cols-2 lg:grid-cols-3">
-            {groups.map((group) => (
-              <div key={group} className="min-w-0">
-                <p className="px-3 pt-2 pb-1 font-mono text-[10px] font-black tracking-[0.16em] text-slate-500 uppercase dark:text-white/36">
-                  {group}
-                </p>
-                <div className="space-y-1">
-                  {trainingNavItems
-                    .filter((item) => item.group === group)
-                    .map((item) => (
-                      <TrainingNavLink key={item.title} item={item} />
-                    ))}
-                </div>
+        {groups.map((group, groupIndex) => {
+          const items = trainingNavItems.filter((item) => item.group === group);
+          return (
+            <div key={group} className={groupIndex > 0 ? "mt-2" : undefined}>
+              <p className="text-foreground/45 px-2.5 pt-1 pb-1.5 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+                {group}
+              </p>
+              <div className="grid gap-0.5 sm:grid-cols-2">
+                {items.map((item) => (
+                  <TrainingNavLink key={item.title} item={item} />
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          );
+        })}
 
-          <div className="relative overflow-hidden border-t border-slate-900/10 bg-slate-950 p-5 text-white lg:border-t-0 lg:border-l dark:border-white/10">
-            <div className="pointer-events-none absolute inset-0 opacity-45">
-              <div className="absolute -top-16 -right-12 h-40 w-40 rounded-full bg-cyan-300 blur-3xl" />
-              <div className="absolute -bottom-20 -left-16 h-44 w-44 rounded-full bg-orange-500 blur-3xl" />
-            </div>
-            <div className="relative flex h-full min-h-[260px] flex-col justify-between">
-              <div>
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10">
-                  <MessageCircle className="h-5 w-5 text-cyan-200" />
-                </span>
-                <h2 className="font-display mt-6 text-3xl leading-none font-black">
-                  Train every kind of yap.
-                </h2>
-                <p className="mt-4 text-sm leading-6 text-white/64">
-                  Start with random topics, freestyle speaking, fluency warmups,
-                  or a guided drill for the moment you want to rehearse.
-                </p>
-              </div>
-              <Link
-                href="/training"
-                className="mt-7 inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-black text-slate-950 no-underline transition-transform hover:-translate-y-0.5"
-              >
-                Open training map
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
+        <Link
+          href="/training"
+          className="bg-foreground text-background mt-2 flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-[13px] font-black no-underline transition-opacity hover:opacity-90"
+        >
+          Open the full training map
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </DropdownMenuContent>
     </DropdownMenu>
   );

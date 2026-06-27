@@ -22,7 +22,7 @@ export default function TopicReel() {
   const lastTapRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const glassPanelClass =
-    "relative flex h-[150px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
+    "relative flex max-h-[min(46vh,340px)] min-h-[150px] w-full flex-col items-center justify-center overflow-y-auto rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
 
   const tryDoubleTap = useCallback(() => {
     if (!canEditPrompt || spinning || promptEditorOpen) return;
@@ -60,8 +60,8 @@ export default function TopicReel() {
       : displayText.length < 80
         ? "text-[18px] md:text-[22px]"
         : displayText.length < 140
-          ? "text-[15px] md:text-[18px]"
-          : "text-[13px] md:text-[15px]";
+          ? "text-[16px] md:text-[19px]"
+          : "text-[15px] md:text-[17px]";
 
   return (
     <div className={glassPanelClass}>
