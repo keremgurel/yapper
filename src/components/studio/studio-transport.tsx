@@ -3,9 +3,11 @@
 import {
   Pause,
   Play,
+  Redo2,
   RotateCcw,
   Scissors,
   Trash2,
+  Undo2,
   Volume2,
   X,
 } from "lucide-react";
@@ -36,6 +38,10 @@ export default function StudioTransport({
     deleteSelected,
     removeSilences,
     detecting,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
     reset,
     clearSource,
   } = useStudio();
@@ -60,6 +66,27 @@ export default function StudioTransport({
       <span className="text-foreground/60 mr-1 font-mono text-xs tabular-nums">
         {fmt(currentTimelineTime)} / {fmt(totalTimelineTime)}
       </span>
+
+      <button
+        type="button"
+        onClick={undo}
+        disabled={!canUndo}
+        className={pillBtn}
+        title="Undo (⌘/Ctrl+Z)"
+      >
+        <Undo2 className="h-3.5 w-3.5" />
+        Undo
+      </button>
+      <button
+        type="button"
+        onClick={redo}
+        disabled={!canRedo}
+        className={pillBtn}
+        title="Redo (⌘/Ctrl+Shift+Z)"
+      >
+        <Redo2 className="h-3.5 w-3.5" />
+        Redo
+      </button>
 
       <button type="button" onClick={onSplit} className={pillBtn}>
         <Scissors className="h-3.5 w-3.5" />

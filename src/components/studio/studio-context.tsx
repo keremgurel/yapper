@@ -26,6 +26,7 @@ import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import { useClipHistory } from "@/hooks/use-clip-history";
 import {
   newWordId,
   type Clip,
@@ -60,6 +61,10 @@ interface StudioContextValue {
   deleteWords: (ids: string[]) => void;
   removeFillers: () => number;
   removeEarlierTakes: () => number;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   reset: () => void;
 }
 
@@ -67,7 +72,8 @@ const StudioContext = createContext<StudioContextValue | null>(null);
 
 export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<StudioSource | null>(null);
-  const [clips, setClips] = useState<Clip[]>([]);
+  const { clips, setClips, resetClips, undo, redo, canUndo, canRedo } =
+    useClipHistory();
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [words, setWords] = useState<Word[]>([]);
   const [transcribeStatus, setTranscribeStatus] =
@@ -87,11 +93,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (prev) URL.revokeObjectURL(prev.url);
         return next;
       });
-      setClips(fullClip(next.duration));
+      resetClips(fullClip(next.duration));
       setSelectedClipId(null);
       resetTranscript();
     },
-    [resetTranscript],
+    [resetClips, resetTranscript],
   );
 
   const clearSource = useCallback(() => {
@@ -99,10 +105,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (prev) URL.revokeObjectURL(prev.url);
       return null;
     });
-    setClips([]);
+    resetClips([]);
     setSelectedClipId(null);
     resetTranscript();
-  }, [resetTranscript]);
+  }, [resetClips, resetTranscript]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit).
   useEffect(() => {
@@ -113,16 +119,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, [loadSource]);
 
-  const splitAt = useCallback((sourceTime: number) => {
-    setClips((prev) => splitAtSource(prev, sourceTime));
-  }, []);
+  const splitAt = useCallback(
+    (sourceTime: number) => {
+      setClips((prev) => splitAtSource(prev, sourceTime));
+    },
+    [setClips],
+  );
 
   const deleteSelected = useCallback(() => {
     setClips((prev) =>
       selectedClipId ? removeClip(prev, selectedClipId) : prev,
     );
     setSelectedClipId(null);
-  }, [selectedClipId]);
+  }, [setClips, selectedClipId]);
 
   const trimStart = useCallback(
     (sourceTime: number) => {
@@ -130,7 +139,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         selectedClipId ? trimClipStart(prev, selectedClipId, sourceTime) : prev,
       );
     },
-    [selectedClipId],
+    [setClips, selectedClipId],
   );
 
   const trimEnd = useCallback(
@@ -139,7 +148,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         selectedClipId ? trimClipEnd(prev, selectedClipId, sourceTime) : prev,
       );
     },
-    [selectedClipId],
+    [setClips, selectedClipId],
   );
 
   const removeSilences = useCallback(async (): Promise<number> => {
@@ -159,7 +168,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setDetecting(false);
     }
-  }, [source]);
+  }, [source, setClips]);
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source) return;
@@ -181,14 +190,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source]);
 
-  const applyCuts = useCallback((ranges: [number, number][]) => {
-    if (ranges.length === 0) return;
-    setClips((prev) => {
-      let next = prev;
-      for (const [from, to] of ranges) next = removeSourceRange(next, from, to);
-      return next;
-    });
-  }, []);
+  const applyCuts = useCallback(
+    (ranges: [number, number][]) => {
+      if (ranges.length === 0) return;
+      setClips((prev) => {
+        let next = prev;
+        for (const [from, to] of ranges) {
+          next = removeSourceRange(next, from, to);
+        }
+        return next;
+      });
+    },
+    [setClips],
+  );
 
   const deleteWords = useCallback(
     (ids: string[]) => {
@@ -211,9 +225,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, [words, applyCuts]);
 
   const reset = useCallback(() => {
-    setClips(source ? fullClip(source.duration) : []);
+    resetClips(source ? fullClip(source.duration) : []);
     setSelectedClipId(null);
-  }, [source]);
+  }, [resetClips, source]);
 
   const value = useMemo<StudioContextValue>(
     () => ({
@@ -236,6 +250,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       removeFillers,
       removeEarlierTakes,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
       reset,
     }),
     [
@@ -257,6 +275,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       removeFillers,
       removeEarlierTakes,
+      undo,
+      redo,
+      canUndo,
+      canRedo,
       reset,
     ],
   );

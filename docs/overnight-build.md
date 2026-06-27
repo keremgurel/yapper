@@ -147,3 +147,16 @@ ship as new routes so existing pages stay stable.
   maps icon keys to lucide icons.
 - Verified live in Chrome (hub + dropdown). Build green (41 routes).
 - Next: optional careful ffmpeg export; otherwise more polish / killer features.
+
+### Iteration 9 — Studio undo/redo (shipped)
+
+- `hooks/use-clip-history.ts`: undoable clip state (past/present/future). All edits
+  (split, delete clip, trim, remove-silences, transcript cuts, fillers, earlier
+  takes) flow through it as one history entry each; new source resets history.
+- Undo/Redo buttons in the transport (disabled when unavailable) + keyboard
+  shortcuts: ⌘/Ctrl+Z undo, ⌘/Ctrl+Shift+Z (or Ctrl+Y) redo, Space play/pause,
+  S split at playhead, Delete/Backspace delete selected clip. Shortcuts ignore
+  typing in inputs/textareas.
+- History reducer validated with node assertions (undo/redo/no-op/future-clear).
+- Build green. Editing is now safely reversible.
+- Next: discoverability (surface the Create flow), more polish, careful export.
