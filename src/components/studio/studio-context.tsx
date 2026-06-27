@@ -16,13 +16,30 @@ import {
   trimClipStart,
 } from "@/lib/studio/clips";
 import { detectSilences } from "@/lib/studio/silence";
-import type { Clip, StudioSource } from "@/lib/studio/types";
+import { decodeToMono16k } from "@/lib/studio/audio-decode";
+import { transcribeAudio } from "@/lib/studio/transcribe";
+import {
+  newWordId,
+  type Clip,
+  type StudioSource,
+  type Word,
+} from "@/lib/studio/types";
+
+export type TranscribeStatus =
+  | "idle"
+  | "loading"
+  | "transcribing"
+  | "done"
+  | "error";
 
 interface StudioContextValue {
   source: StudioSource | null;
   clips: Clip[];
   selectedClipId: string | null;
   detecting: boolean;
+  words: Word[];
+  transcribeStatus: TranscribeStatus;
+  transcribeProgress: number;
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
@@ -31,6 +48,7 @@ interface StudioContextValue {
   trimStart: (sourceTime: number) => void;
   trimEnd: (sourceTime: number) => void;
   removeSilences: () => Promise<number>;
+  transcribe: () => Promise<void>;
   reset: () => void;
 }
 
@@ -40,16 +58,30 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<StudioSource | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [words, setWords] = useState<Word[]>([]);
+  const [transcribeStatus, setTranscribeStatus] =
+    useState<TranscribeStatus>("idle");
+  const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
 
-  const loadSource = useCallback((next: StudioSource) => {
-    setSource((prev) => {
-      if (prev) URL.revokeObjectURL(prev.url);
-      return next;
-    });
-    setClips(fullClip(next.duration));
-    setSelectedClipId(null);
+  const resetTranscript = useCallback(() => {
+    setWords([]);
+    setTranscribeStatus("idle");
+    setTranscribeProgress(0);
   }, []);
+
+  const loadSource = useCallback(
+    (next: StudioSource) => {
+      setSource((prev) => {
+        if (prev) URL.revokeObjectURL(prev.url);
+        return next;
+      });
+      setClips(fullClip(next.duration));
+      setSelectedClipId(null);
+      resetTranscript();
+    },
+    [resetTranscript],
+  );
 
   const clearSource = useCallback(() => {
     setSource((prev) => {
@@ -58,7 +90,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     });
     setClips([]);
     setSelectedClipId(null);
-  }, []);
+    resetTranscript();
+  }, [resetTranscript]);
 
   const splitAt = useCallback((sourceTime: number) => {
     setClips((prev) => splitAtSource(prev, sourceTime));
@@ -108,6 +141,26 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source]);
 
+  const transcribe = useCallback(async (): Promise<void> => {
+    if (!source) return;
+    setTranscribeStatus("loading");
+    setTranscribeProgress(0);
+    try {
+      const audio = await decodeToMono16k(source.url);
+      const raw = await transcribeAudio(audio, (p) => {
+        if (p.status === "loading" && typeof p.progress === "number") {
+          setTranscribeProgress(Math.round(p.progress));
+        } else if (p.status === "transcribing") {
+          setTranscribeStatus("transcribing");
+        }
+      });
+      setWords(raw.map((w, i) => ({ id: newWordId(i), ...w })));
+      setTranscribeStatus("done");
+    } catch {
+      setTranscribeStatus("error");
+    }
+  }, [source]);
+
   const reset = useCallback(() => {
     setClips(source ? fullClip(source.duration) : []);
     setSelectedClipId(null);
@@ -119,6 +172,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       clips,
       selectedClipId,
       detecting,
+      words,
+      transcribeStatus,
+      transcribeProgress,
       loadSource,
       clearSource,
       selectClip: setSelectedClipId,
@@ -127,6 +183,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimStart,
       trimEnd,
       removeSilences,
+      transcribe,
       reset,
     }),
     [
@@ -134,6 +191,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       clips,
       selectedClipId,
       detecting,
+      words,
+      transcribeStatus,
+      transcribeProgress,
       loadSource,
       clearSource,
       splitAt,
@@ -141,6 +201,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimStart,
       trimEnd,
       removeSilences,
+      transcribe,
       reset,
     ],
   );

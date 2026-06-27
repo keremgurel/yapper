@@ -84,3 +84,21 @@ ship as new routes so existing pages stay stable.
   screenshotted, but the page + logic are verified.
 - Next: in-browser Whisper transcript (transformers.js, lazy) → delete-words-cuts,
   remove-earlier-takes; then wire Record → Edit; ffmpeg.wasm export last.
+
+### Iteration 5 — Studio transcription (shipped)
+
+- In-browser Whisper (`Xenova/whisper-tiny.en`) via transformers.js, loaded at
+  RUNTIME from CDN through a hidden dynamic import so the bundler never touches
+  it — zero bundle impact, build stays green, fully keyless/on-device.
+- `lib/studio/audio-decode.ts`: decode + downmix + resample to mono 16 kHz via
+  Web Audio (OfflineAudioContext) for Whisper input.
+- `lib/studio/transcribe.ts`: ASR pipeline with word-level timestamps (falls back
+  to segment-level), model-download progress callback.
+- Studio context gains `words` + transcribe status/progress + `transcribe()`.
+- New transcript panel (right column): Transcribe button → download-progress bar →
+  transcribing spinner → transcript with the current word highlighted and
+  click-to-seek. Errors degrade gracefully (editor still works).
+- Build verified green (transformers.js excluded from bundle); page renders.
+  Full transcription run needs a real upload (browser upload automation
+  unavailable here) + model download, so not screenshotted end-to-end.
+- Next: transcript editing — delete words → cut source ranges; remove earlier takes.

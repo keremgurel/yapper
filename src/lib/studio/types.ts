@@ -12,6 +12,18 @@ export interface StudioSource {
   duration: number;
 }
 
+/** A transcribed token (word or short phrase) with source timestamps. */
+export interface Word {
+  id: string;
+  text: string;
+  start: number;
+  end: number;
+}
+
+export function newWordId(i: number): string {
+  return `w-${i}`;
+}
+
 export function newClipId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `clip-${crypto.randomUUID()}`;
