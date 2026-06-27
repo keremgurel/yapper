@@ -16,6 +16,11 @@ import {
   trimClipStart,
 } from "@/lib/studio/clips";
 import { detectSilences } from "@/lib/studio/silence";
+import {
+  findEarlierTakeRanges,
+  findFillerIds,
+  selectionToRanges,
+} from "@/lib/studio/transcript-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
 import {
@@ -49,6 +54,9 @@ interface StudioContextValue {
   trimEnd: (sourceTime: number) => void;
   removeSilences: () => Promise<number>;
   transcribe: () => Promise<void>;
+  deleteWords: (ids: string[]) => void;
+  removeFillers: () => number;
+  removeEarlierTakes: () => number;
   reset: () => void;
 }
 
@@ -161,6 +169,35 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source]);
 
+  const applyCuts = useCallback((ranges: [number, number][]) => {
+    if (ranges.length === 0) return;
+    setClips((prev) => {
+      let next = prev;
+      for (const [from, to] of ranges) next = removeSourceRange(next, from, to);
+      return next;
+    });
+  }, []);
+
+  const deleteWords = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      applyCuts(selectionToRanges(words, new Set(ids)));
+    },
+    [words, applyCuts],
+  );
+
+  const removeFillers = useCallback((): number => {
+    const ids = findFillerIds(words);
+    if (ids.length > 0) applyCuts(selectionToRanges(words, new Set(ids)));
+    return ids.length;
+  }, [words, applyCuts]);
+
+  const removeEarlierTakes = useCallback((): number => {
+    const ranges = findEarlierTakeRanges(words);
+    applyCuts(ranges);
+    return ranges.length;
+  }, [words, applyCuts]);
+
   const reset = useCallback(() => {
     setClips(source ? fullClip(source.duration) : []);
     setSelectedClipId(null);
@@ -184,6 +221,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimEnd,
       removeSilences,
       transcribe,
+      deleteWords,
+      removeFillers,
+      removeEarlierTakes,
       reset,
     }),
     [
@@ -202,6 +242,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimEnd,
       removeSilences,
       transcribe,
+      deleteWords,
+      removeFillers,
+      removeEarlierTakes,
       reset,
     ],
   );

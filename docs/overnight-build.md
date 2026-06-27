@@ -102,3 +102,21 @@ ship as new routes so existing pages stay stable.
   Full transcription run needs a real upload (browser upload automation
   unavailable here) + model download, so not screenshotted end-to-end.
 - Next: transcript editing — delete words → cut source ranges; remove earlier takes.
+
+### Iteration 6 — Transcript-based editing (shipped)
+
+- `lib/studio/transcript-edit.ts`: `selectionToRanges` (order-aware: contiguous
+  selected words → one cut span, disjoint → separate), `isWordCut`,
+  `findFillerIds`, `findEarlierTakeRanges` (exact normalized n-gram retake
+  detector — cuts the earlier attempt up to the restart, keeps the last take).
+- Studio context: `deleteWords`, `removeFillers`, `removeEarlierTakes` map words →
+  source ranges → `removeSourceRange` on the clips (cut shows instantly in the
+  timeline + skip-cuts preview).
+- Interactive transcript (`transcript-words.tsx`): click selects + seeks,
+  Shift-click range, ⌘/Ctrl-click multi-select; "Delete N words" cuts them;
+  cut words render struck-through/dimmed; one-click "Remove fillers" and
+  "Remove earlier takes" in the toolbar.
+- Logic validated with node assertions (selection grouping + retake detection).
+- This makes editing-by-transcript real: the core of the Record→Edit vision.
+- Next: wire Record → Edit (open a practice recording in /studio); later ffmpeg
+  export, then polish + a unified create hub.
