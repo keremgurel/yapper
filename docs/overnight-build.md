@@ -68,3 +68,19 @@ ship as new routes so existing pages stay stable.
   via an `IdeasProvider`. Verified live end-to-end in Chrome.
 - Next: start the transcript-based video editor (/studio) — load recording,
   in-browser Whisper, synced transcript, then editing.
+
+### Iteration 4 — Studio editor foundation (shipped)
+
+- New `/studio` route + "Studio" nav link. Keyless, local-first, no heavy deps yet.
+- Upload a video (drag/drop or picker); object-URL player; nothing is uploaded.
+- Non-destructive EDL clip model (`lib/studio/clips.ts`): split at playhead,
+  delete clip, trim start/end, source↔timeline mapping, playback resolver.
+- "Remove silences" via Web Audio RMS (`lib/studio/silence.ts`) — decodes audio,
+  finds low-energy regions, cuts them from the clip list.
+- Preview that skips removed regions during playback (`use-studio-playback`).
+- Timeline shows clips proportionally with a playhead; click to scrub/select.
+- Core clip math validated with assertions (split/remove/map/skip all correct).
+  Browser file-upload couldn't be automated here, so interactive upload wasn't
+  screenshotted, but the page + logic are verified.
+- Next: in-browser Whisper transcript (transformers.js, lazy) → delete-words-cuts,
+  remove-earlier-takes; then wire Record → Edit; ffmpeg.wasm export last.

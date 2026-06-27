@@ -28,6 +28,12 @@ export default function TrainingHeader() {
         >
           Ideas
         </Link>
+        <Link
+          href="/studio"
+          className="text-foreground/70 hover:bg-muted hover:text-foreground hidden rounded-full px-3 py-2 text-[13px] font-bold no-underline transition-colors sm:inline-flex"
+        >
+          Studio
+        </Link>
       </div>
       <div className="origin-right scale-[0.5]">
         <CinematicThemeSwitcher />
