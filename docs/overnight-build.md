@@ -56,3 +56,15 @@ ship as new routes so existing pages stay stable.
 - Cards bottom-align their actions for an even grid.
 - Next: Ideation step (saved item → hook/points draft, template-based), then the
   transcript-based editor.
+
+### Iteration 3 — Ideation step (shipped)
+
+- New `/ideation` route + "Ideas" nav link. Completes Inspiration → Ideation.
+- "Turn into idea" on any inspiration card seeds a structured draft (topic-filled
+  hook options + key points + example + CTA), links back to the source, and opens
+  the ideation editor.
+- Editor: list of drafts (left) + editable draft (right) — title, add/remove
+  hooks and points (reusable `EditableList`), example, CTA. Auto-saved local-first
+  via an `IdeasProvider`. Verified live end-to-end in Chrome.
+- Next: start the transcript-based video editor (/studio) — load recording,
+  in-browser Whisper, synced transcript, then editing.

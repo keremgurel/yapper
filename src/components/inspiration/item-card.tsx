@@ -1,15 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, FileText, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ExternalLink, FileText, Lightbulb, Trash2 } from "lucide-react";
 import PlatformBadge from "@/components/inspiration/platform-badge";
 import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
+import { addIdeaFromItem } from "@/lib/inspiration/ideas";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
 export default function ItemCard({ item }: { item: InspirationItem }) {
   const { pillars, moveItem, deleteItem } = useInspiration();
   const [showTranscript, setShowTranscript] = useState(false);
+  const router = useRouter();
+
+  const turnIntoIdea = () => {
+    addIdeaFromItem(item);
+    router.push("/ideation");
+  };
 
   return (
     <article className="border-border bg-card flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-shadow hover:shadow-md">
@@ -67,7 +75,16 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
 
         <ItemNote id={item.id} note={item.note} />
 
-        <div className="mt-auto flex items-center gap-2 pt-3">
+        <button
+          type="button"
+          onClick={turnIntoIdea}
+          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-black"
+        >
+          <Lightbulb className="h-3.5 w-3.5" />
+          Turn into idea
+        </button>
+
+        <div className="mt-3 flex items-center gap-2 pt-0">
           <select
             value={item.pillarId ?? ""}
             onChange={(e) => moveItem(item.id, e.target.value || null)}
