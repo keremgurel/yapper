@@ -136,6 +136,11 @@ export default function StudioTimeline({
   const trackWidth = Math.max(total * pxPerSec, 1);
   const playheadX = sourceToTimeline(clips, currentSourceTime) * pxPerSec;
 
+  // Empty gutter on each side so the start (or end) can be scrolled to center,
+  // giving room to drag. Content lives at x = padLeft; nothing sits before it.
+  const measured = view.width > 0;
+  const padLeft = measured ? Math.round(view.width / 2) : 240;
+
   // Snap a clip's start (or its end) to nearby edges when magnet mode is on.
   const snapStart = useCallback(
     (start: number, dur: number): number => {
@@ -164,10 +169,10 @@ export default function StudioTimeline({
       const el = scrollRef.current;
       if (!el || total <= 0) return;
       const rect = el.getBoundingClientRect();
-      const x = clientX - rect.left + el.scrollLeft;
+      const x = clientX - rect.left + el.scrollLeft - padLeft;
       onSeekSource(timelineToSource(clips, clamp(x / pxPerSec, 0, total)));
     },
-    [clips, total, pxPerSec, onSeekSource],
+    [clips, total, pxPerSec, padLeft, onSeekSource],
   );
 
   useEffect(() => {
@@ -269,18 +274,18 @@ export default function StudioTimeline({
       if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // let horizontal scroll pass
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left + el.scrollLeft;
+      const cursorX = e.clientX - rect.left + el.scrollLeft - padLeft;
       const timeAtCursor = cursorX / pxPerSec;
       const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
       const next = clamp(pxPerSec * factor, MIN_PX, MAX_PX);
       setPxPerSec(next);
       requestAnimationFrame(() => {
-        el.scrollLeft = timeAtCursor * next - (e.clientX - rect.left);
+        el.scrollLeft = timeAtCursor * next + padLeft - (e.clientX - rect.left);
       });
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [pxPerSec]);
+  }, [pxPerSec, padLeft]);
 
   /* ---- track the visible window so we only render on-screen frames ---- */
   useEffect(() => {
@@ -288,6 +293,8 @@ export default function StudioTimeline({
     if (!el) return;
     const update = () =>
       setView({ start: el.scrollLeft, width: el.clientWidth });
+    // Start with 0:00 at the left edge; the gutter is scrollable to its left.
+    if (el.clientWidth > 0) el.scrollLeft = el.clientWidth / 2;
     update();
     el.addEventListener("scroll", update, { passive: true });
     const ro = new ResizeObserver(update);
@@ -299,9 +306,12 @@ export default function StudioTimeline({
   }, []);
 
   // Visible time range (+ one screen of margin each side) for windowed render.
-  const measured = view.width > 0;
-  const visStartSec = measured ? (view.start - view.width) / pxPerSec : 0;
-  const visEndSec = measured ? (view.start + view.width * 2) / pxPerSec : total;
+  const visStartSec = measured
+    ? (view.start - padLeft - view.width) / pxPerSec
+    : 0;
+  const visEndSec = measured
+    ? (view.start - padLeft + view.width * 2) / pxPerSec
+    : total;
 
   const ticks = buildTicks(total, pxPerSec);
 
@@ -313,7 +323,10 @@ export default function StudioTimeline({
   return (
     <div className="flex h-full min-h-0 flex-col select-none">
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
-        <div className="relative min-h-full" style={{ width: trackWidth }}>
+        <div
+          className="relative min-h-full"
+          style={{ width: trackWidth + padLeft * 2 }}
+        >
           {/* Ruler */}
           <div
             onPointerDown={(e) => {
@@ -327,7 +340,7 @@ export default function StudioTimeline({
               <span
                 key={t.sec}
                 className="text-foreground/40 absolute top-0 flex h-full items-center pl-1 font-mono text-[9px]"
-                style={{ left: t.x }}
+                style={{ left: t.x + padLeft }}
               >
                 <span className="bg-foreground/20 absolute top-0 left-0 h-1.5 w-px" />
                 {t.label}
@@ -335,8 +348,17 @@ export default function StudioTimeline({
             ))}
           </div>
 
+          {/* Start boundary — nothing can be placed before 0:00 */}
+          <div
+            className="bg-foreground/15 pointer-events-none absolute top-5 bottom-0 z-0 w-px"
+            style={{ left: padLeft }}
+          />
+
           {/* Tracks (fixed-height rows; extra panel height is room for more) */}
-          <div className="space-y-1 p-1">
+          <div
+            className="space-y-1 py-1"
+            style={{ paddingLeft: padLeft, paddingRight: padLeft }}
+          >
             {/* Main video track */}
             <div className="relative h-20">
               {clips.map((clip, i) => {
@@ -412,7 +434,8 @@ export default function StudioTimeline({
                       </span>
                     )}
 
-                    {/* Trim handles */}
+                    {/* Trim handles — wide invisible grab area, thin visible
+                        line so you can see exactly where the edge lands. */}
                     <span
                       onPointerDown={(e) => {
                         e.preventDefault();
@@ -426,8 +449,12 @@ export default function StudioTimeline({
                           origEnd: clip.end,
                         });
                       }}
-                      className={`absolute inset-y-0 left-0 w-2 cursor-ew-resize rounded-l-md bg-cyan-400/80 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-70"}`}
-                    />
+                      className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
+                    >
+                      <span
+                        className={`h-full w-0.5 rounded-full bg-cyan-300 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
+                      />
+                    </span>
                     <span
                       onPointerDown={(e) => {
                         e.preventDefault();
@@ -441,8 +468,12 @@ export default function StudioTimeline({
                           origEnd: clip.end,
                         });
                       }}
-                      className={`absolute inset-y-0 right-0 w-2 cursor-ew-resize rounded-r-md bg-cyan-400/80 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-70"}`}
-                    />
+                      className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
+                    >
+                      <span
+                        className={`h-full w-0.5 rounded-full bg-cyan-300 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
+                      />
+                    </span>
                   </div>
                 );
               })}
@@ -541,7 +572,7 @@ export default function StudioTimeline({
           {/* Playhead */}
           <div
             className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
-            style={{ left: playheadX }}
+            style={{ left: playheadX + padLeft }}
           >
             <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" />
           </div>
