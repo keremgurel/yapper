@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Music2, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import {
   sourceToTimeline,
@@ -47,12 +48,23 @@ export default function StudioTimeline({
   onSelect: (id: string) => void;
   onSeekSource: (t: number) => void;
 }) {
-  const { setClipRange } = useStudio();
+  const {
+    setClipRange,
+    audioTracks,
+    moveAudio,
+    toggleAudioMuted,
+    removeAudio,
+  } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
+  const [audioDrag, setAudioDrag] = useState<{
+    id: string;
+    startX: number;
+    origStart: number;
+  } | null>(null);
   const frames = useFilmstrip(sourceUrl, sourceDuration);
 
   const total = totalDuration(clips);
@@ -124,6 +136,22 @@ export default function StudioTimeline({
       window.removeEventListener("pointerup", onUp);
     };
   }, [trim, clips, sourceDuration, pxPerSec, setClipRange]);
+
+  /* ---- audio clip drag ---- */
+  useEffect(() => {
+    if (!audioDrag) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = (e.clientX - audioDrag.startX) / pxPerSec;
+      moveAudio(audioDrag.id, Math.max(0, audioDrag.origStart + delta));
+    };
+    const onUp = () => setAudioDrag(null);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [audioDrag, pxPerSec, moveAudio]);
 
   /* ---- wheel zoom ---- */
   useEffect(() => {
@@ -251,6 +279,55 @@ export default function StudioTimeline({
                 );
               })}
             </div>
+
+            {/* Audio tracks */}
+            {audioTracks.map((a) => {
+              const left = a.start * pxPerSec;
+              const width = Math.max(a.duration * pxPerSec, 8);
+              return (
+                <div key={a.id} className="relative h-12">
+                  <div
+                    style={{ left, width }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      setAudioDrag({
+                        id: a.id,
+                        startX: e.clientX,
+                        origStart: a.start,
+                      });
+                    }}
+                    className="absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/25 px-2 ring-1 ring-emerald-500/50 active:cursor-grabbing"
+                  >
+                    <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                    <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
+                      {a.name}
+                    </span>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => toggleAudioMuted(a.id)}
+                      className="text-foreground/60 hover:text-foreground shrink-0"
+                      aria-label={a.muted ? "Unmute" : "Mute"}
+                    >
+                      {a.muted ? (
+                        <VolumeX className="h-3.5 w-3.5" />
+                      ) : (
+                        <Volume2 className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => removeAudio(a.id)}
+                      className="text-foreground/60 shrink-0 hover:text-red-400"
+                      aria-label="Remove audio"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Playhead */}

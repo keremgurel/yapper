@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTranscript from "@/components/studio/studio-transcript";
 import StudioTransport from "@/components/studio/studio-transport";
@@ -18,6 +19,7 @@ export default function StudioWorkspace() {
     selectClip,
     splitAt,
     deleteSelected,
+    audioTracks,
     undo,
     redo,
   } = useStudio();
@@ -111,6 +113,11 @@ export default function StudioWorkspace() {
             className="max-h-full max-w-full rounded-lg"
             playsInline
             onClick={() => (playing ? pause() : play())}
+          />
+          <AudioTracksPlayer
+            tracks={audioTracks}
+            masterTime={sourceToTimeline(clips, currentTime)}
+            playing={playing}
           />
         </div>
 

@@ -263,3 +263,16 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
 - NEXT (bigger build, needs sign-off): true multi-track — add overlay video /
   audio tracks, drag to reorder, top track composited over lower ones, per-track
   mute/lock. This changes the clip model from one track to tracks[].
+
+### Iteration 15 — Multi-track stage 1: audio tracks
+
+- `AudioTrack` model + context actions (addAudio/moveAudio/toggleAudioMuted/
+  removeAudio); audio is additive on top of the base video EDL, so the existing
+  transcript editor keeps working.
+- "Add audio" in the transport; audio clips render as draggable rows on the
+  timeline below the video track (position by drag, mute, delete).
+- `AudioTracksPlayer` keeps hidden <audio> elements in sync with the master
+  (edited-timeline) clock so music/voiceover mixes under the video.
+- Verified live: added an audio file -> draggable audio track row appears.
+- NEXT (stage 2): overlay video track (PiP compositing in the preview) +
+  drag-reorder of tracks; then ffmpeg.wasm export of the composite.

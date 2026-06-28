@@ -12,6 +12,23 @@ export interface StudioSource {
   duration: number;
 }
 
+/** An audio clip placed on its own track, positioned on the edited timeline. */
+export interface AudioTrack {
+  id: string;
+  name: string;
+  url: string;
+  duration: number;
+  start: number; // edited-timeline seconds
+  muted: boolean;
+}
+
+export function newAudioId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `aud-${crypto.randomUUID()}`;
+  }
+  return `aud-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
 /** A transcribed token (word or short phrase) with source timestamps. */
 export interface Word {
   id: string;

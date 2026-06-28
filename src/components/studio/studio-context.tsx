@@ -28,7 +28,9 @@ import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
+  newAudioId,
   newWordId,
+  type AudioTrack,
   type Clip,
   type StudioSource,
   type Word,
@@ -47,6 +49,7 @@ interface StudioContextValue {
   selectedClipId: string | null;
   detecting: boolean;
   words: Word[];
+  audioTracks: AudioTrack[];
   transcribeStatus: TranscribeStatus;
   transcribeProgress: number;
   loadSource: (source: StudioSource) => void;
@@ -62,6 +65,10 @@ interface StudioContextValue {
   deleteWords: (ids: string[]) => void;
   removeFillers: () => number;
   removeEarlierTakes: () => number;
+  addAudio: (file: File) => Promise<void>;
+  moveAudio: (id: string, start: number) => void;
+  toggleAudioMuted: (id: string) => void;
+  removeAudio: (id: string) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -81,6 +88,45 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     useState<TranscribeStatus>("idle");
   const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
+  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
+
+  const addAudio = useCallback(async (file: File) => {
+    if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+      return;
+    }
+    const media = await loadVideoSource(file, file.name);
+    setAudioTracks((prev) => [
+      ...prev,
+      {
+        id: newAudioId(),
+        name: media.name,
+        url: media.url,
+        duration: media.duration,
+        start: 0,
+        muted: false,
+      },
+    ]);
+  }, []);
+
+  const moveAudio = useCallback((id: string, start: number) => {
+    setAudioTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, start: Math.max(0, start) } : t)),
+    );
+  }, []);
+
+  const toggleAudioMuted = useCallback((id: string) => {
+    setAudioTracks((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, muted: !t.muted } : t)),
+    );
+  }, []);
+
+  const removeAudio = useCallback((id: string) => {
+    setAudioTracks((prev) => {
+      const found = prev.find((t) => t.id === id);
+      if (found) URL.revokeObjectURL(found.url);
+      return prev.filter((t) => t.id !== id);
+    });
+  }, []);
 
   const resetTranscript = useCallback(() => {
     setWords([]);
@@ -97,6 +143,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       resetClips(fullClip(next.duration));
       setSelectedClipId(null);
       resetTranscript();
+      setAudioTracks((prev) => {
+        prev.forEach((t) => URL.revokeObjectURL(t.url));
+        return [];
+      });
     },
     [resetClips, resetTranscript],
   );
@@ -109,6 +159,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     resetClips([]);
     setSelectedClipId(null);
     resetTranscript();
+    setAudioTracks((prev) => {
+      prev.forEach((t) => URL.revokeObjectURL(t.url));
+      return [];
+    });
   }, [resetClips, resetTranscript]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit).
@@ -247,6 +301,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedClipId,
       detecting,
       words,
+      audioTracks,
       transcribeStatus,
       transcribeProgress,
       loadSource,
@@ -262,6 +317,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       removeFillers,
       removeEarlierTakes,
+      addAudio,
+      moveAudio,
+      toggleAudioMuted,
+      removeAudio,
       undo,
       redo,
       canUndo,
@@ -274,6 +333,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedClipId,
       detecting,
       words,
+      audioTracks,
       transcribeStatus,
       transcribeProgress,
       loadSource,
@@ -288,6 +348,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       removeFillers,
       removeEarlierTakes,
+      addAudio,
+      moveAudio,
+      toggleAudioMuted,
+      removeAudio,
       undo,
       redo,
       canUndo,
