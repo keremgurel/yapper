@@ -17,6 +17,7 @@ import {
 } from "@/lib/studio/clips";
 import { useFilmstrip, type Frame } from "@/hooks/use-filmstrip";
 import { useWaveform } from "@/hooks/use-waveform";
+import WaveformCanvas from "@/components/studio/waveform-canvas";
 import type { Clip } from "@/lib/studio/types";
 
 const MIN_PX = 12;
@@ -29,20 +30,6 @@ function framesForClip(frames: Frame[], clip: Clip): Frame[] {
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
-}
-
-function downsample(arr: number[], max: number): number[] {
-  if (arr.length <= max) return arr;
-  const step = arr.length / max;
-  const out: number[] = [];
-  for (let i = 0; i < max; i++) {
-    let m = 0;
-    const s = Math.floor(i * step);
-    const e = Math.floor((i + 1) * step);
-    for (let j = s; j < e; j++) if (arr[j] > m) m = arr[j];
-    out.push(m);
-  }
-  return out;
 }
 
 interface TrimDrag {
@@ -259,18 +246,6 @@ export default function StudioTimeline({
                 const width = Math.max((end - start) * pxPerSec, 4);
                 const selected = clip.id === selectedClipId;
                 const clipFrames = framesForClip(frames, clip);
-                const clipPeaks =
-                  peaks.length > 0 && sourceDuration > 0
-                    ? downsample(
-                        peaks.slice(
-                          Math.floor(
-                            (clip.start / sourceDuration) * peaks.length,
-                          ),
-                          Math.ceil((clip.end / sourceDuration) * peaks.length),
-                        ),
-                        160,
-                      )
-                    : [];
                 return (
                   <div
                     key={clip.id}
@@ -303,15 +278,16 @@ export default function StudioTimeline({
                       <span className="bg-foreground/15 block h-full w-full" />
                     )}
 
-                    {clipPeaks.length > 0 && (
-                      <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-7 items-end gap-px bg-black/45 px-px">
-                        {clipPeaks.map((p, i) => (
-                          <span
-                            key={i}
-                            style={{ height: `${Math.max(8, p * 100)}%` }}
-                            className="flex-1 rounded-sm bg-cyan-300/70"
-                          />
-                        ))}
+                    {peaks.length > 0 && (
+                      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/50">
+                        <WaveformCanvas
+                          peaks={peaks}
+                          sourceDuration={sourceDuration}
+                          clipStart={clip.start}
+                          clipEnd={clip.end}
+                          width={width}
+                          height={30}
+                        />
                       </span>
                     )}
 

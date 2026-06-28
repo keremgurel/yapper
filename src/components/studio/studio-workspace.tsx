@@ -32,6 +32,19 @@ export default function StudioWorkspace() {
   );
   const { width, onPointerDown } = useResizablePanel();
 
+  // Measure the preview area so we can size a fixed-aspect project stage.
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() =>
+      setBox({ w: el.clientWidth, h: el.clientHeight }),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [source]);
+
   // Vertical resize of the timeline panel (takes height from the preview).
   const [bottomH, setBottomH] = useState(280);
   const [resizingH, setResizingH] = useState(false);
@@ -103,26 +116,42 @@ export default function StudioWorkspace() {
   }
 
   const total = totalDuration(clips);
+  const aspect =
+    source.width && source.height ? source.width / source.height : 9 / 16;
+  let stageW = box.w;
+  let stageH = box.w / aspect;
+  if (stageH > box.h) {
+    stageH = box.h;
+    stageW = box.h * aspect;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       {/* Main: preview + transport + timeline */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black p-3">
-          <video
-            ref={videoRef}
-            src={source.url}
-            className="max-h-full max-w-full rounded-lg"
-            playsInline
-            onClick={() => (playing ? pause() : play())}
-          />
+        <div
+          ref={previewRef}
+          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black p-4"
+        >
+          <div
+            className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
+            style={{ width: stageW || 0, height: stageH || 0 }}
+          >
+            <video
+              ref={videoRef}
+              src={source.url}
+              className="absolute inset-0 h-full w-full object-cover"
+              playsInline
+              onClick={() => (playing ? pause() : play())}
+            />
+            <OverlayLayer
+              overlays={overlays}
+              masterTime={sourceToTimeline(clips, currentTime)}
+              playing={playing}
+            />
+          </div>
           <AudioTracksPlayer
             tracks={audioTracks}
-            masterTime={sourceToTimeline(clips, currentTime)}
-            playing={playing}
-          />
-          <OverlayLayer
-            overlays={overlays}
             masterTime={sourceToTimeline(clips, currentTime)}
             playing={playing}
           />

@@ -15,7 +15,13 @@ export function loadVideoSource(
     v.preload = "metadata";
 
     const finish = (duration: number) =>
-      resolve({ url, name, duration: duration > 0 ? duration : 0 });
+      resolve({
+        url,
+        name,
+        duration: duration > 0 ? duration : 0,
+        width: v.videoWidth || undefined,
+        height: v.videoHeight || undefined,
+      });
 
     v.onloadedmetadata = () => {
       if (v.duration === Infinity || Number.isNaN(v.duration)) {

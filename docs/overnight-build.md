@@ -290,3 +290,15 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
 - Requested next: remove-silences on the SELECTED track (+ as splits); a main
   track that defines the project aspect ratio; drag from Media onto the timeline;
   PiP position/resize; then export.
+
+### Iteration 17 — Aspect-ratio stage + precise canvas waveform
+
+- The main video now defines a fixed PROJECT FRAME: the preview is a measured,
+  aspect-correct stage (e.g. 9:16) that the base video fills (object-cover) and
+  overlays position within. Foundation for export. (`source.width/height` probed.)
+- Waveform rebuilt with a CANVAS (`WaveformCanvas`) for precision: ~120 peaks/sec
+  (`use-waveform`) drawn as centered bars whose resolution scales with the clip's
+  rendered width, so it stays detailed at deep zoom (vs the old coarse fixed bars).
+- Verified: per-clip canvases sized to each clip; real waveform pixels present.
+- Next: drag Media -> timeline; PiP position/resize; per-track remove-silences;
+  then ffmpeg.wasm export to the project frame.

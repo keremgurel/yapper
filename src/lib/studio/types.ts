@@ -10,6 +10,8 @@ export interface StudioSource {
   url: string;
   name: string;
   duration: number;
+  width?: number;
+  height?: number;
 }
 
 /** A media item in the library (uploaded photo or video). */

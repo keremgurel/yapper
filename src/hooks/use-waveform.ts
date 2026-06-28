@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 export function useWaveform(
   url: string | undefined,
   duration: number,
-  buckets = 600,
 ): number[] {
   const [peaks, setPeaks] = useState<number[]>([]);
 
@@ -19,6 +18,8 @@ export function useWaveform(
     if (!url || !duration || !Number.isFinite(duration) || duration <= 0) {
       return;
     }
+    // ~120 peaks/sec keeps the waveform precise even at deep zoom.
+    const buckets = Math.min(30000, Math.max(600, Math.round(duration * 120)));
     let cancelled = false;
     const AudioCtx =
       window.AudioContext ||
@@ -55,7 +56,7 @@ export function useWaveform(
     return () => {
       cancelled = true;
     };
-  }, [url, duration, buckets]);
+  }, [url, duration]);
 
   return peaks;
 }

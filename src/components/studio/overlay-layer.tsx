@@ -45,7 +45,7 @@ export default function OverlayLayer({
   playing: boolean;
 }) {
   return (
-    <div className="pointer-events-none absolute inset-3">
+    <div className="pointer-events-none absolute inset-0">
       {overlays.map((o) => {
         const local = masterTime - o.start;
         if (local < 0 || local >= o.duration) return null;
