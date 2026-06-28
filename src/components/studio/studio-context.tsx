@@ -80,6 +80,8 @@ interface StudioContextValue {
   addOverlayFromAsset: (assetId: string) => void;
   moveOverlay: (id: string, start: number) => void;
   removeOverlay: (id: string) => void;
+  snapping: boolean;
+  toggleSnapping: () => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -102,6 +104,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [snapping, setSnapping] = useState(true);
+
+  const toggleSnapping = useCallback(() => setSnapping((s) => !s), []);
 
   const addMediaAsset = useCallback(async (file: File) => {
     if (file.type.startsWith("image/")) {
@@ -405,6 +410,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addOverlayFromAsset,
       moveOverlay,
       removeOverlay,
+      snapping,
+      toggleSnapping,
       undo,
       redo,
       canUndo,
@@ -443,6 +450,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addOverlayFromAsset,
       moveOverlay,
       removeOverlay,
+      snapping,
+      toggleSnapping,
       undo,
       redo,
       canUndo,

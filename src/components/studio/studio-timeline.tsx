@@ -32,6 +32,19 @@ function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
 }
 
+function snapValue(v: number, points: number[], threshold: number): number {
+  let best = v;
+  let bestD = threshold;
+  for (const p of points) {
+    const d = Math.abs(p - v);
+    if (d < bestD) {
+      bestD = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
 interface TrimDrag {
   id: string;
   edge: "start" | "end";
@@ -66,6 +79,7 @@ export default function StudioTimeline({
     overlays,
     moveOverlay,
     removeOverlay,
+    snapping,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
@@ -88,6 +102,28 @@ export default function StudioTimeline({
   const total = totalDuration(clips);
   const trackWidth = Math.max(total * pxPerSec, 1);
   const playheadX = sourceToTimeline(clips, currentSourceTime) * pxPerSec;
+
+  // Snap a clip's start (or its end) to nearby edges when magnet mode is on.
+  const snapStart = useCallback(
+    (start: number, dur: number): number => {
+      if (!snapping) return Math.max(0, start);
+      const threshold = 8 / pxPerSec;
+      const points = [
+        0,
+        total,
+        sourceToTimeline(clips, currentSourceTime),
+        ...clips.map((_, i) =>
+          clips.slice(0, i + 1).reduce((s, c) => s + (c.end - c.start), 0),
+        ),
+      ];
+      const ss = snapValue(start, points, threshold);
+      if (ss !== start) return Math.max(0, ss);
+      const se = snapValue(start + dur, points, threshold);
+      if (se !== start + dur) return Math.max(0, se - dur);
+      return Math.max(0, start);
+    },
+    [snapping, pxPerSec, total, clips, currentSourceTime],
+  );
 
   /* ---- scrub ---- */
   const seekFromClientX = useCallback(
@@ -158,9 +194,10 @@ export default function StudioTimeline({
   /* ---- audio clip drag ---- */
   useEffect(() => {
     if (!audioDrag) return;
+    const dur = audioTracks.find((t) => t.id === audioDrag.id)?.duration ?? 0;
     const onMove = (e: PointerEvent) => {
       const delta = (e.clientX - audioDrag.startX) / pxPerSec;
-      moveAudio(audioDrag.id, Math.max(0, audioDrag.origStart + delta));
+      moveAudio(audioDrag.id, snapStart(audioDrag.origStart + delta, dur));
     };
     const onUp = () => setAudioDrag(null);
     window.addEventListener("pointermove", onMove);
@@ -169,14 +206,18 @@ export default function StudioTimeline({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [audioDrag, pxPerSec, moveAudio]);
+  }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
 
   /* ---- overlay clip drag ---- */
   useEffect(() => {
     if (!overlayDrag) return;
+    const dur = overlays.find((o) => o.id === overlayDrag.id)?.duration ?? 0;
     const onMove = (e: PointerEvent) => {
       const delta = (e.clientX - overlayDrag.startX) / pxPerSec;
-      moveOverlay(overlayDrag.id, Math.max(0, overlayDrag.origStart + delta));
+      moveOverlay(
+        overlayDrag.id,
+        snapStart(overlayDrag.origStart + delta, dur),
+      );
     };
     const onUp = () => setOverlayDrag(null);
     window.addEventListener("pointermove", onMove);
@@ -185,7 +226,7 @@ export default function StudioTimeline({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [overlayDrag, pxPerSec, moveOverlay]);
+  }, [overlayDrag, pxPerSec, moveOverlay, overlays, snapStart]);
 
   /* ---- wheel zoom ---- */
   useEffect(() => {

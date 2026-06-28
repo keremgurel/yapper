@@ -315,3 +315,14 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
   release (no flex reflow jank).
 - Build green. NEXT: drag clips to rearrange + move across tracks (needs the
   array-order playback model so reordered/cross-track clips play in sequence).
+
+### Iteration 19 — Magnet (snap) mode
+
+- Magnet toggle in the transport (CapCut-style active/inactive, Magnet icon),
+  context `snapping` (default on).
+- Dragging overlay/audio clips snaps their start or end to nearby edges (other
+  clip boundaries, 0, total, playhead) within ~8px when magnet is on; free
+  positioning when off.
+- NEXT (big): main-track clip drag-to-rearrange + move across tracks. Requires a
+  sequence-playback engine (play clips in timeline/track order, composite tracks)
+  instead of the current source-order EDL. Magnet mode will govern snapping there.

@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import {
+  Magnet,
   Music2,
   Pause,
   Play,
@@ -41,6 +42,8 @@ export default function StudioTransport({
     removeSilences,
     detecting,
     addAudio,
+    snapping,
+    toggleSnapping,
     undo,
     redo,
     canUndo,
@@ -90,6 +93,21 @@ export default function StudioTransport({
       >
         <Redo2 className="h-3.5 w-3.5" />
         Redo
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleSnapping}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors ${
+          snapping
+            ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-600 dark:text-cyan-300"
+            : "border-border text-foreground/80 hover:bg-muted hover:text-foreground"
+        }`}
+        title="Magnet (snap clips to edges)"
+        aria-pressed={snapping}
+      >
+        <Magnet className="h-3.5 w-3.5" />
+        Magnet
       </button>
 
       <button type="button" onClick={onSplit} className={pillBtn}>
