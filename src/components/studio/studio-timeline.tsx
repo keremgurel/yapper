@@ -15,17 +15,49 @@ import {
   timelineToSource,
   totalDuration,
 } from "@/lib/studio/clips";
-import { useFilmstrip, type Frame } from "@/hooks/use-filmstrip";
+import { useFilmstrip } from "@/hooks/use-filmstrip";
 import { useWaveform } from "@/hooks/use-waveform";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
+import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import type { Clip } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
 const MIN_CLIP = 0.2;
 
-function framesForClip(frames: Frame[], clip: Clip): Frame[] {
-  return frames.filter((f) => f.time >= clip.start && f.time <= clip.end);
+interface ClipSpan {
+  leftPx: number;
+  widthPx: number;
+  srcA: number;
+  srcB: number;
+}
+
+/**
+ * Intersect a clip with the visible window and map back to source seconds, so
+ * the track only renders frames/waveform for what's on screen. Returns null
+ * when the clip is fully off-screen.
+ */
+function visibleSpan(
+  clipLeftSec: number,
+  clipDur: number,
+  srcStart: number,
+  srcEnd: number,
+  visStartSec: number,
+  visEndSec: number,
+  pxPerSec: number,
+): ClipSpan | null {
+  if (clipDur <= 0) return null;
+  const a = Math.max(clipLeftSec, visStartSec);
+  const b = Math.min(clipLeftSec + clipDur, visEndSec);
+  if (b <= a) return null;
+  const fracA = (a - clipLeftSec) / clipDur;
+  const fracB = (b - clipLeftSec) / clipDur;
+  return {
+    leftPx: (a - clipLeftSec) * pxPerSec,
+    widthPx: (b - a) * pxPerSec,
+    srcA: srcStart + fracA * (srcEnd - srcStart),
+    srcB: srcStart + fracB * (srcEnd - srcStart),
+  };
 }
 
 function clamp(v: number, lo: number, hi: number) {
@@ -96,8 +128,9 @@ export default function StudioTimeline({
     startX: number;
     origStart: number;
   } | null>(null);
-  const frames = useFilmstrip(sourceUrl, sourceDuration);
+  const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
   const peaks = useWaveform(sourceUrl, sourceDuration);
+  const [view, setView] = useState({ start: 0, width: 0 });
 
   const total = totalDuration(clips);
   const trackWidth = Math.max(total * pxPerSec, 1);
@@ -249,6 +282,27 @@ export default function StudioTimeline({
     return () => el.removeEventListener("wheel", onWheel);
   }, [pxPerSec]);
 
+  /* ---- track the visible window so we only render on-screen frames ---- */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () =>
+      setView({ start: el.scrollLeft, width: el.clientWidth });
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  // Visible time range (+ one screen of margin each side) for windowed render.
+  const measured = view.width > 0;
+  const visStartSec = measured ? (view.start - view.width) / pxPerSec : 0;
+  const visEndSec = measured ? (view.start + view.width * 2) / pxPerSec : total;
+
   const ticks = buildTicks(total, pxPerSec);
 
   // Cumulative timeline offset (seconds) for each clip, from committed durations.
@@ -294,16 +348,20 @@ export default function StudioTimeline({
                 // Left-trim keeps the right edge fixed so the dragged edge tracks
                 // the cursor; right-trim keeps the left edge fixed.
                 const leftSec =
-                  isTrimming && trim.edge === "start"
+                  isTrimming && trim?.edge === "start"
                     ? offsets[i] + (origDur - dur)
                     : offsets[i];
                 const width = Math.max(dur * pxPerSec, 4);
                 const selected = clip.id === selectedClipId;
-                const clipFrames = framesForClip(frames, {
-                  id: clip.id,
-                  start: cStart,
-                  end: cEnd,
-                });
+                const span = visibleSpan(
+                  leftSec,
+                  dur,
+                  cStart,
+                  cEnd,
+                  visStartSec,
+                  visEndSec,
+                  pxPerSec,
+                );
                 return (
                   <div
                     key={clip.id}
@@ -325,32 +383,31 @@ export default function StudioTimeline({
                     }`}
                     title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                   >
-                    {clipFrames.length > 0 ? (
-                      <span className="pointer-events-none flex h-full w-full">
-                        {clipFrames.map((f) => (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            key={f.time}
-                            src={f.src}
-                            alt=""
-                            draggable={false}
-                            className="h-full min-w-0 flex-1 object-cover"
-                          />
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="bg-foreground/15 block h-full w-full" />
+                    <span className="bg-foreground/15 absolute inset-0" />
+                    {span && frames.length > 0 && (
+                      <ClipFilmstrip
+                        frames={frames}
+                        aspect={aspect}
+                        leftPx={span.leftPx}
+                        widthPx={span.widthPx}
+                        srcStart={span.srcA}
+                        srcEnd={span.srcB}
+                        height={80}
+                      />
                     )}
 
-                    {peaks.length > 0 && (
-                      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/50">
+                    {span && peaks.length > 0 && (
+                      <span
+                        className="pointer-events-none absolute bottom-0 bg-black/50"
+                        style={{ left: span.leftPx, width: span.widthPx }}
+                      >
                         <WaveformCanvas
                           peaks={peaks}
                           sourceDuration={sourceDuration}
-                          clipStart={cStart}
-                          clipEnd={cEnd}
-                          width={width}
-                          height={30}
+                          clipStart={span.srcA}
+                          clipEnd={span.srcB}
+                          width={span.widthPx}
+                          height={28}
                         />
                       </span>
                     )}
