@@ -247,3 +247,19 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
   and lays them out per clip; taller track with a scrub ruler + draggable playhead.
 - Scrub verified live: clicking/dragging the ruler seeks and the preview + time
   update. (Tested by injecting a real vertical webm via the file input.)
+
+### Iteration 14 — Granular timeline: zoom, trim, resize, fixed-height tracks
+
+- Wheel to zoom (cursor-anchored, px/sec model) + horizontal scroll on a real
+  scrollable track; ruler with time ticks.
+- Draggable trim handles on each clip (live preview, one undo step per trim,
+  clamped by neighbors + source bounds) via `setClipRange`.
+- Vertically resizable timeline panel (drag the handle to take height from the
+  preview).
+- Tracks are FIXED height (CapCut-style): resizing the panel taller reveals room
+  for more tracks instead of stretching the filmstrip. Groundwork for multi-track.
+- Verified live with a real vertical clip: vertical preview centered, real
+  filmstrip frames, zoom, and constant track height all correct.
+- NEXT (bigger build, needs sign-off): true multi-track — add overlay video /
+  audio tracks, drag to reorder, top track composited over lower ones, per-track
+  mute/lock. This changes the clip model from one track to tracks[].

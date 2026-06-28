@@ -56,6 +56,7 @@ interface StudioContextValue {
   deleteSelected: () => void;
   trimStart: (sourceTime: number) => void;
   trimEnd: (sourceTime: number) => void;
+  setClipRange: (id: string, start: number, end: number) => void;
   removeSilences: () => Promise<number>;
   transcribe: () => Promise<void>;
   deleteWords: (ids: string[]) => void;
@@ -149,6 +150,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [setClips, selectedClipId],
+  );
+
+  const setClipRange = useCallback(
+    (id: string, start: number, end: number) => {
+      if (end - start < 0.1) return;
+      setClips((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, start, end } : c)),
+      );
+    },
+    [setClips],
   );
 
   const removeSilences = useCallback(async (): Promise<number> => {
@@ -245,6 +256,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteSelected,
       trimStart,
       trimEnd,
+      setClipRange,
       removeSilences,
       transcribe,
       deleteWords,
@@ -270,6 +282,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteSelected,
       trimStart,
       trimEnd,
+      setClipRange,
       removeSilences,
       transcribe,
       deleteWords,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTranscript from "@/components/studio/studio-transcript";
@@ -27,6 +27,37 @@ export default function StudioWorkspace() {
     clips,
   );
   const { width, onPointerDown } = useResizablePanel();
+
+  // Vertical resize of the timeline panel (takes height from the preview).
+  const [bottomH, setBottomH] = useState(280);
+  const [resizingH, setResizingH] = useState(false);
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+
+  const onResizeDown = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      dragRef.current = { startY: e.clientY, startH: bottomH };
+      setResizingH(true);
+    },
+    [bottomH],
+  );
+
+  useEffect(() => {
+    if (!resizingH) return;
+    const onMove = (e: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const next = d.startH + (d.startY - e.clientY);
+      setBottomH(Math.max(180, Math.min(window.innerHeight * 0.7, next)));
+    };
+    const onUp = () => setResizingH(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [resizingH]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,19 +114,32 @@ export default function StudioWorkspace() {
           />
         </div>
 
-        <div className="border-border shrink-0 border-t px-4 py-3">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        {/* Vertical resize handle */}
+        <div
+          onPointerDown={onResizeDown}
+          className="border-border bg-card hover:bg-muted flex h-2 shrink-0 cursor-row-resize items-center justify-center border-t"
+        >
+          <span className="bg-foreground/25 h-0.5 w-10 rounded-full" />
+        </div>
+
+        <div
+          style={{ height: bottomH }}
+          className="bg-card flex shrink-0 flex-col px-4 pt-2 pb-3"
+        >
+          <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
             <p className="text-foreground/55 truncate text-xs">{source.name}</p>
           </div>
-          <StudioTransport
-            playing={playing}
-            currentTimelineTime={sourceToTimeline(clips, currentTime)}
-            totalTimelineTime={total}
-            onPlay={play}
-            onPause={pause}
-            onSplit={() => splitAt(currentTime)}
-          />
-          <div className="mt-4">
+          <div className="shrink-0">
+            <StudioTransport
+              playing={playing}
+              currentTimelineTime={sourceToTimeline(clips, currentTime)}
+              totalTimelineTime={total}
+              onPlay={play}
+              onPause={pause}
+              onSplit={() => splitAt(currentTime)}
+            />
+          </div>
+          <div className="mt-3 min-h-0 flex-1">
             <StudioTimeline
               clips={clips}
               sourceUrl={source.url}
@@ -120,7 +164,7 @@ export default function StudioWorkspace() {
       {/* Transcript panel (resizable on desktop, stacked on mobile) */}
       <aside
         style={{ width }}
-        className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0"
+        className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
       >
         <StudioTranscript
           currentSourceTime={currentTime}
