@@ -210,6 +210,11 @@ export default function StudioTimeline({
 
   const ticks = buildTicks(total, pxPerSec);
 
+  // Cumulative timeline offset (seconds) for each clip, from committed durations.
+  const offsets = clips.map((_, i) =>
+    clips.slice(0, i).reduce((s, c) => s + (c.end - c.start), 0),
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col select-none">
       <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
@@ -238,28 +243,46 @@ export default function StudioTimeline({
           {/* Tracks (fixed-height rows; extra panel height is room for more) */}
           <div className="space-y-1 p-1">
             {/* Main video track */}
-            <div className="flex h-20 gap-0.5">
-              {clips.map((clip) => {
+            <div className="relative h-20">
+              {clips.map((clip, i) => {
                 const isTrimming = trim?.id === clip.id && live;
-                const start = isTrimming ? live.start : clip.start;
-                const end = isTrimming ? live.end : clip.end;
-                const width = Math.max((end - start) * pxPerSec, 4);
+                const cStart = isTrimming ? live.start : clip.start;
+                const cEnd = isTrimming ? live.end : clip.end;
+                const dur = cEnd - cStart;
+                const origDur = clip.end - clip.start;
+                // Left-trim keeps the right edge fixed so the dragged edge tracks
+                // the cursor; right-trim keeps the left edge fixed.
+                const leftSec =
+                  isTrimming && trim.edge === "start"
+                    ? offsets[i] + (origDur - dur)
+                    : offsets[i];
+                const width = Math.max(dur * pxPerSec, 4);
                 const selected = clip.id === selectedClipId;
-                const clipFrames = framesForClip(frames, clip);
+                const clipFrames = framesForClip(frames, {
+                  id: clip.id,
+                  start: cStart,
+                  end: cEnd,
+                });
                 return (
                   <div
                     key={clip.id}
-                    style={{ width }}
+                    style={{
+                      left: leftSec * pxPerSec,
+                      width,
+                      transition: trim
+                        ? "none"
+                        : "left 90ms ease, width 90ms ease",
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelect(clip.id);
                     }}
-                    className={`group relative h-full shrink-0 cursor-pointer overflow-hidden rounded-md ${
+                    className={`group absolute top-0 bottom-0 cursor-pointer overflow-hidden rounded-md ${
                       selected
-                        ? "ring-2 ring-cyan-500"
+                        ? "z-10 ring-2 ring-cyan-500"
                         : "ring-1 ring-white/10 hover:ring-white/25"
                     }`}
-                    title={`${start.toFixed(2)}s – ${end.toFixed(2)}s`}
+                    title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                   >
                     {clipFrames.length > 0 ? (
                       <span className="pointer-events-none flex h-full w-full">
@@ -283,8 +306,8 @@ export default function StudioTimeline({
                         <WaveformCanvas
                           peaks={peaks}
                           sourceDuration={sourceDuration}
-                          clipStart={clip.start}
-                          clipEnd={clip.end}
+                          clipStart={cStart}
+                          clipEnd={cEnd}
                           width={width}
                           height={30}
                         />

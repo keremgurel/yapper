@@ -302,3 +302,16 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
 - Verified: per-clip canvases sized to each clip; real waveform pixels present.
 - Next: drag Media -> timeline; PiP position/resize; per-track remove-silences;
   then ffmpeg.wasm export to the project frame.
+
+### Iteration 18 — Best-in-class trim (live, anchored, smooth)
+
+- Video track switched from flex to ABSOLUTE-positioned clips (offsets from
+  committed durations).
+- Trim now updates content LIVE: frames + waveform redraw to the live range at a
+  CONSTANT px/sec scale, so you see exactly what you're trimming in real time
+  (no more "whole waveform moving" / only seeing the result on release).
+- Left-trim keeps the right edge anchored so the dragged edge follows the cursor;
+  right-trim keeps the left edge fixed. Neighbors settle with a CSS transition on
+  release (no flex reflow jank).
+- Build green. NEXT: drag clips to rearrange + move across tracks (needs the
+  array-order playback model so reordered/cross-track clips play in sequence).
