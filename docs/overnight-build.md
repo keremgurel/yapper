@@ -276,3 +276,17 @@ max-w-full`) instead of being letterboxed in a 16:9 box.
 - Verified live: added an audio file -> draggable audio track row appears.
 - NEXT (stage 2): overlay video track (PiP compositing in the preview) +
   drag-reorder of tracks; then ffmpeg.wasm export of the composite.
+
+### Iteration 16 — Tabbed right panel, Media library + overlays, audio waveform
+
+- Right panel is now TABBED: **Media** | **Transcript**.
+- Media tab: upload photos/videos into a library; "Add as overlay" places media as
+  an overlay that composites over the base video in the preview (image or synced
+  video) and appears as a draggable row on the timeline (delete).
+- `OverlayLayer` preview compositor + Overlay/MediaAsset model in context.
+- **Audio waveform** rendered along the bottom of each video clip (Web-Audio peaks
+  via `use-waveform`), so you can trim by where sound starts (CapCut-style).
+- Verified live with a real video: waveform + tabs + overlay all working.
+- Requested next: remove-silences on the SELECTED track (+ as splits); a main
+  track that defines the project aspect ratio; drag from Media onto the timeline;
+  PiP position/resize; then export.

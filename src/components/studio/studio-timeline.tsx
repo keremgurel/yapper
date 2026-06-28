@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Music2, Trash2, Volume2, VolumeX } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Music2,
+  Trash2,
+  Video,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import {
   sourceToTimeline,
@@ -9,6 +16,7 @@ import {
   totalDuration,
 } from "@/lib/studio/clips";
 import { useFilmstrip, type Frame } from "@/hooks/use-filmstrip";
+import { useWaveform } from "@/hooks/use-waveform";
 import type { Clip } from "@/lib/studio/types";
 
 const MIN_PX = 12;
@@ -21,6 +29,20 @@ function framesForClip(frames: Frame[], clip: Clip): Frame[] {
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+function downsample(arr: number[], max: number): number[] {
+  if (arr.length <= max) return arr;
+  const step = arr.length / max;
+  const out: number[] = [];
+  for (let i = 0; i < max; i++) {
+    let m = 0;
+    const s = Math.floor(i * step);
+    const e = Math.floor((i + 1) * step);
+    for (let j = s; j < e; j++) if (arr[j] > m) m = arr[j];
+    out.push(m);
+  }
+  return out;
 }
 
 interface TrimDrag {
@@ -54,6 +76,9 @@ export default function StudioTimeline({
     moveAudio,
     toggleAudioMuted,
     removeAudio,
+    overlays,
+    moveOverlay,
+    removeOverlay,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
@@ -65,7 +90,13 @@ export default function StudioTimeline({
     startX: number;
     origStart: number;
   } | null>(null);
+  const [overlayDrag, setOverlayDrag] = useState<{
+    id: string;
+    startX: number;
+    origStart: number;
+  } | null>(null);
   const frames = useFilmstrip(sourceUrl, sourceDuration);
+  const peaks = useWaveform(sourceUrl, sourceDuration);
 
   const total = totalDuration(clips);
   const trackWidth = Math.max(total * pxPerSec, 1);
@@ -153,6 +184,22 @@ export default function StudioTimeline({
     };
   }, [audioDrag, pxPerSec, moveAudio]);
 
+  /* ---- overlay clip drag ---- */
+  useEffect(() => {
+    if (!overlayDrag) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = (e.clientX - overlayDrag.startX) / pxPerSec;
+      moveOverlay(overlayDrag.id, Math.max(0, overlayDrag.origStart + delta));
+    };
+    const onUp = () => setOverlayDrag(null);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [overlayDrag, pxPerSec, moveOverlay]);
+
   /* ---- wheel zoom ---- */
   useEffect(() => {
     const el = scrollRef.current;
@@ -212,6 +259,18 @@ export default function StudioTimeline({
                 const width = Math.max((end - start) * pxPerSec, 4);
                 const selected = clip.id === selectedClipId;
                 const clipFrames = framesForClip(frames, clip);
+                const clipPeaks =
+                  peaks.length > 0 && sourceDuration > 0
+                    ? downsample(
+                        peaks.slice(
+                          Math.floor(
+                            (clip.start / sourceDuration) * peaks.length,
+                          ),
+                          Math.ceil((clip.end / sourceDuration) * peaks.length),
+                        ),
+                        160,
+                      )
+                    : [];
                 return (
                   <div
                     key={clip.id}
@@ -242,6 +301,18 @@ export default function StudioTimeline({
                       </span>
                     ) : (
                       <span className="bg-foreground/15 block h-full w-full" />
+                    )}
+
+                    {clipPeaks.length > 0 && (
+                      <span className="pointer-events-none absolute inset-x-0 bottom-0 flex h-7 items-end gap-px bg-black/45 px-px">
+                        {clipPeaks.map((p, i) => (
+                          <span
+                            key={i}
+                            style={{ height: `${Math.max(8, p * 100)}%` }}
+                            className="flex-1 rounded-sm bg-cyan-300/70"
+                          />
+                        ))}
+                      </span>
                     )}
 
                     {/* Trim handles */}
@@ -279,6 +350,46 @@ export default function StudioTimeline({
                 );
               })}
             </div>
+
+            {/* Overlay tracks (image / video) */}
+            {overlays.map((o) => {
+              const left = o.start * pxPerSec;
+              const width = Math.max(o.duration * pxPerSec, 8);
+              return (
+                <div key={o.id} className="relative h-12">
+                  <div
+                    style={{ left, width }}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      setOverlayDrag({
+                        id: o.id,
+                        startX: e.clientX,
+                        origStart: o.start,
+                      });
+                    }}
+                    className="absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-fuchsia-500/25 px-2 ring-1 ring-fuchsia-500/50 active:cursor-grabbing"
+                  >
+                    {o.kind === "image" ? (
+                      <ImageIcon className="h-3.5 w-3.5 shrink-0 text-fuchsia-300" />
+                    ) : (
+                      <Video className="h-3.5 w-3.5 shrink-0 text-fuchsia-300" />
+                    )}
+                    <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
+                      {o.name}
+                    </span>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => removeOverlay(o.id)}
+                      className="text-foreground/60 shrink-0 hover:text-red-400"
+                      aria-label="Remove overlay"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Audio tracks */}
             {audioTracks.map((a) => {

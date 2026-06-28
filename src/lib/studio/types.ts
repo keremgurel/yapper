@@ -12,6 +12,39 @@ export interface StudioSource {
   duration: number;
 }
 
+/** A media item in the library (uploaded photo or video). */
+export interface MediaAsset {
+  id: string;
+  kind: "video" | "image";
+  url: string;
+  name: string;
+  duration: number; // seconds (default for images)
+}
+
+/** A media overlay placed on the timeline, composited over the base video. */
+export interface Overlay {
+  id: string;
+  kind: "video" | "image";
+  url: string;
+  name: string;
+  start: number; // edited-timeline seconds
+  duration: number;
+}
+
+export function newMediaId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `media-${crypto.randomUUID()}`;
+  }
+  return `media-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
+export function newOverlayId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `ov-${crypto.randomUUID()}`;
+  }
+  return `ov-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
 /** An audio clip placed on its own track, positioned on the edited timeline. */
 export interface AudioTrack {
   id: string;

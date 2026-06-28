@@ -29,9 +29,13 @@ import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
   newAudioId,
+  newMediaId,
+  newOverlayId,
   newWordId,
   type AudioTrack,
   type Clip,
+  type MediaAsset,
+  type Overlay,
   type StudioSource,
   type Word,
 } from "@/lib/studio/types";
@@ -69,6 +73,13 @@ interface StudioContextValue {
   moveAudio: (id: string, start: number) => void;
   toggleAudioMuted: (id: string) => void;
   removeAudio: (id: string) => void;
+  mediaAssets: MediaAsset[];
+  overlays: Overlay[];
+  addMediaAsset: (file: File) => Promise<void>;
+  removeMediaAsset: (id: string) => void;
+  addOverlayFromAsset: (assetId: string) => void;
+  moveOverlay: (id: string, start: number) => void;
+  removeOverlay: (id: string) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -89,6 +100,70 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
+  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const [overlays, setOverlays] = useState<Overlay[]>([]);
+
+  const addMediaAsset = useCallback(async (file: File) => {
+    if (file.type.startsWith("image/")) {
+      setMediaAssets((prev) => [
+        ...prev,
+        {
+          id: newMediaId(),
+          kind: "image",
+          url: URL.createObjectURL(file),
+          name: file.name,
+          duration: 5,
+        },
+      ]);
+      return;
+    }
+    if (file.type.startsWith("video/")) {
+      const media = await loadVideoSource(file, file.name);
+      setMediaAssets((prev) => [
+        ...prev,
+        {
+          id: newMediaId(),
+          kind: "video",
+          url: media.url,
+          name: media.name,
+          duration: media.duration,
+        },
+      ]);
+    }
+  }, []);
+
+  const removeMediaAsset = useCallback((id: string) => {
+    setMediaAssets((prev) => prev.filter((m) => m.id !== id));
+  }, []);
+
+  const addOverlayFromAsset = useCallback(
+    (assetId: string) => {
+      const asset = mediaAssets.find((m) => m.id === assetId);
+      if (!asset) return;
+      setOverlays((prev) => [
+        ...prev,
+        {
+          id: newOverlayId(),
+          kind: asset.kind,
+          url: asset.url,
+          name: asset.name,
+          start: 0,
+          duration: asset.duration,
+        },
+      ]);
+    },
+    [mediaAssets],
+  );
+
+  const moveOverlay = useCallback((id: string, start: number) => {
+    setOverlays((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, start: Math.max(0, start) } : o)),
+    );
+  }, []);
+
+  const removeOverlay = useCallback((id: string) => {
+    setOverlays((prev) => prev.filter((o) => o.id !== id));
+  }, []);
 
   const addAudio = useCallback(async (file: File) => {
     if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
@@ -147,6 +222,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         prev.forEach((t) => URL.revokeObjectURL(t.url));
         return [];
       });
+      setOverlays([]);
+      setMediaAssets([]);
     },
     [resetClips, resetTranscript],
   );
@@ -321,6 +398,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       moveAudio,
       toggleAudioMuted,
       removeAudio,
+      mediaAssets,
+      overlays,
+      addMediaAsset,
+      removeMediaAsset,
+      addOverlayFromAsset,
+      moveOverlay,
+      removeOverlay,
       undo,
       redo,
       canUndo,
@@ -352,6 +436,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       moveAudio,
       toggleAudioMuted,
       removeAudio,
+      mediaAssets,
+      overlays,
+      addMediaAsset,
+      removeMediaAsset,
+      addOverlayFromAsset,
+      moveOverlay,
+      removeOverlay,
       undo,
       redo,
       canUndo,

@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
+import OverlayLayer from "@/components/studio/overlay-layer";
+import RightPanel from "@/components/studio/right-panel";
 import StudioTimeline from "@/components/studio/studio-timeline";
-import StudioTranscript from "@/components/studio/studio-transcript";
 import StudioTransport from "@/components/studio/studio-transport";
 import VideoUploader from "@/components/studio/video-uploader";
 import { sourceToTimeline, totalDuration } from "@/lib/studio/clips";
@@ -20,6 +21,7 @@ export default function StudioWorkspace() {
     splitAt,
     deleteSelected,
     audioTracks,
+    overlays,
     undo,
     redo,
   } = useStudio();
@@ -119,6 +121,11 @@ export default function StudioWorkspace() {
             masterTime={sourceToTimeline(clips, currentTime)}
             playing={playing}
           />
+          <OverlayLayer
+            overlays={overlays}
+            masterTime={sourceToTimeline(clips, currentTime)}
+            playing={playing}
+          />
         </div>
 
         {/* Vertical resize handle */}
@@ -168,15 +175,12 @@ export default function StudioWorkspace() {
         aria-orientation="vertical"
       />
 
-      {/* Transcript panel (resizable on desktop, stacked on mobile) */}
+      {/* Right panel: Media + Transcript tabs (resizable / stacks on mobile) */}
       <aside
         style={{ width }}
         className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
       >
-        <StudioTranscript
-          currentSourceTime={currentTime}
-          onSeek={seekToSource}
-        />
+        <RightPanel currentSourceTime={currentTime} onSeek={seekToSource} />
       </aside>
     </div>
   );
