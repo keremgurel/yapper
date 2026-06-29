@@ -123,3 +123,61 @@ export function resolvePlayback(
   }
   return "end";
 }
+
+/** Cumulative edited-timeline start (seconds) of the clip at `index`. */
+export function clipTimelineStart(clips: Clip[], index: number): number {
+  return clips.slice(0, index).reduce((s, c) => s + clipDuration(c), 0);
+}
+
+export interface TimelineHit {
+  index: number;
+  sourceTime: number;
+}
+
+/**
+ * Map an edited-timeline position to the clip playing there (in array order)
+ * and the matching source time. This is what makes reordered clips playable:
+ * the timeline, not the source, defines order.
+ */
+export function timelineToClip(clips: Clip[], t: number): TimelineHit | null {
+  if (clips.length === 0) return null;
+  let acc = 0;
+  for (let i = 0; i < clips.length; i++) {
+    const d = clipDuration(clips[i]);
+    if (t <= acc + d + EPS) {
+      return { index: i, sourceTime: clips[i].start + Math.max(0, t - acc) };
+    }
+    acc += d;
+  }
+  const last = clips.length - 1;
+  return { index: last, sourceTime: clips[last].end };
+}
+
+/**
+ * Edited-timeline position of the first clip (array order) whose source range
+ * contains `sourceTime`. Used to jump the timeline to a clicked transcript word.
+ */
+export function sourceToTimelineSeq(
+  clips: Clip[],
+  sourceTime: number,
+): { index: number; timeline: number } | null {
+  let acc = 0;
+  for (let i = 0; i < clips.length; i++) {
+    const c = clips[i];
+    if (sourceTime >= c.start - EPS && sourceTime <= c.end + EPS) {
+      return { index: i, timeline: acc + Math.max(0, sourceTime - c.start) };
+    }
+    acc += clipDuration(c);
+  }
+  return null;
+}
+
+/** Reorder: move a clip to a new index within the array. */
+export function moveClipTo(clips: Clip[], id: string, toIndex: number): Clip[] {
+  const from = clips.findIndex((c) => c.id === id);
+  if (from < 0) return clips;
+  const next = clips.slice();
+  const [moved] = next.splice(from, 1);
+  next.splice(Math.max(0, Math.min(next.length, toIndex)), 0, moved);
+  return next;
+}

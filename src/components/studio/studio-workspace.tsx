@@ -8,7 +8,7 @@ import RightPanel from "@/components/studio/right-panel";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
 import VideoUploader from "@/components/studio/video-uploader";
-import { sourceToTimeline, totalDuration } from "@/lib/studio/clips";
+import { totalDuration } from "@/lib/studio/clips";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 
@@ -26,10 +26,15 @@ export default function StudioWorkspace() {
     redo,
   } = useStudio();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { currentTime, playing, play, pause, seekToSource } = useStudioPlayback(
-    videoRef,
-    clips,
-  );
+  const {
+    timelineTime,
+    sourceTime,
+    playing,
+    play,
+    pause,
+    seekToTimeline,
+    seekToSource,
+  } = useStudioPlayback(videoRef, clips);
   const { width, onPointerDown } = useResizablePanel();
 
   // Measure the preview area so we can size a fixed-aspect project stage.
@@ -146,13 +151,13 @@ export default function StudioWorkspace() {
             />
             <OverlayLayer
               overlays={overlays}
-              masterTime={sourceToTimeline(clips, currentTime)}
+              masterTime={timelineTime}
               playing={playing}
             />
           </div>
           <AudioTracksPlayer
             tracks={audioTracks}
-            masterTime={sourceToTimeline(clips, currentTime)}
+            masterTime={timelineTime}
             playing={playing}
           />
         </div>
@@ -175,11 +180,11 @@ export default function StudioWorkspace() {
           <div className="shrink-0">
             <StudioTransport
               playing={playing}
-              currentTimelineTime={sourceToTimeline(clips, currentTime)}
+              currentTimelineTime={timelineTime}
               totalTimelineTime={total}
               onPlay={play}
               onPause={pause}
-              onSplit={() => splitAt(currentTime)}
+              onSplit={() => splitAt(sourceTime)}
             />
           </div>
           <div className="mt-3 min-h-0 flex-1">
@@ -187,10 +192,10 @@ export default function StudioWorkspace() {
               clips={clips}
               sourceUrl={source.url}
               sourceDuration={source.duration}
-              currentSourceTime={currentTime}
+              currentTimelineTime={timelineTime}
               selectedClipId={selectedClipId}
               onSelect={selectClip}
-              onSeekSource={seekToSource}
+              onSeek={seekToTimeline}
             />
           </div>
         </div>
@@ -209,7 +214,7 @@ export default function StudioWorkspace() {
         style={{ width }}
         className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
       >
-        <RightPanel currentSourceTime={currentTime} onSeek={seekToSource} />
+        <RightPanel currentSourceTime={sourceTime} onSeek={seekToSource} />
       </aside>
     </div>
   );

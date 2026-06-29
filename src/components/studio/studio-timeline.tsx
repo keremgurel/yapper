@@ -10,11 +10,7 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import {
-  sourceToTimeline,
-  timelineToSource,
-  totalDuration,
-} from "@/lib/studio/clips";
+import { clipDuration, totalDuration } from "@/lib/studio/clips";
 import { useFilmstrip } from "@/hooks/use-filmstrip";
 import { useWaveform } from "@/hooks/use-waveform";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
@@ -89,21 +85,22 @@ export default function StudioTimeline({
   clips,
   sourceUrl,
   sourceDuration,
-  currentSourceTime,
+  currentTimelineTime,
   selectedClipId,
   onSelect,
-  onSeekSource,
+  onSeek,
 }: {
   clips: Clip[];
   sourceUrl: string;
   sourceDuration: number;
-  currentSourceTime: number;
+  currentTimelineTime: number;
   selectedClipId: string | null;
   onSelect: (id: string) => void;
-  onSeekSource: (t: number) => void;
+  onSeek: (timelineTime: number) => void;
 }) {
   const {
     setClipRange,
+    moveClip,
     audioTracks,
     moveAudio,
     toggleAudioMuted,
@@ -128,13 +125,21 @@ export default function StudioTimeline({
     startX: number;
     origStart: number;
   } | null>(null);
+  // Reorder drag for main-track clips: origLeft is the clip's resting left (px),
+  // clipLive is its current dragged left (px, null until the pointer moves).
+  const [clipDrag, setClipDrag] = useState<{
+    id: string;
+    startX: number;
+    origLeft: number;
+  } | null>(null);
+  const [clipLive, setClipLive] = useState<number | null>(null);
   const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
   const peaks = useWaveform(sourceUrl, sourceDuration);
   const [view, setView] = useState({ start: 0, width: 0 });
 
   const total = totalDuration(clips);
   const trackWidth = Math.max(total * pxPerSec, 1);
-  const playheadX = sourceToTimeline(clips, currentSourceTime) * pxPerSec;
+  const playheadX = currentTimelineTime * pxPerSec;
 
   // Empty gutter on each side so the start (or end) can be scrolled to center,
   // giving room to drag. Content lives at x = padLeft; nothing sits before it.
@@ -149,7 +154,7 @@ export default function StudioTimeline({
       const points = [
         0,
         total,
-        sourceToTimeline(clips, currentSourceTime),
+        currentTimelineTime,
         ...clips.map((_, i) =>
           clips.slice(0, i + 1).reduce((s, c) => s + (c.end - c.start), 0),
         ),
@@ -160,7 +165,7 @@ export default function StudioTimeline({
       if (se !== start + dur) return Math.max(0, se - dur);
       return Math.max(0, start);
     },
-    [snapping, pxPerSec, total, clips, currentSourceTime],
+    [snapping, pxPerSec, total, clips, currentTimelineTime],
   );
 
   /* ---- scrub ---- */
@@ -170,9 +175,9 @@ export default function StudioTimeline({
       if (!el || total <= 0) return;
       const rect = el.getBoundingClientRect();
       const x = clientX - rect.left + el.scrollLeft - padLeft;
-      onSeekSource(timelineToSource(clips, clamp(x / pxPerSec, 0, total)));
+      onSeek(clamp(x / pxPerSec, 0, total));
     },
-    [clips, total, pxPerSec, padLeft, onSeekSource],
+    [total, pxPerSec, padLeft, onSeek],
   );
 
   useEffect(() => {
@@ -265,6 +270,45 @@ export default function StudioTimeline({
       window.removeEventListener("pointerup", onUp);
     };
   }, [overlayDrag, pxPerSec, moveOverlay, overlays, snapStart]);
+
+  /* ---- main-clip reorder drag ---- */
+  useEffect(() => {
+    if (!clipDrag) return;
+    const dragged = clips.find((c) => c.id === clipDrag.id);
+    const dur = dragged ? clipDuration(dragged) : 0;
+    let moved = false;
+    const onMove = (e: PointerEvent) => {
+      const dx = e.clientX - clipDrag.startX;
+      if (!moved && Math.abs(dx) < 4) return; // ignore tiny jitter (a click)
+      moved = true;
+      setClipLive(clipDrag.origLeft + dx);
+    };
+    const onUp = () => {
+      setClipLive((live) => {
+        if (live != null) {
+          // Drop where the dragged clip's center lands among the others.
+          const center = live / pxPerSec + dur / 2;
+          let acc = 0;
+          let target = 0;
+          for (const c of clips) {
+            const d = clipDuration(c);
+            const mid = acc + d / 2;
+            if (c.id !== clipDrag.id && mid < center) target++;
+            acc += d;
+          }
+          moveClip(clipDrag.id, target);
+        }
+        return null;
+      });
+      setClipDrag(null);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [clipDrag, clips, pxPerSec, moveClip]);
 
   /* ---- wheel zoom ---- */
   useEffect(() => {
@@ -384,24 +428,37 @@ export default function StudioTimeline({
                   visEndSec,
                   pxPerSec,
                 );
+                const isGhost = clipDrag?.id === clip.id && clipLive != null;
                 return (
                   <div
                     key={clip.id}
                     style={{
-                      left: leftSec * pxPerSec,
+                      left: isGhost ? (clipLive as number) : leftSec * pxPerSec,
                       width,
-                      transition: trim
-                        ? "none"
-                        : "left 90ms ease, width 90ms ease",
+                      transition:
+                        trim || isGhost
+                          ? "none"
+                          : "left 90ms ease, width 90ms ease",
+                    }}
+                    onPointerDown={(e) => {
+                      if (e.button !== 0) return;
+                      onSelect(clip.id);
+                      setClipDrag({
+                        id: clip.id,
+                        startX: e.clientX,
+                        origLeft: offsets[i] * pxPerSec,
+                      });
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelect(clip.id);
                     }}
-                    className={`group absolute top-0 bottom-0 cursor-pointer overflow-hidden rounded-md ${
-                      selected
-                        ? "z-10 ring-2 ring-cyan-500"
-                        : "ring-1 ring-white/10 hover:ring-white/25"
+                    className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
+                      isGhost
+                        ? "z-30 opacity-90 ring-2 ring-cyan-400"
+                        : selected
+                          ? "z-10 ring-2 ring-cyan-500"
+                          : "ring-1 ring-white/10 hover:ring-white/25"
                     }`}
                     title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                   >
@@ -580,7 +637,8 @@ export default function StudioTimeline({
       </div>
       <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
         {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to zoom
-        · drag clip edges to trim · drag the ruler to scrub
+        · drag a clip to reorder · drag its edges to trim · drag the ruler to
+        scrub
       </p>
     </div>
   );

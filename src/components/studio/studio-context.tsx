@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   fullClip,
+  moveClipTo,
   removeClip,
   removeSourceRange,
   splitAtSource,
@@ -64,6 +65,7 @@ interface StudioContextValue {
   trimStart: (sourceTime: number) => void;
   trimEnd: (sourceTime: number) => void;
   setClipRange: (id: string, start: number, end: number) => void;
+  moveClip: (id: string, toIndex: number) => void;
   removeSilences: () => Promise<number>;
   transcribe: () => Promise<void>;
   deleteWords: (ids: string[]) => void;
@@ -298,6 +300,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setClips],
   );
 
+  const moveClip = useCallback(
+    (id: string, toIndex: number) => {
+      setClips((prev) => moveClipTo(prev, id, toIndex));
+    },
+    [setClips],
+  );
+
   const removeSilences = useCallback(async (): Promise<number> => {
     if (!source) return 0;
     setDetecting(true);
@@ -394,6 +403,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimStart,
       trimEnd,
       setClipRange,
+      moveClip,
       removeSilences,
       transcribe,
       deleteWords,
@@ -434,6 +444,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimStart,
       trimEnd,
       setClipRange,
+      moveClip,
       removeSilences,
       transcribe,
       deleteWords,
