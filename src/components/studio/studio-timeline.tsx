@@ -419,16 +419,33 @@ export default function StudioTimeline({
                     : offsets[i];
                 const width = Math.max(dur * pxPerSec, 4);
                 const selected = clip.id === selectedClipId;
+                const isGhost = clipDrag?.id === clip.id && clipLive != null;
+                const containerLeftPx = isGhost
+                  ? (clipLive as number)
+                  : leftSec * pxPerSec;
+                // While trimming, draw frames/waveform against the COMMITTED clip
+                // and let the container's overflow mask reveal/hide the trimmed
+                // side — so the untrimmed side stays perfectly still. Otherwise
+                // the content just follows the container (normal + reorder drag).
+                const contentLeftSec = isTrimming
+                  ? offsets[i]
+                  : containerLeftPx / pxPerSec;
+                const contentStartSrc = isTrimming ? clip.start : cStart;
+                const contentEndSrc = isTrimming ? clip.end : cEnd;
                 const span = visibleSpan(
-                  leftSec,
-                  dur,
-                  cStart,
-                  cEnd,
+                  contentLeftSec,
+                  contentEndSrc - contentStartSrc,
+                  contentStartSrc,
+                  contentEndSrc,
                   visStartSec,
                   visEndSec,
                   pxPerSec,
                 );
-                const isGhost = clipDrag?.id === clip.id && clipLive != null;
+                // Content x in container-local coords (absolute position stays
+                // fixed even as the container's left edge moves during a trim).
+                const contentX = span
+                  ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
+                  : 0;
                 return (
                   <div
                     key={clip.id}
@@ -467,7 +484,7 @@ export default function StudioTimeline({
                       <ClipFilmstrip
                         frames={frames}
                         aspect={aspect}
-                        leftPx={span.leftPx}
+                        leftPx={contentX}
                         widthPx={span.widthPx}
                         srcStart={span.srcA}
                         srcEnd={span.srcB}
@@ -478,7 +495,7 @@ export default function StudioTimeline({
                     {span && peaks.length > 0 && (
                       <span
                         className="pointer-events-none absolute bottom-0 bg-black/50"
-                        style={{ left: span.leftPx, width: span.widthPx }}
+                        style={{ left: contentX, width: span.widthPx }}
                       >
                         <WaveformCanvas
                           peaks={peaks}
@@ -509,7 +526,11 @@ export default function StudioTimeline({
                       className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
                     >
                       <span
-                        className={`h-full w-0.5 rounded-full bg-cyan-300 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
+                        className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                          trim?.id === clip.id && trim.edge === "start"
+                            ? "w-0.5"
+                            : "w-1.5"
+                        } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
                       />
                     </span>
                     <span
@@ -528,7 +549,11 @@ export default function StudioTimeline({
                       className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
                     >
                       <span
-                        className={`h-full w-0.5 rounded-full bg-cyan-300 transition-opacity ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
+                        className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                          trim?.id === clip.id && trim.edge === "end"
+                            ? "w-0.5"
+                            : "w-1.5"
+                        } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
                       />
                     </span>
                   </div>
