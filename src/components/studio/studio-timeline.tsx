@@ -423,15 +423,21 @@ export default function StudioTimeline({
                 const containerLeftPx = isGhost
                   ? (clipLive as number)
                   : leftSec * pxPerSec;
-                // While trimming, draw frames/waveform against the COMMITTED clip
-                // and let the container's overflow mask reveal/hide the trimmed
-                // side — so the untrimmed side stays perfectly still. Otherwise
-                // the content just follows the container (normal + reorder drag).
-                const contentLeftSec = isTrimming
-                  ? offsets[i]
+                // While trimming, draw frames/waveform against the FULL extent the
+                // edge can be dragged across (down to the previous clip's end / up
+                // to the next clip's start) and let the container's overflow mask
+                // reveal/hide it. The content's source range and absolute position
+                // stay fixed for the whole drag, so the untrimmed side never moves
+                // and extending the edge back out reveals real frames (not gray).
+                const edgeStart = isTrimming && trim?.edge === "start";
+                const edgeEnd = isTrimming && trim?.edge === "end";
+                const prevEnd = clips[i - 1]?.end ?? 0;
+                const nextStart = clips[i + 1]?.start ?? sourceDuration;
+                const contentStartSrc = edgeStart ? prevEnd : cStart;
+                const contentEndSrc = edgeEnd ? nextStart : cEnd;
+                const contentLeftSec = edgeStart
+                  ? offsets[i] - (clip.start - prevEnd)
                   : containerLeftPx / pxPerSec;
-                const contentStartSrc = isTrimming ? clip.start : cStart;
-                const contentEndSrc = isTrimming ? clip.end : cEnd;
                 const span = visibleSpan(
                   contentLeftSec,
                   contentEndSrc - contentStartSrc,
