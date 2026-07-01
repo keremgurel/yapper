@@ -488,21 +488,33 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
-  // AI pass: an LLM flags mistakes/retakes as struck-through (for review), not
-  // removed. Returns count, or -1 (no key configured) / -2 (request failed).
+  // AI clean up: combine the reliable retake heuristic (cut earlier attempts of
+  // a restarted phrase, keep the last) with an LLM pass for nuanced stumbles /
+  // self-corrections. Marks them struck-through (for review), not removed.
+  // Returns count, or -1 (no AI key AND nothing heuristic) / -2 (AI failed).
   const aiRemoveMistakes = useCallback(async (): Promise<number> => {
     if (words.length === 0) return 0;
     setAiCleaning(true);
     try {
-      const cuts = await cleanTranscriptRemote(words);
-      if (!cuts) return -1;
-      const ranges = cuts
-        .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
-        .filter(([a, b]) => b > a);
+      const heuristic = findEarlierTakeRanges(words);
+      let aiRanges: [number, number][] = [];
+      let aiConfigured = true;
+      try {
+        const cuts = await cleanTranscriptRemote(words);
+        if (cuts === null) aiConfigured = false;
+        else {
+          aiRanges = cuts
+            .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
+            .filter(([a, b]) => b > a);
+        }
+      } catch {
+        // AI failed; still apply the heuristic below.
+        aiConfigured = false;
+      }
+      const ranges = [...heuristic, ...aiRanges];
+      if (ranges.length === 0) return aiConfigured ? 0 : -1;
       applyCuts(ranges);
       return ranges.length;
-    } catch {
-      return -2;
     } finally {
       setAiCleaning(false);
     }
