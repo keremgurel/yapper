@@ -39,19 +39,19 @@ export default function RightPanel({
         </button>
         <button
           type="button"
-          onClick={() => setTab("captions")}
-          className={tabBtn(tab === "captions")}
-        >
-          <Captions className="h-4 w-4" />
-          Captions
-        </button>
-        <button
-          type="button"
           onClick={() => setTab("transcript")}
           className={tabBtn(tab === "transcript")}
         >
           <FileText className="h-4 w-4" />
           Transcript
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("captions")}
+          className={tabBtn(tab === "captions")}
+        >
+          <Captions className="h-4 w-4" />
+          Captions
         </button>
       </div>
 

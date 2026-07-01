@@ -104,6 +104,8 @@ interface StudioContextValue {
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
+  autoEdit: () => Promise<void>;
+  autoEditing: boolean;
   addAudio: (file: File) => Promise<void>;
   moveAudio: (id: string, start: number) => void;
   toggleAudioMuted: (id: string) => void;
@@ -179,6 +181,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
+  const [autoEditing, setAutoEditing] = useState(false);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -737,16 +740,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source, clips, setClips]);
 
-  const transcribe = useCallback(async (): Promise<void> => {
-    if (!source || source.kind === "image") return;
-    // Neutral "Transcribing…" up front; "Downloading speech model" is only for
-    // the on-device fallback, and only while it actually downloads.
-    setTranscribeStatus("transcribing");
-    setTranscribeProgress(0);
-    try {
-      const audio = await decodeToMono16k(source.url);
-      // Prefer the hosted backend (best accuracy); fall back to on-device Whisper
-      // when no provider key is configured or the request fails.
+  // Decoded audio -> words. Prefers the hosted backend (best accuracy) and falls
+  // back to on-device Whisper when no key is configured or the request fails.
+  const wordsFromAudio = useCallback(
+    async (audio: Float32Array): Promise<Word[]> => {
       let raw = null as Awaited<ReturnType<typeof transcribeRemote>>;
       try {
         raw = await transcribeRemote(audio);
@@ -765,16 +762,28 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }
       // Correct approximate word times against the precise VAD edges.
       const segments = detectSpeechSegments(audio);
-      const words = refineWordTimings(
+      return refineWordTimings(
         raw.map((w, i) => ({ id: newWordId(i), ...w })),
         segments,
       );
-      setWords(words);
+    },
+    [],
+  );
+
+  const transcribe = useCallback(async (): Promise<void> => {
+    if (!source || source.kind === "image") return;
+    // Neutral "Transcribing…" up front; "Downloading speech model" is only for
+    // the on-device fallback, and only while it actually downloads.
+    setTranscribeStatus("transcribing");
+    setTranscribeProgress(0);
+    try {
+      const audio = await decodeToMono16k(source.url);
+      setWords(await wordsFromAudio(audio));
       setTranscribeStatus("done");
     } catch {
       setTranscribeStatus("error");
     }
-  }, [source]);
+  }, [source, wordsFromAudio]);
 
   const applyCuts = useCallback(
     (ranges: [number, number][]) => {
@@ -830,6 +839,98 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [words, applyCuts]);
 
+  // One-click clean up: transcribe (if needed), trim each clip's silence, remove
+  // AI-flagged mistakes/retakes and pauses, then generate captions with sensible
+  // defaults. Everything is computed into local variables so each step sees the
+  // result of the previous one without waiting on React state to flush.
+  const autoEdit = useCallback(async (): Promise<void> => {
+    if (!source || source.kind === "image") return;
+    setAutoEditing(true);
+    try {
+      const audio = await decodeToMono16k(source.url);
+
+      // 1. Ensure we have a transcript.
+      let w = words;
+      if (w.length === 0) {
+        setTranscribeStatus("transcribing");
+        setTranscribeProgress(0);
+        try {
+          w = await wordsFromAudio(audio);
+          setWords(w);
+          setTranscribeStatus("done");
+        } catch {
+          setTranscribeStatus("error");
+        }
+      }
+
+      // 2. Trim each clip's start/end down to speech.
+      let next = clips;
+      try {
+        const analysis = analyzeForTrim(audio);
+        next = next.map((c) => {
+          const b = speechBoundsInRange(analysis, c.start, c.end);
+          if (!b) return c;
+          const start = Math.max(c.start, b.start - 0.05);
+          const end = Math.min(c.end, b.end + 0.08);
+          return end - start < 0.1 ? c : { ...c, start, end };
+        });
+      } catch {
+        // leave clips as-is if the waveform can't be analysed
+      }
+
+      if (w.length > 0) {
+        // 3. Remove AI-flagged mistakes/retakes.
+        try {
+          const cuts = await cleanTranscriptRemote(w);
+          if (cuts) {
+            for (const [i, j] of cuts) {
+              const a = w[i]?.start;
+              const b = w[j]?.end;
+              if (a != null && b != null && b > a) {
+                next = removeSourceRange(next, a, b);
+              }
+            }
+          }
+        } catch {
+          // skip mistake removal if the service is unavailable
+        }
+
+        // 4. Cut pauses (plus leading/trailing dead air).
+        const ranges = pauseRanges(w);
+        const first = w[0];
+        const last = w[w.length - 1];
+        if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
+        if (source.duration - last.end >= 0.5) {
+          ranges.push([last.end + 0.1, source.duration]);
+        }
+        for (const [from, to] of ranges) {
+          next = removeSourceRange(next, from, to);
+        }
+      }
+
+      setClips(() => next);
+
+      // 5. Caption defaults: normal case, 3 words per caption, nudged left.
+      setCaptionStyle((s) => ({
+        ...s,
+        textCase: "none",
+        x: 0.35,
+        width: 0.6,
+      }));
+      setCaptionWordsState(3);
+      if (w.length > 0) {
+        setCaptions(
+          generateCaptions(w, next, {
+            maxChars: captionLines * 30,
+            maxWords: 3,
+          }),
+        );
+      }
+    } finally {
+      setAutoEditing(false);
+    }
+  }, [source, words, clips, setClips, wordsFromAudio, captionLines]);
+
   // Undelete: add cut words' source ranges back into the timeline.
   const restoreWords = useCallback(
     (ids: string[]) => {
@@ -882,6 +983,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
+      autoEdit,
+      autoEditing,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -957,6 +1060,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
+      autoEdit,
+      autoEditing,
       addAudio,
       moveAudio,
       toggleAudioMuted,

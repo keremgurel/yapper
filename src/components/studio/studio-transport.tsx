@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Loader2,
   Magnet,
   Pause,
   Play,
@@ -10,6 +11,7 @@ import {
   Trash2,
   Undo2,
   Volume2,
+  Wand2,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 
@@ -39,6 +41,8 @@ export default function StudioTransport({
     deleteSelected,
     trimClipsToSpeech,
     detecting,
+    autoEdit,
+    autoEditing,
     snapping,
     toggleSnapping,
     undo,
@@ -47,6 +51,7 @@ export default function StudioTransport({
     canRedo,
     reset,
   } = useStudio();
+  const canAutoEdit = !!source && source.kind !== "image";
 
   const pillBtn =
     "border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-default disabled:opacity-40";
@@ -68,6 +73,23 @@ export default function StudioTransport({
       <span className="text-foreground/60 mr-1 font-mono text-xs tabular-nums">
         {fmt(currentTimelineTime)} / {fmt(totalTimelineTime)}
       </span>
+
+      {canAutoEdit && (
+        <button
+          type="button"
+          onClick={() => void autoEdit()}
+          disabled={autoEditing}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-3.5 py-2 text-xs font-black text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+          title="Transcribe, remove mistakes, cut pauses and silences, and caption — in one click"
+        >
+          {autoEditing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="h-3.5 w-3.5" />
+          )}
+          {autoEditing ? "Editing…" : "Auto-edit"}
+        </button>
+      )}
 
       <button
         type="button"
