@@ -42,6 +42,18 @@ export interface Overlay {
   sourceStart: number; // in-point into its own media, seconds
   hidden?: boolean; // track hidden (not composited)
   muted?: boolean; // track audio muted
+  // Position + size as fractions of the preview stage (default full-frame).
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+}
+
+export interface OverlayRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
 }
 
 export function newMediaId(): string {

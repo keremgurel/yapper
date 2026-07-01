@@ -45,6 +45,7 @@ import {
   type Clip,
   type MediaAsset,
   type Overlay,
+  type OverlayRect,
   type StudioSource,
   type Word,
 } from "@/lib/studio/types";
@@ -95,6 +96,7 @@ interface StudioContextValue {
   addAssetToTimeline: (assetId: string, start?: number) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
+  setOverlayRect: (id: string, rect: OverlayRect) => void;
   toggleOverlayHidden: (id: string) => void;
   toggleOverlayMuted: (id: string) => void;
   removeOverlay: (id: string) => void;
@@ -221,6 +223,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const moveOverlay = useCallback((id: string, start: number) => {
     setOverlays((prev) =>
       prev.map((o) => (o.id === id ? { ...o, start: Math.max(0, start) } : o)),
+    );
+  }, []);
+
+  const setOverlayRect = useCallback((id: string, rect: OverlayRect) => {
+    setOverlays((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
     );
   }, []);
 
@@ -607,6 +615,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToTimeline,
       liftClipToTrack,
       moveOverlay,
+      setOverlayRect,
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,
@@ -656,6 +665,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToTimeline,
       liftClipToTrack,
       moveOverlay,
+      setOverlayRect,
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,
