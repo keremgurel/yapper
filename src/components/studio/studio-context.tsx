@@ -80,7 +80,7 @@ interface StudioContextValue {
   addMediaAsset: (file: File) => Promise<void>;
   removeMediaAsset: (id: string) => void;
   addOverlayFromAsset: (assetId: string) => void;
-  addCutawayFromClip: (clipId: string, timelineStart: number) => void;
+  liftClipToTrack: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
   toggleOverlayHidden: (id: string) => void;
   toggleOverlayMuted: (id: string) => void;
@@ -167,13 +167,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [mediaAssets],
   );
 
-  // Lift a base-track clip up onto a new upper video track as a full-frame
-  // cutaway (a copy of the recording segment; the base keeps playing under it).
-  const addCutawayFromClip = useCallback(
+  // Move a base-track clip up onto a new upper video track (full-frame cutaway).
+  // The clip leaves the base (which stays non-empty since it drives the clock).
+  const liftClipToTrack = useCallback(
     (clipId: string, timelineStart: number) => {
       if (!source) return;
       const clip = clips.find((c) => c.id === clipId);
-      if (!clip) return;
+      if (!clip || clips.length <= 1) return;
       setOverlays((prev) => [
         ...prev,
         {
@@ -187,8 +187,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           muted: true,
         },
       ]);
+      setClips((prev) => removeClip(prev, clipId));
+      setSelectedClipId((cur) => (cur === clipId ? null : cur));
     },
-    [source, clips],
+    [source, clips, setClips],
   );
 
   const moveOverlay = useCallback((id: string, start: number) => {
@@ -459,7 +461,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
-      addCutawayFromClip,
+      liftClipToTrack,
       moveOverlay,
       toggleOverlayHidden,
       toggleOverlayMuted,
@@ -503,7 +505,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
-      addCutawayFromClip,
+      liftClipToTrack,
       moveOverlay,
       toggleOverlayHidden,
       toggleOverlayMuted,

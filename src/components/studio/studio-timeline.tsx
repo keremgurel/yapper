@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Music2, Trash2, Volume2, VolumeX } from "lucide-react";
+import { Music2 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipDuration, totalDuration } from "@/lib/studio/clips";
 import { useFilmstrip } from "@/hooks/use-filmstrip";
@@ -15,6 +15,7 @@ import { useWaveform } from "@/hooks/use-waveform";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import UpperTrackLane from "@/components/studio/upper-track-lane";
+import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { visibleSpan } from "@/lib/studio/window";
 import type { Clip } from "@/lib/studio/types";
 
@@ -77,7 +78,7 @@ export default function StudioTimeline({
     toggleOverlayHidden,
     toggleOverlayMuted,
     removeOverlay,
-    addCutawayFromClip,
+    liftClipToTrack,
     snapping,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -272,8 +273,8 @@ export default function StudioTimeline({
       setClipLiftY((dy) => {
         setClipLive((live) => {
           if (live != null && dy < -LIFT_THRESHOLD) {
-            // Lifted up: copy this segment onto a new upper video track.
-            addCutawayFromClip(clipDrag.id, Math.max(0, live / pxPerSec));
+            // Lifted up: move this segment onto a new upper video track.
+            liftClipToTrack(clipDrag.id, Math.max(0, live / pxPerSec));
           } else if (live != null) {
             // Drop where the dragged clip's center lands among the others.
             const center = live / pxPerSec + dur / 2;
@@ -299,7 +300,7 @@ export default function StudioTimeline({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [clipDrag, clips, pxPerSec, moveClip, addCutawayFromClip]);
+  }, [clipDrag, clips, pxPerSec, moveClip, liftClipToTrack]);
 
   /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -406,293 +407,281 @@ export default function StudioTimeline({
 
   return (
     <div className="flex h-full min-h-0 flex-col select-none">
-      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
-        <div
-          className="relative min-h-full"
-          style={{ width: trackWidth + padLeft * 2 }}
-        >
-          {/* Ruler */}
+      <div className="flex min-h-0 flex-1">
+        <TrackHeaderRail
+          overlays={overlays}
+          audioTracks={audioTracks}
+          onToggleOverlayHidden={toggleOverlayHidden}
+          onToggleOverlayMuted={toggleOverlayMuted}
+          onRemoveOverlay={removeOverlay}
+          onToggleAudioMuted={toggleAudioMuted}
+          onRemoveAudio={removeAudio}
+        />
+        <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-auto">
           <div
-            onPointerDown={(e) => {
-              e.preventDefault();
-              setScrubbing(true);
-              seekFromClientX(e.clientX);
-            }}
-            className="bg-muted hover:bg-foreground/10 sticky top-0 z-20 h-5 cursor-pointer transition-colors"
+            className="relative min-h-full"
+            style={{ width: trackWidth + padLeft * 2 }}
           >
-            {ticks.map((t) => (
-              <span
-                key={t.sec}
-                className="text-foreground/40 absolute top-0 flex h-full items-center pl-1 font-mono text-[9px]"
-                style={{ left: t.x + padLeft }}
-              >
-                <span className="bg-foreground/20 absolute top-0 left-0 h-1.5 w-px" />
-                {t.label}
-              </span>
-            ))}
-          </div>
+            {/* Ruler */}
+            <div
+              onPointerDown={(e) => {
+                e.preventDefault();
+                setScrubbing(true);
+                seekFromClientX(e.clientX);
+              }}
+              className="bg-muted hover:bg-foreground/10 sticky top-0 z-20 h-5 cursor-pointer transition-colors"
+            >
+              {ticks.map((t) => (
+                <span
+                  key={t.sec}
+                  className="text-foreground/40 absolute top-0 flex h-full items-center pl-1 font-mono text-[9px]"
+                  style={{ left: t.x + padLeft }}
+                >
+                  <span className="bg-foreground/20 absolute top-0 left-0 h-1.5 w-px" />
+                  {t.label}
+                </span>
+              ))}
+            </div>
 
-          {/* Start boundary — nothing can be placed before 0:00 */}
-          <div
-            className="bg-foreground/15 pointer-events-none absolute top-5 bottom-0 z-0 w-px"
-            style={{ left: padLeft }}
-          />
+            {/* Start boundary — nothing can be placed before 0:00 */}
+            <div
+              className="bg-foreground/15 pointer-events-none absolute top-5 bottom-0 z-0 w-px"
+              style={{ left: padLeft }}
+            />
 
-          {/* Tracks (fixed-height rows; extra panel height is room for more) */}
-          <div
-            className="space-y-1 py-1"
-            style={{ paddingLeft: padLeft, paddingRight: padLeft }}
-          >
-            {/* Upper video tracks — stacked above the base, topmost composites
+            {/* Tracks (fixed-height rows; extra panel height is room for more) */}
+            <div
+              className="space-y-1 py-1"
+              style={{ paddingLeft: padLeft, paddingRight: padLeft }}
+            >
+              {/* Upper video tracks — stacked above the base, topmost composites
                 on top (last in the overlays array renders highest). */}
-            {[...overlays].reverse().map((o) => (
-              <UpperTrackLane
-                key={o.id}
-                overlay={o}
-                pxPerSec={pxPerSec}
-                visStartSec={visStartSec}
-                visEndSec={visEndSec}
-                frames={frames}
-                aspect={aspect}
-                peaks={peaks}
-                sourceUrl={sourceUrl}
-                sourceDuration={sourceDuration}
-                onDragStart={(id, clientX, origStart) =>
-                  setOverlayDrag({ id, startX: clientX, origStart })
-                }
-                onToggleHidden={toggleOverlayHidden}
-                onToggleMuted={toggleOverlayMuted}
-                onRemove={removeOverlay}
-              />
-            ))}
+              {[...overlays].reverse().map((o) => (
+                <UpperTrackLane
+                  key={o.id}
+                  overlay={o}
+                  pxPerSec={pxPerSec}
+                  visStartSec={visStartSec}
+                  visEndSec={visEndSec}
+                  frames={frames}
+                  aspect={aspect}
+                  peaks={peaks}
+                  sourceUrl={sourceUrl}
+                  sourceDuration={sourceDuration}
+                  onDragStart={(id, clientX, origStart) =>
+                    setOverlayDrag({ id, startX: clientX, origStart })
+                  }
+                />
+              ))}
 
-            {/* Main (base) video track */}
-            <div className="relative h-20">
-              {clips.map((clip, i) => {
-                const isTrimming = trim?.id === clip.id && live;
-                const cStart = isTrimming ? live.start : clip.start;
-                const cEnd = isTrimming ? live.end : clip.end;
-                const dur = cEnd - cStart;
-                const origDur = clip.end - clip.start;
-                // Left-trim keeps the right edge fixed so the dragged edge tracks
-                // the cursor; right-trim keeps the left edge fixed.
-                const leftSec =
-                  isTrimming && trim?.edge === "start"
-                    ? offsets[i] + (origDur - dur)
-                    : offsets[i];
-                const width = Math.max(dur * pxPerSec, 4);
-                const selected = clip.id === selectedClipId;
-                const isGhost = clipDrag?.id === clip.id && clipLive != null;
-                const containerLeftPx = isGhost
-                  ? (clipLive as number)
-                  : leftSec * pxPerSec;
-                // While trimming, draw frames/waveform against the FULL extent the
-                // edge can be dragged across (down to the previous clip's end / up
-                // to the next clip's start) and let the container's overflow mask
-                // reveal/hide it. The content's source range and absolute position
-                // stay fixed for the whole drag, so the untrimmed side never moves
-                // and extending the edge back out reveals real frames (not gray).
-                const edgeStart = isTrimming && trim?.edge === "start";
-                const edgeEnd = isTrimming && trim?.edge === "end";
-                const prevEnd = clips[i - 1]?.end ?? 0;
-                const nextStart = clips[i + 1]?.start ?? sourceDuration;
-                const contentStartSrc = edgeStart ? prevEnd : cStart;
-                const contentEndSrc = edgeEnd ? nextStart : cEnd;
-                const contentLeftSec = edgeStart
-                  ? offsets[i] - (clip.start - prevEnd)
-                  : containerLeftPx / pxPerSec;
-                const span = visibleSpan(
-                  contentLeftSec,
-                  contentEndSrc - contentStartSrc,
-                  contentStartSrc,
-                  contentEndSrc,
-                  visStartSec,
-                  visEndSec,
-                  pxPerSec,
-                );
-                // Content x in container-local coords (absolute position stays
-                // fixed even as the container's left edge moves during a trim).
-                const contentX = span
-                  ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
-                  : 0;
-                const isLifting = isGhost && clipLiftY < -LIFT_THRESHOLD;
-                return (
-                  <div
-                    key={clip.id}
-                    style={{
-                      left: isGhost ? (clipLive as number) : leftSec * pxPerSec,
-                      width,
-                      transform: isGhost
-                        ? `translateY(${clipLiftY}px)`
-                        : undefined,
-                      transition:
-                        trim || isGhost
-                          ? "none"
-                          : "left 90ms ease, width 90ms ease",
-                    }}
-                    onPointerDown={(e) => {
-                      if (e.button !== 0) return;
-                      onSelect(clip.id);
-                      setClipDrag({
-                        id: clip.id,
-                        startX: e.clientX,
-                        startY: e.clientY,
-                        origLeft: offsets[i] * pxPerSec,
-                      });
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelect(clip.id);
-                    }}
-                    className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
-                      isLifting
-                        ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
-                        : isGhost
-                          ? "z-30 opacity-90 ring-2 ring-cyan-400"
-                          : selected
-                            ? "z-10 ring-2 ring-cyan-500"
-                            : "ring-1 ring-white/10 hover:ring-white/25"
-                    }`}
-                    title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
-                  >
-                    <span className="bg-foreground/15 absolute inset-0" />
-                    {span && frames.length > 0 && (
-                      <ClipFilmstrip
-                        frames={frames}
-                        aspect={aspect}
-                        leftPx={contentX}
-                        widthPx={span.widthPx}
-                        srcStart={span.srcA}
-                        srcEnd={span.srcB}
-                        height={80}
-                      />
-                    )}
+              {/* Main (base) video track */}
+              <div className="relative h-20">
+                {clips.map((clip, i) => {
+                  const isTrimming = trim?.id === clip.id && live;
+                  const cStart = isTrimming ? live.start : clip.start;
+                  const cEnd = isTrimming ? live.end : clip.end;
+                  const dur = cEnd - cStart;
+                  const origDur = clip.end - clip.start;
+                  // Left-trim keeps the right edge fixed so the dragged edge tracks
+                  // the cursor; right-trim keeps the left edge fixed.
+                  const leftSec =
+                    isTrimming && trim?.edge === "start"
+                      ? offsets[i] + (origDur - dur)
+                      : offsets[i];
+                  const width = Math.max(dur * pxPerSec, 4);
+                  const selected = clip.id === selectedClipId;
+                  const isGhost = clipDrag?.id === clip.id && clipLive != null;
+                  const containerLeftPx = isGhost
+                    ? (clipLive as number)
+                    : leftSec * pxPerSec;
+                  // While trimming, draw frames/waveform against the FULL extent the
+                  // edge can be dragged across (down to the previous clip's end / up
+                  // to the next clip's start) and let the container's overflow mask
+                  // reveal/hide it. The content's source range and absolute position
+                  // stay fixed for the whole drag, so the untrimmed side never moves
+                  // and extending the edge back out reveals real frames (not gray).
+                  const edgeStart = isTrimming && trim?.edge === "start";
+                  const edgeEnd = isTrimming && trim?.edge === "end";
+                  const prevEnd = clips[i - 1]?.end ?? 0;
+                  const nextStart = clips[i + 1]?.start ?? sourceDuration;
+                  const contentStartSrc = edgeStart ? prevEnd : cStart;
+                  const contentEndSrc = edgeEnd ? nextStart : cEnd;
+                  const contentLeftSec = edgeStart
+                    ? offsets[i] - (clip.start - prevEnd)
+                    : containerLeftPx / pxPerSec;
+                  const span = visibleSpan(
+                    contentLeftSec,
+                    contentEndSrc - contentStartSrc,
+                    contentStartSrc,
+                    contentEndSrc,
+                    visStartSec,
+                    visEndSec,
+                    pxPerSec,
+                  );
+                  // Content x in container-local coords (absolute position stays
+                  // fixed even as the container's left edge moves during a trim).
+                  const contentX = span
+                    ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
+                    : 0;
+                  const isLifting = isGhost && clipLiftY < -LIFT_THRESHOLD;
+                  return (
+                    <div
+                      key={clip.id}
+                      style={{
+                        left: isGhost
+                          ? (clipLive as number)
+                          : leftSec * pxPerSec,
+                        width,
+                        transform: isGhost
+                          ? `translateY(${clipLiftY}px)`
+                          : undefined,
+                        transition:
+                          trim || isGhost
+                            ? "none"
+                            : "left 90ms ease, width 90ms ease",
+                      }}
+                      onPointerDown={(e) => {
+                        if (e.button !== 0) return;
+                        onSelect(clip.id);
+                        setClipDrag({
+                          id: clip.id,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          origLeft: offsets[i] * pxPerSec,
+                        });
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelect(clip.id);
+                      }}
+                      className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
+                        isLifting
+                          ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+                          : isGhost
+                            ? "z-30 opacity-90 ring-2 ring-cyan-400"
+                            : selected
+                              ? "z-10 ring-2 ring-cyan-500"
+                              : "ring-1 ring-white/10 hover:ring-white/25"
+                      }`}
+                      title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
+                    >
+                      <span className="bg-foreground/15 absolute inset-0" />
+                      {span && frames.length > 0 && (
+                        <ClipFilmstrip
+                          frames={frames}
+                          aspect={aspect}
+                          leftPx={contentX}
+                          widthPx={span.widthPx}
+                          srcStart={span.srcA}
+                          srcEnd={span.srcB}
+                          height={80}
+                        />
+                      )}
 
-                    {span && peaks.length > 0 && (
+                      {span && peaks.length > 0 && (
+                        <span
+                          className="pointer-events-none absolute bottom-0 bg-black/50"
+                          style={{ left: contentX, width: span.widthPx }}
+                        >
+                          <WaveformCanvas
+                            peaks={peaks}
+                            sourceDuration={sourceDuration}
+                            clipStart={span.srcA}
+                            clipEnd={span.srcB}
+                            width={span.widthPx}
+                            height={28}
+                          />
+                        </span>
+                      )}
+
+                      {/* Trim handles — wide invisible grab area, thin visible
+                        line so you can see exactly where the edge lands. */}
                       <span
-                        className="pointer-events-none absolute bottom-0 bg-black/50"
-                        style={{ left: contentX, width: span.widthPx }}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onSelect(clip.id);
+                          setTrim({
+                            id: clip.id,
+                            edge: "start",
+                            startX: e.clientX,
+                            origStart: clip.start,
+                            origEnd: clip.end,
+                          });
+                        }}
+                        className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
                       >
-                        <WaveformCanvas
-                          peaks={peaks}
-                          sourceDuration={sourceDuration}
-                          clipStart={span.srcA}
-                          clipEnd={span.srcB}
-                          width={span.widthPx}
-                          height={28}
+                        <span
+                          className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                            trim?.id === clip.id && trim.edge === "start"
+                              ? "w-0.5"
+                              : "w-1.5"
+                          } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
                         />
                       </span>
-                    )}
+                      <span
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onSelect(clip.id);
+                          setTrim({
+                            id: clip.id,
+                            edge: "end",
+                            startX: e.clientX,
+                            origStart: clip.start,
+                            origEnd: clip.end,
+                          });
+                        }}
+                        className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
+                      >
+                        <span
+                          className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                            trim?.id === clip.id && trim.edge === "end"
+                              ? "w-0.5"
+                              : "w-1.5"
+                          } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
+                        />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
 
-                    {/* Trim handles — wide invisible grab area, thin visible
-                        line so you can see exactly where the edge lands. */}
-                    <span
+              {/* Audio tracks */}
+              {audioTracks.map((a) => {
+                const left = a.start * pxPerSec;
+                const width = Math.max(a.duration * pxPerSec, 8);
+                return (
+                  <div key={a.id} className="relative h-12">
+                    <div
+                      style={{ left, width }}
                       onPointerDown={(e) => {
                         e.preventDefault();
-                        e.stopPropagation();
-                        onSelect(clip.id);
-                        setTrim({
-                          id: clip.id,
-                          edge: "start",
+                        setAudioDrag({
+                          id: a.id,
                           startX: e.clientX,
-                          origStart: clip.start,
-                          origEnd: clip.end,
+                          origStart: a.start,
                         });
                       }}
-                      className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
+                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/25 px-2 ring-1 ring-emerald-500/50 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
                     >
-                      <span
-                        className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                          trim?.id === clip.id && trim.edge === "start"
-                            ? "w-0.5"
-                            : "w-1.5"
-                        } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
-                      />
-                    </span>
-                    <span
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onSelect(clip.id);
-                        setTrim({
-                          id: clip.id,
-                          edge: "end",
-                          startX: e.clientX,
-                          origStart: clip.start,
-                          origEnd: clip.end,
-                        });
-                      }}
-                      className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
-                    >
-                      <span
-                        className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                          trim?.id === clip.id && trim.edge === "end"
-                            ? "w-0.5"
-                            : "w-1.5"
-                        } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
-                      />
-                    </span>
+                      <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                      <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
+                        {a.name}
+                      </span>
+                    </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Audio tracks */}
-            {audioTracks.map((a) => {
-              const left = a.start * pxPerSec;
-              const width = Math.max(a.duration * pxPerSec, 8);
-              return (
-                <div key={a.id} className="relative h-12">
-                  <div
-                    style={{ left, width }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setAudioDrag({
-                        id: a.id,
-                        startX: e.clientX,
-                        origStart: a.start,
-                      });
-                    }}
-                    className="absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/25 px-2 ring-1 ring-emerald-500/50 active:cursor-grabbing"
-                  >
-                    <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                    <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                      {a.name}
-                    </span>
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => toggleAudioMuted(a.id)}
-                      className="text-foreground/60 hover:text-foreground shrink-0"
-                      aria-label={a.muted ? "Unmute" : "Mute"}
-                    >
-                      {a.muted ? (
-                        <VolumeX className="h-3.5 w-3.5" />
-                      ) : (
-                        <Volume2 className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => removeAudio(a.id)}
-                      className="text-foreground/60 shrink-0 hover:text-red-400"
-                      aria-label="Remove audio"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Playhead */}
-          <div
-            className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
-            style={{ left: playheadX + padLeft }}
-          >
-            <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" />
+            {/* Playhead */}
+            <div
+              className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
+              style={{ left: playheadX + padLeft }}
+            >
+              <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" />
+            </div>
           </div>
         </div>
       </div>

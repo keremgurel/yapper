@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Eye,
-  EyeOff,
-  Image as ImageIcon,
-  Trash2,
-  Video,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+import { Image as ImageIcon, Video } from "lucide-react";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import type { Frame } from "@/hooks/use-filmstrip";
@@ -18,7 +10,7 @@ import type { Overlay } from "@/lib/studio/types";
 /**
  * A clip on an upper video track. When it references the recording it shows the
  * real thumbnails + waveform for its source slice, so it reads as a real clip
- * (not a flat bar). Controls (hide / mute / remove) sit in a top gradient bar.
+ * (not a flat bar). Track controls live in the fixed header rail, not here.
  */
 export default function UpperTrackLane({
   overlay,
@@ -31,9 +23,6 @@ export default function UpperTrackLane({
   sourceUrl,
   sourceDuration,
   onDragStart,
-  onToggleHidden,
-  onToggleMuted,
-  onRemove,
 }: {
   overlay: Overlay;
   pxPerSec: number;
@@ -45,9 +34,6 @@ export default function UpperTrackLane({
   sourceUrl: string;
   sourceDuration: number;
   onDragStart: (id: string, clientX: number, origStart: number) => void;
-  onToggleHidden: (id: string) => void;
-  onToggleMuted: (id: string) => void;
-  onRemove: (id: string) => void;
 }) {
   const o = overlay;
   const left = o.start * pxPerSec;
@@ -64,9 +50,6 @@ export default function UpperTrackLane({
         pxPerSec,
       )
     : null;
-  const muted = o.muted ?? true;
-  const iconBtn =
-    "pointer-events-auto shrink-0 text-white/70 hover:text-white transition-colors";
 
   return (
     <div className="relative h-16">
@@ -106,7 +89,7 @@ export default function UpperTrackLane({
           </span>
         )}
 
-        {/* Top control bar */}
+        {/* Name label */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
           {o.kind === "image" ? (
             <ImageIcon className="h-3.5 w-3.5 shrink-0 text-fuchsia-200" />
@@ -116,43 +99,6 @@ export default function UpperTrackLane({
           <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
             {o.name}
           </span>
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onToggleHidden(o.id)}
-            className={iconBtn}
-            aria-label={o.hidden ? "Show track" : "Hide track"}
-          >
-            {o.hidden ? (
-              <EyeOff className="h-3.5 w-3.5" />
-            ) : (
-              <Eye className="h-3.5 w-3.5" />
-            )}
-          </button>
-          {o.kind === "video" && (
-            <button
-              type="button"
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => onToggleMuted(o.id)}
-              className={iconBtn}
-              aria-label={muted ? "Unmute track" : "Mute track"}
-            >
-              {muted ? (
-                <VolumeX className="h-3.5 w-3.5" />
-              ) : (
-                <Volume2 className="h-3.5 w-3.5" />
-              )}
-            </button>
-          )}
-          <button
-            type="button"
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onRemove(o.id)}
-            className={`${iconBtn} hover:!text-red-400`}
-            aria-label="Remove track"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
         </div>
       </div>
     </div>
