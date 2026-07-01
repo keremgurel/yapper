@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { captionTimelineRange } from "@/lib/studio/captions";
+import {
+  captionTimelineRange,
+  caseTransform,
+  type CaptionCase,
+} from "@/lib/studio/captions";
 import type { Caption, Clip } from "@/lib/studio/types";
 
 const MIN = 0.1;
@@ -24,6 +28,7 @@ export default function CaptionTrack({
   pxPerSec,
   playhead,
   selectedId,
+  textCase,
   onSelect,
   onRange,
   onSplit,
@@ -33,6 +38,7 @@ export default function CaptionTrack({
   pxPerSec: number;
   playhead: number;
   selectedId: string | null;
+  textCase: CaptionCase;
   onSelect: (id: string) => void;
   onRange: (id: string, start: number, end: number) => void;
   onSplit: (id: string, at: number) => void;
@@ -83,7 +89,10 @@ export default function CaptionTrack({
               selected ? "ring-2 ring-orange-400" : "ring-orange-500/50"
             }`}
           >
-            <span className="text-foreground/85 min-w-0 flex-1 truncate text-[11px] font-bold">
+            <span
+              style={{ textTransform: caseTransform(textCase) }}
+              className="text-foreground/85 min-w-0 flex-1 truncate text-[11px] font-bold"
+            >
               {c.text}
             </span>
             <span

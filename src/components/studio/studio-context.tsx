@@ -136,6 +136,7 @@ interface StudioContextValue {
   updateCaptionLayout: (id: string, layout: CaptionLayout) => void;
   setCaptionRange: (id: string, start: number, end: number) => void;
   splitCaption: (id: string, at: number) => void;
+  splitCaptionAtWord: (id: string, wordsBefore: number) => void;
   setCaptionFont: (fontFamily: string) => void;
   setCaptionScale: (fontScale: number) => void;
   setCaptionCase: (mode: CaptionCase) => void;
@@ -301,6 +302,35 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     },
     [clips],
   );
+
+  // Break a caption at a word boundary (Enter in the editor). `wordsBefore` is
+  // how many words stay in the first caption; source time is split by word count.
+  const splitCaptionAtWord = useCallback((id: string, wordsBefore: number) => {
+    setCaptions((prev) =>
+      prev.flatMap((c) => {
+        if (c.id !== id) return [c];
+        const parts = c.text.split(/\s+/).filter(Boolean);
+        if (parts.length < 2) return [c];
+        const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
+        const atSrc =
+          c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
+        return [
+          {
+            ...c,
+            id: newCaptionId(),
+            sourceEnd: atSrc,
+            text: parts.slice(0, k).join(" "),
+          },
+          {
+            ...c,
+            id: newCaptionId(),
+            sourceStart: atSrc,
+            text: parts.slice(k).join(" "),
+          },
+        ];
+      }),
+    );
+  }, []);
 
   const setCaptionFont = useCallback((fontFamily: string) => {
     setCaptionStyle((s) => ({ ...s, fontFamily }));
@@ -884,6 +914,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       updateCaptionLayout,
       setCaptionRange,
       splitCaption,
+      splitCaptionAtWord,
       setCaptionFont,
       setCaptionScale,
       setCaptionCase,
@@ -957,6 +988,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       updateCaptionLayout,
       setCaptionRange,
       splitCaption,
+      splitCaptionAtWord,
       setCaptionFont,
       setCaptionScale,
       setCaptionCase,

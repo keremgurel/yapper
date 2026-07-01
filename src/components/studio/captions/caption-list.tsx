@@ -2,7 +2,7 @@
 
 import { Trash2 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { captionTimelineRange } from "@/lib/studio/captions";
+import { captionTimelineRange, caseTransform } from "@/lib/studio/captions";
 
 /** The editable list of caption lines. Click a row to select + seek to it. */
 export default function CaptionList({
@@ -13,12 +13,29 @@ export default function CaptionList({
   const {
     clips,
     captions,
+    captionStyle,
     selectedCaptionId,
     selectCaption,
     setCaptionText,
+    splitCaptionAtWord,
     removeCaption,
     clearCaptions,
   } = useStudio();
+
+  // Enter splits the caption at the cursor's word boundary.
+  const onEnterSplit = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    id: string,
+  ) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    const el = e.currentTarget;
+    const pos = el.selectionStart ?? el.value.length;
+    const before = el.value.slice(0, pos).trim();
+    const after = el.value.slice(pos).trim();
+    if (!before || !after) return; // nothing to split off
+    splitCaptionAtWord(id, before.split(/\s+/).length);
+  };
 
   if (captions.length === 0) {
     return (
@@ -53,10 +70,12 @@ export default function CaptionList({
             <input
               value={c.text}
               onChange={(e) => setCaptionText(c.id, e.target.value)}
+              onKeyDown={(e) => onEnterSplit(e, c.id)}
               onFocus={() => {
                 selectCaption(c.id);
                 onSeek(captionTimelineRange(clips, c).start + 0.01);
               }}
+              style={{ textTransform: caseTransform(captionStyle.textCase) }}
               className="text-foreground min-w-0 flex-1 bg-transparent text-[13px] outline-none"
             />
             <button

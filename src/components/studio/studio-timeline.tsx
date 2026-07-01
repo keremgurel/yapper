@@ -84,6 +84,7 @@ export default function StudioTimeline({
     removeOverlay,
     liftClipToTrack,
     captions,
+    captionStyle,
     selectedCaptionId,
     selectCaption,
     setCaptionRange,
@@ -546,6 +547,7 @@ export default function StudioTimeline({
                   pxPerSec={pxPerSec}
                   playhead={currentTimelineTime}
                   selectedId={selectedCaptionId}
+                  textCase={captionStyle.textCase}
                   onSelect={selectCaption}
                   onRange={setCaptionRange}
                   onSplit={splitCaption}
