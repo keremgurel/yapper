@@ -49,7 +49,10 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
     const r = captionTimelineRange(clips, c);
     return r.end > r.start && masterTime >= r.start && masterTime < r.end;
   });
-  if (!active) return <div ref={layerRef} className="absolute inset-0" />;
+  if (!active)
+    return (
+      <div ref={layerRef} className="pointer-events-none absolute inset-0" />
+    );
 
   const x = active.x ?? captionStyle.x;
   const y = active.y ?? captionStyle.y;
