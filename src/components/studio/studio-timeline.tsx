@@ -184,30 +184,47 @@ export default function StudioTimeline({
     if (!clip) return;
     const prevEnd = clips[idx - 1]?.end ?? 0;
     const nextStart = clips[idx + 1]?.start ?? sourceDuration;
+    // Magnet targets (in source seconds): neighbor edges and the playhead.
+    const offset = clips
+      .slice(0, idx)
+      .reduce((s, c) => s + (c.end - c.start), 0);
+    const clipDur = clip.end - clip.start;
+    const playheadInClip =
+      currentTimelineTime >= offset && currentTimelineTime <= offset + clipDur;
+    const playheadSource = clip.start + (currentTimelineTime - offset);
+    const snapEdge = (t: number) => {
+      if (!snapping) return t;
+      const th = 8 / pxPerSec;
+      const points = playheadInClip
+        ? [prevEnd, nextStart, playheadSource]
+        : [prevEnd, nextStart];
+      for (const p of points) if (Math.abs(p - t) < th) return p;
+      return t;
+    };
 
+    let current: { start: number; end: number } | null = null;
     const onMove = (e: PointerEvent) => {
       const deltaSec = (e.clientX - trim.startX) / pxPerSec;
       if (trim.edge === "start") {
         const start = clamp(
-          trim.origStart + deltaSec,
+          snapEdge(trim.origStart + deltaSec),
           prevEnd,
           trim.origEnd - MIN_CLIP,
         );
-        setLive({ start, end: trim.origEnd });
+        current = { start, end: trim.origEnd };
       } else {
         const end = clamp(
-          trim.origEnd + deltaSec,
+          snapEdge(trim.origEnd + deltaSec),
           trim.origStart + MIN_CLIP,
           nextStart,
         );
-        setLive({ start: trim.origStart, end });
+        current = { start: trim.origStart, end };
       }
+      setLive(current);
     };
     const onUp = () => {
-      setLive((l) => {
-        if (l) setClipRange(trim.id, l.start, l.end);
-        return null;
-      });
+      if (current) setClipRange(trim.id, current.start, current.end);
+      setLive(null);
       setTrim(null);
     };
     window.addEventListener("pointermove", onMove);
@@ -216,7 +233,15 @@ export default function StudioTimeline({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [trim, clips, sourceDuration, pxPerSec, setClipRange]);
+  }, [
+    trim,
+    clips,
+    sourceDuration,
+    pxPerSec,
+    setClipRange,
+    snapping,
+    currentTimelineTime,
+  ]);
 
   /* ---- audio clip drag ---- */
   useEffect(() => {
@@ -260,38 +285,38 @@ export default function StudioTimeline({
     if (!clipDrag) return;
     const dragged = clips.find((c) => c.id === clipDrag.id);
     const dur = dragged ? clipDuration(dragged) : 0;
-    let moved = false;
+    // Track the drag in closure vars so the drop can read the final position
+    // directly (no setState-inside-setState, which React warns about).
+    let live: number | null = null;
+    let liftY = 0;
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - clipDrag.startX;
       const dy = e.clientY - clipDrag.startY;
-      if (!moved && Math.hypot(dx, dy) < 4) return; // ignore tiny jitter (a click)
-      moved = true;
-      setClipLive(clipDrag.origLeft + dx);
+      if (live == null && Math.hypot(dx, dy) < 4) return; // ignore a click's jitter
+      live = clipDrag.origLeft + dx;
+      liftY = dy;
+      setClipLive(live);
       setClipLiftY(dy);
     };
     const onUp = () => {
-      setClipLiftY((dy) => {
-        setClipLive((live) => {
-          if (live != null && dy < -LIFT_THRESHOLD) {
-            // Lifted up: move this segment onto a new upper video track.
-            liftClipToTrack(clipDrag.id, Math.max(0, live / pxPerSec));
-          } else if (live != null) {
-            // Drop where the dragged clip's center lands among the others.
-            const center = live / pxPerSec + dur / 2;
-            let acc = 0;
-            let target = 0;
-            for (const c of clips) {
-              const d = clipDuration(c);
-              const mid = acc + d / 2;
-              if (c.id !== clipDrag.id && mid < center) target++;
-              acc += d;
-            }
-            moveClip(clipDrag.id, target);
-          }
-          return null;
-        });
-        return 0;
-      });
+      if (live != null && liftY < -LIFT_THRESHOLD) {
+        // Lifted up: move this segment onto a new upper video track.
+        liftClipToTrack(clipDrag.id, Math.max(0, live / pxPerSec));
+      } else if (live != null) {
+        // Drop where the dragged clip's center lands among the others.
+        const center = live / pxPerSec + dur / 2;
+        let acc = 0;
+        let target = 0;
+        for (const c of clips) {
+          const d = clipDuration(c);
+          const mid = acc + d / 2;
+          if (c.id !== clipDrag.id && mid < center) target++;
+          acc += d;
+        }
+        moveClip(clipDrag.id, target);
+      }
+      setClipLive(null);
+      setClipLiftY(0);
       setClipDrag(null);
     };
     window.addEventListener("pointermove", onMove);

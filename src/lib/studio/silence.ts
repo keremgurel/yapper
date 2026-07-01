@@ -21,12 +21,12 @@ interface VadOptions {
   frameSec?: number;
   minSpeechSec?: number;
   minSilenceSec?: number;
-  /** dB above the noise floor to count as speech onset (hysteresis high). */
-  onDb?: number;
-  /** dB above the noise floor to stay in speech (hysteresis low). */
-  offDb?: number;
-  /** dB above the noise floor used to back-track to the true onset. */
-  onsetFloorDb?: number;
+  /** Fraction of the noise->speech range to count as speech onset (hysteresis high). */
+  onFrac?: number;
+  /** Fraction of the noise->speech range to stay in speech (hysteresis low). */
+  offFrac?: number;
+  /** Fraction used to back-track to the true onset. */
+  floorFrac?: number;
 }
 
 function percentile(sortedAsc: number[], p: number): number {
@@ -64,9 +64,9 @@ export function detectSpeechSegments(
     frameSec = 0.01,
     minSpeechSec = 0.12,
     minSilenceSec = 0.35,
-    onDb = 9,
-    offDb = 5,
-    onsetFloorDb = 3,
+    onFrac = 0.5,
+    offFrac = 0.32,
+    floorFrac = 0.15,
   }: VadOptions = {},
 ): SpeechSegment[] {
   const frame = Math.max(1, Math.round(SR * frameSec));
@@ -74,14 +74,17 @@ export function detectSpeechSegments(
   if (db.length === 0) return [];
 
   const sorted = [...db].sort((a, b) => a - b);
-  const noiseFloor = percentile(sorted, 0.15);
-  const peak = percentile(sorted, 0.99);
+  // Anchor thresholds to the actual noise->speech spread, not fixed dB, so a
+  // pause that's merely much quieter than speech (not silent) is still cut.
+  const noiseFloor = percentile(sorted, 0.1);
+  const speechLevel = percentile(sorted, 0.85);
+  const range = speechLevel - noiseFloor;
   // Too little dynamic range to distinguish speech from noise -> don't guess.
-  if (peak - noiseFloor < 6) return [{ start: 0, end: db.length * frameSec }];
+  if (range < 8) return [{ start: 0, end: db.length * frameSec }];
 
-  const onT = noiseFloor + onDb;
-  const offT = noiseFloor + offDb;
-  const floorT = noiseFloor + onsetFloorDb;
+  const onT = noiseFloor + range * onFrac;
+  const offT = noiseFloor + range * offFrac;
+  const floorT = noiseFloor + range * floorFrac;
 
   const raw: SpeechSegment[] = [];
   let inSpeech = false;

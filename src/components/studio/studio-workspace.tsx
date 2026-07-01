@@ -52,7 +52,7 @@ export default function StudioWorkspace() {
   }, [source]);
 
   // Vertical resize of the timeline panel (takes height from the preview).
-  const [bottomH, setBottomH] = useState(280);
+  const [bottomH, setBottomH] = useState(380);
   const [resizingH, setResizingH] = useState(false);
   const dragRef = useRef<{ startY: number; startH: number } | null>(null);
 
@@ -71,7 +71,7 @@ export default function StudioWorkspace() {
       const d = dragRef.current;
       if (!d) return;
       const next = d.startH + (d.startY - e.clientY);
-      setBottomH(Math.max(180, Math.min(window.innerHeight * 0.7, next)));
+      setBottomH(Math.max(280, Math.min(window.innerHeight * 0.75, next)));
     };
     const onUp = () => setResizingH(false);
     window.addEventListener("pointermove", onMove);
