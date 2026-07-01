@@ -13,7 +13,7 @@ export default function TrainingHeader() {
         <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
           Y
         </div>
-        <span className="font-display text-foreground hidden text-[22px] font-semibold tracking-[0.02em] sm:inline">
+        <span className="font-display text-foreground text-[20px] font-semibold tracking-[0.02em] sm:text-[22px]">
           yapper
         </span>
       </Link>
