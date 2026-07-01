@@ -27,6 +27,7 @@ import {
 } from "@/lib/studio/transcript-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
+import { transcribeRemote } from "@/lib/studio/transcribe-remote";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
@@ -392,14 +393,26 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setTranscribeProgress(0);
     try {
       const audio = await decodeToMono16k(source.url);
-      const raw = await transcribeAudio(audio, (p) => {
-        if (p.status === "loading" && typeof p.progress === "number") {
-          setTranscribeProgress(Math.round(p.progress));
-        } else if (p.status === "transcribing") {
-          setTranscribeStatus("transcribing");
-        }
-      });
-      // Correct Whisper's approximate word times against the precise VAD edges.
+      // Prefer the hosted backend (best accuracy); fall back to on-device Whisper
+      // when no provider key is configured or the request fails.
+      let raw = null as Awaited<ReturnType<typeof transcribeRemote>>;
+      try {
+        setTranscribeStatus("transcribing");
+        raw = await transcribeRemote(audio);
+      } catch {
+        raw = null;
+      }
+      if (!raw) {
+        setTranscribeStatus("loading");
+        raw = await transcribeAudio(audio, (p) => {
+          if (p.status === "loading" && typeof p.progress === "number") {
+            setTranscribeProgress(Math.round(p.progress));
+          } else if (p.status === "transcribing") {
+            setTranscribeStatus("transcribing");
+          }
+        });
+      }
+      // Correct approximate word times against the precise VAD edges.
       const segments = detectSpeechSegments(audio);
       const words = refineWordTimings(
         raw.map((w, i) => ({ id: newWordId(i), ...w })),
