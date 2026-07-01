@@ -7,63 +7,21 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  Eye,
-  EyeOff,
-  Image as ImageIcon,
-  Music2,
-  Trash2,
-  Video,
-  Volume2,
-  VolumeX,
-} from "lucide-react";
+import { Music2, Trash2, Volume2, VolumeX } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipDuration, totalDuration } from "@/lib/studio/clips";
 import { useFilmstrip } from "@/hooks/use-filmstrip";
 import { useWaveform } from "@/hooks/use-waveform";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
+import UpperTrackLane from "@/components/studio/upper-track-lane";
+import { visibleSpan } from "@/lib/studio/window";
 import type { Clip } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
 const MIN_CLIP = 0.2;
 const LIFT_THRESHOLD = 40; // drag a clip up this far to spawn a new upper track
-
-interface ClipSpan {
-  leftPx: number;
-  widthPx: number;
-  srcA: number;
-  srcB: number;
-}
-
-/**
- * Intersect a clip with the visible window and map back to source seconds, so
- * the track only renders frames/waveform for what's on screen. Returns null
- * when the clip is fully off-screen.
- */
-function visibleSpan(
-  clipLeftSec: number,
-  clipDur: number,
-  srcStart: number,
-  srcEnd: number,
-  visStartSec: number,
-  visEndSec: number,
-  pxPerSec: number,
-): ClipSpan | null {
-  if (clipDur <= 0) return null;
-  const a = Math.max(clipLeftSec, visStartSec);
-  const b = Math.min(clipLeftSec + clipDur, visEndSec);
-  if (b <= a) return null;
-  const fracA = (a - clipLeftSec) / clipDur;
-  const fracB = (b - clipLeftSec) / clipDur;
-  return {
-    leftPx: (a - clipLeftSec) * pxPerSec,
-    widthPx: (b - a) * pxPerSec,
-    srcA: srcStart + fracA * (srcEnd - srcStart),
-    srcB: srcStart + fracB * (srcEnd - srcStart),
-  };
-}
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -485,7 +443,30 @@ export default function StudioTimeline({
             className="space-y-1 py-1"
             style={{ paddingLeft: padLeft, paddingRight: padLeft }}
           >
-            {/* Main video track */}
+            {/* Upper video tracks — stacked above the base, topmost composites
+                on top (last in the overlays array renders highest). */}
+            {[...overlays].reverse().map((o) => (
+              <UpperTrackLane
+                key={o.id}
+                overlay={o}
+                pxPerSec={pxPerSec}
+                visStartSec={visStartSec}
+                visEndSec={visEndSec}
+                frames={frames}
+                aspect={aspect}
+                peaks={peaks}
+                sourceUrl={sourceUrl}
+                sourceDuration={sourceDuration}
+                onDragStart={(id, clientX, origStart) =>
+                  setOverlayDrag({ id, startX: clientX, origStart })
+                }
+                onToggleHidden={toggleOverlayHidden}
+                onToggleMuted={toggleOverlayMuted}
+                onRemove={removeOverlay}
+              />
+            ))}
+
+            {/* Main (base) video track */}
             <div className="relative h-20">
               {clips.map((clip, i) => {
                 const isTrimming = trim?.id === clip.id && live;
@@ -655,76 +636,6 @@ export default function StudioTimeline({
                 );
               })}
             </div>
-
-            {/* Overlay tracks (image / video) */}
-            {overlays.map((o) => {
-              const left = o.start * pxPerSec;
-              const width = Math.max(o.duration * pxPerSec, 8);
-              return (
-                <div key={o.id} className="relative h-12">
-                  <div
-                    style={{ left, width }}
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setOverlayDrag({
-                        id: o.id,
-                        startX: e.clientX,
-                        origStart: o.start,
-                      });
-                    }}
-                    className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-fuchsia-500/25 px-2 ring-1 ring-fuchsia-500/50 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
-                  >
-                    {o.kind === "image" ? (
-                      <ImageIcon className="h-3.5 w-3.5 shrink-0 text-fuchsia-300" />
-                    ) : (
-                      <Video className="h-3.5 w-3.5 shrink-0 text-fuchsia-300" />
-                    )}
-                    <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                      {o.name}
-                    </span>
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => toggleOverlayHidden(o.id)}
-                      className="text-foreground/60 hover:text-foreground shrink-0"
-                      aria-label={o.hidden ? "Show track" : "Hide track"}
-                    >
-                      {o.hidden ? (
-                        <EyeOff className="h-3.5 w-3.5" />
-                      ) : (
-                        <Eye className="h-3.5 w-3.5" />
-                      )}
-                    </button>
-                    {o.kind === "video" && (
-                      <button
-                        type="button"
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={() => toggleOverlayMuted(o.id)}
-                        className="text-foreground/60 hover:text-foreground shrink-0"
-                        aria-label={
-                          (o.muted ?? true) ? "Unmute track" : "Mute track"
-                        }
-                      >
-                        {(o.muted ?? true) ? (
-                          <VolumeX className="h-3.5 w-3.5" />
-                        ) : (
-                          <Volume2 className="h-3.5 w-3.5" />
-                        )}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={() => removeOverlay(o.id)}
-                      className="text-foreground/60 shrink-0 hover:text-red-400"
-                      aria-label="Remove overlay"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
 
             {/* Audio tracks */}
             {audioTracks.map((a) => {
