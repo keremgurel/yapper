@@ -78,7 +78,9 @@ export default function StudioTimeline({
     toggleAudioMuted,
     removeAudio,
     overlays,
+    mediaAssets,
     moveOverlay,
+    setOverlayRange,
     toggleOverlayHidden,
     toggleOverlayMuted,
     removeOverlay,
@@ -576,9 +578,18 @@ export default function StudioTimeline({
                   peaks={peaks}
                   sourceUrl={sourceUrl}
                   sourceDuration={sourceDuration}
+                  fullDuration={
+                    o.kind === "image"
+                      ? Infinity
+                      : o.url === sourceUrl
+                        ? sourceDuration
+                        : (mediaAssets.find((m) => m.url === o.url)?.duration ??
+                          o.sourceStart + o.duration)
+                  }
                   onDragStart={(id, clientX, origStart) =>
                     setOverlayDrag({ id, startX: clientX, origStart })
                   }
+                  onTrim={setOverlayRange}
                 />
               ))}
 

@@ -119,6 +119,12 @@ interface StudioContextValue {
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
+  setOverlayRange: (
+    id: string,
+    start: number,
+    duration: number,
+    sourceStart: number,
+  ) => void;
   toggleOverlayHidden: (id: string) => void;
   toggleOverlayMuted: (id: string) => void;
   removeOverlay: (id: string) => void;
@@ -487,6 +493,26 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
     );
   }, []);
+
+  // Trim an upper-track clip's timeline range and in-point (edge drag). The
+  // lane clamps against the media length; this just stores the result.
+  const setOverlayRange = useCallback(
+    (id: string, start: number, duration: number, sourceStart: number) => {
+      setOverlays((prev) =>
+        prev.map((o) =>
+          o.id === id
+            ? {
+                ...o,
+                start: Math.max(0, start),
+                duration: Math.max(0.1, duration),
+                sourceStart: Math.max(0, sourceStart),
+              }
+            : o,
+        ),
+      );
+    },
+    [],
+  );
 
   const toggleOverlayHidden = useCallback((id: string) => {
     setOverlays((prev) =>
@@ -998,6 +1024,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       liftClipToTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayRange,
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,
@@ -1075,6 +1102,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       liftClipToTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayRange,
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,

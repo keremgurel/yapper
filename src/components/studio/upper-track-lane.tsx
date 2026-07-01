@@ -1,11 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Image as ImageIcon, Video } from "lucide-react";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import type { Frame } from "@/hooks/use-filmstrip";
 import { visibleSpan } from "@/lib/studio/window";
 import type { Overlay } from "@/lib/studio/types";
+
+const MIN = 0.1; // minimum overlay duration (seconds)
+
+interface TrimState {
+  edge: "start" | "end";
+  startX: number;
+  orig: { start: number; duration: number; sourceStart: number };
+}
 
 /**
  * A clip on an upper video track. When it references the recording it shows the
@@ -22,7 +31,9 @@ export default function UpperTrackLane({
   peaks,
   sourceUrl,
   sourceDuration,
+  fullDuration,
   onDragStart,
+  onTrim,
 }: {
   overlay: Overlay;
   pxPerSec: number;
@@ -33,9 +44,69 @@ export default function UpperTrackLane({
   peaks: number[];
   sourceUrl: string;
   sourceDuration: number;
+  fullDuration: number;
   onDragStart: (id: string, clientX: number, origStart: number) => void;
+  onTrim: (
+    id: string,
+    start: number,
+    duration: number,
+    sourceStart: number,
+  ) => void;
 }) {
   const o = overlay;
+  const [trim, setTrim] = useState<TrimState | null>(null);
+  const isImg = o.kind === "image";
+
+  useEffect(() => {
+    if (!trim) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = (e.clientX - trim.startX) / pxPerSec;
+      const g = trim.orig;
+      if (trim.edge === "start") {
+        // Left edge: shift start + in-point, keep the right edge fixed.
+        let d = delta;
+        d = Math.min(d, g.duration - MIN); // keep >= MIN
+        d = Math.max(d, -g.start); // don't cross timeline 0
+        if (!isImg) d = Math.max(d, -g.sourceStart); // don't cross media in-point
+        onTrim(
+          o.id,
+          g.start + d,
+          g.duration - d,
+          isImg ? g.sourceStart : g.sourceStart + d,
+        );
+      } else {
+        // Right edge: change duration only.
+        let d = delta;
+        d = Math.max(d, MIN - g.duration);
+        if (Number.isFinite(fullDuration)) {
+          d = Math.min(d, fullDuration - (g.sourceStart + g.duration));
+        }
+        onTrim(o.id, g.start, g.duration + d, g.sourceStart);
+      }
+    };
+    const onUp = () => setTrim(null);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [trim, pxPerSec, fullDuration, isImg, o.id, onTrim]);
+
+  const beginTrim = (edge: "start" | "end") => (e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTrim({
+      edge,
+      startX: e.clientX,
+      orig: {
+        start: o.start,
+        duration: o.duration,
+        sourceStart: o.sourceStart,
+      },
+    });
+  };
+
   const left = o.start * pxPerSec;
   const width = Math.max(o.duration * pxPerSec, 8);
   const isRecording = o.url === sourceUrl && o.kind === "video";
@@ -60,7 +131,7 @@ export default function UpperTrackLane({
           e.stopPropagation();
           onDragStart(o.id, e.clientX, o.start);
         }}
-        className={`absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-fuchsia-500/20 ring-1 ring-fuchsia-500/60 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
+        className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-fuchsia-500/20 ring-1 ring-fuchsia-500/60 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
       >
         <span className="absolute inset-0 bg-fuchsia-500/15" />
         {span && frames.length > 0 && (
@@ -101,6 +172,16 @@ export default function UpperTrackLane({
             {o.name}
           </span>
         </div>
+
+        {/* Trim edges — drag to change the clip's in/out, just like the base. */}
+        <span
+          onPointerDown={beginTrim("start")}
+          className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-fuchsia-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+        />
+        <span
+          onPointerDown={beginTrim("end")}
+          className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-fuchsia-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+        />
       </div>
     </div>
   );
