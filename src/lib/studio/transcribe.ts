@@ -43,7 +43,9 @@ interface TransformersModule {
 }
 
 const TF_URL = "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3";
-const MODEL = "Xenova/whisper-tiny.en";
+// base.en is markedly more accurate than tiny for text and word timing, while
+// staying small enough to download and run on-device.
+const MODEL = "Xenova/whisper-base.en";
 
 let modulePromise: Promise<TransformersModule> | null = null;
 let pipelinePromise: Promise<AsrPipeline> | null = null;

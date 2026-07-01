@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Eraser, Repeat2, Trash2, X } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { isWordCut } from "@/lib/studio/transcript-edit";
+
+const MIN_GAP = 0.4; // seconds; shorter pauses aren't shown as chips
 
 export default function TranscriptWords({
   currentSourceTime,
@@ -12,8 +14,14 @@ export default function TranscriptWords({
   currentSourceTime: number;
   onSeek: (t: number) => void;
 }) {
-  const { words, clips, deleteWords, removeFillers, removeEarlierTakes } =
-    useStudio();
+  const {
+    words,
+    clips,
+    deleteWords,
+    cutRange,
+    removeFillers,
+    removeEarlierTakes,
+  } = useStudio();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
 
@@ -101,46 +109,55 @@ export default function TranscriptWords({
       )}
 
       <div className="flex-1 overflow-y-auto p-4">
-        <p className="text-sm leading-7">
-          {words.map((w) => {
+        <p className="text-sm leading-8">
+          {words.map((w, i) => {
             const cut = isWordCut(clips, w);
             const active =
               !cut &&
               currentSourceTime >= w.start &&
               currentSourceTime <= w.end;
             const isSel = selected.has(w.id);
-            if (cut) {
-              return (
-                <span
-                  key={w.id}
-                  className="text-foreground/30 px-0.5 line-through"
-                >
-                  {w.text}{" "}
-                </span>
-              );
-            }
+            const next = words[i + 1];
+            const gap =
+              !cut && next && !isWordCut(clips, next) ? next.start - w.end : 0;
             return (
-              <span key={w.id}>
-                <button
-                  type="button"
-                  onClick={(e) => onWordClick(w.id, e)}
-                  className={`rounded px-0.5 transition-colors ${
-                    isSel
-                      ? "text-foreground bg-red-500/30"
-                      : active
-                        ? "text-foreground bg-cyan-500/30"
-                        : "text-foreground/75 hover:bg-muted"
-                  }`}
-                >
-                  {w.text}
-                </button>{" "}
-              </span>
+              <Fragment key={w.id}>
+                {cut ? (
+                  <span className="text-foreground/30 px-0.5 line-through">
+                    {w.text}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e) => onWordClick(w.id, e)}
+                    className={`rounded px-0.5 transition-colors ${
+                      isSel
+                        ? "text-foreground bg-red-500/30"
+                        : active
+                          ? "text-foreground bg-cyan-500/30"
+                          : "text-foreground/75 hover:bg-muted"
+                    }`}
+                  >
+                    {w.text}
+                  </button>
+                )}{" "}
+                {gap >= MIN_GAP && (
+                  <button
+                    type="button"
+                    onClick={() => cutRange(w.end, next.start)}
+                    title="Delete this pause"
+                    className="text-foreground/40 bg-foreground/8 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold hover:bg-red-500/20 hover:text-red-400"
+                  >
+                    […{gap.toFixed(1)}s]
+                  </button>
+                )}
+              </Fragment>
             );
           })}
         </p>
         <p className="text-foreground/40 mt-4 text-xs">
-          Click to select & seek · Shift-click for a range · ⌘/Ctrl-click to
-          multi-select · Delete to cut
+          Click to select &amp; seek · Shift-click for a range · ⌘/Ctrl-click to
+          multi-select · Delete to cut · tap a […] pause to remove it
         </p>
       </div>
     </div>

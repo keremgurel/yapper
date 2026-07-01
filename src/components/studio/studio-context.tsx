@@ -17,10 +17,11 @@ import {
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
-import { detectSilences } from "@/lib/studio/silence";
+import { detectSilences, detectSpeechSegments } from "@/lib/studio/silence";
 import {
   findEarlierTakeRanges,
   findFillerIds,
+  refineWordTimings,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
@@ -69,6 +70,7 @@ interface StudioContextValue {
   removeSilences: () => Promise<number>;
   transcribe: () => Promise<void>;
   deleteWords: (ids: string[]) => void;
+  cutRange: (from: number, to: number) => void;
   removeFillers: () => number;
   removeEarlierTakes: () => number;
   addAudio: (file: File) => Promise<void>;
@@ -382,7 +384,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           setTranscribeStatus("transcribing");
         }
       });
-      setWords(raw.map((w, i) => ({ id: newWordId(i), ...w })));
+      // Correct Whisper's approximate word times against the precise VAD edges.
+      const segments = detectSpeechSegments(audio);
+      const words = refineWordTimings(
+        raw.map((w, i) => ({ id: newWordId(i), ...w })),
+        segments,
+      );
+      setWords(words);
       setTranscribeStatus("done");
     } catch {
       setTranscribeStatus("error");
@@ -409,6 +417,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       applyCuts(selectionToRanges(words, new Set(ids)));
     },
     [words, applyCuts],
+  );
+
+  const cutRange = useCallback(
+    (from: number, to: number) => applyCuts([[from, to]]),
+    [applyCuts],
   );
 
   const removeFillers = useCallback((): number => {
@@ -450,6 +463,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeSilences,
       transcribe,
       deleteWords,
+      cutRange,
       removeFillers,
       removeEarlierTakes,
       addAudio,
@@ -494,6 +508,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeSilences,
       transcribe,
       deleteWords,
+      cutRange,
       removeFillers,
       removeEarlierTakes,
       addAudio,

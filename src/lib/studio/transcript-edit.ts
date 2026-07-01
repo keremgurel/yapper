@@ -1,5 +1,41 @@
 import { clipIndexAtSource } from "@/lib/studio/clips";
+import type { SpeechSegment } from "@/lib/studio/silence";
 import type { Clip, Word } from "@/lib/studio/types";
+
+function snapTo(t: number, points: number[], window: number): number {
+  let best = t;
+  let bestD = window;
+  for (const p of points) {
+    const d = Math.abs(p - t);
+    if (d < bestD) {
+      bestD = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/**
+ * Correct Whisper's approximate word timings using the precise VAD boundaries:
+ * a word that begins right after a pause snaps its start to the exact speech
+ * onset, and a word before a pause snaps its end to the exact offset. Words in
+ * the middle of continuous speech (far from any boundary) are left untouched,
+ * so cuts made from the transcript land cleanly on real speech edges.
+ */
+export function refineWordTimings(
+  words: Word[],
+  segments: SpeechSegment[],
+  window = 0.2,
+): Word[] {
+  if (segments.length === 0) return words;
+  const onsets = segments.map((s) => s.start);
+  const offsets = segments.map((s) => s.end);
+  return words.map((w) => {
+    const start = snapTo(w.start, onsets, window);
+    const end = snapTo(w.end, offsets, window);
+    return end > start ? { ...w, start, end } : w;
+  });
+}
 
 const FILLERS = new Set([
   "um",
