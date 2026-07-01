@@ -25,17 +25,19 @@ export default function CaptionsTab({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="border-border shrink-0 space-y-3 border-b p-4">
-        <button
-          type="button"
-          onClick={generateCaptionsFromTranscript}
-          className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
-        >
-          <Sparkles className="h-4 w-4" />
-          {captions.length > 0 ? "Regenerate captions" : "Generate captions"}
-        </button>
+      <div className="border-border shrink-0 border-b p-4">
+        <div className="max-w-[440px] space-y-3">
+          <button
+            type="button"
+            onClick={generateCaptionsFromTranscript}
+            className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
+          >
+            <Sparkles className="h-4 w-4" />
+            {captions.length > 0 ? "Regenerate captions" : "Generate captions"}
+          </button>
 
-        {captions.length > 0 && <CaptionSettings />}
+          {captions.length > 0 && <CaptionSettings />}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">

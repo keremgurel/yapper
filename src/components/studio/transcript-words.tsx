@@ -1,7 +1,15 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { RotateCcw, Scissors, Sparkles, Trash2, X } from "lucide-react";
+import {
+  Loader2,
+  RotateCcw,
+  Scissors,
+  Sparkles,
+  Trash2,
+  Wand2,
+  X,
+} from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { isRangeCut, isWordCut } from "@/lib/studio/transcript-edit";
 import type { Word } from "@/lib/studio/types";
@@ -26,6 +34,8 @@ export default function TranscriptWords({
     removePauses,
     aiRemoveMistakes,
     aiCleaning,
+    autoEdit,
+    autoEditing,
   } = useStudio();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
@@ -109,9 +119,23 @@ export default function TranscriptWords({
       <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
         <button
           type="button"
+          onClick={() => void autoEdit()}
+          disabled={autoEditing}
+          className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
+          title="Trim silence, remove mistakes, cut pauses, and caption — in one click"
+        >
+          {autoEditing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="h-3.5 w-3.5" />
+          )}
+          {autoEditing ? "Editing…" : "1-Click Edit"}
+        </button>
+        <button
+          type="button"
           onClick={() => void onAiClean()}
           disabled={aiCleaning}
-          className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition-opacity hover:opacity-90 disabled:opacity-50"
+          className={toolBtn}
         >
           <Sparkles className="h-3.5 w-3.5" />
           {aiCleaning ? "Cleaning…" : "Clean up retakes"}

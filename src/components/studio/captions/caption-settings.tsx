@@ -14,6 +14,9 @@ const WORD_OPTIONS = [
   { value: 2, label: "2" },
   { value: 3, label: "3" },
   { value: 4, label: "4" },
+  { value: 5, label: "5" },
+  { value: 6, label: "6" },
+  { value: 8, label: "8" },
 ];
 
 const CASE_OPTIONS: { value: CaptionCase; label: string }[] = [
@@ -27,9 +30,7 @@ export default function CaptionSettings() {
   const {
     captionStyle,
     captionApplyAll,
-    captionLines,
     captionWords,
-    autoBreakCaptions,
     setCaptionWords,
     setCaptionFont,
     setCaptionScale,
@@ -44,24 +45,13 @@ export default function CaptionSettings() {
     );
 
   return (
-    <div className="space-y-2.5">
+    <div className="max-w-[440px] space-y-2.5">
       {/* How many words show at a time */}
       <Segmented
         label="Words"
         value={captionWords}
         options={WORD_OPTIONS}
         onChange={setCaptionWords}
-      />
-
-      {/* Wrapping within a caption */}
-      <Segmented
-        label="Lines"
-        value={captionLines}
-        options={[
-          { value: 1, label: "1 line" },
-          { value: 2, label: "2 lines" },
-        ]}
-        onChange={autoBreakCaptions}
       />
 
       {/* Font family */}
