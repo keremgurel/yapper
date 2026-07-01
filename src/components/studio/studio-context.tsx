@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -42,6 +43,11 @@ import { transcribeRemote } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import {
+  clearProject,
+  restoreProject,
+  saveProject,
+} from "@/lib/studio/persistence";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
   newAudioId,
@@ -653,14 +659,86 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     });
   }, [resetClips, resetTranscript]);
 
-  // Pick up a recording handed over from the practice flow (Record -> Edit).
+  // On mount: a fresh recording handed over from the practice flow wins;
+  // otherwise restore the last project from the previous session.
+  const hydratedRef = useRef(false);
   useEffect(() => {
     const blob = consumePendingVideo();
-    if (!blob) return;
-    loadVideoSource(blob, "Practice take")
-      .then(loadSource)
-      .catch(() => {});
-  }, [loadSource]);
+    if (blob) {
+      loadVideoSource(blob, "Practice take")
+        .then(loadSource)
+        .catch(() => {});
+      hydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    void restoreProject()
+      .then((snap) => {
+        if (cancelled) return;
+        if (snap) {
+          setSource(snap.source);
+          resetClips(
+            snap.clips.length
+              ? snap.clips
+              : fullClip(snap.source?.duration ?? 0),
+          );
+          setWords(snap.words);
+          setCaptions(snap.captions);
+          setCaptionStyle(snap.captionStyle);
+          setCaptionLines(snap.captionLines);
+          setCaptionWordsState(snap.captionWords);
+          setCaptionApplyAll(snap.captionApplyAll);
+          setOverlays(snap.overlays);
+          setMediaAssets(snap.mediaAssets);
+          setAudioTracks(snap.audioTracks);
+          if (snap.words.length) setTranscribeStatus("done");
+        }
+        hydratedRef.current = true;
+      })
+      .catch(() => {
+        hydratedRef.current = true;
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadSource, resetClips]);
+
+  // Persist the project (debounced) whenever the editable state changes.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    const id = setTimeout(() => {
+      if (!source) {
+        void clearProject();
+        return;
+      }
+      void saveProject({
+        source,
+        clips,
+        words,
+        captions,
+        captionStyle,
+        captionLines,
+        captionWords,
+        captionApplyAll,
+        overlays,
+        mediaAssets,
+        audioTracks,
+      });
+    }, 800);
+    return () => clearTimeout(id);
+  }, [
+    source,
+    clips,
+    words,
+    captions,
+    captionStyle,
+    captionLines,
+    captionWords,
+    captionApplyAll,
+    overlays,
+    mediaAssets,
+    audioTracks,
+  ]);
 
   const splitAt = useCallback(
     (sourceTime: number) => {
