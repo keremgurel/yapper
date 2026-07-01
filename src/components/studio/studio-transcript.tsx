@@ -8,7 +8,6 @@ import {
   EyeOff,
   Loader2,
   Scissors,
-  ShieldCheck,
   Sparkles,
   Type,
 } from "lucide-react";
@@ -121,10 +120,9 @@ export default function StudioTranscript({
                 Transcribe
               </button>
 
-              <p className="text-foreground/45 flex items-start gap-2 text-[11.5px] leading-4">
-                <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                Runs privately in your browser. The first run downloads a small
-                speech model; your video never leaves this device.
+              <p className="text-foreground/45 text-[11.5px] leading-4">
+                The first transcription can take a moment while your audio is
+                processed.
               </p>
             </div>
           )}
