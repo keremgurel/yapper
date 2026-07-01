@@ -15,6 +15,7 @@ import {
   removeSourceRange,
   restoreSourceRange,
   splitAtSource,
+  timelineToSource,
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
@@ -196,49 +197,63 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setSelectedCaptionId(null);
   }, []);
 
+  // Edges come in as edited-timeline seconds; store them as source anchors so
+  // the caption keeps following the clips.
   const setCaptionRange = useCallback(
     (id: string, start: number, end: number) => {
-      if (end - start < 0.1) return;
+      const ss = timelineToSource(clips, start);
+      const se = timelineToSource(clips, end);
+      if (se - ss < 0.05) return;
       setCaptions((prev) =>
         prev.map((c) =>
-          c.id === id ? { ...c, start: Math.max(0, start), end } : c,
+          c.id === id
+            ? { ...c, sourceStart: Math.max(0, ss), sourceEnd: se }
+            : c,
         ),
       );
     },
-    [],
+    [clips],
   );
 
-  // Break a caption into two at timeline time `at`, splitting the words
-  // proportionally.
-  const splitCaption = useCallback((id: string, at: number) => {
-    setCaptions((prev) =>
-      prev.flatMap((c) => {
-        if (c.id !== id || at <= c.start + 0.05 || at >= c.end - 0.05) {
-          return [c];
-        }
-        const parts = c.text.split(/\s+/).filter(Boolean);
-        const frac = (at - c.start) / (c.end - c.start);
-        const k = Math.max(
-          1,
-          Math.min(parts.length - 1, Math.round(frac * parts.length)),
-        );
-        return [
-          {
-            ...c,
-            id: newCaptionId(),
-            end: at,
-            text: parts.slice(0, k).join(" "),
-          },
-          {
-            ...c,
-            id: newCaptionId(),
-            start: at,
-            text: parts.slice(k).join(" "),
-          },
-        ];
-      }),
-    );
-  }, []);
+  // Break a caption into two at timeline time `at` (converted to source),
+  // splitting the words proportionally.
+  const splitCaption = useCallback(
+    (id: string, at: number) => {
+      const atSrc = timelineToSource(clips, at);
+      setCaptions((prev) =>
+        prev.flatMap((c) => {
+          if (
+            c.id !== id ||
+            atSrc <= c.sourceStart + 0.05 ||
+            atSrc >= c.sourceEnd - 0.05
+          ) {
+            return [c];
+          }
+          const parts = c.text.split(/\s+/).filter(Boolean);
+          const frac = (atSrc - c.sourceStart) / (c.sourceEnd - c.sourceStart);
+          const k = Math.max(
+            1,
+            Math.min(parts.length - 1, Math.round(frac * parts.length)),
+          );
+          return [
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceEnd: atSrc,
+              text: parts.slice(0, k).join(" "),
+            },
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceStart: atSrc,
+              text: parts.slice(k).join(" "),
+            },
+          ];
+        }),
+      );
+    },
+    [clips],
+  );
 
   const setCaptionFont = useCallback((fontFamily: string) => {
     setCaptionStyle((s) => ({ ...s, fontFamily }));

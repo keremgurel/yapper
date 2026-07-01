@@ -494,6 +494,7 @@ export default function StudioTimeline({
               {captions.length > 0 && (
                 <CaptionTrack
                   captions={captions}
+                  clips={clips}
                   pxPerSec={pxPerSec}
                   playhead={currentTimelineTime}
                   selectedId={selectedCaptionId}

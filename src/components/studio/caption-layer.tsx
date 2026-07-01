@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import { captionTimelineRange } from "@/lib/studio/captions";
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -23,6 +24,7 @@ interface Drag {
  */
 export default function CaptionLayer({ masterTime }: { masterTime: number }) {
   const {
+    clips,
     captions,
     captionStyle,
     selectedCaptionId,
@@ -43,9 +45,10 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
     return () => ro.disconnect();
   }, []);
 
-  const active = captions.find(
-    (c) => masterTime >= c.start && masterTime < c.end,
-  );
+  const active = captions.find((c) => {
+    const r = captionTimelineRange(clips, c);
+    return r.end > r.start && masterTime >= r.start && masterTime < r.end;
+  });
   if (!active) return <div ref={layerRef} className="absolute inset-0" />;
 
   const x = active.x ?? captionStyle.x;

@@ -2,7 +2,7 @@
 
 import { Check, Sparkles, Trash2, Type } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { CAPTION_FONTS } from "@/lib/studio/captions";
+import { CAPTION_FONTS, captionTimelineRange } from "@/lib/studio/captions";
 
 export default function CaptionsTab({
   onSeek,
@@ -11,6 +11,7 @@ export default function CaptionsTab({
 }) {
   const {
     words,
+    clips,
     captions,
     captionStyle,
     captionApplyAll,
@@ -148,7 +149,7 @@ export default function CaptionsTab({
                   onChange={(e) => setCaptionText(c.id, e.target.value)}
                   onFocus={() => {
                     selectCaption(c.id);
-                    onSeek(c.start + 0.01);
+                    onSeek(captionTimelineRange(clips, c).start + 0.01);
                   }}
                   className="text-foreground/90 min-w-0 flex-1 bg-transparent text-[13px] outline-none"
                 />

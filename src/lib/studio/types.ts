@@ -119,13 +119,14 @@ export function newClipId(): string {
   return `clip-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
 }
 
-/** A caption segment shown over the video, timed in edited-timeline seconds.
- * x/y/scale are optional per-caption overrides of the global caption style. */
+/** A caption segment. Anchored in SOURCE seconds (like the transcript words) so
+ * it follows edits — its edited-timeline position is derived from the clips.
+ * x/y/w/scale are optional per-caption overrides of the global caption style. */
 export interface Caption {
   id: string;
   text: string;
-  start: number;
-  end: number;
+  sourceStart: number;
+  sourceEnd: number;
   x?: number;
   y?: number;
   w?: number; // box width override (fraction of stage)

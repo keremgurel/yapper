@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Caption } from "@/lib/studio/types";
+import { captionTimelineRange } from "@/lib/studio/captions";
+import type { Caption, Clip } from "@/lib/studio/types";
 
 const MIN = 0.1;
 
@@ -19,6 +20,7 @@ interface CaptionTrim {
  */
 export default function CaptionTrack({
   captions,
+  clips,
   pxPerSec,
   playhead,
   selectedId,
@@ -27,6 +29,7 @@ export default function CaptionTrack({
   onSplit,
 }: {
   captions: Caption[];
+  clips: Clip[];
   pxPerSec: number;
   playhead: number;
   selectedId: string | null;
@@ -63,8 +66,10 @@ export default function CaptionTrack({
   return (
     <div className="relative h-7">
       {captions.map((c) => {
-        const left = c.start * pxPerSec;
-        const width = Math.max((c.end - c.start) * pxPerSec, 8);
+        const r = captionTimelineRange(clips, c);
+        if (r.end <= r.start) return null; // fully cut
+        const left = r.start * pxPerSec;
+        const width = Math.max((r.end - r.start) * pxPerSec, 8);
         const selected = selectedId === c.id;
         return (
           <div
@@ -89,8 +94,8 @@ export default function CaptionTrack({
                   id: c.id,
                   edge: "start",
                   startX: e.clientX,
-                  origStart: c.start,
-                  origEnd: c.end,
+                  origStart: r.start,
+                  origEnd: r.end,
                 });
               }}
               className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize rounded-l bg-orange-300/70 opacity-0 group-hover:opacity-100"
@@ -104,8 +109,8 @@ export default function CaptionTrack({
                   id: c.id,
                   edge: "end",
                   startX: e.clientX,
-                  origStart: c.start,
-                  origEnd: c.end,
+                  origStart: r.start,
+                  origEnd: r.end,
                 });
               }}
               className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize rounded-r bg-orange-300/70 opacity-0 group-hover:opacity-100"

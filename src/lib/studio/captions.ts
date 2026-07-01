@@ -6,6 +6,17 @@ import {
   type Word,
 } from "@/lib/studio/types";
 
+/** A caption's edited-timeline range, derived from its source anchors + clips. */
+export function captionTimelineRange(
+  clips: Clip[],
+  c: Caption,
+): { start: number; end: number } {
+  return {
+    start: sourceToTimeline(clips, c.sourceStart),
+    end: sourceToTimeline(clips, c.sourceEnd),
+  };
+}
+
 export interface CaptionStyle {
   fontFamily: string;
   fontScale: number; // fraction of stage height
@@ -64,19 +75,25 @@ export function generateCaptions(
   let cur: Caption | null = null;
   let prevEndTl = 0;
   for (const w of kept) {
+    // Timeline gap only drives where captions break (edited pauses); the caption
+    // itself is anchored in source time so it follows later edits.
     const ts = sourceToTimeline(clips, w.start);
-    const te = sourceToTimeline(clips, w.end);
     const wouldExceed =
       cur !== null && cur.text.length + 1 + w.text.length > maxChars;
     const pause = cur !== null && ts - prevEndTl > 0.5;
     if (cur === null || wouldExceed || pause) {
       if (cur) captions.push(cur);
-      cur = { id: newCaptionId(), text: w.text, start: ts, end: te };
+      cur = {
+        id: newCaptionId(),
+        text: w.text,
+        sourceStart: w.start,
+        sourceEnd: w.end,
+      };
     } else {
       cur.text += ` ${w.text}`;
-      cur.end = te;
+      cur.sourceEnd = w.end;
     }
-    prevEndTl = te;
+    prevEndTl = sourceToTimeline(clips, w.end);
     if (cur && endsSentence(w.text) && cur.text.length > maxChars * 0.5) {
       captions.push(cur);
       cur = null;
