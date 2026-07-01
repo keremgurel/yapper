@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Image as ImageIcon,
   Music2,
@@ -112,6 +118,10 @@ export default function StudioTimeline({
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
+  // Live mirror of pxPerSec so rapid pinch events accumulate off the latest
+  // value, and the pending zoom anchor to apply after the width re-renders.
+  const pxRef = useRef(80);
+  const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
@@ -310,25 +320,53 @@ export default function StudioTimeline({
     };
   }, [clipDrag, clips, pxPerSec, moveClip]);
 
-  /* ---- wheel zoom ---- */
+  /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return; // let horizontal scroll pass
-      e.preventDefault();
-      const rect = el.getBoundingClientRect();
-      const cursorX = e.clientX - rect.left + el.scrollLeft - padLeft;
-      const timeAtCursor = cursorX / pxPerSec;
-      const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-      const next = clamp(pxPerSec * factor, MIN_PX, MAX_PX);
-      setPxPerSec(next);
-      requestAnimationFrame(() => {
-        el.scrollLeft = timeAtCursor * next + padLeft - (e.clientX - rect.left);
-      });
+      const lineUnit = e.deltaMode === 1 ? 16 : 1; // normalize mouse "line" deltas
+      // Trackpad pinch reports ctrlKey; ⌘/Ctrl+wheel is the explicit zoom.
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const rect = el.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const current = pxRef.current;
+        const timeAtCursor = (offsetX + el.scrollLeft - padLeft) / current;
+        const next = clamp(
+          current * Math.exp(-e.deltaY * lineUnit * 0.0025),
+          MIN_PX,
+          MAX_PX,
+        );
+        if (next === current) return;
+        pxRef.current = next;
+        // Applied in a layout effect once the new width has rendered — no flash.
+        pendingZoomRef.current = { time: timeAtCursor, offsetX };
+        setPxPerSec(next);
+        return;
+      }
+      // Otherwise pan horizontally along the timeline (both axes contribute).
+      const delta =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (delta !== 0) {
+        e.preventDefault();
+        el.scrollLeft += delta * lineUnit;
+      }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
+  }, [padLeft]);
+
+  // Keep pxRef in sync and anchor the cursor point after a zoom re-render.
+  useLayoutEffect(() => {
+    pxRef.current = pxPerSec;
+    const pending = pendingZoomRef.current;
+    if (!pending) return;
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollLeft = pending.time * pxPerSec + padLeft - pending.offsetX;
+    }
+    pendingZoomRef.current = null;
   }, [pxPerSec, padLeft]);
 
   /* ---- track the visible window so we only render on-screen frames ---- */
@@ -667,9 +705,9 @@ export default function StudioTimeline({
         </div>
       </div>
       <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
-        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to zoom
-        · drag a clip to reorder · drag its edges to trim · drag the ruler to
-        scrub
+        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to pan ·
+        ⌘/pinch-scroll to zoom · drag a clip to reorder · drag its edges to trim
+        · drag the ruler to scrub
       </p>
     </div>
   );
