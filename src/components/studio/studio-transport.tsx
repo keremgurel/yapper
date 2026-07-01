@@ -54,7 +54,8 @@ export default function StudioTransport({
   const canAutoEdit = !!source && source.kind !== "image";
 
   const pillBtn =
-    "border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-default disabled:opacity-40";
+    "border-border text-foreground/70 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-40";
+  const divider = "bg-border mx-1 h-5 w-px shrink-0";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -75,24 +76,23 @@ export default function StudioTransport({
       </span>
 
       {canAutoEdit && (
-        <button
-          type="button"
-          onClick={() => void autoEdit()}
-          disabled={autoEditing}
-          className={`mr-1 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-black text-white transition-transform hover:scale-[1.03] disabled:opacity-70 ${
-            autoEditing
-              ? "shadow-lg shadow-cyan-500/40"
-              : "animate-autoedit-glow"
-          }`}
-          title="Transcribe, remove mistakes, cut pauses and silences, and caption — in one click"
-        >
-          {autoEditing ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Wand2 className="h-4 w-4" />
-          )}
-          {autoEditing ? "Editing…" : "Auto-edit"}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={() => void autoEdit()}
+            disabled={autoEditing}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
+            title="Transcribe, remove mistakes, cut pauses and silences, and caption — in one click"
+          >
+            {autoEditing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Wand2 className="h-3.5 w-3.5" />
+            )}
+            {autoEditing ? "Editing…" : "1-Click Edit"}
+          </button>
+          <span className={divider} aria-hidden />
+        </>
       )}
 
       <button
@@ -115,6 +115,8 @@ export default function StudioTransport({
         <Redo2 className="h-3.5 w-3.5" />
         Redo
       </button>
+
+      <span className={divider} aria-hidden />
 
       <button
         type="button"

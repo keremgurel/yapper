@@ -10,6 +10,7 @@ import {
   Scissors,
   Sparkles,
   Type,
+  Wand2,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import TranscriptWords from "@/components/studio/transcript-words";
@@ -21,8 +22,15 @@ export default function StudioTranscript({
   currentSourceTime: number;
   onSeek: (t: number) => void;
 }) {
-  const { source, words, transcribeStatus, transcribeProgress, transcribe } =
-    useStudio();
+  const {
+    source,
+    words,
+    transcribeStatus,
+    transcribeProgress,
+    transcribe,
+    autoEdit,
+    autoEditing,
+  } = useStudio();
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
   const isImage = source?.kind === "image";
   const [showDeleted, setShowDeleted] = useState(true);
@@ -111,14 +119,29 @@ export default function StudioTranscript({
                 ))}
               </ul>
 
-              <button
-                type="button"
-                onClick={() => void transcribe()}
-                className="bg-foreground text-background inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
-              >
-                <Sparkles className="h-4 w-4" />
-                Transcribe
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => void autoEdit()}
+                  disabled={autoEditing}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
+                >
+                  {autoEditing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  {autoEditing ? "Editing…" : "1-Click Edit"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void transcribe()}
+                  className="border-border text-foreground/80 hover:bg-muted inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Just transcribe
+                </button>
+              </div>
 
               <p className="text-foreground/45 text-[11.5px] leading-4">
                 The first transcription can take a moment while your audio is

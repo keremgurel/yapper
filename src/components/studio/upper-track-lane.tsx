@@ -131,9 +131,9 @@ export default function UpperTrackLane({
           e.stopPropagation();
           onDragStart(o.id, e.clientX, o.start);
         }}
-        className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-fuchsia-500/20 ring-1 ring-fuchsia-500/60 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
+        className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-violet-500/15 ring-1 ring-violet-400/40 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
       >
-        <span className="absolute inset-0 bg-fuchsia-500/15" />
+        <span className="absolute inset-0 bg-violet-500/10" />
         {span && frames.length > 0 && (
           <ClipFilmstrip
             frames={frames}
@@ -164,9 +164,9 @@ export default function UpperTrackLane({
         {/* Name label */}
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
           {o.kind === "image" ? (
-            <ImageIcon className="h-3.5 w-3.5 shrink-0 text-fuchsia-200" />
+            <ImageIcon className="h-3.5 w-3.5 shrink-0 text-violet-200" />
           ) : (
-            <Video className="h-3.5 w-3.5 shrink-0 text-fuchsia-200" />
+            <Video className="h-3.5 w-3.5 shrink-0 text-violet-200" />
           )}
           <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
             {o.name}
@@ -176,11 +176,11 @@ export default function UpperTrackLane({
         {/* Trim edges — drag to change the clip's in/out, just like the base. */}
         <span
           onPointerDown={beginTrim("start")}
-          className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-fuchsia-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
         />
         <span
           onPointerDown={beginTrim("end")}
-          className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-fuchsia-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+          className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
         />
       </div>
     </div>

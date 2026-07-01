@@ -85,8 +85,8 @@ export default function CaptionTrack({
             onClick={() => onSelect(c.id)}
             onDoubleClick={() => onSplit(c.id, playhead)}
             title="Double-click to break at the playhead"
-            className={`group absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md bg-orange-500/25 px-2 ring-1 ${
-              selected ? "ring-2 ring-orange-400" : "ring-orange-500/50"
+            className={`group absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md bg-amber-500/15 px-2 ring-1 ${
+              selected ? "ring-2 ring-amber-400" : "ring-amber-500/35"
             }`}
           >
             <span
@@ -108,7 +108,7 @@ export default function CaptionTrack({
                   origEnd: r.end,
                 });
               }}
-              className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize rounded-l bg-orange-300/70 opacity-0 group-hover:opacity-100"
+              className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize rounded-l bg-amber-300/70 opacity-0 group-hover:opacity-100"
             />
             <span
               onPointerDown={(e) => {
@@ -123,7 +123,7 @@ export default function CaptionTrack({
                   origEnd: r.end,
                 });
               }}
-              className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize rounded-r bg-orange-300/70 opacity-0 group-hover:opacity-100"
+              className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize rounded-r bg-amber-300/70 opacity-0 group-hover:opacity-100"
             />
           </div>
         );

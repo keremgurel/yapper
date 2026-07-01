@@ -695,8 +695,8 @@ export default function StudioTimeline({
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
                       {clip.src ? (
-                        <span className="absolute inset-0 flex items-center gap-1.5 bg-sky-500/25 px-2 ring-1 ring-sky-500/40">
-                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+                        <span className="absolute inset-0 flex items-center gap-1.5 bg-sky-500/15 px-2 ring-1 ring-sky-500/30">
+                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300/90" />
                           <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
                             {clip.src.name}
                           </span>
@@ -814,7 +814,7 @@ export default function StudioTimeline({
                           origStart: a.start,
                         });
                       }}
-                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/25 px-2 ring-1 ring-emerald-500/50 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
+                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 ring-1 ring-emerald-500/35 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
                     >
                       <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                       <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
