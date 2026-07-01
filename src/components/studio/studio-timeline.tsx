@@ -18,6 +18,7 @@ import UpperTrackLane from "@/components/studio/upper-track-lane";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { visibleSpan } from "@/lib/studio/window";
+import { captionTimelineRange } from "@/lib/studio/captions";
 import type { Clip } from "@/lib/studio/types";
 
 const MIN_PX = 12;
@@ -90,11 +91,14 @@ export default function StudioTimeline({
     selectedCaptionIds,
     selectCaption,
     toggleCaptionSelection,
+    selectCaptions,
     setCaptionRange,
     splitCaption,
     snapping,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const captionRowRef = useRef<HTMLDivElement>(null);
+  const baseRowRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
   // Live mirror of pxPerSec so rapid pinch events accumulate off the latest
   // value, and the pending zoom anchor to apply after the width re-renders.
@@ -507,6 +511,7 @@ export default function StudioTimeline({
                 const rect = el.getBoundingClientRect();
                 const sx = e.clientX - rect.left + el.scrollLeft;
                 const sy = e.clientY - rect.top + el.scrollTop;
+                const startClientY = e.clientY;
                 let moved = false;
                 const onMove = (ev: PointerEvent) => {
                   const cx = ev.clientX - rect.left + el.scrollLeft;
@@ -521,17 +526,46 @@ export default function StudioTimeline({
                     width,
                     height: Math.abs(cy - sy),
                   });
-                  const ids = clips
-                    .filter((_, i) => {
-                      const cl = padLeft + offsets[i] * pxPerSec;
-                      const cr =
-                        padLeft +
-                        (offsets[i] + (clips[i].end - clips[i].start)) *
-                          pxPerSec;
-                      return cr >= left && cl <= left + width;
-                    })
-                    .map((c) => c.id);
-                  selectClips(ids);
+                  const xHit = (l: number, r: number) =>
+                    r >= left && l <= left + width;
+                  // Which track rows the box vertically covers (client coords).
+                  const yTop = Math.min(startClientY, ev.clientY);
+                  const yBot = Math.max(startClientY, ev.clientY);
+                  const overlaps = (node: HTMLElement | null) => {
+                    if (!node) return false;
+                    const r = node.getBoundingClientRect();
+                    return yBot >= r.top && yTop <= r.bottom;
+                  };
+                  // Base clips (only when the box covers the base track).
+                  selectClips(
+                    overlaps(baseRowRef.current)
+                      ? clips
+                          .filter((_, i) =>
+                            xHit(
+                              padLeft + offsets[i] * pxPerSec,
+                              padLeft +
+                                (offsets[i] + (clips[i].end - clips[i].start)) *
+                                  pxPerSec,
+                            ),
+                          )
+                          .map((c) => c.id)
+                      : [],
+                  );
+                  // Captions (only when the box covers the caption row).
+                  selectCaptions(
+                    overlaps(captionRowRef.current)
+                      ? captions
+                          .filter((c) => {
+                            const r = captionTimelineRange(clips, c);
+                            if (r.end <= r.start) return false;
+                            return xHit(
+                              padLeft + r.start * pxPerSec,
+                              padLeft + r.end * pxPerSec,
+                            );
+                          })
+                          .map((c) => c.id)
+                      : [],
+                  );
                 };
                 const onUp = () => {
                   setMarquee(null);
@@ -544,19 +578,21 @@ export default function StudioTimeline({
             >
               {/* Caption track (top) */}
               {captions.length > 0 && (
-                <CaptionTrack
-                  captions={captions}
-                  clips={clips}
-                  pxPerSec={pxPerSec}
-                  playhead={currentTimelineTime}
-                  selectedIds={selectedCaptionIds}
-                  textCase={captionStyle.textCase}
-                  onSelect={(id, additive) =>
-                    additive ? toggleCaptionSelection(id) : selectCaption(id)
-                  }
-                  onRange={setCaptionRange}
-                  onSplit={splitCaption}
-                />
+                <div ref={captionRowRef}>
+                  <CaptionTrack
+                    captions={captions}
+                    clips={clips}
+                    pxPerSec={pxPerSec}
+                    playhead={currentTimelineTime}
+                    selectedIds={selectedCaptionIds}
+                    textCase={captionStyle.textCase}
+                    onSelect={(id, additive) =>
+                      additive ? toggleCaptionSelection(id) : selectCaption(id)
+                    }
+                    onRange={setCaptionRange}
+                    onSplit={splitCaption}
+                  />
+                </div>
               )}
 
               {/* Empty upper-track drop zone so the timeline always shows room
@@ -597,7 +633,7 @@ export default function StudioTimeline({
               ))}
 
               {/* Main (base) video track */}
-              <div className="relative h-16">
+              <div ref={baseRowRef} className="relative h-16">
                 {clips.map((clip, i) => {
                   const isTrimming = trim?.id === clip.id && live;
                   const cStart = isTrimming ? live.start : clip.start;
