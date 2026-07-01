@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
-import { Scissors, Sparkles, Trash2, X } from "lucide-react";
+import { RotateCcw, Scissors, Sparkles, Trash2, X } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { isRangeCut, isWordCut } from "@/lib/studio/transcript-edit";
+import type { Word } from "@/lib/studio/types";
 
 const MIN_GAP = 0.4; // seconds; shorter pauses aren't shown as chips
 
@@ -20,6 +21,7 @@ export default function TranscriptWords({
     words,
     clips,
     deleteWords,
+    restoreWords,
     cutRange,
     removePauses,
     aiRemoveMistakes,
@@ -28,6 +30,12 @@ export default function TranscriptWords({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [aiMsg, setAiMsg] = useState("");
+
+  const selectedWords = [...selected]
+    .map((id) => words.find((w) => w.id === id))
+    .filter((w): w is Word => !!w);
+  const selLive = selectedWords.filter((w) => !isWordCut(clips, w));
+  const selCut = selectedWords.filter((w) => isWordCut(clips, w));
 
   const onAiClean = async () => {
     setAiMsg("");
@@ -79,12 +87,17 @@ export default function TranscriptWords({
     } else {
       setSelected(new Set([id]));
       setAnchor(id);
-      if (word) onSeek(word.start);
+      if (word && !isWordCut(clips, word)) onSeek(word.start);
     }
   };
 
   const applyDelete = () => {
-    deleteWords([...selected]);
+    deleteWords(selLive.map((w) => w.id));
+    clearSelection();
+  };
+
+  const applyRestore = () => {
+    restoreWords(selCut.map((w) => w.id));
     clearSelection();
   };
 
@@ -132,9 +145,17 @@ export default function TranscriptWords({
               return (
                 <Fragment key={w.id}>
                   {cut ? (
-                    <span className="text-foreground/30 px-0.5 line-through">
+                    <button
+                      type="button"
+                      onClick={(e) => onWordClick(w.id, e)}
+                      className={`rounded px-0.5 line-through transition-colors ${
+                        isSel
+                          ? "bg-emerald-500/50 text-white"
+                          : "text-foreground/30 hover:bg-muted"
+                      }`}
+                    >
                       {w.text}
-                    </span>
+                    </button>
                   ) : (
                     <button
                       type="button"
@@ -165,21 +186,34 @@ export default function TranscriptWords({
             })}
           </p>
           <p className="text-foreground/40 mt-4 text-xs">
-            Click to select &amp; seek · Shift-click for a range · ⌘/Ctrl-click
-            to multi-select · tap a […] pause to remove it
+            Click to select &amp; seek · Shift-click a range · ⌘/Ctrl-click to
+            multi-select · select struck-through words to restore them · tap a
+            […] pause to remove it
           </p>
         </div>
 
         {selected.size > 0 && (
           <div className="border-border bg-card/95 absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border p-1 shadow-xl backdrop-blur">
-            <button
-              type="button"
-              onClick={applyDelete}
-              className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-black text-white transition-opacity hover:opacity-90"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete {selected.size} {selected.size === 1 ? "word" : "words"}
-            </button>
+            {selCut.length > 0 && (
+              <button
+                type="button"
+                onClick={applyRestore}
+                className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500 px-3 py-1.5 text-xs font-black text-white transition-opacity hover:opacity-90"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Restore {selCut.length}
+              </button>
+            )}
+            {selLive.length > 0 && (
+              <button
+                type="button"
+                onClick={applyDelete}
+                className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-black text-white transition-opacity hover:opacity-90"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete {selLive.length}
+              </button>
+            )}
             <button
               type="button"
               onClick={clearSelection}

@@ -13,6 +13,7 @@ import {
   moveClipTo,
   removeClip,
   removeSourceRange,
+  restoreSourceRange,
   splitAtSource,
   trimClipEnd,
   trimClipStart,
@@ -77,6 +78,7 @@ interface StudioContextValue {
   trimClipsToSpeech: () => Promise<number>;
   transcribe: () => Promise<void>;
   deleteWords: (ids: string[]) => void;
+  restoreWords: (ids: string[]) => void;
   cutRange: (from: number, to: number) => void;
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
@@ -488,37 +490,42 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
-  // AI clean up: combine the reliable retake heuristic (cut earlier attempts of
-  // a restarted phrase, keep the last) with an LLM pass for nuanced stumbles /
-  // self-corrections. Marks them struck-through (for review), not removed.
-  // Returns count, or -1 (no AI key AND nothing heuristic) / -2 (AI failed).
+  // Clean up retakes: an LLM marks earlier attempts of restarted lines (and
+  // stumbles/self-corrections) as struck-through for review — not removed.
+  // Returns count, or -1 (no AI key) / -2 (request failed).
   const aiRemoveMistakes = useCallback(async (): Promise<number> => {
     if (words.length === 0) return 0;
     setAiCleaning(true);
     try {
-      const heuristic = findEarlierTakeRanges(words);
-      let aiRanges: [number, number][] = [];
-      let aiConfigured = true;
-      try {
-        const cuts = await cleanTranscriptRemote(words);
-        if (cuts === null) aiConfigured = false;
-        else {
-          aiRanges = cuts
-            .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
-            .filter(([a, b]) => b > a);
-        }
-      } catch {
-        // AI failed; still apply the heuristic below.
-        aiConfigured = false;
-      }
-      const ranges = [...heuristic, ...aiRanges];
-      if (ranges.length === 0) return aiConfigured ? 0 : -1;
+      const cuts = await cleanTranscriptRemote(words);
+      if (cuts === null) return -1;
+      const ranges = cuts
+        .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
+        .filter(([a, b]) => b > a);
       applyCuts(ranges);
       return ranges.length;
+    } catch {
+      return -2;
     } finally {
       setAiCleaning(false);
     }
   }, [words, applyCuts]);
+
+  // Undelete: add cut words' source ranges back into the timeline.
+  const restoreWords = useCallback(
+    (ids: string[]) => {
+      if (ids.length === 0) return;
+      const ranges = selectionToRanges(words, new Set(ids));
+      if (ranges.length === 0) return;
+      setClips((prev) =>
+        ranges.reduce(
+          (next, [from, to]) => restoreSourceRange(next, from, to),
+          prev,
+        ),
+      );
+    },
+    [words, setClips],
+  );
 
   const reset = useCallback(() => {
     resetClips(source ? fullClip(source.duration) : []);
@@ -548,6 +555,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimClipsToSpeech,
       transcribe,
       deleteWords,
+      restoreWords,
       cutRange,
       removeEarlierTakes,
       aiRemoveMistakes,
@@ -595,6 +603,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimClipsToSpeech,
       transcribe,
       deleteWords,
+      restoreWords,
       cutRange,
       removeEarlierTakes,
       aiRemoveMistakes,

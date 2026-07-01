@@ -24,21 +24,23 @@ export async function POST(req: Request): Promise<Response> {
   const system =
     "You are an expert video editor cleaning a spoken transcript so only the " +
     "final, clean performance remains. You receive tokens as index:word.\n\n" +
-    "Cut, aggressively: RETAKES (when the speaker says a line, then restarts " +
-    "and says a similar line again — cut EVERY earlier attempt and keep only " +
-    "the LAST, most complete version), false starts, stumbles, filler words, " +
-    "accidental repeats, and self-corrections.\n\n" +
-    "Rules: keep all unique, correct content; keep the final version of any " +
-    "restarted sentence; a retake usually reuses most of the same words, so " +
-    "cut the whole earlier attempt (a partial cut that leaves half a sentence " +
-    "is wrong). When several attempts of the same line occur in a row, cut " +
-    "from the start of the first attempt through the end of the token just " +
-    "before the final attempt begins.\n\n" +
+    "Speakers often say a line, mess up, and restart the SAME line 1-3 times " +
+    "before nailing it. Cut every earlier attempt and keep ONLY the last, most " +
+    "complete attempt. Also cut false starts, stumbles, filler words, and " +
+    "accidental repeats.\n\n" +
+    "Critical rules:\n" +
+    "1. The FINAL attempt must remain 100% intact — never cut any part of it, " +
+    "not even its first words. Find where the last attempt BEGINS and cut " +
+    "everything from the first attempt up to (but not including) that point.\n" +
+    "2. Cut whole earlier attempts, not fragments. Leaving half a sentence is " +
+    "wrong.\n" +
+    "3. Keep all unique, correct content.\n\n" +
     "Worked example. Tokens: 0:You 1:can 2:transcribe 3:the 4:video 5:and " +
     "6:cut 7:silences. 8:You 9:can 10:transcribe 11:a 12:video 13:and 14:cut " +
     "15:in 16:silences. 17:Here 18:you 19:can 20:transcribe 21:a 22:video " +
-    "23:and 24:cut 25:mistakes. -> The last attempt starts at 17 (Here), so " +
-    'cut both earlier attempts: {"cuts":[[0,16]]}.\n\n' +
+    "23:and 24:cut 25:all 26:mistakes. -> Three attempts of the same line; the " +
+    "final one starts at 17 (Here). Cut everything before it and keep 17-26 " +
+    'fully: {"cuts":[[0,16]]}.\n\n' +
     "Respond with strict JSON only.";
   const user =
     `Tokens:\n${numbered}\n\n` +

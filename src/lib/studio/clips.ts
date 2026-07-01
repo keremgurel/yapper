@@ -31,6 +31,33 @@ export function removeClip(clips: Clip[], id: string): Clip[] {
   return clips.filter((c) => c.id !== id);
 }
 
+/**
+ * Add a previously-cut source range [from, to] back into the timeline, merging
+ * with any clips it now touches. Rebuilds a source-ordered clip list — used to
+ * "undelete" words/ranges. (Restore happens during transcript cleanup, before
+ * any manual reorder, so re-sorting by source is the expected behavior.)
+ */
+export function restoreSourceRange(
+  clips: Clip[],
+  from: number,
+  to: number,
+): Clip[] {
+  if (to <= from) return clips;
+  const all = [...clips, { id: newClipId(), start: from, end: to }].sort(
+    (a, b) => a.start - b.start,
+  );
+  const out: Clip[] = [];
+  for (const c of all) {
+    const last = out[out.length - 1];
+    if (last && c.start <= last.end + EPS) {
+      last.end = Math.max(last.end, c.end);
+    } else {
+      out.push({ ...c });
+    }
+  }
+  return out;
+}
+
 /** Subtract a source range [from, to] from the clip list (may split clips). */
 export function removeSourceRange(
   clips: Clip[],
