@@ -133,7 +133,7 @@ export default function StudioWorkspace() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           ref={previewRef}
-          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black p-4"
+          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-neutral-100 p-4 dark:bg-neutral-950"
         >
           {source ? (
             <>
