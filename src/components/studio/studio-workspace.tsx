@@ -8,6 +8,7 @@ import RightPanel from "@/components/studio/right-panel";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
 import EmptyTimeline from "@/components/studio/empty-timeline";
+import { MEDIA_DND_TYPE } from "@/components/studio/media-tab";
 import VideoUploader from "@/components/studio/video-uploader";
 import { totalDuration } from "@/lib/studio/clips";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
@@ -23,9 +24,11 @@ export default function StudioWorkspace() {
     deleteSelected,
     audioTracks,
     overlays,
+    addAssetToTimeline,
     undo,
     redo,
   } = useStudio();
+  const [dropActive, setDropActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const {
     timelineTime,
@@ -188,7 +191,27 @@ export default function StudioWorkspace() {
               onSplit={() => splitAt(sourceTime)}
             />
           </div>
-          <div className="mt-3 min-h-0 flex-1">
+          <div
+            className={`mt-3 min-h-0 flex-1 rounded-md transition-shadow ${
+              dropActive ? "ring-2 ring-cyan-500/70" : ""
+            }`}
+            onDragOver={(e) => {
+              if (e.dataTransfer.types.includes(MEDIA_DND_TYPE)) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+                setDropActive(true);
+              }
+            }}
+            onDragLeave={() => setDropActive(false)}
+            onDrop={(e) => {
+              const id = e.dataTransfer.getData(MEDIA_DND_TYPE);
+              setDropActive(false);
+              if (id) {
+                e.preventDefault();
+                addAssetToTimeline(id, timelineTime);
+              }
+            }}
+          >
             {source ? (
               <StudioTimeline
                 clips={clips}

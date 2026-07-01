@@ -21,6 +21,8 @@ export interface MediaAsset {
   url: string;
   name: string;
   duration: number; // seconds (default for images)
+  width?: number;
+  height?: number;
 }
 
 /**

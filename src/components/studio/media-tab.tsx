@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef } from "react";
-import { ImagePlus, Layers, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+
+export const MEDIA_DND_TYPE = "application/x-yapper-asset";
 
 export default function MediaTab() {
   const {
@@ -10,7 +12,7 @@ export default function MediaTab() {
     mediaAssets,
     addMediaAsset,
     removeMediaAsset,
-    addOverlayFromAsset,
+    addAssetToTimeline,
   } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
   const isEmpty = !source && mediaAssets.length === 0;
@@ -27,7 +29,7 @@ export default function MediaTab() {
           Upload media
         </button>
         <p className="text-foreground/45 mt-2 text-center text-xs">
-          Photos &amp; videos · used as overlays on top of your video
+          Photos &amp; videos · drag onto the timeline or press Add
         </p>
         <input
           ref={inputRef}
@@ -49,7 +51,7 @@ export default function MediaTab() {
             <ImagePlus className="text-foreground/30 h-7 w-7" />
             <p className="text-sm">No media yet</p>
             <p className="max-w-[200px] text-xs">
-              Upload photos or B-roll to overlay on your talking-head video.
+              Upload a video to start, plus any photos or B-roll to layer in.
             </p>
           </div>
         ) : (
@@ -77,7 +79,12 @@ export default function MediaTab() {
             {mediaAssets.map((asset) => (
               <div
                 key={asset.id}
-                className="border-border bg-card group overflow-hidden rounded-xl border"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(MEDIA_DND_TYPE, asset.id);
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                className="border-border bg-card group cursor-grab overflow-hidden rounded-xl border active:cursor-grabbing"
               >
                 <div className="bg-muted relative aspect-video">
                   {asset.kind === "image" ? (
@@ -109,11 +116,11 @@ export default function MediaTab() {
                   </p>
                   <button
                     type="button"
-                    onClick={() => addOverlayFromAsset(asset.id)}
+                    onClick={() => addAssetToTimeline(asset.id)}
                     className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
                   >
-                    <Layers className="h-3 w-3" />
-                    Add as overlay
+                    <Plus className="h-3 w-3" />
+                    Add to timeline
                   </button>
                 </div>
               </div>

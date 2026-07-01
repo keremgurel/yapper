@@ -91,7 +91,8 @@ interface StudioContextValue {
   overlays: Overlay[];
   addMediaAsset: (file: File) => Promise<void>;
   removeMediaAsset: (id: string) => void;
-  addOverlayFromAsset: (assetId: string) => void;
+  addOverlayFromAsset: (assetId: string, start?: number) => void;
+  addAssetToTimeline: (assetId: string, start?: number) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
   toggleOverlayHidden: (id: string) => void;
@@ -128,14 +129,23 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const addMediaAsset = useCallback(async (file: File) => {
     if (file.type.startsWith("image/")) {
+      const url = URL.createObjectURL(file);
+      const dims = await new Promise<{ w: number; h: number }>((res) => {
+        const im = new Image();
+        im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight });
+        im.onerror = () => res({ w: 0, h: 0 });
+        im.src = url;
+      });
       setMediaAssets((prev) => [
         ...prev,
         {
           id: newMediaId(),
           kind: "image",
-          url: URL.createObjectURL(file),
+          url,
           name: file.name,
           duration: 5,
+          width: dims.w || undefined,
+          height: dims.h || undefined,
         },
       ]);
       return;
@@ -150,6 +160,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           url: media.url,
           name: media.name,
           duration: media.duration,
+          width: media.width,
+          height: media.height,
         },
       ]);
     }
@@ -160,7 +172,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const addOverlayFromAsset = useCallback(
-    (assetId: string) => {
+    (assetId: string, start = 0) => {
       const asset = mediaAssets.find((m) => m.id === assetId);
       if (!asset) return;
       setOverlays((prev) => [
@@ -170,7 +182,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           kind: asset.kind,
           url: asset.url,
           name: asset.name,
-          start: 0,
+          start: Math.max(0, start),
           duration: asset.duration,
           sourceStart: 0,
           muted: true,
@@ -286,9 +298,32 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return [];
       });
       setOverlays([]);
-      setMediaAssets([]);
+      // Keep the media library — it's a library, not part of the edit state.
     },
     [resetClips, resetTranscript],
+  );
+
+  // Add a library asset to the timeline: the first video becomes the base
+  // (main track); anything added afterward becomes a new upper track.
+  const addAssetToTimeline = useCallback(
+    (assetId: string, start = 0) => {
+      const asset = mediaAssets.find((m) => m.id === assetId);
+      if (!asset) return;
+      if (!source) {
+        if (asset.kind === "video") {
+          loadSource({
+            url: asset.url,
+            name: asset.name,
+            duration: asset.duration,
+            width: asset.width,
+            height: asset.height,
+          });
+        }
+        return; // an image can't be the base (no clock); needs a video first
+      }
+      addOverlayFromAsset(assetId, start);
+    },
+    [mediaAssets, source, loadSource, addOverlayFromAsset],
   );
 
   const clearSource = useCallback(() => {
@@ -569,6 +604,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
+      addAssetToTimeline,
       liftClipToTrack,
       moveOverlay,
       toggleOverlayHidden,
@@ -617,6 +653,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
+      addAssetToTimeline,
       liftClipToTrack,
       moveOverlay,
       toggleOverlayHidden,
