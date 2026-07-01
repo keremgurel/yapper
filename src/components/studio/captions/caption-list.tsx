@@ -48,7 +48,7 @@ export default function CaptionList({
 
   return (
     <div className="space-y-2">
-      <div className="mx-auto flex max-w-[640px] flex-col gap-1.5">
+      <div className="flex max-w-[640px] flex-col gap-1.5">
         {captions.map((c, i) => {
           const active = selectedCaptionIds.includes(c.id);
           return (
