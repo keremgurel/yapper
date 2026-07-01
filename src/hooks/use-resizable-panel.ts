@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * The handle's onPointerDown starts a drag; width is measured from the right
  * edge of the window and clamped.
  */
-export function useResizablePanel(initial = 380, min = 300, max = 720) {
+export function useResizablePanel(initial = 380, min = 300, max = 1000) {
   const [width, setWidth] = useState(initial);
   const dragging = useRef(false);
 

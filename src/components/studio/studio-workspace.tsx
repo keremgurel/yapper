@@ -7,6 +7,7 @@ import OverlayLayer from "@/components/studio/overlay-layer";
 import RightPanel from "@/components/studio/right-panel";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
+import EmptyTimeline from "@/components/studio/empty-timeline";
 import VideoUploader from "@/components/studio/video-uploader";
 import { totalDuration } from "@/lib/studio/clips";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
@@ -112,17 +113,9 @@ export default function StudioWorkspace() {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo, play, pause, splitAt, deleteSelected, selectedClipId]);
 
-  if (!source) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-4">
-        <VideoUploader />
-      </div>
-    );
-  }
-
   const total = totalDuration(clips);
   const aspect =
-    source.width && source.height ? source.width / source.height : 9 / 16;
+    source?.width && source?.height ? source.width / source.height : 9 / 16;
   let stageW = box.w;
   let stageH = box.w / aspect;
   if (stageH > box.h) {
@@ -138,28 +131,34 @@ export default function StudioWorkspace() {
           ref={previewRef}
           className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black p-4"
         >
-          <div
-            className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
-            style={{ width: stageW || 0, height: stageH || 0 }}
-          >
-            <video
-              ref={videoRef}
-              src={source.url}
-              className="absolute inset-0 h-full w-full object-cover"
-              playsInline
-              onClick={() => (playing ? pause() : play())}
-            />
-            <OverlayLayer
-              overlays={overlays}
-              masterTime={timelineTime}
-              playing={playing}
-            />
-          </div>
-          <AudioTracksPlayer
-            tracks={audioTracks}
-            masterTime={timelineTime}
-            playing={playing}
-          />
+          {source ? (
+            <>
+              <div
+                className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
+                style={{ width: stageW || 0, height: stageH || 0 }}
+              >
+                <video
+                  ref={videoRef}
+                  src={source.url}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  playsInline
+                  onClick={() => (playing ? pause() : play())}
+                />
+                <OverlayLayer
+                  overlays={overlays}
+                  masterTime={timelineTime}
+                  playing={playing}
+                />
+              </div>
+              <AudioTracksPlayer
+                tracks={audioTracks}
+                masterTime={timelineTime}
+                playing={playing}
+              />
+            </>
+          ) : (
+            <VideoUploader />
+          )}
         </div>
 
         {/* Vertical resize handle */}
@@ -175,7 +174,9 @@ export default function StudioWorkspace() {
           className="bg-card flex shrink-0 flex-col px-4 pt-2 pb-3"
         >
           <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-            <p className="text-foreground/55 truncate text-xs">{source.name}</p>
+            <p className="text-foreground/55 truncate text-xs">
+              {source?.name ?? "No video yet"}
+            </p>
           </div>
           <div className="shrink-0">
             <StudioTransport
@@ -188,15 +189,19 @@ export default function StudioWorkspace() {
             />
           </div>
           <div className="mt-3 min-h-0 flex-1">
-            <StudioTimeline
-              clips={clips}
-              sourceUrl={source.url}
-              sourceDuration={source.duration}
-              currentTimelineTime={timelineTime}
-              selectedClipId={selectedClipId}
-              onSelect={selectClip}
-              onSeek={seekToTimeline}
-            />
+            {source ? (
+              <StudioTimeline
+                clips={clips}
+                sourceUrl={source.url}
+                sourceDuration={source.duration}
+                currentTimelineTime={timelineTime}
+                selectedClipId={selectedClipId}
+                onSelect={selectClip}
+                onSeek={seekToTimeline}
+              />
+            ) : (
+              <EmptyTimeline />
+            )}
           </div>
         </div>
       </div>

@@ -411,6 +411,7 @@ export default function StudioTimeline({
         <TrackHeaderRail
           overlays={overlays}
           audioTracks={audioTracks}
+          placeholderTrack={overlays.length === 0}
           onToggleOverlayHidden={toggleOverlayHidden}
           onToggleOverlayMuted={toggleOverlayMuted}
           onRemoveOverlay={removeOverlay}
@@ -454,6 +455,14 @@ export default function StudioTimeline({
               className="space-y-1 py-1"
               style={{ paddingLeft: padLeft, paddingRight: padLeft }}
             >
+              {/* Empty upper-track drop zone so the timeline always shows room
+                for at least a second track. */}
+              {overlays.length === 0 && (
+                <div className="relative h-16">
+                  <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+                </div>
+              )}
+
               {/* Upper video tracks — stacked above the base, topmost composites
                 on top (last in the overlays array renders highest). */}
               {[...overlays].reverse().map((o) => (

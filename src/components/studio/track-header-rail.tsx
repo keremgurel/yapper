@@ -1,6 +1,14 @@
 "use client";
 
-import { Eye, EyeOff, Film, Trash2, Volume2, VolumeX } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Film,
+  Plus,
+  Trash2,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import type { AudioTrack, Overlay } from "@/lib/studio/types";
 
 const btn =
@@ -14,6 +22,7 @@ const btn =
 export default function TrackHeaderRail({
   overlays,
   audioTracks,
+  placeholderTrack = false,
   onToggleOverlayHidden,
   onToggleOverlayMuted,
   onRemoveOverlay,
@@ -22,6 +31,7 @@ export default function TrackHeaderRail({
 }: {
   overlays: Overlay[];
   audioTracks: AudioTrack[];
+  placeholderTrack?: boolean;
   onToggleOverlayHidden: (id: string) => void;
   onToggleOverlayMuted: (id: string) => void;
   onRemoveOverlay: (id: string) => void;
@@ -33,6 +43,11 @@ export default function TrackHeaderRail({
       {/* Ruler spacer keeps the first track aligned with the timeline. */}
       <div className="h-5" />
       <div className="space-y-1 py-1">
+        {placeholderTrack && (
+          <div className="text-foreground/20 flex h-16 items-center justify-center">
+            <Plus className="h-3.5 w-3.5" />
+          </div>
+        )}
         {[...overlays].reverse().map((o) => {
           const muted = o.muted ?? true;
           return (
