@@ -118,3 +118,22 @@ export function newClipId(): string {
   }
   return `clip-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
 }
+
+/** A caption segment shown over the video, timed in edited-timeline seconds.
+ * x/y/scale are optional per-caption overrides of the global caption style. */
+export interface Caption {
+  id: string;
+  text: string;
+  start: number;
+  end: number;
+  x?: number;
+  y?: number;
+  scale?: number;
+}
+
+export function newCaptionId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `cap-${crypto.randomUUID()}`;
+  }
+  return `cap-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}

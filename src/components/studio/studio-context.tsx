@@ -29,6 +29,11 @@ import {
   refineWordTimings,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
+import {
+  DEFAULT_CAPTION_STYLE,
+  generateCaptions,
+  type CaptionStyle,
+} from "@/lib/studio/captions";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
 import { transcribeRemote } from "@/lib/studio/transcribe-remote";
@@ -43,6 +48,7 @@ import {
   newOverlayId,
   newWordId,
   type AudioTrack,
+  type Caption,
   type Clip,
   type MediaAsset,
   type Overlay,
@@ -50,6 +56,12 @@ import {
   type StudioSource,
   type Word,
 } from "@/lib/studio/types";
+
+interface CaptionLayout {
+  x?: number;
+  y?: number;
+  scale?: number;
+}
 
 export type TranscribeStatus =
   | "idle"
@@ -101,6 +113,21 @@ interface StudioContextValue {
   toggleOverlayHidden: (id: string) => void;
   toggleOverlayMuted: (id: string) => void;
   removeOverlay: (id: string) => void;
+  captions: Caption[];
+  captionStyle: CaptionStyle;
+  selectedCaptionId: string | null;
+  captionApplyAll: boolean;
+  captionLines: number;
+  generateCaptionsFromTranscript: () => void;
+  autoBreakCaptions: (lines: number) => void;
+  selectCaption: (id: string | null) => void;
+  setCaptionText: (id: string, text: string) => void;
+  removeCaption: (id: string) => void;
+  clearCaptions: () => void;
+  updateCaptionLayout: (id: string, layout: CaptionLayout) => void;
+  setCaptionFont: (fontFamily: string) => void;
+  setCaptionScale: (fontScale: number) => void;
+  toggleCaptionApplyAll: () => void;
   snapping: boolean;
   toggleSnapping: () => void;
   undo: () => void;
@@ -126,9 +153,86 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
+  const [captions, setCaptions] = useState<Caption[]>([]);
+  const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
+    DEFAULT_CAPTION_STYLE,
+  );
+  const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(
+    null,
+  );
+  const [captionApplyAll, setCaptionApplyAll] = useState(true);
+  const [captionLines, setCaptionLines] = useState(2);
   const [snapping, setSnapping] = useState(true);
 
   const toggleSnapping = useCallback(() => setSnapping((s) => !s), []);
+
+  const generateCaptionsFromTranscript = useCallback(() => {
+    setCaptions(generateCaptions(words, clips, captionLines * 30));
+  }, [words, clips, captionLines]);
+
+  const autoBreakCaptions = useCallback(
+    (lines: number) => {
+      setCaptionLines(lines);
+      setCaptions(generateCaptions(words, clips, lines * 30));
+    },
+    [words, clips],
+  );
+
+  const setCaptionText = useCallback((id: string, text: string) => {
+    setCaptions((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
+  }, []);
+
+  const removeCaption = useCallback((id: string) => {
+    setCaptions((prev) => prev.filter((c) => c.id !== id));
+    setSelectedCaptionId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  const clearCaptions = useCallback(() => {
+    setCaptions([]);
+    setSelectedCaptionId(null);
+  }, []);
+
+  const setCaptionFont = useCallback((fontFamily: string) => {
+    setCaptionStyle((s) => ({ ...s, fontFamily }));
+  }, []);
+
+  const setCaptionScale = useCallback((fontScale: number) => {
+    setCaptionStyle((s) => ({ ...s, fontScale }));
+    setCaptions((prev) => prev.map((c) => ({ ...c, scale: undefined })));
+  }, []);
+
+  const toggleCaptionApplyAll = useCallback(
+    () => setCaptionApplyAll((v) => !v),
+    [],
+  );
+
+  // Move/resize: apply to the global style (and clear per-caption overrides) or
+  // to just this caption, per the Apply-to-all toggle.
+  const updateCaptionLayout = useCallback(
+    (id: string, layout: CaptionLayout) => {
+      if (captionApplyAll) {
+        setCaptionStyle((s) => ({
+          ...s,
+          x: layout.x ?? s.x,
+          y: layout.y ?? s.y,
+          fontScale: layout.scale ?? s.fontScale,
+        }));
+        setCaptions((prev) =>
+          prev.map((c) => ({
+            ...c,
+            x: layout.x != null ? undefined : c.x,
+            y: layout.y != null ? undefined : c.y,
+            scale: layout.scale != null ? undefined : c.scale,
+          })),
+        );
+      } else {
+        setCaptions((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, ...layout } : c)),
+        );
+      }
+    },
+    [captionApplyAll],
+  );
 
   const addMediaAsset = useCallback(async (file: File) => {
     if (file.type.startsWith("image/")) {
@@ -291,6 +395,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setWords([]);
     setTranscribeStatus("idle");
     setTranscribeProgress(0);
+    setCaptions([]);
+    setSelectedCaptionId(null);
   }, []);
 
   const loadSource = useCallback(
@@ -641,6 +747,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,
+      captions,
+      captionStyle,
+      selectedCaptionId,
+      captionApplyAll,
+      captionLines,
+      generateCaptionsFromTranscript,
+      autoBreakCaptions,
+      selectCaption: setSelectedCaptionId,
+      setCaptionText,
+      removeCaption,
+      clearCaptions,
+      updateCaptionLayout,
+      setCaptionFont,
+      setCaptionScale,
+      toggleCaptionApplyAll,
       snapping,
       toggleSnapping,
       undo,
@@ -691,6 +812,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       toggleOverlayHidden,
       toggleOverlayMuted,
       removeOverlay,
+      captions,
+      captionStyle,
+      selectedCaptionId,
+      captionApplyAll,
+      captionLines,
+      generateCaptionsFromTranscript,
+      autoBreakCaptions,
+      setCaptionText,
+      removeCaption,
+      clearCaptions,
+      updateCaptionLayout,
+      setCaptionFont,
+      setCaptionScale,
+      toggleCaptionApplyAll,
       snapping,
       toggleSnapping,
       undo,

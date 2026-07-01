@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
 import OverlayLayer from "@/components/studio/overlay-layer";
+import CaptionLayer from "@/components/studio/caption-layer";
 import RightPanel from "@/components/studio/right-panel";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
@@ -164,6 +165,7 @@ export default function StudioWorkspace() {
                   masterTime={timelineTime}
                   playing={playing}
                 />
+                <CaptionLayer masterTime={timelineTime} />
               </div>
               <AudioTracksPlayer
                 tracks={audioTracks}
@@ -255,7 +257,11 @@ export default function StudioWorkspace() {
         style={{ width }}
         className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
       >
-        <RightPanel currentSourceTime={sourceTime} onSeek={seekToSource} />
+        <RightPanel
+          currentSourceTime={sourceTime}
+          onSeek={seekToSource}
+          onSeekTimeline={seekToTimeline}
+        />
       </aside>
     </div>
   );

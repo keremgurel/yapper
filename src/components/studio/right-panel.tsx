@@ -1,18 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Film } from "lucide-react";
+import { Captions, FileText, Film } from "lucide-react";
 import MediaTab from "@/components/studio/media-tab";
+import CaptionsTab from "@/components/studio/captions-tab";
 import StudioTranscript from "@/components/studio/studio-transcript";
 
-type Tab = "media" | "transcript";
+type Tab = "media" | "captions" | "transcript";
 
 export default function RightPanel({
   currentSourceTime,
   onSeek,
+  onSeekTimeline,
 }: {
   currentSourceTime: number;
   onSeek: (t: number) => void;
+  onSeekTimeline: (t: number) => void;
 }) {
   const [tab, setTab] = useState<Tab>("media");
 
@@ -36,6 +39,14 @@ export default function RightPanel({
         </button>
         <button
           type="button"
+          onClick={() => setTab("captions")}
+          className={tabBtn(tab === "captions")}
+        >
+          <Captions className="h-4 w-4" />
+          Captions
+        </button>
+        <button
+          type="button"
           onClick={() => setTab("transcript")}
           className={tabBtn(tab === "transcript")}
         >
@@ -47,6 +58,8 @@ export default function RightPanel({
       <div className="min-h-0 flex-1">
         {tab === "media" ? (
           <MediaTab />
+        ) : tab === "captions" ? (
+          <CaptionsTab onSeek={onSeekTimeline} />
         ) : (
           <StudioTranscript
             currentSourceTime={currentSourceTime}
