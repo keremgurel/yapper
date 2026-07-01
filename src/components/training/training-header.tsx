@@ -28,7 +28,7 @@ export default function TrainingHeader() {
       {/* Right: auth + theme + mobile menu */}
       <div className="flex items-center gap-1.5">
         <Show when="signed-out">
-          <SignInButton mode="modal">
+          <SignInButton mode="modal" withSignUp>
             <button
               type="button"
               className="border-border bg-card text-foreground hover:bg-muted rounded-full border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-colors"
