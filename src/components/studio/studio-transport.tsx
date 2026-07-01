@@ -35,7 +35,7 @@ export default function StudioTransport({
 }) {
   const {
     source,
-    selectedClipId,
+    selectedClipIds,
     deleteSelected,
     trimClipsToSpeech,
     detecting,
@@ -112,11 +112,13 @@ export default function StudioTransport({
       <button
         type="button"
         onClick={deleteSelected}
-        disabled={!selectedClipId}
+        disabled={selectedClipIds.length === 0}
         className={pillBtn}
       >
         <Trash2 className="h-3.5 w-3.5" />
-        Delete clip
+        {selectedClipIds.length > 1
+          ? `Delete ${selectedClipIds.length} clips`
+          : "Delete clip"}
       </button>
       {source?.kind !== "image" && (
         <button

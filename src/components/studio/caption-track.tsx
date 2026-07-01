@@ -75,6 +75,7 @@ export default function CaptionTrack({
           <div
             key={c.id}
             style={{ left, width }}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onSelect(c.id)}
             onDoubleClick={() => onSplit(c.id, playhead)}
             title="Double-click to break at the playhead"

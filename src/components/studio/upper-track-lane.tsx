@@ -57,6 +57,7 @@ export default function UpperTrackLane({
         style={{ left, width }}
         onPointerDown={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           onDragStart(o.id, e.clientX, o.start);
         }}
         className={`absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-fuchsia-500/20 ring-1 ring-fuchsia-500/60 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}

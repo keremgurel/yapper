@@ -19,8 +19,7 @@ export default function StudioWorkspace() {
   const {
     source,
     clips,
-    selectedClipId,
-    selectClip,
+    selectedClipIds,
     splitAt,
     deleteSelected,
     audioTracks,
@@ -108,7 +107,7 @@ export default function StudioWorkspace() {
         e.preventDefault();
         splitAt(videoRef.current?.currentTime ?? 0);
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedClipId) {
+        if (selectedClipIds.length) {
           e.preventDefault();
           deleteSelected();
         }
@@ -116,7 +115,7 @@ export default function StudioWorkspace() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, play, pause, splitAt, deleteSelected, selectedClipId]);
+  }, [undo, redo, play, pause, splitAt, deleteSelected, selectedClipIds]);
 
   const total = totalDuration(clips);
   const aspect =
@@ -233,8 +232,6 @@ export default function StudioWorkspace() {
                 sourceKind={source.kind ?? "video"}
                 sourceDuration={source.duration}
                 currentTimelineTime={timelineTime}
-                selectedClipId={selectedClipId}
-                onSelect={selectClip}
                 onSeek={seekToTimeline}
               />
             ) : (

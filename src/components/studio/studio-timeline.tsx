@@ -56,8 +56,6 @@ export default function StudioTimeline({
   sourceKind = "video",
   sourceDuration,
   currentTimelineTime,
-  selectedClipId,
-  onSelect,
   onSeek,
 }: {
   clips: Clip[];
@@ -65,12 +63,14 @@ export default function StudioTimeline({
   sourceKind?: "video" | "image";
   sourceDuration: number;
   currentTimelineTime: number;
-  selectedClipId: string | null;
-  onSelect: (id: string) => void;
   onSeek: (timelineTime: number) => void;
 }) {
   const isImage = sourceKind === "image";
   const {
+    selectedClipIds,
+    selectClip,
+    toggleClipSelection,
+    selectClips,
     setClipRange,
     moveClip,
     audioTracks,
@@ -126,6 +126,13 @@ export default function StudioTimeline({
   // Vertical drag distance (px, negative = up). Past LIFT_THRESHOLD the clip
   // lifts onto a new upper video track instead of reordering.
   const [clipLiftY, setClipLiftY] = useState(0);
+  // Marquee rectangle (content-div px) for drag-select over main clips.
+  const [marquee, setMarquee] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
   const peaks = useWaveform(sourceUrl, sourceDuration);
   const [view, setView] = useState({ start: 0, width: 0 });
@@ -489,6 +496,47 @@ export default function StudioTimeline({
             <div
               className="space-y-1 py-1"
               style={{ paddingLeft: padLeft, paddingRight: padLeft }}
+              onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                const el = scrollRef.current;
+                if (!el) return;
+                const rect = el.getBoundingClientRect();
+                const sx = e.clientX - rect.left + el.scrollLeft;
+                const sy = e.clientY - rect.top + el.scrollTop;
+                let moved = false;
+                const onMove = (ev: PointerEvent) => {
+                  const cx = ev.clientX - rect.left + el.scrollLeft;
+                  const cy = ev.clientY - rect.top + el.scrollTop;
+                  if (!moved && Math.hypot(cx - sx, cy - sy) < 4) return;
+                  moved = true;
+                  const left = Math.min(sx, cx);
+                  const width = Math.abs(cx - sx);
+                  setMarquee({
+                    left,
+                    top: Math.min(sy, cy),
+                    width,
+                    height: Math.abs(cy - sy),
+                  });
+                  const ids = clips
+                    .filter((_, i) => {
+                      const cl = padLeft + offsets[i] * pxPerSec;
+                      const cr =
+                        padLeft +
+                        (offsets[i] + (clips[i].end - clips[i].start)) *
+                          pxPerSec;
+                      return cr >= left && cl <= left + width;
+                    })
+                    .map((c) => c.id);
+                  selectClips(ids);
+                };
+                const onUp = () => {
+                  setMarquee(null);
+                  window.removeEventListener("pointermove", onMove);
+                  window.removeEventListener("pointerup", onUp);
+                };
+                window.addEventListener("pointermove", onMove);
+                window.addEventListener("pointerup", onUp);
+              }}
             >
               {/* Caption track (top) */}
               {captions.length > 0 && (
@@ -547,7 +595,10 @@ export default function StudioTimeline({
                       ? offsets[i] + (origDur - dur)
                       : offsets[i];
                   const width = Math.max(dur * pxPerSec, 4);
-                  const selected = clip.id === selectedClipId;
+                  const selected = selectedClipIds.includes(clip.id);
+                  const onlyThisSelected =
+                    selectedClipIds.length === 1 &&
+                    selectedClipIds[0] === clip.id;
                   const isGhost = clipDrag?.id === clip.id && clipLive != null;
                   const containerLeftPx = isGhost
                     ? (clipLive as number)
@@ -600,7 +651,13 @@ export default function StudioTimeline({
                       }}
                       onPointerDown={(e) => {
                         if (e.button !== 0) return;
-                        onSelect(clip.id);
+                        e.stopPropagation();
+                        // ⌘/Ctrl-click toggles multi-selection (no drag).
+                        if (e.metaKey || e.ctrlKey) {
+                          toggleClipSelection(clip.id);
+                          return;
+                        }
+                        if (!selected) selectClip(clip.id);
                         setClipDrag({
                           id: clip.id,
                           startX: e.clientX,
@@ -610,7 +667,7 @@ export default function StudioTimeline({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSelect(clip.id);
+                        if (!(e.metaKey || e.ctrlKey)) selectClip(clip.id);
                       }}
                       className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
                         isLifting
@@ -670,54 +727,58 @@ export default function StudioTimeline({
                         </span>
                       )}
 
-                      {/* Trim handles — wide invisible grab area, thin visible
-                        line so you can see exactly where the edge lands. */}
-                      <span
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onSelect(clip.id);
-                          setTrim({
-                            id: clip.id,
-                            edge: "start",
-                            startX: e.clientX,
-                            origStart: clip.start,
-                            origEnd: clip.end,
-                          });
-                        }}
-                        className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
-                      >
-                        <span
-                          className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                            trim?.id === clip.id && trim.edge === "start"
-                              ? "w-0.5"
-                              : "w-1.5"
-                          } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
-                        />
-                      </span>
-                      <span
-                        onPointerDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onSelect(clip.id);
-                          setTrim({
-                            id: clip.id,
-                            edge: "end",
-                            startX: e.clientX,
-                            origStart: clip.start,
-                            origEnd: clip.end,
-                          });
-                        }}
-                        className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
-                      >
-                        <span
-                          className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                            trim?.id === clip.id && trim.edge === "end"
-                              ? "w-0.5"
-                              : "w-1.5"
-                          } ${selected ? "opacity-100" : "opacity-0 group-hover:opacity-80"}`}
-                        />
-                      </span>
+                      {/* Trim handles (only when a single clip is selected) —
+                        wide invisible grab area, thin visible line. */}
+                      {onlyThisSelected && (
+                        <>
+                          <span
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              selectClip(clip.id);
+                              setTrim({
+                                id: clip.id,
+                                edge: "start",
+                                startX: e.clientX,
+                                origStart: clip.start,
+                                origEnd: clip.end,
+                              });
+                            }}
+                            className="absolute inset-y-0 left-0 z-20 flex w-3 cursor-ew-resize justify-start"
+                          >
+                            <span
+                              className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                                trim?.id === clip.id && trim.edge === "start"
+                                  ? "w-0.5"
+                                  : "w-1.5"
+                              } opacity-100`}
+                            />
+                          </span>
+                          <span
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              selectClip(clip.id);
+                              setTrim({
+                                id: clip.id,
+                                edge: "end",
+                                startX: e.clientX,
+                                origStart: clip.start,
+                                origEnd: clip.end,
+                              });
+                            }}
+                            className="absolute inset-y-0 right-0 z-20 flex w-3 cursor-ew-resize justify-end"
+                          >
+                            <span
+                              className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
+                                trim?.id === clip.id && trim.edge === "end"
+                                  ? "w-0.5"
+                                  : "w-1.5"
+                              } opacity-100`}
+                            />
+                          </span>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -733,6 +794,7 @@ export default function StudioTimeline({
                       style={{ left, width }}
                       onPointerDown={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
                         setAudioDrag({
                           id: a.id,
                           startX: e.clientX,
@@ -750,6 +812,19 @@ export default function StudioTimeline({
                 );
               })}
             </div>
+
+            {/* Marquee drag-select rectangle */}
+            {marquee && (
+              <div
+                className="pointer-events-none absolute z-30 rounded-sm border border-cyan-400 bg-cyan-400/10"
+                style={{
+                  left: marquee.left,
+                  top: marquee.top,
+                  width: marquee.width,
+                  height: marquee.height,
+                }}
+              />
+            )}
 
             {/* Playhead */}
             <div

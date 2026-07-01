@@ -77,6 +77,7 @@ interface StudioContextValue {
   source: StudioSource | null;
   clips: Clip[];
   selectedClipId: string | null;
+  selectedClipIds: string[];
   detecting: boolean;
   words: Word[];
   audioTracks: AudioTrack[];
@@ -85,6 +86,8 @@ interface StudioContextValue {
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
+  toggleClipSelection: (id: string) => void;
+  selectClips: (ids: string[]) => void;
   splitAt: (sourceTime: number) => void;
   deleteSelected: () => void;
   trimStart: (sourceTime: number) => void;
@@ -148,7 +151,23 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<StudioSource | null>(null);
   const { clips, setClips, resetClips, undo, redo, canUndo, canRedo } =
     useClipHistory();
-  const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
+  const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
+  // Single selection (for trim, which only makes sense on one clip).
+  const selectedClipId =
+    selectedClipIds.length === 1 ? selectedClipIds[0] : null;
+  const selectClip = useCallback(
+    (id: string | null) => setSelectedClipIds(id ? [id] : []),
+    [],
+  );
+  const toggleClipSelection = useCallback((id: string) => {
+    setSelectedClipIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+  const selectClips = useCallback(
+    (ids: string[]) => setSelectedClipIds(ids),
+    [],
+  );
   const [words, setWords] = useState<Word[]>([]);
   const [transcribeStatus, setTranscribeStatus] =
     useState<TranscribeStatus>("idle");
@@ -385,7 +404,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
       setClips((prev) => removeClip(prev, clipId));
-      setSelectedClipId((cur) => (cur === clipId ? null : cur));
+      setSelectedClipIds((prev) => prev.filter((x) => x !== clipId));
     },
     [source, clips, setClips],
   );
@@ -471,7 +490,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
       resetClips(fullClip(next.duration));
-      setSelectedClipId(null);
+      setSelectedClipIds([]);
       resetTranscript();
       setAudioTracks((prev) => {
         prev.forEach((t) => URL.revokeObjectURL(t.url));
@@ -533,7 +552,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       return null;
     });
     resetClips([]);
-    setSelectedClipId(null);
+    setSelectedClipIds([]);
     resetTranscript();
     setAudioTracks((prev) => {
       prev.forEach((t) => URL.revokeObjectURL(t.url));
@@ -561,7 +580,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setClips((prev) =>
       selectedClipId ? removeClip(prev, selectedClipId) : prev,
     );
-    setSelectedClipId(null);
+    setSelectedClipIds([]);
   }, [setClips, selectedClipId]);
 
   const trimStart = useCallback(
@@ -765,7 +784,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const reset = useCallback(() => {
     resetClips(source ? fullClip(source.duration) : []);
-    setSelectedClipId(null);
+    setSelectedClipIds([]);
   }, [resetClips, source]);
 
   const value = useMemo<StudioContextValue>(
@@ -780,7 +799,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeProgress,
       loadSource,
       clearSource,
-      selectClip: setSelectedClipId,
+      selectClip,
+      selectedClipIds,
+      toggleClipSelection,
+      selectClips,
       splitAt,
       deleteSelected,
       trimStart,
@@ -848,6 +870,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeProgress,
       loadSource,
       clearSource,
+      selectClip,
+      selectedClipIds,
+      toggleClipSelection,
+      selectClips,
       splitAt,
       deleteSelected,
       trimStart,
