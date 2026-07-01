@@ -5,9 +5,15 @@ import { ImagePlus, Layers, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 
 export default function MediaTab() {
-  const { mediaAssets, addMediaAsset, removeMediaAsset, addOverlayFromAsset } =
-    useStudio();
+  const {
+    source,
+    mediaAssets,
+    addMediaAsset,
+    removeMediaAsset,
+    addOverlayFromAsset,
+  } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
+  const isEmpty = !source && mediaAssets.length === 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -38,7 +44,7 @@ export default function MediaTab() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {mediaAssets.length === 0 ? (
+        {isEmpty ? (
           <div className="text-foreground/50 flex flex-col items-center gap-2 py-12 text-center">
             <ImagePlus className="text-foreground/30 h-7 w-7" />
             <p className="text-sm">No media yet</p>
@@ -48,6 +54,26 @@ export default function MediaTab() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
+            {source && (
+              <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-cyan-500/40">
+                <div className="bg-muted relative aspect-video">
+                  <video
+                    src={source.url}
+                    muted
+                    className="h-full w-full object-cover"
+                  />
+                  <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
+                    Editing
+                  </span>
+                </div>
+                <div className="p-2">
+                  <p className="text-foreground/80 truncate text-[11px] font-bold">
+                    {source.name}
+                  </p>
+                  <p className="text-foreground/40 text-[10px]">Main track</p>
+                </div>
+              </div>
+            )}
             {mediaAssets.map((asset) => (
               <div
                 key={asset.id}

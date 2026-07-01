@@ -104,41 +104,40 @@ function mergeRanges(ranges: [number, number][]): [number, number][] {
 }
 
 /**
- * Detect retakes: when a phrase of >= n words is repeated later, the earlier
- * attempt (and the stumble up to the restart) is cut, keeping the last take.
- * Conservative: only exact normalized n-grams within a `maxGapSec` window.
+ * Detect retakes: when a phrase is restarted (an opening of >= n words repeats
+ * later), cut from the FIRST attempt up to the START of the LAST attempt — so
+ * every earlier try is removed and only the final take is kept. Ranges from all
+ * repeated n-grams are merged, which naturally spans the whole restarted region.
+ * Conservative: only exact normalized n-grams whose span is within `maxGapSec`.
  */
 export function findEarlierTakeRanges(
   words: Word[],
-  n = 4,
-  maxGapSec = 20,
+  n = 3,
+  maxGapSec = 30,
 ): [number, number][] {
   const toks = words
-    .map((w, i) => ({ t: norm(w.text), w, i }))
+    .map((w) => ({ t: norm(w.text), w }))
     .filter((x) => x.t.length > 0);
   if (toks.length < n * 2) return [];
 
-  const seen = new Map<string, number>(); // ngram -> earliest token index
-  const ranges: [number, number][] = [];
-
-  let i = 0;
-  while (i + n <= toks.length) {
+  // Every start index where each n-gram occurs.
+  const positions = new Map<string, number[]>();
+  for (let i = 0; i + n <= toks.length; i++) {
     const key = toks
       .slice(i, i + n)
       .map((x) => x.t)
       .join(" ");
-    const earlier = seen.get(key);
-    if (earlier !== undefined && i > earlier + n - 1) {
-      // A retake: cut from the earliest attempt up to this restart, then skip
-      // the matched window so its shifted duplicates don't extend the cut.
-      const from = toks[earlier].w.start;
-      const to = toks[i].w.start;
-      if (to - from <= maxGapSec) ranges.push([from, to]);
-      i += n;
-      continue;
-    }
-    if (earlier === undefined) seen.set(key, i);
-    i++;
+    const arr = positions.get(key);
+    if (arr) arr.push(i);
+    else positions.set(key, [i]);
+  }
+
+  const ranges: [number, number][] = [];
+  for (const occ of positions.values()) {
+    if (occ.length < 2) continue;
+    const from = toks[occ[0]].w.start;
+    const to = toks[occ[occ.length - 1]].w.start; // start of the last attempt
+    if (to > from && to - from <= maxGapSec) ranges.push([from, to]);
   }
 
   return mergeRanges(ranges);
