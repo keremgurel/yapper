@@ -79,13 +79,17 @@ export default function StudioTransport({
           type="button"
           onClick={() => void autoEdit()}
           disabled={autoEditing}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 px-3.5 py-2 text-xs font-black text-white shadow-sm transition-opacity hover:opacity-90 disabled:opacity-60"
+          className={`mr-1 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2.5 text-sm font-black text-white transition-transform hover:scale-[1.03] disabled:opacity-70 ${
+            autoEditing
+              ? "shadow-lg shadow-cyan-500/40"
+              : "animate-autoedit-glow"
+          }`}
           title="Transcribe, remove mistakes, cut pauses and silences, and caption — in one click"
         >
           {autoEditing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Wand2 className="h-3.5 w-3.5" />
+            <Wand2 className="h-4 w-4" />
           )}
           {autoEditing ? "Editing…" : "Auto-edit"}
         </button>
