@@ -28,6 +28,7 @@ import {
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { transcribeAudio } from "@/lib/studio/transcribe";
 import { transcribeRemote } from "@/lib/studio/transcribe-remote";
+import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
@@ -75,6 +76,8 @@ interface StudioContextValue {
   cutRange: (from: number, to: number) => void;
   removeFillers: () => number;
   removeEarlierTakes: () => number;
+  aiRemoveMistakes: () => Promise<number>;
+  aiCleaning: boolean;
   addAudio: (file: File) => Promise<void>;
   moveAudio: (id: string, start: number) => void;
   toggleAudioMuted: (id: string) => void;
@@ -110,6 +113,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     useState<TranscribeStatus>("idle");
   const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
+  const [aiCleaning, setAiCleaning] = useState(false);
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -464,6 +468,26 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
+  // AI pass: an LLM flags mistakes/retakes as struck-through (for review), not
+  // removed. Returns count, or -1 (no key configured) / -2 (request failed).
+  const aiRemoveMistakes = useCallback(async (): Promise<number> => {
+    if (words.length === 0) return 0;
+    setAiCleaning(true);
+    try {
+      const cuts = await cleanTranscriptRemote(words);
+      if (!cuts) return -1;
+      const ranges = cuts
+        .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
+        .filter(([a, b]) => b > a);
+      applyCuts(ranges);
+      return ranges.length;
+    } catch {
+      return -2;
+    } finally {
+      setAiCleaning(false);
+    }
+  }, [words, applyCuts]);
+
   const reset = useCallback(() => {
     resetClips(source ? fullClip(source.duration) : []);
     setSelectedClipId(null);
@@ -494,6 +518,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       cutRange,
       removeFillers,
       removeEarlierTakes,
+      aiRemoveMistakes,
+      aiCleaning,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -539,6 +565,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       cutRange,
       removeFillers,
       removeEarlierTakes,
+      aiRemoveMistakes,
+      aiCleaning,
       addAudio,
       moveAudio,
       toggleAudioMuted,

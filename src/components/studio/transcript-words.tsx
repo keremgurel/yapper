@@ -7,6 +7,7 @@ import {
   EyeOff,
   Repeat2,
   Scissors,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
@@ -31,10 +32,22 @@ export default function TranscriptWords({
     removeEarlierTakes,
     removeSilences,
     detecting,
+    aiRemoveMistakes,
+    aiCleaning,
   } = useStudio();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [showDeleted, setShowDeleted] = useState(true);
+  const [aiMsg, setAiMsg] = useState("");
+
+  const onAiClean = async () => {
+    setAiMsg("");
+    const n = await aiRemoveMistakes();
+    if (n === -1) setAiMsg("Add SURPLUS_API_KEY to enable the AI pass.");
+    else if (n === -2) setAiMsg("AI cleanup failed — try again.");
+    else if (n === 0) setAiMsg("No mistakes found.");
+    else setAiMsg(`Marked ${n} section${n === 1 ? "" : "s"} to cut.`);
+  };
 
   const indexById = useMemo(() => {
     const m = new Map<string, number>();
@@ -94,6 +107,15 @@ export default function TranscriptWords({
       <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
         <button
           type="button"
+          onClick={() => void onAiClean()}
+          disabled={aiCleaning}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 text-xs font-black text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          {aiCleaning ? "Cleaning…" : "AI clean up"}
+        </button>
+        <button
+          type="button"
           onClick={() => void removeSilences()}
           disabled={detecting}
           className={toolBtn}
@@ -131,6 +153,12 @@ export default function TranscriptWords({
           {showDeleted ? "Hide deleted" : "Show deleted"}
         </button>
       </div>
+
+      {aiMsg && (
+        <p className="border-border text-foreground/60 border-b px-4 py-1.5 text-xs">
+          {aiMsg}
+        </p>
+      )}
 
       {selected.size > 0 && (
         <div className="border-border bg-muted flex items-center justify-between gap-2 border-b px-4 py-2">
