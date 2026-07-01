@@ -61,6 +61,7 @@ import {
 interface CaptionLayout {
   x?: number;
   y?: number;
+  w?: number;
   scale?: number;
 }
 
@@ -262,6 +263,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           ...s,
           x: layout.x ?? s.x,
           y: layout.y ?? s.y,
+          width: layout.w ?? s.width,
           fontScale: layout.scale ?? s.fontScale,
         }));
         setCaptions((prev) =>
@@ -269,6 +271,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             ...c,
             x: layout.x != null ? undefined : c.x,
             y: layout.y != null ? undefined : c.y,
+            w: layout.w != null ? undefined : c.w,
             scale: layout.scale != null ? undefined : c.scale,
           })),
         );

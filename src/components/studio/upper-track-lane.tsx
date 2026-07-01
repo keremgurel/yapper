@@ -52,7 +52,7 @@ export default function UpperTrackLane({
     : null;
 
   return (
-    <div className="relative h-16">
+    <div className="relative h-12">
       <div
         style={{ left, width }}
         onPointerDown={(e) => {
@@ -70,7 +70,7 @@ export default function UpperTrackLane({
             widthPx={span.widthPx}
             srcStart={span.srcA}
             srcEnd={span.srcB}
-            height={64}
+            height={48}
           />
         )}
         {span && peaks.length > 0 && (
@@ -84,7 +84,7 @@ export default function UpperTrackLane({
               clipStart={span.srcA}
               clipEnd={span.srcB}
               width={span.widthPx}
-              height={22}
+              height={18}
             />
           </span>
         )}

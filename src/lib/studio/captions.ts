@@ -9,6 +9,7 @@ import {
 export interface CaptionStyle {
   fontFamily: string;
   fontScale: number; // fraction of stage height
+  width: number; // box width, fraction of stage width
   x: number; // center x, fraction of stage
   y: number; // center y, fraction of stage
 }
@@ -37,7 +38,8 @@ export const CHARS_PER_LINE = 30;
 
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
   fontFamily: CAPTION_FONTS[0].stack,
-  fontScale: 0.05,
+  fontScale: 0.04,
+  width: 0.9,
   x: 0.5,
   y: 0.82,
 };

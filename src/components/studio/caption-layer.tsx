@@ -13,7 +13,7 @@ interface Drag {
   startY: number;
   x: number;
   y: number;
-  scale: number;
+  w: number;
 }
 
 /**
@@ -50,9 +50,11 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
 
   const x = active.x ?? captionStyle.x;
   const y = active.y ?? captionStyle.y;
+  const w = active.w ?? captionStyle.width;
   const scale = active.scale ?? captionStyle.fontScale;
   const selected = selectedCaptionId === active.id;
   const fontSize = box.h ? scale * box.h : 20;
+  const widthPx = box.w ? w * box.w : undefined;
 
   const start = (mode: "move" | "resize") => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -64,7 +66,7 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
       startY: e.clientY,
       x,
       y,
-      scale,
+      w,
     };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
@@ -77,8 +79,9 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
         y: clamp(d.y + (e.clientY - d.startY) / box.h, 0.05, 0.95),
       });
     } else {
+      // Resize the box width (centered); font size stays put.
       updateCaptionLayout(active.id, {
-        scale: clamp(d.scale + (e.clientY - d.startY) / box.h, 0.02, 0.25),
+        w: clamp(d.w + (2 * (e.clientX - d.startX)) / box.w, 0.2, 1),
       });
     }
   };
@@ -100,13 +103,13 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
         style={{
           left: `${x * 100}%`,
           top: `${y * 100}%`,
+          width: widthPx,
           transform: "translate(-50%, -50%)",
           fontFamily: captionStyle.fontFamily,
           fontSize,
-          maxWidth: "86%",
           textShadow: "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
         }}
-        className={`pointer-events-auto absolute cursor-move text-center font-black text-balance whitespace-pre-wrap text-white ${
+        className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap text-white ${
           selected ? "rounded ring-2 ring-cyan-400" : ""
         }`}
       >
@@ -116,7 +119,7 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
             onPointerDown={start("resize")}
             onPointerMove={move}
             onPointerUp={end}
-            className="absolute -right-2 -bottom-2 h-4 w-4 cursor-nwse-resize rounded-full bg-cyan-400"
+            className="absolute top-1/2 -right-1.5 h-6 w-3 -translate-y-1/2 cursor-ew-resize rounded-full bg-cyan-400"
           />
         )}
       </div>

@@ -47,12 +47,12 @@ export default function TrackHeaderRail({
       <div className="h-5" />
       <div className="space-y-1 py-1">
         {hasCaptions && (
-          <div className="text-foreground/40 flex h-9 items-center justify-center">
+          <div className="text-foreground/40 flex h-7 items-center justify-center">
             <Captions className="h-3.5 w-3.5" />
           </div>
         )}
         {placeholderTrack && (
-          <div className="text-foreground/20 flex h-16 items-center justify-center">
+          <div className="text-foreground/20 flex h-12 items-center justify-center">
             <Plus className="h-3.5 w-3.5" />
           </div>
         )}
@@ -61,7 +61,7 @@ export default function TrackHeaderRail({
           return (
             <div
               key={o.id}
-              className="flex h-16 flex-col items-center justify-center gap-2"
+              className="flex h-8 flex-col items-center justify-center gap-2"
             >
               <button
                 type="button"
@@ -102,14 +102,14 @@ export default function TrackHeaderRail({
         })}
 
         {/* Base (main) video track */}
-        <div className="text-foreground/30 flex h-20 items-center justify-center">
+        <div className="text-foreground/30 flex h-16 items-center justify-center">
           <Film className="h-4 w-4" />
         </div>
 
         {audioTracks.map((a) => (
           <div
             key={a.id}
-            className="flex h-12 flex-col items-center justify-center gap-2"
+            className="flex h-8 flex-col items-center justify-center gap-2"
           >
             <button
               type="button"

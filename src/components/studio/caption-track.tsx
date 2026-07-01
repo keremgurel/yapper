@@ -61,7 +61,7 @@ export default function CaptionTrack({
   }, [trim, pxPerSec, onRange]);
 
   return (
-    <div className="relative h-9">
+    <div className="relative h-7">
       {captions.map((c) => {
         const left = c.start * pxPerSec;
         const width = Math.max((c.end - c.start) * pxPerSec, 8);

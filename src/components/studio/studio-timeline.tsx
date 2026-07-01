@@ -506,7 +506,7 @@ export default function StudioTimeline({
               {/* Empty upper-track drop zone so the timeline always shows room
                 for at least a second track. */}
               {overlays.length === 0 && (
-                <div className="relative h-16">
+                <div className="relative h-12">
                   <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
                 </div>
               )}
@@ -532,7 +532,7 @@ export default function StudioTimeline({
               ))}
 
               {/* Main (base) video track */}
-              <div className="relative h-20">
+              <div className="relative h-16">
                 {clips.map((clip, i) => {
                   const isTrimming = trim?.id === clip.id && live;
                   const cStart = isTrimming ? live.start : clip.start;
@@ -648,7 +648,7 @@ export default function StudioTimeline({
                             widthPx={span.widthPx}
                             srcStart={span.srcA}
                             srcEnd={span.srcB}
-                            height={80}
+                            height={64}
                           />
                         )
                       )}
@@ -664,7 +664,7 @@ export default function StudioTimeline({
                             clipStart={span.srcA}
                             clipEnd={span.srcB}
                             width={span.widthPx}
-                            height={28}
+                            height={22}
                           />
                         </span>
                       )}
@@ -727,7 +727,7 @@ export default function StudioTimeline({
                 const left = a.start * pxPerSec;
                 const width = Math.max(a.duration * pxPerSec, 8);
                 return (
-                  <div key={a.id} className="relative h-12">
+                  <div key={a.id} className="relative h-8">
                     <div
                       style={{ left, width }}
                       onPointerDown={(e) => {

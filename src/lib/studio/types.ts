@@ -128,6 +128,7 @@ export interface Caption {
   end: number;
   x?: number;
   y?: number;
+  w?: number; // box width override (fraction of stage)
   scale?: number;
 }
 
