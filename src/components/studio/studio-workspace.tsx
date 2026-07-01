@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
+import AutoEditProgress from "@/components/studio/auto-edit-progress";
 import OverlayLayer from "@/components/studio/overlay-layer";
 import CaptionLayer from "@/components/studio/caption-layer";
 import RightPanel from "@/components/studio/right-panel";
@@ -148,8 +149,9 @@ export default function StudioWorkspace() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           ref={previewRef}
-          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-neutral-100 p-4 dark:bg-neutral-950"
+          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-neutral-100 p-4 dark:bg-neutral-950"
         >
+          <AutoEditProgress />
           {source ? (
             <>
               <div

@@ -525,3 +525,29 @@ select {
 .animate-cs-up-delay-4 {
   animation: cs-up 0.4s ease-out 0.6s both;
 }
+
+/* Shimmering text for the active step of a multi-stage AI action. */
+@keyframes text-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.animate-text-shimmer {
+  background: linear-gradient(
+    90deg,
+    #94a3b8 0%,
+    #94a3b8 40%,
+    #22d3ee 50%,
+    #94a3b8 60%,
+    #94a3b8 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.5s linear infinite;
+}

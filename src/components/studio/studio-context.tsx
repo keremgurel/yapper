@@ -106,6 +106,7 @@ interface StudioContextValue {
   aiCleaning: boolean;
   autoEdit: () => Promise<void>;
   autoEditing: boolean;
+  autoEditStep: number;
   addAudio: (file: File) => Promise<void>;
   moveAudio: (id: string, start: number) => void;
   toggleAudioMuted: (id: string) => void;
@@ -192,6 +193,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
+  const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -912,7 +914,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     try {
       const audio = await decodeToMono16k(source.url);
 
-      // 1. Ensure we have a transcript.
+      // Step 0 — transcript.
+      setAutoEditStep(0);
       let w = words;
       if (w.length === 0) {
         setTranscribeStatus("transcribing");
@@ -926,23 +929,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // 2. Trim each clip's start/end down to speech.
       let next = clips;
-      try {
-        const analysis = analyzeForTrim(audio);
-        next = next.map((c) => {
-          const b = speechBoundsInRange(analysis, c.start, c.end);
-          if (!b) return c;
-          const start = Math.max(c.start, b.start - 0.05);
-          const end = Math.min(c.end, b.end + 0.08);
-          return end - start < 0.1 ? c : { ...c, start, end };
-        });
-      } catch {
-        // leave clips as-is if the waveform can't be analysed
-      }
 
       if (w.length > 0) {
-        // 3. Remove AI-flagged mistakes/retakes.
+        // Step 1 — remove AI-flagged mistakes/retakes.
+        setAutoEditStep(1);
         try {
           const cuts = await cleanTranscriptRemote(w);
           if (cuts) {
@@ -958,7 +949,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           // skip mistake removal if the service is unavailable
         }
 
-        // 4. Cut pauses (plus leading/trailing dead air).
+        // Step 2 — cut pauses (plus leading/trailing dead air).
+        setAutoEditStep(2);
         const ranges = pauseRanges(w);
         const first = w[0];
         const last = w[w.length - 1];
@@ -971,10 +963,27 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // Step 3 — trim silence on the FINAL clips, so every clip left after the
+      // cuts starts and ends on speech (not just the original single clip).
+      setAutoEditStep(3);
+      try {
+        const analysis = analyzeForTrim(audio);
+        next = next.map((c) => {
+          const b = speechBoundsInRange(analysis, c.start, c.end);
+          if (!b) return c;
+          const start = Math.max(c.start, b.start - 0.05);
+          const end = Math.min(c.end, b.end + 0.08);
+          return end - start < 0.1 ? c : { ...c, start, end };
+        });
+      } catch {
+        // leave clips as-is if the waveform can't be analysed
+      }
+
       setClips(() => next);
 
-      // 5. Caption defaults: normal case, 3 words per caption, horizontally
+      // Step 4 — captions: normal case, 3 words per caption, horizontally
       // centered and sitting one third of the frame height up from the bottom.
+      setAutoEditStep(4);
       setCaptionStyle((s) => ({
         ...s,
         textCase: "none",
@@ -994,6 +1003,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }
     } finally {
       setAutoEditing(false);
+      setAutoEditStep(-1);
     }
   }, [source, words, clips, setClips, wordsFromAudio, captionLines]);
 
@@ -1051,6 +1061,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       aiCleaning,
       autoEdit,
       autoEditing,
+      autoEditStep,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -1133,6 +1144,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       aiCleaning,
       autoEdit,
       autoEditing,
+      autoEditStep,
       addAudio,
       moveAudio,
       toggleAudioMuted,
