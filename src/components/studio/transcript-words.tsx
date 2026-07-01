@@ -98,10 +98,10 @@ export default function TranscriptWords({
           type="button"
           onClick={() => void onAiClean()}
           disabled={aiCleaning}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-3 py-1.5 text-xs font-black text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+          className="bg-foreground text-background inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           <Sparkles className="h-3.5 w-3.5" />
-          {aiCleaning ? "Cleaning…" : "AI clean up"}
+          {aiCleaning ? "Cleaning…" : "Clean up retakes"}
         </button>
         <button
           type="button"
