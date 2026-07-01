@@ -43,6 +43,7 @@ import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
   newAudioId,
+  newCaptionId,
   newClipId,
   newMediaId,
   newOverlayId,
@@ -125,6 +126,8 @@ interface StudioContextValue {
   removeCaption: (id: string) => void;
   clearCaptions: () => void;
   updateCaptionLayout: (id: string, layout: CaptionLayout) => void;
+  setCaptionRange: (id: string, start: number, end: number) => void;
+  splitCaption: (id: string, at: number) => void;
   setCaptionFont: (fontFamily: string) => void;
   setCaptionScale: (fontScale: number) => void;
   toggleCaptionApplyAll: () => void;
@@ -190,6 +193,50 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const clearCaptions = useCallback(() => {
     setCaptions([]);
     setSelectedCaptionId(null);
+  }, []);
+
+  const setCaptionRange = useCallback(
+    (id: string, start: number, end: number) => {
+      if (end - start < 0.1) return;
+      setCaptions((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, start: Math.max(0, start), end } : c,
+        ),
+      );
+    },
+    [],
+  );
+
+  // Break a caption into two at timeline time `at`, splitting the words
+  // proportionally.
+  const splitCaption = useCallback((id: string, at: number) => {
+    setCaptions((prev) =>
+      prev.flatMap((c) => {
+        if (c.id !== id || at <= c.start + 0.05 || at >= c.end - 0.05) {
+          return [c];
+        }
+        const parts = c.text.split(/\s+/).filter(Boolean);
+        const frac = (at - c.start) / (c.end - c.start);
+        const k = Math.max(
+          1,
+          Math.min(parts.length - 1, Math.round(frac * parts.length)),
+        );
+        return [
+          {
+            ...c,
+            id: newCaptionId(),
+            end: at,
+            text: parts.slice(0, k).join(" "),
+          },
+          {
+            ...c,
+            id: newCaptionId(),
+            start: at,
+            text: parts.slice(k).join(" "),
+          },
+        ];
+      }),
+    );
   }, []);
 
   const setCaptionFont = useCallback((fontFamily: string) => {
@@ -759,6 +806,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
+      setCaptionRange,
+      splitCaption,
       setCaptionFont,
       setCaptionScale,
       toggleCaptionApplyAll,
@@ -823,6 +872,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
+      setCaptionRange,
+      splitCaption,
       setCaptionFont,
       setCaptionScale,
       toggleCaptionApplyAll,

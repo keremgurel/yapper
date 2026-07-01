@@ -15,6 +15,7 @@ import { useWaveform } from "@/hooks/use-waveform";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import UpperTrackLane from "@/components/studio/upper-track-lane";
+import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { visibleSpan } from "@/lib/studio/window";
 import type { Clip } from "@/lib/studio/types";
@@ -82,6 +83,11 @@ export default function StudioTimeline({
     toggleOverlayMuted,
     removeOverlay,
     liftClipToTrack,
+    captions,
+    selectedCaptionId,
+    selectCaption,
+    setCaptionRange,
+    splitCaption,
     snapping,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -440,6 +446,7 @@ export default function StudioTimeline({
           overlays={overlays}
           audioTracks={audioTracks}
           placeholderTrack={overlays.length === 0}
+          hasCaptions={captions.length > 0}
           onToggleOverlayHidden={toggleOverlayHidden}
           onToggleOverlayMuted={toggleOverlayMuted}
           onRemoveOverlay={removeOverlay}
@@ -483,6 +490,19 @@ export default function StudioTimeline({
               className="space-y-1 py-1"
               style={{ paddingLeft: padLeft, paddingRight: padLeft }}
             >
+              {/* Caption track (top) */}
+              {captions.length > 0 && (
+                <CaptionTrack
+                  captions={captions}
+                  pxPerSec={pxPerSec}
+                  playhead={currentTimelineTime}
+                  selectedId={selectedCaptionId}
+                  onSelect={selectCaption}
+                  onRange={setCaptionRange}
+                  onSplit={splitCaption}
+                />
+              )}
+
               {/* Empty upper-track drop zone so the timeline always shows room
                 for at least a second track. */}
               {overlays.length === 0 && (

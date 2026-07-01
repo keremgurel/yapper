@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Captions,
   Eye,
   EyeOff,
   Film,
@@ -23,6 +24,7 @@ export default function TrackHeaderRail({
   overlays,
   audioTracks,
   placeholderTrack = false,
+  hasCaptions = false,
   onToggleOverlayHidden,
   onToggleOverlayMuted,
   onRemoveOverlay,
@@ -32,6 +34,7 @@ export default function TrackHeaderRail({
   overlays: Overlay[];
   audioTracks: AudioTrack[];
   placeholderTrack?: boolean;
+  hasCaptions?: boolean;
   onToggleOverlayHidden: (id: string) => void;
   onToggleOverlayMuted: (id: string) => void;
   onRemoveOverlay: (id: string) => void;
@@ -43,6 +46,11 @@ export default function TrackHeaderRail({
       {/* Ruler spacer keeps the first track aligned with the timeline. */}
       <div className="h-5" />
       <div className="space-y-1 py-1">
+        {hasCaptions && (
+          <div className="text-foreground/40 flex h-9 items-center justify-center">
+            <Captions className="h-3.5 w-3.5" />
+          </div>
+        )}
         {placeholderTrack && (
           <div className="text-foreground/20 flex h-16 items-center justify-center">
             <Plus className="h-3.5 w-3.5" />
