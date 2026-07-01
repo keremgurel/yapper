@@ -56,7 +56,8 @@ export default function MediaTab() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {source && (
+            {/* Base loaded from the uploader (not in the library) — show it once. */}
+            {source && !mediaAssets.some((m) => m.url === source.url) && (
               <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-cyan-500/40">
                 <div className="bg-muted relative aspect-video">
                   <video
@@ -76,55 +77,75 @@ export default function MediaTab() {
                 </div>
               </div>
             )}
-            {mediaAssets.map((asset) => (
-              <div
-                key={asset.id}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(MEDIA_DND_TYPE, asset.id);
-                  e.dataTransfer.effectAllowed = "copy";
-                }}
-                className="border-border bg-card group cursor-grab overflow-hidden rounded-xl border active:cursor-grabbing"
-              >
-                <div className="bg-muted relative aspect-video">
-                  {asset.kind === "image" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={asset.url}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <video
-                      src={asset.url}
-                      muted
-                      className="h-full w-full object-cover"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => removeMediaAsset(asset.id)}
-                    className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
-                    aria-label="Remove"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+            {mediaAssets.map((asset) => {
+              const isBase = source?.url === asset.url;
+              return (
+                <div
+                  key={asset.id}
+                  draggable={!isBase}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(MEDIA_DND_TYPE, asset.id);
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  className={`border-border bg-card group overflow-hidden rounded-xl border ${
+                    isBase
+                      ? "ring-1 ring-cyan-500/40"
+                      : "cursor-grab active:cursor-grabbing"
+                  }`}
+                >
+                  <div className="bg-muted relative aspect-video">
+                    {asset.kind === "image" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={asset.url}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <video
+                        src={asset.url}
+                        muted
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    {isBase && (
+                      <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
+                        Editing
+                      </span>
+                    )}
+                    {!isBase && (
+                      <button
+                        type="button"
+                        onClick={() => removeMediaAsset(asset.id)}
+                        className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+                        aria-label="Remove"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-foreground/80 truncate text-[11px] font-bold">
+                      {asset.name}
+                    </p>
+                    {isBase ? (
+                      <p className="text-foreground/40 text-[10px]">
+                        Main track
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => addAssetToTimeline(asset.id)}
+                        className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add to timeline
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="p-2">
-                  <p className="text-foreground/80 truncate text-[11px] font-bold">
-                    {asset.name}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => addAssetToTimeline(asset.id)}
-                    className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
-                  >
-                    <Plus className="h-3 w-3" />
-                    Add to timeline
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
