@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import {
+  Eye,
+  EyeOff,
   Image as ImageIcon,
   Music2,
   Trash2,
@@ -26,6 +28,7 @@ import type { Clip } from "@/lib/studio/types";
 const MIN_PX = 12;
 const MAX_PX = 800;
 const MIN_CLIP = 0.2;
+const LIFT_THRESHOLD = 40; // drag a clip up this far to spawn a new upper track
 
 interface ClipSpan {
   leftPx: number;
@@ -113,7 +116,10 @@ export default function StudioTimeline({
     removeAudio,
     overlays,
     moveOverlay,
+    toggleOverlayHidden,
+    toggleOverlayMuted,
     removeOverlay,
+    addCutawayFromClip,
     snapping,
   } = useStudio();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -145,9 +151,13 @@ export default function StudioTimeline({
   const [clipDrag, setClipDrag] = useState<{
     id: string;
     startX: number;
+    startY: number;
     origLeft: number;
   } | null>(null);
   const [clipLive, setClipLive] = useState<number | null>(null);
+  // Vertical drag distance (px, negative = up). Past LIFT_THRESHOLD the clip
+  // lifts onto a new upper video track instead of reordering.
+  const [clipLiftY, setClipLiftY] = useState(0);
   const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
   const peaks = useWaveform(sourceUrl, sourceDuration);
   const [view, setView] = useState({ start: 0, width: 0 });
@@ -286,7 +296,7 @@ export default function StudioTimeline({
     };
   }, [overlayDrag, pxPerSec, moveOverlay, overlays, snapStart]);
 
-  /* ---- main-clip reorder drag ---- */
+  /* ---- main-clip drag: reorder, or lift up to a new upper track ---- */
   useEffect(() => {
     if (!clipDrag) return;
     const dragged = clips.find((c) => c.id === clipDrag.id);
@@ -294,26 +304,34 @@ export default function StudioTimeline({
     let moved = false;
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - clipDrag.startX;
-      if (!moved && Math.abs(dx) < 4) return; // ignore tiny jitter (a click)
+      const dy = e.clientY - clipDrag.startY;
+      if (!moved && Math.hypot(dx, dy) < 4) return; // ignore tiny jitter (a click)
       moved = true;
       setClipLive(clipDrag.origLeft + dx);
+      setClipLiftY(dy);
     };
     const onUp = () => {
-      setClipLive((live) => {
-        if (live != null) {
-          // Drop where the dragged clip's center lands among the others.
-          const center = live / pxPerSec + dur / 2;
-          let acc = 0;
-          let target = 0;
-          for (const c of clips) {
-            const d = clipDuration(c);
-            const mid = acc + d / 2;
-            if (c.id !== clipDrag.id && mid < center) target++;
-            acc += d;
+      setClipLiftY((dy) => {
+        setClipLive((live) => {
+          if (live != null && dy < -LIFT_THRESHOLD) {
+            // Lifted up: copy this segment onto a new upper video track.
+            addCutawayFromClip(clipDrag.id, Math.max(0, live / pxPerSec));
+          } else if (live != null) {
+            // Drop where the dragged clip's center lands among the others.
+            const center = live / pxPerSec + dur / 2;
+            let acc = 0;
+            let target = 0;
+            for (const c of clips) {
+              const d = clipDuration(c);
+              const mid = acc + d / 2;
+              if (c.id !== clipDrag.id && mid < center) target++;
+              acc += d;
+            }
+            moveClip(clipDrag.id, target);
           }
-          moveClip(clipDrag.id, target);
-        }
-        return null;
+          return null;
+        });
+        return 0;
       });
       setClipDrag(null);
     };
@@ -323,7 +341,7 @@ export default function StudioTimeline({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [clipDrag, clips, pxPerSec, moveClip]);
+  }, [clipDrag, clips, pxPerSec, moveClip, addCutawayFromClip]);
 
   /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -516,12 +534,16 @@ export default function StudioTimeline({
                 const contentX = span
                   ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
                   : 0;
+                const isLifting = isGhost && clipLiftY < -LIFT_THRESHOLD;
                 return (
                   <div
                     key={clip.id}
                     style={{
                       left: isGhost ? (clipLive as number) : leftSec * pxPerSec,
                       width,
+                      transform: isGhost
+                        ? `translateY(${clipLiftY}px)`
+                        : undefined,
                       transition:
                         trim || isGhost
                           ? "none"
@@ -533,6 +555,7 @@ export default function StudioTimeline({
                       setClipDrag({
                         id: clip.id,
                         startX: e.clientX,
+                        startY: e.clientY,
                         origLeft: offsets[i] * pxPerSec,
                       });
                     }}
@@ -541,11 +564,13 @@ export default function StudioTimeline({
                       onSelect(clip.id);
                     }}
                     className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
-                      isGhost
-                        ? "z-30 opacity-90 ring-2 ring-cyan-400"
-                        : selected
-                          ? "z-10 ring-2 ring-cyan-500"
-                          : "ring-1 ring-white/10 hover:ring-white/25"
+                      isLifting
+                        ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+                        : isGhost
+                          ? "z-30 opacity-90 ring-2 ring-cyan-400"
+                          : selected
+                            ? "z-10 ring-2 ring-cyan-500"
+                            : "ring-1 ring-white/10 hover:ring-white/25"
                     }`}
                     title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                   >
@@ -647,7 +672,7 @@ export default function StudioTimeline({
                         origStart: o.start,
                       });
                     }}
-                    className="absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-fuchsia-500/25 px-2 ring-1 ring-fuchsia-500/50 active:cursor-grabbing"
+                    className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-fuchsia-500/25 px-2 ring-1 ring-fuchsia-500/50 active:cursor-grabbing ${o.hidden ? "opacity-40" : ""}`}
                   >
                     {o.kind === "image" ? (
                       <ImageIcon className="h-3.5 w-3.5 shrink-0 text-fuchsia-300" />
@@ -657,6 +682,36 @@ export default function StudioTimeline({
                     <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
                       {o.name}
                     </span>
+                    <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => toggleOverlayHidden(o.id)}
+                      className="text-foreground/60 hover:text-foreground shrink-0"
+                      aria-label={o.hidden ? "Show track" : "Hide track"}
+                    >
+                      {o.hidden ? (
+                        <EyeOff className="h-3.5 w-3.5" />
+                      ) : (
+                        <Eye className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                    {o.kind === "video" && (
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => toggleOverlayMuted(o.id)}
+                        className="text-foreground/60 hover:text-foreground shrink-0"
+                        aria-label={
+                          (o.muted ?? true) ? "Unmute track" : "Mute track"
+                        }
+                      >
+                        {(o.muted ?? true) ? (
+                          <VolumeX className="h-3.5 w-3.5" />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onPointerDown={(e) => e.stopPropagation()}
@@ -732,8 +787,8 @@ export default function StudioTimeline({
       </div>
       <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
         {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to pan ·
-        ⌘/pinch-scroll to zoom · drag a clip to reorder · drag its edges to trim
-        · drag the ruler to scrub
+        ⌘/pinch-scroll to zoom · drag a clip to reorder · drag it up for a new
+        track · drag its edges to trim
       </p>
     </div>
   );

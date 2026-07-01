@@ -13,28 +13,32 @@ function OverlayVideo({
   playing: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const target = overlay.sourceStart + local;
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    if (Math.abs(v.currentTime - local) > 0.3) v.currentTime = local;
+    if (Math.abs(v.currentTime - target) > 0.3) v.currentTime = target;
     if (playing) {
       if (v.paused) void v.play().catch(() => {});
     } else if (!v.paused) {
       v.pause();
     }
-  }, [local, playing]);
+  }, [target, playing]);
   return (
     <video
       ref={ref}
       src={overlay.url}
-      muted
+      muted={overlay.muted ?? true}
       playsInline
-      className="absolute inset-0 m-auto max-h-full max-w-full object-contain"
+      className="absolute inset-0 h-full w-full object-cover"
     />
   );
 }
 
-/** Composites image/video overlays over the base preview at the master clock. */
+/**
+ * Composites upper video/image tracks full-frame over the base preview at the
+ * master clock. Later overlays render on top, so the topmost track wins.
+ */
 export default function OverlayLayer({
   overlays,
   masterTime,
@@ -47,6 +51,7 @@ export default function OverlayLayer({
   return (
     <div className="pointer-events-none absolute inset-0">
       {overlays.map((o) => {
+        if (o.hidden) return null;
         const local = masterTime - o.start;
         if (local < 0 || local >= o.duration) return null;
         if (o.kind === "image") {
@@ -56,7 +61,7 @@ export default function OverlayLayer({
               key={o.id}
               src={o.url}
               alt=""
-              className="absolute inset-0 m-auto max-h-full max-w-full object-contain"
+              className="absolute inset-0 h-full w-full object-cover"
             />
           );
         }

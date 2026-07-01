@@ -23,14 +23,21 @@ export interface MediaAsset {
   duration: number; // seconds (default for images)
 }
 
-/** A media overlay placed on the timeline, composited over the base video. */
+/**
+ * A clip on an upper video track, composited full-frame over the base track
+ * (top track wins). Carries its own source in-point so a segment of the
+ * recording can be lifted up as a cutaway.
+ */
 export interface Overlay {
   id: string;
   kind: "video" | "image";
   url: string;
   name: string;
-  start: number; // edited-timeline seconds
+  start: number; // edited-timeline seconds (position on its track)
   duration: number;
+  sourceStart: number; // in-point into its own media, seconds
+  hidden?: boolean; // track hidden (not composited)
+  muted?: boolean; // track audio muted
 }
 
 export function newMediaId(): string {

@@ -80,7 +80,10 @@ interface StudioContextValue {
   addMediaAsset: (file: File) => Promise<void>;
   removeMediaAsset: (id: string) => void;
   addOverlayFromAsset: (assetId: string) => void;
+  addCutawayFromClip: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
+  toggleOverlayHidden: (id: string) => void;
+  toggleOverlayMuted: (id: string) => void;
   removeOverlay: (id: string) => void;
   snapping: boolean;
   toggleSnapping: () => void;
@@ -156,15 +159,53 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           name: asset.name,
           start: 0,
           duration: asset.duration,
+          sourceStart: 0,
+          muted: true,
         },
       ]);
     },
     [mediaAssets],
   );
 
+  // Lift a base-track clip up onto a new upper video track as a full-frame
+  // cutaway (a copy of the recording segment; the base keeps playing under it).
+  const addCutawayFromClip = useCallback(
+    (clipId: string, timelineStart: number) => {
+      if (!source) return;
+      const clip = clips.find((c) => c.id === clipId);
+      if (!clip) return;
+      setOverlays((prev) => [
+        ...prev,
+        {
+          id: newOverlayId(),
+          kind: "video",
+          url: source.url,
+          name: source.name,
+          start: Math.max(0, timelineStart),
+          duration: Math.max(0.1, clip.end - clip.start),
+          sourceStart: clip.start,
+          muted: true,
+        },
+      ]);
+    },
+    [source, clips],
+  );
+
   const moveOverlay = useCallback((id: string, start: number) => {
     setOverlays((prev) =>
       prev.map((o) => (o.id === id ? { ...o, start: Math.max(0, start) } : o)),
+    );
+  }, []);
+
+  const toggleOverlayHidden = useCallback((id: string) => {
+    setOverlays((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, hidden: !o.hidden } : o)),
+    );
+  }, []);
+
+  const toggleOverlayMuted = useCallback((id: string) => {
+    setOverlays((prev) =>
+      prev.map((o) => (o.id === id ? { ...o, muted: !(o.muted ?? true) } : o)),
     );
   }, []);
 
@@ -418,7 +459,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
+      addCutawayFromClip,
       moveOverlay,
+      toggleOverlayHidden,
+      toggleOverlayMuted,
       removeOverlay,
       snapping,
       toggleSnapping,
@@ -459,7 +503,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addMediaAsset,
       removeMediaAsset,
       addOverlayFromAsset,
+      addCutawayFromClip,
       moveOverlay,
+      toggleOverlayHidden,
+      toggleOverlayMuted,
       removeOverlay,
       snapping,
       toggleSnapping,
