@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Show, SignInButton, UserButton } from "@clerk/nextjs";
 
 import CreateNavDropdown from "@/components/create/create-nav-dropdown";
 import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
@@ -24,8 +25,21 @@ export default function TrainingHeader() {
         <CreateNavDropdown />
       </nav>
 
-      {/* Right: theme + mobile menu */}
+      {/* Right: auth + theme + mobile menu */}
       <div className="flex items-center gap-1.5">
+        <Show when="signed-out">
+          <SignInButton mode="modal">
+            <button
+              type="button"
+              className="border-border bg-card text-foreground hover:bg-muted rounded-full border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-colors"
+            >
+              Sign in
+            </button>
+          </SignInButton>
+        </Show>
+        <Show when="signed-in">
+          <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
+        </Show>
         <div className="origin-right scale-[0.5]">
           <CinematicThemeSwitcher />
         </div>
