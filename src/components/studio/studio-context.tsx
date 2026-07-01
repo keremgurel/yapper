@@ -1014,12 +1014,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
       setClips(() => next);
 
-      // 5. Caption defaults: normal case, 3 words per caption, nudged left.
+      // 5. Caption defaults: normal case, 3 words per caption, horizontally
+      // centered and sitting one third of the frame height up from the bottom.
       setCaptionStyle((s) => ({
         ...s,
         textCase: "none",
-        x: 0.35,
-        width: 0.6,
+        x: 0.5,
+        y: 2 / 3,
+        width: 0.8,
+        fontScale: 0.032,
       }));
       setCaptionWordsState(3);
       if (w.length > 0) {
