@@ -59,7 +59,7 @@ async function viaDeepgram(
   key: string,
 ): Promise<RawWord[]> {
   const res = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&punctuate=true",
+    "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
     {
       method: "POST",
       headers: { Authorization: `Token ${key}`, "Content-Type": "audio/wav" },
