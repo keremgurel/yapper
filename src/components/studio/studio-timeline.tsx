@@ -122,6 +122,11 @@ export default function StudioTimeline({
   // value, and the pending zoom anchor to apply after the width re-renders.
   const pxRef = useRef(80);
   const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
+  const zoomRafRef = useRef(false);
+  // scrollLeft at which the current render window was committed; we only
+  // re-window after drifting past ~half a screen, so panning within the buffer
+  // is pure native scroll (no re-render).
+  const viewStartRef = useRef(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
@@ -342,15 +347,21 @@ export default function StudioTimeline({
         pxRef.current = next;
         // Applied in a layout effect once the new width has rendered — no flash.
         pendingZoomRef.current = { time: timeAtCursor, offsetX };
-        setPxPerSec(next);
+        // Coalesce rapid pinch events into one render per frame.
+        if (!zoomRafRef.current) {
+          zoomRafRef.current = true;
+          requestAnimationFrame(() => {
+            zoomRafRef.current = false;
+            setPxPerSec(pxRef.current);
+          });
+        }
         return;
       }
-      // Otherwise pan horizontally along the timeline (both axes contribute).
-      const delta =
-        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (delta !== 0) {
+      // Horizontal-intent gestures scroll natively (smooth, compositor-threaded).
+      // Only convert vertical intent (mouse wheel) into horizontal panning.
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
         e.preventDefault();
-        el.scrollLeft += delta * lineUnit;
+        el.scrollLeft += e.deltaY * lineUnit;
       }
     };
     el.addEventListener("wheel", onWheel, { passive: false });
@@ -365,24 +376,39 @@ export default function StudioTimeline({
     const el = scrollRef.current;
     if (el) {
       el.scrollLeft = pending.time * pxPerSec + padLeft - pending.offsetX;
+      // Re-anchor the render window to the new scale/position.
+      viewStartRef.current = el.scrollLeft;
+      setView({ start: el.scrollLeft, width: el.clientWidth });
     }
     pendingZoomRef.current = null;
   }, [pxPerSec, padLeft]);
 
-  /* ---- track the visible window so we only render on-screen frames ---- */
+  /* ---- track the visible window (buffered) so panning stays native/smooth ---- */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const update = () =>
+    const commit = () => {
+      viewStartRef.current = el.scrollLeft;
       setView({ start: el.scrollLeft, width: el.clientWidth });
+    };
     // Start with 0:00 at the left edge; the gutter is scrollable to its left.
     if (el.clientWidth > 0) el.scrollLeft = el.clientWidth / 2;
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    const ro = new ResizeObserver(update);
+    commit();
+    const onScroll = () => {
+      // Re-window only after drifting past ~half a screen; the ±1-screen buffer
+      // covers everything in between, so scrolling doesn't re-render each frame.
+      if (
+        Math.abs(el.scrollLeft - viewStartRef.current) >
+        el.clientWidth * 0.5
+      ) {
+        commit();
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    const ro = new ResizeObserver(commit);
     ro.observe(el);
     return () => {
-      el.removeEventListener("scroll", update);
+      el.removeEventListener("scroll", onScroll);
       ro.disconnect();
     };
   }, []);

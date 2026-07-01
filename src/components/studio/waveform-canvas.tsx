@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 
 /**
  * Draws a precise, zoom-aware waveform for a clip's source range. Resolution
@@ -23,7 +23,8 @@ export default function WaveformCanvas({
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
+  // Layout effect: draw before paint so re-windowing never flashes blank canvas.
+  useLayoutEffect(() => {
     const canvas = ref.current;
     if (!canvas || width <= 0 || peaks.length === 0 || sourceDuration <= 0) {
       return;
