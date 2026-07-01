@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Music2 } from "lucide-react";
+import { Music2, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipDuration, totalDuration } from "@/lib/studio/clips";
 import { useFilmstrip } from "@/hooks/use-filmstrip";
@@ -603,7 +603,14 @@ export default function StudioTimeline({
                       title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
-                      {isImage ? (
+                      {clip.src ? (
+                        <span className="absolute inset-0 flex items-center gap-1.5 bg-sky-500/25 px-2 ring-1 ring-sky-500/40">
+                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+                          <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
+                            {clip.src.name}
+                          </span>
+                        </span>
+                      ) : isImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={sourceUrl}
@@ -626,7 +633,7 @@ export default function StudioTimeline({
                         )
                       )}
 
-                      {span && peaks.length > 0 && (
+                      {!clip.src && span && peaks.length > 0 && (
                         <span
                           className="pointer-events-none absolute bottom-0 bg-black/50"
                           style={{ left: contentX, width: span.widthPx }}

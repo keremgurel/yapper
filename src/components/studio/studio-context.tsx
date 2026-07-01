@@ -38,6 +38,7 @@ import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
   newAudioId,
+  newClipId,
   newMediaId,
   newOverlayId,
   newWordId,
@@ -329,9 +330,30 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         });
         return;
       }
+      if (asset.kind === "video") {
+        // Append to the main track as a clip carrying its own source.
+        setClips((prev) => [
+          ...prev,
+          {
+            id: newClipId(),
+            start: 0,
+            end: asset.duration,
+            src: {
+              url: asset.url,
+              kind: "video",
+              name: asset.name,
+              duration: asset.duration,
+              width: asset.width,
+              height: asset.height,
+            },
+          },
+        ]);
+        return;
+      }
+      // Images layer onto a non-main track at the drop position.
       addOverlayFromAsset(assetId, start);
     },
-    [mediaAssets, source, loadSource, addOverlayFromAsset],
+    [mediaAssets, source, loadSource, addOverlayFromAsset, setClips],
   );
 
   const clearSource = useCallback(() => {

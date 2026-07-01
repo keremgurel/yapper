@@ -1,9 +1,22 @@
-/** A kept range of the source video, in source seconds. The edited timeline is
- * the ordered concatenation of clips; gaps between clips are removed regions. */
+/** A media source a clip can reference (its own video, appended to the main
+ * track). When a clip has no `src`, it uses the project's base source. */
+export interface MediaRef {
+  url: string;
+  kind: "video" | "image";
+  name: string;
+  duration: number;
+  width?: number;
+  height?: number;
+}
+
+/** A kept range of a source, in that source's seconds. The edited timeline is
+ * the ordered concatenation of clips; gaps between same-source clips are removed
+ * regions. `src` set = the clip plays its own appended media, not the base. */
 export interface Clip {
   id: string;
   start: number;
   end: number;
+  src?: MediaRef;
 }
 
 export interface StudioSource {

@@ -39,7 +39,7 @@ export default function StudioWorkspace() {
     pause,
     seekToTimeline,
     seekToSource,
-  } = useStudioPlayback(videoRef, clips, hasVideo);
+  } = useStudioPlayback(videoRef, clips, hasVideo, source?.url ?? "");
   const { width, onPointerDown } = useResizablePanel();
 
   // Measure the preview area so we can size a fixed-aspect project stage.
@@ -150,9 +150,10 @@ export default function StudioWorkspace() {
                     onClick={() => (playing ? pause() : play())}
                   />
                 ) : (
+                  // src is managed imperatively by the playback hook so it can
+                  // switch between appended main-track sources.
                   <video
                     ref={videoRef}
-                    src={source.url}
                     className="absolute inset-0 h-full w-full object-cover"
                     playsInline
                     onClick={() => (playing ? pause() : play())}
