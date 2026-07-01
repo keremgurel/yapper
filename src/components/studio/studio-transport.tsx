@@ -1,9 +1,7 @@
 "use client";
 
-import { useRef } from "react";
 import {
   Magnet,
-  Music2,
   Pause,
   Play,
   Redo2,
@@ -41,7 +39,6 @@ export default function StudioTransport({
     deleteSelected,
     trimClipsToSpeech,
     detecting,
-    addAudio,
     snapping,
     toggleSnapping,
     undo,
@@ -50,7 +47,6 @@ export default function StudioTransport({
     canRedo,
     reset,
   } = useStudio();
-  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const pillBtn =
     "border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-default disabled:opacity-40";
@@ -134,25 +130,6 @@ export default function StudioTransport({
           {detecting ? "Scanning…" : "Trim silence"}
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => audioInputRef.current?.click()}
-        className={pillBtn}
-      >
-        <Music2 className="h-3.5 w-3.5" />
-        Add audio
-      </button>
-      <input
-        ref={audioInputRef}
-        type="file"
-        accept="audio/*"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void addAudio(file);
-          e.target.value = "";
-        }}
-      />
       <button type="button" onClick={reset} className={pillBtn}>
         <RotateCcw className="h-3.5 w-3.5" />
         Reset

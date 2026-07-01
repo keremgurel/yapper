@@ -9,6 +9,8 @@ export const MEDIA_DND_TYPE = "application/x-yapper-asset";
 export default function MediaTab() {
   const {
     source,
+    clips,
+    overlays,
     mediaAssets,
     addMediaAsset,
     removeMediaAsset,
@@ -16,6 +18,12 @@ export default function MediaTab() {
   } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
   const isEmpty = !source && mediaAssets.length === 0;
+
+  // How many times an asset is placed on the timeline (base + main clips + tracks).
+  const usageCount = (url: string) =>
+    (source?.url === url ? 1 : 0) +
+    clips.filter((c) => c.src?.url === url).length +
+    overlays.filter((o) => o.url === url).length;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -66,7 +74,7 @@ export default function MediaTab() {
                     className="h-full w-full object-cover"
                   />
                   <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
-                    Editing
+                    Added
                   </span>
                 </div>
                 <div className="p-2">
@@ -79,18 +87,17 @@ export default function MediaTab() {
             )}
             {mediaAssets.map((asset) => {
               const isBase = source?.url === asset.url;
+              const count = usageCount(asset.url);
               return (
                 <div
                   key={asset.id}
-                  draggable={!isBase}
+                  draggable
                   onDragStart={(e) => {
                     e.dataTransfer.setData(MEDIA_DND_TYPE, asset.id);
                     e.dataTransfer.effectAllowed = "copy";
                   }}
-                  className={`border-border bg-card group overflow-hidden rounded-xl border ${
-                    isBase
-                      ? "ring-1 ring-cyan-500/40"
-                      : "cursor-grab active:cursor-grabbing"
+                  className={`border-border bg-card group cursor-grab overflow-hidden rounded-xl border active:cursor-grabbing ${
+                    count > 0 ? "ring-1 ring-cyan-500/40" : ""
                   }`}
                 >
                   <div className="bg-muted relative aspect-video">
@@ -108,9 +115,9 @@ export default function MediaTab() {
                         className="h-full w-full object-cover"
                       />
                     )}
-                    {isBase && (
+                    {count > 0 && (
                       <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
-                        Editing
+                        Added{count > 1 ? ` ×${count}` : ""}
                       </span>
                     )}
                     {!isBase && (
@@ -128,20 +135,14 @@ export default function MediaTab() {
                     <p className="text-foreground/80 truncate text-[11px] font-bold">
                       {asset.name}
                     </p>
-                    {isBase ? (
-                      <p className="text-foreground/40 text-[10px]">
-                        Main track
-                      </p>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => addAssetToTimeline(asset.id)}
-                        className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add to timeline
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => addAssetToTimeline(asset.id)}
+                      className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
+                    >
+                      <Plus className="h-3 w-3" />
+                      {count > 0 ? "Add again" : "Add to timeline"}
+                    </button>
                   </div>
                 </div>
               );
