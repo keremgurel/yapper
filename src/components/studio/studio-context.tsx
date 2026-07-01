@@ -45,8 +45,9 @@ import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import {
   clearProject,
-  restoreProject,
+  loadProject,
   saveProject,
+  type ProjectSnapshot,
 } from "@/lib/studio/persistence";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
@@ -92,6 +93,14 @@ interface StudioContextValue {
   transcribeProgress: number;
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
+  restoreInfo: {
+    name: string;
+    duration: number;
+    words: number;
+    captions: number;
+  } | null;
+  restoreWithVideo: (file: File) => Promise<void>;
+  dismissRestore: () => void;
   selectClip: (id: string | null) => void;
   toggleClipSelection: (id: string) => void;
   selectClips: (ids: string[]) => void;
@@ -686,8 +695,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   // On mount: a fresh recording handed over from the practice flow wins;
   // otherwise restore the last project from the previous session.
+  // A saved session waiting for its video to be re-selected (hybrid restore).
+  const [pendingRestore, setPendingRestore] = useState<ProjectSnapshot | null>(
+    null,
+  );
   const hydratedRef = useRef(false);
   useEffect(() => {
+    // Drop the legacy IndexedDB store (video Blobs) from the old persistence.
+    try {
+      indexedDB.deleteDatabase("yapper-studio");
+    } catch {
+      // ignore
+    }
     const blob = consumePendingVideo();
     if (blob) {
       loadVideoSource(blob, "Practice take")
@@ -696,47 +715,64 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       hydratedRef.current = true;
       return;
     }
-    let cancelled = false;
-    void restoreProject()
-      .then((snap) => {
-        if (cancelled) return;
-        if (snap) {
-          setSource(snap.source);
-          resetClips(
-            snap.clips.length
-              ? snap.clips
-              : fullClip(snap.source?.duration ?? 0),
-          );
-          setWords(snap.words);
-          setCaptions(snap.captions);
-          setCaptionStyle(snap.captionStyle);
-          setCaptionLines(snap.captionLines);
-          setCaptionWordsState(snap.captionWords);
-          setCaptionApplyAll(snap.captionApplyAll);
-          setOverlays(snap.overlays);
-          setMediaAssets(snap.mediaAssets);
-          setAudioTracks(snap.audioTracks);
-          if (snap.words.length) setTranscribeStatus("done");
-        }
-        hydratedRef.current = true;
-      })
-      .catch(() => {
-        hydratedRef.current = true;
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [loadSource, resetClips]);
+    setPendingRestore(loadProject());
+    hydratedRef.current = true;
+  }, [loadSource]);
 
-  // Persist the project (debounced) whenever the editable state changes.
+  // Re-apply a saved session onto a re-selected video file.
+  const restoreWithVideo = useCallback(
+    async (file: File) => {
+      const snap = pendingRestore;
+      if (!snap) return;
+      const media = await loadVideoSource(file, file.name);
+      setSource((prev) => {
+        if (prev) URL.revokeObjectURL(prev.url);
+        return { ...media, kind: snap.source.kind ?? "video" };
+      });
+      resetClips(snap.clips.length ? snap.clips : fullClip(media.duration));
+      setSelectedClipIds([]);
+      setWords(snap.words);
+      setCaptions(snap.captions);
+      setSelectedCaptionIds([]);
+      setCaptionStyle(snap.captionStyle);
+      setCaptionLines(snap.captionLines);
+      setCaptionWordsState(snap.captionWords);
+      setCaptionApplyAll(snap.captionApplyAll);
+      setOverlays([]);
+      setAudioTracks([]);
+      setTranscribeStatus(snap.words.length ? "done" : "idle");
+      setPendingRestore(null);
+    },
+    [pendingRestore, resetClips],
+  );
+
+  const dismissRestore = useCallback(() => {
+    setPendingRestore(null);
+    clearProject();
+  }, []);
+
+  const restoreInfo = useMemo(
+    () =>
+      pendingRestore
+        ? {
+            name: pendingRestore.source.name,
+            duration: pendingRestore.source.duration,
+            words: pendingRestore.words.length,
+            captions: pendingRestore.captions.length,
+          }
+        : null,
+    [pendingRestore],
+  );
+
+  // Persist the edit state (debounced) whenever it changes.
   useEffect(() => {
     if (!hydratedRef.current) return;
     const id = setTimeout(() => {
       if (!source) {
-        void clearProject();
+        if (!pendingRestore) clearProject();
         return;
       }
-      void saveProject({
+      saveProject({
         source,
         clips,
         words,
@@ -745,9 +781,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         captionLines,
         captionWords,
         captionApplyAll,
-        overlays,
-        mediaAssets,
-        audioTracks,
       });
     }, 800);
     return () => clearTimeout(id);
@@ -760,9 +793,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     captionLines,
     captionWords,
     captionApplyAll,
-    overlays,
-    mediaAssets,
-    audioTracks,
+    pendingRestore,
   ]);
 
   const splitAt = useCallback(
@@ -1096,6 +1127,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeProgress,
       loadSource,
       clearSource,
+      restoreInfo,
+      restoreWithVideo,
+      dismissRestore,
       selectClip,
       selectedClipIds,
       toggleClipSelection,
@@ -1178,6 +1212,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeProgress,
       loadSource,
       clearSource,
+      restoreInfo,
+      restoreWithVideo,
+      dismissRestore,
       selectClip,
       selectedClipIds,
       toggleClipSelection,
