@@ -43,7 +43,9 @@ export default function CaptionList({
           >
             <span
               className={`w-5 shrink-0 text-right text-[11px] tabular-nums ${
-                active ? "text-cyan-300" : "text-foreground/40"
+                active
+                  ? "text-cyan-600 dark:text-cyan-300"
+                  : "text-foreground/40"
               }`}
             >
               {i + 1}
