@@ -393,7 +393,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source) return;
-    setTranscribeStatus("loading");
+    // Neutral "Transcribing…" up front; "Downloading speech model" is only for
+    // the on-device fallback, and only while it actually downloads.
+    setTranscribeStatus("transcribing");
     setTranscribeProgress(0);
     try {
       const audio = await decodeToMono16k(source.url);
@@ -401,15 +403,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       // when no provider key is configured or the request fails.
       let raw = null as Awaited<ReturnType<typeof transcribeRemote>>;
       try {
-        setTranscribeStatus("transcribing");
         raw = await transcribeRemote(audio);
       } catch {
         raw = null;
       }
       if (!raw) {
-        setTranscribeStatus("loading");
         raw = await transcribeAudio(audio, (p) => {
           if (p.status === "loading" && typeof p.progress === "number") {
+            setTranscribeStatus("loading");
             setTranscribeProgress(Math.round(p.progress));
           } else if (p.status === "transcribing") {
             setTranscribeStatus("transcribing");
