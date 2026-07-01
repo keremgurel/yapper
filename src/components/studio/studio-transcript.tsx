@@ -12,9 +12,10 @@ export default function StudioTranscript({
   currentSourceTime: number;
   onSeek: (t: number) => void;
 }) {
-  const { words, transcribeStatus, transcribeProgress, transcribe } =
+  const { source, words, transcribeStatus, transcribeProgress, transcribe } =
     useStudio();
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
+  const isImage = source?.kind === "image";
   const [showDeleted, setShowDeleted] = useState(true);
 
   return (
@@ -50,6 +51,12 @@ export default function StudioTranscript({
             onSeek={onSeek}
             showDeleted={showDeleted}
           />
+        </div>
+      ) : isImage ? (
+        <div className="flex-1 p-4">
+          <p className="text-foreground/55 text-sm">
+            This is an image — no audio to transcribe.
+          </p>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4">

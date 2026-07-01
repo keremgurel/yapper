@@ -30,6 +30,7 @@ export default function StudioWorkspace() {
   } = useStudio();
   const [dropActive, setDropActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const hasVideo = source ? source.kind !== "image" : true;
   const {
     timelineTime,
     sourceTime,
@@ -38,7 +39,7 @@ export default function StudioWorkspace() {
     pause,
     seekToTimeline,
     seekToSource,
-  } = useStudioPlayback(videoRef, clips);
+  } = useStudioPlayback(videoRef, clips, hasVideo);
   const { width, onPointerDown } = useResizablePanel();
 
   // Measure the preview area so we can size a fixed-aspect project stage.
@@ -140,13 +141,23 @@ export default function StudioWorkspace() {
                 className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
                 style={{ width: stageW || 0, height: stageH || 0 }}
               >
-                <video
-                  ref={videoRef}
-                  src={source.url}
-                  className="absolute inset-0 h-full w-full object-cover"
-                  playsInline
-                  onClick={() => (playing ? pause() : play())}
-                />
+                {source.kind === "image" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={source.url}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                    onClick={() => (playing ? pause() : play())}
+                  />
+                ) : (
+                  <video
+                    ref={videoRef}
+                    src={source.url}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    playsInline
+                    onClick={() => (playing ? pause() : play())}
+                  />
+                )}
                 <OverlayLayer
                   overlays={overlays}
                   masterTime={timelineTime}
@@ -216,6 +227,7 @@ export default function StudioWorkspace() {
               <StudioTimeline
                 clips={clips}
                 sourceUrl={source.url}
+                sourceKind={source.kind ?? "video"}
                 sourceDuration={source.duration}
                 currentTimelineTime={timelineTime}
                 selectedClipId={selectedClipId}

@@ -36,6 +36,7 @@ export default function StudioTransport({
   onSplit: () => void;
 }) {
   const {
+    source,
     selectedClipId,
     deleteSelected,
     trimClipsToSpeech,
@@ -121,16 +122,18 @@ export default function StudioTransport({
         <Trash2 className="h-3.5 w-3.5" />
         Delete clip
       </button>
-      <button
-        type="button"
-        onClick={() => void trimClipsToSpeech()}
-        disabled={detecting}
-        className={pillBtn}
-        title="Trim each clip's start and end down to speech"
-      >
-        <Volume2 className="h-3.5 w-3.5" />
-        {detecting ? "Scanning…" : "Trim silence"}
-      </button>
+      {source?.kind !== "image" && (
+        <button
+          type="button"
+          onClick={() => void trimClipsToSpeech()}
+          disabled={detecting}
+          className={pillBtn}
+          title="Trim each clip's start and end down to speech"
+        >
+          <Volume2 className="h-3.5 w-3.5" />
+          {detecting ? "Scanning…" : "Trim silence"}
+        </button>
+      )}
       <button
         type="button"
         onClick={() => audioInputRef.current?.click()}

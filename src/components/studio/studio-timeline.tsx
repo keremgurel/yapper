@@ -52,6 +52,7 @@ interface TrimDrag {
 export default function StudioTimeline({
   clips,
   sourceUrl,
+  sourceKind = "video",
   sourceDuration,
   currentTimelineTime,
   selectedClipId,
@@ -60,12 +61,14 @@ export default function StudioTimeline({
 }: {
   clips: Clip[];
   sourceUrl: string;
+  sourceKind?: "video" | "image";
   sourceDuration: number;
   currentTimelineTime: number;
   selectedClipId: string | null;
   onSelect: (id: string) => void;
   onSeek: (timelineTime: number) => void;
 }) {
+  const isImage = sourceKind === "image";
   const {
     setClipRange,
     moveClip,
@@ -600,16 +603,27 @@ export default function StudioTimeline({
                       title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
-                      {span && frames.length > 0 && (
-                        <ClipFilmstrip
-                          frames={frames}
-                          aspect={aspect}
-                          leftPx={contentX}
-                          widthPx={span.widthPx}
-                          srcStart={span.srcA}
-                          srcEnd={span.srcB}
-                          height={80}
+                      {isImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={sourceUrl}
+                          alt=""
+                          draggable={false}
+                          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         />
+                      ) : (
+                        span &&
+                        frames.length > 0 && (
+                          <ClipFilmstrip
+                            frames={frames}
+                            aspect={aspect}
+                            leftPx={contentX}
+                            widthPx={span.widthPx}
+                            srcStart={span.srcA}
+                            srcEnd={span.srcB}
+                            height={80}
+                          />
+                        )
                       )}
 
                       {span && peaks.length > 0 && (

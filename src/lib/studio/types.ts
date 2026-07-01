@@ -12,6 +12,8 @@ export interface StudioSource {
   duration: number;
   width?: number;
   height?: number;
+  /** "image" bases have no audio/video element and use a synthetic clock. */
+  kind?: "video" | "image";
 }
 
 /** A media item in the library (uploaded photo or video). */

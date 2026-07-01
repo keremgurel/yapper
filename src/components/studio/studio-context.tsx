@@ -310,16 +310,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       const asset = mediaAssets.find((m) => m.id === assetId);
       if (!asset) return;
       if (!source) {
-        if (asset.kind === "video") {
-          loadSource({
-            url: asset.url,
-            name: asset.name,
-            duration: asset.duration,
-            width: asset.width,
-            height: asset.height,
-          });
-        }
-        return; // an image can't be the base (no clock); needs a video first
+        loadSource({
+          url: asset.url,
+          name: asset.name,
+          // Images get a default 3s duration; they play on a synthetic clock.
+          duration: asset.kind === "image" ? 3 : asset.duration,
+          width: asset.width,
+          height: asset.height,
+          kind: asset.kind,
+        });
+        return;
       }
       addOverlayFromAsset(assetId, start);
     },
@@ -432,7 +432,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // The threshold is anchored to the average speaking volume, so flat leading /
   // trailing regions get trimmed decisively.
   const trimClipsToSpeech = useCallback(async (): Promise<number> => {
-    if (!source) return 0;
+    if (!source || source.kind === "image") return 0;
     setDetecting(true);
     try {
       const analysis = analyzeForTrim(await decodeToMono16k(source.url));
@@ -454,7 +454,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, [source, clips, setClips]);
 
   const transcribe = useCallback(async (): Promise<void> => {
-    if (!source) return;
+    if (!source || source.kind === "image") return;
     // Neutral "Transcribing…" up front; "Downloading speech model" is only for
     // the on-device fallback, and only while it actually downloads.
     setTranscribeStatus("transcribing");
