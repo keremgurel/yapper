@@ -12,7 +12,6 @@ import {
   Trash2,
   Undo2,
   Volume2,
-  X,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 
@@ -39,7 +38,7 @@ export default function StudioTransport({
   const {
     selectedClipId,
     deleteSelected,
-    removeSilences,
+    trimClipsToSpeech,
     detecting,
     addAudio,
     snapping,
@@ -49,7 +48,6 @@ export default function StudioTransport({
     canUndo,
     canRedo,
     reset,
-    clearSource,
   } = useStudio();
   const audioInputRef = useRef<HTMLInputElement>(null);
 
@@ -125,12 +123,13 @@ export default function StudioTransport({
       </button>
       <button
         type="button"
-        onClick={() => void removeSilences()}
+        onClick={() => void trimClipsToSpeech()}
         disabled={detecting}
         className={pillBtn}
+        title="Trim each clip's start and end down to speech"
       >
         <Volume2 className="h-3.5 w-3.5" />
-        {detecting ? "Scanning…" : "Remove silences"}
+        {detecting ? "Scanning…" : "Trim silence"}
       </button>
       <button
         type="button"
@@ -154,10 +153,6 @@ export default function StudioTransport({
       <button type="button" onClick={reset} className={pillBtn}>
         <RotateCcw className="h-3.5 w-3.5" />
         Reset
-      </button>
-      <button type="button" onClick={clearSource} className={pillBtn}>
-        <X className="h-3.5 w-3.5" />
-        New video
       </button>
     </div>
   );

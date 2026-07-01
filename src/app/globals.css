@@ -388,6 +388,15 @@ body {
     color 0.3s;
 }
 
+/* Browsers default <button> to cursor:default; make interactive controls a
+   pointer everywhere (disabled controls keep the default cursor). */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+label[for],
+summary {
+  cursor: pointer;
+}
+
 .font-display {
   font-family: var(
     --font-display-sans,

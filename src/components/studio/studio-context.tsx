@@ -17,10 +17,9 @@ import {
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
-import { detectSilences, detectSpeechSegments } from "@/lib/studio/silence";
+import { detectSpeechSegments } from "@/lib/studio/silence";
 import {
   findEarlierTakeRanges,
-  findFillerIds,
   pauseRanges,
   refineWordTimings,
   selectionToRanges,
@@ -70,11 +69,11 @@ interface StudioContextValue {
   trimEnd: (sourceTime: number) => void;
   setClipRange: (id: string, start: number, end: number) => void;
   moveClip: (id: string, toIndex: number) => void;
-  removeSilences: () => Promise<number>;
+  removePauses: () => number;
+  trimClipsToSpeech: () => Promise<number>;
   transcribe: () => Promise<void>;
   deleteWords: (ids: string[]) => void;
   cutRange: (from: number, to: number) => void;
-  removeFillers: () => number;
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
@@ -371,25 +370,61 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setClips],
   );
 
-  const removeSilences = useCallback(async (): Promise<number> => {
-    // With a transcript, cut the gaps between words — this can never remove
-    // speech and matches the pause chips exactly. Fall back to the energy VAD
-    // only when there's no transcript yet.
-    if (words.length > 0) {
-      const ranges = pauseRanges(words);
-      cutAll(ranges);
-      return ranges.length;
+  // Remove pauses = cut the gaps between words (transcript required, so we know
+  // exactly where there's no speech), plus silence before the first / after the
+  // last word. Never removes speech.
+  const removePauses = useCallback((): number => {
+    if (words.length === 0) return 0;
+    const ranges = pauseRanges(words);
+    const first = words[0];
+    const last = words[words.length - 1];
+    if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
+    if (source && source.duration - last.end >= 0.5) {
+      ranges.push([last.end + 0.1, source.duration]);
     }
+    cutAll(ranges);
+    return ranges.length;
+  }, [words, source, cutAll]);
+
+  // Trim each clip's START and END down to speech from the audio waveform (no
+  // transcript needed), so combined clips begin and end on words, not silence.
+  const trimClipsToSpeech = useCallback(async (): Promise<number> => {
     if (!source) return 0;
     setDetecting(true);
     try {
-      const ranges = await detectSilences(source.url);
-      cutAll(ranges);
-      return ranges.length;
+      const segments = detectSpeechSegments(await decodeToMono16k(source.url));
+      if (segments.length === 0) return 0;
+      const firstSpeech = (c: Clip): number => {
+        for (const s of segments) {
+          if (s.end <= c.start) continue;
+          if (s.start >= c.end) break;
+          return Math.max(c.start, s.start - 0.04);
+        }
+        return c.start;
+      };
+      const lastSpeech = (c: Clip): number => {
+        for (let i = segments.length - 1; i >= 0; i--) {
+          const s = segments[i];
+          if (s.start >= c.end) continue;
+          if (s.end <= c.start) break;
+          return Math.min(c.end, s.end + 0.08);
+        }
+        return c.end;
+      };
+      const next = clips.map((c) => {
+        const start = firstSpeech(c);
+        const end = lastSpeech(c);
+        return end - start < 0.1 || (start === c.start && end === c.end)
+          ? c
+          : { ...c, start, end };
+      });
+      const changed = next.reduce((n, c, i) => (c !== clips[i] ? n + 1 : n), 0);
+      if (changed > 0) setClips(() => next);
+      return changed;
     } finally {
       setDetecting(false);
     }
-  }, [words, source, cutAll]);
+  }, [source, clips, setClips]);
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source) return;
@@ -457,12 +492,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [applyCuts],
   );
 
-  const removeFillers = useCallback((): number => {
-    const ids = findFillerIds(words);
-    if (ids.length > 0) applyCuts(selectionToRanges(words, new Set(ids)));
-    return ids.length;
-  }, [words, applyCuts]);
-
   const removeEarlierTakes = useCallback((): number => {
     const ranges = findEarlierTakeRanges(words);
     applyCuts(ranges);
@@ -513,11 +542,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimEnd,
       setClipRange,
       moveClip,
-      removeSilences,
+      removePauses,
+      trimClipsToSpeech,
       transcribe,
       deleteWords,
       cutRange,
-      removeFillers,
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
@@ -560,11 +589,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       trimEnd,
       setClipRange,
       moveClip,
-      removeSilences,
+      removePauses,
+      trimClipsToSpeech,
       transcribe,
       deleteWords,
       cutRange,
-      removeFillers,
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,

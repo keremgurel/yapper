@@ -1,6 +1,7 @@
 "use client";
 
-import { Loader2, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Eye, EyeOff, Loader2, Sparkles } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import TranscriptWords from "@/components/studio/transcript-words";
 
@@ -14,15 +15,31 @@ export default function StudioTranscript({
   const { words, transcribeStatus, transcribeProgress, transcribe } =
     useStudio();
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
+  const [showDeleted, setShowDeleted] = useState(true);
 
   return (
     <div className="bg-card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="border-border flex shrink-0 items-center justify-between border-b px-4 py-3">
+      <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
         <p className="text-foreground text-sm font-black">Transcript</p>
-        {transcribeStatus === "done" && (
-          <span className="text-foreground/45 text-xs">
-            {words.length} words
-          </span>
+        {hasTranscript && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowDeleted((s) => !s)}
+              className="text-foreground/50 hover:text-foreground inline-flex items-center gap-1.5 text-xs font-bold"
+              title={showDeleted ? "Hide deleted words" : "Show deleted words"}
+            >
+              {showDeleted ? (
+                <EyeOff className="h-3.5 w-3.5" />
+              ) : (
+                <Eye className="h-3.5 w-3.5" />
+              )}
+              {showDeleted ? "Hide deleted" : "Show deleted"}
+            </button>
+            <span className="text-foreground/45 text-xs">
+              {words.length} words
+            </span>
+          </div>
         )}
       </div>
 
@@ -31,6 +48,7 @@ export default function StudioTranscript({
           <TranscriptWords
             currentSourceTime={currentSourceTime}
             onSeek={onSeek}
+            showDeleted={showDeleted}
           />
         </div>
       ) : (
