@@ -17,7 +17,11 @@ import {
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
-import { detectSpeechSegments } from "@/lib/studio/silence";
+import {
+  analyzeForTrim,
+  detectSpeechSegments,
+  speechBoundsInRange,
+} from "@/lib/studio/silence";
 import {
   findEarlierTakeRanges,
   pauseRanges,
@@ -388,32 +392,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   // Trim each clip's START and END down to speech from the audio waveform (no
   // transcript needed), so combined clips begin and end on words, not silence.
+  // The threshold is anchored to the average speaking volume, so flat leading /
+  // trailing regions get trimmed decisively.
   const trimClipsToSpeech = useCallback(async (): Promise<number> => {
     if (!source) return 0;
     setDetecting(true);
     try {
-      const segments = detectSpeechSegments(await decodeToMono16k(source.url));
-      if (segments.length === 0) return 0;
-      const firstSpeech = (c: Clip): number => {
-        for (const s of segments) {
-          if (s.end <= c.start) continue;
-          if (s.start >= c.end) break;
-          return Math.max(c.start, s.start - 0.04);
-        }
-        return c.start;
-      };
-      const lastSpeech = (c: Clip): number => {
-        for (let i = segments.length - 1; i >= 0; i--) {
-          const s = segments[i];
-          if (s.start >= c.end) continue;
-          if (s.end <= c.start) break;
-          return Math.min(c.end, s.end + 0.08);
-        }
-        return c.end;
-      };
+      const analysis = analyzeForTrim(await decodeToMono16k(source.url));
       const next = clips.map((c) => {
-        const start = firstSpeech(c);
-        const end = lastSpeech(c);
+        const b = speechBoundsInRange(analysis, c.start, c.end);
+        if (!b) return c; // no speech in this clip -> leave it
+        const start = Math.max(c.start, b.start - 0.05);
+        const end = Math.min(c.end, b.end + 0.08);
         return end - start < 0.1 || (start === c.start && end === c.end)
           ? c
           : { ...c, start, end };

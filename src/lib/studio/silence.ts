@@ -115,6 +115,76 @@ export function detectSpeechSegments(
   return merged.filter((s) => s.end - s.start >= minSpeechSec);
 }
 
+export interface TrimAnalysis {
+  db: number[];
+  frameSec: number;
+  threshold: number;
+}
+
+/**
+ * Analyze audio for start/end trimming: the threshold is anchored to the
+ * average SPEECH volume (mean of the loud frames), so anything a set margin
+ * below your speaking level counts as silence — matching what you see as a flat
+ * waveform, and far more decisive than a noise-floor threshold.
+ */
+export function analyzeForTrim(
+  data: Float32Array,
+  {
+    frameSec = 0.02,
+    dbBelowSpeech = 14,
+  }: { frameSec?: number; dbBelowSpeech?: number } = {},
+): TrimAnalysis {
+  const frame = Math.max(1, Math.round(SR * frameSec));
+  const db = frameEnergiesDb(data, frame);
+  const sorted = [...db].sort((a, b) => a - b);
+  const loud = sorted.slice(Math.floor(sorted.length * 0.6)); // top 40% ~ speech
+  const avgSpeech = loud.length
+    ? loud.reduce((a, b) => a + b, 0) / loud.length
+    : 0;
+  return { db, frameSec, threshold: avgSpeech - dbBelowSpeech };
+}
+
+/**
+ * First and last sustained speech within a source range [fromSec, toSec], using
+ * a trim analysis. Returns null when the range has no speech. "Sustained" means
+ * energy stays above threshold for ~0.1s, so a single loud blip won't anchor it.
+ */
+export function speechBoundsInRange(
+  a: TrimAnalysis,
+  fromSec: number,
+  toSec: number,
+): { start: number; end: number } | null {
+  const { db, frameSec, threshold } = a;
+  const i0 = Math.max(0, Math.floor(fromSec / frameSec));
+  const i1 = Math.min(db.length, Math.ceil(toSec / frameSec));
+  const run = Math.max(2, Math.round(0.1 / frameSec));
+  const sustained = (i: number, dir: number): boolean => {
+    let ok = 0;
+    for (let k = 0; k < run; k++) {
+      const j = i + dir * k;
+      if (j < i0 || j >= i1) break;
+      if (db[j] > threshold) ok++;
+    }
+    return ok >= run * 0.6;
+  };
+  let start = -1;
+  for (let i = i0; i < i1; i++) {
+    if (db[i] > threshold && sustained(i, 1)) {
+      start = i;
+      break;
+    }
+  }
+  if (start < 0) return null;
+  let end = start + 1;
+  for (let i = i1 - 1; i >= i0; i--) {
+    if (db[i] > threshold && sustained(i, -1)) {
+      end = i + 1;
+      break;
+    }
+  }
+  return { start: start * frameSec, end: end * frameSec };
+}
+
 /**
  * Decode a media URL and return silent ranges [start, end] in seconds to cut.
  * Built on the adaptive VAD, so cuts land precisely at the edges of speech

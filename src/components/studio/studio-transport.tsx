@@ -52,7 +52,7 @@ export default function StudioTransport({
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   const pillBtn =
-    "border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors disabled:opacity-40";
+    "border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors disabled:cursor-default disabled:opacity-40";
 
   return (
     <div className="flex flex-wrap items-center gap-2">
