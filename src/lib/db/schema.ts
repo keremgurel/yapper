@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   index,
   integer,
   jsonb,
@@ -7,6 +9,7 @@ import {
   real,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -52,7 +55,18 @@ export const creditLedger = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("credit_ledger_user_idx").on(t.userId, t.createdAt)],
+  (t) => [
+    index("credit_ledger_user_idx").on(t.userId, t.createdAt),
+    // Enforce the reason vocabulary at the DB, not just in TypeScript.
+    check(
+      "credit_ledger_reason_check",
+      sql`${t.reason} in ('welcome_grant','subscription_grant','purchase','deduction','refund','adjustment')`,
+    ),
+    // At most one welcome grant per user — double-grants become impossible.
+    uniqueIndex("credit_ledger_one_welcome_per_user")
+      .on(t.userId)
+      .where(sql`${t.reason} = 'welcome_grant'`),
+  ],
 );
 
 export const submissionKinds = ["audio", "video"] as const;
@@ -95,5 +109,12 @@ export const submissions = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index("submissions_user_idx").on(t.userId, t.createdAt)],
+  (t) => [
+    index("submissions_user_idx").on(t.userId, t.createdAt),
+    check("submissions_kind_check", sql`${t.kind} in ('audio','video')`),
+    check(
+      "submissions_status_check",
+      sql`${t.status} in ('pending','processing','complete','failed')`,
+    ),
+  ],
 );
