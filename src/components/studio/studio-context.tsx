@@ -135,6 +135,7 @@ interface StudioContextValue {
   splitCaption: (id: string, at: number) => void;
   setCaptionFont: (fontFamily: string) => void;
   setCaptionScale: (fontScale: number) => void;
+  setCaptionCase: (upper: boolean) => void;
   toggleCaptionApplyAll: () => void;
   snapping: boolean;
   toggleSnapping: () => void;
@@ -281,6 +282,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const setCaptionScale = useCallback((fontScale: number) => {
     setCaptionStyle((s) => ({ ...s, fontScale }));
     setCaptions((prev) => prev.map((c) => ({ ...c, scale: undefined })));
+  }, []);
+
+  const setCaptionCase = useCallback((upper: boolean) => {
+    setCaptions((prev) =>
+      prev.map((c) => ({
+        ...c,
+        text: upper ? c.text.toUpperCase() : c.text.toLowerCase(),
+      })),
+    );
   }, []);
 
   const toggleCaptionApplyAll = useCallback(
@@ -850,6 +860,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       splitCaption,
       setCaptionFont,
       setCaptionScale,
+      setCaptionCase,
       toggleCaptionApplyAll,
       snapping,
       toggleSnapping,
@@ -920,6 +931,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       splitCaption,
       setCaptionFont,
       setCaptionScale,
+      setCaptionCase,
       toggleCaptionApplyAll,
       snapping,
       toggleSnapping,

@@ -4,6 +4,9 @@ import { Check, Sparkles, Trash2, Type } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { CAPTION_FONTS, captionTimelineRange } from "@/lib/studio/captions";
 
+const SIZE_MIN = 12; // 0.012 of stage height — genuinely small
+const SIZE_MAX = 140;
+
 export default function CaptionsTab({
   onSeek,
 }: {
@@ -25,8 +28,15 @@ export default function CaptionsTab({
     clearCaptions,
     setCaptionFont,
     setCaptionScale,
+    setCaptionCase,
     toggleCaptionApplyAll,
   } = useStudio();
+
+  const sizeNum = Math.round(captionStyle.fontScale * 1000);
+  const setSize = (n: number) =>
+    setCaptionScale(
+      Math.max(SIZE_MIN, Math.min(SIZE_MAX, n || sizeNum)) / 1000,
+    );
 
   if (words.length === 0) {
     return (
@@ -90,18 +100,44 @@ export default function CaptionsTab({
               ))}
             </div>
 
-            {/* Font size */}
+            {/* Font size — number + slider (value is 1000× the stage fraction) */}
             <div className="flex items-center gap-2">
               <span className="text-foreground/50 text-xs font-bold">Size</span>
               <input
+                type="number"
+                min={SIZE_MIN}
+                max={SIZE_MAX}
+                value={sizeNum}
+                onChange={(e) => setSize(Number(e.target.value))}
+                className="border-border bg-muted text-foreground w-14 rounded-md border px-2 py-1 text-xs tabular-nums"
+              />
+              <input
                 type="range"
-                min={0.03}
-                max={0.12}
-                step={0.005}
-                value={captionStyle.fontScale}
-                onChange={(e) => setCaptionScale(Number(e.target.value))}
+                min={SIZE_MIN}
+                max={SIZE_MAX}
+                value={sizeNum}
+                onChange={(e) => setSize(Number(e.target.value))}
                 className="flex-1 accent-cyan-500"
               />
+            </div>
+
+            {/* Case */}
+            <div className="flex items-center gap-2">
+              <span className="text-foreground/50 text-xs font-bold">Case</span>
+              <button
+                type="button"
+                onClick={() => setCaptionCase(false)}
+                className={seg}
+              >
+                lower
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaptionCase(true)}
+                className={seg}
+              >
+                UPPER
+              </button>
             </div>
 
             {/* Apply position/size to all */}
@@ -132,37 +168,44 @@ export default function CaptionsTab({
           </p>
         ) : (
           <div className="space-y-1.5">
-            {captions.map((c, i) => (
-              <div
-                key={c.id}
-                className={`group flex items-center gap-2 rounded-lg border px-2 py-1.5 ${
-                  selectedCaptionId === c.id
-                    ? "border-cyan-500/60 bg-cyan-500/10"
-                    : "border-border"
-                }`}
-              >
-                <span className="text-foreground/40 w-5 shrink-0 text-right text-[11px]">
-                  {i + 1}
-                </span>
-                <input
-                  value={c.text}
-                  onChange={(e) => setCaptionText(c.id, e.target.value)}
-                  onFocus={() => {
-                    selectCaption(c.id);
-                    onSeek(captionTimelineRange(clips, c).start + 0.01);
-                  }}
-                  className="text-foreground/90 min-w-0 flex-1 bg-transparent text-[13px] outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => removeCaption(c.id)}
-                  className="text-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 hover:text-red-400"
-                  aria-label="Delete caption"
+            {captions.map((c, i) => {
+              const active = selectedCaptionId === c.id;
+              return (
+                <div
+                  key={c.id}
+                  className={`group flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors ${
+                    active
+                      ? "border-cyan-400 bg-cyan-500/20"
+                      : "border-border hover:bg-muted/40"
+                  }`}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+                  <span
+                    className={`w-5 shrink-0 text-right text-[11px] tabular-nums ${
+                      active ? "text-cyan-300" : "text-foreground/40"
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <input
+                    value={c.text}
+                    onChange={(e) => setCaptionText(c.id, e.target.value)}
+                    onFocus={() => {
+                      selectCaption(c.id);
+                      onSeek(captionTimelineRange(clips, c).start + 0.01);
+                    }}
+                    className="text-foreground min-w-0 flex-1 bg-transparent text-[13px] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeCaption(c.id)}
+                    className="text-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 hover:text-red-400"
+                    aria-label="Delete caption"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
             <button
               type="button"
               onClick={clearCaptions}
