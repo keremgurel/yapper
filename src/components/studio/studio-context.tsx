@@ -33,6 +33,7 @@ import {
 import {
   DEFAULT_CAPTION_STYLE,
   generateCaptions,
+  type CaptionCase,
   type CaptionStyle,
 } from "@/lib/studio/captions";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
@@ -124,8 +125,10 @@ interface StudioContextValue {
   selectedCaptionId: string | null;
   captionApplyAll: boolean;
   captionLines: number;
+  captionWords: number;
   generateCaptionsFromTranscript: () => void;
   autoBreakCaptions: (lines: number) => void;
+  setCaptionWords: (n: number) => void;
   selectCaption: (id: string | null) => void;
   setCaptionText: (id: string, text: string) => void;
   removeCaption: (id: string) => void;
@@ -135,7 +138,7 @@ interface StudioContextValue {
   splitCaption: (id: string, at: number) => void;
   setCaptionFont: (fontFamily: string) => void;
   setCaptionScale: (fontScale: number) => void;
-  setCaptionCase: (upper: boolean) => void;
+  setCaptionCase: (mode: CaptionCase) => void;
   toggleCaptionApplyAll: () => void;
   snapping: boolean;
   toggleSnapping: () => void;
@@ -187,20 +190,44 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   );
   const [captionApplyAll, setCaptionApplyAll] = useState(true);
   const [captionLines, setCaptionLines] = useState(2);
+  const [captionWords, setCaptionWordsState] = useState(0); // 0 = phrase mode
   const [snapping, setSnapping] = useState(true);
 
   const toggleSnapping = useCallback(() => setSnapping((s) => !s), []);
 
   const generateCaptionsFromTranscript = useCallback(() => {
-    setCaptions(generateCaptions(words, clips, captionLines * 30));
-  }, [words, clips, captionLines]);
+    setCaptions(
+      generateCaptions(words, clips, {
+        maxChars: captionLines * 30,
+        maxWords: captionWords || undefined,
+      }),
+    );
+  }, [words, clips, captionLines, captionWords]);
 
   const autoBreakCaptions = useCallback(
     (lines: number) => {
       setCaptionLines(lines);
-      setCaptions(generateCaptions(words, clips, lines * 30));
+      setCaptions(
+        generateCaptions(words, clips, {
+          maxChars: lines * 30,
+          maxWords: captionWords || undefined,
+        }),
+      );
     },
-    [words, clips],
+    [words, clips, captionWords],
+  );
+
+  const setCaptionWords = useCallback(
+    (n: number) => {
+      setCaptionWordsState(n);
+      setCaptions(
+        generateCaptions(words, clips, {
+          maxChars: captionLines * 30,
+          maxWords: n || undefined,
+        }),
+      );
+    },
+    [words, clips, captionLines],
   );
 
   const setCaptionText = useCallback((id: string, text: string) => {
@@ -284,13 +311,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setCaptions((prev) => prev.map((c) => ({ ...c, scale: undefined })));
   }, []);
 
-  const setCaptionCase = useCallback((upper: boolean) => {
-    setCaptions((prev) =>
-      prev.map((c) => ({
-        ...c,
-        text: upper ? c.text.toUpperCase() : c.text.toLowerCase(),
-      })),
-    );
+  // Casing is a non-destructive display style (rendered via CSS text-transform),
+  // so it's fully revertible — "Original" leaves the transcribed text untouched.
+  const setCaptionCase = useCallback((mode: CaptionCase) => {
+    setCaptionStyle((s) => ({ ...s, textCase: mode }));
   }, []);
 
   const toggleCaptionApplyAll = useCallback(
@@ -849,8 +873,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedCaptionId,
       captionApplyAll,
       captionLines,
+      captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
+      setCaptionWords,
       selectCaption: setSelectedCaptionId,
       setCaptionText,
       removeCaption,
@@ -921,8 +947,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedCaptionId,
       captionApplyAll,
       captionLines,
+      captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
+      setCaptionWords,
       setCaptionText,
       removeCaption,
       clearCaptions,

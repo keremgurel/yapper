@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
-import { captionTimelineRange } from "@/lib/studio/captions";
+import { captionTimelineRange, caseTransform } from "@/lib/studio/captions";
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -110,6 +110,7 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
           transform: "translate(-50%, -50%)",
           fontFamily: captionStyle.fontFamily,
           fontSize,
+          textTransform: caseTransform(captionStyle.textCase),
           textShadow: "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
         }}
         className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap text-white ${

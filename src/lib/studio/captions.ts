@@ -17,12 +17,22 @@ export function captionTimelineRange(
   };
 }
 
+export type CaptionCase = "none" | "lower" | "upper";
+
 export interface CaptionStyle {
   fontFamily: string;
   fontScale: number; // fraction of stage height
   width: number; // box width, fraction of stage width
   x: number; // center x, fraction of stage
   y: number; // center y, fraction of stage
+  textCase: CaptionCase; // display-only casing, fully revertible
+}
+
+/** CSS text-transform for a caption case mode. */
+export function caseTransform(
+  c: CaptionCase,
+): "none" | "lowercase" | "uppercase" {
+  return c === "lower" ? "lowercase" : c === "upper" ? "uppercase" : "none";
 }
 
 /** A few elegant, dependency-free font presets for captions. */
@@ -53,35 +63,52 @@ export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
   width: 0.9,
   x: 0.5,
   y: 0.82,
+  textCase: "none",
 };
 
 const endsSentence = (t: string) => /[.?!]$/.test(t.trim());
 
+export interface CaptionGroupOptions {
+  /** Character budget per caption (phrase mode). */
+  maxChars?: number;
+  /** Fixed number of words per caption (0 = phrase mode). */
+  maxWords?: number;
+}
+
 /**
  * Build caption segments from the transcript. Only kept (non-cut) words are
  * used, and their source times are mapped to edited-timeline seconds, so
- * captions line up with the final video. Words are grouped until a caption
- * would exceed `maxChars`, a sentence ends, or there's a real pause.
+ * captions line up with the final video.
+ *
+ * In phrase mode (maxWords = 0) words are grouped until a caption would exceed
+ * `maxChars`, a sentence ends, or there's a real pause. With `maxWords` set,
+ * captions are exactly that many words (still breaking on real pauses), which
+ * gives the CapCut-style "N words at a time" look.
  */
 export function generateCaptions(
   words: Word[],
   clips: Clip[],
-  maxChars = 2 * CHARS_PER_LINE,
+  opts: CaptionGroupOptions = {},
 ): Caption[] {
+  const maxChars = opts.maxChars ?? 2 * CHARS_PER_LINE;
+  const maxWords = opts.maxWords ?? 0;
   const kept = words.filter(
     (w) => clipIndexAtSource(clips, (w.start + w.end) / 2) !== -1,
   );
   const captions: Caption[] = [];
   let cur: Caption | null = null;
+  let curWords = 0;
   let prevEndTl = 0;
   for (const w of kept) {
     // Timeline gap only drives where captions break (edited pauses); the caption
     // itself is anchored in source time so it follows later edits.
     const ts = sourceToTimeline(clips, w.start);
-    const wouldExceed =
-      cur !== null && cur.text.length + 1 + w.text.length > maxChars;
     const pause = cur !== null && ts - prevEndTl > 0.5;
-    if (cur === null || wouldExceed || pause) {
+    const full =
+      maxWords > 0
+        ? cur !== null && curWords >= maxWords
+        : cur !== null && cur.text.length + 1 + w.text.length > maxChars;
+    if (cur === null || pause || full) {
       if (cur) captions.push(cur);
       cur = {
         id: newCaptionId(),
@@ -89,14 +116,23 @@ export function generateCaptions(
         sourceStart: w.start,
         sourceEnd: w.end,
       };
+      curWords = 1;
     } else {
       cur.text += ` ${w.text}`;
       cur.sourceEnd = w.end;
+      curWords += 1;
     }
     prevEndTl = sourceToTimeline(clips, w.end);
-    if (cur && endsSentence(w.text) && cur.text.length > maxChars * 0.5) {
+    // Flush on sentence end only in phrase mode; word mode is strictly N words.
+    if (
+      maxWords === 0 &&
+      cur &&
+      endsSentence(w.text) &&
+      cur.text.length > maxChars * 0.5
+    ) {
       captions.push(cur);
       cur = null;
+      curWords = 0;
     }
   }
   if (cur) captions.push(cur);
