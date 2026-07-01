@@ -21,6 +21,7 @@ import { detectSilences, detectSpeechSegments } from "@/lib/studio/silence";
 import {
   findEarlierTakeRanges,
   findFillerIds,
+  pauseRanges,
   refineWordTimings,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
@@ -352,24 +353,38 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setClips],
   );
 
+  const cutAll = useCallback(
+    (ranges: [number, number][]) => {
+      if (ranges.length === 0) return;
+      setClips((prev) =>
+        ranges.reduce(
+          (next, [from, to]) => removeSourceRange(next, from, to),
+          prev,
+        ),
+      );
+    },
+    [setClips],
+  );
+
   const removeSilences = useCallback(async (): Promise<number> => {
+    // With a transcript, cut the gaps between words — this can never remove
+    // speech and matches the pause chips exactly. Fall back to the energy VAD
+    // only when there's no transcript yet.
+    if (words.length > 0) {
+      const ranges = pauseRanges(words);
+      cutAll(ranges);
+      return ranges.length;
+    }
     if (!source) return 0;
     setDetecting(true);
     try {
       const ranges = await detectSilences(source.url);
-      if (ranges.length > 0) {
-        setClips((prev) => {
-          let next = prev;
-          for (const [from, to] of ranges)
-            next = removeSourceRange(next, from, to);
-          return next;
-        });
-      }
+      cutAll(ranges);
       return ranges.length;
     } finally {
       setDetecting(false);
     }
-  }, [source, setClips]);
+  }, [words, source, cutAll]);
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source) return;

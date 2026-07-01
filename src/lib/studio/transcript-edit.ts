@@ -86,6 +86,25 @@ export function isWordCut(clips: Clip[], word: Word): boolean {
   return clipIndexAtSource(clips, mid) === -1;
 }
 
+/** True when a source range's midpoint is already removed from the timeline. */
+export function isRangeCut(clips: Clip[], from: number, to: number): boolean {
+  return clipIndexAtSource(clips, (from + to) / 2) === -1;
+}
+
+/**
+ * Silent gaps between consecutive spoken words that are at least `minGap`
+ * seconds long — the pauses. Because these ranges sit strictly between words,
+ * cutting them can never remove speech.
+ */
+export function pauseRanges(words: Word[], minGap = 0.4): [number, number][] {
+  const ranges: [number, number][] = [];
+  for (let i = 0; i < words.length - 1; i++) {
+    const gap = words[i + 1].start - words[i].end;
+    if (gap >= minGap) ranges.push([words[i].end, words[i + 1].start]);
+  }
+  return ranges;
+}
+
 export function findFillerIds(words: Word[]): string[] {
   return words.filter((w) => FILLERS.has(norm(w.text))).map((w) => w.id);
 }

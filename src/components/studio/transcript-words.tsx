@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { isWordCut } from "@/lib/studio/transcript-edit";
+import { isRangeCut, isWordCut } from "@/lib/studio/transcript-edit";
 
 const MIN_GAP = 0.4; // seconds; shorter pauses aren't shown as chips
 
@@ -160,8 +160,11 @@ export default function TranscriptWords({
             const active = !cut && w.id === activeId;
             const isSel = selected.has(w.id);
             const next = words[i + 1];
+            // Show a pause chip only when the gap is still present (not yet cut).
             const gap =
               !cut && next && !isWordCut(clips, next) ? next.start - w.end : 0;
+            const showGap =
+              gap >= MIN_GAP && !isRangeCut(clips, w.end, next.start);
             if (cut && !showDeleted) return null;
             return (
               <Fragment key={w.id}>
@@ -184,7 +187,7 @@ export default function TranscriptWords({
                     {w.text}
                   </button>
                 )}{" "}
-                {gap >= MIN_GAP && (
+                {showGap && (
                   <button
                     type="button"
                     onClick={() => cutRange(w.end, next.start)}
