@@ -20,6 +20,8 @@ export default function StudioWorkspace() {
     source,
     clips,
     selectedClipIds,
+    selectedCaptionIds,
+    removeSelectedCaptions,
     splitAt,
     deleteSelected,
     audioTracks,
@@ -107,7 +109,10 @@ export default function StudioWorkspace() {
         e.preventDefault();
         splitAt(videoRef.current?.currentTime ?? 0);
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedClipIds.length) {
+        if (selectedCaptionIds.length) {
+          e.preventDefault();
+          removeSelectedCaptions();
+        } else if (selectedClipIds.length) {
           e.preventDefault();
           deleteSelected();
         }
@@ -115,7 +120,17 @@ export default function StudioWorkspace() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo, play, pause, splitAt, deleteSelected, selectedClipIds]);
+  }, [
+    undo,
+    redo,
+    play,
+    pause,
+    splitAt,
+    deleteSelected,
+    selectedClipIds,
+    selectedCaptionIds,
+    removeSelectedCaptions,
+  ]);
 
   const total = totalDuration(clips);
   const aspect =

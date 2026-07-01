@@ -14,8 +14,9 @@ export default function CaptionList({
     clips,
     captions,
     captionStyle,
-    selectedCaptionId,
+    selectedCaptionIds,
     selectCaption,
+    toggleCaptionSelection,
     setCaptionText,
     splitCaptionAtWord,
     removeCaption,
@@ -49,7 +50,7 @@ export default function CaptionList({
     <div className="space-y-2">
       <div className="mx-auto flex max-w-[640px] flex-col gap-1.5">
         {captions.map((c, i) => {
-          const active = selectedCaptionId === c.id;
+          const active = selectedCaptionIds.includes(c.id);
           return (
             <div
               key={c.id}
@@ -59,15 +60,18 @@ export default function CaptionList({
                   : "border-border hover:bg-muted/40"
               }`}
             >
-              <span
-                className={`w-5 shrink-0 text-right text-[11px] tabular-nums ${
+              <button
+                type="button"
+                onClick={() => toggleCaptionSelection(c.id)}
+                title="Select (⌘/Ctrl-click or use the timeline to multi-select)"
+                className={`w-5 shrink-0 cursor-pointer text-right text-[11px] tabular-nums ${
                   active
                     ? "text-cyan-600 dark:text-cyan-300"
-                    : "text-foreground/40"
+                    : "text-foreground/40 hover:text-foreground/70"
                 }`}
               >
                 {i + 1}
-              </span>
+              </button>
               <input
                 value={c.text}
                 onChange={(e) => setCaptionText(c.id, e.target.value)}

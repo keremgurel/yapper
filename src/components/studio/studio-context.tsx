@@ -137,6 +137,7 @@ interface StudioContextValue {
   captions: Caption[];
   captionStyle: CaptionStyle;
   selectedCaptionId: string | null;
+  selectedCaptionIds: string[];
   captionApplyAll: boolean;
   captionLines: number;
   captionWords: number;
@@ -144,6 +145,9 @@ interface StudioContextValue {
   autoBreakCaptions: (lines: number) => void;
   setCaptionWords: (n: number) => void;
   selectCaption: (id: string | null) => void;
+  toggleCaptionSelection: (id: string) => void;
+  selectCaptions: (ids: string[]) => void;
+  removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
   removeCaption: (id: string) => void;
   clearCaptions: () => void;
@@ -201,8 +205,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
   );
-  const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(
-    null,
+  const [selectedCaptionIds, setSelectedCaptionIds] = useState<string[]>([]);
+  const selectedCaptionId =
+    selectedCaptionIds.length === 1 ? selectedCaptionIds[0] : null;
+  const selectCaption = useCallback(
+    (id: string | null) => setSelectedCaptionIds(id ? [id] : []),
+    [],
+  );
+  const toggleCaptionSelection = useCallback((id: string) => {
+    setSelectedCaptionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+  const selectCaptions = useCallback(
+    (ids: string[]) => setSelectedCaptionIds(ids),
+    [],
   );
   const [captionApplyAll, setCaptionApplyAll] = useState(true);
   const [captionLines, setCaptionLines] = useState(2);
@@ -252,12 +269,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const removeCaption = useCallback((id: string) => {
     setCaptions((prev) => prev.filter((c) => c.id !== id));
-    setSelectedCaptionId((cur) => (cur === id ? null : cur));
+    setSelectedCaptionIds((prev) => prev.filter((x) => x !== id));
+  }, []);
+
+  const removeSelectedCaptions = useCallback(() => {
+    setSelectedCaptionIds((ids) => {
+      if (ids.length)
+        setCaptions((prev) => prev.filter((c) => !ids.includes(c.id)));
+      return [];
+    });
   }, []);
 
   const clearCaptions = useCallback(() => {
     setCaptions([]);
-    setSelectedCaptionId(null);
+    setSelectedCaptionIds([]);
   }, []);
 
   // Edges come in as edited-timeline seconds; store them as source anchors so
@@ -579,7 +604,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setTranscribeStatus("idle");
     setTranscribeProgress(0);
     setCaptions([]);
-    setSelectedCaptionId(null);
+    setSelectedCaptionIds([]);
   }, []);
 
   const loadSource = useCallback(
@@ -1112,13 +1137,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captions,
       captionStyle,
       selectedCaptionId,
+      selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
-      selectCaption: setSelectedCaptionId,
+      selectCaption,
+      toggleCaptionSelection,
+      selectCaptions,
+      removeSelectedCaptions,
       setCaptionText,
       removeCaption,
       clearCaptions,
@@ -1190,12 +1219,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captions,
       captionStyle,
       selectedCaptionId,
+      selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
+      selectCaption,
+      toggleCaptionSelection,
+      selectCaptions,
+      removeSelectedCaptions,
       setCaptionText,
       removeCaption,
       clearCaptions,

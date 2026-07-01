@@ -87,8 +87,9 @@ export default function StudioTimeline({
     liftClipToTrack,
     captions,
     captionStyle,
-    selectedCaptionId,
+    selectedCaptionIds,
     selectCaption,
+    toggleCaptionSelection,
     setCaptionRange,
     splitCaption,
     snapping,
@@ -548,9 +549,11 @@ export default function StudioTimeline({
                   clips={clips}
                   pxPerSec={pxPerSec}
                   playhead={currentTimelineTime}
-                  selectedId={selectedCaptionId}
+                  selectedIds={selectedCaptionIds}
                   textCase={captionStyle.textCase}
-                  onSelect={selectCaption}
+                  onSelect={(id, additive) =>
+                    additive ? toggleCaptionSelection(id) : selectCaption(id)
+                  }
                   onRange={setCaptionRange}
                   onSplit={splitCaption}
                 />

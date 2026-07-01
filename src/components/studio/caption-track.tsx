@@ -27,7 +27,7 @@ export default function CaptionTrack({
   clips,
   pxPerSec,
   playhead,
-  selectedId,
+  selectedIds,
   textCase,
   onSelect,
   onRange,
@@ -37,9 +37,9 @@ export default function CaptionTrack({
   clips: Clip[];
   pxPerSec: number;
   playhead: number;
-  selectedId: string | null;
+  selectedIds: string[];
   textCase: CaptionCase;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, additive: boolean) => void;
   onRange: (id: string, start: number, end: number) => void;
   onSplit: (id: string, at: number) => void;
 }) {
@@ -76,15 +76,15 @@ export default function CaptionTrack({
         if (r.end <= r.start) return null; // fully cut
         const left = r.start * pxPerSec;
         const width = Math.max((r.end - r.start) * pxPerSec, 8);
-        const selected = selectedId === c.id;
+        const selected = selectedIds.includes(c.id);
         return (
           <div
             key={c.id}
             style={{ left, width }}
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onSelect(c.id)}
+            onClick={(e) => onSelect(c.id, e.metaKey || e.ctrlKey)}
             onDoubleClick={() => onSplit(c.id, playhead)}
-            title="Double-click to break at the playhead"
+            title="Click to select · ⌘/Ctrl-click to multi-select · double-click to break at the playhead"
             className={`group absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md bg-amber-500/15 px-2 ring-1 ${
               selected ? "ring-2 ring-amber-400" : "ring-amber-500/35"
             }`}
@@ -99,7 +99,7 @@ export default function CaptionTrack({
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onSelect(c.id);
+                onSelect(c.id, false);
                 setTrim({
                   id: c.id,
                   edge: "start",
@@ -114,7 +114,7 @@ export default function CaptionTrack({
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                onSelect(c.id);
+                onSelect(c.id, false);
                 setTrim({
                   id: c.id,
                   edge: "end",
