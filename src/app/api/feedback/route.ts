@@ -23,6 +23,7 @@ import { computeMetrics, type DeliveryMetrics } from "@/lib/feedback/metrics";
 import { transcribeForFeedback } from "@/lib/feedback/transcribe";
 import { coachOnCamera } from "@/lib/feedback/video";
 import { deleteObject, getObjectBytes, ownsKey } from "@/lib/r2";
+import { canUsePremium } from "@/lib/billing/gate";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -70,6 +71,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   await ensureUser(userId);
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
 
   const db = getDb();
   const [submission] = await db
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         updatedAt: new Date(),
       })
       .where(eq(submissions.id, submission.id));
-    // Count the stored recording against the user's quota — but only once per
+    // Count the stored recording against the user's quota, but only once per
     // object, so re-analyzing the same mediaKey can't inflate the counter.
     if (mediaKey && result.mediaBytes) {
       const [dup] = await db
@@ -132,7 +136,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
-    // The upload is now an orphan (uncounted, unreferenced) — reclaim it so a
+    // The upload is now an orphan (uncounted, unreferenced), reclaim it so a
     // failed run can't leak R2 storage.
     if (mediaKey) {
       try {
@@ -176,7 +180,7 @@ async function runTier(
   // video + full: pull the clip from R2 (server-side, no browser CORS), push it
   // to Gemini, and coach on the native video + audio.
   const bytes = await getObjectBytes(mediaKey as string);
-  // Enforce on the *actual* object size — presigned PUTs can't cap upload size,
+  // Enforce on the *actual* object size, presigned PUTs can't cap upload size,
   // so the client's claimed sizeBytes at upload-url time is only advisory.
   if (bytes.byteLength > MAX_CLIP_BYTES) throw new Error("clip_too_large");
   const used = await getStorageBytes(userId);

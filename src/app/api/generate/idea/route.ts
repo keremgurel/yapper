@@ -7,6 +7,7 @@ import {
   InsufficientCreditsError,
 } from "@/lib/db/credits";
 import { ensureUser } from "@/lib/db/users";
+import { canUsePremium } from "@/lib/billing/gate";
 import { generateIdea, type IdeaInput } from "@/lib/generate/idea";
 
 // Clamp client-supplied fields so a signed-in user can't amplify token cost
@@ -19,7 +20,7 @@ export const maxDuration = 60;
 
 /**
  * Generate a video idea (hooks/points/example/cta). Auth + credits.
- * Charge-on-success: we generate first, then deduct — so a failure never costs
+ * Charge-on-success: we generate first, then deduct, so a failure never costs
  * a credit and there's no stranded "processing" state to reconcile.
  */
 export async function POST(req: NextRequest): Promise<Response> {
@@ -28,6 +29,9 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const cost = GENERATE_CREDITS.idea;
   await ensureUser(userId);
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
   if ((await getBalance(userId)) < cost) {
     return Response.json({ error: "insufficient_credits" }, { status: 402 });
   }
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   // Charge only now that we have a result. If the deduct races and fails, we
-  // still deliver (favor the user — a rare, cheap edge case).
+  // still deliver (favor the user, a rare, cheap edge case).
   let balance: number;
   try {
     balance = await deductCredits(userId, cost, {
@@ -57,7 +61,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   } catch (e) {
     // Insufficient = a concurrency race (deliver anyway, per design). Anything
-    // else (DB blip) means a free delivery — log it so it's observable.
+    // else (DB blip) means a free delivery, log it so it's observable.
     if (!(e instanceof InsufficientCreditsError)) {
       console.error("idea generation: deduct failed, delivered free", e);
     }

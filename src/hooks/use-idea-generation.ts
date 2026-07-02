@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useIdeas } from "@/components/ideation/ideas-context";
 import type { Idea } from "@/lib/inspiration/ideas";
 
-export type GenErrorKind = "insufficient" | "failed";
+export type GenErrorKind = "insufficient" | "failed" | "locked";
 type GenAction = "idea" | "script";
 export type GenError = { action: GenAction; kind: GenErrorKind } | null;
 
@@ -30,8 +30,15 @@ export function useIdeaGeneration(idea: Idea) {
   const [generating, setGenerating] = useState<GenAction | null>(null);
   const [error, setError] = useState<GenError>(null);
 
-  const kindFor = (res: Response): GenErrorKind =>
-    res.status === 402 ? "insufficient" : "failed";
+  const kindFor = (
+    res: Response,
+    data: Record<string, unknown>,
+  ): GenErrorKind =>
+    data.error === "not_entitled"
+      ? "locked"
+      : res.status === 402
+        ? "insufficient"
+        : "failed";
 
   const runIdea = async () => {
     if (generating || !idea.title.trim()) return;
@@ -44,7 +51,7 @@ export function useIdeaGeneration(idea: Idea) {
         sourceUrl: idea.sourceUrl,
       });
       if (!res.ok) {
-        setError({ action: "idea", kind: kindFor(res) });
+        setError({ action: "idea", kind: kindFor(res, data) });
         return;
       }
       const hooks = data.hooks as string[] | undefined;
@@ -75,7 +82,7 @@ export function useIdeaGeneration(idea: Idea) {
         cta: idea.cta,
       });
       if (!res.ok || typeof data.script !== "string") {
-        setError({ action: "script", kind: kindFor(res) });
+        setError({ action: "script", kind: kindFor(res, data) });
         return;
       }
       updateIdea(idea.id, { script: data.script });

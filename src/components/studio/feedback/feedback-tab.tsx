@@ -89,8 +89,8 @@ export default function FeedbackTab() {
                 AI delivery feedback
               </p>
               <p className="text-foreground/55 text-[13px] leading-5">
-                Get coached — scored, with punch-it-up rewrites. Pick how deep
-                to go.
+                Get coached, scored, with punch-it-up rewrites. Pick how deep to
+                go.
               </p>
             </div>
 
@@ -134,6 +134,14 @@ export default function FeedbackTab() {
               </SignInButton>
             </Show>
 
+            {error === "not_entitled" && (
+              <a
+                href="/pricing"
+                className="block text-sm font-bold text-cyan-500 hover:underline"
+              >
+                Subscribe to unlock AI feedback (7-day free trial).
+              </a>
+            )}
             {error === "insufficient_credits" && (
               <p className="text-sm font-bold text-amber-500">
                 You&apos;re out of credits. Top up or upgrade to keep going.
@@ -151,7 +159,7 @@ export default function FeedbackTab() {
             )}
             {error === "failed" && (
               <p className="text-sm font-bold text-red-500">
-                Something went wrong — your credit wasn&apos;t charged. Try
+                Something went wrong, your credit wasn&apos;t charged. Try
                 again.
               </p>
             )}
