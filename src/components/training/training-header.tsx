@@ -5,21 +5,16 @@ import CreateNavDropdown from "@/components/create/create-nav-dropdown";
 import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
 import MobileNav from "@/components/training/mobile-nav";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
+import { ChirpyMark } from "@/components/brand/chirpy-mark";
 
 export default function TrainingHeader() {
   return (
     <header className="border-border bg-background relative z-50 flex items-center justify-between border-b px-3 py-3 sm:px-6">
-      {/* Left: logo */}
+      {/* Left: logo — Chirpy the mascot + wordmark */}
       <Link href="/" className="group flex items-center gap-2 no-underline">
-        <div
-          className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg text-sm font-black text-white transition-transform duration-300 group-hover:-rotate-6"
-          style={{
-            background: "var(--sg-accent-gradient)",
-            boxShadow: "var(--sg-accent-glow)",
-          }}
-        >
-          Y
-        </div>
+        <span className="shrink-0 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
+          <ChirpyMark size={30} />
+        </span>
         <span className="font-display text-foreground text-[20px] font-semibold tracking-[0.02em] sm:text-[22px]">
           yapper
         </span>

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { ChirpyMark } from "@/components/brand/chirpy-mark";
+
 const tape = (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -45,15 +47,7 @@ export const Component = () => {
               className="font-display flex flex-row items-center justify-start gap-2 text-2xl font-extrabold"
               style={{ color: "var(--sg-text)" }}
             >
-              <div
-                className="flex h-[28px] w-[28px] items-center justify-center rounded-lg text-sm font-black text-white"
-                style={{
-                  background: "var(--sg-accent-gradient)",
-                  boxShadow: "var(--sg-accent-glow)",
-                }}
-              >
-                Y
-              </div>
+              <ChirpyMark size={28} />
               yapper
             </Link>
             <p
