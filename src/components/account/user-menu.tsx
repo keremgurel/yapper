@@ -95,7 +95,7 @@ export default function UserMenu() {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-          <Link href="/inspiration" className="no-underline">
+          <Link href="/studio/inspiration" className="no-underline">
             <Lightbulb className="h-4 w-4" />
             Inspiration
           </Link>

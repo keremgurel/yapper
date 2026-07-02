@@ -24,7 +24,7 @@ export default function TeleprompterRecorder({
   onExit,
 }: {
   text: string;
-  onExit: () => void;
+  onExit?: () => void;
 }) {
   const {
     cameraOn,
@@ -194,7 +194,7 @@ export default function TeleprompterRecorder({
         </div>
       </div>
 
-      {!isRecording && (
+      {!isRecording && onExit && (
         <button
           type="button"
           onClick={onExit}

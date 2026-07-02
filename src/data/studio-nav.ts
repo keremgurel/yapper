@@ -10,15 +10,11 @@ export interface StudioNavItem {
 /**
  * The Studio surfaces, in workflow order. Drives the sidebar, the header
  * dropdown, and the mobile menu from one place.
- *
- * Inspiration and Recorder still point at their pre-move routes; they flip to
- * /studio/inspiration and /studio/recorder when those pages move into the
- * shell (Studio restructure PR 3).
  */
 export const studioNav: StudioNavItem[] = [
   {
     title: "Inspiration",
-    href: "/inspiration",
+    href: "/studio/inspiration",
     description:
       "Save clips from creators you like and turn them into video ideas.",
     icon: "library",
@@ -32,7 +28,7 @@ export const studioNav: StudioNavItem[] = [
   },
   {
     title: "Recorder",
-    href: "/record",
+    href: "/studio/recorder",
     description: "Record a take, with your script on the teleprompter.",
     icon: "record",
   },

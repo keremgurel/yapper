@@ -28,7 +28,7 @@ export const tools: Tool[] = [
     tagline: "Read your script while you record",
     description:
       "A TikTok-style recorder with your script scrolling over the camera at a pace you set. Record, retake, then edit. No sign-up.",
-    href: "/record",
+    href: "/studio/recorder",
     category: "Delivery",
     cta: "Start recording",
   },
