@@ -2,21 +2,52 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ExternalLink, FileText, Lightbulb, Trash2 } from "lucide-react";
+import { useClerk, useUser } from "@clerk/nextjs";
+import {
+  ExternalLink,
+  FileText,
+  Lightbulb,
+  Loader2,
+  Trash2,
+} from "lucide-react";
 import PlatformBadge from "@/components/inspiration/platform-badge";
 import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
-import { addIdeaFromItem } from "@/lib/inspiration/ideas";
+import { blankIdea } from "@/lib/inspiration/ideas";
+import { createContent } from "@/lib/content/client";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
 export default function ItemCard({ item }: { item: InspirationItem }) {
   const { pillars, moveItem, deleteItem } = useInspiration();
   const [showTranscript, setShowTranscript] = useState(false);
+  const [creating, setCreating] = useState(false);
   const router = useRouter();
+  const { isSignedIn } = useUser();
+  const { openSignIn } = useClerk();
 
-  const turnIntoIdea = () => {
-    addIdeaFromItem(item);
-    router.push("/ideation");
+  // Seed a Content Library item from this clip (same starter templates the
+  // local ideas used) and jump into its workbench.
+  const turnIntoIdea = async () => {
+    if (!isSignedIn) {
+      openSignIn();
+      return;
+    }
+    setCreating(true);
+    try {
+      const seed = blankIdea({ title: item.title });
+      const created = await createContent({
+        title: item.title,
+        hooks: seed.hooks,
+        points: seed.points,
+        example: seed.example,
+        cta: seed.cta,
+        sourceTitle: item.title,
+        sourceUrl: item.url,
+      });
+      router.push(`/studio/library/${created.id}`);
+    } catch {
+      setCreating(false);
+    }
   };
 
   return (
@@ -77,10 +108,15 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
 
         <button
           type="button"
-          onClick={turnIntoIdea}
-          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-black"
+          onClick={() => void turnIntoIdea()}
+          disabled={creating}
+          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-black disabled:opacity-50"
         >
-          <Lightbulb className="h-3.5 w-3.5" />
+          {creating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Lightbulb className="h-3.5 w-3.5" />
+          )}
           Turn into idea
         </button>
 

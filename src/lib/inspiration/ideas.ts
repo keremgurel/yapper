@@ -1,5 +1,4 @@
 import { newId } from "@/lib/inspiration/store";
-import type { InspirationItem } from "@/lib/inspiration/types";
 
 export interface Idea {
   id: string;
@@ -64,6 +63,11 @@ export function blankIdea(seed?: {
   };
 }
 
+/**
+ * Read the legacy localStorage ideas. Ideas now live in the Content Library
+ * (DB); this remains only for the one-time import and the recorder's legacy
+ * ?idea= links. Nothing writes this store anymore.
+ */
 export function loadIdeas(): Idea[] {
   if (typeof window === "undefined") return [];
   try {
@@ -72,26 +76,4 @@ export function loadIdeas(): Idea[] {
   } catch {
     return [];
   }
-}
-
-export function saveIdeas(ideas: Idea[]): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(IDEAS_KEY, JSON.stringify(ideas));
-  } catch {
-    // ignore quota errors for this local-first MVP
-  }
-}
-
-/** Create an idea seeded from a saved inspiration item and persist it. */
-export function addIdeaFromItem(item: InspirationItem): string {
-  const idea = blankIdea({
-    title: item.title,
-    sourceItemId: item.id,
-    sourceTitle: item.title,
-    sourceUrl: item.url,
-    pillarId: item.pillarId,
-  });
-  saveIdeas([idea, ...loadIdeas()]);
-  return idea.id;
 }

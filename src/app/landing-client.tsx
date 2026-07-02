@@ -6,7 +6,7 @@ import {
 } from "@/components/ErrorBoundary";
 import HomeHero from "@/components/home-hero";
 import PracticeStage from "@/components/practice-stage";
-import CreateFlowSection from "@/components/create/create-flow-section";
+import StudioFlowSection from "@/components/studio-shell/studio-flow-section";
 import { HomeFaq } from "@/components/home-faq";
 import Waitlist from "@/components/waitlist";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
@@ -45,7 +45,7 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
         </ErrorBoundary>
       </PracticeSessionProvider>
 
-      <CreateFlowSection />
+      <StudioFlowSection />
 
       <Waitlist variant="full" />
 

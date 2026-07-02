@@ -20,11 +20,22 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
-        // Temporarily the editor; flips to /studio/library when the Content
-        // Library ships (Studio restructure PR 2b).
         source: "/studio",
-        destination: "/studio/editor",
+        destination: "/studio/library",
         permanent: false,
+      },
+      // The Create hub became the Studio; ideation folded into the Content
+      // Library (ideas now live there, imported from localStorage on first
+      // visit).
+      {
+        source: "/create",
+        destination: "/studio/library",
+        permanent: false,
+      },
+      {
+        source: "/ideation",
+        destination: "/studio/library",
+        permanent: true,
       },
     ];
   },

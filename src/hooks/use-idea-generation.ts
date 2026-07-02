@@ -1,12 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { useIdeas } from "@/components/ideation/ideas-context";
-import type { Idea } from "@/lib/inspiration/ideas";
 
 export type GenErrorKind = "insufficient" | "failed" | "locked";
 type GenAction = "idea" | "script";
 export type GenError = { action: GenAction; kind: GenErrorKind } | null;
+
+/** The fields AI generation reads and writes. Both the legacy localStorage
+ * Idea and a Content Library item satisfy this structurally. */
+export interface GenSource {
+  title: string;
+  hooks: string[];
+  points: string[];
+  example: string;
+  cta: string;
+  script?: string | null;
+  sourceTitle?: string | null;
+  sourceUrl?: string | null;
+}
+
+export type GenApply = (fields: {
+  hooks?: string[];
+  points?: string[];
+  example?: string;
+  cta?: string;
+  script?: string;
+}) => void;
 
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
@@ -19,14 +38,13 @@ async function postJson(path: string, body: unknown) {
 }
 
 /**
- * AI generation for a single idea: fill the idea fields, or write a full
- * script. Both hit charge-on-success endpoints and apply the result through
- * the ideas store. Only one action runs at a time (each charges a credit), and
- * errors are attributed to the action that raised them so the UI can show the
- * message next to the right button.
+ * AI generation for one idea/library item: fill the idea fields, or write a
+ * full script. Results are applied through the caller's `apply` (client state
+ * plus its own save path), so generation is never a second concurrent writer.
+ * Only one action runs at a time (each charges a credit), and errors are
+ * attributed to the action that raised them.
  */
-export function useIdeaGeneration(idea: Idea) {
-  const { updateIdea } = useIdeas();
+export function useIdeaGeneration(source: GenSource, apply: GenApply) {
   const [generating, setGenerating] = useState<GenAction | null>(null);
   const [error, setError] = useState<GenError>(null);
 
@@ -41,14 +59,14 @@ export function useIdeaGeneration(idea: Idea) {
         : "failed";
 
   const runIdea = async () => {
-    if (generating || !idea.title.trim()) return;
+    if (generating || !source.title.trim()) return;
     setGenerating("idea");
     setError(null);
     try {
       const { res, data } = await postJson("/api/generate/idea", {
-        topic: idea.title,
-        sourceTitle: idea.sourceTitle,
-        sourceUrl: idea.sourceUrl,
+        topic: source.title,
+        sourceTitle: source.sourceTitle ?? undefined,
+        sourceUrl: source.sourceUrl ?? undefined,
       });
       if (!res.ok) {
         setError({ action: "idea", kind: kindFor(res, data) });
@@ -56,11 +74,11 @@ export function useIdeaGeneration(idea: Idea) {
       }
       const hooks = data.hooks as string[] | undefined;
       const points = data.points as string[] | undefined;
-      updateIdea(idea.id, {
-        hooks: hooks?.length ? hooks : idea.hooks,
-        points: points?.length ? points : idea.points,
-        example: (data.example as string) || idea.example,
-        cta: (data.cta as string) || idea.cta,
+      apply({
+        hooks: hooks?.length ? hooks : source.hooks,
+        points: points?.length ? points : source.points,
+        example: (data.example as string) || source.example,
+        cta: (data.cta as string) || source.cta,
       });
     } catch {
       setError({ action: "idea", kind: "failed" });
@@ -70,22 +88,22 @@ export function useIdeaGeneration(idea: Idea) {
   };
 
   const runScript = async () => {
-    if (generating || !idea.title.trim()) return;
+    if (generating || !source.title.trim()) return;
     setGenerating("script");
     setError(null);
     try {
       const { res, data } = await postJson("/api/generate/script", {
-        title: idea.title,
-        hooks: idea.hooks,
-        points: idea.points,
-        example: idea.example,
-        cta: idea.cta,
+        title: source.title,
+        hooks: source.hooks,
+        points: source.points,
+        example: source.example,
+        cta: source.cta,
       });
       if (!res.ok || typeof data.script !== "string") {
         setError({ action: "script", kind: kindFor(res, data) });
         return;
       }
-      updateIdea(idea.id, { script: data.script });
+      apply({ script: data.script });
     } catch {
       setError({ action: "script", kind: "failed" });
     } finally {

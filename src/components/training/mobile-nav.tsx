@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 
 import { resourcesNavItems } from "@/data/training";
-import { createNav } from "@/data/create-nav";
-import CreateIcon from "@/components/create/create-icon";
+import { studioNav } from "@/data/studio-nav";
+import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -145,13 +145,13 @@ export default function MobileNav() {
               animate="show"
               className="no-scrollbar max-h-[72vh] space-y-0.5 overflow-y-auto p-3"
             >
-              <SectionLabel>Create</SectionLabel>
-              {createNav.map((item) => (
+              <SectionLabel>Studio</SectionLabel>
+              {studioNav.map((item) => (
                 <Row
                   key={`c-${item.href}`}
                   href={item.href}
                   title={item.title}
-                  icon={<CreateIcon icon={item.icon} className="h-4 w-4" />}
+                  icon={<StudioNavIcon icon={item.icon} className="h-4 w-4" />}
                   onNavigate={close}
                 />
               ))}

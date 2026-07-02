@@ -48,7 +48,7 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
         </Show>
         <Show when="signed-in">
           <Link
-            href="/create"
+            href="/studio/library"
             className="inline-flex items-center rounded-full bg-cyan-500 px-6 text-[15px] font-bold text-white no-underline shadow-sm transition-colors hover:bg-cyan-600"
             style={{ height: 48 }}
           >

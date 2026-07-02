@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Show, SignInButton } from "@clerk/nextjs";
 
-import CreateNavDropdown from "@/components/create/create-nav-dropdown";
+import StudioNavDropdown from "@/components/studio-shell/studio-nav-dropdown";
 import ResourcesNavDropdown from "@/components/training/resources-nav-dropdown";
 import MobileNav from "@/components/training/mobile-nav";
 import UserMenu from "@/components/account/user-menu";
@@ -23,7 +23,7 @@ export default function TrainingHeader() {
 
       {/* Center: Create is the main app; Resources are the free SEO tools. */}
       <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-        <CreateNavDropdown />
+        <StudioNavDropdown />
         <ResourcesNavDropdown />
         <Link
           href="/blog"
