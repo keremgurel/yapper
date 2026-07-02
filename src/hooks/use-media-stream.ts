@@ -21,6 +21,16 @@ export function useMediaStream() {
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  // If the component unmounts mid-recording (e.g. navigating away during a
+  // take), the unmount track-stop fires onstop *after* unmount — the resulting
+  // setState is dropped, so any object URL created there would leak. Guard on it.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // --- Internal helpers ---
 
@@ -110,11 +120,14 @@ export function useMediaStream() {
         if (event.data.size > 0) chunksRef.current.push(event.data);
       };
       recorder.onstop = () => {
+        recorderRef.current = null;
+        // Torn down mid-recording — drop the take instead of creating an object
+        // URL that no cleanup can ever revoke.
+        if (!mountedRef.current) return;
         const nextBlob = new Blob(chunksRef.current, {
           type: selectedMimeType,
         });
         const nextUrl = URL.createObjectURL(nextBlob);
-        recorderRef.current = null;
         setIsRecording(false);
         setRecordedBlob(nextBlob);
         setRecordedUrl((current) => {
