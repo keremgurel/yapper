@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Captions, FileText, Film } from "lucide-react";
+import { Captions, FileText, Film, Sparkles } from "lucide-react";
 import MediaTab from "@/components/studio/media-tab";
 import CaptionsTab from "@/components/studio/captions-tab";
 import StudioTranscript from "@/components/studio/studio-transcript";
+import FeedbackTab from "@/components/studio/feedback/feedback-tab";
 
-type Tab = "media" | "captions" | "transcript";
+type Tab = "media" | "transcript" | "captions" | "feedback";
 
 export default function RightPanel({
   currentSourceTime,
@@ -53,6 +54,14 @@ export default function RightPanel({
           <Captions className="h-4 w-4" />
           Captions
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("feedback")}
+          className={tabBtn(tab === "feedback")}
+        >
+          <Sparkles className="h-4 w-4" />
+          Feedback
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
@@ -60,6 +69,8 @@ export default function RightPanel({
           <MediaTab />
         ) : tab === "captions" ? (
           <CaptionsTab onSeek={onSeekTimeline} />
+        ) : tab === "feedback" ? (
+          <FeedbackTab />
         ) : (
           <StudioTranscript
             currentSourceTime={currentSourceTime}
