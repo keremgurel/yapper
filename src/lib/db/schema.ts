@@ -136,3 +136,61 @@ export const submissions = pgTable(
     ),
   ],
 );
+
+export const contentStatuses = [
+  "drafted",
+  "planned",
+  "scheduled",
+  "posted",
+] as const;
+export type ContentStatus = (typeof contentStatuses)[number];
+
+/** A Content Library item: an idea that becomes a structured script (the Lab)
+ * and moves through the posting pipeline. `submissionId` links the latest
+ * recording of it; `sourceClientId` is the original localStorage id for the
+ * one-time import (unique per user so re-imports can't duplicate). */
+export const contentItems = pgTable(
+  "content_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    hooks: jsonb("hooks").notNull().default([]),
+    points: jsonb("points").notNull().default([]),
+    example: text("example").notNull().default(""),
+    cta: text("cta").notNull().default(""),
+    script: text("script"),
+    status: text("status", { enum: contentStatuses })
+      .notNull()
+      .default("drafted"),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+    sourceUrl: text("source_url"),
+    sourceTitle: text("source_title"),
+    sourceClientId: text("source_client_id"),
+    submissionId: uuid("submission_id").references(() => submissions.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("content_items_user_idx").on(t.userId, t.updatedAt),
+    check(
+      "content_items_status_check",
+      sql`${t.status} in ('drafted','planned','scheduled','posted')`,
+    ),
+    // A scheduled item must have a date; enforced at the DB so no API path
+    // (create, update, import, future writers) can produce the invalid pairing.
+    check(
+      "content_items_scheduled_check",
+      sql`${t.status} <> 'scheduled' or ${t.scheduledFor} is not null`,
+    ),
+    uniqueIndex("content_items_import_unique").on(t.userId, t.sourceClientId),
+  ],
+);
