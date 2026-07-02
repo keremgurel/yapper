@@ -80,12 +80,12 @@ export default function IdeaEditor({
             </button>
           </SignInButton>
         </Show>
-        {genError === "insufficient" && (
+        {genError?.action === "idea" && genError.kind === "insufficient" && (
           <span className="text-[12px] font-bold text-amber-500">
             Out of credits — top up to keep generating.
           </span>
         )}
-        {genError === "failed" && (
+        {genError?.action === "idea" && genError.kind === "failed" && (
           <span className="text-[12px] font-bold text-red-500">
             Generation failed — no credit charged. Try again.
           </span>
@@ -145,6 +145,8 @@ export default function IdeaEditor({
         <ScriptSection
           idea={idea}
           generating={generating === "script"}
+          disabled={generating !== null}
+          error={genError?.action === "script" ? genError.kind : null}
           onGenerate={() => void runScript()}
           onChange={(script) => updateIdea(idea.id, { script })}
         />

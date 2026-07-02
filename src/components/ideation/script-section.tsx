@@ -2,21 +2,29 @@
 
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2, Sparkles } from "lucide-react";
+import type { GenErrorKind } from "@/hooks/use-idea-generation";
 import type { Idea } from "@/lib/inspiration/ideas";
 
 const genBtn =
   "inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-50";
 
 /** Full-script field with its own generate control. Render-only — the parent
- * owns generation state and persistence. */
+ * owns generation state and persistence. `generating` is true only while the
+ * script itself is being written (drives the spinner); `disabled` is true while
+ * any generation is in flight (so a script run can't start mid-idea-run and
+ * double-charge). */
 export default function ScriptSection({
   idea,
   generating,
+  disabled,
+  error,
   onGenerate,
   onChange,
 }: {
   idea: Idea;
   generating: boolean;
+  disabled: boolean;
+  error: GenErrorKind | null;
   onGenerate: () => void;
   onChange: (script: string) => void;
 }) {
@@ -34,7 +42,7 @@ export default function ScriptSection({
           <button
             type="button"
             onClick={onGenerate}
-            disabled={generating || !idea.title.trim()}
+            disabled={disabled || !idea.title.trim()}
             className={genBtn}
             title={
               idea.title.trim() ? "Generate a script" : "Add a title first"
@@ -57,6 +65,16 @@ export default function ScriptSection({
           </SignInButton>
         </Show>
       </div>
+      {error === "insufficient" && (
+        <p className="mb-2 text-[12px] font-bold text-amber-500">
+          Out of credits — top up to keep generating.
+        </p>
+      )}
+      {error === "failed" && (
+        <p className="mb-2 text-[12px] font-bold text-red-500">
+          Script generation failed — no credit charged. Try again.
+        </p>
+      )}
       <textarea
         value={idea.script ?? ""}
         rows={8}

@@ -4,7 +4,9 @@ import { useState } from "react";
 import { useIdeas } from "@/components/ideation/ideas-context";
 import type { Idea } from "@/lib/inspiration/ideas";
 
-export type GenError = "insufficient" | "failed" | null;
+export type GenErrorKind = "insufficient" | "failed";
+type GenAction = "idea" | "script";
+export type GenError = { action: GenAction; kind: GenErrorKind } | null;
 
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
@@ -19,18 +21,20 @@ async function postJson(path: string, body: unknown) {
 /**
  * AI generation for a single idea: fill the idea fields, or write a full
  * script. Both hit charge-on-success endpoints and apply the result through
- * the ideas store. Tracks which action is in flight so the UI can show it.
+ * the ideas store. Only one action runs at a time (each charges a credit), and
+ * errors are attributed to the action that raised them so the UI can show the
+ * message next to the right button.
  */
 export function useIdeaGeneration(idea: Idea) {
   const { updateIdea } = useIdeas();
-  const [generating, setGenerating] = useState<"idea" | "script" | null>(null);
+  const [generating, setGenerating] = useState<GenAction | null>(null);
   const [error, setError] = useState<GenError>(null);
 
-  const errorFor = (res: Response): GenError =>
+  const kindFor = (res: Response): GenErrorKind =>
     res.status === 402 ? "insufficient" : "failed";
 
   const runIdea = async () => {
-    if (!idea.title.trim()) return;
+    if (generating || !idea.title.trim()) return;
     setGenerating("idea");
     setError(null);
     try {
@@ -39,7 +43,10 @@ export function useIdeaGeneration(idea: Idea) {
         sourceTitle: idea.sourceTitle,
         sourceUrl: idea.sourceUrl,
       });
-      if (!res.ok) return setError(errorFor(res));
+      if (!res.ok) {
+        setError({ action: "idea", kind: kindFor(res) });
+        return;
+      }
       const hooks = data.hooks as string[] | undefined;
       const points = data.points as string[] | undefined;
       updateIdea(idea.id, {
@@ -49,14 +56,14 @@ export function useIdeaGeneration(idea: Idea) {
         cta: (data.cta as string) || idea.cta,
       });
     } catch {
-      setError("failed");
+      setError({ action: "idea", kind: "failed" });
     } finally {
       setGenerating(null);
     }
   };
 
   const runScript = async () => {
-    if (!idea.title.trim()) return;
+    if (generating || !idea.title.trim()) return;
     setGenerating("script");
     setError(null);
     try {
@@ -68,11 +75,12 @@ export function useIdeaGeneration(idea: Idea) {
         cta: idea.cta,
       });
       if (!res.ok || typeof data.script !== "string") {
-        return setError(errorFor(res));
+        setError({ action: "script", kind: kindFor(res) });
+        return;
       }
       updateIdea(idea.id, { script: data.script });
     } catch {
-      setError("failed");
+      setError({ action: "script", kind: "failed" });
     } finally {
       setGenerating(null);
     }
