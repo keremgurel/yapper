@@ -8,6 +8,9 @@ export interface Idea {
   points: string[];
   example: string;
   cta: string;
+  /** Optional full spoken-word script (opt-in AI generation), read off the
+   * teleprompter. Absent until generated or hand-written. */
+  script?: string;
   sourceItemId?: string;
   sourceTitle?: string;
   sourceUrl?: string;

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import { ArrowUpRight, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { Show, SignInButton } from "@clerk/nextjs";
 import CopyScriptButton from "@/components/ideation/copy-script-button";
 import EditableList from "@/components/ideation/editable-list";
+import ScriptSection from "@/components/ideation/script-section";
 import { useIdeas } from "@/components/ideation/ideas-context";
+import { useIdeaGeneration } from "@/hooks/use-idea-generation";
 import type { Idea } from "@/lib/inspiration/ideas";
 
 const genBtn =
@@ -19,46 +20,12 @@ export default function IdeaEditor({
   onDeleted: () => void;
 }) {
   const { updateIdea, deleteIdea } = useIdeas();
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState<"insufficient" | "failed" | null>(
-    null,
-  );
-
-  const generate = async () => {
-    if (!idea.title.trim()) return;
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const res = await fetch("/api/generate/idea", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          topic: idea.title,
-          sourceTitle: idea.sourceTitle,
-          sourceUrl: idea.sourceUrl,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 402) {
-        setGenError("insufficient");
-        return;
-      }
-      if (!res.ok) {
-        setGenError("failed");
-        return;
-      }
-      updateIdea(idea.id, {
-        hooks: data.hooks?.length ? data.hooks : idea.hooks,
-        points: data.points?.length ? data.points : idea.points,
-        example: data.example || idea.example,
-        cta: data.cta || idea.cta,
-      });
-    } catch {
-      setGenError("failed");
-    } finally {
-      setGenerating(false);
-    }
-  };
+  const {
+    generating,
+    error: genError,
+    runIdea,
+    runScript,
+  } = useIdeaGeneration(idea);
 
   return (
     <div className="min-w-0 flex-1">
@@ -90,17 +57,19 @@ export default function IdeaEditor({
         <Show when="signed-in">
           <button
             type="button"
-            onClick={() => void generate()}
-            disabled={generating || !idea.title.trim()}
+            onClick={() => void runIdea()}
+            disabled={generating !== null || !idea.title.trim()}
             className={genBtn}
             title={idea.title.trim() ? "Generate with AI" : "Add a title first"}
           >
-            {generating ? (
+            {generating === "idea" ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            {generating ? "Generating…" : "Generate with AI · 1 credit"}
+            {generating === "idea"
+              ? "Generating…"
+              : "Generate with AI · 1 credit"}
           </button>
         </Show>
         <Show when="signed-out">
@@ -173,6 +142,12 @@ export default function IdeaEditor({
             className="border-border bg-background text-foreground focus:border-foreground/40 w-full rounded-lg border px-3 py-2 text-sm outline-none"
           />
         </div>
+        <ScriptSection
+          idea={idea}
+          generating={generating === "script"}
+          onGenerate={() => void runScript()}
+          onChange={(script) => updateIdea(idea.id, { script })}
+        />
       </div>
     </div>
   );

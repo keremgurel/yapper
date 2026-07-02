@@ -27,6 +27,12 @@ export function ideaToScript(idea: Idea): string {
   if (idea.cta.trim()) {
     lines.push("CTA");
     lines.push(idea.cta.trim());
+    lines.push("");
+  }
+
+  if (idea.script?.trim()) {
+    lines.push("SCRIPT");
+    lines.push(idea.script.trim());
   }
 
   return lines.join("\n").trim();
