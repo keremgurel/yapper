@@ -325,3 +325,19 @@ export const trainingNavItems: TrainingNavItem[] = [
     group: "Guided drills",
   },
 ];
+
+// The flat "Resources" nav list: a curated, ordered subset of the practice
+// tools (no Practice-now / Guided-drills split). These are SEO tools that feed
+// the Creator workflow, not the main app.
+const RESOURCES_ORDER = [
+  "/training/random-topic-generator",
+  "/training/read-aloud",
+  "/training/explain-after-reading",
+  "/training/interview-prep",
+  "/training/conflict",
+  "/training/dating",
+];
+
+export const resourcesNavItems: TrainingNavItem[] = RESOURCES_ORDER.map(
+  (href) => trainingNavItems.find((item) => item.href === href)!,
+);
