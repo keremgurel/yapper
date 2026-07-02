@@ -8,18 +8,16 @@ import {
   ArrowRight,
   BookOpen,
   BriefcaseBusiness,
-  Camera,
-  Flame,
   HeartHandshake,
+  Library,
   Menu,
-  Mic,
-  Sparkles,
+  Shuffle,
   Users,
   Volume2,
   X,
 } from "lucide-react";
 
-import { trainingNavItems } from "@/data/training";
+import { resourcesNavItems } from "@/data/training";
 import { createNav } from "@/data/create-nav";
 import CreateIcon from "@/components/create/create-icon";
 
@@ -36,16 +34,13 @@ const itemVariants = {
 
 type Icon = ComponentType<{ className?: string }>;
 
-const trainingIcon: Record<string, Icon> = {
-  "Random topic generator": Sparkles,
-  "Freestyle speaking": Mic,
-  "Fluency drills": Flame,
-  "Explain after reading": BookOpen,
+const resourceIcon: Record<string, Icon> = {
+  "Random topic generator": Shuffle,
   "Read aloud": Volume2,
+  "Explain after reading": BookOpen,
   "Interview prep": BriefcaseBusiness,
-  "Dating/social practice": Users,
   "Conflict handling": HeartHandshake,
-  "Creator camera drills": Camera,
+  "Dating/social practice": Users,
 };
 
 function Row({
@@ -88,7 +83,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /**
  * The mobile navbar IS the menu: the hamburger sits in the header's top row and
- * clicking it morphs the bar downward — a single rounded panel that grows to
+ * clicking it morphs the bar downward, a single rounded panel that grows to
  * reveal the Training and Create links, coglyde-style.
  */
 export default function MobileNav() {
@@ -132,7 +127,7 @@ export default function MobileNav() {
         ) : null}
       </AnimatePresence>
 
-      {/* Morphing panel — grows out of the header's bottom edge. */}
+      {/* Morphing panel, grows out of the header's bottom edge. */}
       <AnimatePresence initial={false}>
         {open ? (
           <motion.div
@@ -150,22 +145,6 @@ export default function MobileNav() {
               animate="show"
               className="no-scrollbar max-h-[72vh] space-y-0.5 overflow-y-auto p-3"
             >
-              <SectionLabel>Training</SectionLabel>
-              {trainingNavItems.map((item) => (
-                <Row
-                  key={`t-${item.href}-${item.title}`}
-                  href={item.href}
-                  title={item.title}
-                  icon={(() => {
-                    const I = trainingIcon[item.title] ?? Sparkles;
-                    return <I className="h-4 w-4" />;
-                  })()}
-                  onNavigate={close}
-                />
-              ))}
-
-              <div className="border-border/60 my-2 border-t" />
-
               <SectionLabel>Create</SectionLabel>
               {createNav.map((item) => (
                 <Row
@@ -173,6 +152,22 @@ export default function MobileNav() {
                   href={item.href}
                   title={item.title}
                   icon={<CreateIcon icon={item.icon} className="h-4 w-4" />}
+                  onNavigate={close}
+                />
+              ))}
+
+              <div className="border-border/60 my-2 border-t" />
+
+              <SectionLabel>Resources</SectionLabel>
+              {resourcesNavItems.map((item) => (
+                <Row
+                  key={`r-${item.href}`}
+                  href={item.href}
+                  title={item.title}
+                  icon={(() => {
+                    const I = resourceIcon[item.title] ?? Library;
+                    return <I className="h-4 w-4" />;
+                  })()}
                   onNavigate={close}
                 />
               ))}

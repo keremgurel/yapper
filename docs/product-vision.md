@@ -62,6 +62,27 @@ AI does, and whether it's free or metered.
 idea in seconds, read it off a teleprompter so you don't fumble, fix the fumble
 you did make in one tap, and (optionally) get coached before you post.
 
+### 2b. The creator workflow surfaces (Inspiration → Lab → Content Library)
+
+The Creator workflow is **the main app**; the practice drills / calculators are
+just SEO tools that feed it. The workflow has three first-class surfaces the
+signed-in user moves between (all reachable from the account menu):
+
+1. **Inspiration** — helps you come up with **video ideas**. Save reference
+   clips and generate idea candidates from your pillars.
+2. **The Lab** — take a generated idea and **work with AI to turn it into a
+   structured "yapping script"** (hook + beats + full spoken script). This is
+   where ideation + script generation live. From here you either record now, or
+   **promote the script to the Content Library** for later.
+3. **Content Library** — your pipeline of promoted scripts as a **table you can
+   set a status on: Drafted / Planned / Scheduled / Posted.** This is the
+   consistency engine — plan and schedule content instead of one-off recordings.
+
+So the flow is: **Inspiration (idea) → Lab (idea → structured script) →
+Content Library (promote, schedule, track status) → Record → Edit → Feedback →
+Post.** Recorded sessions, Inspiration, and Content Library all hang off the
+signed-in account menu.
+
 ---
 
 ## 3. Monetization
