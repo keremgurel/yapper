@@ -2,7 +2,7 @@
  * Subscription + top-up catalog. The plan *shape* lives here; the actual Stripe
  * price IDs come from env so they can differ per environment and be swapped
  * without a deploy. Final prices/credit allotments are tuned on measured COGS
- * (see docs/product-vision.md §7) — the numbers here are placeholders and the
+ * (see docs/product-vision.md §7); the numbers here are placeholders and the
  * Stripe price is the source of truth for the amount charged.
  *
  * To go live: create the products/prices in Stripe, then set the env vars.
@@ -41,7 +41,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     monthlyCredits: 50,
     priceLabel: "$12/mo",
     blurb:
-      "For creators finding their voice — enough AI for a few videos a week.",
+      "For creators finding their voice: enough AI for a few videos a week.",
   },
   {
     key: "pro",
@@ -49,7 +49,7 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     priceId: process.env.STRIPE_PRICE_PRO ?? "",
     monthlyCredits: 200,
     priceLabel: "$29/mo",
-    blurb: "For consistent posters — daily feedback and generation headroom.",
+    blurb: "For consistent posters: daily feedback and generation headroom.",
   },
 ];
 

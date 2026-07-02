@@ -50,7 +50,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         break; // ignore everything else
     }
   } catch (e) {
-    // A handler failure is our bug, not Stripe's — 500 so Stripe retries.
+    // A handler failure is our bug, not Stripe's, so return 500 and let Stripe retry.
     console.error(`stripe webhook ${event.type} failed`, e);
     return Response.json({ error: "handler_failed" }, { status: 500 });
   }
@@ -113,8 +113,8 @@ async function onSubscriptionChange(sub: Stripe.Subscription) {
 }
 
 /** Renewal: grant the monthly allotment on each paid cycle (not the initial
- * create invoice — that's covered by checkout.session.completed). Idempotent on
- * the invoice id. */
+ * create invoice, which checkout.session.completed already covers). Idempotent
+ * on the invoice id. */
 async function onInvoicePaid(invoice: Stripe.Invoice) {
   if (invoice.billing_reason !== "subscription_cycle") return;
   const customerId =
