@@ -1,0 +1,4 @@
+CREATE UNIQUE INDEX "credit_ledger_one_welcome_per_user" ON "credit_ledger" USING btree ("user_id") WHERE "credit_ledger"."reason" = 'welcome_grant';--> statement-breakpoint
+ALTER TABLE "credit_ledger" ADD CONSTRAINT "credit_ledger_reason_check" CHECK ("credit_ledger"."reason" in ('welcome_grant','subscription_grant','purchase','deduction','refund','adjustment'));--> statement-breakpoint
+ALTER TABLE "submissions" ADD CONSTRAINT "submissions_kind_check" CHECK ("submissions"."kind" in ('audio','video'));--> statement-breakpoint
+ALTER TABLE "submissions" ADD CONSTRAINT "submissions_status_check" CHECK ("submissions"."status" in ('pending','processing','complete','failed'));
