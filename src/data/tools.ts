@@ -17,7 +17,7 @@ export const tools: Tool[] = [
     title: "Words per minute calculator",
     tagline: "How long will your script take to say?",
     description:
-      "Paste a script to get its spoken length, or plan how many words fit a target time — at slow, conversational, or fast pace.",
+      "Paste a script to get its spoken length, or plan how many words fit a target time, at slow, conversational, or fast pace.",
     href: "/tools/words-per-minute",
     category: "Scripting",
     cta: "Open calculator",
@@ -27,7 +27,7 @@ export const tools: Tool[] = [
     title: "Free teleprompter recorder",
     tagline: "Read your script while you record",
     description:
-      "A TikTok-style recorder with your script scrolling over the camera at a pace you set. Record, retake, then edit — no sign-up.",
+      "A TikTok-style recorder with your script scrolling over the camera at a pace you set. Record, retake, then edit. No sign-up.",
     href: "/record",
     category: "Delivery",
     cta: "Start recording",

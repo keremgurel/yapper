@@ -17,9 +17,9 @@ export default function ToolsHub() {
             Free tools for talking to camera
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-8" style={muted}>
-            Plan a script, read it off a teleprompter, and edit the take — all
-            in your browser, no sign-up. Everything here flows into the full
-            create loop when you&apos;re ready.
+            Plan a script, read it off a teleprompter, and edit the take, all in
+            your browser, no sign-up. Everything here flows into the full create
+            loop when you&apos;re ready.
           </p>
         </div>
       </section>

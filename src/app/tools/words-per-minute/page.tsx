@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import WpmToolPage from "@/components/tools/wpm-tool-page";
+import { WPM_FAQ } from "@/data/wpm-faq";
 
 export const metadata: Metadata = {
   title: "Words Per Minute Calculator (Speaking Time) | Yapper",
@@ -23,32 +24,11 @@ const appSchema = {
 const faqSchema = {
   "@context": "https://schema.org",
   "@type": "FAQPage",
-  mainEntity: [
-    {
-      "@type": "Question",
-      name: "How many words per minute is a good speaking pace?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Conversational on-camera and presentation delivery usually sits around 130-150 words per minute. Slower (around 110) reads clearer; faster (160+) feels energetic but can rush.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How long will my script take to say?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "Paste your script into the calculator and pick a pace. Spoken length is roughly the word count divided by your words-per-minute rate — e.g. 200 words at 130 wpm is about 1 minute 32 seconds.",
-      },
-    },
-    {
-      "@type": "Question",
-      name: "How many words fit in a 1-minute video?",
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: "At a conversational 130 words per minute, about 130 words. Enter your target time in the calculator to get the word count for any length and pace.",
-      },
-    },
-  ],
+  mainEntity: WPM_FAQ.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
 };
 
 export default function WordsPerMinutePage() {

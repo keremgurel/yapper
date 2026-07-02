@@ -12,7 +12,7 @@ import {
 const muted = { color: "var(--sg-text-muted)" };
 
 /** Words-per-minute calculator: paste a script to get its spoken length, or
- * plan how many words fit a target time. Pure client-side — the math lives in
+ * plan how many words fit a target time. Pure client-side; the math lives in
  * lib/tools/wpm. */
 export default function WpmCalculator() {
   const [text, setText] = useState("");
@@ -21,8 +21,10 @@ export default function WpmCalculator() {
 
   const words = countWords(text);
   const seconds = speakingSeconds(words, wpm);
-  const targetSeconds = Math.max(0, Number(targetMin) || 0) * 60;
-  const wordsNeeded = wordsForSeconds(targetSeconds, wpm);
+  // Clamp to a sane range so a pasted exponent (1e999 → Infinity) or an absurd
+  // value can't render as "∞" or blow out the layout.
+  const targetMinutes = Math.min(600, Math.max(0, Number(targetMin) || 0));
+  const wordsNeeded = wordsForSeconds(targetMinutes * 60, wpm);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">

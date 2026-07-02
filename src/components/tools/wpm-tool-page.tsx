@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, BookOpen } from "lucide-react";
 import TrainingLayout from "@/app/training-layout";
 import WpmCalculator from "@/components/tools/wpm-calculator";
+import { WPM_FAQ } from "@/data/wpm-faq";
 
 const muted = { color: "var(--sg-text-muted)" };
 
@@ -19,7 +20,7 @@ export default function WpmToolPage() {
           <p className="mt-4 max-w-2xl text-lg leading-8" style={muted}>
             Paste a script to see how long it takes to say out loud, or plan how
             many words fit a target time. Conversational on-camera delivery runs
-            around 130&ndash;150 words per minute.
+            around 130 to 150 words per minute.
           </p>
         </div>
       </section>
@@ -51,7 +52,7 @@ export default function WpmToolPage() {
             <p className="sg-display text-2xl">Which pace is right?</p>
             <p className="text-sm leading-6" style={muted}>
               How to measure your rate, choose a range, and hold a steady pace
-              under pressure &mdash; with the research behind the numbers.
+              under pressure, plus the research behind the numbers.
             </p>
             <Link
               href="/blog/words-per-minute-speaking"
@@ -60,6 +61,23 @@ export default function WpmToolPage() {
               <BookOpen className="h-4 w-4" />
               Read the speaking-pace guide
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Visible FAQ, mirroring the FAQPage JSON-LD (same source array). */}
+      <section className="px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="sg-display mb-6 text-3xl">Questions</h2>
+          <div className="flex flex-col gap-4">
+            {WPM_FAQ.map((item) => (
+              <div key={item.q} className="sg-card p-6">
+                <p className="sg-display text-lg">{item.q}</p>
+                <p className="mt-2 text-sm leading-6" style={muted}>
+                  {item.a}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

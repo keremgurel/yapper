@@ -24,7 +24,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   // Standalone tool landing pages (under /tools/). Product routes referenced by
-  // the registry (e.g. /record, /studio) are indexed elsewhere, not here.
+  // the registry (e.g. /record, /studio) are reached via internal links, not
+  // listed here.
   const toolPages = tools
     .filter((t) => t.href.startsWith("/tools/"))
     .map((t) => ({
