@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowUpRight, Loader2, Sparkles, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, Loader2, Sparkles, Trash2, Video } from "lucide-react";
 import { Show, SignInButton } from "@clerk/nextjs";
 import CopyScriptButton from "@/components/ideation/copy-script-button";
 import EditableList from "@/components/ideation/editable-list";
@@ -37,6 +38,13 @@ export default function IdeaEditor({
           className="text-foreground w-full bg-transparent text-2xl font-black tracking-tight outline-none"
         />
         <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/record?idea=${idea.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3.5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-cyan-600"
+          >
+            <Video className="h-3.5 w-3.5" />
+            Record
+          </Link>
           <CopyScriptButton idea={idea} />
           <button
             type="button"
