@@ -44,6 +44,12 @@ export default function TrainingHeader() {
           </SignInButton>
         </Show>
         <Show when="signed-in">
+          <Link
+            href="/history"
+            className="text-foreground/70 hover:text-foreground hidden text-[13px] font-bold no-underline sm:inline"
+          >
+            Sessions
+          </Link>
           <UserButton appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
         </Show>
         <div className="origin-right scale-[0.5]">
