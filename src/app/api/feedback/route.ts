@@ -88,16 +88,24 @@ export async function POST(req: NextRequest): Promise<Response> {
       coaching: result.coaching,
     });
   } catch (e) {
-    const balance = await refundCredits(userId, cost, submission.id);
-    await db
-      .update(submissions)
-      .set({
-        status: "failed",
-        error: e instanceof Error ? e.message : "feedback_failed",
-        updatedAt: new Date(),
-      })
-      .where(eq(submissions.id, submission.id));
     const detail = e instanceof Error ? e.message : "feedback_failed";
+    // Refund and mark-failed independently and best-effort — one failing must
+    // not block the other. The reconciliation sweep is the ultimate backstop
+    // (refund is idempotent, so a double-fire is safe).
+    let balance: number | undefined;
+    try {
+      balance = await refundCredits(userId, cost, submission.id);
+    } catch {
+      // reconcile sweep will retry the refund
+    }
+    try {
+      await db
+        .update(submissions)
+        .set({ status: "failed", error: detail, updatedAt: new Date() })
+        .where(eq(submissions.id, submission.id));
+    } catch {
+      // reconcile sweep will fail the stranded submission
+    }
     return Response.json(
       { error: "feedback_failed", detail, balance },
       { status: 502 },

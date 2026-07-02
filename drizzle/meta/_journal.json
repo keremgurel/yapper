@@ -15,6 +15,13 @@
       "when": 1782920579824,
       "tag": "0001_overjoyed_rachel_grey",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782954407912,
+      "tag": "0002_furry_the_enforcers",
+      "breakpoints": true
     }
   ]
 }

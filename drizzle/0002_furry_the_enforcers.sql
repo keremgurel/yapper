@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "credit_ledger_one_refund_per_submission" ON "credit_ledger" USING btree ("submission_id") WHERE "credit_ledger"."reason" = 'refund';
