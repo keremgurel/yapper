@@ -36,13 +36,23 @@ export async function POST(req: NextRequest): Promise<Response> {
   let customerId = state?.stripeCustomerId ?? null;
   if (!customerId) {
     const user = await currentUser();
-    const customer = await stripe.customers.create({
-      email: user?.primaryEmailAddress?.emailAddress ?? undefined,
-      metadata: { userId },
-    });
+    // Idempotency key keyed to the user so two concurrent checkouts can't
+    // create two customers for the same person.
+    const customer = await stripe.customers.create(
+      {
+        email: user?.primaryEmailAddress?.emailAddress ?? undefined,
+        metadata: { userId },
+      },
+      { idempotencyKey: `cust-create-${userId}` },
+    );
     customerId = customer.id;
     await setStripeCustomerId(userId, customerId);
   }
+
+  // Only offer the free trial to users who have never had a subscription, so it
+  // can't be farmed by cancel-and-resubscribe. subscriptionStatus is null until
+  // the first subscription; any prior value (even "canceled") means no trial.
+  const trialEligible = !state?.subscriptionStatus;
 
   const origin = new URL(req.url).origin;
   const common = {
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       mode: "subscription",
       line_items: [{ price: plan.priceId, quantity: 1 }],
       subscription_data: {
-        trial_period_days: TRIAL_DAYS,
+        ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: { userId },
       },
       metadata: { userId, kind: "subscription", plan: plan.key },

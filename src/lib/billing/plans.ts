@@ -54,19 +54,21 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
 ];
 
 export const CREDIT_PACKS: CreditPack[] = [
+  // Priced per-credit above the subscription rate on purpose: top-ups are the
+  // convenience option, the subscription is the value option.
   {
     key: "pack_small",
     name: "20 credits",
     priceId: process.env.STRIPE_PRICE_PACK_SMALL ?? "",
     credits: 20,
-    priceLabel: "$6",
+    priceLabel: "$9",
   },
   {
     key: "pack_large",
     name: "60 credits",
     priceId: process.env.STRIPE_PRICE_PACK_LARGE ?? "",
     credits: 60,
-    priceLabel: "$15",
+    priceLabel: "$22",
   },
 ];
 

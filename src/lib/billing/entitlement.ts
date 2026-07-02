@@ -5,15 +5,25 @@ import type { BillingState } from "@/lib/db/billing";
 // which cuts access. incomplete / canceled / unpaid are not entitled.
 const ENTITLED_STATUSES = new Set(["trialing", "active", "past_due"]);
 
+// Grace past the paid period before we cut access, covering dunning + webhook
+// delay. Also the self-heal window if a cancellation webhook is ever missed.
+const GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+
 /** Whether the user may use premium (AI) actions: an active-enough Stripe
- * subscription or an in-progress trial. Credits meter usage *within* this. */
+ * subscription or an in-progress trial. Credits meter usage *within* this.
+ *
+ * We also require the paid period (plus grace) to still be current, so a missed
+ * `customer.subscription.deleted` can't leave a user entitled forever. */
 export function isEntitled(
-  state: Pick<BillingState, "subscriptionStatus"> | null,
+  state: Pick<BillingState, "subscriptionStatus" | "currentPeriodEnd"> | null,
+  now: Date = new Date(),
 ): boolean {
-  return (
-    !!state?.subscriptionStatus &&
-    ENTITLED_STATUSES.has(state.subscriptionStatus)
-  );
+  if (!state?.subscriptionStatus) return false;
+  if (!ENTITLED_STATUSES.has(state.subscriptionStatus)) return false;
+  // No period recorded yet (just-created sub): trust the status. Otherwise the
+  // period+grace must still be in the future.
+  if (!state.currentPeriodEnd) return true;
+  return now.getTime() < state.currentPeriodEnd.getTime() + GRACE_MS;
 }
 
 export function isTrialing(
