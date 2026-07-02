@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "Record with teleprompter",
   description:
     "Record your take with a scrolling teleprompter of your script or key points, then edit and get AI feedback.",
-  alternates: { canonical: "https://ypr.app/record" },
+  alternates: { canonical: "https://ypr.app/studio/recorder" },
 };
 
 export default function Page() {

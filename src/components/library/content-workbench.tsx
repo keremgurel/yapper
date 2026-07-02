@@ -112,7 +112,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
         />
         <div className="flex shrink-0 items-center gap-2">
           <Link
-            href={`/record?item=${item.id}`}
+            href={`/studio/recorder?item=${item.id}`}
             className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3.5 py-2 text-[13px] font-bold text-white no-underline transition-colors hover:bg-cyan-600"
           >
             <Video className="h-3.5 w-3.5" />

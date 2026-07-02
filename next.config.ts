@@ -37,6 +37,18 @@ const nextConfig: NextConfig = {
         destination: "/studio/library",
         permanent: true,
       },
+      // Inspiration + Recorder moved into the Studio shell. Query strings
+      // (e.g. the recorder's legacy ?idea=) are forwarded automatically.
+      {
+        source: "/inspiration",
+        destination: "/studio/inspiration",
+        permanent: true,
+      },
+      {
+        source: "/record",
+        destination: "/studio/recorder",
+        permanent: true,
+      },
     ];
   },
   async rewrites() {

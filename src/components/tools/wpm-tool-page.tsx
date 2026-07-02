@@ -41,7 +41,7 @@ export default function WpmToolPage() {
               scroll speed that matches your target words per minute.
             </p>
             <Link
-              href="/record"
+              href="/studio/recorder"
               className="sg-btn-accent mt-auto self-start no-underline"
             >
               Record with the teleprompter

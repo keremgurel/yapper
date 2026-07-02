@@ -1,4 +1,12 @@
-import type { Idea } from "@/lib/inspiration/ideas";
+/** The fields the teleprompter reads. Both the legacy localStorage Idea and a
+ * Content Library item satisfy this structurally. */
+export interface PromptSource {
+  title?: string;
+  hooks: string[];
+  points: string[];
+  cta: string;
+  script?: string | null;
+}
 
 /** What the teleprompter shows while recording. The creator picks this before
  * they start (per the core loop: full script / hook + key points / nothing). */
@@ -24,14 +32,17 @@ export const VIEW_OPTIONS: ViewOption[] = [
   {
     view: "off",
     label: "Nothing",
-    desc: "Just the camera — wing it",
+    desc: "Just the camera. Wing it.",
   },
 ];
 
 /** Build the teleprompter text for an idea + chosen view. Returns "" for "off"
  * (and whenever there's nothing to show), so the caller can hide the overlay.
  * "script" falls back to the notes view when no script has been written. */
-export function teleprompterText(idea: Idea, view: TeleprompterView): string {
+export function teleprompterText(
+  idea: PromptSource,
+  view: TeleprompterView,
+): string {
   if (view === "off") return "";
   if (view === "script") {
     const script = idea.script?.trim();
@@ -41,7 +52,7 @@ export function teleprompterText(idea: Idea, view: TeleprompterView): string {
   return notesText(idea);
 }
 
-function notesText(idea: Idea): string {
+function notesText(idea: PromptSource): string {
   const hook = idea.hooks.map((h) => h.trim()).find(Boolean);
   const points = idea.points.map((p) => p.trim()).filter(Boolean);
   const lines: string[] = [];
@@ -54,7 +65,7 @@ function notesText(idea: Idea): string {
 /** Whether a view has anything to show for this idea (drives whether we offer
  * the scrolling overlay at all). */
 export function hasTeleprompterText(
-  idea: Idea,
+  idea: PromptSource,
   view: TeleprompterView,
 ): boolean {
   return teleprompterText(idea, view).length > 0;
