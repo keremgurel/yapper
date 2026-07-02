@@ -27,16 +27,8 @@ export default function TrainingHeader() {
         <ResourcesNavDropdown />
       </nav>
 
-      {/* Right: theme toggle + account (signed in) or sign in */}
+      {/* Right: account (signed in) or sign in, then the theme toggle */}
       <div className="flex items-center gap-2">
-        {/* The switcher is 104x64; box it at the scaled size so it doesn't
-            reserve dead space and throw the spacing off. */}
-        <div className="h-8 w-[52px] shrink-0">
-          <div className="origin-top-left scale-[0.5]">
-            <CinematicThemeSwitcher />
-          </div>
-        </div>
-
         <Show when="signed-out">
           <SignInButton mode="modal" withSignUp>
             <button
@@ -50,6 +42,14 @@ export default function TrainingHeader() {
         <Show when="signed-in">
           <UserMenu />
         </Show>
+
+        {/* The switcher is 104x64; box it at the scaled size so it doesn't
+            reserve dead space and throw the spacing off. */}
+        <div className="h-8 w-[52px] shrink-0">
+          <div className="origin-top-left scale-[0.5]">
+            <CinematicThemeSwitcher />
+          </div>
+        </div>
 
         <MobileNav />
       </div>
