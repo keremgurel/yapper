@@ -38,6 +38,45 @@ export async function startResumableUpload(
   return url;
 }
 
+/**
+ * Server-side upload of raw bytes to the Gemini Files API. Starts a resumable
+ * session, PUTs the bytes, and polls until the file is ACTIVE (video needs
+ * processing). Returns the file uri to reference in generateContent.
+ */
+export async function uploadBytesToGemini(
+  bytes: ArrayBuffer,
+  mimeType: string,
+): Promise<string> {
+  const uploadUrl = await startResumableUpload(bytes.byteLength, mimeType);
+  const put = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "Content-Length": String(bytes.byteLength),
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize",
+    },
+    body: bytes,
+  });
+  if (!put.ok) throw new Error(`gemini_upload_${put.status}`);
+  const file = (await put.json())?.file as
+    | { name?: string; uri?: string; state?: string }
+    | undefined;
+  if (!file?.uri || !file.name) throw new Error("gemini_upload_no_uri");
+
+  // Wait for processing (videos start as PROCESSING).
+  let state = file.state;
+  for (let i = 0; i < 30 && state && state !== "ACTIVE"; i++) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const res = await fetch(`${BASE}/${file.name}`, {
+      headers: { "X-goog-api-key": key() },
+    });
+    const j = await res.json();
+    state = j?.state;
+    if (state === "FAILED") throw new Error("gemini_file_failed");
+  }
+  return file.uri;
+}
+
 interface GeminiPart {
   text?: string;
   fileData?: { mimeType: string; fileUri: string };

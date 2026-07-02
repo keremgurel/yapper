@@ -139,6 +139,11 @@ export default function FeedbackTab() {
                 You&apos;re out of credits. Top up or upgrade to keep going.
               </p>
             )}
+            {error === "storage_full" && (
+              <p className="text-sm font-bold text-amber-500">
+                You&apos;re out of storage. Delete old sessions or upgrade.
+              </p>
+            )}
             {error === "no_speech" && (
               <p className="text-foreground/60 text-sm">
                 No speech detected in this recording.

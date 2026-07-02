@@ -18,6 +18,7 @@ interface Summary {
 
 interface Detail extends Summary {
   feedback: { metrics: DeliveryMetrics; coaching: Coaching } | null;
+  mediaKey: string | null;
   error: string | null;
 }
 
@@ -30,6 +31,7 @@ export default function HistoryView() {
   const { isLoaded, isSignedIn } = useUser();
   const [list, setList] = useState<Summary[] | null>(null);
   const [selected, setSelected] = useState<Detail | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
@@ -43,10 +45,18 @@ export default function HistoryView() {
   const open = async (id: string) => {
     setLoadingDetail(true);
     setSelected(null);
+    setMediaUrl(null);
     try {
       const r = await fetch(`/api/submissions/${id}`);
       const d = await r.json();
-      setSelected(d.submission ?? null);
+      const sub: Detail | null = d.submission ?? null;
+      setSelected(sub);
+      if (sub?.mediaKey) {
+        const sr = await fetch(
+          `/api/media/sign?key=${encodeURIComponent(sub.mediaKey)}`,
+        );
+        if (sr.ok) setMediaUrl((await sr.json()).url ?? null);
+      }
     } finally {
       setLoadingDetail(false);
     }
@@ -126,10 +136,19 @@ export default function HistoryView() {
             <Loader2 className="h-4 w-4 animate-spin" /> Loading feedback…
           </div>
         ) : selected?.feedback ? (
-          <FeedbackResult
-            coaching={selected.feedback.coaching}
-            metrics={selected.feedback.metrics}
-          />
+          <div className="space-y-4">
+            {mediaUrl && (
+              <video
+                src={mediaUrl}
+                controls
+                className="w-full rounded-xl bg-black"
+              />
+            )}
+            <FeedbackResult
+              coaching={selected.feedback.coaching}
+              metrics={selected.feedback.metrics}
+            />
+          </div>
         ) : selected ? (
           <p className="text-foreground/55 py-12 text-sm">
             No feedback stored for this session

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { WELCOME_CREDITS } from "./constants";
 import { creditLedger, users } from "./schema";
@@ -37,4 +37,26 @@ export async function ensureUser(
 /** Remove a user (and, via cascade, their ledger + submissions). */
 export async function deleteUser(id: string): Promise<void> {
   await getDb().delete(users).where(eq(users.id, id));
+}
+
+/** Adjust a user's running media-storage counter (clamped at 0). */
+export async function addStorageBytes(
+  id: string,
+  delta: number,
+): Promise<void> {
+  await getDb()
+    .update(users)
+    .set({
+      storageBytes: sql`greatest(0, ${users.storageBytes} + ${delta})`,
+    })
+    .where(eq(users.id, id));
+}
+
+/** Current storage usage (bytes) for quota checks. */
+export async function getStorageBytes(id: string): Promise<number> {
+  const [u] = await getDb()
+    .select({ b: users.storageBytes })
+    .from(users)
+    .where(eq(users.id, id));
+  return u?.b ?? 0;
 }
