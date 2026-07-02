@@ -26,13 +26,13 @@ function hookTemplates(topic: string): string[] {
   return [
     `Most people get ${t} completely wrong.`,
     `Here's what nobody tells you about ${t}.`,
-    `I changed my mind about ${t} — here's why.`,
+    `I changed my mind about ${t}, and here's why.`,
   ];
 }
 
 const POINT_TEMPLATES = [
   "The core idea in one sentence.",
-  "Why it matters — the stakes.",
+  "Why it matters (the stakes).",
   "One counterintuitive detail people miss.",
 ];
 
