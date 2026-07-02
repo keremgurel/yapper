@@ -1,7 +1,8 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, sql } from "drizzle-orm";
+import { deleteObject } from "@/lib/r2";
 import { getDb } from "./client";
 import { WELCOME_CREDITS } from "./constants";
-import { creditLedger, users } from "./schema";
+import { creditLedger, submissions, users } from "./schema";
 
 /**
  * Create the user row on first sight (idempotent — safe for duplicate Clerk
@@ -34,9 +35,24 @@ export async function ensureUser(
   });
 }
 
-/** Remove a user (and, via cascade, their ledger + submissions). */
+/** Remove a user (and, via cascade, their ledger + submissions). Best-effort
+ * deletes the user's R2 recordings first so no media is orphaned on account
+ * deletion (their keys are gone once the submission rows cascade). */
 export async function deleteUser(id: string): Promise<void> {
-  await getDb().delete(users).where(eq(users.id, id));
+  const db = getDb();
+  const rows = await db
+    .select({ key: submissions.mediaKey })
+    .from(submissions)
+    .where(and(eq(submissions.userId, id), isNotNull(submissions.mediaKey)));
+  await db.delete(users).where(eq(users.id, id));
+  for (const { key } of rows) {
+    if (!key) continue;
+    try {
+      await deleteObject(key);
+    } catch {
+      // orphaned object; a lifecycle sweep can reclaim it later
+    }
+  }
 }
 
 /** Adjust a user's running media-storage counter (clamped at 0). */

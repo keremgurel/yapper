@@ -63,17 +63,21 @@ export async function uploadBytesToGemini(
     | undefined;
   if (!file?.uri || !file.name) throw new Error("gemini_upload_no_uri");
 
-  // Wait for processing (videos start as PROCESSING).
+  // Wait for processing (videos start as PROCESSING). ~45s worst case, well
+  // inside maxDuration. A non-OK poll is treated as transient (retry), not as
+  // "done" — so a 429/401 can't sneak a PROCESSING file through to generate.
   let state = file.state;
-  for (let i = 0; i < 30 && state && state !== "ACTIVE"; i++) {
+  for (let i = 0; i < 30 && state !== "ACTIVE"; i++) {
     await new Promise((r) => setTimeout(r, 1500));
     const res = await fetch(`${BASE}/${file.name}`, {
       headers: { "X-goog-api-key": key() },
     });
+    if (!res.ok) continue;
     const j = await res.json();
     state = j?.state;
     if (state === "FAILED") throw new Error("gemini_file_failed");
   }
+  if (state !== "ACTIVE") throw new Error("gemini_processing_timeout");
   return file.uri;
 }
 
