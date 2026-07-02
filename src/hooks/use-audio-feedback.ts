@@ -6,17 +6,19 @@ import { encodeWav } from "@/lib/studio/wav";
 import type { Coaching } from "@/lib/feedback/coach";
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
 
-export interface AudioFeedbackData {
+export type FeedbackTier = "audio" | "video" | "full";
+
+export interface FeedbackData {
   submissionId: string;
   balance: number;
-  transcript: string;
-  metrics: DeliveryMetrics;
+  metrics?: DeliveryMetrics;
   coaching: Coaching;
 }
 
 export type FeedbackStatus =
   | "idle"
   | "preparing"
+  | "uploading"
   | "analyzing"
   | "done"
   | "error";
@@ -27,32 +29,74 @@ export type FeedbackError =
   | "failed"
   | null;
 
+async function wavFrom(sourceUrl: string): Promise<Blob> {
+  return encodeWav(await decodeToMono16k(sourceUrl), 16000);
+}
+
+// Upload the recording straight to Gemini via a server-minted resumable URL,
+// so the big file never passes through our function. Returns the file uri.
+async function uploadVideo(
+  sourceUrl: string,
+): Promise<{ fileUri: string; mimeType: string }> {
+  const blob = await fetch(sourceUrl).then((r) => r.blob());
+  const mimeType = blob.type || "video/webm";
+  const res = await fetch("/api/gemini/upload-url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sizeBytes: blob.size, mimeType }),
+  });
+  if (!res.ok) throw new Error("upload_start_failed");
+  const { uploadUrl } = await res.json();
+  const put = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "X-Goog-Upload-Offset": "0",
+      "X-Goog-Upload-Command": "upload, finalize",
+    },
+    body: blob,
+  });
+  if (!put.ok) throw new Error("upload_failed");
+  const fileUri = (await put.json())?.file?.uri;
+  if (!fileUri) throw new Error("upload_failed");
+  return { fileUri, mimeType };
+}
+
 /**
- * Runs the audio-feedback request: decode the source audio in-browser → 16 kHz
- * WAV → POST to /api/feedback. Keeps the server as the source of truth; the
- * client just prepares the audio and renders the result.
+ * Runs a feedback request for the chosen tier. Audio decodes to WAV and POSTs;
+ * video/full upload the clip to Gemini first, then request analysis. The server
+ * stays the source of truth (credits, storage, coaching).
  */
-export function useAudioFeedback(sourceUrl?: string) {
+export function useFeedback(sourceUrl?: string) {
   const [status, setStatus] = useState<FeedbackStatus>("idle");
-  const [data, setData] = useState<AudioFeedbackData | null>(null);
+  const [data, setData] = useState<FeedbackData | null>(null);
   const [error, setError] = useState<FeedbackError>(null);
 
-  const run = async () => {
+  const run = async (tier: FeedbackTier) => {
     if (!sourceUrl) return;
     setStatus("preparing");
     setError(null);
     try {
-      const audio = await decodeToMono16k(sourceUrl);
-      const wav = encodeWav(audio, 16000);
+      let url = `/api/feedback?tier=${tier}`;
+      let body: Blob | undefined;
+
+      if (tier === "video" || tier === "full") {
+        setStatus("uploading");
+        const { fileUri, mimeType } = await uploadVideo(sourceUrl);
+        url += `&fileUri=${encodeURIComponent(fileUri)}&mimeType=${encodeURIComponent(mimeType)}`;
+        if (tier === "full") body = await wavFrom(sourceUrl);
+      } else {
+        body = await wavFrom(sourceUrl);
+      }
+
       setStatus("analyzing");
-      const res = await fetch("/api/feedback?tier=audio", {
+      const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "audio/wav" },
-        body: wav,
+        headers: body ? { "Content-Type": "audio/wav" } : undefined,
+        body,
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok) {
-        setData(json as AudioFeedbackData);
+        setData(json as FeedbackData);
         setStatus("done");
         return;
       }

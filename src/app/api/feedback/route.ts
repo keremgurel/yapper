@@ -12,47 +12,64 @@ import {
 import { submissions } from "@/lib/db/schema";
 import { ensureUser } from "@/lib/db/users";
 import { runAudioFeedback } from "@/lib/feedback/audio";
+import type { Coaching } from "@/lib/feedback/coach";
+import { computeMetrics, type DeliveryMetrics } from "@/lib/feedback/metrics";
+import { transcribeForFeedback } from "@/lib/feedback/transcribe";
+import { coachOnCamera } from "@/lib/feedback/video";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
+
+const TIERS: FeedbackTier[] = ["audio", "video", "full"];
+
+interface FeedbackResult {
+  metrics?: DeliveryMetrics;
+  coaching: Coaching;
+  words?: unknown;
+}
 
 /**
- * Get AI feedback on a recording. Auth required (this is the credit action).
- * Flow: ensure the user row exists → create a pending submission → deduct
- * credits → run the pipeline → store the result. Refunds + marks failed on any
- * pipeline error, so a failure never costs the user a credit.
+ * Get AI feedback on a recording. Auth required (the credit action).
+ * - audio: POST body = 16 kHz WAV → Deepgram meters + LLM coaching.
+ * - video: ?fileUri=… (video already uploaded to Gemini) → on-camera coaching.
+ * - full:  ?fileUri=… + WAV body → Deepgram meters + Gemini video coaching.
  *
- * v1: `tier=audio` only. Video/full arrive with R2 uploads in the next phase.
+ * Create submission → deduct → run → store; refund + mark failed on any error,
+ * so a failure never costs a credit.
  */
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
-  if (!userId) {
-    return Response.json({ error: "unauthorized" }, { status: 401 });
-  }
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const tier = (new URL(req.url).searchParams.get("tier") ??
-    "audio") as FeedbackTier;
-  if (tier !== "audio") {
-    return Response.json(
-      { error: "tier_not_available", detail: `${tier} feedback ships soon` },
-      { status: 400 },
-    );
+  const params = new URL(req.url).searchParams;
+  const tier = (params.get("tier") ?? "audio") as FeedbackTier;
+  if (!TIERS.includes(tier)) {
+    return Response.json({ error: "bad_tier" }, { status: 400 });
   }
   const cost = FEEDBACK_CREDITS[tier];
+  const fileUri = params.get("fileUri") ?? undefined;
+  const mimeType = params.get("mimeType") ?? "video/webm";
+  if ((tier === "video" || tier === "full") && !fileUri) {
+    return Response.json({ error: "missing_file" }, { status: 400 });
+  }
 
-  const audio = await req.arrayBuffer();
-  if (audio.byteLength === 0) {
+  // Read the audio body up front (audio + full need it).
+  const audio = tier === "video" ? new ArrayBuffer(0) : await req.arrayBuffer();
+  if ((tier === "audio" || tier === "full") && audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
 
-  // Lazily create the user + welcome grant (safety net if the Clerk webhook
-  // hasn't fired / isn't configured yet).
   await ensureUser(userId);
 
   const db = getDb();
   const [submission] = await db
     .insert(submissions)
-    .values({ userId, kind: "audio", status: "processing", creditsCost: cost })
+    .values({
+      userId,
+      kind: tier === "audio" ? "audio" : "video",
+      status: "processing",
+      creditsCost: cost,
+    })
     .returning({ id: submissions.id });
 
   try {
@@ -66,13 +83,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await runAudioFeedback(audio);
+    const result = await runTier(tier, audio, fileUri, mimeType);
     await db
       .update(submissions)
       .set({
         status: "complete",
-        durationSec: result.metrics.durationSec,
-        transcript: result.words,
+        durationSec: result.metrics?.durationSec ?? null,
+        transcript: result.words ?? null,
         feedback: { metrics: result.metrics, coaching: result.coaching },
         scores: { delivery: result.coaching.score },
         updatedAt: new Date(),
@@ -83,20 +100,16 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({
       submissionId: submission.id,
       balance,
-      transcript: result.transcript,
       metrics: result.metrics,
       coaching: result.coaching,
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
-    // Refund and mark-failed independently and best-effort — one failing must
-    // not block the other. The reconciliation sweep is the ultimate backstop
-    // (refund is idempotent, so a double-fire is safe).
     let balance: number | undefined;
     try {
       balance = await refundCredits(userId, cost, submission.id);
     } catch {
-      // reconcile sweep will retry the refund
+      // reconcile sweep retries the refund
     }
     try {
       await db
@@ -104,11 +117,32 @@ export async function POST(req: NextRequest): Promise<Response> {
         .set({ status: "failed", error: detail, updatedAt: new Date() })
         .where(eq(submissions.id, submission.id));
     } catch {
-      // reconcile sweep will fail the stranded submission
+      // reconcile sweep fails the stranded submission
     }
     return Response.json(
       { error: "feedback_failed", detail, balance },
       { status: 502 },
     );
   }
+}
+
+async function runTier(
+  tier: FeedbackTier,
+  audio: ArrayBuffer,
+  fileUri: string | undefined,
+  mimeType: string,
+): Promise<FeedbackResult> {
+  if (tier === "audio") {
+    const r = await runAudioFeedback(audio);
+    return { metrics: r.metrics, coaching: r.coaching, words: r.words };
+  }
+  // video + full: Gemini analyzes the uploaded clip (native video + audio).
+  const coaching = await coachOnCamera(fileUri as string, mimeType);
+  if (tier === "video") return { coaching };
+  // full: add precise deterministic meters from Deepgram on the audio.
+  const key = process.env.DEEPGRAM_API_KEY;
+  if (!key) return { coaching }; // no transcription provider → video-only result
+  const words = await transcribeForFeedback(audio, key);
+  const metrics = words.length ? computeMetrics(words) : undefined;
+  return { metrics, coaching, words };
 }
