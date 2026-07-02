@@ -91,3 +91,13 @@ export async function deleteContent(id: string): Promise<void> {
     await fetch(`/api/content/${id}`, { method: "DELETE" }),
   );
 }
+
+/** Default a newly scheduled item to tomorrow morning; the user refines it in
+ * the workbench. The API (and DB CHECK) require scheduled items to carry a
+ * date. */
+export function defaultScheduleDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(9, 0, 0, 0);
+  return d.toISOString();
+}

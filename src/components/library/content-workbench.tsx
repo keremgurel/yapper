@@ -17,7 +17,7 @@ import ScriptSection from "@/components/library/script-section";
 import StatusSelect from "@/components/library/status-select";
 import { useContentItem } from "@/hooks/use-content-item";
 import { useIdeaGeneration } from "@/hooks/use-idea-generation";
-import { deleteContent } from "@/lib/content/client";
+import { defaultScheduleDate, deleteContent } from "@/lib/content/client";
 import type { SaveState } from "@/hooks/use-autosave";
 
 const genBtn =
@@ -266,13 +266,6 @@ export default function ContentWorkbench({ id }: { id: string }) {
       </div>
     </div>
   );
-}
-
-function defaultScheduleDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(9, 0, 0, 0);
-  return d.toISOString();
 }
 
 function toLocalInput(iso: string | null): string {

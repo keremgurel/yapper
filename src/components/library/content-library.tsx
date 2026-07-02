@@ -9,6 +9,7 @@ import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
 import {
   createContent,
+  defaultScheduleDate,
   patchContent,
   type ContentSummary,
 } from "@/lib/content/client";
@@ -17,15 +18,6 @@ import type { ContentStatus } from "@/lib/db/schema";
 function when(iso: string): string {
   const d = new Date(iso);
   return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
-}
-
-/** Default a newly scheduled item to tomorrow morning; refined in the
- * workbench. The API (and DB) require scheduled items to carry a date. */
-function defaultScheduleDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(9, 0, 0, 0);
-  return d.toISOString();
 }
 
 /** The Content Library: the user's pipeline of ideas/scripts as a status
@@ -130,11 +122,21 @@ export default function ContentLibrary() {
             <span />
           </div>
           {items.map((row) => (
-            <button
+            // Not a <button>: the status control inside is itself a button, and
+            // button-in-button is invalid HTML (hydration error, DOM reparenting).
+            // A div with button semantics keeps the row clickable + keyboardable.
+            <div
               key={row.id}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => router.push(`/studio/library/${row.id}`)}
-              className="border-border hover:bg-muted/40 grid w-full grid-cols-[1fr_auto] items-center gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0 sm:grid-cols-[1fr_130px_150px_40px]"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/studio/library/${row.id}`);
+                }
+              }}
+              className="border-border hover:bg-muted/40 grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0 sm:grid-cols-[1fr_130px_150px_40px]"
             >
               <span className="text-foreground min-w-0 truncate text-[14px] font-bold">
                 {row.title.trim() || "Untitled idea"}
@@ -156,7 +158,7 @@ export default function ContentLibrary() {
                   />
                 )}
               </span>
-            </button>
+            </div>
           ))}
         </div>
       )}
