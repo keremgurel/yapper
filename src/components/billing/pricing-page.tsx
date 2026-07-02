@@ -31,7 +31,7 @@ export default function PricingPage() {
             <CurrentPlanBanner />
             <PricingCards pending={pending} onStart={startPlan} />
             {error && (
-              <p className="text-sm font-bold text-red-500">
+              <p role="alert" className="text-sm font-bold text-red-500">
                 {notLive
                   ? "Billing isn't switched on yet. Check back shortly."
                   : "Could not start checkout. Please try again."}
