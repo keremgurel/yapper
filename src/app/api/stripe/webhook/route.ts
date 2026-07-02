@@ -110,7 +110,11 @@ async function onSubscriptionChange(sub: Stripe.Subscription) {
   const customerId = typeof sub.customer === "string" ? sub.customer : null;
   if (!customerId) return;
   const userId = await resolveUserId(customerId);
-  if (!userId) throw new Error(`no user for customer ${customerId}`);
+  // resolveUserId already falls back to the customer's metadata.userId, so a
+  // null here means the customer genuinely isn't ours (a foreign/synthetic
+  // event). Ignore it rather than 500-ing, which would make Stripe retry it
+  // forever.
+  if (!userId) return;
 
   const priceId = sub.items.data[0]?.price?.id;
   const plan = planByPriceId(priceId);
@@ -131,7 +135,7 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
     typeof invoice.customer === "string" ? invoice.customer : null;
   if (!customerId) return;
   const userId = await resolveUserId(customerId);
-  if (!userId) throw new Error(`no user for customer ${customerId}`);
+  if (!userId) return; // not our customer; ignore (see onSubscriptionChange)
 
   // Scan every line for a plan price (a cycle invoice can lead with proration).
   let plan = undefined as ReturnType<typeof planByPriceId>;
