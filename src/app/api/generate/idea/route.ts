@@ -1,9 +1,18 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { GENERATE_CREDITS } from "@/lib/db/constants";
-import { deductCredits, getBalance } from "@/lib/db/credits";
+import {
+  deductCredits,
+  getBalance,
+  InsufficientCreditsError,
+} from "@/lib/db/credits";
 import { ensureUser } from "@/lib/db/users";
 import { generateIdea, type IdeaInput } from "@/lib/generate/idea";
+
+// Clamp client-supplied fields so a signed-in user can't amplify token cost
+// (the in-app client never sends `transcript`).
+const str = (v: unknown, max: number): string | undefined =>
+  typeof v === "string" && v.trim() ? v.slice(0, max) : undefined;
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,7 +32,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "insufficient_credits" }, { status: 402 });
   }
 
-  const input = (await req.json().catch(() => ({}))) as IdeaInput;
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  const input: IdeaInput = {
+    topic: str(body.topic, 500),
+    sourceTitle: str(body.sourceTitle, 300),
+    transcript: str(body.transcript, 8000),
+  };
 
   let idea;
   try {
@@ -41,7 +55,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     balance = await deductCredits(userId, cost, {
       metadata: { action: "idea" },
     });
-  } catch {
+  } catch (e) {
+    // Insufficient = a concurrency race (deliver anyway, per design). Anything
+    // else (DB blip) means a free delivery — log it so it's observable.
+    if (!(e instanceof InsufficientCreditsError)) {
+      console.error("idea generation: deduct failed, delivered free", e);
+    }
     balance = await getBalance(userId);
   }
 

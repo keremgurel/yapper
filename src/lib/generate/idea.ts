@@ -8,7 +8,6 @@ export interface GeneratedIdea {
 export interface IdeaInput {
   topic?: string;
   sourceTitle?: string;
-  sourceUrl?: string;
   transcript?: string;
 }
 
@@ -30,12 +29,18 @@ function parseIdea(content: string): GeneratedIdea {
   const raw = JSON.parse(content.slice(s, e + 1)) as Partial<GeneratedIdea>;
   const arr = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
-  return {
+  const result = {
     hooks: arr(raw.hooks),
     points: arr(raw.points),
     example: typeof raw.example === "string" ? raw.example : "",
     cta: typeof raw.cta === "string" ? raw.cta : "",
   };
+  // Empty-but-valid JSON (content filter, wrong shape) must NOT count as success
+  // — the route only charges when this returns, so throw to trigger no-charge.
+  if (result.hooks.length === 0 && result.points.length === 0) {
+    throw new Error("idea_empty");
+  }
+  return result;
 }
 
 /** Generate a video idea (hooks/points/example/cta) via the Surplus gateway. */
