@@ -1,0 +1,1 @@
+ALTER TABLE "content_items" ADD CONSTRAINT "content_items_scheduled_check" CHECK ("content_items"."status" <> 'scheduled' or "content_items"."scheduled_for" is not null);

@@ -185,6 +185,12 @@ export const contentItems = pgTable(
       "content_items_status_check",
       sql`${t.status} in ('drafted','planned','scheduled','posted')`,
     ),
+    // A scheduled item must have a date; enforced at the DB so no API path
+    // (create, update, import, future writers) can produce the invalid pairing.
+    check(
+      "content_items_scheduled_check",
+      sql`${t.status} <> 'scheduled' or ${t.scheduledFor} is not null`,
+    ),
     uniqueIndex("content_items_import_unique").on(t.userId, t.sourceClientId),
   ],
 );

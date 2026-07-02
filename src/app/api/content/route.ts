@@ -24,6 +24,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { input, badStatus } = parseContentInput(body);
   if (badStatus) return Response.json({ error: "bad_status" }, { status: 400 });
+  // Same invariant as PATCH (and the DB CHECK): scheduled requires a date.
+  if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {
+    return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
+  }
 
   const item = await createContentItem(userId, input);
   return Response.json({ item }, { status: 201 });
