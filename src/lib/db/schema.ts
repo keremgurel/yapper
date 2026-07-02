@@ -22,6 +22,14 @@ export const users = pgTable("users", {
   storageBytes: bigint("storage_bytes", { mode: "number" })
     .notNull()
     .default(0),
+  // Billing (Stripe). All nullable — a user has no subscription until they
+  // start one. subscriptionStatus mirrors Stripe's status verbatim (trialing /
+  // active / past_due / canceled / …); entitlement is derived from it +
+  // currentPeriodEnd, and only the webhook ever writes these fields.
+  stripeCustomerId: text("stripe_customer_id"),
+  subscriptionStatus: text("subscription_status"),
+  plan: text("plan"), // plan key from the plans config (e.g. "starter", "pro")
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -50,6 +58,10 @@ export const creditLedger = pgTable(
     reason: text("reason", { enum: creditReasons }).notNull(),
     balanceAfter: integer("balance_after").notNull(),
     submissionId: uuid("submission_id"), // soft link (deductions/refunds)
+    // Idempotency key for Stripe-driven grants (invoice / checkout-session id).
+    // Nullable-unique: many NULLs allowed (non-Stripe rows), Stripe refs unique,
+    // so a redelivered webhook can't grant credits twice.
+    stripeRef: text("stripe_ref"),
     metadata: jsonb("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -57,6 +69,7 @@ export const creditLedger = pgTable(
   },
   (t) => [
     index("credit_ledger_user_idx").on(t.userId, t.createdAt),
+    uniqueIndex("credit_ledger_stripe_ref_unique").on(t.stripeRef),
     // Enforce the reason vocabulary at the DB, not just in TypeScript.
     check(
       "credit_ledger_reason_check",

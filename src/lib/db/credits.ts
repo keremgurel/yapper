@@ -51,6 +51,55 @@ export async function grantCredits(
   });
 }
 
+/**
+ * Grant credits idempotently, keyed by a Stripe reference (invoice or checkout
+ * session id). A redelivered webhook hits the unique `stripe_ref` and no-ops.
+ * Returns the balance and whether this call actually granted.
+ */
+export async function grantCreditsIdempotent(
+  userId: string,
+  amount: number,
+  reason: CreditReason,
+  stripeRef: string,
+  metadata?: Record<string, unknown>,
+): Promise<{ balance: number; granted: boolean }> {
+  if (amount <= 0) throw new Error("grant amount must be positive");
+  return getDb().transaction(async (tx) => {
+    const claimed = await tx
+      .insert(creditLedger)
+      .values({
+        userId,
+        delta: amount,
+        reason,
+        balanceAfter: 0, // set below once we know the new balance
+        stripeRef,
+        metadata,
+      })
+      .onConflictDoNothing({ target: creditLedger.stripeRef })
+      .returning({ id: creditLedger.id });
+
+    if (claimed.length === 0) {
+      const [u] = await tx
+        .select({ balance: users.creditsBalance })
+        .from(users)
+        .where(eq(users.id, userId));
+      return { balance: u?.balance ?? 0, granted: false };
+    }
+
+    const [u] = await tx
+      .update(users)
+      .set({ creditsBalance: sql`${users.creditsBalance} + ${amount}` })
+      .where(eq(users.id, userId))
+      .returning({ balance: users.creditsBalance });
+    if (!u) throw new Error("user not found");
+    await tx
+      .update(creditLedger)
+      .set({ balanceAfter: u.balance })
+      .where(eq(creditLedger.id, claimed[0].id));
+    return { balance: u.balance, granted: true };
+  });
+}
+
 /** Spend credits for an action. The conditional UPDATE only succeeds if the
  * balance covers the cost, so the check-and-decrement is atomic (no race).
  * Throws `InsufficientCreditsError` otherwise. Returns the new balance. */
