@@ -149,7 +149,8 @@ export default function StudioWorkspace() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div
           ref={previewRef}
-          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-neutral-100 p-4 dark:bg-neutral-950"
+          style={{ background: "var(--sg-bg-2)" }}
+          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4"
         >
           <AutoEditProgress />
           {source ? (

@@ -13,6 +13,7 @@ export default function TopicReel() {
     promptEditorOpen,
     canEditPrompt,
     hasGeneratedTopic,
+    hasPool,
     openPromptEditor,
     setPromptDraft,
     savePromptDraft,
@@ -22,7 +23,7 @@ export default function TopicReel() {
   const lastTapRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const glassPanelClass =
-    "relative flex max-h-[min(46vh,340px)] min-h-[150px] w-full flex-col items-center justify-center overflow-y-auto rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
+    "no-scrollbar relative flex max-h-[min(46vh,340px)] min-h-[150px] w-full flex-col items-center justify-center overflow-y-auto rounded-[28px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] px-7 py-7 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_24px_48px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
 
   const tryDoubleTap = useCallback(() => {
     if (!canEditPrompt || spinning || promptEditorOpen) return;
@@ -172,9 +173,14 @@ export default function TopicReel() {
               </>
             ) : (
               <>
-                <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
-                  {topic.category}
-                </span>
+                {/* On a scenario page the page already IS the category, so the
+                    category badge is redundant. Show it only on the general
+                    generator; keep difficulty everywhere (real per-prompt signal). */}
+                {!hasPool && (
+                  <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
+                    {topic.category}
+                  </span>
+                )}
                 <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
                   {topic.difficulty}
                 </span>

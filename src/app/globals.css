@@ -7,23 +7,223 @@
    with the CSS variables and the in-app theme switcher. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* =============================================================================
+ * Yapper Design System — tokens (promoted from /style-guide)
+ * Primitives + semantic (light in :root, dark in .dark) + legacy var mapping so
+ * existing components inherit the new palette. Aave-derived, orange primary.
+ * ========================================================================== */
 :root {
-  --background: #f8fafc;
-  --foreground: #1e293b;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --muted: #e2e8f0;
+  color-scheme: light;
+
+  /* fonts — one geo-grotesque family; legacy names aliased to Hanken */
+  --font-body-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --font-display-sans:
+    var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --sg-font-display:
+    var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --sg-font-body: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --sg-font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ink ramp */
+  --sg-ink-950: #141314;
+  --sg-ink-900: #201d1d;
+  --sg-ink-800: #2b2828;
+  --sg-ink-700: #3d3a3a;
+  --sg-ink-600: #5b5656;
+  --sg-ink-500: #837e7e;
+  --sg-ink-400: #a9a4a4;
+  --sg-ink-300: #cbc7c7;
+  --sg-ink-200: #e2e0e0;
+  --sg-ink-100: #efeeed;
+  --sg-ink-50: #f6f5f3;
+
+  /* orange (primary) */
+  --sg-orange-700: #c2410c;
+  --sg-orange-600: #ea580c;
+  --sg-orange-500: #f97316;
+  --sg-orange-400: #fb923c;
+  --sg-orange-300: #fdba74;
+  --sg-orange-200: #fed7aa;
+
+  /* vibrant supporting trio + extras */
+  --sg-cyan-600: #0891b2;
+  --sg-cyan-500: #06b6d4;
+  --sg-cyan-400: #22d3ee;
+  --sg-cyan-300: #67e8f9;
+  --sg-violet-600: #6d5cf0;
+  --sg-violet-500: #7c6cff;
+  --sg-violet-400: #a78bfa;
+  --sg-violet-300: #c4b5fd;
+  --sg-green-500: #10b981;
+  --sg-green-300: #6ee7b7;
+  --sg-pink-500: #ec4899;
+  --sg-pink-300: #f9a8d4;
+  --sg-yellow-500: #f5b91a;
+  --sg-yellow-300: #fcd34d;
+
+  /* warm brand gradient (from the Yapper logo icon) */
+  --sg-accent-gradient: linear-gradient(
+    135deg,
+    #ff6a1a 0%,
+    #fb8b2e 52%,
+    #f9a825 100%
+  );
+
+  /* radius */
+  --sg-radius-xs: 6px;
+  --sg-radius-sm: 8px;
+  --sg-radius-md: 12px;
+  --sg-radius-lg: 16px;
+  --sg-radius-xl: 20px;
+  --sg-radius-2xl: 28px;
+  --sg-radius-full: 9999px;
+  --sg-radius-btn: 8px;
+
+  /* fluid type scale */
+  --sg-text-xs: 0.75rem;
+  --sg-text-sm: 0.8125rem;
+  --sg-text-base: 0.9375rem;
+  --sg-text-md: 1rem;
+  --sg-text-lg: 1.125rem;
+  --sg-text-xl: 1.375rem;
+  --sg-text-2xl: 1.75rem;
+  --sg-text-3xl: clamp(1.875rem, 1.4rem + 2vw, 2.5rem);
+  --sg-text-4xl: clamp(2.25rem, 1.6rem + 3vw, 3.25rem);
+  --sg-text-5xl: clamp(2.75rem, 1.8rem + 4.5vw, 4.5rem);
+  --sg-text-6xl: clamp(3.25rem, 2rem + 6vw, 6rem);
+
+  --sg-tracking-tight: -0.03em;
+  --sg-tracking-snug: -0.015em;
+  --sg-tracking-normal: 0em;
+  --sg-tracking-wide: 0.01em;
+  --sg-tracking-label: 0.12em;
+
+  /* spacing (4px base) */
+  --sg-space-1: 4px;
+  --sg-space-2: 8px;
+  --sg-space-3: 12px;
+  --sg-space-4: 16px;
+  --sg-space-5: 20px;
+  --sg-space-6: 24px;
+  --sg-space-8: 32px;
+  --sg-space-10: 40px;
+  --sg-space-12: 48px;
+  --sg-space-16: 64px;
+  --sg-space-24: 96px;
+
+  /* blur + motion */
+  --sg-blur-sm: 8px;
+  --sg-blur-md: 16px;
+  --sg-blur-lg: 28px;
+  --sg-blur-xl: 44px;
+  --sg-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sg-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sg-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --sg-dur-fast: 140ms;
+  --sg-dur-base: 240ms;
+  --sg-dur-slow: 420ms;
+
+  /* aluminum metal primitive */
+  --sg-metal-radius: 8px;
+  --sg-metal-face: linear-gradient(
+    180deg,
+    rgb(255, 255, 255) 0%,
+    rgb(201, 201, 201) 9%,
+    rgb(161, 161, 161) 32%,
+    rgb(117, 117, 117) 73%,
+    rgb(255, 255, 255) 100%
+  );
+  --sg-metal-shadow:
+    0px 1px 2px rgba(0, 0, 0, 0.08), 0px 2px 4px rgba(0, 0, 0, 0.06),
+    0px 4px 8px rgba(0, 0, 0, 0.04), 0px 8px 16px rgba(0, 0, 0, 0.03);
+  --sg-metal-inner-shadow:
+    inset 1px 2px 4px rgba(0, 0, 0, 0.04),
+    inset 0px -1px 2px rgba(255, 255, 255, 0.6);
+
+  /* semantic (light) */
+  --sg-bg: #f4f3f1;
+  --sg-bg-2: #edeae6;
+  --sg-surface: #ffffff;
+  --sg-surface-raised: #ffffff;
+  --sg-surface-sunken: #f0eeeb;
+  --sg-border: rgba(32, 29, 29, 0.1);
+  --sg-border-strong: rgba(32, 29, 29, 0.18);
+  --sg-text: #201d1d;
+  --sg-text-muted: #6f6a6a;
+  --sg-text-faint: #a29d9d;
+  /* gold for tiny uppercase eyebrows/labels; cool slate for de-emphasized display text */
+  --sg-label: #d97706;
+  --sg-display-muted: #94a3b8;
+  --sg-accent: #f97316;
+  --sg-accent-strong: #ea580c;
+  --sg-accent-fg: #ffffff;
+  --sg-accent-2: #06b6d4;
+  --sg-accent-3: #7c6cff;
+  --sg-glass-bg: rgba(255, 255, 255, 0.62);
+  --sg-glass-border: rgba(255, 255, 255, 0.9);
+  --sg-glass-highlight: rgba(255, 255, 255, 0.95);
+  --sg-glass-blur: var(--sg-blur-md);
+  --sg-shadow-card:
+    0 1px 2px rgba(32, 20, 12, 0.05), 0 8px 24px rgba(32, 20, 12, 0.06);
+  --sg-shadow-panel:
+    0 2px 8px rgba(32, 20, 12, 0.06), 0 20px 50px rgba(32, 20, 12, 0.09);
+  --sg-shadow-glass:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset, 0 12px 36px rgba(32, 20, 12, 0.1);
+  --sg-display-tracking: var(--sg-tracking-tight);
+  --sg-accent-glow: 0 6px 20px rgba(249, 115, 22, 0.28);
+
+  /* legacy var mapping (existing components inherit the new palette) */
+  --background: var(--sg-bg);
+  --foreground: var(--sg-text);
+  --card: var(--sg-surface);
+  --border: var(--sg-border);
+  --muted: var(--sg-surface-sunken);
   --tick-inactive: #d4d4d8;
-  --font-display: "Outfit", sans-serif;
-  --font-sans: "Inter Tight", sans-serif;
 }
 
 .dark {
-  --background: oklch(0.1822 0 0);
-  --foreground: #e4e4e7;
-  --card: oklch(0.205 0 0);
-  --border: oklch(0.27 0 0);
-  --muted: oklch(0.23 0 0);
+  color-scheme: dark;
+
+  --sg-bg: #0e0d0e;
+  --sg-bg-2: #151314;
+  --sg-surface: #201d1d;
+  --sg-surface-raised: #2a2626;
+  --sg-surface-sunken: #171515;
+  --sg-border: rgba(255, 255, 255, 0.1);
+  --sg-border-strong: rgba(255, 255, 255, 0.18);
+  --sg-text: #f5f3f1;
+  --sg-text-muted: #a9a4a4;
+  --sg-text-faint: #6f6a6a;
+  --sg-label: #fbbf24;
+  --sg-display-muted: #8b95a8;
+  --sg-accent: #ff8a2b;
+  --sg-accent-strong: #fdba74;
+  --sg-accent-fg: #1a0f06;
+  --sg-accent-2: #22d3ee;
+  --sg-accent-3: #a78bfa;
+  --sg-accent-gradient: linear-gradient(
+    135deg,
+    #ff6410 0%,
+    #ff8a24 52%,
+    #ffb01c 100%
+  );
+  --sg-glass-bg: rgba(255, 255, 255, 0.05);
+  --sg-glass-border: rgba(255, 255, 255, 0.14);
+  --sg-glass-highlight: rgba(255, 255, 255, 0.6);
+  --sg-glass-blur: var(--sg-blur-lg);
+  --sg-shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.5);
+  --sg-shadow-panel:
+    0 2px 8px rgba(0, 0, 0, 0.6), 0 22px 60px rgba(0, 0, 0, 0.55);
+  --sg-shadow-glass:
+    0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 16px 46px rgba(0, 0, 0, 0.55);
+  --sg-accent-glow: 0 6px 24px rgba(251, 139, 60, 0.32);
+
+  --background: var(--sg-bg);
+  --foreground: var(--sg-text);
+  --card: var(--sg-surface);
+  --border: var(--sg-border);
+  --muted: var(--sg-surface-sunken);
   --tick-inactive: #52525b;
 }
 
@@ -550,4 +750,174 @@ select {
   background-clip: text;
   color: transparent;
   animation: text-shimmer 1.5s linear infinite;
+}
+
+/* =============================================================================
+ * Design-system component primitives (use on real pages)
+ * ========================================================================== */
+.sg-display {
+  font-family: var(--sg-font-display);
+  letter-spacing: var(--sg-display-tracking);
+  line-height: 1.02;
+  font-weight: 700;
+}
+.sg-label {
+  font-family: var(--sg-font-display);
+  font-size: var(--sg-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--sg-tracking-label);
+  text-transform: uppercase;
+  color: var(--sg-text-faint);
+}
+.sg-mono {
+  font-family: var(--sg-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.sg-card {
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-xl);
+  box-shadow: var(--sg-shadow-card);
+}
+.sg-panel {
+  background: linear-gradient(
+    180deg,
+    var(--sg-surface-raised),
+    var(--sg-surface)
+  );
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-2xl);
+  box-shadow: var(--sg-shadow-panel);
+}
+.sg-sunken {
+  background: var(--sg-surface-sunken);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-md);
+}
+
+.sg-glass {
+  position: relative;
+  background: var(--sg-glass-bg);
+  border: 1px solid var(--sg-glass-border);
+  border-radius: var(--sg-radius-2xl);
+  backdrop-filter: blur(var(--sg-glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--sg-glass-blur)) saturate(1.4);
+  box-shadow: var(--sg-shadow-glass);
+}
+.sg-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    var(--sg-glass-highlight),
+    transparent 40%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.06)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.sg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: 5px var(--sg-space-3);
+  border-radius: var(--sg-radius-full);
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface-sunken);
+  color: var(--sg-text-muted);
+  font-family: var(--sg-font-display);
+  font-size: var(--sg-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--sg-tracking-wide);
+}
+.sg-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--sg-radius-full);
+  background: var(--sg-accent);
+  flex-shrink: 0;
+}
+.sg-chip-dot--live {
+  background: #ef4444;
+  animation: sgPulse 1.6s ease-in-out infinite;
+}
+@keyframes sgPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.sg-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-3) var(--sg-space-5);
+  border-radius: var(--sg-radius-btn);
+  border: none;
+  background: var(--sg-accent-gradient);
+  color: #fff;
+  font-family: var(--sg-font-display);
+  font-weight: 600;
+  font-size: var(--sg-text-base);
+  cursor: pointer;
+  box-shadow: var(--sg-accent-glow);
+  transition:
+    transform var(--sg-dur-fast) var(--sg-ease-spring),
+    filter var(--sg-dur-fast) var(--sg-ease-out);
+}
+.sg-btn-accent:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.sg-btn-accent:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.sg-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-3) var(--sg-space-5);
+  border-radius: var(--sg-radius-btn);
+  border: 1px solid var(--sg-border-strong);
+  background: transparent;
+  color: var(--sg-text);
+  font-family: var(--sg-font-display);
+  font-weight: 600;
+  font-size: var(--sg-text-base);
+  cursor: pointer;
+  transition: background var(--sg-dur-fast) var(--sg-ease-out);
+}
+.sg-btn-ghost:hover {
+  background: var(--sg-surface-sunken);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sg-chip-dot--live {
+    animation: none;
+  }
+}
+
+/* Hide the scrollbar chrome while keeping the element scrollable. */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

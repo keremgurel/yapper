@@ -28,19 +28,25 @@ const explainAfterReadingPool: Topic[] = [
     id: "ear-1",
     category: "Business",
     difficulty: "Medium",
-    text: "When a team leaves a meeting with different versions of the decision, the meeting did not really end. A strong close restates the decision, names the owner, and makes the next visible step impossible to miss.",
+    text: "When a team leaves a meeting with three different versions of what was decided, the meeting did not really end. It just stopped. A strong close does three things before anyone stands up: it restates the actual decision in one sentence, it names the single person who owns the next move, and it makes the very next step impossible to misread. This takes about thirty seconds and prevents days of quiet confusion. Most meetings fail not because people disagree, but because everyone assumes the ending was as obvious to others as it felt to them.",
   },
   {
     id: "ear-2",
     category: "Society",
     difficulty: "Medium",
-    text: "Confidence is easier to trust when it leaves room for new evidence. The person who can say 'here is what I think, and here is what would change my mind' often sounds more credible than the person who never bends.",
+    text: "Confidence is easier to trust when it leaves a little room for being wrong. The person who says 'here is what I think, and here is exactly what would change my mind' often sounds more credible than the person who never bends. It seems backwards, but certainty and honesty can pull in different directions. Someone who cannot name a single thing that would update their view is not showing strength; they are showing that evidence stopped mattering to them a while ago. Real confidence is not the absence of doubt. It is being steady enough to hold your view and your doubt at the same time.",
   },
   {
     id: "ear-3",
     category: "General",
     difficulty: "Medium",
-    text: "Listening is not waiting politely for your turn. It is tracking what the other person means closely enough that your next sentence proves you understood them.",
+    text: "Listening is not waiting politely for your turn to talk. Most people, while someone else is speaking, are quietly loading their own response, scanning for the gap where they can jump in. Real listening is harder. It means tracking what the other person actually means closely enough that your next sentence proves you understood them, not just heard them. You can feel the difference instantly as a listener. When someone reflects your point back before adding their own, you relax. When they reply to a version of you they invented, you brace. The whole conversation changes based on which one you offer.",
+  },
+  {
+    id: "ear-4",
+    category: "Technology",
+    difficulty: "Hard",
+    text: "We tend to treat attention as free, but it is the one resource you spend every waking minute whether you notice or not. Every notification, open tab, and unfinished thought takes a small cut. The real cost is not the interruption itself; it is the time your brain needs afterward to find its way back to what it was doing. Deep work is less about trying harder and more about protecting long, unbroken stretches where your attention can stay pointed at one thing. Guard those stretches like they are expensive, because in the only currency that actually matters, they are.",
   },
 ];
 

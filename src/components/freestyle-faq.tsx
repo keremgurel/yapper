@@ -148,7 +148,10 @@ export function FreestyleFaq() {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-xs font-semibold tracking-[0.15em] text-amber-600 uppercase dark:text-amber-400">
+            <p
+              className="text-xs font-semibold tracking-[0.15em] uppercase"
+              style={{ color: "var(--sg-label)" }}
+            >
               FAQ
             </p>
             <h2
@@ -157,9 +160,7 @@ export function FreestyleFaq() {
             >
               Questions?
               <br />
-              <span className="text-slate-400 dark:text-slate-500">
-                Answers.
-              </span>
+              <span style={{ color: "var(--sg-display-muted)" }}>Answers.</span>
             </h2>
           </motion.div>
 

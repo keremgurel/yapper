@@ -27,7 +27,8 @@ export default function CreateNavDropdown() {
       <DropdownMenuContent
         align="end"
         sideOffset={12}
-        className="border-border bg-card w-[min(92vw,340px)] overflow-hidden rounded-3xl p-2 shadow-[0_28px_100px_rgba(15,23,42,0.22)]"
+        style={{ boxShadow: "var(--sg-shadow-panel)" }}
+        className="border-border bg-card w-[min(92vw,340px)] overflow-hidden rounded-3xl p-2"
       >
         {createNav.map((item) => (
           <Link

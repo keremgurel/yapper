@@ -77,7 +77,10 @@ export default function DrillSeoSections({ drill }: { drill: DrillContent }) {
             transition={{ duration: 0.5 }}
             className="lg:sticky lg:top-32"
           >
-            <p className="text-xs font-semibold tracking-[0.15em] text-amber-600 uppercase dark:text-amber-400">
+            <p
+              className="text-xs font-semibold tracking-[0.15em] uppercase"
+              style={{ color: "var(--sg-label)" }}
+            >
               How it works
             </p>
             <h2
@@ -135,7 +138,10 @@ export default function DrillSeoSections({ drill }: { drill: DrillContent }) {
             transition={{ duration: 0.5 }}
             className="mb-10"
           >
-            <p className="text-xs font-semibold tracking-[0.15em] text-amber-600 uppercase dark:text-amber-400">
+            <p
+              className="text-xs font-semibold tracking-[0.15em] uppercase"
+              style={{ color: "var(--sg-label)" }}
+            >
               Why it works
             </p>
             <h2
@@ -174,7 +180,10 @@ export default function DrillSeoSections({ drill }: { drill: DrillContent }) {
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.5 }}
           >
-            <p className="text-xs font-semibold tracking-[0.15em] text-amber-600 uppercase dark:text-amber-400">
+            <p
+              className="text-xs font-semibold tracking-[0.15em] uppercase"
+              style={{ color: "var(--sg-label)" }}
+            >
               FAQ
             </p>
             <h2
@@ -183,9 +192,7 @@ export default function DrillSeoSections({ drill }: { drill: DrillContent }) {
             >
               Questions?
               <br />
-              <span className="text-slate-400 dark:text-slate-500">
-                Answers.
-              </span>
+              <span style={{ color: "var(--sg-display-muted)" }}>Answers.</span>
             </h2>
           </motion.div>
           <motion.div

@@ -10,8 +10,14 @@ export default function TrainingHeader() {
   return (
     <header className="border-border bg-background relative z-50 flex items-center justify-between border-b px-3 py-3 sm:px-6">
       {/* Left: logo */}
-      <Link href="/" className="flex items-center gap-2 no-underline">
-        <div className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+      <Link href="/" className="group flex items-center gap-2 no-underline">
+        <div
+          className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-lg text-sm font-black text-white transition-transform duration-300 group-hover:-rotate-6"
+          style={{
+            background: "var(--sg-accent-gradient)",
+            boxShadow: "var(--sg-accent-glow)",
+          }}
+        >
           Y
         </div>
         <span className="font-display text-foreground text-[20px] font-semibold tracking-[0.02em] sm:text-[22px]">
