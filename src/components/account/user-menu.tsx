@@ -94,19 +94,17 @@ export default function UserMenu() {
           </Link>
         </DropdownMenuItem>
 
-        <DropdownMenuItem disabled className={`${item} opacity-50`}>
-          <Lightbulb className="h-4 w-4" />
-          Inspiration
-          <span className="border-border ml-auto rounded-full border px-1.5 py-0.5 text-[9px] font-black tracking-wide uppercase">
-            Soon
-          </span>
+        <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
+          <Link href="/inspiration" className="no-underline">
+            <Lightbulb className="h-4 w-4" />
+            Inspiration
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem disabled className={`${item} opacity-50`}>
-          <Layers className="h-4 w-4" />
-          Content Library
-          <span className="border-border ml-auto rounded-full border px-1.5 py-0.5 text-[9px] font-black tracking-wide uppercase">
-            Soon
-          </span>
+        <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
+          <Link href="/studio/library" className="no-underline">
+            <Layers className="h-4 w-4" />
+            Content Library
+          </Link>
         </DropdownMenuItem>
 
         <DropdownMenuSeparator className="bg-border" />

@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { ideaToScript } from "@/lib/inspiration/idea-format";
-import type { Idea } from "@/lib/inspiration/ideas";
+import { ideaToScript, type ScriptSource } from "@/lib/inspiration/idea-format";
 
-export default function CopyScriptButton({ idea }: { idea: Idea }) {
+export default function CopyScriptButton({ idea }: { idea: ScriptSource }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {

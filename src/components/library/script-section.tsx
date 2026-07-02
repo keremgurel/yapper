@@ -3,7 +3,12 @@
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2, Sparkles } from "lucide-react";
 import type { GenErrorKind } from "@/hooks/use-idea-generation";
-import type { Idea } from "@/lib/inspiration/ideas";
+
+/** The two fields this section reads; Idea and ContentDetail both satisfy it. */
+interface ScriptFields {
+  title: string;
+  script?: string | null;
+}
 
 const genBtn =
   "inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-50";
@@ -21,7 +26,7 @@ export default function ScriptSection({
   onGenerate,
   onChange,
 }: {
-  idea: Idea;
+  idea: ScriptFields;
   generating: boolean;
   disabled: boolean;
   error: GenErrorKind | null;
