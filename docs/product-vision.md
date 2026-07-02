@@ -62,26 +62,30 @@ AI does, and whether it's free or metered.
 idea in seconds, read it off a teleprompter so you don't fumble, fix the fumble
 you did make in one tap, and (optionally) get coached before you post.
 
-### 2b. The creator workflow surfaces (Inspiration → Lab → Content Library)
+### 2b. The Studio (SHIPPED 2026-07-02, PRs #50–#54)
 
 The Creator workflow is **the main app**; the practice drills / calculators are
-just SEO tools that feed it. The workflow has three first-class surfaces the
-signed-in user moves between (all reachable from the account menu):
+just SEO tools that feed it. It ships as the **Studio**: a dashboard at
+`/studio` with a sidebar of four surfaces (nav "Create" became "Studio"):
 
-1. **Inspiration** — helps you come up with **video ideas**. Save reference
-   clips and generate idea candidates from your pillars.
-2. **The Lab** — take a generated idea and **work with AI to turn it into a
-   structured "yapping script"** (hook + beats + full spoken script). This is
-   where ideation + script generation live. From here you either record now, or
-   **promote the script to the Content Library** for later.
-3. **Content Library** — your pipeline of promoted scripts as a **table you can
-   set a status on: Drafted / Planned / Scheduled / Posted.** This is the
-   consistency engine — plan and schedule content instead of one-off recordings.
+1. **Inspiration** (`/studio/inspiration`) — save reference clips, turn them
+   into video ideas (still localStorage internally; DB migration later).
+2. **Content Library** (`/studio/library`) — DB-backed (`content_items`) — the
+   pipeline table: **Drafted / Planned / Scheduled / Posted** statuses (DB
+   CHECK-enforced; scheduled requires a date). Clicking a row opens the
+   **script workbench (the Lab)**: hooks/points/example/cta + AI generation +
+   full-script generation, autosaved through a serialized debounced queue.
+   An idea IS a library item; `/ideation` folded away (one-time localStorage
+   import, retry-safe on `sourceClientId`).
+3. **Recorder** (`/studio/recorder`) — a plain recorder by default;
+   `?item=<id>` puts that item's script/notes on the teleprompter. After a
+   take: **Save to library** (presigned PUT → feedback-less submission,
+   quota counted on actual HeadObject bytes → linked on the item) or Edit.
+4. **Editor** (`/studio/editor`, full-screen, outside the sidebar) —
+   `?item=<id>` loads the item's saved recording for editing.
 
-So the flow is: **Inspiration (idea) → Lab (idea → structured script) →
-Content Library (promote, schedule, track status) → Record → Edit → Feedback →
-Post.** Recorded sessions, Inspiration, and Content Library all hang off the
-signed-in account menu.
+Flow: **Inspiration → Library (idea → script → status) → Record (teleprompter,
+save take) → Edit → Feedback → Post.** Old routes 301/307 to the new ones.
 
 ---
 
