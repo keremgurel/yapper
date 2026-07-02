@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Lightbulb } from "lucide-react";
 import TrainingHeader from "@/components/training/training-header";
+import { Chirpy } from "@/components/brand/chirpy";
 import IdeaEditor from "@/components/ideation/idea-editor";
 import IdeaList from "@/components/ideation/idea-list";
 import { IdeasProvider, useIdeas } from "@/components/ideation/ideas-context";
@@ -27,7 +27,7 @@ function IdeationWorkspace() {
           <IdeaEditor idea={active} onDeleted={() => setActiveId(null)} />
         ) : (
           <div className="border-border text-foreground/55 flex flex-1 flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-20 text-center">
-            <Lightbulb className="text-foreground/30 h-8 w-8" />
+            <Chirpy expression="curious" size={92} />
             <p className="text-foreground text-base font-bold">No ideas yet</p>
             <p className="max-w-sm text-sm">
               Start a draft from scratch, or open the Inspiration library and

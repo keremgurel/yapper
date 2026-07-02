@@ -32,9 +32,17 @@ export default function RightPanel({
   const tabBtn = (active: boolean) =>
     `flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2.5 text-[13px] font-bold transition-colors ${
       active
-        ? "border-foreground text-foreground"
+        ? "text-foreground"
         : "text-foreground/50 hover:text-foreground/80 border-transparent"
     }`;
+  const tabStyle = (active: boolean) =>
+    active
+      ? {
+          borderColor: "var(--sg-accent-2)",
+          background:
+            "linear-gradient(180deg, color-mix(in srgb, var(--sg-accent-2) 10%, transparent), transparent)",
+        }
+      : undefined;
 
   return (
     <div className="bg-card flex h-full min-h-0 flex-col">
@@ -43,6 +51,7 @@ export default function RightPanel({
           type="button"
           onClick={() => setTab("media")}
           className={tabBtn(tab === "media")}
+          style={tabStyle(tab === "media")}
         >
           <Film className="h-4 w-4" />
           Media
@@ -51,6 +60,7 @@ export default function RightPanel({
           type="button"
           onClick={() => setTab("transcript")}
           className={tabBtn(tab === "transcript")}
+          style={tabStyle(tab === "transcript")}
         >
           <FileText className="h-4 w-4" />
           Transcript
@@ -59,6 +69,7 @@ export default function RightPanel({
           type="button"
           onClick={() => setTab("captions")}
           className={tabBtn(tab === "captions")}
+          style={tabStyle(tab === "captions")}
         >
           <Captions className="h-4 w-4" />
           Captions
@@ -67,6 +78,7 @@ export default function RightPanel({
           type="button"
           onClick={() => setTab("feedback")}
           className={tabBtn(tab === "feedback")}
+          style={tabStyle(tab === "feedback")}
         >
           <Sparkles className="h-4 w-4" />
           Feedback

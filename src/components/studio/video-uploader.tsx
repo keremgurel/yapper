@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UploadCloud } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import { Chirpy } from "@/components/brand/chirpy";
 
 export default function VideoUploader() {
   const { loadSource } = useStudio();
@@ -43,7 +43,7 @@ export default function VideoUploader() {
             : "border-border hover:bg-muted"
         }`}
       >
-        <UploadCloud className="text-foreground/40 h-9 w-9" />
+        <Chirpy expression={dragOver ? "happy" : "idle"} size={96} />
         <p className="text-foreground text-base font-bold">
           Drop a video to edit
         </p>
