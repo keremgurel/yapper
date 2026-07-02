@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -88,4 +89,22 @@ export async function getObjectBytes(key: string): Promise<ArrayBuffer> {
 
 export async function deleteObject(key: string): Promise<void> {
   await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+}
+
+/** Actual size of an uploaded object, or null if it doesn't exist. Used to
+ * verify a client-claimed upload before accounting for it (presigned PUTs
+ * can't cap size, so the claimed byte count is only advisory). */
+export async function headObjectBytes(key: string): Promise<number | null> {
+  try {
+    const res = await s3().send(
+      new HeadObjectCommand({ Bucket: bucket(), Key: key }),
+    );
+    return res.ContentLength ?? 0;
+  } catch (e) {
+    const name = (e as { name?: string }).name;
+    if (name === "NotFound" || name === "NoSuchKey" || name === "404") {
+      return null;
+    }
+    throw e;
+  }
 }
