@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, ChevronDown, Plus } from "lucide-react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -17,11 +17,10 @@ export default function CreateNavDropdown() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="border-border bg-card text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-bold shadow-sm transition-colors"
+          className="text-foreground/80 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors"
         >
-          <Plus className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-400" />
           <span>Create</span>
-          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+          <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

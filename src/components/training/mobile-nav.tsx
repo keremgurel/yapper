@@ -171,6 +171,12 @@ export default function MobileNav() {
                   onNavigate={close}
                 />
               ))}
+              <Row
+                href="/blog"
+                title="Blog"
+                icon={<BookOpen className="h-4 w-4" />}
+                onNavigate={close}
+              />
             </motion.div>
           </motion.div>
         ) : null}
