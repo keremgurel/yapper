@@ -1,10 +1,15 @@
 "use client";
 
-import { ArrowUpRight, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { ArrowUpRight, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Show, SignInButton } from "@clerk/nextjs";
 import CopyScriptButton from "@/components/ideation/copy-script-button";
 import EditableList from "@/components/ideation/editable-list";
 import { useIdeas } from "@/components/ideation/ideas-context";
 import type { Idea } from "@/lib/inspiration/ideas";
+
+const genBtn =
+  "inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3.5 py-2 text-[13px] font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-50";
 
 export default function IdeaEditor({
   idea,
@@ -14,6 +19,46 @@ export default function IdeaEditor({
   onDeleted: () => void;
 }) {
   const { updateIdea, deleteIdea } = useIdeas();
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<"insufficient" | "failed" | null>(
+    null,
+  );
+
+  const generate = async () => {
+    if (!idea.title.trim()) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch("/api/generate/idea", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic: idea.title,
+          sourceTitle: idea.sourceTitle,
+          sourceUrl: idea.sourceUrl,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 402) {
+        setGenError("insufficient");
+        return;
+      }
+      if (!res.ok) {
+        setGenError("failed");
+        return;
+      }
+      updateIdea(idea.id, {
+        hooks: data.hooks?.length ? data.hooks : idea.hooks,
+        points: data.points?.length ? data.points : idea.points,
+        example: data.example || idea.example,
+        cta: data.cta || idea.cta,
+      });
+    } catch {
+      setGenError("failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <div className="min-w-0 flex-1">
@@ -38,6 +83,44 @@ export default function IdeaEditor({
             <Trash2 className="h-4 w-4" />
           </button>
         </div>
+      </div>
+
+      {/* AI generate — fills hooks/points/example/cta from the title (or source). */}
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <Show when="signed-in">
+          <button
+            type="button"
+            onClick={() => void generate()}
+            disabled={generating || !idea.title.trim()}
+            className={genBtn}
+            title={idea.title.trim() ? "Generate with AI" : "Add a title first"}
+          >
+            {generating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            {generating ? "Generating…" : "Generate with AI · 1 credit"}
+          </button>
+        </Show>
+        <Show when="signed-out">
+          <SignInButton mode="modal" withSignUp>
+            <button type="button" className={genBtn}>
+              <Sparkles className="h-3.5 w-3.5" />
+              Sign in to generate
+            </button>
+          </SignInButton>
+        </Show>
+        {genError === "insufficient" && (
+          <span className="text-[12px] font-bold text-amber-500">
+            Out of credits — top up to keep generating.
+          </span>
+        )}
+        {genError === "failed" && (
+          <span className="text-[12px] font-bold text-red-500">
+            Generation failed — no credit charged. Try again.
+          </span>
+        )}
       </div>
 
       {idea.sourceTitle && (
