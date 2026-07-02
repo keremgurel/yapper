@@ -21,7 +21,7 @@ export default function RecorderReview({
 
   const edit = () => {
     setPendingVideo(blob);
-    router.push("/studio");
+    router.push("/studio/editor");
   };
 
   const download = () => {
