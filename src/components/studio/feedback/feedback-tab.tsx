@@ -29,7 +29,7 @@ export default function FeedbackTab() {
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
         {status === "done" && data ? (
           <div className="space-y-4">
-            <FeedbackResult data={data} />
+            <FeedbackResult coaching={data.coaching} metrics={data.metrics} />
             <button
               type="button"
               onClick={reset}

@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowRight, Check, Sparkles, TrendingUp } from "lucide-react";
-import type { AudioFeedbackData } from "@/hooks/use-audio-feedback";
+import type { Coaching } from "@/lib/feedback/coach";
+import type { DeliveryMetrics } from "@/lib/feedback/metrics";
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -17,8 +18,13 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 /** Renders one completed audio-feedback result: score, coaching, and meters. */
-export default function FeedbackResult({ data }: { data: AudioFeedbackData }) {
-  const { coaching: c, metrics: m } = data;
+export default function FeedbackResult({
+  coaching: c,
+  metrics: m,
+}: {
+  coaching: Coaching;
+  metrics: DeliveryMetrics;
+}) {
   return (
     <div className="space-y-5">
       {/* Score + summary */}
