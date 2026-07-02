@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Captions, FileText, Film, Sparkles } from "lucide-react";
 import MediaTab from "@/components/studio/media-tab";
 import CaptionsTab from "@/components/studio/captions-tab";
@@ -19,6 +19,15 @@ export default function RightPanel({
   onSeekTimeline: (t: number) => void;
 }) {
   const [tab, setTab] = useState<Tab>("media");
+
+  // Open a specific tab when linked (e.g. the practice screen sends
+  // ?tab=feedback after "Get AI feedback"). Read after mount to avoid the
+  // useSearchParams prerender/Suspense constraint and hydration mismatch.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from a browser-only source (URL) on mount
+    if (t === "feedback" || t === "transcript" || t === "captions") setTab(t);
+  }, []);
 
   const tabBtn = (active: boolean) =>
     `flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2.5 text-[13px] font-bold transition-colors ${
