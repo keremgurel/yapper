@@ -1,0 +1,180 @@
+/* =============================================================================
+ * Yapper Design Tokens — COMPONENT PRIMITIVES
+ * -----------------------------------------------------------------------------
+ * Reusable surface classes built entirely from tokens. These are the shared
+ * building blocks that replace the ~dozen bespoke card/panel treatments in the
+ * codebase. All theme-aware via the semantic tokens.
+ * ========================================================================== */
+
+[data-sg] {
+  background: var(--sg-bg);
+  color: var(--sg-text);
+  font-family: var(--sg-font-body);
+}
+
+/* --- Type helpers --------------------------------------------------------- */
+.sg-display {
+  font-family: var(--sg-font-display);
+  letter-spacing: var(--sg-display-tracking);
+  line-height: 1.02;
+  font-weight: 700;
+}
+.sg-label {
+  font-family: var(--sg-font-display);
+  font-size: var(--sg-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--sg-tracking-label);
+  text-transform: uppercase;
+  color: var(--sg-text-faint);
+}
+.sg-mono {
+  font-family: var(--sg-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Surfaces ------------------------------------------------------------- */
+.sg-card {
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-lg);
+  box-shadow: var(--sg-shadow-card);
+}
+.sg-panel {
+  background: linear-gradient(
+    180deg,
+    var(--sg-surface-raised),
+    var(--sg-surface)
+  );
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-xl);
+  box-shadow: var(--sg-shadow-panel);
+}
+.sg-sunken {
+  background: var(--sg-surface-sunken);
+  border: 1px solid var(--sg-border);
+  border-radius: var(--sg-radius-md);
+}
+
+/* --- Glass (tokenized layered blur — used everywhere) --------------------- */
+.sg-glass {
+  position: relative;
+  background: var(--sg-glass-bg);
+  border: 1px solid var(--sg-glass-border);
+  border-radius: var(--sg-radius-xl);
+  backdrop-filter: blur(var(--sg-glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--sg-glass-blur)) saturate(1.4);
+  box-shadow: var(--sg-shadow-glass);
+}
+/* specular top edge highlight — the "light catching the rim" */
+.sg-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    180deg,
+    var(--sg-glass-highlight),
+    transparent 40%,
+    transparent 70%,
+    rgba(255, 255, 255, 0.06)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* --- Badge / chip (clean + neutral; status shown with a small dot) -------- */
+.sg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: 5px var(--sg-space-3);
+  border-radius: var(--sg-radius-full);
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface-sunken);
+  color: var(--sg-text-muted);
+  font-family: var(--sg-font-display);
+  font-size: var(--sg-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--sg-tracking-wide);
+}
+.sg-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--sg-radius-full);
+  background: var(--sg-accent);
+  flex-shrink: 0;
+}
+.sg-chip-dot--live {
+  background: #ef4444;
+  animation: sgPulse 1.6s ease-in-out infinite;
+}
+@keyframes sgPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sg-chip-dot--live {
+    animation: none;
+  }
+}
+
+/* --- Accent button (primary CTA, warm brand gradient, shared radius) ------ */
+.sg-btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-3) var(--sg-space-5);
+  border-radius: var(--sg-radius-btn);
+  border: none;
+  background: var(--sg-accent-gradient);
+  color: #fff;
+  font-family: var(--sg-font-display);
+  font-weight: 600;
+  font-size: var(--sg-text-base);
+  cursor: pointer;
+  box-shadow: var(--sg-accent-glow);
+  transition:
+    transform var(--sg-dur-fast) var(--sg-ease-spring),
+    filter var(--sg-dur-fast) var(--sg-ease-out);
+}
+.sg-btn-accent:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+.sg-btn-accent:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* The aluminum button is NOT reproduced in CSS — we always use the real
+ * <GlassyButton/> component so there is exactly one aluminum button in the app. */
+
+/* --- Ghost / secondary button --------------------------------------------- */
+.sg-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sg-space-2);
+  padding: var(--sg-space-3) var(--sg-space-5);
+  border-radius: var(--sg-radius-btn);
+  border: 1px solid var(--sg-border-strong);
+  background: transparent;
+  color: var(--sg-text);
+  font-family: var(--sg-font-display);
+  font-weight: 600;
+  font-size: var(--sg-text-base);
+  cursor: pointer;
+  transition: background var(--sg-dur-fast) var(--sg-ease-out);
+}
+.sg-btn-ghost:hover {
+  background: var(--sg-glass-bg);
+}

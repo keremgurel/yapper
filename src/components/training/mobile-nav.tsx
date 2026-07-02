@@ -141,7 +141,8 @@ export default function MobileNav() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.4, ease: EASE }}
-            className="border-border bg-card absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-3xl border-b shadow-[0_28px_80px_rgba(15,23,42,0.18)]"
+            style={{ boxShadow: "var(--sg-shadow-panel)" }}
+            className="border-border bg-card absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-3xl border-b"
           >
             <motion.div
               variants={listVariants}

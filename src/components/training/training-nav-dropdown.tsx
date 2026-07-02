@@ -88,7 +88,8 @@ export default function TrainingNavDropdown() {
       <DropdownMenuContent
         align="start"
         sideOffset={12}
-        className="border-border bg-card max-h-[min(80vh,640px)] w-[min(92vw,560px)] overflow-y-auto rounded-3xl p-3 shadow-[0_28px_100px_rgba(15,23,42,0.22)]"
+        style={{ boxShadow: "var(--sg-shadow-panel)" }}
+        className="border-border bg-card no-scrollbar max-h-[min(80vh,640px)] w-[min(92vw,560px)] overflow-y-auto rounded-3xl p-3"
       >
         {groups.map((group, groupIndex) => {
           const items = trainingNavItems.filter((item) => item.group === group);

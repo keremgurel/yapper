@@ -1,253 +1,248 @@
 import Link from "next/link";
-import {
-  ArrowRight,
-  Camera,
-  CheckCircle2,
-  Clock3,
-  Flame,
-  Map,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, Clock3 } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
 import {
   fluencyProtocol,
   programFamilies,
   type ProgramFamily,
-  type TrainingStatus,
 } from "@/data/training";
 
-const statusStyles: Record<TrainingStatus, string> = {
-  "Free now":
-    "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
-  "Free guide":
-    "border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-200",
+/* Category accent → design-system token. One source, no scattered palettes. */
+const ACCENT: Record<ProgramFamily["accent"], string> = {
+  cyan: "var(--sg-accent-2)",
+  orange: "var(--sg-accent)",
+  emerald: "var(--sg-green-500)",
+  fuchsia: "var(--sg-pink-500)",
+  amber: "var(--sg-yellow-500)",
+  rose: "#f43f5e",
 };
 
-const accentStyles: Record<ProgramFamily["accent"], string> = {
-  cyan: "from-cyan-400/24 to-cyan-400/0",
-  orange: "from-orange-400/24 to-orange-400/0",
-  emerald: "from-emerald-400/24 to-emerald-400/0",
-  fuchsia: "from-fuchsia-400/24 to-fuchsia-400/0",
-  amber: "from-amber-400/24 to-amber-400/0",
-  rose: "from-rose-400/24 to-rose-400/0",
-};
+const muted = { color: "var(--sg-text-muted)" };
 
-const livePrograms = programFamilies.filter((program) =>
-  ["random-topic-generator", "freestyle-speech"].includes(program.slug),
+/* Three clear buckets, derived from the data. */
+const OPEN_SLUGS = ["random-topic-generator", "freestyle-speech"];
+const openPractice = OPEN_SLUGS.map(
+  (slug) => programFamilies.find((p) => p.slug === slug)!,
 );
-const guidedPrograms = programFamilies.filter(
-  (program) =>
-    program.status === "Free now" &&
-    !["random-topic-generator", "freestyle-speech"].includes(program.slug),
+const scenarios = programFamilies.filter(
+  (p) => p.status === "Free now" && !OPEN_SLUGS.includes(p.slug),
 );
 
-function ProgramCard({ program }: { program: ProgramFamily }) {
+const HOW_IT_WORKS = [
+  {
+    n: "1",
+    title: "Pick a topic or drill",
+    text: "A random prompt, a blank freestyle, or a specific scenario.",
+  },
+  {
+    n: "2",
+    title: "Talk to the timer",
+    text: "Camera and mic are optional. Just start speaking when it counts down.",
+  },
+  {
+    n: "3",
+    title: "Play it back",
+    text: "Review the take and spot exactly what to sharpen next time.",
+  },
+];
+
+function ProgramCard({
+  program,
+  featured,
+}: {
+  program: ProgramFamily;
+  featured?: boolean;
+}) {
   return (
-    <article className="relative overflow-hidden border-t border-slate-900/10 py-5 dark:border-white/10">
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b ${accentStyles[program.accent]}`}
+    <article className="sg-card flex flex-col gap-4 p-6">
+      <span
+        style={{
+          height: 3,
+          width: 40,
+          borderRadius: 3,
+          background: ACCENT[program.accent],
+        }}
       />
-      <div className="relative">
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-black uppercase ${statusStyles[program.status]}`}
-          >
-            {program.status}
+      <div className="flex flex-wrap items-center gap-2">
+        {featured && (
+          <span className="sg-chip">
+            <span className="sg-chip-dot" />
+            Start here
           </span>
-          <span className="rounded-full border border-slate-900/8 px-2.5 py-1 text-[11px] font-bold text-slate-500 dark:border-white/8 dark:text-white/42">
-            {program.duration}
-          </span>
-        </div>
-        <h3 className="font-display mt-5 text-2xl leading-none font-black">
-          {program.title}
-        </h3>
-        <p className="mt-2 text-xs font-black tracking-[0.14em] text-slate-500 uppercase dark:text-white/38">
-          {program.skill}
-        </p>
-        <p className="mt-4 text-sm leading-6 text-slate-700 dark:text-white/62">
-          {program.prompt}
-        </p>
-        <p className="mt-4 border-l-2 border-slate-950/12 pl-4 text-sm leading-6 font-bold text-slate-700 dark:border-white/18 dark:text-white/62">
-          {program.sampleTask}
-        </p>
-        <Link
-          href={program.href}
-          className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black no-underline transition-transform hover:-translate-y-0.5 ${"bg-slate-950 text-white dark:bg-white dark:text-slate-950"}`}
-        >
-          Start
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        )}
+        <span className="sg-chip">{program.duration}</span>
       </div>
+      <div>
+        <h3 className="sg-display text-2xl">{program.title}</h3>
+        <p className="sg-label mt-2">{program.skill}</p>
+      </div>
+      <p className="text-sm leading-6" style={muted}>
+        {program.prompt}
+      </p>
+      <Link
+        href={program.href}
+        className="sg-btn-ghost mt-auto self-start no-underline"
+      >
+        Start
+        <ArrowRight className="h-4 w-4" />
+      </Link>
     </article>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  sub,
+}: {
+  eyebrow: string;
+  title: string;
+  sub?: string;
+}) {
+  return (
+    <div className="mb-6 max-w-2xl">
+      <p className="sg-label" style={{ color: "var(--sg-label)" }}>
+        {eyebrow}
+      </p>
+      <h2 className="sg-display mt-3 text-3xl sm:text-4xl">{title}</h2>
+      {sub && (
+        <p className="mt-3 text-base leading-7" style={muted}>
+          {sub}
+        </p>
+      )}
+    </div>
   );
 }
 
 export default function TrainingHub() {
   return (
     <TrainingLayout>
-      <section className="relative px-4 pt-16 pb-12 sm:px-6 sm:pt-20 lg:px-8">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.14] dark:opacity-[0.22]">
-          <div className="absolute top-[-12rem] left-[-8rem] h-[28rem] w-[28rem] rounded-full bg-cyan-400 blur-3xl" />
-          <div className="absolute right-[-10rem] bottom-[-14rem] h-[30rem] w-[30rem] rounded-full bg-orange-500 blur-3xl" />
-        </div>
+      {/* Hero — answers "what am I doing" up front */}
+      <section className="px-4 pt-16 pb-10 sm:px-6 sm:pt-20 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <span className="sg-chip">Training</span>
+          <h1 className="sg-display mt-5 max-w-3xl text-5xl leading-[0.98] text-balance sm:text-6xl">
+            What do you want to practice?
+          </h1>
+          <p className="mt-4 max-w-xl text-lg leading-8" style={muted}>
+            Every drill is the same simple loop: a prompt, a timer, and a
+            recording. Pick one below and start talking.
+          </p>
 
-        <div className="relative mx-auto max-w-6xl">
-          <div className="grid gap-8 lg:grid-cols-[0.82fr_1.18fr] lg:items-end">
-            <div>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-900/10 bg-white/70 px-3 py-1.5 text-[11px] font-black tracking-[0.18em] text-slate-600 uppercase shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8 dark:text-white/55">
-                <Map className="h-3.5 w-3.5" />
-                Training map
-              </div>
-              <h1 className="font-display max-w-3xl text-5xl leading-[0.96] font-black text-balance sm:text-7xl sm:leading-[0.9]">
-                Pick the speaking rep you need.
-              </h1>
-            </div>
-            <div className="max-w-xl lg:justify-self-end">
-              <p className="text-lg leading-8 text-slate-700 dark:text-white/68">
-                Yapper brings every speaking drill into one practice map: random
-                prompts, freestyle reps, guided categories, and focused warmups
-                all route into live recording flows.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  href="/training/random-topic-generator"
-                  className="rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white no-underline shadow-[0_16px_40px_rgba(15,23,42,0.22)] transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {HOW_IT_WORKS.map((step) => (
+              <div key={step.n} className="flex gap-4">
+                <span
+                  className="sg-display flex h-9 w-9 flex-none items-center justify-center rounded-full text-sm"
+                  style={{
+                    background: "var(--sg-surface-sunken)",
+                    color: "var(--sg-accent)",
+                  }}
                 >
-                  Start random topic
-                </Link>
-                <Link
-                  href="/training/freestyle-speech"
-                  className="rounded-full border border-slate-900/15 bg-white/55 px-5 py-3 text-sm font-bold text-slate-800 no-underline backdrop-blur transition-colors hover:bg-white dark:border-white/12 dark:bg-white/8 dark:text-white/80 dark:hover:bg-white/12"
-                >
-                  Start freestyle
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {[
-              {
-                icon: Camera,
-                title: "Free practice",
-                text: "Random topics and freestyle camera reps are ready whenever you are.",
-              },
-              {
-                icon: Flame,
-                title: "Free guide",
-                text: "Fluency drills give you a practical warmup before bigger reps.",
-              },
-              {
-                icon: Sparkles,
-                title: "Guided drills",
-                text: "Each category opens into a focused prompt bank and the same clean recording flow.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-2xl border border-slate-900/8 bg-white/60 p-5 backdrop-blur dark:border-white/8 dark:bg-white/[0.05]"
-              >
-                <item.icon className="h-5 w-5 text-cyan-700 dark:text-cyan-300" />
-                <p className="mt-4 text-sm font-black">{item.title}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-white/56">
-                  {item.text}
-                </p>
+                  {step.n}
+                </span>
+                <div>
+                  <p className="sg-display text-base">{step.title}</p>
+                  <p className="mt-1 text-sm leading-6" style={muted}>
+                    {step.text}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="programs" className="px-4 py-12 sm:px-6 lg:px-8">
+      {/* 1. Start here — the two open modes */}
+      <section className="px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <p className="font-mono text-xs font-black tracking-[0.18em] text-cyan-700 uppercase dark:text-cyan-300">
-                Free now
-              </p>
-              <h2 className="font-display mt-3 text-4xl leading-none font-black sm:text-5xl">
-                Working practice flows.
-              </h2>
-            </div>
+          <SectionHeading
+            eyebrow="Start here"
+            title="Just open your mouth and go"
+            sub="No setup. Pull a random topic, or free-talk to the camera about anything."
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            {openPractice.map((program, i) => (
+              <ProgramCard
+                key={program.slug}
+                program={program}
+                featured={i === 0}
+              />
+            ))}
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {livePrograms.map((program) => (
+        </div>
+      </section>
+
+      {/* 2. Scenarios — every category in one scannable grid */}
+      <section className="px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <SectionHeading
+            eyebrow="Practice a real situation"
+            title="Rehearse the moment that actually matters"
+            sub="Same loop, focused prompts. Pick the situation you want to get better at."
+          />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {scenarios.map((program) => (
               <ProgramCard key={program.slug} program={program} />
             ))}
           </div>
         </div>
       </section>
 
-      <section className="px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] border border-slate-900/10 bg-slate-950 text-white shadow-[0_24px_90px_rgba(15,23,42,0.18)] dark:border-white/10">
-          <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
-            <div className="border-b border-white/10 p-6 sm:p-8 lg:border-r lg:border-b-0">
-              <p className="font-mono text-xs font-black tracking-[0.18em] text-emerald-200 uppercase">
-                Free guide
+      {/* 3. Warm up — the fluency routine, framed as optional prep */}
+      <section className="px-4 pt-10 pb-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl">
+          <div className="sg-panel grid gap-8 p-8 lg:grid-cols-[1fr_1fr] lg:p-10">
+            <div>
+              <p className="sg-label" style={{ color: "var(--sg-label)" }}>
+                Warm up first (optional)
               </p>
-              <h2 className="font-display mt-5 text-4xl leading-none font-black sm:text-5xl">
+              <h2 className="sg-display mt-3 text-3xl sm:text-4xl">
                 {fluencyProtocol.title}
               </h2>
-              <p className="mt-5 text-base leading-7 text-white/64">
-                {fluencyProtocol.description}
+              <p className="mt-3 text-base leading-7" style={muted}>
+                {fluencyProtocol.promise}
               </p>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-bold">
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <span className="sg-chip">
                   <Clock3 className="h-4 w-4" />
                   {fluencyProtocol.duration}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-bold">
+                <span className="sg-chip">
                   <CheckCircle2 className="h-4 w-4" />
                   {fluencyProtocol.cadence}
                 </span>
               </div>
               <Link
                 href="/training/fluency-on-steroids"
-                className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 no-underline transition-transform hover:-translate-y-0.5"
+                className="sg-btn-accent mt-6 no-underline"
               >
-                Open fluency drills
+                Open the warmup
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-            <div className="grid gap-3 p-4 sm:p-6 md:grid-cols-2">
+            <ol className="flex flex-col gap-3">
               {fluencyProtocol.drills.map((drill, index) => (
-                <div
+                <li
                   key={drill.id}
-                  className="rounded-2xl bg-white/[0.065] p-5"
+                  className="sg-sunken flex items-start gap-4 p-4"
                 >
-                  <p className="font-mono text-xs font-black text-white/36">
+                  <span
+                    className="sg-mono text-sm"
+                    style={{ color: "var(--sg-text-faint)" }}
+                  >
                     {String(index + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-3 text-lg font-black">{drill.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-white/58">
-                    {drill.outcome}
-                  </p>
-                </div>
+                  </span>
+                  <div>
+                    <p className="sg-display text-base">{drill.title}</p>
+                    <p className="mt-1 text-sm leading-6" style={muted}>
+                      {drill.outcome}
+                    </p>
+                  </div>
+                </li>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 pt-12 pb-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl">
-          <div className="mb-6">
-            <p className="font-mono text-xs font-black tracking-[0.18em] text-orange-700 uppercase dark:text-orange-300">
-              Guided drills
-            </p>
-            <h2 className="font-display mt-3 text-4xl leading-none font-black sm:text-5xl">
-              Useful categories, clearly marked.
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-700 dark:text-white/62">
-              Choose the context you want to rehearse. Each drill keeps the
-              setup lean: one prompt, one rep, one recording flow.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {guidedPrograms.map((program) => (
-              <ProgramCard key={program.slug} program={program} />
-            ))}
+            </ol>
           </div>
         </div>
       </section>

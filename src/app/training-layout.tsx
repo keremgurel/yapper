@@ -6,7 +6,10 @@ export default function TrainingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen overflow-hidden bg-[#f8fafc] text-slate-950 dark:bg-[#0f1117] dark:text-white">
+    <main
+      className="min-h-screen overflow-hidden"
+      style={{ background: "var(--sg-bg)", color: "var(--sg-text)" }}
+    >
       <TrainingHeader />
       {children}
     </main>

@@ -15,25 +15,37 @@ export const readAloudPassages: Topic[] = [
     id: "ra-1",
     category: "General",
     difficulty: "Easy",
-    text: "The best speakers do not rush every sentence. They let important words breathe, pause at natural turns, and make the listener feel carried instead of chased.",
+    text: "Good speakers are not the ones who never pause. They are the ones who pause on purpose. They let the important word land, take a breath the listener can follow, and trust that a clear sentence does not need to be a fast one. When you slow down at the right moment, people lean in. When you rush, they fall behind, and the point you cared about most slips by unnoticed.",
   },
   {
     id: "ra-2",
     category: "Business",
     difficulty: "Medium",
-    text: "A useful update answers three questions quickly: what changed, why it matters, and what happens next. If one of those pieces is missing, people invent their own version of the story.",
+    text: "Here is a simple way to give an update people actually remember. Say what changed. Say why it matters. Say what happens next. Three beats, in that order, with a pause between each one. If you skip the why, it sounds like noise. If you skip the next step, people nod politely and then do nothing. The shortest update that answers all three questions will always beat the longest one that answers none of them.",
   },
   {
     id: "ra-3",
     category: "Technology",
     difficulty: "Medium",
-    text: "New tools rarely replace judgment. They shift where judgment is needed: choosing the right problem, checking the output, and knowing when a faster answer is not a better answer.",
+    text: "New tools rarely remove the need for judgment. They just move it somewhere else. Instead of doing the work by hand, you now have to choose the right problem, check the result, and notice when a fast answer is quietly the wrong one. The machine can draft, sort, and summarize in seconds. What it cannot do is care about the outcome. That part is still yours, and it is the part that decides whether any of the speed was worth it.",
   },
   {
     id: "ra-4",
     category: "Society",
     difficulty: "Hard",
-    text: "Trust is built when words, timing, and behavior point in the same direction. When they do not, even accurate information can sound like damage control.",
+    text: "Trust is not built by saying the right words. It is built when your words, your timing, and your behavior all point in the same direction. When they line up, people relax; they stop reading between the lines and simply listen. When they clash, even a true and careful statement can sound like damage control. The uncomfortable part is that you cannot talk your way back into trust you have spent. You can only rebuild it, slowly, one kept promise at a time.",
+  },
+  {
+    id: "ra-5",
+    category: "General",
+    difficulty: "Medium",
+    text: "Think about the last time someone told a story really well. They did not give you every detail. They chose a few, and they made them vivid: a specific smell, a single line of dialogue, one small moment that suddenly felt real. That is the difference between reporting and storytelling. Reporting lists what happened. Storytelling decides what mattered, and then says it slowly enough that you can picture it too.",
+  },
+  {
+    id: "ra-6",
+    category: "Fun",
+    difficulty: "Easy",
+    text: "Nobody is born a confident speaker. The people who look natural on camera were once just as stiff as everyone else. They simply did the boring thing: they practiced out loud, watched themselves back, and let the cringe teach them something. Confidence is not a personality trait you either have or lack. It is a habit you build, one slightly awkward rep at a time, until one day the words just show up when you need them.",
   },
 ];
 

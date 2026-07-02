@@ -20,8 +20,18 @@ export const Component = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="px- text-base-content mx-auto my-8 max-w-[1200px]">
-      <div className="relative mx-auto flex max-w-[1200px] flex-col rounded-3xl bg-white px-4 py-10">
+    <footer
+      className="mx-auto my-8 max-w-[1200px]"
+      style={{ color: "var(--sg-text)" }}
+    >
+      <div
+        className="relative mx-auto flex max-w-[1200px] flex-col rounded-3xl px-4 py-10"
+        style={{
+          background: "var(--sg-surface)",
+          border: "1px solid var(--sg-border)",
+          boxShadow: "var(--sg-shadow-card)",
+        }}
+      >
         <div className="absolute -top-4 -left-8 hidden h-[36px] w-[80px] scale-75 md:block">
           {tape}
         </div>
@@ -32,14 +42,24 @@ export const Component = () => {
           <div className="flex flex-col items-start gap-2">
             <Link
               href="/"
-              className="font-display text-base-content flex flex-row items-center justify-start gap-2 text-2xl font-extrabold"
+              className="font-display flex flex-row items-center justify-start gap-2 text-2xl font-extrabold"
+              style={{ color: "var(--sg-text)" }}
             >
-              <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+              <div
+                className="flex h-[28px] w-[28px] items-center justify-center rounded-lg text-sm font-black text-white"
+                style={{
+                  background: "var(--sg-accent-gradient)",
+                  boxShadow: "var(--sg-accent-glow)",
+                }}
+              >
                 Y
               </div>
               yapper
             </Link>
-            <p className="text-neutral/50 w-full text-base font-medium md:w-4/5">
+            <p
+              className="w-full text-base font-medium md:w-4/5"
+              style={{ color: "var(--sg-text-muted)" }}
+            >
               Free topic generator for speech practice. Random prompts, built-in
               timer, and optional recording.
             </p>
@@ -47,24 +67,24 @@ export const Component = () => {
 
           <div className="flex flex-col items-start gap-2 md:mx-4 md:flex-row md:items-start md:gap-20">
             <div className="flex flex-col gap-1 md:gap-4">
-              <h4 className="font-display text-md text-neutral/50 font-semibold uppercase">
+              <h4 className="font-display text-md font-semibold text-[var(--sg-text-muted)] uppercase">
                 Product
               </h4>
-              <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
+              <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--sg-text-muted)] md:flex-col">
                 <Link
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="/training/random-topic-generator"
                 >
                   Random Topics
                 </Link>
                 <Link
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="/training/freestyle-speech"
                 >
                   Freestyle
                 </Link>
                 <Link
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="/blog"
                 >
                   Blog
@@ -73,12 +93,12 @@ export const Component = () => {
             </div>
 
             <div className="flex flex-col gap-1 md:gap-4">
-              <h4 className="font-display text-md text-neutral/50 font-semibold whitespace-nowrap uppercase">
+              <h4 className="font-display text-md font-semibold whitespace-nowrap text-[var(--sg-text-muted)] uppercase">
                 Social
               </h4>
-              <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
+              <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--sg-text-muted)] md:flex-col">
                 <a
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="https://www.tiktok.com/@ypr.app"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -86,7 +106,7 @@ export const Component = () => {
                   TikTok
                 </a>
                 <a
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="https://www.instagram.com/ypr.app/"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -97,12 +117,12 @@ export const Component = () => {
             </div>
 
             <div className="flex flex-col gap-1 md:gap-4">
-              <h4 className="font-display text-md text-neutral/50 font-semibold whitespace-nowrap uppercase">
+              <h4 className="font-display text-md font-semibold whitespace-nowrap text-[var(--sg-text-muted)] uppercase">
                 Partners
               </h4>
-              <div className="text-neutral flex flex-wrap items-start gap-2 text-sm md:flex-col">
+              <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--sg-text-muted)] md:flex-col">
                 <a
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="http://onchainsite.xyz/"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -110,7 +130,7 @@ export const Component = () => {
                   Onchainsite
                 </a>
                 <a
-                  className="text-neutral/50 font-medium whitespace-nowrap"
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
                   href="https://www.coglyde.com/"
                   target="_blank"
                   rel="noopener noreferrer"
@@ -121,7 +141,7 @@ export const Component = () => {
             </div>
           </div>
         </div>
-        <div className="text-neutral border-neutral/10 mt-6 flex w-full flex-col items-start justify-between gap-4 border-t px-2 pt-6 text-sm md:flex-row md:items-center md:px-8">
+        <div className="mt-6 flex w-full flex-col items-start justify-between gap-4 border-t border-[var(--sg-border)] px-2 pt-6 text-sm text-[var(--sg-text-muted)] md:flex-row md:items-center md:px-8">
           <p className="whitespace-nowrap">
             &copy;{currentYear} OCX Software Inc. All rights reserved.
           </p>
@@ -131,10 +151,10 @@ export const Component = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="yapper on TikTok"
-              className="hover:text-gray-900"
+              className="hover:text-[var(--sg-text)]"
             >
               <svg
-                className="fill-neutral h-5 w-5"
+                className="h-5 w-5 fill-current"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -146,10 +166,10 @@ export const Component = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="yapper on Instagram"
-              className="hover:text-gray-900"
+              className="hover:text-[var(--sg-text)]"
             >
               <svg
-                className="fill-neutral h-5 w-5"
+                className="h-5 w-5 fill-current"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -161,10 +181,10 @@ export const Component = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="yapper on X (formerly Twitter)"
-              className="hover:text-gray-900"
+              className="hover:text-[var(--sg-text)]"
             >
               <svg
-                className="fill-neutral h-5 w-5"
+                className="h-5 w-5 fill-current"
                 viewBox="0 0 24 24"
                 xmlns="http://www.w3.org/2000/svg"
               >

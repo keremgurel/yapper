@@ -3,34 +3,23 @@ import { Suspense } from "react";
 import Script from "next/script";
 import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
-import {
-  Geist_Mono,
-  Inter_Tight,
-  Manrope,
-  Plus_Jakarta_Sans,
-} from "next/font/google";
+import { Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { getSiteUrl } from "@/lib/json-ld";
 
-const bodySans = Manrope({
-  variable: "--font-body-sans",
+// One geo-grotesque family across display + body (Aave-style). Hanken Grotesk
+// is our free stand-in for Aave's paid FT Regola Neue. `--font-body-sans` and
+// `--font-display-sans` are aliased to it in globals.css so existing refs work.
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const displaySans = Inter_Tight({
-  variable: "--font-display-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
   subsets: ["latin"],
 });
 
@@ -133,7 +122,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${bodySans.variable} ${displaySans.variable} ${geistMono.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${hanken.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
