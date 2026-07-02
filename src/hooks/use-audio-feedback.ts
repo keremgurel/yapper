@@ -25,6 +25,7 @@ export type FeedbackStatus =
 
 export type FeedbackError =
   | "insufficient_credits"
+  | "not_entitled"
   | "no_speech"
   | "storage_full"
   | "failed"
@@ -100,7 +101,8 @@ export function useFeedback(sourceUrl?: string) {
         return;
       }
       setStatus("error");
-      if (res.status === 402) setError("insufficient_credits");
+      if (json?.error === "not_entitled") setError("not_entitled");
+      else if (res.status === 402) setError("insufficient_credits");
       else if (json?.detail === "no_speech") setError("no_speech");
       else setError("failed");
     } catch (e) {

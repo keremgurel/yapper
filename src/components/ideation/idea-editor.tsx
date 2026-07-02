@@ -60,7 +60,7 @@ export default function IdeaEditor({
         </div>
       </div>
 
-      {/* AI generate — fills hooks/points/example/cta from the title (or source). */}
+      {/* AI generate, fills hooks/points/example/cta from the title (or source). */}
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <Show when="signed-in">
           <button
@@ -88,14 +88,22 @@ export default function IdeaEditor({
             </button>
           </SignInButton>
         </Show>
+        {genError?.action === "idea" && genError.kind === "locked" && (
+          <Link
+            href="/pricing"
+            className="text-[12px] font-bold text-cyan-500 hover:underline"
+          >
+            Subscribe to unlock AI generation
+          </Link>
+        )}
         {genError?.action === "idea" && genError.kind === "insufficient" && (
           <span className="text-[12px] font-bold text-amber-500">
-            Out of credits — top up to keep generating.
+            Out of credits. Top up to keep generating.
           </span>
         )}
         {genError?.action === "idea" && genError.kind === "failed" && (
           <span className="text-[12px] font-bold text-red-500">
-            Generation failed — no credit charged. Try again.
+            Generation failed. No credit charged. Try again.
           </span>
         )}
       </div>
