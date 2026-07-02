@@ -26,6 +26,7 @@ export type FeedbackStatus =
 export type FeedbackError =
   | "insufficient_credits"
   | "no_speech"
+  | "storage_full"
   | "failed"
   | null;
 
@@ -33,32 +34,30 @@ async function wavFrom(sourceUrl: string): Promise<Blob> {
   return encodeWav(await decodeToMono16k(sourceUrl), 16000);
 }
 
-// Upload the recording straight to Gemini via a server-minted resumable URL,
-// so the big file never passes through our function. Returns the file uri.
+// Upload the recording to R2 via a presigned PUT (browser-CORS friendly). The
+// server later pulls it from R2 to hand to Gemini, and keeps it for re-watch.
+// Returns the R2 object key. Throws "storage_full" when over quota.
 async function uploadVideo(
   sourceUrl: string,
-): Promise<{ fileUri: string; mimeType: string }> {
+): Promise<{ mediaKey: string; mimeType: string }> {
   const blob = await fetch(sourceUrl).then((r) => r.blob());
   const mimeType = blob.type || "video/webm";
-  const res = await fetch("/api/gemini/upload-url", {
+  const ext = mimeType.split("/")[1]?.split(";")[0] || "webm";
+  const res = await fetch("/api/media/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sizeBytes: blob.size, mimeType }),
+    body: JSON.stringify({ sizeBytes: blob.size, mimeType, ext }),
   });
+  if (res.status === 402) throw new Error("storage_full");
   if (!res.ok) throw new Error("upload_start_failed");
-  const { uploadUrl } = await res.json();
-  const put = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      "X-Goog-Upload-Offset": "0",
-      "X-Goog-Upload-Command": "upload, finalize",
-    },
+  const { url, key } = await res.json();
+  const put = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": mimeType },
     body: blob,
   });
   if (!put.ok) throw new Error("upload_failed");
-  const fileUri = (await put.json())?.file?.uri;
-  if (!fileUri) throw new Error("upload_failed");
-  return { fileUri, mimeType };
+  return { mediaKey: key, mimeType };
 }
 
 /**
@@ -81,8 +80,8 @@ export function useFeedback(sourceUrl?: string) {
 
       if (tier === "video" || tier === "full") {
         setStatus("uploading");
-        const { fileUri, mimeType } = await uploadVideo(sourceUrl);
-        url += `&fileUri=${encodeURIComponent(fileUri)}&mimeType=${encodeURIComponent(mimeType)}`;
+        const { mediaKey, mimeType } = await uploadVideo(sourceUrl);
+        url += `&mediaKey=${encodeURIComponent(mediaKey)}&mimeType=${encodeURIComponent(mimeType)}`;
         if (tier === "full") body = await wavFrom(sourceUrl);
       } else {
         body = await wavFrom(sourceUrl);
@@ -104,9 +103,13 @@ export function useFeedback(sourceUrl?: string) {
       if (res.status === 402) setError("insufficient_credits");
       else if (json?.detail === "no_speech") setError("no_speech");
       else setError("failed");
-    } catch {
+    } catch (e) {
       setStatus("error");
-      setError("failed");
+      setError(
+        e instanceof Error && e.message === "storage_full"
+          ? "storage_full"
+          : "failed",
+      );
     }
   };
 

@@ -1,8 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { FEEDBACK_CREDITS, type FeedbackTier } from "@/lib/db/constants";
+import {
+  FEEDBACK_CREDITS,
+  FREE_STORAGE_BYTES,
+  MAX_CLIP_BYTES,
+  type FeedbackTier,
+} from "@/lib/db/constants";
 import {
   deductCredits,
   getBalance,
@@ -10,12 +15,14 @@ import {
   refundCredits,
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
-import { ensureUser } from "@/lib/db/users";
+import { addStorageBytes, ensureUser, getStorageBytes } from "@/lib/db/users";
 import { runAudioFeedback } from "@/lib/feedback/audio";
 import type { Coaching } from "@/lib/feedback/coach";
+import { uploadBytesToGemini } from "@/lib/feedback/gemini";
 import { computeMetrics, type DeliveryMetrics } from "@/lib/feedback/metrics";
 import { transcribeForFeedback } from "@/lib/feedback/transcribe";
 import { coachOnCamera } from "@/lib/feedback/video";
+import { deleteObject, getObjectBytes, ownsKey } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,6 +33,7 @@ interface FeedbackResult {
   metrics?: DeliveryMetrics;
   coaching: Coaching;
   words?: unknown;
+  mediaBytes?: number;
 }
 
 /**
@@ -47,9 +55,11 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "bad_tier" }, { status: 400 });
   }
   const cost = FEEDBACK_CREDITS[tier];
-  const fileUri = params.get("fileUri") ?? undefined;
+  const rawKey = params.get("mediaKey") ?? undefined;
+  // Video/full read the clip from the caller's own R2 prefix.
+  const mediaKey = rawKey && ownsKey(userId, rawKey) ? rawKey : undefined;
   const mimeType = params.get("mimeType") ?? "video/webm";
-  if ((tier === "video" || tier === "full") && !fileUri) {
+  if ((tier === "video" || tier === "full") && !mediaKey) {
     return Response.json({ error: "missing_file" }, { status: 400 });
   }
 
@@ -83,7 +93,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await runTier(tier, audio, fileUri, mimeType);
+    const result = await runTier(tier, audio, mediaKey, mimeType, userId);
     await db
       .update(submissions)
       .set({
@@ -92,9 +102,26 @@ export async function POST(req: NextRequest): Promise<Response> {
         transcript: result.words ?? null,
         feedback: { metrics: result.metrics, coaching: result.coaching },
         scores: { delivery: result.coaching.score },
+        mediaKey: mediaKey ?? null,
+        mediaBytes: result.mediaBytes ?? 0,
         updatedAt: new Date(),
       })
       .where(eq(submissions.id, submission.id));
+    // Count the stored recording against the user's quota — but only once per
+    // object, so re-analyzing the same mediaKey can't inflate the counter.
+    if (mediaKey && result.mediaBytes) {
+      const [dup] = await db
+        .select({ id: submissions.id })
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.mediaKey, mediaKey),
+            ne(submissions.id, submission.id),
+          ),
+        )
+        .limit(1);
+      if (!dup) await addStorageBytes(userId, result.mediaBytes);
+    }
 
     const balance = await getBalance(userId);
     return Response.json({
@@ -105,6 +132,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
+    // The upload is now an orphan (uncounted, unreferenced) — reclaim it so a
+    // failed run can't leak R2 storage.
+    if (mediaKey) {
+      try {
+        await deleteObject(mediaKey);
+      } catch {
+        // a lifecycle sweep can reclaim it later
+      }
+    }
     let balance: number | undefined;
     try {
       balance = await refundCredits(userId, cost, submission.id);
@@ -129,20 +165,32 @@ export async function POST(req: NextRequest): Promise<Response> {
 async function runTier(
   tier: FeedbackTier,
   audio: ArrayBuffer,
-  fileUri: string | undefined,
+  mediaKey: string | undefined,
   mimeType: string,
+  userId: string,
 ): Promise<FeedbackResult> {
   if (tier === "audio") {
     const r = await runAudioFeedback(audio);
     return { metrics: r.metrics, coaching: r.coaching, words: r.words };
   }
-  // video + full: Gemini analyzes the uploaded clip (native video + audio).
-  const coaching = await coachOnCamera(fileUri as string, mimeType);
-  if (tier === "video") return { coaching };
+  // video + full: pull the clip from R2 (server-side, no browser CORS), push it
+  // to Gemini, and coach on the native video + audio.
+  const bytes = await getObjectBytes(mediaKey as string);
+  // Enforce on the *actual* object size — presigned PUTs can't cap upload size,
+  // so the client's claimed sizeBytes at upload-url time is only advisory.
+  if (bytes.byteLength > MAX_CLIP_BYTES) throw new Error("clip_too_large");
+  const used = await getStorageBytes(userId);
+  if (used + bytes.byteLength > FREE_STORAGE_BYTES) {
+    throw new Error("storage_full");
+  }
+  const uri = await uploadBytesToGemini(bytes, mimeType);
+  const coaching = await coachOnCamera(uri, mimeType);
+  const mediaBytes = bytes.byteLength;
+  if (tier === "video") return { coaching, mediaBytes };
   // full: add precise deterministic meters from Deepgram on the audio.
   const key = process.env.DEEPGRAM_API_KEY;
-  if (!key) return { coaching }; // no transcription provider → video-only result
+  if (!key) return { coaching, mediaBytes };
   const words = await transcribeForFeedback(audio, key);
   const metrics = words.length ? computeMetrics(words) : undefined;
-  return { metrics, coaching, words };
+  return { metrics, coaching, words, mediaBytes };
 }

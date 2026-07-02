@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { Loader2, Mic, Sparkles, Video } from "lucide-react";
+import { Loader2, Mic, Sparkles, Trash2, Video } from "lucide-react";
 import FeedbackResult from "@/components/studio/feedback/feedback-result";
 import type { Coaching } from "@/lib/feedback/coach";
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
@@ -18,7 +18,28 @@ interface Summary {
 
 interface Detail extends Summary {
   feedback: { metrics: DeliveryMetrics; coaching: Coaching } | null;
+  mediaKey: string | null;
   error: string | null;
+}
+
+function DeleteButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="text-foreground/40 inline-flex items-center gap-1.5 text-xs font-bold hover:text-red-500 disabled:opacity-50"
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+      {disabled ? "Deleting…" : "Delete session"}
+    </button>
+  );
 }
 
 function when(iso: string): string {
@@ -30,7 +51,9 @@ export default function HistoryView() {
   const { isLoaded, isSignedIn } = useUser();
   const [list, setList] = useState<Summary[] | null>(null);
   const [selected, setSelected] = useState<Detail | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!isSignedIn) return;
@@ -43,12 +66,33 @@ export default function HistoryView() {
   const open = async (id: string) => {
     setLoadingDetail(true);
     setSelected(null);
+    setMediaUrl(null);
     try {
       const r = await fetch(`/api/submissions/${id}`);
       const d = await r.json();
-      setSelected(d.submission ?? null);
+      const sub: Detail | null = d.submission ?? null;
+      setSelected(sub);
+      if (sub?.mediaKey) {
+        const sr = await fetch(
+          `/api/media/sign?key=${encodeURIComponent(sub.mediaKey)}`,
+        );
+        if (sr.ok) setMediaUrl((await sr.json()).url ?? null);
+      }
     } finally {
       setLoadingDetail(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/submissions/${id}`, { method: "DELETE" });
+      if (!r.ok) return;
+      setList((prev) => prev?.filter((s) => s.id !== id) ?? prev);
+      setSelected(null);
+      setMediaUrl(null);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -126,15 +170,34 @@ export default function HistoryView() {
             <Loader2 className="h-4 w-4 animate-spin" /> Loading feedback…
           </div>
         ) : selected?.feedback ? (
-          <FeedbackResult
-            coaching={selected.feedback.coaching}
-            metrics={selected.feedback.metrics}
-          />
+          <div className="space-y-4">
+            {mediaUrl && (
+              <video
+                src={mediaUrl}
+                controls
+                className="w-full rounded-xl bg-black"
+              />
+            )}
+            <FeedbackResult
+              coaching={selected.feedback.coaching}
+              metrics={selected.feedback.metrics}
+            />
+            <DeleteButton
+              onClick={() => void remove(selected.id)}
+              disabled={deleting}
+            />
+          </div>
         ) : selected ? (
-          <p className="text-foreground/55 py-12 text-sm">
-            No feedback stored for this session
-            {selected.error ? ` (${selected.error})` : ""}.
-          </p>
+          <div className="space-y-4 py-12">
+            <p className="text-foreground/55 text-sm">
+              No feedback stored for this session
+              {selected.error ? ` (${selected.error})` : ""}.
+            </p>
+            <DeleteButton
+              onClick={() => void remove(selected.id)}
+              disabled={deleting}
+            />
+          </div>
         ) : (
           <div className="text-foreground/40 flex flex-col items-center gap-2 py-16 text-center text-sm">
             <Sparkles className="h-6 w-6" />
