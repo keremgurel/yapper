@@ -1,3 +1,7 @@
+"use client";
+
+import Link from "next/link";
+import { Show, SignInButton } from "@clerk/nextjs";
 import { GlassyButton } from "@/components/ui/glassy-button";
 
 interface HomeHeroProps {
@@ -13,30 +17,49 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
             Y
           </span>
           <span className="font-display text-[18px] font-semibold tracking-[0.01em]">
-            Free random topic generator, no sign-up.
-          </span>
-          <span className="text-[15px] font-medium" aria-hidden>
-            →
+            The create-to-post studio for people who talk to camera.
           </span>
         </div>
       </div>
 
       <h1 className="font-display text-foreground mx-auto mb-4 max-w-4xl text-[40px] leading-[0.98] font-semibold tracking-[-0.03em] md:text-[72px] md:leading-[0.88]">
-        Free Topic Generator
+        Get better on camera.
         <br />
-        for Speech Practice
+        Post consistently.
       </h1>
 
-      <p className="hero-description mx-auto mb-7 max-w-2xl text-[16px] leading-relaxed md:mb-8 md:text-[19px]">
-        Generate random speech topics, table topics questions, and impromptu
-        speaking prompts with a built-in timer and optional camera recording.
-        Yapper is growing into richer training programs, but the free practice
-        rep stays front and center.
+      <p className="hero-description mx-auto mb-8 max-w-2xl text-[16px] leading-relaxed md:text-[19px]">
+        Yapper takes you from idea to posted: generate a script, read it off the
+        teleprompter, fix mistakes by editing the transcript, and get AI
+        coaching before you publish. Free practice tools included, no sign-up.
       </p>
 
-      <GlassyButton onClick={onJumpToPractice} height={48}>
-        Jump to practice
-      </GlassyButton>
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        <Show when="signed-out">
+          <SignInButton mode="modal" withSignUp>
+            <button
+              type="button"
+              className="rounded-full bg-cyan-500 px-6 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-cyan-600"
+              style={{ height: 48 }}
+            >
+              Get started free
+            </button>
+          </SignInButton>
+        </Show>
+        <Show when="signed-in">
+          <Link
+            href="/create"
+            className="inline-flex items-center rounded-full bg-cyan-500 px-6 text-[15px] font-bold text-white no-underline shadow-sm transition-colors hover:bg-cyan-600"
+            style={{ height: 48 }}
+          >
+            Open your studio
+          </Link>
+        </Show>
+
+        <GlassyButton onClick={onJumpToPractice} height={48}>
+          Train
+        </GlassyButton>
+      </div>
     </div>
   );
 }
