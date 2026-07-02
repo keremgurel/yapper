@@ -22,9 +22,15 @@ export default function TrainingHeader() {
       </Link>
 
       {/* Center: Create is the main app; Resources are the free SEO tools. */}
-      <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 md:flex">
+      <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
         <CreateNavDropdown />
         <ResourcesNavDropdown />
+        <Link
+          href="/blog"
+          className="text-foreground/80 hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-[14px] font-semibold no-underline transition-colors"
+        >
+          Blog
+        </Link>
       </nav>
 
       {/* Right: account (signed in) or sign in, then the theme toggle */}
