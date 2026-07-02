@@ -42,7 +42,11 @@ export default function TeleprompterRecorder({
     reattachStream,
   } = useMediaStream();
   const scroll = useTeleprompterScroll();
+  const { play: scrollPlay, pause: scrollPause, reset: scrollReset } = scroll;
   const hasText = text.trim().length > 0;
+  // With no camera and no mic there's nothing to capture — startRecording would
+  // silently no-op, so gate on it (else the prompt scrolls while nothing records).
+  const canRecord = cameraOn || micOn;
 
   // Enable camera + mic once, sequentially (the stream is shared, so overlapping
   // getUserMedia calls can race).
@@ -56,15 +60,22 @@ export default function TeleprompterRecorder({
     })();
   }, [toggleCamera, toggleMic]);
 
+  // Drive the teleprompter off the *actual* recording state, so the scroll can
+  // never run without a live recording — and it stops if the recorder errors
+  // out (not just on an explicit Stop press).
+  useEffect(() => {
+    if (isRecording && hasText) scrollPlay();
+    else scrollPause();
+  }, [isRecording, hasText, scrollPlay, scrollPause]);
+
   const toggleRecord = () => {
     if (isRecording) {
       stopRecording();
-      scroll.pause();
-    } else {
-      scroll.reset();
-      startRecording();
-      if (hasText) scroll.play();
+      return;
     }
+    if (!canRecord) return;
+    scrollReset();
+    startRecording();
   };
 
   const retake = () => {
@@ -147,8 +158,15 @@ export default function TeleprompterRecorder({
             <button
               type="button"
               onClick={toggleRecord}
-              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/80 bg-transparent"
-              title={isRecording ? "Stop" : "Record"}
+              disabled={!isRecording && !canRecord}
+              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/80 bg-transparent disabled:opacity-40"
+              title={
+                !canRecord
+                  ? "Turn on your camera or mic first"
+                  : isRecording
+                    ? "Stop"
+                    : "Record"
+              }
             >
               <span
                 className={

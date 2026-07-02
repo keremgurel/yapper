@@ -45,7 +45,12 @@ export function useTeleprompterScroll() {
   const tick = useCallback(
     (ts: number) => {
       const el = scrollRef.current;
-      if (!el) return;
+      if (!el) {
+        // No element to scroll — clear the loop so a later play() isn't blocked
+        // forever by a stale rafRef.
+        stopLoop();
+        return;
+      }
       if (lastTsRef.current !== null) {
         const dt = (ts - lastTsRef.current) / 1000;
         const pxPerSec = (wpmRef.current / 60) * PX_PER_WORD;

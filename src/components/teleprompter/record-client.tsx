@@ -44,8 +44,14 @@ export default function RecordClient() {
 
   if (!loaded) return <div className="min-h-screen" />;
 
-  const available = (v: TeleprompterView) =>
-    v === "off" ? true : idea ? hasTeleprompterText(idea, v) : false;
+  // "script" is only a distinct option when a real script exists — otherwise it
+  // would fall back to the same notes content as "Hook + key points".
+  const available = (v: TeleprompterView) => {
+    if (v === "off") return true;
+    if (!idea) return false;
+    if (v === "script") return !!idea.script?.trim();
+    return hasTeleprompterText(idea, "notes");
+  };
   const text = idea ? teleprompterText(idea, view) : "";
 
   return (
