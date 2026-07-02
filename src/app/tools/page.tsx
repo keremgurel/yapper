@@ -3,7 +3,7 @@ import ToolsHub from "@/components/tools/tools-hub";
 import { tools } from "@/data/tools";
 
 export const metadata: Metadata = {
-  title: "Free Tools for Talking to Camera | Yapper",
+  title: "Free Tools for Talking to Camera",
   description:
     "Free, no-sign-up creator tools: a words-per-minute calculator, a teleprompter recorder, and a transcript-based video editor. Plan, record, and edit in your browser.",
   alternates: { canonical: "https://ypr.app/tools" },

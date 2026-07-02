@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("conflict")!;
 
 export const metadata: Metadata = {
-  title: "Conflict Handling Speaking Practice | Yapper",
+  title: "Conflict Handling Speaking Practice",
   description:
     "Free conflict practice. Rehearse calm, direct responses to tense scenarios out loud with a timer and optional recording, no sign-up.",
   alternates: { canonical: "https://ypr.app/training/conflict" },

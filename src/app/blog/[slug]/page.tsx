@@ -26,14 +26,14 @@ export async function generateMetadata({
 
   if (!post) {
     return {
-      title: "Post not found | Yapper",
+      title: "Post not found",
     };
   }
 
   const canonical = `${getSiteUrl()}/blog/${post.slug}`;
 
   return {
-    title: `${post.title} | Yapper`,
+    title: post.title,
     description: post.excerpt,
     alternates: {
       canonical,

@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("dating")!;
 
 export const metadata: Metadata = {
-  title: "Dating & Social Conversation Practice | Yapper",
+  title: "Dating & Social Conversation Practice",
   description:
     "Free dating and social conversation practice. Rehearse warm, playful, specific answers with a timer and optional recording, no sign-up.",
   alternates: { canonical: "https://ypr.app/training/dating" },

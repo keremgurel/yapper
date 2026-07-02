@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("creator-camera-drills")!;
 
 export const metadata: Metadata = {
-  title: "Creator Camera Drills: Practice On-Camera | Yapper",
+  title: "Creator Camera Drills: Practice On-Camera",
   description:
     "Free creator camera drills. Practice hooks, payoffs, and crisp examples on camera with a timer, then rewatch your takes. No sign-up.",
   alternates: { canonical: "https://ypr.app/training/creator-camera-drills" },
