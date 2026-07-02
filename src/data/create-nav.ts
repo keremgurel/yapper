@@ -34,7 +34,7 @@ export const createNav: CreateNavItem[] = [
   },
   {
     title: "Studio",
-    href: "/studio",
+    href: "/studio/editor",
     description:
       "Edit by editing the transcript — cut words, fillers, silences.",
     icon: "scissors",

@@ -500,14 +500,14 @@ export default function CompletionScreen() {
   const onEdit = () => {
     if (!recordedBlob) return;
     setPendingVideo(recordedBlob);
-    router.push("/studio");
+    router.push("/studio/editor");
   };
   // Hand the take to the studio and open the Feedback tab (where the user gives
   // explicit credit consent before running).
   const onGetFeedback = () => {
     if (!recordedBlob) return;
     setPendingVideo(recordedBlob);
-    router.push("/studio?tab=feedback");
+    router.push("/studio/editor?tab=feedback");
   };
   const onNewSession = () => {
     resetTimer();

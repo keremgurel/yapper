@@ -9,6 +9,23 @@ const nextConfig: NextConfig = {
         destination: "https://ypr.app/:path*",
         statusCode: 301,
       },
+      // The editor moved to /studio/editor; /studio becomes the Studio
+      // dashboard. Order matters: the ?tab deep links (feedback etc.) must hit
+      // the editor rule before the plain fallback. 307s on purpose (not
+      // cacheable): /studio's meaning changes again when the dashboard lands.
+      {
+        source: "/studio",
+        has: [{ type: "query", key: "tab" }],
+        destination: "/studio/editor",
+        permanent: false,
+      },
+      {
+        // Temporarily the editor; flips to /studio/library when the Content
+        // Library ships (Studio restructure PR 2b).
+        source: "/studio",
+        destination: "/studio/editor",
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
