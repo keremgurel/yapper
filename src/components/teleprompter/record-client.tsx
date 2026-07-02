@@ -27,6 +27,9 @@ function defaultView(source: PromptSource): TeleprompterView {
 export default function RecordClient() {
   const [loaded, setLoaded] = useState(false);
   const [source, setSource] = useState<PromptSource | null>(null);
+  // The library item id this take is for (enables Save to library). Legacy
+  // localStorage ideas don't get one.
+  const [itemId, setItemId] = useState<string | null>(null);
   const [view, setView] = useState<TeleprompterView>("off");
   const [phase, setPhase] = useState<"picker" | "recording">("recording");
 
@@ -36,9 +39,10 @@ export default function RecordClient() {
     const item = params.get("item");
     const legacyIdea = params.get("idea");
 
-    const adopt = (src: PromptSource | null) => {
+    const adopt = (src: PromptSource | null, id: string | null = null) => {
       if (!active) return;
       setSource(src);
+      setItemId(id);
       if (src && hasTeleprompterText(src, "notes")) {
         setView(defaultView(src));
         setPhase("picker");
@@ -48,7 +52,7 @@ export default function RecordClient() {
 
     if (item) {
       getContent(item).then(
-        (detail) => adopt(detail),
+        (detail) => adopt(detail, detail.id),
         () => adopt(null), // not found / signed out -> plain recorder
       );
     } else if (legacyIdea) {
@@ -83,6 +87,8 @@ export default function RecordClient() {
   ) : (
     <TeleprompterRecorder
       text={text}
+      itemId={itemId}
+      itemTitle={source?.title || undefined}
       onExit={source ? () => setPhase("picker") : undefined}
     />
   );

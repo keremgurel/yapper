@@ -41,6 +41,7 @@ import { transcribeAudio } from "@/lib/studio/transcribe";
 import { transcribeRemote } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
+import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useClipHistory } from "@/hooks/use-clip-history";
 import {
@@ -680,13 +681,28 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     });
   }, [resetClips, resetTranscript]);
 
-  // Pick up a recording handed over from the practice flow (Record -> Edit).
+  // Pick up a recording handed over from the practice flow (Record -> Edit),
+  // or load a Content Library item's saved recording via ?item=<id>.
   useEffect(() => {
     const blob = consumePendingVideo();
-    if (!blob) return;
-    loadVideoSource(blob, "Practice take")
-      .then(loadSource)
-      .catch(() => {});
+    if (blob) {
+      loadVideoSource(blob, "Practice take")
+        .then(loadSource)
+        .catch(() => {});
+      return;
+    }
+    const itemId = new URLSearchParams(window.location.search).get("item");
+    if (!itemId) return;
+    loadLinkedRecording(itemId)
+      .then((rec) => {
+        if (!rec) return; // no recording linked / signed out -> empty editor
+        return loadVideoSource(rec.blob, rec.name).then(loadSource);
+      })
+      .catch((e) => {
+        // Likely missing R2 GET CORS or a deleted object; leave the uploader
+        // visible instead of a broken editor.
+        console.warn("Could not load the linked recording", e);
+      });
   }, [loadSource]);
 
   // Warn before leaving/refreshing while there's a video loaded, since edits
