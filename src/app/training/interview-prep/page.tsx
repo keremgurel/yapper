@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("interview-prep")!;
 
 export const metadata: Metadata = {
-  title: "Interview Answer Practice: Free & No Sign-Up | Yapper",
+  title: "Interview Answer Practice: Free & No Sign-Up",
   description:
     "Free interview answer practice. Get behavioral questions, set a timer, and record concise STAR-style answers, then review your delivery.",
   alternates: { canonical: "https://ypr.app/training/interview-prep" },

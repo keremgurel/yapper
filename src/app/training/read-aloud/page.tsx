@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("read-aloud")!;
 
 export const metadata: Metadata = {
-  title: "Read Aloud: Free Speaking Practice | Yapper",
+  title: "Read Aloud: Free Speaking Practice",
   description:
     "Free read-aloud speaking practice. Train articulation, pacing, and emphasis by reading passages out loud with a timer and optional camera recording.",
   alternates: { canonical: "https://ypr.app/training/read-aloud" },

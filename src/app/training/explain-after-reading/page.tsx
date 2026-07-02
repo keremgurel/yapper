@@ -7,7 +7,7 @@ import { getRandomFromPool } from "@/lib/practice-helpers";
 const drill = getDrill("explain-after-reading")!;
 
 export const metadata: Metadata = {
-  title: "Explain After Reading: Free Speaking Practice | Yapper",
+  title: "Explain After Reading: Free Speaking Practice",
   description:
     "Free explain-after-reading speech drill. Read a short passage, hide it, and explain the main idea out loud with a timer and optional recording.",
   alternates: { canonical: "https://ypr.app/training/explain-after-reading" },

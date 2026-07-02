@@ -8,7 +8,7 @@ import {
 } from "@/lib/blog";
 
 export const metadata: Metadata = {
-  title: "Blog | Yapper",
+  title: "Blog",
   description:
     "Tips, tactics, and practical advice for improving your public speaking and making the most of every practice session.",
   alternates: {

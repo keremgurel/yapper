@@ -3,7 +3,7 @@ import WpmToolPage from "@/components/tools/wpm-tool-page";
 import { WPM_FAQ } from "@/data/wpm-faq";
 
 export const metadata: Metadata = {
-  title: "Words Per Minute Calculator (Speaking Time) | Yapper",
+  title: "Words Per Minute Calculator (Speaking Time)",
   description:
     "Free words-per-minute calculator: paste a script to get its spoken length, or find how many words fit a target time at slow, conversational, or fast pace.",
   alternates: { canonical: "https://ypr.app/tools/words-per-minute" },
