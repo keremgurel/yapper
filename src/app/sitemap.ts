@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { programFamilies } from "@/data/training";
+import { tools } from "@/data/tools";
 import { getAllBlogPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/json-ld";
 
@@ -22,6 +23,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: program.status === "Free now" ? 0.9 : 0.65,
   }));
 
+  // Standalone tool landing pages (under /tools/). Product routes referenced by
+  // the registry (e.g. /record, /studio) are indexed elsewhere, not here.
+  const toolPages = tools
+    .filter((t) => t.href.startsWith("/tools/"))
+    .map((t) => ({
+      url: `${SITE_URL}${t.href}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    }));
+
   return [
     {
       url: SITE_URL,
@@ -29,6 +41,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/tools`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    ...toolPages,
     {
       url: `${SITE_URL}/random-topic-generator`,
       lastModified: new Date(),
