@@ -66,6 +66,11 @@ export const creditLedger = pgTable(
     uniqueIndex("credit_ledger_one_welcome_per_user")
       .on(t.userId)
       .where(sql`${t.reason} = 'welcome_grant'`),
+    // At most one refund per submission — makes refunds idempotent so the
+    // inline catch and the reconciliation sweep can never double-refund.
+    uniqueIndex("credit_ledger_one_refund_per_submission")
+      .on(t.submissionId)
+      .where(sql`${t.reason} = 'refund'`),
   ],
 );
 

@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Captions, FileText, Film } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Captions, FileText, Film, Sparkles } from "lucide-react";
 import MediaTab from "@/components/studio/media-tab";
 import CaptionsTab from "@/components/studio/captions-tab";
 import StudioTranscript from "@/components/studio/studio-transcript";
+import FeedbackTab from "@/components/studio/feedback/feedback-tab";
 
-type Tab = "media" | "captions" | "transcript";
+type Tab = "media" | "transcript" | "captions" | "feedback";
 
 export default function RightPanel({
   currentSourceTime,
@@ -18,6 +19,15 @@ export default function RightPanel({
   onSeekTimeline: (t: number) => void;
 }) {
   const [tab, setTab] = useState<Tab>("media");
+
+  // Open a specific tab when linked (e.g. the practice screen sends
+  // ?tab=feedback after "Get AI feedback"). Read after mount to avoid the
+  // useSearchParams prerender/Suspense constraint and hydration mismatch.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time sync from a browser-only source (URL) on mount
+    if (t === "feedback" || t === "transcript" || t === "captions") setTab(t);
+  }, []);
 
   const tabBtn = (active: boolean) =>
     `flex flex-1 items-center justify-center gap-1.5 border-b-2 px-3 py-2.5 text-[13px] font-bold transition-colors ${
@@ -53,6 +63,14 @@ export default function RightPanel({
           <Captions className="h-4 w-4" />
           Captions
         </button>
+        <button
+          type="button"
+          onClick={() => setTab("feedback")}
+          className={tabBtn(tab === "feedback")}
+        >
+          <Sparkles className="h-4 w-4" />
+          Feedback
+        </button>
       </div>
 
       <div className="min-h-0 flex-1">
@@ -60,6 +78,8 @@ export default function RightPanel({
           <MediaTab />
         ) : tab === "captions" ? (
           <CaptionsTab onSeek={onSeekTimeline} />
+        ) : tab === "feedback" ? (
+          <FeedbackTab />
         ) : (
           <StudioTranscript
             currentSourceTime={currentSourceTime}
