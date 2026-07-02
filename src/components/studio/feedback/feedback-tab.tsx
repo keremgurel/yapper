@@ -1,18 +1,50 @@
 "use client";
 
 import { Show, SignInButton } from "@clerk/nextjs";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Mic, Sparkles, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { useAudioFeedback } from "@/hooks/use-audio-feedback";
+import { useFeedback, type FeedbackTier } from "@/hooks/use-audio-feedback";
 import FeedbackResult from "@/components/studio/feedback/feedback-result";
 
-const runBtn =
-  "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60";
+const tierBtn =
+  "flex w-full items-center gap-3 rounded-xl border border-border px-3 py-2.5 text-left transition-colors hover:bg-muted/50 disabled:opacity-50";
+
+const TIERS: {
+  tier: FeedbackTier;
+  icon: typeof Mic;
+  label: string;
+  desc: string;
+  cost: number;
+}[] = [
+  {
+    tier: "audio",
+    icon: Mic,
+    label: "Audio feedback",
+    desc: "Pace, fillers, pauses, clarity",
+    cost: 1,
+  },
+  {
+    tier: "video",
+    icon: Video,
+    label: "Video feedback",
+    desc: "On-camera presence & energy",
+    cost: 2,
+  },
+  {
+    tier: "full",
+    icon: Sparkles,
+    label: "Full feedback",
+    desc: "Delivery + on-camera, combined",
+    cost: 3,
+  },
+];
 
 export default function FeedbackTab() {
   const { source } = useStudio();
-  const { status, data, error, run, reset } = useAudioFeedback(source?.url);
-  const busy = status === "preparing" || status === "analyzing";
+  const { status, data, error, run, reset } = useFeedback(source?.url);
+  const busy =
+    status === "preparing" || status === "uploading" || status === "analyzing";
+  const hasVideo = !!source && source.kind !== "image";
 
   if (!source || source.kind === "image") {
     return (
@@ -23,6 +55,13 @@ export default function FeedbackTab() {
       </div>
     );
   }
+
+  const busyLabel =
+    status === "uploading"
+      ? "Uploading your video…"
+      : status === "preparing"
+        ? "Preparing…"
+        : "Analyzing your delivery…";
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -38,6 +77,11 @@ export default function FeedbackTab() {
               Analyze again
             </button>
           </div>
+        ) : busy ? (
+          <div className="text-foreground/70 flex items-center gap-2 text-sm font-bold">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {busyLabel}
+          </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-1">
@@ -45,40 +89,50 @@ export default function FeedbackTab() {
                 AI delivery feedback
               </p>
               <p className="text-foreground/55 text-[13px] leading-5">
-                Get coached on pace, fillers, pauses, clarity, and how your hook
-                lands — scored, with punch-it-up rewrites.
+                Get coached — scored, with punch-it-up rewrites. Pick how deep
+                to go.
               </p>
             </div>
 
-            {busy ? (
-              <div className="text-foreground/70 flex items-center gap-2 text-sm font-bold">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                {status === "preparing"
-                  ? "Preparing audio…"
-                  : "Analyzing your delivery…"}
-              </div>
-            ) : (
-              <>
-                <Show when="signed-in">
+            <Show when="signed-in">
+              <div className="space-y-2">
+                {TIERS.map(({ tier, icon: Icon, label, desc, cost }) => (
                   <button
+                    key={tier}
                     type="button"
-                    onClick={() => void run()}
-                    className={runBtn}
+                    onClick={() => void run(tier)}
+                    disabled={!hasVideo && tier !== "audio"}
+                    className={tierBtn}
                   >
-                    <Sparkles className="h-4 w-4" />
-                    Get audio feedback · 1 credit
+                    <span className="border-border bg-muted text-foreground/70 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="text-foreground block text-[13px] font-bold">
+                        {label}
+                      </span>
+                      <span className="text-foreground/50 block text-[11px]">
+                        {desc}
+                      </span>
+                    </span>
+                    <span className="shrink-0 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-bold text-cyan-500">
+                      {cost} cr
+                    </span>
                   </button>
-                </Show>
-                <Show when="signed-out">
-                  <SignInButton mode="modal" withSignUp>
-                    <button type="button" className={runBtn}>
-                      <Sparkles className="h-4 w-4" />
-                      Sign in to get feedback
-                    </button>
-                  </SignInButton>
-                </Show>
-              </>
-            )}
+                ))}
+              </div>
+            </Show>
+            <Show when="signed-out">
+              <SignInButton mode="modal" withSignUp>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Sign in to get feedback
+                </button>
+              </SignInButton>
+            </Show>
 
             {error === "insufficient_credits" && (
               <p className="text-sm font-bold text-amber-500">

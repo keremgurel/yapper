@@ -23,7 +23,7 @@ export default function FeedbackResult({
   metrics: m,
 }: {
   coaching: Coaching;
-  metrics: DeliveryMetrics;
+  metrics?: DeliveryMetrics;
 }) {
   return (
     <div className="space-y-5">
@@ -39,20 +39,22 @@ export default function FeedbackResult({
         </div>
       </div>
 
-      {/* Meters */}
-      <div className="grid grid-cols-2 gap-2">
-        <Metric label="Pace (wpm)" value={`${m.wpm}`} />
-        <Metric label="Fillers / min" value={`${m.fillerPerMin}`} />
-        <Metric label="Pauses" value={`${m.pauseCount}`} />
-        <Metric
-          label="Clarity"
-          value={
-            m.avgConfidence != null
-              ? `${Math.round(m.avgConfidence * 100)}%`
-              : "—"
-          }
-        />
-      </div>
+      {/* Meters (audio + full only) */}
+      {m && (
+        <div className="grid grid-cols-2 gap-2">
+          <Metric label="Pace (wpm)" value={`${m.wpm}`} />
+          <Metric label="Fillers / min" value={`${m.fillerPerMin}`} />
+          <Metric label="Pauses" value={`${m.pauseCount}`} />
+          <Metric
+            label="Clarity"
+            value={
+              m.avgConfidence != null
+                ? `${Math.round(m.avgConfidence * 100)}%`
+                : "—"
+            }
+          />
+        </div>
+      )}
 
       {/* Strengths */}
       {c.strengths.length > 0 && (
