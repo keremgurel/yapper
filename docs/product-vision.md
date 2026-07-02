@@ -13,17 +13,32 @@
 speaking coach in the loop the whole way.** Not "an editor" — a create-to-post
 studio for people who talk to camera.
 
-**Two-phase strategy** (unchanged):
+**Three-layer funnel** (the "learning content → tools → platform" model):
 
-- **Phase A — free web tool = top of funnel.** The keyless, in-browser editor
-  (cut silences, trim, captions, 1-click edit, export). Free, SEO-driven,
-  runs entirely client-side so it costs us ~nothing. This is the traffic engine.
-- **Phase B — premium cross-platform app = the money.** The AI create loop
-  (inspiration → script → teleprompter record → edit → feedback → post),
-  behind a paywall, on web **and** a future native mobile app that shares the
-  same backend.
+- **Layer 1 — SEO _tools_ = top of funnel.** Not articles: **interactive tool
+  pages** that rank for high-intent, do-the-thing queries (teleprompter,
+  words-per-minute calculator, filler-word counter, hook generator, the practice
+  drills). A tool page is a live demo of the product, not a reader we have to
+  re-capture. The existing blog guides stay indexed but get **repointed** —
+  reframed toward the creator outcome, each bolted to its matching tool + CTA.
+  Client-side, keyless, ~$0 to run. **This is the traffic engine.**
+- **Layer 2 — free in-browser editor = the taste.** Cut silences, trim,
+  captions, 1-click edit, export. Free forever, client-side, makes the tools
+  feel like a product. The bridge from "I used a free tool" to "this is my studio."
+- **Layer 3 — premium creator platform = the money.** "Learn to yap" — the AI
+  create loop (inspiration → script → teleprompter record → edit → feedback →
+  post), behind a paywall, on web **and** a future native app on the same backend.
 
+**Brand repositioning:** the site is brand-split today (speaking-exam / learning
+heritage _and_ creator studio). Consolidate everything around one outcome —
+**get better on camera and post consistently**. The learning content isn't
+discarded; it becomes the SEO layer that feeds the tools, which feed the platform.
 The free editor is the hook; the AI create-and-coach loop is the product.
+
+> **Ownership split (two parallel work streams):** this session owns **structure**
+> — the `/tools` IA, routing, page scaffolding, SEO/schema, CTAs, and the platform
+> core. The design/brand session owns **visual identity + copy tone** (homepage,
+> Chirpy, palette). Repositioning lands as: I build the funnel plumbing, they dress it.
 
 ---
 
@@ -181,22 +196,25 @@ inspiration, ideas are added as their phases land.)
 
 ## 7. Build roadmap
 
-| Phase | Deliverable                                                                                                                                                       | Status            |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| 1     | **Clerk auth** — sign-in-or-up, gate only paid actions                                                                                                            | ✅ merged (`#26`) |
-| 2     | **Data layer** — Neon + Drizzle, credit ledger, submissions, storage metering, Clerk webhook                                                                      | ✅ PR `#27`       |
-| 3     | **Audio feedback loop** — server transcription + free meters + coaching; auth gate + credit deduct/refund + store + display. _Proves the whole machinery at ~1¢._ | next              |
-| 4     | **R2 media + Video/Full feedback** — presigned uploads, Gemini video, re-watch, storage quota                                                                     |                   |
-| 5     | **Ideation/Inspiration AI** — onboarding pillars → generate outline/hooks/points/script, "Surprise me"                                                            | ⭐ high value     |
-| 6     | **Teleprompter recorder** — TikTok-style capture with notes overlay                                                                                               |                   |
-| 7     | **History dashboard** — past sessions + feedback + re-watch in one place                                                                                          |                   |
-| 8     | **Billing** — Stripe: hard paywall + 7-day trial + monthly tiers + credit top-ups; finalize pricing on measured COGS                                              |                   |
-| 9     | **One-click cross-post**                                                                                                                                          | later             |
+| Phase | Deliverable                                                                                                                                                       | Status                |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 1     | **Clerk auth** — sign-in-or-up, gate only paid actions                                                                                                            | ✅ merged (`#26`)     |
+| 2     | **Data layer** — Neon + Drizzle, credit ledger, submissions, storage metering, Clerk webhook                                                                      | ✅ merged (`#27`)     |
+| 3     | **Audio feedback loop** — server transcription + free meters + coaching; auth gate + credit deduct/refund + store + display. _Proves the whole machinery at ~1¢._ | ✅ merged             |
+| 4     | **R2 media + Video/Full feedback** — presigned uploads, Gemini video, re-watch, storage quota + hardening                                                         | ✅ merged (`#31/#33`) |
+| 5a    | **Idea generation** — outline + hook variants + key points (structured call), charge-on-success                                                                   | ✅ merged (`#29`)     |
+| 5b    | **Ideation rest** — onboarding pillars → full script generation + "Surprise me"                                                                                   | **next**              |
+| 6     | **Teleprompter recorder** — TikTok-style capture with notes overlay                                                                                               |                       |
+| 7     | **History dashboard** — past sessions + feedback + re-watch in one place                                                                                          | ✅ merged (`#30`)     |
+| 8     | **Billing** — Stripe: hard paywall + 7-day trial + monthly tiers + credit top-ups; finalize pricing on measured COGS                                              | needs Stripe creds    |
+| 9     | **One-click cross-post**                                                                                                                                          | later                 |
+| 10    | **SEO tools layer** — `/tools` hub, promote drills to indexable tool pages, repoint guides + CTAs (structure only; visuals by design session)                     | after platform core   |
 
-**Sequencing note:** ship **audio feedback (Phase 3) first** — smallest payloads,
-~1¢ COGS, and it exercises the entire auth + credit + storage + display stack.
-You flagged **Inspiration/Ideation (Phase 5) as "even more important"** — once the
-feedback MVP proves the machinery, we can pull Ideation forward ahead of video.
+**Sequencing note (current):** the whole feedback machine (auth + credits +
+storage + audio/video/full + history) is **live**. Remaining order, decided
+2026-07-01: **finish the platform core first** (5b script/Surprise-me → 6
+teleprompter → 8 billing), _then_ build the SEO tools layer (Phase 10) — so the
+new top-of-funnel traffic lands on a complete product instead of a half-built one.
 Order is a lever, not a contract.
 
 ---
