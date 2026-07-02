@@ -21,9 +21,14 @@ const iconBtn =
  */
 export default function TeleprompterRecorder({
   text,
+  itemId = null,
+  itemTitle,
   onExit,
 }: {
   text: string;
+  /** Content Library item this take is for (enables Save to library). */
+  itemId?: string | null;
+  itemTitle?: string;
   onExit?: () => void;
 }) {
   const {
@@ -86,7 +91,13 @@ export default function TeleprompterRecorder({
 
   if (recordedUrl && recordedBlob) {
     return (
-      <RecorderReview url={recordedUrl} blob={recordedBlob} onRetake={retake} />
+      <RecorderReview
+        url={recordedUrl}
+        blob={recordedBlob}
+        itemId={itemId}
+        title={itemTitle}
+        onRetake={retake}
+      />
     );
   }
 

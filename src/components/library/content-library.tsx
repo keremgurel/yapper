@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { Film, Lightbulb, Loader2, Plus } from "lucide-react";
@@ -152,10 +153,15 @@ export default function ContentLibrary() {
               </span>
               <span className="hidden justify-self-end sm:block">
                 {row.submissionId && (
-                  <Film
-                    className="text-foreground/45 h-4 w-4"
-                    aria-label="Has a recording"
-                  />
+                  <Link
+                    href={`/studio/editor?item=${row.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-foreground/45 hover:text-foreground block p-1"
+                    title="Edit this recording"
+                    aria-label="Edit this recording"
+                  >
+                    <Film className="h-4 w-4" />
+                  </Link>
                 )}
               </span>
             </div>

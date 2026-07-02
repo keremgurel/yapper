@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import {
@@ -15,7 +15,8 @@ import {
   refundCredits,
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
-import { addStorageBytes, ensureUser, getStorageBytes } from "@/lib/db/users";
+import { ensureUser, getStorageBytes } from "@/lib/db/users";
+import { countMediaOnce } from "@/lib/db/storage-accounting";
 import { runAudioFeedback } from "@/lib/feedback/audio";
 import type { Coaching } from "@/lib/feedback/coach";
 import { uploadBytesToGemini } from "@/lib/feedback/gemini";
@@ -114,17 +115,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     // Count the stored recording against the user's quota, but only once per
     // object, so re-analyzing the same mediaKey can't inflate the counter.
     if (mediaKey && result.mediaBytes) {
-      const [dup] = await db
-        .select({ id: submissions.id })
-        .from(submissions)
-        .where(
-          and(
-            eq(submissions.mediaKey, mediaKey),
-            ne(submissions.id, submission.id),
-          ),
-        )
-        .limit(1);
-      if (!dup) await addStorageBytes(userId, result.mediaBytes);
+      await countMediaOnce(userId, mediaKey, result.mediaBytes, submission.id);
     }
 
     const balance = await getBalance(userId);

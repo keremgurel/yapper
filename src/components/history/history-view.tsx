@@ -188,7 +188,15 @@ export default function HistoryView() {
             />
           </div>
         ) : selected ? (
-          <div className="space-y-4 py-12">
+          // A saved take without feedback is still re-watchable.
+          <div className="space-y-4 py-4">
+            {mediaUrl && (
+              <video
+                src={mediaUrl}
+                controls
+                className="w-full rounded-xl bg-black"
+              />
+            )}
             <p className="text-foreground/55 text-sm">
               No feedback stored for this session
               {selected.error ? ` (${selected.error})` : ""}.
