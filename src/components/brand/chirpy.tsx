@@ -29,7 +29,11 @@ const BROWS: Record<string, [string, string]> = {
 
 const EXPR: Record<
   ChirpyExpression,
-  { brows: [string, string]; eyes: "dots" | "happy" | "wink"; beakOpen: boolean }
+  {
+    brows: [string, string];
+    eyes: "dots" | "happy" | "wink";
+    beakOpen: boolean;
+  }
 > = {
   idle: { brows: BROWS.determined, eyes: "dots", beakOpen: false },
   yap: { brows: BROWS.determined, eyes: "dots", beakOpen: true },

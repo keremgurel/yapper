@@ -53,8 +53,18 @@ export function ChirpyMark({
       <circle cx="16.2" cy="19.8" r="1.9" fill={ink} />
       <circle cx="23.8" cy="19.8" r="1.9" fill={ink} />
       {/* brows — the determined Chirpy look */}
-      <path d="M11.5 15 L16.5 17" stroke={ink} strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M28.5 15 L23.5 17" stroke={ink} strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M11.5 15 L16.5 17"
+        stroke={ink}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M28.5 15 L23.5 17"
+        stroke={ink}
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
       {/* beak */}
       <path d="M17 24 L23 24 L20 28 Z" fill="#f7b32b" />
     </svg>
