@@ -155,7 +155,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-5 min",
     status: "Free now",
     accent: "orange",
-    href: "/training/random-topic-generator",
+    href: "/random-topic-generator",
   },
   {
     slug: "freestyle-speech",
@@ -167,7 +167,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-3 min",
     status: "Free now",
     accent: "cyan",
-    href: "/training/freestyle-speech",
+    href: "/freestyle-speech",
   },
   {
     slug: "explain-after-reading",
@@ -261,14 +261,14 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "Pull a speech prompt, set the timer, and practice an impromptu answer.",
     status: "Free now",
-    href: "/training/random-topic-generator",
+    href: "/random-topic-generator",
     group: "Practice now",
   },
   {
     title: "Freestyle speaking",
     description: "Open a blank rep when you already know what you want to say.",
     status: "Free now",
-    href: "/training/freestyle-speech",
+    href: "/freestyle-speech",
     group: "Practice now",
   },
   {
@@ -330,7 +330,7 @@ export const trainingNavItems: TrainingNavItem[] = [
 // tools (no Practice-now / Guided-drills split). These are SEO tools that feed
 // the Creator workflow, not the main app.
 const RESOURCES_ORDER = [
-  "/training/random-topic-generator",
+  "/random-topic-generator",
   "/training/read-aloud",
   "/training/explain-after-reading",
   "/training/interview-prep",

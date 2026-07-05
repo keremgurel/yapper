@@ -50,18 +50,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...toolPages,
     {
-      url: `${SITE_URL}/random-topic-generator`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    {
-      url: `${SITE_URL}/freestyle-speech`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    {
       url: `${SITE_URL}/blog`,
       lastModified: new Date(),
       changeFrequency: "weekly",
