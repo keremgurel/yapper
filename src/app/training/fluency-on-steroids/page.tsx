@@ -49,7 +49,7 @@ export default function FluencyOnSteroidsPage() {
             </p>
             <div className="flex shrink-0 flex-wrap gap-3">
               <Link
-                href="/training/random-topic-generator"
+                href="/random-topic-generator"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white no-underline transition-transform hover:-translate-y-0.5 dark:bg-white dark:text-slate-950"
               >
                 Warm up, then random topic
