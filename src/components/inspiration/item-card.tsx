@@ -18,7 +18,7 @@ import { createContent } from "@/lib/content/client";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
 export default function ItemCard({ item }: { item: InspirationItem }) {
-  const { pillars, moveItem, deleteItem } = useInspiration();
+  const { pillars, items, moveItem, deleteItem } = useInspiration();
   const [showTranscript, setShowTranscript] = useState(false);
   const [creating, setCreating] = useState(false);
   const router = useRouter();
@@ -35,11 +35,23 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
     setCreating(true);
     try {
       const seed = blankIdea({ title: item.title });
+      // Carry the pillar it's filed under, the creator it came from, and any
+      // context the user attached — so the new idea starts pre-seeded.
+      const pillarName = item.pillarId
+        ? pillars.find((p) => p.id === item.pillarId)?.name
+        : undefined;
+      const creator = item.creatorItemId
+        ? items.find((it) => it.id === item.creatorItemId)
+        : undefined;
+      const context = [creator ? `Inspired by ${creator.title}` : "", item.note]
+        .filter(Boolean)
+        .join("\n");
       const created = await createContent({
         title: item.title,
+        pillar: pillarName,
         hooks: seed.hooks,
         points: seed.points,
-        example: seed.example,
+        example: context || seed.example,
         cta: seed.cta,
         sourceTitle: item.title,
         sourceUrl: item.url,

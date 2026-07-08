@@ -66,14 +66,14 @@ export default function MediaTab() {
           <div className="grid grid-cols-2 gap-3">
             {/* Base loaded from the uploader (not in the library) — show it once. */}
             {source && !mediaAssets.some((m) => m.url === source.url) && (
-              <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-cyan-500/40">
+              <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-[color:var(--sg-accent)]/40">
                 <div className="bg-muted relative aspect-video">
                   <video
                     src={source.url}
                     muted
                     className="h-full w-full object-cover"
                   />
-                  <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
+                  <span className="absolute top-1 left-1 rounded-md bg-[color:var(--sg-accent)]/90 px-1.5 py-0.5 text-[10px] font-black text-white">
                     Added
                   </span>
                 </div>
@@ -97,7 +97,7 @@ export default function MediaTab() {
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   className={`border-border bg-card group cursor-grab overflow-hidden rounded-xl border active:cursor-grabbing ${
-                    count > 0 ? "ring-1 ring-cyan-500/40" : ""
+                    count > 0 ? "ring-1 ring-[color:var(--sg-accent)]/40" : ""
                   }`}
                 >
                   <div className="bg-muted relative aspect-video">
@@ -116,7 +116,7 @@ export default function MediaTab() {
                       />
                     )}
                     {count > 0 && (
-                      <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
+                      <span className="absolute top-1 left-1 rounded-md bg-[color:var(--sg-accent)]/90 px-1.5 py-0.5 text-[10px] font-black text-white">
                         Added{count > 1 ? ` ×${count}` : ""}
                       </span>
                     )}

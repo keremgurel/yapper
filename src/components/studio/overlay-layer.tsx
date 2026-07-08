@@ -62,12 +62,24 @@ function OverlayBox({
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (Math.abs(v.currentTime - target) > 0.3) v.currentTime = target;
-    if (playing) {
-      if (v.paused) void v.play().catch(() => {});
-    } else if (!v.paused) {
-      v.pause();
-    }
+    let cancelled = false;
+    // Gate seek + play behind metadata: seeking/playing before the overlay's
+    // media has loaded flashes its frame 0 instead of the intended in-point.
+    const sync = () => {
+      if (cancelled) return;
+      if (Math.abs(v.currentTime - target) > 0.12) v.currentTime = target;
+      if (playing) {
+        if (v.paused) void v.play().catch(() => {});
+      } else if (!v.paused) {
+        v.pause();
+      }
+    };
+    if (v.readyState >= 1) sync();
+    else v.addEventListener("loadedmetadata", sync, { once: true });
+    return () => {
+      cancelled = true;
+      v.removeEventListener("loadedmetadata", sync);
+    };
   }, [target, playing]);
 
   const start =

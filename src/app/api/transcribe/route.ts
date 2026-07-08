@@ -1,50 +1,63 @@
-import type { RawWord } from "@/lib/studio/transcribe";
+import type { RawWord } from "@/lib/studio/transcribe-remote";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /**
- * Backend transcription. Sends the posted WAV to whichever hosted provider has
- * a key configured (Deepgram > Groq > OpenAI), returning word-level timings.
- * Responds 501 when no key is set, so the client can fall back to on-device.
+ * Backend transcription, returning word-level timings. Runs an ordered failover
+ * chain: Deepgram (nova-3) is the transcriber of record; Groq (whisper-large-v3)
+ * is the backup, invoked only if Deepgram actually errors at runtime. Both
+ * return per-word timings, so either result drives the editor unchanged.
+ * Responds 501 when no provider key is configured.
  */
 export async function POST(req: Request): Promise<Response> {
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
-  const openai = process.env.OPENAI_API_KEY;
-  if (!deepgram && !groq && !openai) {
-    return Response.json({ error: "no_provider" }, { status: 501 });
-  }
 
   const audio = await req.arrayBuffer();
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
 
-  try {
-    let words: RawWord[];
-    if (deepgram) words = await viaDeepgram(audio, deepgram);
-    else if (groq)
-      words = await viaOpenAiCompatible(
-        audio,
-        groq,
-        "https://api.groq.com/openai/v1",
-        "whisper-large-v3",
-      );
-    else
-      words = await viaOpenAiCompatible(
-        audio,
-        openai as string,
-        "https://api.openai.com/v1",
-        "whisper-1",
-      );
-    return Response.json({ words });
-  } catch (e) {
-    return Response.json(
-      { error: e instanceof Error ? e.message : "transcribe_failed" },
-      { status: 502 },
-    );
+  const providers: { name: string; run: () => Promise<RawWord[]> }[] = [];
+  if (deepgram) {
+    providers.push({
+      name: "deepgram",
+      run: () => viaDeepgram(audio, deepgram),
+    });
   }
+  if (groq) {
+    providers.push({
+      name: "groq",
+      run: () =>
+        viaOpenAiCompatible(
+          audio,
+          groq,
+          "https://api.groq.com/openai/v1",
+          "whisper-large-v3",
+        ),
+    });
+  }
+  if (providers.length === 0) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+      return Response.json({ words: await provider.run() });
+    } catch (e) {
+      lastError = e;
+      console.error(`[transcribe] ${provider.name} failed`, e);
+    }
+  }
+  return Response.json(
+    {
+      error:
+        lastError instanceof Error ? lastError.message : "transcribe_failed",
+    },
+    { status: 502 },
+  );
 }
 
 interface DeepgramWord {

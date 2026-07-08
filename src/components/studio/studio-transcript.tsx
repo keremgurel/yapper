@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import TranscriptWords from "@/components/studio/transcript-words";
+import { Button } from "@/components/ui/button";
 
 export default function StudioTranscript({
   currentSourceTime,
@@ -26,10 +27,10 @@ export default function StudioTranscript({
     source,
     words,
     transcribeStatus,
-    transcribeProgress,
     transcribe,
     autoEdit,
     autoEditing,
+    autoEditCaptions,
   } = useStudio();
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
   const isImage = source?.kind === "image";
@@ -120,50 +121,53 @@ export default function StudioTranscript({
               </ul>
 
               <div className="space-y-2">
-                <button
+                <Button
                   type="button"
-                  onClick={() => void autoEdit()}
+                  onClick={() => void autoEdit(true)}
                   disabled={autoEditing}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
+                  className="w-full"
+                  title="Clean the cut and add captions"
                 >
-                  {autoEditing ? (
+                  {autoEditing && autoEditCaptions ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Wand2 className="h-4 w-4" />
                   )}
-                  {autoEditing ? "Editing…" : "1-Click Edit"}
-                </button>
-                <button
+                  {autoEditing && autoEditCaptions
+                    ? "Editing…"
+                    : "1-Click Edit + Captions"}
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  onClick={() => void autoEdit(false)}
+                  disabled={autoEditing}
+                  className="w-full"
+                  title="Clean the cut without adding captions"
+                >
+                  {autoEditing && !autoEditCaptions ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-4 w-4" />
+                  )}
+                  {autoEditing && !autoEditCaptions
+                    ? "Editing…"
+                    : "1-Click Edit (no captions)"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => void transcribe()}
-                  className="border-border text-foreground/80 hover:bg-muted inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold transition-colors"
+                  className="w-full"
                 >
                   <Sparkles className="h-4 w-4" />
                   Just transcribe
-                </button>
+                </Button>
               </div>
 
               <p className="text-foreground/45 text-[11.5px] leading-4">
                 The first transcription can take a moment while your audio is
                 processed.
-              </p>
-            </div>
-          )}
-
-          {transcribeStatus === "loading" && (
-            <div className="space-y-3">
-              <p className="text-foreground/70 inline-flex items-center gap-2 text-sm font-bold">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Downloading speech model…
-              </p>
-              <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
-                <div
-                  className="bg-foreground h-full rounded-full transition-all"
-                  style={{ width: `${transcribeProgress}%` }}
-                />
-              </div>
-              <p className="text-foreground/45 text-xs">
-                {transcribeProgress}%
               </p>
             </div>
           )}

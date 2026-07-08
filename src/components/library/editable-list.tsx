@@ -1,6 +1,8 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function EditableList({
   label,
@@ -25,41 +27,43 @@ export default function EditableList({
 
   return (
     <div>
-      <p className="text-foreground/45 mb-2 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
-        {label}
-      </p>
+      <p className="sg-field-label mb-2">{label}</p>
       <div className="space-y-2">
         {items.map((item, i) => (
           <div key={i} className="flex items-start gap-2">
-            <span className="bg-muted text-foreground/45 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-black">
+            <span className="bg-muted text-muted-foreground mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black">
               {i + 1}
             </span>
-            <textarea
+            <Textarea
               value={item}
               rows={1}
               onChange={(e) => update(i, e.target.value)}
               placeholder={placeholder}
-              className="border-border bg-background text-foreground focus:border-foreground/40 min-h-9 w-full resize-y rounded-lg border px-3 py-1.5 text-sm outline-none"
+              className="min-h-10"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="icon-sm"
               onClick={() => remove(i)}
-              className="text-foreground/40 mt-1 shrink-0 rounded p-1 hover:text-red-500"
+              className="text-muted-foreground hover:text-destructive mt-1"
               aria-label="Remove"
             >
               <X className="h-4 w-4" />
-            </button>
+            </Button>
           </div>
         ))}
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={add}
-        className="text-foreground/60 hover:text-foreground mt-2 inline-flex items-center gap-1.5 text-xs font-bold"
+        className="text-muted-foreground hover:text-foreground mt-2 -ml-2"
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-4 w-4" />
         {addLabel}
-      </button>
+      </Button>
     </div>
   );
 }

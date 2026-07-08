@@ -102,13 +102,14 @@ export default function StudioWorkspace() {
         e.preventDefault();
         redo();
       } else if (e.key === " ") {
+        // Key off playback state, not the <video> element — image-base projects
+        // have no <video>, so an element check would make Space a no-op there.
         e.preventDefault();
-        const v = videoRef.current;
-        if (v?.paused) play();
-        else if (v) pause();
+        if (playing) pause();
+        else play();
       } else if (e.key.toLowerCase() === "s" && !mod) {
         e.preventDefault();
-        splitAt(videoRef.current?.currentTime ?? 0);
+        splitAt(videoRef.current?.currentTime ?? sourceTime);
       } else if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedCaptionIds.length) {
           e.preventDefault();
@@ -126,6 +127,8 @@ export default function StudioWorkspace() {
     redo,
     play,
     pause,
+    playing,
+    sourceTime,
     splitAt,
     deleteSelected,
     selectedClipIds,

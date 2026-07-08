@@ -56,7 +56,7 @@ export default function CaptionList({
               key={c.id}
               className={`group flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-colors ${
                 active
-                  ? "border-cyan-400 bg-cyan-500/20"
+                  ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/15"
                   : "border-border hover:bg-muted/40"
               }`}
             >
@@ -66,7 +66,7 @@ export default function CaptionList({
                 title="Select (⌘/Ctrl-click or use the timeline to multi-select)"
                 className={`w-5 shrink-0 cursor-pointer text-right text-[11px] tabular-nums ${
                   active
-                    ? "text-cyan-600 dark:text-cyan-300"
+                    ? "text-[color:var(--sg-accent)]"
                     : "text-foreground/40 hover:text-foreground/70"
                 }`}
               >
@@ -80,7 +80,11 @@ export default function CaptionList({
                   selectCaption(c.id);
                   onSeek(captionTimelineRange(clips, c).start + 0.01);
                 }}
-                style={{ textTransform: caseTransform(captionStyle.textCase) }}
+                style={{
+                  textTransform: caseTransform(
+                    c.textCase ?? captionStyle.textCase,
+                  ),
+                }}
                 className="text-foreground min-w-0 flex-1 bg-transparent text-[13px] outline-none"
               />
               <button

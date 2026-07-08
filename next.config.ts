@@ -9,19 +9,13 @@ const nextConfig: NextConfig = {
         destination: "https://ypr.app/:path*",
         statusCode: 301,
       },
-      // The editor moved to /studio/editor; /studio becomes the Studio
-      // dashboard. Order matters: the ?tab deep links (feedback etc.) must hit
-      // the editor rule before the plain fallback. 307s on purpose (not
-      // cacheable): /studio's meaning changes again when the dashboard lands.
+      // Legacy editor deep links (/studio?tab=feedback etc.) still resolve to
+      // the editor. /studio itself is now the Studio marketing page
+      // (src/app/studio/page.tsx), so there is no plain /studio redirect.
       {
         source: "/studio",
         has: [{ type: "query", key: "tab" }],
         destination: "/studio/editor",
-        permanent: false,
-      },
-      {
-        source: "/studio",
-        destination: "/studio/library",
         permanent: false,
       },
       // The Create hub became the Studio; ideation folded into the Content

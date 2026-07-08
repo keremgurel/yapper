@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import type { GenErrorKind } from "@/hooks/use-idea-generation";
 
 /** The two fields this section reads; Idea and ContentDetail both satisfy it. */
@@ -9,9 +12,6 @@ interface ScriptFields {
   title: string;
   script?: string | null;
 }
-
-const genBtn =
-  "inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-50";
 
 /** Full-script field with its own generate control. Render-only, the parent
  * owns generation state and persistence. `generating` is true only while the
@@ -40,60 +40,55 @@ export default function ScriptSection({
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-foreground/45 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
-          Full script
-        </p>
+        <p className="sg-field-label">Full script</p>
         <Show when="signed-in">
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={onGenerate}
             disabled={disabled || !idea.title.trim()}
-            className={genBtn}
             title={
               idea.title.trim() ? "Generate a script" : "Add a title first"
             }
           >
             {generating ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Sparkles className="h-3 w-3" />
+              <Sparkles className="h-4 w-4" />
             )}
             {generating ? "Writing…" : label}
-          </button>
+          </Button>
         </Show>
         <Show when="signed-out">
           <SignInButton mode="modal" withSignUp>
-            <button type="button" className={genBtn}>
-              <Sparkles className="h-3 w-3" />
+            <Button type="button" size="sm">
+              <Sparkles className="h-4 w-4" />
               Sign in to write
-            </button>
+            </Button>
           </SignInButton>
         </Show>
       </div>
       {error === "locked" && (
-        <a
-          href="/pricing"
-          className="mb-2 block text-[12px] font-bold text-cyan-500 hover:underline"
-        >
-          Subscribe to unlock AI scripts
-        </a>
+        <Button asChild variant="link" className="mb-2 h-auto p-0">
+          <Link href="/pricing">Subscribe to unlock AI scripts</Link>
+        </Button>
       )}
       {error === "insufficient" && (
-        <p className="mb-2 text-[12px] font-bold text-amber-500">
+        <p className="mb-2 text-sm font-semibold text-amber-500">
           Out of credits. Top up to keep generating.
         </p>
       )}
       {error === "failed" && (
-        <p className="mb-2 text-[12px] font-bold text-red-500">
+        <p className="text-destructive mb-2 text-sm font-semibold">
           Script generation failed. No credit charged. Try again.
         </p>
       )}
-      <textarea
+      <Textarea
         value={idea.script ?? ""}
         rows={8}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Generate a full spoken-word script, or write your own. This is what you'll read off the teleprompter."
-        className="border-border bg-background text-foreground focus:border-foreground/40 w-full resize-y rounded-lg border px-3 py-2 text-sm leading-6 outline-none"
+        className="leading-6"
       />
     </div>
   );

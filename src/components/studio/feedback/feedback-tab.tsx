@@ -2,6 +2,7 @@
 
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2, Mic, Sparkles, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useStudio } from "@/components/studio/studio-context";
 import { useFeedback, type FeedbackTier } from "@/hooks/use-audio-feedback";
 import FeedbackResult from "@/components/studio/feedback/feedback-result";
@@ -115,7 +116,7 @@ export default function FeedbackTab() {
                         {desc}
                       </span>
                     </span>
-                    <span className="shrink-0 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-bold text-cyan-500">
+                    <span className="shrink-0 rounded-full bg-[color:var(--sg-accent)]/15 px-2 py-0.5 text-[11px] font-bold text-[color:var(--sg-accent)]">
                       {cost} cr
                     </span>
                   </button>
@@ -124,20 +125,17 @@ export default function FeedbackTab() {
             </Show>
             <Show when="signed-out">
               <SignInButton mode="modal" withSignUp>
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-cyan-600"
-                >
+                <Button type="button" className="w-full">
                   <Sparkles className="h-4 w-4" />
                   Sign in to get feedback
-                </button>
+                </Button>
               </SignInButton>
             </Show>
 
             {error === "not_entitled" && (
               <a
                 href="/pricing"
-                className="block text-sm font-bold text-cyan-500 hover:underline"
+                className="block text-sm font-bold text-[color:var(--sg-accent)] hover:underline"
               >
                 Subscribe to unlock AI feedback (7-day free trial).
               </a>

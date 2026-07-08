@@ -4,43 +4,108 @@ import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Chirpy } from "@/components/brand/chirpy";
+import { Button } from "@/components/ui/button";
 import ItemCard from "@/components/inspiration/item-card";
+import CreatorBadge from "@/components/inspiration/creator-badge";
+import CreatorProfile from "@/components/inspiration/creator-profile";
+import KindToggle from "@/components/inspiration/kind-toggle";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
-import type { InspirationItem } from "@/lib/inspiration/types";
+import { videosByCreator } from "@/lib/inspiration/relations";
+import type { InspirationItem, InspirationKind } from "@/lib/inspiration/types";
 
 function matches(item: InspirationItem, q: string): boolean {
-  const haystack = [item.title, item.author, item.note, item.transcript]
+  const haystack = [
+    item.title,
+    item.author,
+    item.handle,
+    item.note,
+    item.transcript,
+  ]
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
   return haystack.includes(q);
 }
 
+const COPY: Record<
+  InspirationKind,
+  { empty: string; hint: string; cta: string; noun: string }
+> = {
+  video: {
+    empty: "No videos saved here yet",
+    hint: "Paste a YouTube, TikTok, or Instagram video to start building your swipe file of hooks, stories, and ideas.",
+    cta: "Add a video",
+    noun: "video",
+  },
+  creator: {
+    empty: "No creators saved here yet",
+    hint: "Paste a creator's profile link to keep the people you learn from in one place — we'll connect their videos as you save them.",
+    cta: "Add a creator",
+    noun: "creator",
+  },
+};
+
 export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
   const { ready, pillars, items, activePillarId } = useInspiration();
   const [query, setQuery] = useState("");
+  const [kind, setKind] = useState<InspirationKind>("video");
+  const [creatorFilter, setCreatorFilter] = useState<string | null>(null);
+  const [openCreatorId, setOpenCreatorId] = useState<string | null>(null);
+  const openCreator = items.find((it) => it.id === openCreatorId) ?? null;
+
+  const creators = useMemo(
+    () => items.filter((it) => it.kind === "creator"),
+    [items],
+  );
 
   const activePillar = pillars.find((p) => p.id === activePillarId);
-  const title = activePillar ? activePillar.name : "All inspiration";
 
-  const visible = useMemo(() => {
-    const scoped =
+  // Everything in the active pillar (both kinds) — drives the toggle counts.
+  const scoped = useMemo(
+    () =>
       activePillarId === null
         ? items
-        : items.filter((it) => it.pillarId === activePillarId);
+        : items.filter((it) => it.pillarId === activePillarId),
+    [items, activePillarId],
+  );
+
+  const counts = useMemo<Record<InspirationKind, number>>(
+    () => ({
+      video: scoped.filter((it) => it.kind === "video").length,
+      creator: scoped.filter((it) => it.kind === "creator").length,
+    }),
+    [scoped],
+  );
+
+  const visible = useMemo(() => {
+    let byKind = scoped.filter((it) => it.kind === kind);
+    // Creator filter (videos only): keep videos that match the chosen creator.
+    if (kind === "video" && creatorFilter) {
+      const creator = creators.find((c) => c.id === creatorFilter);
+      if (creator) {
+        const matchedUrls = new Set(
+          videosByCreator(creator, items).map((v) => v.url),
+        );
+        byKind = byKind.filter((it) => matchedUrls.has(it.url));
+      }
+    }
     const q = query.trim().toLowerCase();
-    return q ? scoped.filter((it) => matches(it, q)) : scoped;
-  }, [items, activePillarId, query]);
+    return q ? byKind.filter((it) => matches(it, q)) : byKind;
+  }, [scoped, kind, query, creatorFilter, creators, items]);
+
+  const copy = COPY[kind];
+  const title = activePillar ? activePillar.name : "All inspiration";
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-foreground text-3xl font-black tracking-tight">
             {title}
           </h1>
           <p className="text-foreground/55 mt-1 text-sm">
-            {visible.length} {visible.length === 1 ? "item" : "items"}
+            {visible.length}{" "}
+            {visible.length === 1 ? copy.noun : `${copy.noun}s`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -50,19 +115,39 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search"
-              className="border-border bg-card text-foreground focus:border-foreground/40 w-40 rounded-full border py-2 pr-3 pl-9 text-sm outline-none sm:w-52"
+              className="border-border bg-card text-foreground w-40 rounded-md border py-2 pr-3 pl-9 text-sm outline-none focus:border-[color:var(--sg-accent)] sm:w-52"
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="contrast"
             onClick={onAdd}
-            className="bg-foreground text-background inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
+            className="shrink-0"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add inspiration</span>
             <span className="sm:hidden">Add</span>
-          </button>
+          </Button>
         </div>
+      </div>
+
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <KindToggle value={kind} onChange={setKind} counts={counts} />
+        {kind === "video" && creators.length > 0 && (
+          <select
+            value={creatorFilter ?? ""}
+            onChange={(e) => setCreatorFilter(e.target.value || null)}
+            className="border-border bg-card text-foreground/80 cursor-pointer rounded-md border px-3 py-2 text-sm"
+            aria-label="Filter by creator"
+          >
+            <option value="">All creators</option>
+            {creators.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.title}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       {!ready ? (
@@ -84,23 +169,32 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
         <div className="border-border text-foreground/55 flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-20 text-center">
           <Chirpy expression={query ? "oops" : "curious"} size={92} />
           <p className="text-foreground text-base font-bold">
-            {query ? "No matches" : "Nothing saved here yet"}
+            {query ? "No matches" : copy.empty}
           </p>
           <p className="max-w-sm text-sm">
-            {query
-              ? "Try a different search term."
-              : "Paste a YouTube, TikTok, or Instagram link to start building your swipe file of hooks, stories, and ideas."}
+            {query ? "Try a different search term." : copy.hint}
           </p>
           {!query && (
-            <button
+            <Button
               type="button"
+              variant="contrast"
               onClick={onAdd}
-              className="bg-foreground text-background mt-2 inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
+              className="mt-2"
             >
               <Plus className="h-4 w-4" />
-              Add your first link
-            </button>
+              {copy.cta}
+            </Button>
           )}
+        </div>
+      ) : kind === "creator" ? (
+        <div className="flex flex-wrap gap-3">
+          {visible.map((item) => (
+            <CreatorBadge
+              key={item.id}
+              item={item}
+              onOpen={() => setOpenCreatorId(item.id)}
+            />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -108,6 +202,13 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
             <ItemCard key={item.id} item={item} />
           ))}
         </div>
+      )}
+
+      {openCreator && (
+        <CreatorProfile
+          item={openCreator}
+          onClose={() => setOpenCreatorId(null)}
+        />
       )}
     </div>
   );

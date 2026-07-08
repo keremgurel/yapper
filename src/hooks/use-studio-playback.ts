@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clipTimelineStart,
+  sourceToTimeline,
   sourceToTimelineSeq,
   timelineToClip,
   totalDuration,
@@ -85,8 +86,12 @@ export function useStudioPlayback(
 
   const seekToSource = useCallback(
     (s: number) => {
+      // Prefer the exact clip containing `s`. When `s` sits just before a clip
+      // (e.g. a word whose start rounds into the preceding cut, but whose
+      // midpoint is kept), fall back to the mapped timeline position — the start
+      // of that clip — NOT 0, which would jump the playhead to the beginning.
       const found = sourceToTimelineSeq(clips, s);
-      applyTimeline(found ? found.timeline : 0);
+      applyTimeline(found ? found.timeline : sourceToTimeline(clips, s));
     },
     [clips, applyTimeline],
   );
@@ -158,49 +163,114 @@ export function useStudioPlayback(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseUrl, hasVideo]);
 
+  // Drive the clock and clip-boundary jumps per PRESENTED FRAME
+  // (requestVideoFrameCallback), not the ~4Hz `timeupdate` event. At 4Hz the
+  // playhead overshoots each cut by up to ~250ms, so the removed region (a
+  // retake, a pause) leaks on screen and captions lag; per-frame detection cuts
+  // that to a single frame. rAF is the fallback when rVFC is unavailable.
   useEffect(() => {
     if (!hasVideo) return;
     const v = videoRef.current;
     if (!v) return;
-    const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onTime = () => {
+
+    const vfc = v as HTMLVideoElement & {
+      requestVideoFrameCallback?: (cb: () => void) => number;
+      cancelVideoFrameCallback?: (h: number) => void;
+    };
+    const useRvfc = typeof vfc.requestVideoFrameCallback === "function";
+    let handle: number | null = null;
+    // True between initiating a boundary jump and its 'seeked' landing. Guards
+    // against re-evaluating the boundary while currentTime is still the old
+    // value — which, when the next clip is reordered EARLIER in the source,
+    // would look "past clip.end" again and skip that clip.
+    let seeking = false;
+    let seekTarget = 0;
+    const onSeeked = () => {
+      seeking = false;
+    };
+    v.addEventListener("seeked", onSeeked);
+
+    const cancel = () => {
+      if (handle == null) return;
+      if (useRvfc) vfc.cancelVideoFrameCallback?.(handle);
+      else cancelAnimationFrame(handle);
+      handle = null;
+    };
+    const schedule = () => {
+      if (v.paused) return;
+      handle = useRvfc
+        ? (vfc.requestVideoFrameCallback?.(step) ?? null)
+        : requestAnimationFrame(step);
+    };
+
+    function step() {
+      if (seeking) {
+        // Clear on the 'seeked' event OR once currentTime actually reaches the
+        // target (the event won't fire if the target equalled currentTime).
+        if (Math.abs(v!.currentTime - seekTarget) < 0.05) seeking = false;
+        else {
+          schedule();
+          return; // wait for the boundary seek to land before re-evaluating
+        }
+      }
       const i = activeIndexRef.current;
       const clip = clips[i];
-      if (!clip) return;
-      if (v.currentTime >= clip.end - EPS) {
-        const next = i + 1;
-        if (next >= clips.length) {
-          v.pause();
-          setTimelineTime(total);
-          setSourceTime(clip.end);
-          clockRef.current = total;
-          return;
+      if (clip) {
+        if (v!.currentTime >= clip.end) {
+          const next = i + 1;
+          if (next >= clips.length) {
+            v!.pause();
+            setTimelineTime(total);
+            setSourceTime(clip.end);
+            clockRef.current = total;
+            return; // playback ended; onPause/onEnded stop the loop
+          }
+          seeking = true;
+          seekTarget = clips[next].start;
+          activeIndexRef.current = next;
+          seekVideo(next, clips[next].start, !v!.paused);
+          const t = clipTimelineStart(clips, next);
+          setTimelineTime(t);
+          clockRef.current = t;
+          setSourceTime(clips[next].start);
+        } else if (v!.currentTime < clip.start - EPS) {
+          v!.currentTime = clip.start;
+        } else {
+          const t = clipTimelineStart(clips, i) + (v!.currentTime - clip.start);
+          setTimelineTime(t);
+          clockRef.current = t;
+          setSourceTime(v!.currentTime);
         }
-        activeIndexRef.current = next;
-        seekVideo(next, clips[next].start, !v.paused);
-        const t = clipTimelineStart(clips, next);
-        setTimelineTime(t);
-        clockRef.current = t;
-        setSourceTime(clips[next].start);
-        return;
       }
-      if (v.currentTime < clip.start - EPS) {
-        v.currentTime = clip.start;
-        return;
-      }
-      const t = clipTimelineStart(clips, i) + (v.currentTime - clip.start);
-      setTimelineTime(t);
-      clockRef.current = t;
-      setSourceTime(v.currentTime);
+      schedule();
+    }
+
+    const onPlay = () => {
+      setPlaying(true);
+      cancel();
+      schedule();
     };
+    const onPause = () => {
+      setPlaying(false);
+      cancel();
+    };
+    const onEnded = () => {
+      setPlaying(false);
+      cancel();
+      setTimelineTime(total);
+      clockRef.current = total;
+    };
+
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
-    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("ended", onEnded);
+    if (!v.paused) schedule();
     return () => {
       v.removeEventListener("play", onPlay);
       v.removeEventListener("pause", onPause);
-      v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("ended", onEnded);
+      v.removeEventListener("seeked", onSeeked);
+      cancel();
     };
   }, [videoRef, clips, total, hasVideo, seekVideo]);
 

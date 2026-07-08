@@ -7,6 +7,8 @@ export interface ContentSummary {
   status: ContentStatus;
   scheduledFor: string | null;
   submissionId: string | null;
+  /** The content pillar this idea is classified under (shown as a chip). */
+  pillar: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -31,6 +33,7 @@ export interface ContentPatch {
   cta?: string;
   script?: string | null;
   status?: ContentStatus;
+  pillar?: string | null;
   scheduledFor?: string | null;
   sourceUrl?: string;
   sourceTitle?: string;
@@ -84,6 +87,37 @@ export async function patchContent(
     }),
   );
   return data.item;
+}
+
+/** Talk-or-type capture: enrich a rough idea into a titled/classified item and
+ * persist it. Returns the created row (+ the pillar it was classified under). */
+export async function captureContent(
+  text: string,
+  pillars: string[],
+): Promise<{ item: ContentDetail; pillar?: string }> {
+  return json<{ item: ContentDetail; pillar?: string }>(
+    await fetch("/api/content/capture", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, pillars }),
+    }),
+  );
+}
+
+/** One turn of the "make your own banger from this clip" chat. */
+export async function brainstormReply(payload: {
+  messages: { role: "user" | "assistant"; content: string }[];
+  clip: Record<string, unknown>;
+  pillars: string[];
+}): Promise<string> {
+  const data = await json<{ reply: string }>(
+    await fetch("/api/content/brainstorm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }),
+  );
+  return data.reply;
 }
 
 export async function deleteContent(id: string): Promise<void> {

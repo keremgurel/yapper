@@ -39,14 +39,16 @@ export default function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="border-border bg-card hover:bg-muted flex items-center gap-2 rounded-full border py-1 pr-2.5 pl-1 shadow-sm transition-colors"
+          className="account-shimmer-trigger border-border bg-card hover:bg-muted flex items-center gap-2 rounded-full border py-1 pr-2.5 pl-1 shadow-sm transition-colors"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={user.imageUrl}
-            alt=""
-            className="h-7 w-7 rounded-full object-cover"
-          />
+          <span className="account-shimmer block h-7 w-7 shrink-0 rounded-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={user.imageUrl}
+              alt=""
+              className="h-7 w-7 rounded-full object-cover"
+            />
+          </span>
           <span className="text-foreground max-w-[130px] truncate text-[13px] font-bold">
             {name}
           </span>

@@ -728,7 +728,12 @@ export default function StudioTimeline({
                             ? "z-30 opacity-90 ring-2 ring-cyan-400"
                             : selected
                               ? "z-10 ring-2 ring-cyan-500"
-                              : "ring-1 ring-white/10 hover:ring-white/25"
+                              : // Every clip gets a permanent two-tone edge (a light
+                                // hairline over a subtle dark one) so each clip's
+                                // start/end reads at a glance without hovering, on
+                                // both the dark gaps and bright thumbnails. Inset so
+                                // the parent's overflow can't clip it away.
+                                "shadow-[inset_0_0_0_1px_rgba(255,255,255,0.55),inset_0_0_0_2px_rgba(0,0,0,0.30)] hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.85),inset_0_0_0_2px_rgba(0,0,0,0.35)]"
                       }`}
                       title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                     >

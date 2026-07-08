@@ -179,21 +179,49 @@
   --border: var(--sg-border);
   --muted: var(--sg-surface-sunken);
   --tick-inactive: #d4d4d8;
+
+  /* shadcn/ui semantic tokens, bridged to the --sg-* brand. These reference
+   * --sg-* directly, so they re-theme for dark automatically (the .dark block
+   * only needs to redefine --sg-*, never these). */
+  --radius: 0.625rem;
+  --card-foreground: var(--sg-text);
+  --popover: var(--sg-surface-raised);
+  --popover-foreground: var(--sg-text);
+  --primary: var(--sg-accent);
+  --primary-foreground: var(--sg-accent-fg);
+  --secondary: var(--sg-surface-sunken);
+  --secondary-foreground: var(--sg-text);
+  --muted-foreground: var(--sg-text-muted);
+  --accent: var(--sg-surface-sunken);
+  --accent-foreground: var(--sg-text);
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --input: var(--sg-border-strong);
+  --ring: var(--sg-accent);
+  --sidebar: var(--sg-surface);
+  --sidebar-foreground: var(--sg-text);
+  --sidebar-primary: var(--sg-accent);
+  --sidebar-primary-foreground: var(--sg-accent-fg);
+  --sidebar-accent: var(--sg-surface-sunken);
+  --sidebar-accent-foreground: var(--sg-text);
+  --sidebar-border: var(--sg-border);
+  --sidebar-ring: var(--sg-accent);
 }
 
 .dark {
   color-scheme: dark;
 
-  --sg-bg: #0e0d0e;
-  --sg-bg-2: #151314;
-  --sg-surface: #201d1d;
-  --sg-surface-raised: #2a2626;
-  --sg-surface-sunken: #171515;
-  --sg-border: rgba(255, 255, 255, 0.1);
-  --sg-border-strong: rgba(255, 255, 255, 0.18);
-  --sg-text: #f5f3f1;
-  --sg-text-muted: #a9a4a4;
-  --sg-text-faint: #6f6a6a;
+  /* Luxurious neutral dark ramp — cool graphite, not warm brown. */
+  --sg-bg: #0a0a0b;
+  --sg-bg-2: #101012;
+  --sg-surface: #171719;
+  --sg-surface-raised: #202023;
+  --sg-surface-sunken: #101012;
+  --sg-border: rgba(255, 255, 255, 0.08);
+  --sg-border-strong: rgba(255, 255, 255, 0.15);
+  --sg-text: #f4f4f5;
+  --sg-text-muted: #a1a1aa;
+  --sg-text-faint: #71717a;
   --sg-label: #fbbf24;
   --sg-display-muted: #8b95a8;
   --sg-accent: #ff8a2b;
@@ -225,6 +253,8 @@
   --border: var(--sg-border);
   --muted: var(--sg-surface-sunken);
   --tick-inactive: #52525b;
+  /* shadcn semantic tokens inherit from :root and re-theme via the --sg-*
+   * overrides above — no per-token dark values needed here. */
 }
 
 /* Home CTA styles that follow the app theme (`.dark` class),
@@ -553,15 +583,27 @@
   --font-sans: var(--font-body-sans);
   --font-display: var(--font-display-sans);
   --font-mono: var(--font-geist-mono);
-  --color-accent-light: #d9eae3;
-  --color-primary-light: #ffcfe1;
-  --color-secondary-light: #fffce5;
-  --color-primary: #ff0f67;
-  --color-primary-content: #fff;
-  --color-secondary: #fff07c;
-  --color-secondary-content: #0a0a0a;
-  --color-accent: #439775;
-  --color-accent-content: #0a0a0a;
+  /* shadcn/ui color mappings, bridged to the brand tokens above */
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* legacy leftovers (unused by app code, kept to avoid churn) */
   --color-neutral: #222222;
   --color-neutral-content: #ffffff;
   --color-base-100: #f0f0f0;
@@ -573,6 +615,28 @@
   --color-warning: #fbbd23;
   --color-error: #f87272;
   --color-highlight: #454ade;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+}
+
+/* Tailwind v4 defaults the bare `border` utility to currentColor. Without a
+ * base default, every `border`/`border-b`/`border-r` (shadcn cards, sidebar,
+ * dividers) renders as the text color — harsh, inverted borders. Point the
+ * default at the brand border token; explicit `border-*` utilities still win. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
 }
 
 html {
@@ -595,6 +659,36 @@ button:not(:disabled),
 label[for],
 summary {
   cursor: pointer;
+}
+
+/* Clicking/dragging on UI chrome (buttons, tabs, menu items, nav) shouldn't
+   highlight their label text the way clicking a paragraph does. Make interactive
+   controls non-selectable; prose (p, headings, inputs, [contenteditable], and
+   anything opting back in with .select-text) stays selectable like a normal site. */
+button,
+a,
+label,
+summary,
+[role="button"],
+[role="tab"],
+[role="menuitem"],
+[role="menuitemcheckbox"],
+[role="menuitemradio"],
+[role="option"],
+[role="switch"],
+[role="checkbox"],
+[role="radio"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+[contenteditable="true"],
+.select-text,
+.select-text * {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .font-display {
@@ -907,6 +1001,108 @@ select {
   background: var(--sg-surface-sunken);
 }
 
+/* Smaller button size for toolbars / inline actions. */
+.sg-btn-sm {
+  padding: var(--sg-space-2) var(--sg-space-4);
+  font-size: var(--sg-text-sm);
+}
+
+/* Form fields. Sit on a raised surface (not the page bg) so they read as
+ * inputs, with a legible placeholder and an accent focus ring. */
+.sg-input,
+.sg-textarea {
+  width: 100%;
+  background: var(--sg-surface);
+  border: 1px solid var(--sg-border-strong);
+  border-radius: var(--sg-radius-md);
+  padding: 0.5rem 0.75rem;
+  font-family: var(--sg-font-body);
+  font-size: var(--sg-text-base);
+  color: var(--sg-text);
+  outline: none;
+  transition:
+    border-color var(--sg-dur-fast) var(--sg-ease-out),
+    box-shadow var(--sg-dur-fast) var(--sg-ease-out);
+}
+.sg-textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+.sg-input::placeholder,
+.sg-textarea::placeholder {
+  color: var(--sg-text-faint);
+}
+.sg-input:focus,
+.sg-textarea:focus {
+  border-color: var(--sg-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sg-accent) 24%, transparent);
+}
+
+/* Readable field label (distinct from the faint decorative .sg-label eyebrow). */
+.sg-field-label {
+  display: block;
+  font-family: var(--sg-font-display);
+  font-size: var(--sg-text-xs);
+  font-weight: 700;
+  letter-spacing: var(--sg-tracking-label);
+  text-transform: uppercase;
+  color: var(--sg-text-muted);
+}
+
+/* Restores the production account-button sheen: a diagonal light glare sweeps
+ * across on hover/tap. Inherits the button's rounded shape; sits over content
+ * as a glare but never blocks clicks. */
+.account-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.account-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    110deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 65%
+  );
+  transform: translateX(-120%);
+  opacity: 0;
+  pointer-events: none;
+}
+/* The sheen is confined to the avatar (this element clips it), but it fires on
+ * hover/focus/tap of the whole trigger button so you don't have to land on the
+ * 28px pic exactly. */
+.account-shimmer:hover::after,
+.account-shimmer:focus-visible::after,
+.account-shimmer:active::after,
+.account-shimmer-trigger:hover .account-shimmer::after,
+.account-shimmer-trigger:focus-visible .account-shimmer::after,
+.account-shimmer-trigger:active .account-shimmer::after {
+  animation: account-sheen 0.9s var(--sg-ease-out);
+}
+@keyframes account-sheen {
+  0% {
+    transform: translateX(-120%);
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateX(130%);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .account-shimmer:hover::after,
+  .account-shimmer:focus-visible::after,
+  .account-shimmer:active::after,
+  .account-shimmer-trigger:hover .account-shimmer::after,
+  .account-shimmer-trigger:focus-visible .account-shimmer::after,
+  .account-shimmer-trigger:active .account-shimmer::after {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sg-chip-dot--live {
     animation: none;
@@ -920,4 +1116,119 @@ select {
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* ============================================================
+ * transitions.dev primitives (from the transitions-dev skill).
+ * Semantic :root vars shared by every t-* transition below. */
+:root {
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --shimmer-base: var(--sg-text-faint);
+  --shimmer-highlight: var(--sg-text);
+  --shimmer-band: 55%;
+  --shimmer-dur: 1.6s;
+  --shimmer-ease: linear;
+  --lift-dur: 220ms;
+  --lift-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Modal open/close — scale up from center. Toggle .is-open; on dismiss add
+ * .is-closing then unmount after --modal-close-dur. */
+.t-modal {
+  transform-origin: center;
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  transition:
+    transform var(--modal-open-dur) var(--modal-ease),
+    opacity var(--modal-open-dur) var(--modal-ease);
+  will-change: transform, opacity;
+}
+.t-modal.is-open {
+  transform: scale(1);
+  opacity: 1;
+}
+.t-modal.is-closing {
+  transform: scale(var(--modal-scale));
+  opacity: 0;
+  transition:
+    transform var(--modal-close-dur) var(--modal-ease),
+    opacity var(--modal-close-dur) var(--modal-ease);
+}
+
+/* Backdrop fade paired with the modal. */
+.t-scrim {
+  opacity: 0;
+  transition: opacity var(--modal-open-dur) var(--modal-ease);
+}
+.t-scrim.is-open {
+  opacity: 1;
+}
+.t-scrim.is-closing {
+  opacity: 0;
+  transition: opacity var(--modal-close-dur) var(--modal-ease);
+}
+
+/* Shimmer text — sweep a highlight band across muted text while loading. Needs
+ * data-text mirroring the visible text. */
+.t-shimmer {
+  position: relative;
+  display: inline-block;
+  color: var(--shimmer-base);
+}
+.t-shimmer::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 40%,
+    var(--shimmer-highlight) 50%,
+    transparent 60%,
+    transparent 100%
+  );
+  background-size: var(--shimmer-band) 100%;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+}
+@keyframes t-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+/* Hover lift — a clean rise + shadow for cards and badges. */
+.t-lift {
+  transition:
+    transform var(--lift-dur) var(--lift-ease),
+    box-shadow var(--lift-dur) var(--lift-ease);
+  will-change: transform;
+}
+.t-lift:hover {
+  transform: translateY(-3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-modal,
+  .t-scrim,
+  .t-lift {
+    transition: none;
+  }
+  .t-shimmer::before {
+    animation: none !important;
+  }
+  .t-lift:hover {
+    transform: none;
+  }
 }

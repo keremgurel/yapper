@@ -11,6 +11,7 @@ export interface ContentItemInput {
   cta?: string;
   script?: string | null;
   status?: ContentStatus;
+  pillar?: string | null;
   scheduledFor?: Date | null;
   sourceUrl?: string | null;
   sourceTitle?: string | null;
@@ -25,6 +26,7 @@ export async function listContentItems(userId: string) {
       status: contentItems.status,
       scheduledFor: contentItems.scheduledFor,
       submissionId: contentItems.submissionId,
+      pillar: contentItems.pillar,
       updatedAt: contentItems.updatedAt,
       createdAt: contentItems.createdAt,
     })

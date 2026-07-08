@@ -100,6 +100,9 @@ export function newAudioId(): string {
   return `aud-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
 }
 
+/** Display-only casing for a caption. Lives here so a Caption can override it. */
+export type CaptionCase = "none" | "lower" | "upper";
+
 /** A transcribed token (word or short phrase) with source timestamps. */
 export interface Word {
   id: string;
@@ -131,6 +134,10 @@ export interface Caption {
   y?: number;
   w?: number; // box width override (fraction of stage)
   scale?: number;
+  // Per-caption style overrides. When set, they win over the global caption
+  // style, so a single caption can be recased/refont without touching the rest.
+  fontFamily?: string;
+  textCase?: CaptionCase;
 }
 
 export function newCaptionId(): string {

@@ -31,12 +31,16 @@ export default function CaptionSettings() {
     captionStyle,
     captionApplyAll,
     captionWords,
+    selectedCaptionIds,
     setCaptionWords,
     setCaptionFont,
     setCaptionScale,
     setCaptionCase,
     toggleCaptionApplyAll,
   } = useStudio();
+
+  const targetingSelection = !captionApplyAll;
+  const noSelection = targetingSelection && selectedCaptionIds.length === 0;
 
   const sizeNum = Math.round(captionStyle.fontScale * 1000);
   const setSize = (n: number) =>
@@ -85,7 +89,7 @@ export default function CaptionSettings() {
           max={SIZE_MAX}
           value={sizeNum}
           onChange={(e) => setSize(Number(e.target.value))}
-          className="flex-1 accent-cyan-500"
+          className="flex-1 accent-[color:var(--sg-accent)]"
         />
       </div>
 
@@ -97,7 +101,8 @@ export default function CaptionSettings() {
         onChange={setCaptionCase}
       />
 
-      {/* Apply position/size to all */}
+      {/* Whether font / size / case / move / resize apply to every caption or
+          just the selected one(s). */}
       <button
         type="button"
         onClick={toggleCaptionApplyAll}
@@ -106,14 +111,23 @@ export default function CaptionSettings() {
         <span
           className={`flex h-4 w-4 items-center justify-center rounded border ${
             captionApplyAll
-              ? "border-cyan-500 bg-cyan-500 text-white"
+              ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-white"
               : "border-border"
           }`}
         >
           {captionApplyAll && <Check className="h-3 w-3" />}
         </span>
-        Move/resize applies to all captions
+        Apply changes to all captions
       </button>
+      {targetingSelection && (
+        <p className="text-foreground/45 text-[11px]">
+          {noSelection
+            ? "Select caption(s) in the list or on the video to restyle just those."
+            : `Changes apply to ${selectedCaptionIds.length} selected caption${
+                selectedCaptionIds.length === 1 ? "" : "s"
+              }.`}
+        </p>
+      )}
     </div>
   );
 }

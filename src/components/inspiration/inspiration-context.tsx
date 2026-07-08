@@ -34,11 +34,25 @@ interface InspirationContextValue {
     url: string,
     resolved: ResolvedLink,
     pillarId: string | null,
-  ) => void;
+    opts?: { note?: string; creatorItemId?: string },
+  ) => string;
+  updateItem: (id: string, patch: Partial<InspirationItem>) => void;
   deleteItem: (id: string) => void;
   moveItem: (id: string, pillarId: string | null) => void;
   setItemNote: (id: string, note: string) => void;
+  /** Scrape (or re-scrape) a creator's feed via Apify and store the ranked
+   * videos on the item. No-op for non-creator items. Accepts just the fields it
+   * reads so the add flow can trigger a scrape right after saving. */
+  refreshCreator: (item: CreatorRef) => Promise<void>;
+  /** Ids currently being scraped, for per-card loading state. */
+  scrapingIds: string[];
 }
+
+/** The subset of a creator item that `refreshCreator` needs to scrape it. */
+type CreatorRef = Pick<
+  InspirationItem,
+  "id" | "kind" | "url" | "thumbnail" | "title"
+>;
 
 const InspirationContext = createContext<InspirationContextValue | null>(null);
 
@@ -54,15 +68,12 @@ export function InspirationProvider({
 
   // Hydrate the persisted library from localStorage after mount. This is the
   // hydration-safe pattern for a client-only store (lazy init would diverge from
-  // the server render); the lint rule for setState-in-effect is intentionally
-  // relaxed here.
-  /* eslint-disable react-hooks/set-state-in-effect */
+  // the server render).
   useEffect(() => {
     setPillars(loadPillars());
     setItems(loadItems());
     setReady(true);
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (ready) savePillars(pillars);
@@ -100,21 +111,80 @@ export function InspirationProvider({
   }, []);
 
   const addItem = useCallback(
-    (url: string, resolved: ResolvedLink, pillarId: string | null) => {
+    (
+      url: string,
+      resolved: ResolvedLink,
+      pillarId: string | null,
+      opts?: { note?: string; creatorItemId?: string },
+    ): string => {
+      const id = newId("item");
       const item: InspirationItem = {
-        id: newId("item"),
+        id,
+        kind: resolved.kind,
         pillarId,
         url,
         platform: resolved.platform,
         title: resolved.title,
         author: resolved.author,
+        handle: resolved.handle,
+        creatorItemId:
+          resolved.kind === "video" ? opts?.creatorItemId : undefined,
         thumbnail: resolved.thumbnail,
         transcript: resolved.transcript,
+        note: opts?.note?.trim() || undefined,
         createdAt: Date.now(),
       };
       setItems((prev) => [item, ...prev]);
+      return id;
     },
     [],
+  );
+
+  const updateItem = useCallback(
+    (id: string, patch: Partial<InspirationItem>) => {
+      setItems((prev) =>
+        prev.map((it) => (it.id === id ? { ...it, ...patch } : it)),
+      );
+    },
+    [],
+  );
+
+  const [scrapingIds, setScrapingIds] = useState<string[]>([]);
+
+  const refreshCreator = useCallback(
+    async (item: CreatorRef) => {
+      if (item.kind !== "creator") return;
+      setScrapingIds((prev) =>
+        prev.includes(item.id) ? prev : [...prev, item.id],
+      );
+      try {
+        const res = await fetch("/api/inspiration/creator", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: item.url }),
+        });
+        const data = (await res.json()) as {
+          name?: string;
+          avatar?: string;
+          videos?: InspirationItem["videos"];
+          scrapedAt?: number;
+        };
+        updateItem(item.id, {
+          videos: data.videos ?? [],
+          scrapedAt: data.scrapedAt ?? Date.now(),
+          ...(data.avatar && !item.thumbnail ? { thumbnail: data.avatar } : {}),
+          ...(data.name && item.title.startsWith("@")
+            ? { title: data.name }
+            : {}),
+        });
+      } catch {
+        // Leave the item as-is; the UI shows a retry affordance.
+        updateItem(item.id, { scrapedAt: Date.now() });
+      } finally {
+        setScrapingIds((prev) => prev.filter((x) => x !== item.id));
+      }
+    },
+    [updateItem],
   );
 
   const deleteItem = useCallback((id: string) => {
@@ -147,9 +217,12 @@ export function InspirationProvider({
       renamePillar,
       deletePillar,
       addItem,
+      updateItem,
       deleteItem,
       moveItem,
       setItemNote,
+      refreshCreator,
+      scrapingIds,
     }),
     [
       ready,
@@ -160,9 +233,12 @@ export function InspirationProvider({
       renamePillar,
       deletePillar,
       addItem,
+      updateItem,
       deleteItem,
       moveItem,
       setItemNote,
+      refreshCreator,
+      scrapingIds,
     ],
   );
 

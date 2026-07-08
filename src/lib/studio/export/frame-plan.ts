@@ -1,0 +1,101 @@
+import { captionTimelineRange, type CaptionStyle } from "@/lib/studio/captions";
+import { timelineToClip } from "@/lib/studio/clips";
+import type {
+  Caption,
+  CaptionCase,
+  Clip,
+  Overlay,
+  StudioSource,
+} from "@/lib/studio/types";
+
+/** The base-track frame to show at edited-timeline time `t`. */
+export interface BaseFrame {
+  url: string;
+  kind: "video" | "image";
+  /** Time into that url's own media, in seconds. */
+  sourceTime: number;
+}
+
+/** An overlay to composite at time `t`, with its box as stage fractions. */
+export interface OverlayFrame {
+  id: string;
+  url: string;
+  kind: "video" | "image";
+  sourceTime: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** The caption to draw at time `t`, already merged with the global style. */
+export interface CaptionFrame {
+  text: string;
+  x: number;
+  y: number;
+  w: number;
+  scale: number;
+  fontFamily: string;
+  textCase: CaptionCase;
+}
+
+/** Which base source (and source-time) plays at edited-timeline time `t`. */
+export function baseAt(
+  clips: Clip[],
+  source: StudioSource,
+  t: number,
+): BaseFrame | null {
+  const hit = timelineToClip(clips, t);
+  if (!hit) return null;
+  const clip = clips[hit.index];
+  const ref = clip.src;
+  return {
+    url: ref?.url ?? source.url,
+    kind: ref?.kind ?? source.kind ?? "video",
+    sourceTime: hit.sourceTime,
+  };
+}
+
+/** Overlays active at `t`, in paint order (later entries render on top). */
+export function overlaysAt(overlays: Overlay[], t: number): OverlayFrame[] {
+  const out: OverlayFrame[] = [];
+  for (const o of overlays) {
+    if (o.hidden) continue;
+    const local = t - o.start;
+    if (local < 0 || local >= o.duration) continue;
+    out.push({
+      id: o.id,
+      url: o.url,
+      kind: o.kind,
+      sourceTime: o.sourceStart + local,
+      x: o.x ?? 0,
+      y: o.y ?? 0,
+      w: o.w ?? 1,
+      h: o.h ?? 1,
+    });
+  }
+  return out;
+}
+
+/** The caption visible at `t`, merged with the global style, or null. */
+export function captionAt(
+  clips: Clip[],
+  captions: Caption[],
+  style: CaptionStyle,
+  t: number,
+): CaptionFrame | null {
+  const active = captions.find((c) => {
+    const r = captionTimelineRange(clips, c);
+    return r.end > r.start && t >= r.start && t < r.end;
+  });
+  if (!active) return null;
+  return {
+    text: active.text,
+    x: active.x ?? style.x,
+    y: active.y ?? style.y,
+    w: active.w ?? style.width,
+    scale: active.scale ?? style.fontScale,
+    fontFamily: active.fontFamily ?? style.fontFamily,
+    textCase: active.textCase ?? style.textCase,
+  };
+}

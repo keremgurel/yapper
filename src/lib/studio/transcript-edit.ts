@@ -21,6 +21,13 @@ function snapTo(t: number, points: number[], window: number): number {
  * onset, and a word before a pause snaps its end to the exact offset. Words in
  * the middle of continuous speech (far from any boundary) are left untouched,
  * so cuts made from the transcript land cleanly on real speech edges.
+ *
+ * Snapping is one-directional at the edges: a start only ever moves EARLIER and
+ * an end only ever moves LATER. The transcriber's word starts already lag the
+ * true onset, so a nearest-point snap that pulled a start later would make
+ * captions appear late; likewise pulling an end earlier would clip the tail of
+ * a word (and let the trailing-silence cut eat real speech). This keeps refined
+ * timings a safe superset of each word's spoken span.
  */
 export function refineWordTimings(
   words: Word[],
@@ -31,8 +38,8 @@ export function refineWordTimings(
   const onsets = segments.map((s) => s.start);
   const offsets = segments.map((s) => s.end);
   return words.map((w) => {
-    const start = snapTo(w.start, onsets, window);
-    const end = snapTo(w.end, offsets, window);
+    const start = Math.min(w.start, snapTo(w.start, onsets, window));
+    const end = Math.max(w.end, snapTo(w.end, offsets, window));
     return end > start ? { ...w, start, end } : w;
   });
 }
@@ -123,41 +130,110 @@ function mergeRanges(ranges: [number, number][]): [number, number][] {
 }
 
 /**
- * Detect retakes: when a phrase is restarted (an opening of >= n words repeats
- * later), cut from the FIRST attempt up to the START of the LAST attempt — so
- * every earlier try is removed and only the final take is kept. Ranges from all
- * repeated n-grams are merged, which naturally spans the whole restarted region.
- * Conservative: only exact normalized n-grams whose span is within `maxGapSec`.
+ * Detect retakes and keep ONLY the last attempt. Walk the transcript forward;
+ * when the phrase opening at position i (an n-gram) recurs later within
+ * `maxGapSec`, the span [i, recurrence) is an earlier attempt — cut it and
+ * continue scanning FROM the recurrence, so a 3rd attempt cuts the 2nd, etc.
+ *
+ * Because each cut ends exactly at the next attempt's start (and scanning
+ * resumes there), the cut can never extend into the final take — which is the
+ * failure of a merge-every-repeated-n-gram approach, where an n-gram deep inside
+ * the phrase (e.g. "here's how") recurs across attempts and drags the cut into
+ * the last, correct attempt. Uses n=4 to avoid cutting incidental short repeats.
  */
 export function findEarlierTakeRanges(
   words: Word[],
-  n = 3,
-  maxGapSec = 30,
+  n = 4,
+  maxGapSec = 25,
 ): [number, number][] {
   const toks = words
     .map((w) => ({ t: norm(w.text), w }))
     .filter((x) => x.t.length > 0);
   if (toks.length < n * 2) return [];
 
-  // Every start index where each n-gram occurs.
-  const positions = new Map<string, number[]>();
-  for (let i = 0; i + n <= toks.length; i++) {
-    const key = toks
+  const keyAt = (i: number) =>
+    toks
       .slice(i, i + n)
       .map((x) => x.t)
       .join(" ");
-    const arr = positions.get(key);
-    if (arr) arr.push(i);
-    else positions.set(key, [i]);
-  }
 
   const ranges: [number, number][] = [];
-  for (const occ of positions.values()) {
-    if (occ.length < 2) continue;
-    const from = toks[occ[0]].w.start;
-    const to = toks[occ[occ.length - 1]].w.start; // start of the last attempt
-    if (to > from && to - from <= maxGapSec) ranges.push([from, to]);
+  let i = 0;
+  while (i + n <= toks.length) {
+    const key = keyAt(i);
+    let recurrence = -1;
+    for (let j = i + 1; j + n <= toks.length; j++) {
+      if (toks[j].w.start - toks[i].w.start > maxGapSec) break;
+      if (keyAt(j) === key) {
+        recurrence = j;
+        break;
+      }
+    }
+    if (recurrence >= 0) {
+      ranges.push([toks[i].w.start, toks[recurrence].w.start]);
+      i = recurrence; // resume from the restart → keeps the last attempt intact
+    } else {
+      i++;
+    }
   }
 
   return mergeRanges(ranges);
+}
+
+/**
+ * Safety net for an AI-proposed cut: it is a genuine retake/stumble only if most
+ * of what it removes RECURS in the surrounding speech (the span before or after
+ * it) — that's what a restart looks like, since the speaker says nearly the same
+ * words again. If the removed content barely appears nearby, it's likely unique
+ * content the AI misjudged, so we refuse the cut rather than delete real speech.
+ *
+ * Overlap is measured as a token-set ratio over a window on BOTH sides, so a
+ * reworded restart ("22,000 views organically" -> "25,000 organic views") still
+ * counts as a repeat even though it isn't a verbatim substring. Short cuts
+ * (a stumble or a doubled word or two) are always trusted.
+ */
+export function isRetakeCut(
+  words: Word[],
+  from: number,
+  to: number,
+  windowWords = 60,
+): boolean {
+  const cut = words
+    .slice(from, to + 1)
+    .map((w) => norm(w.text))
+    .filter(Boolean);
+  if (cut.length < 3) return true;
+  const context = new Set(
+    [
+      ...words.slice(Math.max(0, from - windowWords), from),
+      ...words.slice(to + 1, to + 1 + windowWords),
+    ]
+      .map((w) => norm(w.text))
+      .filter(Boolean),
+  );
+  const hits = cut.filter((t) => context.has(t)).length;
+  return hits / cut.length >= 0.5;
+}
+
+/**
+ * Retake/mistake ranges to remove. The AI pass (cleaned-text + right-anchored
+ * alignment) is the primary source: whenever it proposes any cuts we trust
+ * ONLY those, validated so a span that isn't restated later is never removed
+ * (unique content is never deleted). The deterministic exact-repeat detector is
+ * intentionally NOT unioned in here — it over-cuts on near-repeats and would
+ * delete words the AI correctly kept. It serves purely as the fallback when no
+ * AI key is configured (aiCuts === null) or when the AI finds nothing to cut,
+ * cases where its worst failure is a leftover fragment rather than lost speech.
+ * Returns merged source-time ranges.
+ */
+export function combineRetakeCuts(
+  words: Word[],
+  aiCuts: [number, number][] | null,
+): [number, number][] {
+  if (!aiCuts || aiCuts.length === 0) return findEarlierTakeRanges(words);
+  const ai = aiCuts
+    .filter(([i, j]) => words[i] && words[j] && words[j].end > words[i].start)
+    .filter(([i, j]) => isRetakeCut(words, i, j))
+    .map(([i, j]) => [words[i].start, words[j].end] as [number, number]);
+  return mergeRanges(ai);
 }

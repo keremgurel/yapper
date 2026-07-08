@@ -172,7 +172,13 @@ export function timelineToClip(clips: Clip[], t: number): TimelineHit | null {
   for (let i = 0; i < clips.length; i++) {
     const d = clipDuration(clips[i]);
     if (t <= acc + d + EPS) {
-      return { index: i, sourceTime: clips[i].start + Math.max(0, t - acc) };
+      // Clamp into the clip's own source range: the +EPS slack must never
+      // resolve to a source time past clip.end (into the removed region).
+      const sourceTime = Math.min(
+        clips[i].end,
+        clips[i].start + Math.max(0, t - acc),
+      );
+      return { index: i, sourceTime };
     }
     acc += d;
   }

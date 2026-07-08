@@ -25,7 +25,9 @@ import {
   speechBoundsInRange,
 } from "@/lib/studio/silence";
 import {
+  combineRetakeCuts,
   findEarlierTakeRanges,
+  findFillerIds,
   pauseRanges,
   refineWordTimings,
   selectionToRanges,
@@ -37,7 +39,6 @@ import {
   type CaptionStyle,
 } from "@/lib/studio/captions";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
-import { transcribeAudio } from "@/lib/studio/transcribe";
 import { transcribeRemote } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
@@ -61,6 +62,10 @@ import {
   type Word,
 } from "@/lib/studio/types";
 
+// Clips shorter than this are dropped after auto-edit — they're the leftover
+// slivers of retakes/pauses that make playback stutter instead of cut cleanly.
+const MIN_CLIP_SEC = 0.08;
+
 interface CaptionLayout {
   x?: number;
   y?: number;
@@ -68,12 +73,7 @@ interface CaptionLayout {
   scale?: number;
 }
 
-export type TranscribeStatus =
-  | "idle"
-  | "loading"
-  | "transcribing"
-  | "done"
-  | "error";
+export type TranscribeStatus = "idle" | "transcribing" | "done" | "error";
 
 interface StudioContextValue {
   source: StudioSource | null;
@@ -84,7 +84,6 @@ interface StudioContextValue {
   words: Word[];
   audioTracks: AudioTrack[];
   transcribeStatus: TranscribeStatus;
-  transcribeProgress: number;
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
@@ -105,9 +104,10 @@ interface StudioContextValue {
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
-  autoEdit: () => Promise<void>;
+  autoEdit: (withCaptions?: boolean) => Promise<void>;
   autoEditing: boolean;
   autoEditStep: number;
+  autoEditCaptions: boolean;
   addAudio: (file: File) => Promise<void>;
   moveAudio: (id: string, start: number) => void;
   toggleAudioMuted: (id: string) => void;
@@ -190,11 +190,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [words, setWords] = useState<Word[]>([]);
   const [transcribeStatus, setTranscribeStatus] =
     useState<TranscribeStatus>("idle");
-  const [transcribeProgress, setTranscribeProgress] = useState(0);
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
   const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
+  const [autoEditCaptions, setAutoEditCaptions] = useState(true); // does the running pass add captions?
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
@@ -369,20 +369,50 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
-  const setCaptionFont = useCallback((fontFamily: string) => {
-    setCaptionStyle((s) => ({ ...s, fontFamily }));
-  }, []);
+  // Apply a style change either to every caption (update the global style and
+  // clear the matching per-caption overrides) or, when Apply-to-all is off, to
+  // just the selected caption(s). `global` patches the shared style; `perCaption`
+  // is the same change expressed as a per-caption override.
+  const applyCaptionStyle = useCallback(
+    (global: Partial<CaptionStyle>, perCaption: Partial<Caption>) => {
+      if (captionApplyAll) {
+        setCaptionStyle((s) => ({ ...s, ...global }));
+        const keys = Object.keys(perCaption) as (keyof Caption)[];
+        setCaptions((prev) =>
+          prev.map((c) => {
+            const next = { ...c };
+            for (const k of keys) delete next[k];
+            return next;
+          }),
+        );
+      } else if (selectedCaptionIds.length > 0) {
+        const target = new Set(selectedCaptionIds);
+        setCaptions((prev) =>
+          prev.map((c) => (target.has(c.id) ? { ...c, ...perCaption } : c)),
+        );
+      }
+    },
+    [captionApplyAll, selectedCaptionIds],
+  );
 
-  const setCaptionScale = useCallback((fontScale: number) => {
-    setCaptionStyle((s) => ({ ...s, fontScale }));
-    setCaptions((prev) => prev.map((c) => ({ ...c, scale: undefined })));
-  }, []);
+  const setCaptionFont = useCallback(
+    (fontFamily: string) => applyCaptionStyle({ fontFamily }, { fontFamily }),
+    [applyCaptionStyle],
+  );
+
+  const setCaptionScale = useCallback(
+    (fontScale: number) =>
+      applyCaptionStyle({ fontScale }, { scale: fontScale }),
+    [applyCaptionStyle],
+  );
 
   // Casing is a non-destructive display style (rendered via CSS text-transform),
   // so it's fully revertible — "Original" leaves the transcribed text untouched.
-  const setCaptionCase = useCallback((mode: CaptionCase) => {
-    setCaptionStyle((s) => ({ ...s, textCase: mode }));
-  }, []);
+  const setCaptionCase = useCallback(
+    (mode: CaptionCase) =>
+      applyCaptionStyle({ textCase: mode }, { textCase: mode }),
+    [applyCaptionStyle],
+  );
 
   const toggleCaptionApplyAll = useCallback(
     () => setCaptionApplyAll((v) => !v),
@@ -599,7 +629,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const resetTranscript = useCallback(() => {
     setWords([]);
     setTranscribeStatus("idle");
-    setTranscribeProgress(0);
     setCaptions([]);
     setSelectedCaptionIds([]);
   }, []);
@@ -613,6 +642,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       resetClips(fullClip(next.duration));
       setSelectedClipIds([]);
       resetTranscript();
+      // Warm the audio decode now (it's the slow first step and dedupes by URL),
+      // so by the time the user hits 1-Click or Transcribe it's already cached.
+      if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
       setAudioTracks((prev) => {
         prev.forEach((t) => URL.revokeObjectURL(t.url));
         return [];
@@ -821,26 +853,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source, clips, setClips]);
 
-  // Decoded audio -> words. Prefers the hosted backend (best accuracy) and falls
-  // back to on-device Whisper when no key is configured or the request fails.
+  // Decoded audio -> words, via the hosted backend (Deepgram). There is no
+  // on-device fallback: it was markedly less accurate (it merges repeated takes,
+  // silently dropping retakes), so any failure throws to the caller instead of
+  // quietly downgrading the transcript.
   const wordsFromAudio = useCallback(
     async (audio: Float32Array): Promise<Word[]> => {
-      let raw = null as Awaited<ReturnType<typeof transcribeRemote>>;
-      try {
-        raw = await transcribeRemote(audio);
-      } catch {
-        raw = null;
-      }
-      if (!raw) {
-        raw = await transcribeAudio(audio, (p) => {
-          if (p.status === "loading" && typeof p.progress === "number") {
-            setTranscribeStatus("loading");
-            setTranscribeProgress(Math.round(p.progress));
-          } else if (p.status === "transcribing") {
-            setTranscribeStatus("transcribing");
-          }
-        });
-      }
+      const raw = await transcribeRemote(audio);
       // Correct approximate word times against the precise VAD edges.
       const segments = detectSpeechSegments(audio);
       return refineWordTimings(
@@ -851,20 +870,41 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // The decoded audio is the source of truth for length. A video element often
+  // under-reports duration (MediaRecorder WebM especially), which would leave
+  // words spoken past that point outside the only clip — treated as cut, so they
+  // vanish from the transcript/captions/export. Extend an untouched timeline to
+  // the true audio length so the whole recording, including the end, is kept.
+  const coverFullAudio = useCallback(
+    (audioSamples: number) => {
+      if (!source) return;
+      const audioDur = audioSamples / 16000; // decode target rate
+      if (audioDur <= source.duration + 0.1) return;
+      setSource((s) => (s ? { ...s, duration: audioDur } : s));
+      setClips((prev) => {
+        const pristine =
+          prev.length === 1 &&
+          prev[0].start <= 0.001 &&
+          prev[0].end >= source.duration - 0.1;
+        return pristine ? fullClip(audioDur) : prev;
+      });
+    },
+    [source, setClips],
+  );
+
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source || source.kind === "image") return;
-    // Neutral "Transcribing…" up front; "Downloading speech model" is only for
-    // the on-device fallback, and only while it actually downloads.
     setTranscribeStatus("transcribing");
-    setTranscribeProgress(0);
     try {
       const audio = await decodeToMono16k(source.url);
+      coverFullAudio(audio.length);
       setWords(await wordsFromAudio(audio));
       setTranscribeStatus("done");
-    } catch {
+    } catch (e) {
+      console.error("[studio] transcription failed", e);
       setTranscribeStatus("error");
     }
-  }, [source, wordsFromAudio]);
+  }, [source, wordsFromAudio, coverFullAudio]);
 
   const applyCuts = useCallback(
     (ranges: [number, number][]) => {
@@ -899,129 +939,161 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
-  // Clean up retakes: an LLM marks earlier attempts of restarted lines (and
-  // stumbles/self-corrections) as struck-through for review — not removed.
-  // Returns count, or -1 (no AI key) / -2 (request failed).
+  // Clean up retakes: the AI flags earlier attempts of restarted lines and
+  // stumbles; those cuts are validated (a line that isn't restated later is
+  // never removed) and unioned with a deterministic exact-repeat detector that
+  // catches obvious restarts the AI misses. Works even without an AI key
+  // (deterministic only). Returns the number of ranges marked to cut.
   const aiRemoveMistakes = useCallback(async (): Promise<number> => {
     if (words.length === 0) return 0;
     setAiCleaning(true);
     try {
-      const cuts = await cleanTranscriptRemote(words);
-      if (cuts === null) return -1;
-      const ranges = cuts
-        .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
-        .filter(([a, b]) => b > a);
+      let aiCuts: [number, number][] | null = null;
+      try {
+        aiCuts = await cleanTranscriptRemote(words);
+      } catch (e) {
+        console.error("[studio] AI retake cleanup failed", e);
+      }
+      const ranges = combineRetakeCuts(words, aiCuts);
       applyCuts(ranges);
       return ranges.length;
-    } catch {
-      return -2;
     } finally {
       setAiCleaning(false);
     }
   }, [words, applyCuts]);
 
   // One-click clean up: transcribe (if needed), trim each clip's silence, remove
-  // AI-flagged mistakes/retakes and pauses, then generate captions with sensible
-  // defaults. Everything is computed into local variables so each step sees the
-  // result of the previous one without waiting on React state to flush.
-  const autoEdit = useCallback(async (): Promise<void> => {
-    if (!source || source.kind === "image") return;
-    setAutoEditing(true);
-    try {
-      const audio = await decodeToMono16k(source.url);
-
-      // Step 0 — transcript.
-      setAutoEditStep(0);
-      let w = words;
-      if (w.length === 0) {
-        setTranscribeStatus("transcribing");
-        setTranscribeProgress(0);
-        try {
-          w = await wordsFromAudio(audio);
-          setWords(w);
-          setTranscribeStatus("done");
-        } catch {
-          setTranscribeStatus("error");
-        }
-      }
-
-      let next = clips;
-
-      if (w.length > 0) {
-        // Step 1 — remove AI-flagged mistakes/retakes.
-        setAutoEditStep(1);
-        try {
-          const cuts = await cleanTranscriptRemote(w);
-          if (cuts) {
-            for (const [i, j] of cuts) {
-              const a = w[i]?.start;
-              const b = w[j]?.end;
-              if (a != null && b != null && b > a) {
-                next = removeSourceRange(next, a, b);
-              }
-            }
-          }
-        } catch {
-          // skip mistake removal if the service is unavailable
-        }
-
-        // Step 2 — cut pauses (plus leading/trailing dead air).
-        setAutoEditStep(2);
-        const ranges = pauseRanges(w);
-        const first = w[0];
-        const last = w[w.length - 1];
-        if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
-        if (source.duration - last.end >= 0.5) {
-          ranges.push([last.end + 0.1, source.duration]);
-        }
-        for (const [from, to] of ranges) {
-          next = removeSourceRange(next, from, to);
-        }
-      }
-
-      // Step 3 — trim silence on the FINAL clips, so every clip left after the
-      // cuts starts and ends on speech (not just the original single clip).
-      setAutoEditStep(3);
+  // AI-flagged mistakes/retakes and pauses, and (when withCaptions) generate
+  // captions with sensible defaults. Everything is computed into local variables
+  // so each step sees the result of the previous one without waiting on React
+  // state to flush.
+  const autoEdit = useCallback(
+    async (withCaptions = true): Promise<void> => {
+      if (!source || source.kind === "image") return;
+      setAutoEditCaptions(withCaptions);
+      setAutoEditing(true);
       try {
-        const analysis = analyzeForTrim(audio);
-        next = next.map((c) => {
-          const b = speechBoundsInRange(analysis, c.start, c.end);
-          if (!b) return c;
-          const start = Math.max(c.start, b.start - 0.05);
-          const end = Math.min(c.end, b.end + 0.08);
-          return end - start < 0.1 ? c : { ...c, start, end };
-        });
-      } catch {
-        // leave clips as-is if the waveform can't be analysed
-      }
+        // Step 0 — prepare: decode the audio (the slow part for a long/4K clip;
+        // the video's audio must be pulled out in-browser before anything else).
+        setAutoEditStep(0);
+        const audio = await decodeToMono16k(source.url);
+        const audioDur = audio.length / 16000;
 
-      setClips(() => next);
+        // Step 1 — transcript (reuse existing words when present).
+        setAutoEditStep(1);
+        let w = words;
+        if (w.length === 0) {
+          setTranscribeStatus("transcribing");
+          try {
+            w = await wordsFromAudio(audio);
+            setWords(w);
+            setTranscribeStatus("done");
+          } catch (e) {
+            console.error("[studio] auto-edit transcription failed", e);
+            setTranscribeStatus("error");
+          }
+        }
 
-      // Step 4 — captions: normal case, 3 words per caption, horizontally
-      // centered and sitting one third of the frame height up from the bottom.
-      setAutoEditStep(4);
-      setCaptionStyle((s) => ({
-        ...s,
-        textCase: "none",
-        x: 0.5,
-        y: 2 / 3,
-        width: 0.8,
-        fontScale: 0.032,
-      }));
-      setCaptionWordsState(3);
-      if (w.length > 0) {
-        setCaptions(
-          generateCaptions(w, next, {
-            maxChars: captionLines * 30,
-            maxWords: 3,
-          }),
+        // Extend an untouched timeline to the full audio length so speech past the
+        // video element's reported duration (the end of the take) isn't dropped.
+        const pristine =
+          clips.length === 1 &&
+          clips[0].start <= 0.001 &&
+          clips[0].end >= source.duration - 0.1;
+        const effDuration = Math.max(source.duration, audioDur);
+        const extend = pristine && audioDur > source.duration + 0.1;
+        if (audioDur > source.duration + 0.1) {
+          setSource((s) => (s ? { ...s, duration: effDuration } : s));
+        }
+        let next = extend ? fullClip(effDuration) : clips;
+
+        // The waveform trim analysis is pure CPU and independent of the AI clean
+        // pass — kick it off now so it overlaps the network round-trip.
+        const analysisPromise = Promise.resolve().then(() =>
+          analyzeForTrim(audio),
         );
+
+        if (w.length > 0) {
+          // Step 2 — remove retakes/mistakes: validated AI cuts unioned with the
+          // deterministic exact-repeat detector (never cuts a one-off line, and
+          // still catches restarts without an AI key).
+          setAutoEditStep(2);
+          let aiCuts: [number, number][] | null = null;
+          try {
+            aiCuts = await cleanTranscriptRemote(w);
+          } catch {
+            aiCuts = null; // fall back to deterministic-only inside combine
+          }
+          for (const [from, to] of combineRetakeCuts(w, aiCuts)) {
+            next = removeSourceRange(next, from, to);
+          }
+
+          // Step 3 — cut filler words, then pauses, then leading/trailing dead air.
+          setAutoEditStep(3);
+          const ranges: [number, number][] = [
+            ...selectionToRanges(w, new Set(findFillerIds(w))),
+            ...pauseRanges(w, 0.25),
+          ];
+          const first = w[0];
+          const last = w[w.length - 1];
+          if (first.start >= 0.4) ranges.push([0, first.start - 0.04]);
+          // Use the raw last-word end with a safe margin so a soft-decay final
+          // word isn't clipped by the trailing-silence cut.
+          if (effDuration - last.end >= 0.4) {
+            ranges.push([last.end + 0.15, effDuration]);
+          }
+          for (const [from, to] of ranges) {
+            next = removeSourceRange(next, from, to);
+          }
+        }
+
+        // Step 4 — trim each remaining clip down to speech, then drop the tiny
+        // slivers the cuts leave behind so playback is clean, not stuttery.
+        setAutoEditStep(4);
+        try {
+          const analysis = await analysisPromise;
+          next = next.map((c) => {
+            const b = speechBoundsInRange(analysis, c.start, c.end);
+            if (!b) return c;
+            const start = Math.max(c.start, b.start - 0.05);
+            const end = Math.min(c.end, b.end + 0.08);
+            return end - start < 0.1 ? c : { ...c, start, end };
+          });
+        } catch {
+          // leave clips as-is if the waveform can't be analysed
+        }
+        next = next.filter((c) => c.end - c.start >= MIN_CLIP_SEC);
+        if (next.length === 0) next = extend ? fullClip(effDuration) : clips;
+
+        setClips(() => next);
+
+        // Step 5 — captions (only when asked): normal case, 3 words per caption,
+        // centered and one third of the frame height up from the bottom.
+        if (withCaptions && w.length > 0) {
+          setAutoEditStep(5);
+          setCaptionStyle((s) => ({
+            ...s,
+            textCase: "none",
+            x: 0.5,
+            y: 2 / 3,
+            width: 0.8,
+            fontScale: 0.032,
+          }));
+          setCaptionWordsState(3);
+          setCaptions(
+            generateCaptions(w, next, {
+              maxChars: captionLines * 30,
+              maxWords: 3,
+            }),
+          );
+        }
+      } finally {
+        setAutoEditing(false);
+        setAutoEditStep(-1);
       }
-    } finally {
-      setAutoEditing(false);
-      setAutoEditStep(-1);
-    }
-  }, [source, words, clips, setClips, wordsFromAudio, captionLines]);
+    },
+    [source, words, clips, setClips, wordsFromAudio, captionLines],
+  );
 
   // Undelete: add cut words' source ranges back into the timeline.
   const restoreWords = useCallback(
@@ -1053,7 +1125,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       words,
       audioTracks,
       transcribeStatus,
-      transcribeProgress,
       loadSource,
       clearSource,
       selectClip,
@@ -1078,6 +1149,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEdit,
       autoEditing,
       autoEditStep,
+      autoEditCaptions,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -1136,7 +1208,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       words,
       audioTracks,
       transcribeStatus,
-      transcribeProgress,
       loadSource,
       clearSource,
       selectClip,
@@ -1161,6 +1232,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEdit,
       autoEditing,
       autoEditStep,
+      autoEditCaptions,
       addAudio,
       moveAudio,
       toggleAudioMuted,

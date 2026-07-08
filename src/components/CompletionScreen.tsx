@@ -13,6 +13,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Show, SignInButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 import { setPendingVideo } from "@/lib/studio/handoff";
 import {
   AudioPlayerProvider,
@@ -43,9 +44,6 @@ const glass =
 
 const iconBtn = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-200 hover:text-white active:scale-95 ${glass}`;
 
-const feedbackPill =
-  "inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-cyan-500 px-4 text-[13px] font-bold text-white shadow-sm transition-colors hover:bg-cyan-600 active:scale-95";
-
 /**
  * The "Get AI feedback" entry point. Signed out shows the combined Clerk
  * sign-in-or-up gate; signed in runs the handoff to the studio's Feedback tab.
@@ -54,26 +52,26 @@ function FeedbackButton({ onFeedback }: { onFeedback: () => void }) {
   return (
     <>
       <Show when="signed-in">
-        <button
+        <Button
           type="button"
           onClick={onFeedback}
-          className={feedbackPill}
+          className="h-11 text-[13px]"
           title="Get AI feedback on this take"
         >
           <Sparkles className="h-4 w-4" strokeWidth={2.2} />
           AI feedback
-        </button>
+        </Button>
       </Show>
       <Show when="signed-out">
         <SignInButton mode="modal" withSignUp>
-          <button
+          <Button
             type="button"
-            className={feedbackPill}
+            className="h-11 text-[13px]"
             title="Sign in for AI feedback"
           >
             <Sparkles className="h-4 w-4" strokeWidth={2.2} />
             AI feedback
-          </button>
+          </Button>
         </SignInButton>
       </Show>
     </>
