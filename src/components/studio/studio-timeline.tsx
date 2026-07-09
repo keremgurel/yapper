@@ -455,7 +455,15 @@ export default function StudioTimeline({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col select-none">
+    <div
+      className="flex h-full min-h-0 flex-col select-none"
+      // Clicking anywhere in the timeline ends caption-text editing, so Space
+      // goes back to play/pause instead of typing a space into the caption.
+      onPointerDownCapture={() => {
+        const a = document.activeElement as HTMLElement | null;
+        if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
+      }}
+    >
       <div className="flex min-h-0 flex-1">
         <TrackHeaderRail
           overlays={overlays}

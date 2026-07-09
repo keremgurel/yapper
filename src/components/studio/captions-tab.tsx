@@ -7,8 +7,10 @@ import CaptionList from "@/components/studio/captions/caption-list";
 
 export default function CaptionsTab({
   onSeek,
+  currentSourceTime,
 }: {
   onSeek: (timelineTime: number) => void;
+  currentSourceTime: number;
 }) {
   const { words, captions, generateCaptionsFromTranscript } = useStudio();
 
@@ -41,7 +43,7 @@ export default function CaptionsTab({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <CaptionList onSeek={onSeek} />
+        <CaptionList onSeek={onSeek} currentSourceTime={currentSourceTime} />
       </div>
     </div>
   );

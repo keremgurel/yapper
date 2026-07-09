@@ -89,7 +89,10 @@ export default function RightPanel({
         {tab === "media" ? (
           <MediaTab />
         ) : tab === "captions" ? (
-          <CaptionsTab onSeek={onSeekTimeline} />
+          <CaptionsTab
+            onSeek={onSeekTimeline}
+            currentSourceTime={currentSourceTime}
+          />
         ) : tab === "feedback" ? (
           <FeedbackTab />
         ) : (

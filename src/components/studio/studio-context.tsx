@@ -44,7 +44,7 @@ import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
-import { useClipHistory } from "@/hooks/use-clip-history";
+import { useEditorHistory } from "@/hooks/use-editor-history";
 import {
   newAudioId,
   newCaptionId,
@@ -145,6 +145,9 @@ interface StudioContextValue {
   selectCaptions: (ids: string[]) => void;
   removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
+  cycleCaptionCase: (id: string) => void;
+  addCaption: (atSource: number) => void;
+  mergeCaptions: (ids: string[]) => void;
   removeCaption: (id: string) => void;
   clearCaptions: () => void;
   updateCaptionLayout: (id: string, layout: CaptionLayout) => void;
@@ -168,8 +171,17 @@ const StudioContext = createContext<StudioContextValue | null>(null);
 
 export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<StudioSource | null>(null);
-  const { clips, setClips, resetClips, undo, redo, canUndo, canRedo } =
-    useClipHistory();
+  const {
+    clips,
+    captions,
+    setClips,
+    setCaptions,
+    resetEditor,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useEditorHistory();
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   // Single selection (for trim, which only makes sense on one clip).
   const selectedClipId =
@@ -198,7 +210,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
   const [overlays, setOverlays] = useState<Overlay[]>([]);
-  const [captions, setCaptions] = useState<Caption[]>([]);
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
   );
@@ -232,7 +243,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         maxWords: captionWords || undefined,
       }),
     );
-  }, [words, clips, captionLines, captionWords]);
+  }, [words, clips, captionLines, captionWords, setCaptions]);
 
   const autoBreakCaptions = useCallback(
     (lines: number) => {
@@ -244,7 +255,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [words, clips, captionWords],
+    [words, clips, captionWords, setCaptions],
   );
 
   const setCaptionWords = useCallback(
@@ -257,17 +268,50 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [words, clips, captionLines],
+    [words, clips, captionLines, setCaptions],
   );
 
-  const setCaptionText = useCallback((id: string, text: string) => {
-    setCaptions((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
-  }, []);
+  const setCaptionText = useCallback(
+    (id: string, text: string) => {
+      // Coalesce keystrokes on one caption into a single undo step.
+      setCaptions(
+        (prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)),
+        `text:${id}`,
+      );
+    },
+    [setCaptions],
+  );
 
-  const removeCaption = useCallback((id: string) => {
-    setCaptions((prev) => prev.filter((c) => c.id !== id));
-    setSelectedCaptionIds((prev) => prev.filter((x) => x !== id));
-  }, []);
+  // Per-caption case, cycled Original -> lower -> UPPER, independent of the
+  // global case — so one caption can be recased even when "lower" is applied to
+  // all. Uses the effective case (its own override, else the global) as the
+  // starting point so the first click always visibly changes it.
+  const cycleCaptionCase = useCallback(
+    (id: string) => {
+      setCaptions((prev) =>
+        prev.map((c) => {
+          if (c.id !== id) return c;
+          const current = c.textCase ?? captionStyle.textCase;
+          const next: CaptionCase =
+            current === "none"
+              ? "lower"
+              : current === "lower"
+                ? "upper"
+                : "none";
+          return { ...c, textCase: next };
+        }),
+      );
+    },
+    [setCaptions, captionStyle.textCase],
+  );
+
+  const removeCaption = useCallback(
+    (id: string) => {
+      setCaptions((prev) => prev.filter((c) => c.id !== id));
+      setSelectedCaptionIds((prev) => prev.filter((x) => x !== id));
+    },
+    [setCaptions],
+  );
 
   const removeSelectedCaptions = useCallback(() => {
     setSelectedCaptionIds((ids) => {
@@ -275,12 +319,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setCaptions((prev) => prev.filter((c) => !ids.includes(c.id)));
       return [];
     });
-  }, []);
+  }, [setCaptions]);
 
   const clearCaptions = useCallback(() => {
     setCaptions([]);
     setSelectedCaptionIds([]);
-  }, []);
+  }, [setCaptions]);
 
   // Edges come in as edited-timeline seconds; store them as source anchors so
   // the caption keeps following the clips.
@@ -297,7 +341,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ),
       );
     },
-    [clips],
+    [clips, setCaptions],
   );
 
   // Break a caption into two at timeline time `at` (converted to source),
@@ -337,37 +381,101 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [clips],
+    [clips, setCaptions],
   );
 
   // Break a caption at a word boundary (Enter in the editor). `wordsBefore` is
   // how many words stay in the first caption; source time is split by word count.
-  const splitCaptionAtWord = useCallback((id: string, wordsBefore: number) => {
-    setCaptions((prev) =>
-      prev.flatMap((c) => {
-        if (c.id !== id) return [c];
-        const parts = c.text.split(/\s+/).filter(Boolean);
-        if (parts.length < 2) return [c];
-        const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
-        const atSrc =
-          c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
-        return [
-          {
-            ...c,
-            id: newCaptionId(),
-            sourceEnd: atSrc,
-            text: parts.slice(0, k).join(" "),
-          },
-          {
-            ...c,
-            id: newCaptionId(),
-            sourceStart: atSrc,
-            text: parts.slice(k).join(" "),
-          },
-        ];
-      }),
-    );
-  }, []);
+  const splitCaptionAtWord = useCallback(
+    (id: string, wordsBefore: number) => {
+      setCaptions((prev) =>
+        prev.flatMap((c) => {
+          if (c.id !== id) return [c];
+          const parts = c.text.split(/\s+/).filter(Boolean);
+          if (parts.length < 2) return [c];
+          const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
+          const atSrc =
+            c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
+          return [
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceEnd: atSrc,
+              text: parts.slice(0, k).join(" "),
+            },
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceStart: atSrc,
+              text: parts.slice(k).join(" "),
+            },
+          ];
+        }),
+      );
+    },
+    [setCaptions],
+  );
+
+  // Add a caption at the playhead (source seconds). It gets a short default
+  // span, trimmed so it doesn't overrun the next caption, and is inserted in
+  // temporal order so the list and timeline stay ordered. Selected so the user
+  // can immediately type; anchored in source time so it tracks the clips.
+  const addCaption = useCallback(
+    (atSource: number) => {
+      const id = newCaptionId();
+      const start = Math.max(0, atSource);
+      setCaptions((prev) => {
+        let end = start + 1.8;
+        const nextStart = prev
+          .map((c) => c.sourceStart)
+          .filter((s) => s > start)
+          .sort((a, b) => a - b)[0];
+        if (nextStart !== undefined && nextStart < end) {
+          end = Math.max(start + 0.3, nextStart - 0.02);
+        }
+        const created: Caption = {
+          id,
+          text: "New caption",
+          sourceStart: start,
+          sourceEnd: end,
+        };
+        return [...prev, created].sort((a, b) => a.sourceStart - b.sourceStart);
+      });
+      selectCaption(id);
+    },
+    [setCaptions, selectCaption],
+  );
+
+  // Merge two or more captions into one spanning their full source range, with
+  // their text joined in temporal order. Timing stays anchored in source time,
+  // so the merged line keeps matching the speech.
+  const mergeCaptions = useCallback(
+    (ids: string[]) => {
+      if (ids.length < 2) return;
+      const set = new Set(ids);
+      setCaptions((prev) => {
+        const targets = prev
+          .filter((c) => set.has(c.id))
+          .sort((a, b) => a.sourceStart - b.sourceStart);
+        if (targets.length < 2) return prev;
+        const merged: Caption = {
+          ...targets[0],
+          id: newCaptionId(),
+          sourceStart: Math.min(...targets.map((c) => c.sourceStart)),
+          sourceEnd: Math.max(...targets.map((c) => c.sourceEnd)),
+          text: targets
+            .map((c) => c.text.trim())
+            .filter(Boolean)
+            .join(" "),
+        };
+        return [...prev.filter((c) => !set.has(c.id)), merged].sort(
+          (a, b) => a.sourceStart - b.sourceStart,
+        );
+      });
+      selectCaption(null);
+    },
+    [setCaptions, selectCaption],
+  );
 
   // Apply a style change either to every caption (update the global style and
   // clear the matching per-caption overrides) or, when Apply-to-all is off, to
@@ -392,7 +500,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         );
       }
     },
-    [captionApplyAll, selectedCaptionIds],
+    [captionApplyAll, selectedCaptionIds, setCaptions],
   );
 
   const setCaptionFont = useCallback(
@@ -446,7 +554,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         );
       }
     },
-    [captionApplyAll],
+    [captionApplyAll, setCaptions],
   );
 
   const addMediaAsset = useCallback(async (file: File) => {
@@ -631,7 +739,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setTranscribeStatus("idle");
     setCaptions([]);
     setSelectedCaptionIds([]);
-  }, []);
+  }, [setCaptions]);
 
   const loadSource = useCallback(
     (next: StudioSource) => {
@@ -639,7 +747,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (prev) URL.revokeObjectURL(prev.url);
         return next;
       });
-      resetClips(fullClip(next.duration));
+      resetEditor(fullClip(next.duration), []);
       setSelectedClipIds([]);
       resetTranscript();
       // Warm the audio decode now (it's the slow first step and dedupes by URL),
@@ -652,7 +760,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       setOverlays([]);
       // Keep the media library — it's a library, not part of the edit state.
     },
-    [resetClips, resetTranscript],
+    [resetEditor, resetTranscript],
   );
 
   // Add a library asset to the timeline: the first video becomes the base
@@ -704,14 +812,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (prev) URL.revokeObjectURL(prev.url);
       return null;
     });
-    resetClips([]);
+    resetEditor([], []);
     setSelectedClipIds([]);
     resetTranscript();
     setAudioTracks((prev) => {
       prev.forEach((t) => URL.revokeObjectURL(t.url));
       return [];
     });
-  }, [resetClips, resetTranscript]);
+  }, [resetEditor, resetTranscript]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit),
   // or load a Content Library item's saved recording via ?item=<id>.
@@ -1094,7 +1202,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setAutoEditStep(-1);
       }
     },
-    [source, words, clips, setClips, wordsFromAudio, captionLines],
+    [source, words, clips, setClips, setCaptions, wordsFromAudio, captionLines],
   );
 
   // Undelete: add cut words' source ranges back into the timeline.
@@ -1114,9 +1222,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   );
 
   const reset = useCallback(() => {
-    resetClips(source ? fullClip(source.duration) : []);
+    resetEditor(source ? fullClip(source.duration) : [], captions);
     setSelectedClipIds([]);
-  }, [resetClips, source]);
+  }, [resetEditor, source, captions]);
 
   const value = useMemo<StudioContextValue>(
     () => ({
@@ -1184,6 +1292,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectCaptions,
       removeSelectedCaptions,
       setCaptionText,
+      cycleCaptionCase,
+      addCaption,
+      mergeCaptions,
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
@@ -1267,6 +1378,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectCaptions,
       removeSelectedCaptions,
       setCaptionText,
+      cycleCaptionCase,
+      addCaption,
+      mergeCaptions,
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
