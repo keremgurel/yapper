@@ -39,7 +39,7 @@ import {
   type CaptionStyle,
 } from "@/lib/studio/captions";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
-import { transcribeRemote } from "@/lib/studio/transcribe-remote";
+import { transcribeUrl } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
@@ -858,9 +858,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // silently dropping retakes), so any failure throws to the caller instead of
   // quietly downgrading the transcript.
   const wordsFromAudio = useCallback(
-    async (audio: Float32Array): Promise<Word[]> => {
-      const raw = await transcribeRemote(audio);
-      // Correct approximate word times against the precise VAD edges.
+    async (audio: Float32Array, url: string): Promise<Word[]> => {
+      // Transcribe the ORIGINAL native-rate audio (accurate: no 16 kHz resample,
+      // which merges retakes). The decoded 16 kHz PCM is still used locally to
+      // refine word timings against precise VAD edges.
+      const raw = await transcribeUrl(url);
       const segments = detectSpeechSegments(audio);
       return refineWordTimings(
         raw.map((w, i) => ({ id: newWordId(i), ...w })),
@@ -898,7 +900,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     try {
       const audio = await decodeToMono16k(source.url);
       coverFullAudio(audio.length);
-      setWords(await wordsFromAudio(audio));
+      setWords(await wordsFromAudio(audio, source.url));
       setTranscribeStatus("done");
     } catch (e) {
       console.error("[studio] transcription failed", e);
@@ -985,7 +987,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (w.length === 0) {
           setTranscribeStatus("transcribing");
           try {
-            w = await wordsFromAudio(audio);
+            w = await wordsFromAudio(audio, source.url);
             setWords(w);
             setTranscribeStatus("done");
           } catch (e) {

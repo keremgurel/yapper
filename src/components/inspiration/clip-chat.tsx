@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Send, Sparkles, X } from "lucide-react";
+import { Loader2, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import VoiceNoteButton from "@/components/common/voice-note-button";
 import { usePillarNames } from "@/hooks/use-pillar-names";
@@ -33,10 +33,12 @@ export default function ClipChat({
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
   const started = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const send = async (next: Msg[]) => {
+    setFailed(false);
     setThinking(true);
     try {
       const reply = await brainstormReply({
@@ -46,13 +48,9 @@ export default function ClipChat({
       });
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch {
-      setMessages([
-        ...next,
-        {
-          role: "assistant",
-          content: "Something went wrong reaching the assistant. Try again.",
-        },
-      ]);
+      // Keep the turn we tried to send so "Try again" can re-run it.
+      setMessages(next);
+      setFailed(true);
     } finally {
       setThinking(false);
     }
@@ -178,6 +176,22 @@ export default function ClipChat({
               <div className="bg-muted text-foreground/60 flex items-center gap-2 rounded-2xl px-3.5 py-2.5 text-sm">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Thinking…
               </div>
+            </div>
+          )}
+          {failed && !thinking && (
+            <div className="flex flex-col items-start gap-2">
+              <div className="bg-muted text-foreground/70 rounded-2xl px-3.5 py-2.5 text-sm">
+                Couldn&apos;t reach the assistant.
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void send(messages)}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Try again
+              </Button>
             </div>
           )}
         </div>

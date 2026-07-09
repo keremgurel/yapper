@@ -18,12 +18,15 @@ export async function POST(req: Request): Promise<Response> {
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
+  // Forward the payload's own type (audio/aac for native AAC, audio/wav for
+  // decoded PCM) so Deepgram parses the container correctly.
+  const contentType = req.headers.get("content-type") || "audio/wav";
 
   const providers: { name: string; run: () => Promise<RawWord[]> }[] = [];
   if (deepgram) {
     providers.push({
       name: "deepgram",
-      run: () => viaDeepgram(audio, deepgram),
+      run: () => viaDeepgram(audio, deepgram, contentType),
     });
   }
   if (groq) {
@@ -35,6 +38,7 @@ export async function POST(req: Request): Promise<Response> {
           groq,
           "https://api.groq.com/openai/v1",
           "whisper-large-v3",
+          contentType,
         ),
     });
   }
@@ -70,12 +74,13 @@ interface DeepgramWord {
 async function viaDeepgram(
   audio: ArrayBuffer,
   key: string,
+  contentType: string,
 ): Promise<RawWord[]> {
   const res = await fetch(
     "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
     {
       method: "POST",
-      headers: { Authorization: `Token ${key}`, "Content-Type": "audio/wav" },
+      headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
       body: audio,
     },
   );
@@ -101,9 +106,11 @@ async function viaOpenAiCompatible(
   key: string,
   base: string,
   model: string,
+  contentType: string,
 ): Promise<RawWord[]> {
+  const ext = contentType.includes("aac") ? "aac" : "wav";
   const form = new FormData();
-  form.append("file", new File([audio], "audio.wav", { type: "audio/wav" }));
+  form.append("file", new File([audio], `audio.${ext}`, { type: contentType }));
   form.append("model", model);
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");

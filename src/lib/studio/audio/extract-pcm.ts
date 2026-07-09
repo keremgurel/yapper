@@ -2,7 +2,7 @@ import {
   decodeAudioChunks,
   type DecodedPcm,
 } from "@/lib/studio/audio/decode-track";
-import { demuxAudioTrack } from "@/lib/studio/audio/demux-audio";
+import { demuxAudioTrackCached } from "@/lib/studio/audio/demux-cache";
 
 /**
  * Extract a media file's audio as gapless PCM, demuxing with mp4box and decoding
@@ -17,7 +17,7 @@ export function extractPcm(url: string): Promise<DecodedPcm> {
   const cached = cache.get(url);
   if (cached) return cached;
   const pending = (async () =>
-    decodeAudioChunks(await demuxAudioTrack(url)))().catch((e) => {
+    decodeAudioChunks(await demuxAudioTrackCached(url)))().catch((e) => {
     cache.delete(url); // don't cache a failure — allow a retry / fallback
     throw e;
   });
