@@ -27,6 +27,7 @@ const overlay = (patch: Partial<Overlay> = {}): Overlay => ({
   kind: "video",
   url: "o.mp4",
   name: "o.mp4",
+  track: 0,
   start: 2,
   duration: 3,
   sourceStart: 1,
@@ -110,6 +111,14 @@ describe("overlaysAt", () => {
 
   it("skips hidden overlays", () => {
     expect(overlaysAt([overlay({ hidden: true })], 3)).toEqual([]);
+  });
+
+  it("paints the higher track last, whatever order the array is in", () => {
+    const frames = overlaysAt(
+      [overlay({ id: "top", track: 1 }), overlay({ id: "bottom", track: 0 })],
+      3,
+    );
+    expect(frames.map((f) => f.id)).toEqual(["bottom", "top"]);
   });
 
   it("returns full-frame boxes by default", () => {

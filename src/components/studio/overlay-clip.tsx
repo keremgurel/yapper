@@ -10,6 +10,9 @@ import { newGestureId, type Overlay } from "@/lib/studio/types";
 
 const MIN = 0.1; // minimum overlay duration (seconds)
 
+/** What letting go right now would do to this clip, for the drag's ring color. */
+export type DropHint = "none" | "track" | "base";
+
 interface TrimState {
   edge: "start" | "end";
   startX: number;
@@ -19,12 +22,12 @@ interface TrimState {
 }
 
 /**
- * A clip on an upper video track. It shows the real thumbnails + waveform for
+ * One clip on an upper video track. It shows the real thumbnails + waveform for
  * its own media's slice — whether that's the recording or an uploaded asset —
- * so it reads as a real clip, not a flat bar. Track controls live in the fixed
- * header rail, not here.
+ * so it reads as a real clip, not a flat bar. Its lane places it vertically;
+ * track controls live in the fixed header rail.
  */
-export default function UpperTrackLane({
+export default function OverlayClip({
   overlay,
   pxPerSec,
   visStartSec,
@@ -35,7 +38,7 @@ export default function UpperTrackLane({
   fullDuration,
   selected,
   liftY,
-  droppingToBase,
+  dropHint,
   onSelect,
   onDragStart,
   onTrim,
@@ -52,8 +55,9 @@ export default function UpperTrackLane({
   mediaDuration: number;
   fullDuration: number;
   selected: boolean;
+  /** How far the drag has pulled it off its lane. 0 when it is at rest. */
   liftY: number;
-  droppingToBase: boolean;
+  dropHint: DropHint;
   onSelect: (additive: boolean) => void;
   onDragStart: (
     id: string,
@@ -140,92 +144,92 @@ export default function UpperTrackLane({
       );
 
   return (
-    <div className="relative h-12">
-      <div
-        style={{
-          left,
-          width,
-          transform: liftY ? `translateY(${liftY}px)` : undefined,
-        }}
-        onPointerDown={(e) => {
-          if (e.button !== 0) return;
-          e.preventDefault();
-          e.stopPropagation();
-          const additive = e.metaKey || e.ctrlKey;
-          onSelect(additive);
-          // ⌘/Ctrl-click toggles selection without starting a drag.
-          if (additive) return;
-          onDragStart(o.id, e.clientX, e.clientY, o.start);
-        }}
-        className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-violet-500/15 active:cursor-grabbing ${
-          droppingToBase
-            ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+    <div
+      style={{
+        left,
+        width,
+        transform: liftY ? `translateY(${liftY}px)` : undefined,
+      }}
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const additive = e.metaKey || e.ctrlKey;
+        onSelect(additive);
+        // ⌘/Ctrl-click toggles selection without starting a drag.
+        if (additive) return;
+        onDragStart(o.id, e.clientX, e.clientY, o.start);
+      }}
+      className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-violet-500/15 active:cursor-grabbing ${
+        dropHint === "base"
+          ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+          : dropHint === "track"
+            ? "z-30 opacity-90 ring-2 ring-emerald-300"
             : liftY
               ? "z-30 opacity-90 ring-2 ring-violet-300"
               : selected
                 ? "z-10 ring-2 ring-cyan-400"
                 : "ring-1 ring-violet-400/40"
-        } ${o.hidden ? "opacity-40" : ""}`}
-      >
-        <span className="absolute inset-0 bg-violet-500/10" />
-        {isImg && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={o.url}
-            alt=""
-            draggable={false}
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
-          />
-        )}
-        {span && strip.frames.length > 0 && (
-          <ClipFilmstrip
-            frames={strip.frames}
-            aspect={strip.aspect}
-            leftPx={span.leftPx}
-            widthPx={span.widthPx}
-            srcStart={span.srcA}
-            srcEnd={span.srcB}
-            height={48}
-          />
-        )}
-        {span && peaks.length > 0 && mediaDuration > 0 && (
-          <span
-            className="pointer-events-none absolute bottom-0 bg-black/50"
-            style={{ left: span.leftPx, width: span.widthPx }}
-          >
-            <WaveformCanvas
-              peaks={peaks}
-              sourceDuration={mediaDuration}
-              clipStart={span.srcA}
-              clipEnd={span.srcB}
-              width={span.widthPx}
-              height={18}
-            />
-          </span>
-        )}
-
-        {/* Name label */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
-          {o.kind === "image" ? (
-            <ImageIcon className="h-3.5 w-3.5 shrink-0 text-violet-200" />
-          ) : (
-            <Video className="h-3.5 w-3.5 shrink-0 text-violet-200" />
-          )}
-          <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
-            {o.name}
-          </span>
-        </div>
-
-        {/* Trim edges — drag to change the clip's in/out, just like the base. */}
-        <span
-          onPointerDown={beginTrim("start")}
-          className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+      } ${o.hidden ? "opacity-40" : ""}`}
+    >
+      <span className="absolute inset-0 bg-violet-500/10" />
+      {isImg && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={o.url}
+          alt=""
+          draggable={false}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         />
-        <span
-          onPointerDown={beginTrim("end")}
-          className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+      )}
+      {span && strip.frames.length > 0 && (
+        <ClipFilmstrip
+          frames={strip.frames}
+          aspect={strip.aspect}
+          leftPx={span.leftPx}
+          widthPx={span.widthPx}
+          srcStart={span.srcA}
+          srcEnd={span.srcB}
+          height={48}
         />
+      )}
+      {span && peaks.length > 0 && mediaDuration > 0 && (
+        <span
+          className="pointer-events-none absolute bottom-0 bg-black/50"
+          style={{ left: span.leftPx, width: span.widthPx }}
+        >
+          <WaveformCanvas
+            peaks={peaks}
+            sourceDuration={mediaDuration}
+            clipStart={span.srcA}
+            clipEnd={span.srcB}
+            width={span.widthPx}
+            height={18}
+          />
+        </span>
+      )}
+
+      {/* Name label */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
+        {isImg ? (
+          <ImageIcon className="h-3.5 w-3.5 shrink-0 text-violet-200" />
+        ) : (
+          <Video className="h-3.5 w-3.5 shrink-0 text-violet-200" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
+          {o.name}
+        </span>
       </div>
+
+      {/* Trim edges — drag to change the clip's in/out, just like the base. */}
+      <span
+        onPointerDown={beginTrim("start")}
+        className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+      />
+      <span
+        onPointerDown={beginTrim("end")}
+        className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize bg-violet-300/70 opacity-0 transition-opacity group-hover:opacity-100"
+      />
     </div>
   );
 }

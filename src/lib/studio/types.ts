@@ -41,20 +41,23 @@ export interface MediaAsset {
 }
 
 /**
- * A clip on an upper video track, composited full-frame over the base track
- * (top track wins). Carries its own source in-point so a segment of the
- * recording can be lifted up as a cutaway.
+ * A clip on an upper video track, composited over the base track (a higher
+ * track wins). Carries its own source in-point so a segment of the recording
+ * can be lifted up as a cutaway. Several overlays share one track as long as
+ * they don't overlap in time; see `lib/studio/tracks.ts`.
  */
 export interface Overlay {
   id: string;
   kind: "video" | "image";
   url: string;
   name: string;
+  /** Which upper track it sits on. 0 is the lane just above the base. */
+  track: number;
   start: number; // edited-timeline seconds (position on its track)
   duration: number;
   sourceStart: number; // in-point into its own media, seconds
-  hidden?: boolean; // track hidden (not composited)
-  muted?: boolean; // track audio muted
+  hidden?: boolean; // hidden (not composited)
+  muted?: boolean; // audio muted
   // Position + size as fractions of the preview stage (default full-frame).
   x?: number;
   y?: number;

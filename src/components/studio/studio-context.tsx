@@ -49,6 +49,12 @@ import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
+import {
+  compactTracks,
+  firstFreeTrack,
+  moveToTrack,
+  overlaysOnTrack,
+} from "@/lib/studio/tracks";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
@@ -146,6 +152,7 @@ interface StudioContextValue {
   addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   dropOverlayToBase: (overlayId: string) => void;
+  setOverlayTrack: (id: string, track: number, gesture?: string) => void;
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
   setOverlayRange: (
@@ -155,9 +162,9 @@ interface StudioContextValue {
     sourceStart: number,
     gesture?: string,
   ) => void;
-  toggleOverlayHidden: (id: string) => void;
-  toggleOverlayMuted: (id: string) => void;
-  removeOverlay: (id: string) => void;
+  toggleTrackHidden: (track: number) => void;
+  toggleTrackMuted: (track: number) => void;
+  removeTrack: (track: number) => void;
   captions: Caption[];
   captionStyle: CaptionStyle;
   selectedCaptionId: string | null;
@@ -584,19 +591,25 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (assetId: string, start = 0) => {
       const asset = mediaAssets.find((m) => m.id === assetId);
       if (!asset) return;
-      setOverlays((prev) => [
-        ...prev,
-        {
+      setOverlays((prev) => {
+        const span = {
           id: newOverlayId(),
-          kind: asset.kind,
-          url: asset.url,
-          name: asset.name,
           start: Math.max(0, start),
           duration: asset.duration,
-          sourceStart: 0,
-          muted: true,
-        },
-      ]);
+        };
+        return [
+          ...prev,
+          {
+            ...span,
+            kind: asset.kind,
+            url: asset.url,
+            name: asset.name,
+            track: firstFreeTrack(prev, span),
+            sourceStart: 0,
+            muted: true,
+          },
+        ];
+      });
     },
     [mediaAssets, setOverlays],
   );
@@ -610,23 +623,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (!clip) return;
       // Leaving the base and joining an upper track is one edit, so it undoes in
       // one step rather than stranding the clip on neither track.
-      updateEditor((s) => ({
-        ...s,
-        clips: removeClip(s.clips, clipId),
-        overlays: [
-          ...s.overlays,
-          {
-            id: newOverlayId(),
-            kind: "video",
-            url: source.url,
-            name: source.name,
-            start: Math.max(0, timelineStart),
-            duration: Math.max(0.1, clip.end - clip.start),
-            sourceStart: clip.start,
-            muted: true,
-          },
-        ],
-      }));
+      updateEditor((s) => {
+        const span = {
+          id: newOverlayId(),
+          start: Math.max(0, timelineStart),
+          duration: Math.max(0.1, clip.end - clip.start),
+        };
+        return {
+          ...s,
+          clips: removeClip(s.clips, clipId),
+          overlays: [
+            ...s.overlays,
+            {
+              ...span,
+              kind: "video",
+              url: source.url,
+              name: source.name,
+              track: firstFreeTrack(s.overlays, span),
+              sourceStart: clip.start,
+              muted: true,
+            },
+          ],
+        };
+      });
       sel.dropClip(clipId);
     },
     [source, clips, updateEditor, sel],
@@ -663,11 +682,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
               : undefined,
           },
         ],
-        overlays: s.overlays.filter((x) => x.id !== overlayId),
+        overlays: compactTracks(s.overlays.filter((x) => x.id !== overlayId)),
       }));
       sel.dropOverlay(overlayId);
     },
     [overlays, source, mediaAssets, updateEditor, sel],
+  );
+
+  // Where a dragged overlay lands: another upper track, or a fresh one above
+  // them all. Refused when the target track is already busy at those seconds.
+  // Shares the drag's gesture id, so the move and the track change undo as one.
+  const setOverlayTrack = useCallback(
+    (id: string, track: number, gesture?: string) => {
+      setOverlays((prev) => moveToTrack(prev, id, track), gesture);
+    },
+    [setOverlays],
   );
 
   // `gesture` collapses a whole drag into one undo step: these fire on every
@@ -722,29 +751,36 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setOverlays],
   );
 
-  const toggleOverlayHidden = useCallback(
-    (id: string) => {
-      setOverlays((prev) =>
-        prev.map((o) => (o.id === id ? { ...o, hidden: !o.hidden } : o)),
-      );
+  // The rail's controls belong to a whole upper track, exactly like the base
+  // track's. One clip on a track being hidden means the eye is off, so the
+  // toggle turns the whole track on again.
+  const toggleTrackHidden = useCallback(
+    (track: number) => {
+      setOverlays((prev) => {
+        const hidden = !overlaysOnTrack(prev, track).every((o) => o.hidden);
+        return prev.map((o) => (o.track === track ? { ...o, hidden } : o));
+      });
     },
     [setOverlays],
   );
 
-  const toggleOverlayMuted = useCallback(
-    (id: string) => {
-      setOverlays((prev) =>
-        prev.map((o) =>
-          o.id === id ? { ...o, muted: !(o.muted ?? true) } : o,
-        ),
-      );
+  const toggleTrackMuted = useCallback(
+    (track: number) => {
+      setOverlays((prev) => {
+        const muted = !overlaysOnTrack(prev, track).every(
+          (o) => o.muted ?? true,
+        );
+        return prev.map((o) => (o.track === track ? { ...o, muted } : o));
+      });
     },
     [setOverlays],
   );
 
-  const removeOverlay = useCallback(
-    (id: string) => {
-      setOverlays((prev) => prev.filter((o) => o.id !== id));
+  const removeTrack = useCallback(
+    (track: number) => {
+      setOverlays((prev) =>
+        compactTracks(prev.filter((o) => o.track !== track)),
+      );
     },
     [setOverlays],
   );
@@ -873,7 +909,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       updateEditor((s) => ({
         ...s,
         clips: s.clips.filter((c) => !dropsClip(c)),
-        overlays: s.overlays.filter((o) => o.url !== url),
+        overlays: compactTracks(s.overlays.filter((o) => o.url !== url)),
       }));
       // The object URL outlives the library entry on purpose: undo brings those
       // clips back, and a revoked URL would restore footage that cannot play.
@@ -1087,7 +1123,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       ...s,
       clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
       overlays: overlayIds.size
-        ? s.overlays.filter((o) => !overlayIds.has(o.id))
+        ? compactTracks(s.overlays.filter((o) => !overlayIds.has(o.id)))
         : s.overlays,
       captions: captionIds.size
         ? s.captions.filter((c) => !captionIds.has(c.id))
@@ -1452,12 +1488,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToMainTrack,
       liftClipToTrack,
       dropOverlayToBase,
+      setOverlayTrack,
       moveOverlay,
       setOverlayRect,
       setOverlayRange,
-      toggleOverlayHidden,
-      toggleOverlayMuted,
-      removeOverlay,
+      toggleTrackHidden,
+      toggleTrackMuted,
+      removeTrack,
       captions,
       captionStyle,
       selectedCaptionId,
@@ -1546,12 +1583,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToMainTrack,
       liftClipToTrack,
       dropOverlayToBase,
+      setOverlayTrack,
       moveOverlay,
       setOverlayRect,
       setOverlayRange,
-      toggleOverlayHidden,
-      toggleOverlayMuted,
-      removeOverlay,
+      toggleTrackHidden,
+      toggleTrackMuted,
+      removeTrack,
       captions,
       captionStyle,
       selectedCaptionId,

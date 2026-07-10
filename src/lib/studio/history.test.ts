@@ -20,6 +20,7 @@ const overlay = (id: string, start = 0): Overlay => ({
   kind: "video",
   url: "o.mp4",
   name: "o.mp4",
+  track: 0,
   start,
   duration: 2,
   sourceStart: 0,

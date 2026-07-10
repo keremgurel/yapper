@@ -1,5 +1,6 @@
 import { captionTimelineRange, type CaptionStyle } from "@/lib/studio/captions";
 import { timelineToClip, totalDuration } from "@/lib/studio/clips";
+import { paintOrder } from "@/lib/studio/tracks";
 import type {
   Caption,
   CaptionCase,
@@ -67,7 +68,7 @@ export function baseAt(
 /** Overlays active at `t`, in paint order (later entries render on top). */
 export function overlaysAt(overlays: Overlay[], t: number): OverlayFrame[] {
   const out: OverlayFrame[] = [];
-  for (const o of overlays) {
+  for (const o of paintOrder(overlays)) {
     if (o.hidden) continue;
     const local = t - o.start;
     if (local < 0 || local >= o.duration) continue;

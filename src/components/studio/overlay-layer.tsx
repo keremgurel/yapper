@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import { paintOrder } from "@/lib/studio/tracks";
 import type { Overlay, OverlayRect } from "@/lib/studio/types";
 
 function clamp01(v: number, max = 1): number {
@@ -320,7 +321,7 @@ function OverlayBox({
 
 /**
  * Composites upper video/image tracks over the base preview at the master clock.
- * Later overlays render on top (topmost track wins). Tap an overlay to select
+ * A higher track paints over a lower one. Tap an overlay to select
  * it, then drag to move or use the corner handle to resize.
  */
 const rectOf = (o: Overlay): OverlayRect => ({
@@ -346,7 +347,7 @@ export default function OverlayLayer({
 
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0">
-      {overlays.map((o) => {
+      {paintOrder(overlays).map((o) => {
         if (o.hidden) return null;
         const local = masterTime - o.start;
         if (local < 0 || local >= o.duration) return null;

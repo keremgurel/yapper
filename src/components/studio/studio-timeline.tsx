@@ -19,16 +19,25 @@ import {
 import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
-import UpperTrackLane from "@/components/studio/upper-track-lane";
+import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { spansOverlap } from "@/lib/studio/marquee";
+import { overlaysOnTrack, trackCount } from "@/lib/studio/tracks";
 import { useClipDrag } from "@/hooks/use-clip-drag";
-import { useOverlayDrag } from "@/hooks/use-overlay-drag";
+import {
+  useOverlayDrag,
+  type OverlayDropTarget,
+} from "@/hooks/use-overlay-drag";
 import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
-import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
+import {
+  newGestureId,
+  type Clip,
+  type Overlay,
+  type StudioSource,
+} from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
@@ -82,9 +91,10 @@ export default function StudioTimeline({
     mediaAssets,
     moveOverlay,
     setOverlayRange,
-    toggleOverlayHidden,
-    toggleOverlayMuted,
-    removeOverlay,
+    setOverlayTrack,
+    toggleTrackHidden,
+    toggleTrackMuted,
+    removeTrack,
     liftClipToTrack,
     dropOverlayToBase,
     selectedOverlayIds,
@@ -104,9 +114,9 @@ export default function StudioTimeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
-  // One row node per overlay, so the marquee can tell which upper tracks its
-  // box actually reaches down to.
-  const overlayRowsRef = useRef(new Map<string, HTMLDivElement | null>());
+  // One row node per upper track (the empty top lane included), so the marquee
+  // knows which lanes its box reaches and a vertical drag knows where it landed.
+  const trackRowsRef = useRef(new Map<number, HTMLDivElement | null>());
   const [pxPerSec, setPxPerSec] = useState(80);
   // Two distinct scales, and conflating them is what makes zoom drift: `target`
   // accumulates across the pinch events of a frame, while `rendered` is the
@@ -204,13 +214,51 @@ export default function StudioTimeline({
     [snapping, pxPerSec, total, clips, currentTimelineTime],
   );
 
+  // Which lane the pointer is over. Reads the laid-out rows rather than
+  // measuring row heights in code, so it stays right whatever the CSS says. Its
+  // identity must be stable: it is a dependency of the live drag listener.
+  const resolveDropTarget = useCallback(
+    (clientY: number): OverlayDropTarget | null => {
+      const base = baseRowRef.current?.getBoundingClientRect();
+      // The base row and everything under it (the audio lanes) folds the clip in.
+      if (base && clientY >= base.top) return { kind: "base" };
+      for (const [track, node] of trackRowsRef.current) {
+        if (!node) continue;
+        const r = node.getBoundingClientRect();
+        if (clientY >= r.top && clientY <= r.bottom)
+          return { kind: "track", track };
+      }
+      // The gaps between lanes, and anything above the timeline: stay put.
+      return null;
+    },
+    [],
+  );
+
+  const onOverlayDrop = useCallback(
+    (id: string, target: OverlayDropTarget, gesture: string) => {
+      if (target.kind === "base") dropOverlayToBase(id);
+      else setOverlayTrack(id, target.track, gesture);
+    },
+    [dropOverlayToBase, setOverlayTrack],
+  );
+
   const overlayDrag = useOverlayDrag({
     overlays,
     pxPerSec,
     snapStart,
+    resolveTarget: resolveDropTarget,
     onMove: moveOverlay,
-    onDropToBase: dropOverlayToBase,
+    onDrop: onOverlayDrop,
   });
+
+  // The drag's ring color: what letting go over this lane would actually do.
+  const dropHintFor = (o: Overlay): DropHint => {
+    if (overlayDrag.id !== o.id || !overlayDrag.target) return "none";
+    // Images can't drive the base clock, so they never fold into it.
+    if (overlayDrag.target.kind === "base")
+      return o.kind === "video" ? "base" : "none";
+    return overlayDrag.target.track === o.track ? "none" : "track";
+  };
 
   /* ---- scrub ---- */
   const seekFromClientX = useCallback(
@@ -453,6 +501,14 @@ export default function StudioTimeline({
 
   const ticks = buildTicks(total, pxPerSec);
 
+  // Lanes, top to bottom. One past the last used track, so there is always an
+  // empty lane to drop a clip onto when it wants a track to itself.
+  const upperTracks = trackCount(overlays);
+  const lanes = Array.from(
+    { length: upperTracks + 1 },
+    (_, i) => upperTracks - i,
+  );
+
   // Cumulative timeline offset (seconds) for each clip, from committed durations.
   const offsets = clips.map((_, i) =>
     clips.slice(0, i).reduce((s, c) => s + (c.end - c.start), 0),
@@ -471,15 +527,15 @@ export default function StudioTimeline({
       <div className="flex min-h-0 flex-1">
         <TrackHeaderRail
           overlays={overlays}
+          lanes={lanes}
           audioTracks={audioTracks}
           hasBaseTrack={clips.length > 0}
           baseHidden={baseHidden}
           baseMuted={baseMuted}
-          placeholderTrack={overlays.length === 0}
           hasCaptions={captions.length > 0}
-          onToggleOverlayHidden={toggleOverlayHidden}
-          onToggleOverlayMuted={toggleOverlayMuted}
-          onRemoveOverlay={removeOverlay}
+          onToggleTrackHidden={toggleTrackHidden}
+          onToggleTrackMuted={toggleTrackMuted}
+          onRemoveTrack={removeTrack}
           onToggleBaseHidden={toggleBaseHidden}
           onToggleBaseMuted={toggleBaseMuted}
           onRemoveBaseTrack={removeBaseTrack}
@@ -575,7 +631,7 @@ export default function StudioTimeline({
                     overlays
                       .filter(
                         (o) =>
-                          rowHit(overlayRowsRef.current.get(o.id) ?? null) &&
+                          rowHit(trackRowsRef.current.get(o.track) ?? null) &&
                           secHit(o.start, o.start + o.duration),
                       )
                       .map((o) => o.id),
@@ -619,51 +675,48 @@ export default function StudioTimeline({
                 </div>
               )}
 
-              {/* Empty upper-track drop zone so the timeline always shows room
-                for at least a second track. */}
-              {overlays.length === 0 && (
-                <div className="relative h-12">
-                  <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
-                </div>
-              )}
-
-              {/* Upper video tracks — stacked above the base, topmost composites
-                on top (last in the overlays array renders highest). */}
-              {[...overlays].reverse().map((o) => (
+              {/* Upper video tracks, topmost first. The last lane is always
+                empty: drop a clip there to give it a track of its own. */}
+              {lanes.map((track) => (
                 <div
-                  key={o.id}
+                  key={track}
                   ref={(node) => {
-                    const rows = overlayRowsRef.current;
-                    rows.set(o.id, node);
+                    const rows = trackRowsRef.current;
+                    rows.set(track, node);
                     return () => {
-                      rows.delete(o.id);
+                      rows.delete(track);
                     };
                   }}
+                  className="relative h-12"
                 >
-                  <UpperTrackLane
-                    overlay={o}
-                    pxPerSec={pxPerSec}
-                    visStartSec={visStartSec}
-                    visEndSec={visEndSec}
-                    strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
-                    peaks={waves.get(o.url) ?? []}
-                    mediaDuration={mediaDurationOf(o.url)}
-                    fullDuration={
-                      o.kind === "image" ? Infinity : mediaDurationOf(o.url)
-                    }
-                    selected={selectedOverlayIds.includes(o.id)}
-                    onSelect={(additive) =>
-                      additive
-                        ? toggleOverlaySelection(o.id)
-                        : selectOverlay(o.id)
-                    }
-                    liftY={overlayDrag.id === o.id ? overlayDrag.liftY : 0}
-                    droppingToBase={
-                      overlayDrag.id === o.id && overlayDrag.dropping
-                    }
-                    onDragStart={overlayDrag.begin}
-                    onTrim={setOverlayRange}
-                  />
+                  {track === upperTracks && (
+                    <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+                  )}
+                  {overlaysOnTrack(overlays, track).map((o) => (
+                    <OverlayClip
+                      key={o.id}
+                      overlay={o}
+                      pxPerSec={pxPerSec}
+                      visStartSec={visStartSec}
+                      visEndSec={visEndSec}
+                      strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
+                      peaks={waves.get(o.url) ?? []}
+                      mediaDuration={mediaDurationOf(o.url)}
+                      fullDuration={
+                        o.kind === "image" ? Infinity : mediaDurationOf(o.url)
+                      }
+                      selected={selectedOverlayIds.includes(o.id)}
+                      onSelect={(additive) =>
+                        additive
+                          ? toggleOverlaySelection(o.id)
+                          : selectOverlay(o.id)
+                      }
+                      liftY={overlayDrag.id === o.id ? overlayDrag.liftY : 0}
+                      dropHint={dropHintFor(o)}
+                      onDragStart={overlayDrag.begin}
+                      onTrim={setOverlayRange}
+                    />
+                  ))}
                 </div>
               ))}
 
