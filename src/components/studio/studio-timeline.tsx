@@ -23,6 +23,8 @@ import UpperTrackLane from "@/components/studio/upper-track-lane";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { spansOverlap } from "@/lib/studio/marquee";
+import { LIFT_THRESHOLD_PX } from "@/lib/studio/timeline-drag";
+import { useClipDrag } from "@/hooks/use-clip-drag";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
@@ -30,7 +32,6 @@ import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
 const MIN_PX = 12;
 const MAX_PX = 800;
 const MIN_CLIP = 0.2;
-const LIFT_THRESHOLD = 40; // drag a clip up this far to spawn a new upper track
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -150,20 +151,14 @@ export default function StudioTimeline({
     gesture: string;
   } | null>(null);
   // Vertical drag distance for an overlay (px, positive = down). Past
-  // LIFT_THRESHOLD the overlay folds down into the base sequence.
+  // LIFT_THRESHOLD_PX the overlay folds down into the base sequence.
   const [overlayLiftY, setOverlayLiftY] = useState(0);
-  // Reorder drag for main-track clips: origLeft is the clip's resting left (px),
-  // clipLive is its current dragged left (px, null until the pointer moves).
-  const [clipDrag, setClipDrag] = useState<{
-    id: string;
-    startX: number;
-    startY: number;
-    origLeft: number;
-  } | null>(null);
-  const [clipLive, setClipLive] = useState<number | null>(null);
-  // Vertical drag distance (px, negative = up). Past LIFT_THRESHOLD the clip
-  // lifts onto a new upper video track instead of reordering.
-  const [clipLiftY, setClipLiftY] = useState(0);
+  const clipDrag = useClipDrag({
+    clips,
+    pxPerSec,
+    onReorder: moveClip,
+    onLift: liftClipToTrack,
+  });
   // Marquee rectangle (content-div px) for drag-select over main clips.
   const [marquee, setMarquee] = useState<{
     left: number;
@@ -371,7 +366,7 @@ export default function StudioTimeline({
     };
     const onUp = () => {
       // Dragged down far enough: fold this overlay into the base sequence.
-      if (liftY > LIFT_THRESHOLD) dropOverlayToBase(overlayDrag.id);
+      if (liftY > LIFT_THRESHOLD_PX) dropOverlayToBase(overlayDrag.id);
       setOverlayLiftY(0);
       setOverlayDrag(null);
     };
@@ -389,53 +384,6 @@ export default function StudioTimeline({
     snapStart,
     dropOverlayToBase,
   ]);
-
-  /* ---- main-clip drag: reorder, or lift up to a new upper track ---- */
-  useEffect(() => {
-    if (!clipDrag) return;
-    const dragged = clips.find((c) => c.id === clipDrag.id);
-    const dur = dragged ? clipDuration(dragged) : 0;
-    // Track the drag in closure vars so the drop can read the final position
-    // directly (no setState-inside-setState, which React warns about).
-    let live: number | null = null;
-    let liftY = 0;
-    const onMove = (e: PointerEvent) => {
-      const dx = e.clientX - clipDrag.startX;
-      const dy = e.clientY - clipDrag.startY;
-      if (live == null && Math.hypot(dx, dy) < 4) return; // ignore a click's jitter
-      live = clipDrag.origLeft + dx;
-      liftY = dy;
-      setClipLive(live);
-      setClipLiftY(dy);
-    };
-    const onUp = () => {
-      if (live != null && liftY < -LIFT_THRESHOLD) {
-        // Lifted up: move this segment onto a new upper video track.
-        liftClipToTrack(clipDrag.id, Math.max(0, live / pxPerSec));
-      } else if (live != null) {
-        // Drop where the dragged clip's center lands among the others.
-        const center = live / pxPerSec + dur / 2;
-        let acc = 0;
-        let target = 0;
-        for (const c of clips) {
-          const d = clipDuration(c);
-          const mid = acc + d / 2;
-          if (c.id !== clipDrag.id && mid < center) target++;
-          acc += d;
-        }
-        moveClip(clipDrag.id, target);
-      }
-      setClipLive(null);
-      setClipLiftY(0);
-      setClipDrag(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [clipDrag, clips, pxPerSec, moveClip, liftClipToTrack]);
 
   /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -769,7 +717,8 @@ export default function StudioTimeline({
                     }
                     liftY={overlayDrag?.id === o.id ? overlayLiftY : 0}
                     droppingToBase={
-                      overlayDrag?.id === o.id && overlayLiftY > LIFT_THRESHOLD
+                      overlayDrag?.id === o.id &&
+                      overlayLiftY > LIFT_THRESHOLD_PX
                     }
                     onDragStart={(id, clientX, clientY, origStart) =>
                       setOverlayDrag({
@@ -810,9 +759,10 @@ export default function StudioTimeline({
                   const onlyThisSelected =
                     selectedClipIds.length === 1 &&
                     selectedClipIds[0] === clip.id;
-                  const isGhost = clipDrag?.id === clip.id && clipLive != null;
+                  const isGhost =
+                    clipDrag.id === clip.id && clipDrag.left != null;
                   const containerLeftPx = isGhost
-                    ? (clipLive as number)
+                    ? (clipDrag.left as number)
                     : leftSec * pxPerSec;
                   // While trimming, draw frames/waveform against the FULL extent the
                   // edge can be dragged across (down to the previous clip's end / up
@@ -855,17 +805,17 @@ export default function StudioTimeline({
                   const contentX = span
                     ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
                     : 0;
-                  const isLifting = isGhost && clipLiftY < -LIFT_THRESHOLD;
+                  const isLifting = isGhost && clipDrag.lifting;
                   return (
                     <div
                       key={clip.id}
                       style={{
                         left: isGhost
-                          ? (clipLive as number)
+                          ? (clipDrag.left as number)
                           : leftSec * pxPerSec,
                         width,
                         transform: isGhost
-                          ? `translateY(${clipLiftY}px)`
+                          ? `translateY(${clipDrag.liftY}px)`
                           : undefined,
                         transition:
                           trim || isGhost
@@ -881,12 +831,12 @@ export default function StudioTimeline({
                           return;
                         }
                         if (!selected) selectClip(clip.id);
-                        setClipDrag({
-                          id: clip.id,
-                          startX: e.clientX,
-                          startY: e.clientY,
-                          origLeft: offsets[i] * pxPerSec,
-                        });
+                        clipDrag.begin(
+                          clip.id,
+                          e.clientX,
+                          e.clientY,
+                          offsets[i] * pxPerSec,
+                        );
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -907,7 +857,7 @@ export default function StudioTimeline({
                                 // can't clip it away.
                                 "shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9),inset_0_0_0_3px_rgba(0,0,0,0.55)] hover:shadow-[inset_0_0_0_2px_rgba(56,189,248,0.95),inset_0_0_0_3px_rgba(0,0,0,0.55)]"
                       }`}
-                      title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
+                      title={`${cStart.toFixed(2)}s to ${cEnd.toFixed(2)}s`}
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
                       {clipIsImage ? (
