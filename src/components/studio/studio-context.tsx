@@ -89,6 +89,9 @@ interface StudioContextValue {
   selectClip: (id: string | null) => void;
   toggleClipSelection: (id: string) => void;
   selectClips: (ids: string[]) => void;
+  selectedOverlayIds: string[];
+  selectOverlay: (id: string | null) => void;
+  toggleOverlaySelection: (id: string) => void;
   splitAt: (sourceTime: number) => void;
   deleteSelected: () => void;
   trimStart: (sourceTime: number) => void;
@@ -183,22 +186,45 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     canRedo,
   } = useEditorHistory();
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
+  // Timeline elements come in three kinds (base clips, upper-track overlays,
+  // captions). Selection is tracked per-kind; a plain click selects one kind and
+  // clears the others, so Delete always targets exactly what's highlighted.
+  const [selectedOverlayIds, setSelectedOverlayIds] = useState<string[]>([]);
   // Single selection (for trim, which only makes sense on one clip).
   const selectedClipId =
     selectedClipIds.length === 1 ? selectedClipIds[0] : null;
-  const selectClip = useCallback(
-    (id: string | null) => setSelectedClipIds(id ? [id] : []),
-    [],
-  );
+  const selectClip = useCallback((id: string | null) => {
+    setSelectedClipIds(id ? [id] : []);
+    if (id) {
+      setSelectedCaptionIds([]);
+      setSelectedOverlayIds([]);
+    }
+  }, []);
   const toggleClipSelection = useCallback((id: string) => {
     setSelectedClipIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    setSelectedCaptionIds([]);
+    setSelectedOverlayIds([]);
   }, []);
   const selectClips = useCallback(
     (ids: string[]) => setSelectedClipIds(ids),
     [],
   );
+  const selectOverlay = useCallback((id: string | null) => {
+    setSelectedOverlayIds(id ? [id] : []);
+    if (id) {
+      setSelectedClipIds([]);
+      setSelectedCaptionIds([]);
+    }
+  }, []);
+  const toggleOverlaySelection = useCallback((id: string) => {
+    setSelectedOverlayIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+    setSelectedClipIds([]);
+    setSelectedCaptionIds([]);
+  }, []);
   const [words, setWords] = useState<Word[]>([]);
   const [transcribeStatus, setTranscribeStatus] =
     useState<TranscribeStatus>("idle");
@@ -216,14 +242,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [selectedCaptionIds, setSelectedCaptionIds] = useState<string[]>([]);
   const selectedCaptionId =
     selectedCaptionIds.length === 1 ? selectedCaptionIds[0] : null;
-  const selectCaption = useCallback(
-    (id: string | null) => setSelectedCaptionIds(id ? [id] : []),
-    [],
-  );
+  const selectCaption = useCallback((id: string | null) => {
+    setSelectedCaptionIds(id ? [id] : []);
+    if (id) {
+      setSelectedClipIds([]);
+      setSelectedOverlayIds([]);
+    }
+  }, []);
   const toggleCaptionSelection = useCallback((id: string) => {
     setSelectedCaptionIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+    setSelectedClipIds([]);
+    setSelectedOverlayIds([]);
   }, []);
   const selectCaptions = useCallback(
     (ids: string[]) => setSelectedCaptionIds(ids),
@@ -864,12 +895,36 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setClips],
   );
 
+  // Delete whatever is selected, across all three kinds at once: base clips,
+  // upper-track overlays, and captions. The base can't be emptied (it drives the
+  // clock), so a delete that would remove every base clip is ignored for the
+  // base while still clearing overlays/captions.
   const deleteSelected = useCallback(() => {
-    setClips((prev) =>
-      selectedClipId ? removeClip(prev, selectedClipId) : prev,
-    );
+    if (selectedClipIds.length) {
+      const drop = new Set(selectedClipIds);
+      setClips((prev) => {
+        const remaining = prev.filter((c) => !drop.has(c.id));
+        return remaining.length ? remaining : prev;
+      });
+    }
+    if (selectedOverlayIds.length) {
+      const drop = new Set(selectedOverlayIds);
+      setOverlays((prev) => prev.filter((o) => !drop.has(o.id)));
+    }
+    if (selectedCaptionIds.length) {
+      const drop = new Set(selectedCaptionIds);
+      setCaptions((prev) => prev.filter((c) => !drop.has(c.id)));
+    }
     setSelectedClipIds([]);
-  }, [setClips, selectedClipId]);
+    setSelectedOverlayIds([]);
+    setSelectedCaptionIds([]);
+  }, [
+    setClips,
+    setCaptions,
+    selectedClipIds,
+    selectedOverlayIds,
+    selectedCaptionIds,
+  ]);
 
   const trimStart = useCallback(
     (sourceTime: number) => {
@@ -1241,6 +1296,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedClipIds,
       toggleClipSelection,
       selectClips,
+      selectedOverlayIds,
+      selectOverlay,
+      toggleOverlaySelection,
       splitAt,
       deleteSelected,
       trimStart,
@@ -1327,6 +1385,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedClipIds,
       toggleClipSelection,
       selectClips,
+      selectedOverlayIds,
+      selectOverlay,
+      toggleOverlaySelection,
       splitAt,
       deleteSelected,
       trimStart,

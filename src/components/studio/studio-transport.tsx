@@ -40,6 +40,8 @@ export default function StudioTransport({
   const {
     source,
     selectedClipIds,
+    selectedOverlayIds,
+    selectedCaptionIds,
     deleteSelected,
     trimClipsToSpeech,
     detecting,
@@ -145,18 +147,25 @@ export default function StudioTransport({
         <Scissors className="h-3.5 w-3.5" />
         Split
       </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={deleteSelected}
-        disabled={selectedClipIds.length === 0}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        {selectedClipIds.length > 1
-          ? `Delete ${selectedClipIds.length} clips`
-          : "Delete clip"}
-      </Button>
+      {(() => {
+        const count =
+          selectedClipIds.length +
+          selectedOverlayIds.length +
+          selectedCaptionIds.length;
+        return (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={deleteSelected}
+            disabled={count === 0}
+            title="Delete the selected clips, overlays, or captions"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {count > 1 ? `Delete ${count}` : "Delete"}
+          </Button>
+        );
+      })()}
       {source?.kind !== "image" && (
         <Button
           type="button"

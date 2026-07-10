@@ -22,7 +22,7 @@ export default function StudioWorkspace() {
     clips,
     selectedClipIds,
     selectedCaptionIds,
-    removeSelectedCaptions,
+    selectedOverlayIds,
     splitAt,
     deleteSelected,
     audioTracks,
@@ -111,10 +111,13 @@ export default function StudioWorkspace() {
         e.preventDefault();
         splitAt(videoRef.current?.currentTime ?? sourceTime);
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedCaptionIds.length) {
-          e.preventDefault();
-          removeSelectedCaptions();
-        } else if (selectedClipIds.length) {
+        // One delete for everything selected — base clips, overlays, captions,
+        // or any mix of them.
+        if (
+          selectedClipIds.length ||
+          selectedOverlayIds.length ||
+          selectedCaptionIds.length
+        ) {
           e.preventDefault();
           deleteSelected();
         }
@@ -133,7 +136,7 @@ export default function StudioWorkspace() {
     deleteSelected,
     selectedClipIds,
     selectedCaptionIds,
-    removeSelectedCaptions,
+    selectedOverlayIds,
   ]);
 
   const total = totalDuration(clips);
