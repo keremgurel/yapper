@@ -121,6 +121,7 @@ interface StudioContextValue {
   removeMediaAsset: (id: string) => void;
   addOverlayFromAsset: (assetId: string, start?: number) => void;
   addAssetToTimeline: (assetId: string, start?: number) => void;
+  addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   moveOverlay: (id: string, start: number) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
@@ -789,7 +790,25 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return [];
       });
       setOverlays([]);
-      // Keep the media library — it's a library, not part of the edit state.
+      // Register the recording in the media library too, so it's just another
+      // asset — re-addable to the main track or as an overlay, exactly like any
+      // uploaded clip. The main track isn't a special one-time thing.
+      setMediaAssets((prev) =>
+        prev.some((m) => m.url === next.url)
+          ? prev
+          : [
+              {
+                id: newMediaId(),
+                kind: next.kind === "image" ? "image" : "video",
+                url: next.url,
+                name: next.name,
+                duration: next.duration,
+                width: next.width,
+                height: next.height,
+              },
+              ...prev,
+            ],
+      );
     },
     [resetEditor, resetTranscript],
   );
@@ -836,6 +855,43 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addOverlayFromAsset(assetId, start);
     },
     [mediaAssets, source, loadSource, addOverlayFromAsset, setClips],
+  );
+
+  // Append an asset to the MAIN (base) track as another clip — the main track is
+  // just "the layer shown behind everything", not a single fixed thing, so the
+  // same media (or any other) can be added to it as many times as wanted. With
+  // no base yet, the asset becomes the base. Images can't drive the base clock,
+  // so they fall back to an overlay.
+  const addAssetToMainTrack = useCallback(
+    (assetId: string) => {
+      const asset = mediaAssets.find((m) => m.id === assetId);
+      if (!asset) return;
+      if (!source) {
+        addAssetToTimeline(assetId);
+        return;
+      }
+      if (asset.kind !== "video") {
+        addOverlayFromAsset(assetId, 0);
+        return;
+      }
+      setClips((prev) => [
+        ...prev,
+        {
+          id: newClipId(),
+          start: 0,
+          end: asset.duration,
+          src: {
+            url: asset.url,
+            kind: "video",
+            name: asset.name,
+            duration: asset.duration,
+            width: asset.width,
+            height: asset.height,
+          },
+        },
+      ]);
+    },
+    [mediaAssets, source, addAssetToTimeline, addOverlayFromAsset, setClips],
   );
 
   const clearSource = useCallback(() => {
@@ -1328,6 +1384,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,
+      addAssetToMainTrack,
       liftClipToTrack,
       moveOverlay,
       setOverlayRect,
@@ -1417,6 +1474,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,
+      addAssetToMainTrack,
       liftClipToTrack,
       moveOverlay,
       setOverlayRect,

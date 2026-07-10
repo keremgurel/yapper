@@ -42,18 +42,20 @@ export default function TrackHeaderRail({
   onRemoveAudio: (id: string) => void;
 }) {
   return (
-    <div className="border-border bg-card/40 w-9 shrink-0 overflow-hidden border-r">
+    <div className="border-border bg-card/40 w-24 shrink-0 overflow-hidden border-r">
       {/* Ruler spacer keeps the first track aligned with the timeline. */}
       <div className="h-5" />
       <div className="space-y-1 py-1">
         {hasCaptions && (
-          <div className="text-foreground/40 flex h-7 items-center justify-center">
-            <Captions className="h-3.5 w-3.5" />
+          <div className="text-foreground/45 flex h-7 items-center gap-1.5 px-2">
+            <Captions className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[10px] font-bold">Captions</span>
           </div>
         )}
         {placeholderTrack && (
-          <div className="text-foreground/20 flex h-12 items-center justify-center">
-            <Plus className="h-3.5 w-3.5" />
+          <div className="text-foreground/25 flex h-12 items-center gap-1.5 px-2">
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[10px] font-bold">Add track</span>
           </div>
         )}
         {[...overlays].reverse().map((o) => {
@@ -61,18 +63,19 @@ export default function TrackHeaderRail({
           return (
             <div
               key={o.id}
-              className="flex h-8 flex-col items-center justify-center gap-2"
+              className="flex h-12 items-center justify-center gap-2 px-1.5"
             >
               <button
                 type="button"
                 onClick={() => onToggleOverlayHidden(o.id)}
                 className={btn}
+                title={o.hidden ? "Show track" : "Hide track"}
                 aria-label={o.hidden ? "Show track" : "Hide track"}
               >
                 {o.hidden ? (
-                  <EyeOff className="h-3.5 w-3.5" />
+                  <EyeOff className="h-4 w-4" />
                 ) : (
-                  <Eye className="h-3.5 w-3.5" />
+                  <Eye className="h-4 w-4" />
                 )}
               </button>
               {o.kind === "video" && (
@@ -80,12 +83,13 @@ export default function TrackHeaderRail({
                   type="button"
                   onClick={() => onToggleOverlayMuted(o.id)}
                   className={btn}
+                  title={muted ? "Unmute track" : "Mute track"}
                   aria-label={muted ? "Unmute track" : "Mute track"}
                 >
                   {muted ? (
-                    <VolumeX className="h-3.5 w-3.5" />
+                    <VolumeX className="h-4 w-4" />
                   ) : (
-                    <Volume2 className="h-3.5 w-3.5" />
+                    <Volume2 className="h-4 w-4" />
                   )}
                 </button>
               )}
@@ -93,43 +97,51 @@ export default function TrackHeaderRail({
                 type="button"
                 onClick={() => onRemoveOverlay(o.id)}
                 className={`${btn} hover:!text-red-400`}
+                title="Delete track"
                 aria-label="Delete track"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           );
         })}
 
-        {/* Base (main) video track */}
-        <div className="text-foreground/30 flex h-16 items-center justify-center">
-          <Film className="h-4 w-4" />
+        {/* Bottom layer — just the base of the stack; its only special role is
+            setting the export aspect ratio. */}
+        <div
+          className="text-foreground/40 flex h-16 items-center gap-1.5 px-2"
+          title="Bottom layer — sets the export ratio"
+        >
+          <Film className="h-4 w-4 shrink-0" />
+          <span className="text-[10px] font-bold">Ratio</span>
         </div>
 
         {audioTracks.map((a) => (
           <div
             key={a.id}
-            className="flex h-8 flex-col items-center justify-center gap-2"
+            className="flex h-8 items-center justify-center gap-2 px-1.5"
           >
             <button
               type="button"
               onClick={() => onToggleAudioMuted(a.id)}
               className={btn}
+              title={a.muted ? "Unmute track" : "Mute track"}
               aria-label={a.muted ? "Unmute track" : "Mute track"}
             >
               {a.muted ? (
-                <VolumeX className="h-3.5 w-3.5" />
+                <VolumeX className="h-4 w-4" />
               ) : (
-                <Volume2 className="h-3.5 w-3.5" />
+                <Volume2 className="h-4 w-4" />
               )}
             </button>
             <button
               type="button"
               onClick={() => onRemoveAudio(a.id)}
               className={`${btn} hover:!text-red-400`}
+              title="Delete track"
               aria-label="Delete track"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </button>
           </div>
         ))}

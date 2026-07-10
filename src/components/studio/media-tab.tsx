@@ -15,6 +15,8 @@ export default function MediaTab() {
     addMediaAsset,
     removeMediaAsset,
     addAssetToTimeline,
+    addAssetToMainTrack,
+    addOverlayFromAsset,
   } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
   const isEmpty = !source && mediaAssets.length === 0;
@@ -64,27 +66,6 @@ export default function MediaTab() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {/* Base loaded from the uploader (not in the library) — show it once. */}
-            {source && !mediaAssets.some((m) => m.url === source.url) && (
-              <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-[color:var(--sg-accent)]/40">
-                <div className="bg-muted relative aspect-video">
-                  <video
-                    src={source.url}
-                    muted
-                    className="h-full w-full object-cover"
-                  />
-                  <span className="absolute top-1 left-1 rounded-md bg-[color:var(--sg-accent)]/90 px-1.5 py-0.5 text-[10px] font-black text-white">
-                    Added
-                  </span>
-                </div>
-                <div className="p-2">
-                  <p className="text-foreground/80 truncate text-[11px] font-bold">
-                    {source.name}
-                  </p>
-                  <p className="text-foreground/40 text-[10px]">Main track</p>
-                </div>
-              </div>
-            )}
             {mediaAssets.map((asset) => {
               const isBase = source?.url === asset.url;
               const count = usageCount(asset.url);
@@ -135,14 +116,39 @@ export default function MediaTab() {
                     <p className="text-foreground/80 truncate text-[11px] font-bold">
                       {asset.name}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => addAssetToTimeline(asset.id)}
-                      className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {count > 0 ? "Add again" : "Add to timeline"}
-                    </button>
+                    {!source ? (
+                      <button
+                        type="button"
+                        onClick={() => addAssetToTimeline(asset.id)}
+                        className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add to timeline
+                      </button>
+                    ) : (
+                      <div className="mt-1.5 flex gap-1.5">
+                        {asset.kind === "video" && (
+                          <button
+                            type="button"
+                            onClick={() => addAssetToMainTrack(asset.id)}
+                            title="Add to the bottom layer sequence as another clip"
+                            className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Base
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => addOverlayFromAsset(asset.id, 0)}
+                          title="Add as an overlay on an upper track"
+                          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Overlay
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
