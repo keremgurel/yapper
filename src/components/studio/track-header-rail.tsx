@@ -14,6 +14,7 @@ import type { AudioTrack, Overlay } from "@/lib/studio/types";
  * renders underneath the rest.
  */
 export default function TrackHeaderRail({
+  scrollRef,
   overlays,
   lanes,
   audioTracks,
@@ -30,6 +31,8 @@ export default function TrackHeaderRail({
   onToggleAudioMuted,
   onRemoveAudio,
 }: {
+  /** Scrolled vertically in lockstep with the lanes, which own the scrollbar. */
+  scrollRef: React.RefObject<HTMLDivElement | null>;
   overlays: Overlay[];
   /** Upper-track indices, top to bottom. The first is the empty new-track lane. */
   lanes: number[];
@@ -48,7 +51,10 @@ export default function TrackHeaderRail({
   onRemoveAudio: (id: string) => void;
 }) {
   return (
-    <div className="border-border bg-card/40 w-24 shrink-0 overflow-hidden border-r">
+    <div
+      ref={scrollRef}
+      className="border-border bg-card/40 w-24 shrink-0 overflow-hidden border-r"
+    >
       {/* Ruler spacer keeps the first track aligned with the timeline. */}
       <div className="h-5" />
       <div className="space-y-1 py-1">

@@ -11,7 +11,7 @@ import { newGestureId, type Overlay } from "@/lib/studio/types";
 const MIN = 0.1; // minimum overlay duration (seconds)
 
 /** What letting go right now would do to this clip, for the drag's ring color. */
-export type DropHint = "none" | "track" | "base";
+export type DropHint = "none" | "track" | "base" | "blocked";
 
 interface TrimState {
   edge: "start" | "end";
@@ -36,6 +36,7 @@ export default function OverlayClip({
   peaks,
   mediaDuration,
   fullDuration,
+  bounds,
   selected,
   liftY,
   dropHint,
@@ -54,6 +55,8 @@ export default function OverlayClip({
   /** Length of that media, which the waveform is drawn against. */
   mediaDuration: number;
   fullDuration: number;
+  /** How far the edges can be dragged out before they meet the neighbours. */
+  bounds: { min: number; max: number };
   selected: boolean;
   /** How far the drag has pulled it off its lane. 0 when it is at rest. */
   liftY: number;
@@ -86,7 +89,7 @@ export default function OverlayClip({
         // Left edge: shift start + in-point, keep the right edge fixed.
         let d = delta;
         d = Math.min(d, g.duration - MIN); // keep >= MIN
-        d = Math.max(d, -g.start); // don't cross timeline 0
+        d = Math.max(d, bounds.min - g.start); // don't cross 0:00 or a neighbour
         if (!isImg) d = Math.max(d, -g.sourceStart); // don't cross media in-point
         onTrim(
           o.id,
@@ -102,6 +105,9 @@ export default function OverlayClip({
         if (Number.isFinite(fullDuration)) {
           d = Math.min(d, fullDuration - (g.sourceStart + g.duration));
         }
+        if (Number.isFinite(bounds.max)) {
+          d = Math.min(d, bounds.max - (g.start + g.duration));
+        }
         onTrim(o.id, g.start, g.duration + d, g.sourceStart, trim.gesture);
       }
     };
@@ -112,7 +118,7 @@ export default function OverlayClip({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [trim, pxPerSec, fullDuration, isImg, o.id, onTrim]);
+  }, [trim, pxPerSec, fullDuration, bounds, isImg, o.id, onTrim]);
 
   const beginTrim = (edge: "start" | "end") => (e: React.PointerEvent) => {
     e.preventDefault();
@@ -165,11 +171,13 @@ export default function OverlayClip({
           ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
           : dropHint === "track"
             ? "z-30 opacity-90 ring-2 ring-emerald-300"
-            : liftY
-              ? "z-30 opacity-90 ring-2 ring-violet-300"
-              : selected
-                ? "z-10 ring-2 ring-cyan-400"
-                : "ring-1 ring-violet-400/40"
+            : dropHint === "blocked"
+              ? "z-30 opacity-90 ring-2 ring-rose-400"
+              : liftY
+                ? "z-30 opacity-90 ring-2 ring-violet-300"
+                : selected
+                  ? "z-10 ring-2 ring-cyan-400"
+                  : "ring-1 ring-violet-400/40"
       } ${o.hidden ? "opacity-40" : ""}`}
     >
       <span className="absolute inset-0 bg-violet-500/10" />

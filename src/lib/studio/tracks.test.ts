@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampStartToTrack,
   compactTracks,
   firstFreeTrack,
   moveToTrack,
   overlaysOnTrack,
+  overlayTrimBounds,
   paintOrder,
   topTrack,
   trackCount,
@@ -73,6 +75,80 @@ describe("trackOccupied", () => {
   });
 });
 
+describe("clampStartToTrack", () => {
+  // Track 0 holds a: 2..5 and b: 8..10.
+  const all = [ov("a", 0, 2, 3), ov("b", 0, 8, 2)];
+  const drag = (start: number, duration = 1) =>
+    clampStartToTrack(all, 0, { id: "x", start, duration });
+
+  it("leaves a start that lands in open timeline", () => {
+    expect(drag(6)).toBe(6);
+  });
+
+  it("stops a clip against the neighbour it is dragged into", () => {
+    // Wants 3.5, which is inside `a`. The nearest room is `a`'s far edge.
+    expect(drag(3.5)).toBe(5);
+  });
+
+  it("backs off to the earlier side when the two edges are equally near", () => {
+    // Wants 3: 2s of travel either way. It gives way rather than jumping past.
+    expect(drag(3)).toBe(1);
+  });
+
+  it("takes the nearer edge of the clip it collides with", () => {
+    // Wants 2.1: closer to backing off before `a` (1.1) than to clearing it (5).
+    expect(drag(2.1)).toBe(1);
+  });
+
+  it("skips a gap the clip is too long to fit in", () => {
+    // 5..8 is a 3s hole; a 4s clip has to go past `b` entirely.
+    expect(drag(6, 4)).toBe(10);
+  });
+
+  it("never lands before 0:00", () => {
+    expect(drag(-4)).toBe(0);
+  });
+
+  it("ignores the clip's own span, so it can hold still", () => {
+    expect(clampStartToTrack(all, 0, { id: "a", start: 2, duration: 3 })).toBe(
+      2,
+    );
+  });
+
+  it("ignores the other tracks", () => {
+    expect(clampStartToTrack(all, 1, { id: "x", start: 3, duration: 1 })).toBe(
+      3,
+    );
+  });
+});
+
+describe("overlayTrimBounds", () => {
+  it("opens onto empty timeline on both sides", () => {
+    const a = ov("a", 0, 2, 3);
+    expect(overlayTrimBounds([a], a)).toEqual({ min: 0, max: Infinity });
+  });
+
+  it("stops at the neighbours on its own track", () => {
+    const a = ov("a", 0, 4, 2); // 4..6
+    const all = [ov("before", 0, 0, 2), a, ov("after", 0, 9, 2)];
+    expect(overlayTrimBounds(all, a)).toEqual({ min: 2, max: 9 });
+  });
+
+  it("takes the closest neighbour on each side", () => {
+    const a = ov("a", 0, 6, 2); // 6..8
+    const all = [ov("far", 0, 0, 1), ov("near", 0, 3, 2), a];
+    expect(overlayTrimBounds(all, a)).toEqual({ min: 5, max: Infinity });
+  });
+
+  it("is not bounded by clips on other tracks", () => {
+    const a = ov("a", 1, 4, 2);
+    expect(overlayTrimBounds([ov("b", 0, 0, 4), a], a)).toEqual({
+      min: 0,
+      max: Infinity,
+    });
+  });
+});
+
 describe("firstFreeTrack", () => {
   it("uses track 0 on an empty timeline", () => {
     expect(firstFreeTrack([], { id: "n", start: 0, duration: 2 })).toBe(0);
@@ -126,9 +202,9 @@ describe("moveToTrack", () => {
     expect(moveToTrack(all, "b", 0)).toBe(all);
   });
 
-  it("closes the track the clip left behind", () => {
-    // Moving `c` down from track 2 empties it, so `b` slides from 1 to 1 and
-    // nothing is left blank above.
+  it("leaves the track it came from behind, empty", () => {
+    // `c` was the only clip on track 2. Track 2 is now empty, and `b` stays on
+    // track 1: closing the gap would move a clip the editor never touched.
     const all = [ov("a", 0, 0, 2), ov("b", 1, 0, 2), ov("c", 2, 5, 2)];
     const out = moveToTrack(all, "c", 0);
     expect(out.map((o) => [o.id, o.track])).toEqual([
@@ -144,10 +220,9 @@ describe("moveToTrack", () => {
     expect(out.map((o) => o.track)).toEqual([0, 1]);
   });
 
-  it("compacts a lone clip's promotion back down to where it was", () => {
-    // Nothing is under it, so a new track above would be an empty lane.
+  it("promotes a lone clip, leaving the track under it empty", () => {
     const all = [ov("a", 0, 0, 2)];
-    expect(moveToTrack(all, "a", 1).map((o) => o.track)).toEqual([0]);
+    expect(moveToTrack(all, "a", 1).map((o) => o.track)).toEqual([1]);
   });
 
   it("never moves a clip below track 0", () => {

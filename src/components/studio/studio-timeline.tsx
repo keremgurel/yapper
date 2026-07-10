@@ -23,7 +23,12 @@ import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { spansOverlap } from "@/lib/studio/marquee";
-import { overlaysOnTrack, trackCount } from "@/lib/studio/tracks";
+import {
+  overlayTrimBounds,
+  overlaysOnTrack,
+  trackCount,
+  trackOccupied,
+} from "@/lib/studio/tracks";
 import { useClipDrag } from "@/hooks/use-clip-drag";
 import {
   useOverlayDrag,
@@ -114,6 +119,9 @@ export default function StudioTimeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
+  // The fixed rail of track controls. It doesn't scroll itself; it is dragged
+  // along vertically so every row stays beside the lane it belongs to.
+  const railRef = useRef<HTMLDivElement>(null);
   // One row node per upper track (the empty top lane included), so the marquee
   // knows which lanes its box reaches and a vertical drag knows where it landed.
   const trackRowsRef = useRef(new Map<number, HTMLDivElement | null>());
@@ -236,7 +244,9 @@ export default function StudioTimeline({
 
   const onOverlayDrop = useCallback(
     (id: string, target: OverlayDropTarget, gesture: string) => {
-      if (target.kind === "base") dropOverlayToBase(id);
+      // Both carry the drag's gesture id, so the sideways move and whatever the
+      // drop did to the clip's layer undo together, as one edit.
+      if (target.kind === "base") dropOverlayToBase(id, gesture);
       else setOverlayTrack(id, target.track, gesture);
     },
     [dropOverlayToBase, setOverlayTrack],
@@ -251,13 +261,16 @@ export default function StudioTimeline({
     onDrop: onOverlayDrop,
   });
 
-  // The drag's ring color: what letting go over this lane would actually do.
+  // The drag's ring color: what letting go over this lane would actually do,
+  // including nothing. A hint that promises a move the drop then refuses is
+  // worse than no hint at all.
   const dropHintFor = (o: Overlay): DropHint => {
-    if (overlayDrag.id !== o.id || !overlayDrag.target) return "none";
+    const target = overlayDrag.id === o.id ? overlayDrag.target : null;
+    if (!target) return "none";
     // Images can't drive the base clock, so they never fold into it.
-    if (overlayDrag.target.kind === "base")
-      return o.kind === "video" ? "base" : "none";
-    return overlayDrag.target.track === o.track ? "none" : "track";
+    if (target.kind === "base") return o.kind === "video" ? "base" : "none";
+    if (target.track === o.track) return "none";
+    return trackOccupied(overlays, target.track, o) ? "blocked" : "track";
   };
 
   /* ---- scrub ---- */
@@ -375,7 +388,7 @@ export default function StudioTimeline({
     };
   }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
 
-  /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
+  /* ---- wheel: scroll the tracks, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -419,12 +432,9 @@ export default function StudioTimeline({
         }
         return;
       }
-      // Horizontal-intent gestures scroll natively (smooth, compositor-threaded).
-      // Only convert vertical intent (mouse wheel) into horizontal panning.
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY * lineUnit;
-      }
+      // Everything else scrolls natively, in the direction it was aimed: down
+      // the stack of tracks, or along the timeline. Turning a vertical wheel
+      // into a horizontal pan would leave the lower tracks unreachable.
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
@@ -473,6 +483,8 @@ export default function StudioTimeline({
     };
     commit();
     const onScroll = () => {
+      // The rail is outside the scroller, so it has to be told.
+      if (railRef.current) railRef.current.scrollTop = el.scrollTop;
       // Re-window only after drifting past ~half a screen; the ±1-screen buffer
       // covers everything in between, so scrolling doesn't re-render each frame.
       if (
@@ -526,6 +538,7 @@ export default function StudioTimeline({
     >
       <div className="flex min-h-0 flex-1">
         <TrackHeaderRail
+          scrollRef={railRef}
           overlays={overlays}
           lanes={lanes}
           audioTracks={audioTracks}
@@ -689,7 +702,7 @@ export default function StudioTimeline({
                   }}
                   className="relative h-12"
                 >
-                  {track === upperTracks && (
+                  {overlaysOnTrack(overlays, track).length === 0 && (
                     <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
                   )}
                   {overlaysOnTrack(overlays, track).map((o) => (
@@ -705,6 +718,7 @@ export default function StudioTimeline({
                       fullDuration={
                         o.kind === "image" ? Infinity : mediaDurationOf(o.url)
                       }
+                      bounds={overlayTrimBounds(overlays, o)}
                       selected={selectedOverlayIds.includes(o.id)}
                       onSelect={(additive) =>
                         additive
@@ -1007,9 +1021,9 @@ export default function StudioTimeline({
         </div>
       </div>
       <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
-        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to pan ·
-        ⌘/pinch-scroll to zoom · drag a clip to reorder · drag it up for a new
-        track · drag its edges to trim
+        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll across
+        the tracks · shift-scroll to pan · ⌘/pinch-scroll to zoom · drag a clip
+        between tracks · drag its edges to trim
       </p>
     </div>
   );

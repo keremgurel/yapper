@@ -50,6 +50,7 @@ import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
 import {
+  clampStartToTrack,
   compactTracks,
   firstFreeTrack,
   moveToTrack,
@@ -151,7 +152,7 @@ interface StudioContextValue {
   addAssetToTimeline: (assetId: string, start?: number) => void;
   addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
-  dropOverlayToBase: (overlayId: string) => void;
+  dropOverlayToBase: (overlayId: string, gesture?: string) => void;
   setOverlayTrack: (id: string, track: number, gesture?: string) => void;
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
@@ -657,33 +658,36 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // carries its own media. Images can't drive the base clock, so they're left as
   // overlays.
   const dropOverlayToBase = useCallback(
-    (overlayId: string) => {
+    (overlayId: string, gesture?: string) => {
       const o = overlays.find((x) => x.id === overlayId);
       if (!o || o.kind !== "video") return;
       const carriesOwnMedia = !source || o.url !== source.url;
       const assetDuration =
         mediaAssets.find((m) => m.url === o.url)?.duration ??
         o.sourceStart + o.duration;
-      updateEditor((s) => ({
-        ...s,
-        clips: [
-          ...s.clips,
-          {
-            id: newClipId(),
-            start: o.sourceStart,
-            end: o.sourceStart + o.duration,
-            src: carriesOwnMedia
-              ? {
-                  url: o.url,
-                  kind: "video",
-                  name: o.name,
-                  duration: assetDuration,
-                }
-              : undefined,
-          },
-        ],
-        overlays: compactTracks(s.overlays.filter((x) => x.id !== overlayId)),
-      }));
+      updateEditor(
+        (s) => ({
+          ...s,
+          clips: [
+            ...s.clips,
+            {
+              id: newClipId(),
+              start: o.sourceStart,
+              end: o.sourceStart + o.duration,
+              src: carriesOwnMedia
+                ? {
+                    url: o.url,
+                    kind: "video",
+                    name: o.name,
+                    duration: assetDuration,
+                  }
+                : undefined,
+            },
+          ],
+          overlays: s.overlays.filter((x) => x.id !== overlayId),
+        }),
+        gesture,
+      );
       sel.dropOverlay(overlayId);
     },
     [overlays, source, mediaAssets, updateEditor, sel],
@@ -701,15 +705,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   // `gesture` collapses a whole drag into one undo step: these fire on every
   // pointermove, and without it a single drag would stack hundreds of steps.
+  //
+  // A clip stops against its neighbours instead of sliding under them: clips on
+  // one track never overlap, whether they got there sideways or from a lane
+  // above. To pass a neighbour, take the clip to another track.
   const moveOverlay = useCallback(
     (id: string, start: number, gesture?: string) => {
-      setOverlays(
-        (prev) =>
-          prev.map((o) =>
-            o.id === id ? { ...o, start: Math.max(0, start) } : o,
-          ),
-        gesture,
-      );
+      setOverlays((prev) => {
+        const o = prev.find((x) => x.id === id);
+        if (!o) return prev;
+        const next = clampStartToTrack(prev, o.track, { ...o, start });
+        if (next === o.start) return prev;
+        return prev.map((x) => (x.id === id ? { ...x, start: next } : x));
+      }, gesture);
     },
     [setOverlays],
   );
@@ -776,13 +784,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setOverlays],
   );
 
+  // Deleting a track is the one edit that closes the stack up: the lane is gone,
+  // so nothing should be left where it used to be. Merely emptying a track by
+  // moving its last clip away leaves the lane behind, on purpose.
   const removeTrack = useCallback(
     (track: number) => {
+      for (const o of overlaysOnTrack(overlays, track)) sel.dropOverlay(o.id);
       setOverlays((prev) =>
         compactTracks(prev.filter((o) => o.track !== track)),
       );
     },
-    [setOverlays],
+    [overlays, sel, setOverlays],
   );
 
   // Delete the bottom track, exactly like deleting an upper one: its clips go,
@@ -909,7 +921,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       updateEditor((s) => ({
         ...s,
         clips: s.clips.filter((c) => !dropsClip(c)),
-        overlays: compactTracks(s.overlays.filter((o) => o.url !== url)),
+        overlays: s.overlays.filter((o) => o.url !== url),
       }));
       // The object URL outlives the library entry on purpose: undo brings those
       // clips back, and a revoked URL would restore footage that cannot play.
@@ -1123,7 +1135,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       ...s,
       clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
       overlays: overlayIds.size
-        ? compactTracks(s.overlays.filter((o) => !overlayIds.has(o.id)))
+        ? s.overlays.filter((o) => !overlayIds.has(o.id))
         : s.overlays,
       captions: captionIds.size
         ? s.captions.filter((c) => !captionIds.has(c.id))
