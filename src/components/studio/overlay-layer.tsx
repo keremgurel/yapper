@@ -9,6 +9,52 @@ function clamp01(v: number, max = 1): number {
 }
 
 const MIN = 0.1; // minimum overlay size (fraction of stage)
+const SNAP = 0.012; // snap distance (fraction of stage) — like Canva's magnet
+
+/** Active alignment guides while dragging, as stage fractions (0..1). */
+export interface Guides {
+  v: number[];
+  h: number[];
+}
+
+/**
+ * Snap one span (its start / center / end) to the nearest target line. Returns
+ * the delta to shift the span by and the guide line it snapped to, or null.
+ */
+function snapSpan(
+  start: number,
+  size: number,
+  targets: number[],
+): { delta: number; guide: number } | null {
+  const edges = [start, start + size / 2, start + size];
+  let best: { delta: number; guide: number } | null = null;
+  for (const e of edges) {
+    for (const t of targets) {
+      const delta = t - e;
+      if (
+        Math.abs(delta) <= SNAP &&
+        (!best || Math.abs(delta) < Math.abs(best.delta))
+      ) {
+        best = { delta, guide: t };
+      }
+    }
+  }
+  return best;
+}
+
+/** Snap a single edge to the nearest target line, or null if none are close. */
+function snapEdge(pos: number, targets: number[]): number | null {
+  let best: number | null = null;
+  for (const t of targets) {
+    if (
+      Math.abs(t - pos) <= SNAP &&
+      (best === null || Math.abs(t - pos) < Math.abs(best - pos))
+    ) {
+      best = t;
+    }
+  }
+  return best;
+}
 
 type Corner = "tl" | "tr" | "bl" | "br";
 
@@ -34,17 +80,21 @@ function OverlayBox({
   local,
   playing,
   selected,
+  others,
   onSelect,
   layerRef,
   onCommit,
+  onGuides,
 }: {
   overlay: Overlay;
   local: number;
   playing: boolean;
   selected: boolean;
+  others: OverlayRect[];
   onSelect: () => void;
   layerRef: React.RefObject<HTMLDivElement | null>;
   onCommit: (rect: OverlayRect) => void;
+  onGuides: (guides: Guides | null) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -97,6 +147,22 @@ function OverlayBox({
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
     };
 
+  // Alignment targets: the stage's own edges + center, plus every other
+  // overlay's edges + center. Snapping to these makes centering and lining up
+  // with another overlay click into place, Canva-style.
+  const vTargets = [
+    0,
+    0.5,
+    1,
+    ...others.flatMap((o) => [o.x, o.x + o.w / 2, o.x + o.w]),
+  ];
+  const hTargets = [
+    0,
+    0.5,
+    1,
+    ...others.flatMap((o) => [o.y, o.y + o.h / 2, o.y + o.h]),
+  ];
+
   const move = (e: React.PointerEvent) => {
     const d = dragRef.current;
     const box = layerRef.current?.getBoundingClientRect();
@@ -104,12 +170,23 @@ function OverlayBox({
     const dx = (e.clientX - d.startX) / box.width;
     const dy = (e.clientY - d.startY) / box.height;
     if (d.mode === "move") {
-      setLive({
-        x: clamp01(d.rect.x + dx, 1 - d.rect.w),
-        y: clamp01(d.rect.y + dy, 1 - d.rect.h),
-        w: d.rect.w,
-        h: d.rect.h,
-      });
+      let nx = clamp01(d.rect.x + dx, 1 - d.rect.w);
+      let ny = clamp01(d.rect.y + dy, 1 - d.rect.h);
+      const { w, h } = d.rect;
+      const gv: number[] = [];
+      const gh: number[] = [];
+      const sx = snapSpan(nx, w, vTargets);
+      if (sx) {
+        nx = clamp01(nx + sx.delta, 1 - w);
+        gv.push(sx.guide);
+      }
+      const sy = snapSpan(ny, h, hTargets);
+      if (sy) {
+        ny = clamp01(ny + sy.delta, 1 - h);
+        gh.push(sy.guide);
+      }
+      onGuides(gv.length || gh.length ? { v: gv, h: gh } : null);
+      setLive({ x: nx, y: ny, w, h });
       return;
     }
     // Resize: grow/shrink from the dragged corner, keeping the opposite edge fixed.
@@ -131,6 +208,36 @@ function OverlayBox({
       nh = Math.max(MIN, Math.min(y + h, h - dy));
       ny = y + h - nh;
     }
+    // Snap the two moving edges to the same targets, showing a guide when they do.
+    const gv: number[] = [];
+    const gh: number[] = [];
+    const rightMoving = c === "br" || c === "tr";
+    const vEdge = rightMoving ? nx + nw : nx;
+    const sv = snapEdge(vEdge, vTargets);
+    if (sv !== null) {
+      if (rightMoving) {
+        nw = Math.max(MIN, Math.min(1 - nx, sv - nx));
+      } else {
+        const right = x + w; // opposite edge stays fixed
+        nx = Math.max(0, Math.min(right - MIN, sv));
+        nw = right - nx;
+      }
+      gv.push(sv);
+    }
+    const bottomMoving = c === "br" || c === "bl";
+    const hEdge = bottomMoving ? ny + nh : ny;
+    const sh = snapEdge(hEdge, hTargets);
+    if (sh !== null) {
+      if (bottomMoving) {
+        nh = Math.max(MIN, Math.min(1 - ny, sh - ny));
+      } else {
+        const bottom = y + h; // opposite edge stays fixed
+        ny = Math.max(0, Math.min(bottom - MIN, sh));
+        nh = bottom - ny;
+      }
+      gh.push(sh);
+    }
+    onGuides(gv.length || gh.length ? { v: gv, h: gh } : null);
     setLive({ x: nx, y: ny, w: nw, h: nh });
   };
 
@@ -140,6 +247,7 @@ function OverlayBox({
         if (l) onCommit(l);
         return null;
       });
+      onGuides(null);
       dragRef.current = null;
       try {
         (e.currentTarget as Element).releasePointerCapture(e.pointerId);
@@ -202,6 +310,13 @@ function OverlayBox({
  * Later overlays render on top (topmost track wins). Tap an overlay to select
  * it, then drag to move or use the corner handle to resize.
  */
+const rectOf = (o: Overlay): OverlayRect => ({
+  x: o.x ?? 0,
+  y: o.y ?? 0,
+  w: o.w ?? 1,
+  h: o.h ?? 1,
+});
+
 export default function OverlayLayer({
   overlays,
   masterTime,
@@ -214,6 +329,7 @@ export default function OverlayLayer({
   const { setOverlayRect } = useStudio();
   const layerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [guides, setGuides] = useState<Guides | null>(null);
 
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0">
@@ -228,12 +344,32 @@ export default function OverlayLayer({
             local={local}
             playing={playing}
             selected={selectedId === o.id}
+            others={overlays
+              .filter((x) => x.id !== o.id && !x.hidden)
+              .map(rectOf)}
             onSelect={() => setSelectedId(o.id)}
             layerRef={layerRef}
             onCommit={(rect) => setOverlayRect(o.id, rect)}
+            onGuides={setGuides}
           />
         );
       })}
+
+      {/* Alignment guides shown live while dragging (Canva-style). */}
+      {guides?.v.map((x, i) => (
+        <span
+          key={`v${i}`}
+          className="pointer-events-none absolute top-0 bottom-0 w-px bg-fuchsia-400"
+          style={{ left: `${x * 100}%` }}
+        />
+      ))}
+      {guides?.h.map((y, i) => (
+        <span
+          key={`h${i}`}
+          className="pointer-events-none absolute right-0 left-0 h-px bg-fuchsia-400"
+          style={{ top: `${y * 100}%` }}
+        />
+      ))}
     </div>
   );
 }
