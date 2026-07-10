@@ -1,6 +1,6 @@
 "use client";
 
-import { BirdMascot } from "../mascot/bird-mascot";
+import { BirdMascot } from "@/components/brand/bird-mascot";
 import { Aurora } from "../aurora/aurora-bg";
 import { GlassyButton } from "@/components/ui/glassy-button";
 import { BRAND } from "../directions";

@@ -1,7 +1,10 @@
 "use client";
 
 import { Section } from "./section";
-import { BirdMascot, type ChirpyExpression } from "../mascot/bird-mascot";
+import {
+  BirdMascot,
+  type ChirpyExpression,
+} from "@/components/brand/bird-mascot";
 
 const SCENARIOS: {
   expression: ChirpyExpression;

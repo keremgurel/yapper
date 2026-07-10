@@ -65,7 +65,9 @@ export default function MediaTab() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          // Columns follow the panel's width rather than being counted out:
+          // two in the narrow classic dock, four or more in the wide cinema one.
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
             {mediaAssets.map((asset) => {
               const count = usageCount(asset.url);
               return (
