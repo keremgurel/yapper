@@ -74,10 +74,23 @@ export function removeClip(clips: Clip[], id: string): Clip[] {
 }
 
 /**
- * Add a previously-cut source range [from, to] back into the timeline, merging
- * with any clips it now touches. Rebuilds a source-ordered clip list — used to
- * "undelete" words/ranges. (Restore happens during transcript cleanup, before
- * any manual reorder, so re-sorting by source is the expected behavior.)
+ * A clip reads the project's recording when it carries no media of its own.
+ * Source-range edits — everything driven by the transcript — are expressed in
+ * the recording's seconds, so they may only ever touch these clips. An appended
+ * clip's start/end count seconds into a different file entirely; comparing them
+ * against the recording's timestamps silently chops unrelated footage.
+ */
+const readsRecording = (clip: Clip): boolean => clip.src == null;
+
+/**
+ * Add a previously-cut source range [from, to] of the recording back into the
+ * timeline, merging with any recording clips it now touches. Used to "undelete"
+ * words/ranges.
+ *
+ * The recording's clips are rebuilt in source order (restore happens during
+ * transcript cleanup, before any manual reorder, so re-sorting them is the
+ * expected behavior). Appended clips keep their place in the sequence: they have
+ * their own timebase, and sorting them by `start` would yank them out of order.
  */
 export function restoreSourceRange(
   clips: Clip[],
@@ -85,24 +98,38 @@ export function restoreSourceRange(
   to: number,
 ): Clip[] {
   if (to <= from) return clips;
-  const all = [...clips, { id: newClipId(), start: from, end: to }].sort(
-    (a, b) => a.start - b.start,
-  );
-  const out: Clip[] = [];
-  for (const c of all) {
-    const last = out[out.length - 1];
-    // Only clips reading the same media can merge. Two clips can share a source
-    // range and still be different footage (an appended asset vs the recording).
-    if (last && c.start <= last.end + EPS && last.src?.url === c.src?.url) {
+
+  const restored = [
+    ...clips.filter(readsRecording),
+    { id: newClipId(), start: from, end: to },
+  ].sort((a, b) => a.start - b.start);
+
+  const merged: Clip[] = [];
+  for (const c of restored) {
+    const last = merged[merged.length - 1];
+    if (last && c.start <= last.end + EPS) {
       last.end = Math.max(last.end, c.end);
     } else {
-      out.push({ ...c });
+      merged.push({ ...c });
     }
   }
+
+  // Splice the rebuilt recording clips back in where the first of them sat, so
+  // the appended clips around them do not move.
+  const firstRecording = clips.findIndex(readsRecording);
+  const out: Clip[] = [];
+  clips.forEach((c, i) => {
+    if (i === firstRecording) out.push(...merged);
+    if (!readsRecording(c)) out.push(c);
+  });
+  if (firstRecording < 0) out.push(...merged);
   return out;
 }
 
-/** Subtract a source range [from, to] from the clip list (may split clips). */
+/**
+ * Subtract a source range [from, to] of the recording from the clip list (may
+ * split clips). Appended clips pass through untouched — see `readsRecording`.
+ */
 export function removeSourceRange(
   clips: Clip[],
   from: number,
@@ -110,6 +137,7 @@ export function removeSourceRange(
 ): Clip[] {
   if (to <= from) return clips;
   return clips.flatMap((c) => {
+    if (!readsRecording(c)) return [c];
     // No overlap.
     if (to <= c.start + EPS || from >= c.end - EPS) return [c];
     const out: Clip[] = [];
