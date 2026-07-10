@@ -6,7 +6,7 @@ import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import type { Filmstrip } from "@/lib/studio/filmstrip";
 import { visibleSpan } from "@/lib/studio/window";
-import type { Overlay } from "@/lib/studio/types";
+import { newGestureId, type Overlay } from "@/lib/studio/types";
 
 const MIN = 0.1; // minimum overlay duration (seconds)
 
@@ -14,6 +14,8 @@ interface TrimState {
   edge: "start" | "end";
   startX: number;
   orig: { start: number; duration: number; sourceStart: number };
+  /** Minted at pointerdown so the whole trim collapses into one undo step. */
+  gesture: string;
 }
 
 /**
@@ -64,6 +66,7 @@ export default function UpperTrackLane({
     start: number,
     duration: number,
     sourceStart: number,
+    gesture: string,
   ) => void;
 }) {
   const o = overlay;
@@ -86,6 +89,7 @@ export default function UpperTrackLane({
           g.start + d,
           g.duration - d,
           isImg ? g.sourceStart : g.sourceStart + d,
+          trim.gesture,
         );
       } else {
         // Right edge: change duration only.
@@ -94,7 +98,7 @@ export default function UpperTrackLane({
         if (Number.isFinite(fullDuration)) {
           d = Math.min(d, fullDuration - (g.sourceStart + g.duration));
         }
-        onTrim(o.id, g.start, g.duration + d, g.sourceStart);
+        onTrim(o.id, g.start, g.duration + d, g.sourceStart, trim.gesture);
       }
     };
     const onUp = () => setTrim(null);
@@ -117,6 +121,7 @@ export default function UpperTrackLane({
         duration: o.duration,
         sourceStart: o.sourceStart,
       },
+      gesture: newGestureId(),
     });
   };
 

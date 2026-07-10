@@ -44,7 +44,6 @@ import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
-import { useBaseTrackFlags } from "@/hooks/use-base-track-flags";
 import { useEditorHistory } from "@/hooks/use-editor-history";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
@@ -129,7 +128,8 @@ interface StudioContextValue {
   autoEditStep: number;
   autoEditCaptions: boolean;
   addAudio: (file: File) => Promise<void>;
-  moveAudio: (id: string, start: number) => void;
+  /** `gesture`: one key per drag, so the whole drag is a single undo step. */
+  moveAudio: (id: string, start: number, gesture?: string) => void;
   toggleAudioMuted: (id: string) => void;
   removeAudio: (id: string) => void;
   mediaAssets: MediaAsset[];
@@ -141,13 +141,14 @@ interface StudioContextValue {
   addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   dropOverlayToBase: (overlayId: string) => void;
-  moveOverlay: (id: string, start: number) => void;
+  moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
   setOverlayRange: (
     id: string,
     start: number,
     duration: number,
     sourceStart: number,
+    gesture?: string,
   ) => void;
   toggleOverlayHidden: (id: string) => void;
   toggleOverlayMuted: (id: string) => void;
@@ -196,21 +197,31 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const {
     clips,
     captions,
+    overlays,
+    audioTracks,
+    baseHidden,
+    baseMuted,
     setClips,
     setCaptions,
+    setOverlays,
+    setAudioTracks,
+    setBaseHidden,
+    setBaseMuted,
+    updateEditor,
     resetEditor,
     undo,
     redo,
     canUndo,
     canRedo,
   } = useEditorHistory();
-  const {
-    hidden: baseHidden,
-    muted: baseMuted,
-    toggleHidden: toggleBaseHidden,
-    toggleMuted: toggleBaseMuted,
-    resetFlags: resetBaseFlags,
-  } = useBaseTrackFlags();
+  const toggleBaseHidden = useCallback(
+    () => setBaseHidden((v) => !v),
+    [setBaseHidden],
+  );
+  const toggleBaseMuted = useCallback(
+    () => setBaseMuted((v) => !v),
+    [setBaseMuted],
+  );
   const { aspectId, aspect, setAspectId } = useProjectAspect(source);
   const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
   // Timeline elements come in three kinds (base clips, upper-track overlays,
@@ -260,9 +271,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [autoEditing, setAutoEditing] = useState(false);
   const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
   const [autoEditCaptions, setAutoEditCaptions] = useState(true); // does the running pass add captions?
-  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
   const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [overlays, setOverlays] = useState<Overlay[]>([]);
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
   );
@@ -673,7 +682,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         },
       ]);
     },
-    [mediaAssets],
+    [mediaAssets, setOverlays],
   );
 
   // Move a base-track clip up onto a new upper video track (full-frame cutaway).
@@ -683,23 +692,28 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (!source) return;
       const clip = clips.find((c) => c.id === clipId);
       if (!clip) return;
-      setOverlays((prev) => [
-        ...prev,
-        {
-          id: newOverlayId(),
-          kind: "video",
-          url: source.url,
-          name: source.name,
-          start: Math.max(0, timelineStart),
-          duration: Math.max(0.1, clip.end - clip.start),
-          sourceStart: clip.start,
-          muted: true,
-        },
-      ]);
-      setClips((prev) => removeClip(prev, clipId));
+      // Leaving the base and joining an upper track is one edit, so it undoes in
+      // one step rather than stranding the clip on neither track.
+      updateEditor((s) => ({
+        ...s,
+        clips: removeClip(s.clips, clipId),
+        overlays: [
+          ...s.overlays,
+          {
+            id: newOverlayId(),
+            kind: "video",
+            url: source.url,
+            name: source.name,
+            start: Math.max(0, timelineStart),
+            duration: Math.max(0.1, clip.end - clip.start),
+            sourceStart: clip.start,
+            muted: true,
+          },
+        ],
+      }));
       setSelectedClipIds((prev) => prev.filter((x) => x !== clipId));
     },
-    [source, clips, setClips],
+    [source, clips, updateEditor],
   );
 
   // Mirror of liftClipToTrack: drag an overlay DOWN onto the base to fold it into
@@ -715,122 +729,175 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       const assetDuration =
         mediaAssets.find((m) => m.url === o.url)?.duration ??
         o.sourceStart + o.duration;
-      setClips((prev) => [
-        ...prev,
-        {
-          id: newClipId(),
-          start: o.sourceStart,
-          end: o.sourceStart + o.duration,
-          src: carriesOwnMedia
-            ? {
-                url: o.url,
-                kind: "video",
-                name: o.name,
-                duration: assetDuration,
-              }
-            : undefined,
-        },
-      ]);
-      setOverlays((prev) => prev.filter((x) => x.id !== overlayId));
+      updateEditor((s) => ({
+        ...s,
+        clips: [
+          ...s.clips,
+          {
+            id: newClipId(),
+            start: o.sourceStart,
+            end: o.sourceStart + o.duration,
+            src: carriesOwnMedia
+              ? {
+                  url: o.url,
+                  kind: "video",
+                  name: o.name,
+                  duration: assetDuration,
+                }
+              : undefined,
+          },
+        ],
+        overlays: s.overlays.filter((x) => x.id !== overlayId),
+      }));
       setSelectedOverlayIds((prev) => prev.filter((x) => x !== overlayId));
     },
-    [overlays, source, mediaAssets, setClips],
+    [overlays, source, mediaAssets, updateEditor],
   );
 
-  const moveOverlay = useCallback((id: string, start: number) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, start: Math.max(0, start) } : o)),
-    );
-  }, []);
+  // `gesture` collapses a whole drag into one undo step: these fire on every
+  // pointermove, and without it a single drag would stack hundreds of steps.
+  const moveOverlay = useCallback(
+    (id: string, start: number, gesture?: string) => {
+      setOverlays(
+        (prev) =>
+          prev.map((o) =>
+            o.id === id ? { ...o, start: Math.max(0, start) } : o,
+          ),
+        gesture,
+      );
+    },
+    [setOverlays],
+  );
 
-  const setOverlayRect = useCallback((id: string, rect: OverlayRect) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
-    );
-  }, []);
+  const setOverlayRect = useCallback(
+    (id: string, rect: OverlayRect) => {
+      setOverlays((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
+      );
+    },
+    [setOverlays],
+  );
 
   // Trim an upper-track clip's timeline range and in-point (edge drag). The
   // lane clamps against the media length; this just stores the result.
   const setOverlayRange = useCallback(
-    (id: string, start: number, duration: number, sourceStart: number) => {
+    (
+      id: string,
+      start: number,
+      duration: number,
+      sourceStart: number,
+      gesture?: string,
+    ) => {
+      setOverlays(
+        (prev) =>
+          prev.map((o) =>
+            o.id === id
+              ? {
+                  ...o,
+                  start: Math.max(0, start),
+                  duration: Math.max(0.1, duration),
+                  sourceStart: Math.max(0, sourceStart),
+                }
+              : o,
+          ),
+        gesture,
+      );
+    },
+    [setOverlays],
+  );
+
+  const toggleOverlayHidden = useCallback(
+    (id: string) => {
+      setOverlays((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, hidden: !o.hidden } : o)),
+      );
+    },
+    [setOverlays],
+  );
+
+  const toggleOverlayMuted = useCallback(
+    (id: string) => {
       setOverlays((prev) =>
         prev.map((o) =>
-          o.id === id
-            ? {
-                ...o,
-                start: Math.max(0, start),
-                duration: Math.max(0.1, duration),
-                sourceStart: Math.max(0, sourceStart),
-              }
-            : o,
+          o.id === id ? { ...o, muted: !(o.muted ?? true) } : o,
         ),
       );
     },
-    [],
+    [setOverlays],
   );
 
-  const toggleOverlayHidden = useCallback((id: string) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, hidden: !o.hidden } : o)),
-    );
-  }, []);
-
-  const toggleOverlayMuted = useCallback((id: string) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, muted: !(o.muted ?? true) } : o)),
-    );
-  }, []);
-
-  const removeOverlay = useCallback((id: string) => {
-    setOverlays((prev) => prev.filter((o) => o.id !== id));
-  }, []);
+  const removeOverlay = useCallback(
+    (id: string) => {
+      setOverlays((prev) => prev.filter((o) => o.id !== id));
+    },
+    [setOverlays],
+  );
 
   // Delete the bottom track, exactly like deleting an upper one: its clips go,
   // everything stacked above or beside it stays where it is and keeps playing.
   // The recording itself survives in the media library, so it can be re-added.
   const removeBaseTrack = useCallback(() => {
-    setClips(() => []);
+    updateEditor((s) => ({
+      ...s,
+      clips: [],
+      baseHidden: false,
+      baseMuted: false,
+    }));
     setSelectedClipIds([]);
-    resetBaseFlags();
-  }, [setClips, resetBaseFlags]);
+  }, [updateEditor]);
 
-  const addAudio = useCallback(async (file: File) => {
-    if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
-      return;
-    }
-    const media = await loadVideoSource(file, file.name);
-    setAudioTracks((prev) => [
-      ...prev,
-      {
-        id: newAudioId(),
-        name: media.name,
-        url: media.url,
-        duration: media.duration,
-        start: 0,
-        muted: false,
-      },
-    ]);
-  }, []);
+  const addAudio = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+        return;
+      }
+      const media = await loadVideoSource(file, file.name);
+      setAudioTracks((prev) => [
+        ...prev,
+        {
+          id: newAudioId(),
+          name: media.name,
+          url: media.url,
+          duration: media.duration,
+          start: 0,
+          muted: false,
+        },
+      ]);
+    },
+    [setAudioTracks],
+  );
 
-  const moveAudio = useCallback((id: string, start: number) => {
-    setAudioTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, start: Math.max(0, start) } : t)),
-    );
-  }, []);
+  const moveAudio = useCallback(
+    (id: string, start: number, gesture?: string) => {
+      setAudioTracks(
+        (prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, start: Math.max(0, start) } : t,
+          ),
+        gesture,
+      );
+    },
+    [setAudioTracks],
+  );
 
-  const toggleAudioMuted = useCallback((id: string) => {
-    setAudioTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, muted: !t.muted } : t)),
-    );
-  }, []);
+  const toggleAudioMuted = useCallback(
+    (id: string) => {
+      setAudioTracks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, muted: !t.muted } : t)),
+      );
+    },
+    [setAudioTracks],
+  );
 
-  const removeAudio = useCallback((id: string) => {
-    setAudioTracks((prev) => {
-      const found = prev.find((t) => t.id === id);
-      if (found) URL.revokeObjectURL(found.url);
-      return prev.filter((t) => t.id !== id);
-    });
-  }, []);
+  // The object URL is deliberately NOT revoked: undo brings this track back, and
+  // a revoked URL would restore a track that can never play. Object URLs are
+  // released when the project is replaced or cleared.
+  const removeAudio = useCallback(
+    (id: string) => {
+      setAudioTracks((prev) => prev.filter((t) => t.id !== id));
+    },
+    [setAudioTracks],
+  );
 
   const resetTranscript = useCallback(() => {
     setWords([]);
@@ -845,18 +912,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (prev) URL.revokeObjectURL(prev.url);
         return next;
       });
-      resetEditor(fullClip(next.duration), []);
+      // One reset clears every layer and its history: clips, captions, overlays,
+      // audio, and the bottom track's flags.
+      resetEditor({ clips: fullClip(next.duration) });
       setSelectedClipIds([]);
+      setSelectedOverlayIds([]);
       resetTranscript();
-      resetBaseFlags();
       // Warm the audio decode now (it's the slow first step and dedupes by URL),
       // so by the time the user hits 1-Click or Transcribe it's already cached.
       if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
-      setAudioTracks((prev) => {
-        prev.forEach((t) => URL.revokeObjectURL(t.url));
-        return [];
-      });
-      setOverlays([]);
       // Register the recording in the media library too, so it's just another
       // asset — re-addable to the main track or as an overlay, exactly like any
       // uploaded clip. The main track isn't a special one-time thing.
@@ -877,7 +941,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             ],
       );
     },
-    [resetEditor, resetTranscript, resetBaseFlags],
+    [resetEditor, resetTranscript],
   );
 
   // Removing a library asset removes every placement of it, at any level of the
@@ -887,23 +951,46 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       const asset = mediaAssets.find((m) => m.id === id);
       if (!asset) return;
       const { url } = asset;
-      setClips((prev) =>
-        prev.filter((c) => (c.src?.url ?? source?.url) !== url),
-      );
-      setOverlays((prev) => prev.filter((o) => o.url !== url));
+      const isRecording = source?.url === url;
+      const dropsClip = (c: Clip) => (c.src?.url ?? source?.url) === url;
+
       setMediaAssets((prev) => prev.filter((m) => m.id !== id));
       setSelectedClipIds([]);
       setSelectedOverlayIds([]);
-      // Dropping the recording the transcript was made from takes the transcript
-      // and captions with it — both are anchored in that media's own seconds.
-      if (source?.url === url) {
+
+      if (isRecording) {
+        // Dropping the recording takes the transcript and captions with it, both
+        // being anchored in its seconds. Undo can't resurrect the source itself,
+        // so this clears history rather than leaving a stack that restores clips
+        // pointing at media the project no longer has.
         setSource(null);
         resetTranscript();
-        resetBaseFlags();
+        resetEditor({
+          clips: clips.filter((c) => !dropsClip(c)),
+          overlays: overlays.filter((o) => o.url !== url),
+          audioTracks,
+        });
+        return;
       }
-      URL.revokeObjectURL(url);
+      // Every placement of the asset goes at once, as a single undo step.
+      updateEditor((s) => ({
+        ...s,
+        clips: s.clips.filter((c) => !dropsClip(c)),
+        overlays: s.overlays.filter((o) => o.url !== url),
+      }));
+      // The object URL outlives the library entry on purpose: undo brings those
+      // clips back, and a revoked URL would restore footage that cannot play.
     },
-    [mediaAssets, source, setClips, resetTranscript, resetBaseFlags],
+    [
+      mediaAssets,
+      source,
+      clips,
+      overlays,
+      audioTracks,
+      updateEditor,
+      resetEditor,
+      resetTranscript,
+    ],
   );
 
   // Add a library asset to the timeline: the first video becomes the base
@@ -992,15 +1079,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (prev) URL.revokeObjectURL(prev.url);
       return null;
     });
-    resetEditor([], []);
+    // Empties every layer and drops the undo stack along with them.
+    resetEditor({});
     setSelectedClipIds([]);
+    setSelectedOverlayIds([]);
     resetTranscript();
-    resetBaseFlags();
-    setAudioTracks((prev) => {
-      prev.forEach((t) => URL.revokeObjectURL(t.url));
-      return [];
-    });
-  }, [resetEditor, resetTranscript, resetBaseFlags]);
+  }, [resetEditor, resetTranscript]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit),
   // or load a Content Library item's saved recording via ?item=<id>.
@@ -1040,28 +1124,31 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   // Cut an upper-track clip in two at the playhead. The right half keeps playing
   // from where the left half stopped; a still image has no in-point to advance.
-  const splitOverlays = useCallback((ids: string[], timelineTime: number) => {
-    const targets = new Set(ids);
-    setOverlays((prev) =>
-      prev.flatMap((o) => {
-        if (!targets.has(o.id)) return [o];
-        const local = timelineTime - o.start;
-        if (local <= 0.05 || local >= o.duration - 0.05) return [o];
-        return [
-          { ...o, id: newOverlayId(), duration: local },
-          {
-            ...o,
-            id: newOverlayId(),
-            start: timelineTime,
-            duration: o.duration - local,
-            sourceStart:
-              o.kind === "image" ? o.sourceStart : o.sourceStart + local,
-          },
-        ];
-      }),
-    );
-    setSelectedOverlayIds([]);
-  }, []);
+  const splitOverlays = useCallback(
+    (ids: string[], timelineTime: number) => {
+      const targets = new Set(ids);
+      setOverlays((prev) =>
+        prev.flatMap((o) => {
+          if (!targets.has(o.id)) return [o];
+          const local = timelineTime - o.start;
+          if (local <= 0.05 || local >= o.duration - 0.05) return [o];
+          return [
+            { ...o, id: newOverlayId(), duration: local },
+            {
+              ...o,
+              id: newOverlayId(),
+              start: timelineTime,
+              duration: o.duration - local,
+              sourceStart:
+                o.kind === "image" ? o.sourceStart : o.sourceStart + local,
+            },
+          ];
+        }),
+      );
+      setSelectedOverlayIds([]);
+    },
+    [setOverlays],
+  );
 
   /**
    * Split whatever is selected at the playhead. Every timeline element splits —
@@ -1091,30 +1178,27 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   // Delete whatever is selected, across all three kinds at once: base clips,
   // upper-track overlays, and captions. Emptying the bottom track is allowed —
-  // the clock comes from the longest layer, not from the base.
+  // the clock comes from the longest layer, not from the base. One delete is one
+  // undo step even when it spans every layer.
   const deleteSelected = useCallback(() => {
-    if (selectedClipIds.length) {
-      const drop = new Set(selectedClipIds);
-      setClips((prev) => prev.filter((c) => !drop.has(c.id)));
-    }
-    if (selectedOverlayIds.length) {
-      const drop = new Set(selectedOverlayIds);
-      setOverlays((prev) => prev.filter((o) => !drop.has(o.id)));
-    }
-    if (selectedCaptionIds.length) {
-      const drop = new Set(selectedCaptionIds);
-      setCaptions((prev) => prev.filter((c) => !drop.has(c.id)));
-    }
+    const clipIds = new Set(selectedClipIds);
+    const overlayIds = new Set(selectedOverlayIds);
+    const captionIds = new Set(selectedCaptionIds);
+    if (!clipIds.size && !overlayIds.size && !captionIds.size) return;
+    updateEditor((s) => ({
+      ...s,
+      clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
+      overlays: overlayIds.size
+        ? s.overlays.filter((o) => !overlayIds.has(o.id))
+        : s.overlays,
+      captions: captionIds.size
+        ? s.captions.filter((c) => !captionIds.has(c.id))
+        : s.captions,
+    }));
     setSelectedClipIds([]);
     setSelectedOverlayIds([]);
     setSelectedCaptionIds([]);
-  }, [
-    setClips,
-    setCaptions,
-    selectedClipIds,
-    selectedOverlayIds,
-    selectedCaptionIds,
-  ]);
+  }, [updateEditor, selectedClipIds, selectedOverlayIds, selectedCaptionIds]);
 
   const trimStart = useCallback(
     (sourceTime: number) => {
@@ -1466,10 +1550,27 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [words, setClips],
   );
 
+  // Reset the bottom track's cuts. The layers stacked on it, and the captions,
+  // are the user's work and survive.
   const reset = useCallback(() => {
-    resetEditor(source ? fullClip(source.duration) : [], captions);
+    resetEditor({
+      clips: source ? fullClip(source.duration) : [],
+      captions,
+      overlays,
+      audioTracks,
+      baseHidden,
+      baseMuted,
+    });
     setSelectedClipIds([]);
-  }, [resetEditor, source, captions]);
+  }, [
+    resetEditor,
+    source,
+    captions,
+    overlays,
+    audioTracks,
+    baseHidden,
+    baseMuted,
+  ]);
 
   const duration = useMemo(
     () => projectDuration(clips, overlays, audioTracks),

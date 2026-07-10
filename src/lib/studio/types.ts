@@ -93,6 +93,18 @@ export interface AudioTrack {
   muted: boolean;
 }
 
+/**
+ * A token identifying one continuous gesture (a drag, a trim). Passed to the
+ * undoable setters so every event in the gesture collapses into a single undo
+ * step, while two separate gestures stay separately undoable.
+ */
+export function newGestureId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `gesture-${crypto.randomUUID()}`;
+  }
+  return `gesture-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
 export function newAudioId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `aud-${crypto.randomUUID()}`;

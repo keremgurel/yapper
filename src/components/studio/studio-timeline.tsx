@@ -24,7 +24,7 @@ import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
-import type { Clip, StudioSource } from "@/lib/studio/types";
+import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
@@ -129,16 +129,20 @@ export default function StudioTimeline({
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
+  // `gesture` is minted at pointerdown and passed to the undoable setter on
+  // every move, so one drag is one undo step.
   const [audioDrag, setAudioDrag] = useState<{
     id: string;
     startX: number;
     origStart: number;
+    gesture: string;
   } | null>(null);
   const [overlayDrag, setOverlayDrag] = useState<{
     id: string;
     startX: number;
     startY: number;
     origStart: number;
+    gesture: string;
   } | null>(null);
   // Vertical drag distance for an overlay (px, positive = down). Past
   // LIFT_THRESHOLD the overlay folds down into the base sequence.
@@ -330,7 +334,11 @@ export default function StudioTimeline({
     const dur = audioTracks.find((t) => t.id === audioDrag.id)?.duration ?? 0;
     const onMove = (e: PointerEvent) => {
       const delta = (e.clientX - audioDrag.startX) / pxPerSec;
-      moveAudio(audioDrag.id, snapStart(audioDrag.origStart + delta, dur));
+      moveAudio(
+        audioDrag.id,
+        snapStart(audioDrag.origStart + delta, dur),
+        audioDrag.gesture,
+      );
     };
     const onUp = () => setAudioDrag(null);
     window.addEventListener("pointermove", onMove);
@@ -351,6 +359,7 @@ export default function StudioTimeline({
       moveOverlay(
         overlayDrag.id,
         snapStart(overlayDrag.origStart + delta, dur),
+        overlayDrag.gesture,
       );
       liftY = e.clientY - overlayDrag.startY;
       setOverlayLiftY(liftY);
@@ -748,6 +757,7 @@ export default function StudioTimeline({
                       startX: clientX,
                       startY: clientY,
                       origStart,
+                      gesture: newGestureId(),
                     })
                   }
                   onTrim={setOverlayRange}
@@ -1001,6 +1011,7 @@ export default function StudioTimeline({
                           id: a.id,
                           startX: e.clientX,
                           origStart: a.start,
+                          gesture: newGestureId(),
                         });
                       }}
                       className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 ring-1 ring-emerald-500/35 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
