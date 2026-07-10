@@ -191,6 +191,34 @@ describe("sourceToTimeline", () => {
     const clips = [rec("a", 0, 3), rec("c", 6, 10)];
     expect(sourceToTimeline(clips, 4)).toBe(3);
   });
+
+  it("follows reordered recording clips", () => {
+    // The recording's second half was dragged in front of its first half, so
+    // source second 1 now plays at timeline 6.
+    const clips = [rec("b", 5, 10), rec("a", 0, 5)];
+    expect(sourceToTimeline(clips, 1)).toBe(6);
+    expect(sourceToTimeline(clips, 6)).toBe(1);
+  });
+
+  it("maps a cut second to the nearest cut point under reordering", () => {
+    // tl 0..2 = rec 8..10, tl 2..5 = rec 0..3. Source 4 was cut; it sits just
+    // after the clip that ends at 3, which finishes at timeline 5.
+    const clips = [rec("b", 8, 10), rec("a", 0, 3)];
+    expect(sourceToTimeline(clips, 4)).toBe(5);
+    // Source 7 was cut too, and is nearest the clip starting at 8, at timeline 0.
+    expect(sourceToTimeline(clips, 7)).toBe(0);
+  });
+
+  it("returns 0 when no recording clip is left to anchor against", () => {
+    expect(sourceToTimeline([appended("b", 0, 4)], 2)).toBe(0);
+  });
+
+  it("resolves a second two clips share to the first of them, as clipIndexAtSource does", () => {
+    // rec 1.0 is both the out-point of one clip and the in-point of the next.
+    const clips = [rec("a", 0, 1), appended("b", 0, 4), rec("c", 1, 2)];
+    expect(clipIndexAtSource(clips, 1)).toBe(0);
+    expect(sourceToTimeline(clips, 1)).toBe(1);
+  });
 });
 
 describe("timelineToSource", () => {

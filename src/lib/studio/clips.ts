@@ -191,22 +191,33 @@ export function clipIndexAtSource(clips: Clip[], t: number): number {
  * Edited-timeline position (seconds) of a given second of the recording.
  * Appended clips hold no recording seconds, but they do occupy the timeline, so
  * they contribute their duration and nothing else.
+ *
+ * The recording's clips are searched in timeline order, never assumed to run in
+ * source order: dragging a clip earlier reorders the array, and a caption
+ * anchored in the moved clip has to follow it. A second that was cut belongs to
+ * no clip, so it collapses onto the cut point of whichever recording clip it
+ * sits closest to in source seconds.
  */
 export function sourceToTimeline(clips: Clip[], sourceTime: number): number {
   let acc = 0;
+  let nearest: { gap: number; timeline: number } | null = null;
   for (const c of clips) {
     const d = clipDuration(c);
-    if (!readsRecording(c)) {
-      acc += d;
-    } else if (sourceTime >= c.end) {
-      acc += d;
-    } else if (sourceTime >= c.start) {
-      return acc + (sourceTime - c.start);
-    } else {
-      return acc; // the second was cut; it maps to this clip's cut point
+    if (readsRecording(c)) {
+      if (sourceTime >= c.start && sourceTime <= c.end) {
+        return acc + (sourceTime - c.start);
+      }
+      const before = sourceTime < c.start;
+      const gap = before ? c.start - sourceTime : sourceTime - c.end;
+      // Cut seconds land on the near edge of the clip: the moment just before
+      // this clip if they precede it, the moment just after if they follow it.
+      if (nearest === null || gap < nearest.gap) {
+        nearest = { gap, timeline: before ? acc : acc + d };
+      }
     }
+    acc += d;
   }
-  return acc;
+  return nearest?.timeline ?? 0;
 }
 
 /**
