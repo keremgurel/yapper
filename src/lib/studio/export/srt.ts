@@ -1,4 +1,4 @@
-import { clipIndexAtSource, sourceToTimeline } from "@/lib/studio/clips";
+import { captionTimelineRange } from "@/lib/studio/captions";
 import type { Caption, CaptionCase, Clip } from "@/lib/studio/types";
 
 function pad(n: number, width = 2): string {
@@ -22,9 +22,13 @@ function applyCase(text: string, mode: CaptionCase | undefined): string {
 
 /**
  * Build an .srt subtitle file from the captions, with timings in EDITED-timeline
- * time (the export is the cut video, not the source). Captions that fall in a
- * removed region are skipped, and each caption's own case override wins over the
- * global one — so the file matches what plays in the exported video.
+ * time (the export is the cut video, not the source), and each caption's own
+ * case override winning over the global one.
+ *
+ * A caption survives exactly when it still occupies time on the edited timeline,
+ * which is the same test `captionAt` uses to decide what to burn into the video.
+ * The two have to agree, or the sidecar file contradicts the picture: a caption
+ * cut down to its last word still gets spoken, so it still gets a cue.
  */
 export function captionsToSrt(
   captions: Caption[],
@@ -32,12 +36,8 @@ export function captionsToSrt(
   globalCase?: CaptionCase,
 ): string {
   const cues = captions
-    .filter(
-      (c) => clipIndexAtSource(clips, (c.sourceStart + c.sourceEnd) / 2) !== -1,
-    )
     .map((c) => ({
-      start: sourceToTimeline(clips, c.sourceStart),
-      end: sourceToTimeline(clips, c.sourceEnd),
+      ...captionTimelineRange(clips, c),
       text: applyCase(c.text.trim(), c.textCase ?? globalCase),
     }))
     .filter((c) => c.end > c.start && c.text.length > 0)

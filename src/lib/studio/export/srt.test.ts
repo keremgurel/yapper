@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_CAPTION_STYLE } from "@/lib/studio/captions";
+import { captionAt } from "@/lib/studio/export/frame-plan";
 import { captionsToSrt } from "@/lib/studio/export/srt";
 import type { Caption, Clip } from "@/lib/studio/types";
 
@@ -60,6 +62,24 @@ describe("captionsToSrt", () => {
     );
     expect(srt).not.toContain("gone");
     expect(srt).toContain("1\n00:00:01,000 --> 00:00:02,000\nkept\n");
+  });
+
+  it("keeps a caption whose tail survives the cut, as the burned-in frames do", () => {
+    // Source 4..7 with 3..6 cut away: the caption's last second is still spoken,
+    // so it plays in the exported video and belongs in the sidecar file too. Its
+    // midpoint happens to land in the removed region, which must not decide this.
+    const clips = [rec("a", 0, 3), rec("b", 6, 10)];
+    const c = caption(4, 7, "partly cut");
+    const srt = captionsToSrt([c], clips);
+    expect(srt).toContain("partly cut");
+
+    // The cue's timing matches the frames the exporter actually burns in: the
+    // caption is on screen from tl 3 to tl 4.
+    expect(srt).toContain("00:00:03,000 --> 00:00:04,000\npartly cut");
+    expect(captionAt(clips, [c], DEFAULT_CAPTION_STYLE, 3)?.text).toBe(
+      "partly cut",
+    );
+    expect(captionAt(clips, [c], DEFAULT_CAPTION_STYLE, 4)).toBeNull();
   });
 
   it("skips a caption that only an appended clip's timebase would keep", () => {
