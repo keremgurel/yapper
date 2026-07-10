@@ -49,6 +49,7 @@ import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
+import { fitBox, mediaAspect } from "@/lib/studio/overlay-box";
 import {
   clampStartToTrack,
   compactTracks,
@@ -608,14 +609,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             track: firstFreeTrack(prev, span),
             sourceStart: 0,
             muted: true,
+            // Its own shape, centred: an overlay that arrives cropped to the
+            // project's frame is an overlay nobody asked for.
+            ...fitBox(mediaAspect(asset), aspect),
           },
         ];
       });
     },
-    [mediaAssets, setOverlays],
+    [mediaAssets, aspect, setOverlays],
   );
 
   // Move a base-track clip up onto a new upper video track (full-frame cutaway).
+  // It keeps the whole frame rather than being fitted to its own aspect: it was
+  // filling the stage a moment ago, and lifting a clip is not a resize.
   // Lifting the last one is fine — an empty bottom track is a valid project.
   const liftClipToTrack = useCallback(
     (clipId: string, timelineStart: number) => {
