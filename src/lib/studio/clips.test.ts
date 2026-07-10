@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  clipIndexAtSource,
   removeSourceRange,
   restoreSourceRange,
+  sourceToTimeline,
+  sourceToTimelineSeq,
   splitClipAt,
   timelineToClip,
+  timelineToSource,
   totalDuration,
   trimBounds,
 } from "@/lib/studio/clips";
@@ -151,5 +155,88 @@ describe("timelineToClip", () => {
 describe("totalDuration", () => {
   it("sums clip lengths regardless of which media they read", () => {
     expect(totalDuration([rec("a", 0, 4), appended("b", 2, 5)])).toBe(7);
+  });
+});
+
+// The recording is split around an appended clip: the bottom track plays
+// rec 0..3, then 4s of other footage, then rec 3..10. So the edited timeline is
+//   tl 0..3  = recording 0..3
+//   tl 3..7  = the appended clip (no recording second exists here)
+//   tl 7..14 = recording 3..10
+const splitAroundAppended = (): Clip[] => [
+  rec("a", 0, 3),
+  appended("b", 0, 4),
+  rec("c", 3, 10),
+];
+
+describe("sourceToTimeline", () => {
+  it("maps a recording second before the appended clip", () => {
+    expect(sourceToTimeline(splitAroundAppended(), 2)).toBe(2);
+  });
+
+  it("skips over an appended clip's own timebase", () => {
+    // Recording second 3.5 plays at tl 7.5, after the 4s appended clip. Reading
+    // 3.5 as an offset into the appended clip's 0..4 range would say 6.5.
+    expect(sourceToTimeline(splitAroundAppended(), 3.5)).toBe(7.5);
+  });
+
+  it("does not stop early at an appended clip that starts late", () => {
+    // A trimmed appended clip (its media's seconds 5..9) must not swallow the
+    // lookup just because the recording second is below its `start`.
+    const clips = [rec("a", 0, 4), appended("b", 5, 9), rec("c", 4, 10)];
+    expect(sourceToTimeline(clips, 4.5)).toBe(8.5);
+  });
+
+  it("maps a cut recording second to the cut point", () => {
+    const clips = [rec("a", 0, 3), rec("c", 6, 10)];
+    expect(sourceToTimeline(clips, 4)).toBe(3);
+  });
+});
+
+describe("timelineToSource", () => {
+  it("maps a position over the recording to its own second", () => {
+    expect(timelineToSource(splitAroundAppended(), 8)).toBe(4);
+  });
+
+  it("clamps a position over an appended clip to the nearest recording second", () => {
+    // tl 5 sits inside the appended clip. There is no recording second there,
+    // so a caption dropped here anchors at the last recording moment: 3.
+    expect(timelineToSource(splitAroundAppended(), 5)).toBe(3);
+  });
+
+  it("clamps to the first recording clip when the appended clip leads", () => {
+    const clips = [appended("b", 0, 4), rec("a", 2, 10)];
+    expect(timelineToSource(clips, 1)).toBe(2);
+  });
+
+  it("returns 0 for an empty bottom track", () => {
+    expect(timelineToSource([], 3)).toBe(0);
+  });
+});
+
+describe("clipIndexAtSource", () => {
+  it("finds the recording clip holding a source second", () => {
+    expect(clipIndexAtSource(splitAroundAppended(), 3.5)).toBe(2);
+  });
+
+  it("reports cut speech as cut, even when an appended clip spans that number", () => {
+    // Recording second 3.5 was cut. The appended clip's 0..4 range must not be
+    // mistaken for it, or the caption generator emits captions for cut words.
+    const clips = [rec("a", 0, 3), appended("b", 0, 4)];
+    expect(clipIndexAtSource(clips, 3.5)).toBe(-1);
+  });
+});
+
+describe("sourceToTimelineSeq", () => {
+  it("jumps to the recording clip holding the word, not an appended clip", () => {
+    expect(sourceToTimelineSeq(splitAroundAppended(), 3.5)).toEqual({
+      index: 2,
+      timeline: 7.5,
+    });
+  });
+
+  it("returns null when the source second is not on the timeline", () => {
+    const clips = [rec("a", 0, 3), appended("b", 0, 8)];
+    expect(sourceToTimelineSeq(clips, 5)).toBeNull();
   });
 });

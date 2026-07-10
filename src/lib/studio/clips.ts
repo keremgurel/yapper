@@ -175,52 +175,62 @@ export function trimClipEnd(
   );
 }
 
+/**
+ * Index of the recording clip that keeps source second `t`, or -1 when that
+ * second was cut. Appended clips are skipped: their `start`/`end` count seconds
+ * into their own file, so a word at recording second 3.5 must not be reported as
+ * kept merely because some appended clip happens to span 0..4 of its own media.
+ */
 export function clipIndexAtSource(clips: Clip[], t: number): number {
-  return clips.findIndex((c) => t >= c.start - EPS && t <= c.end + EPS);
+  return clips.findIndex(
+    (c) => readsRecording(c) && t >= c.start - EPS && t <= c.end + EPS,
+  );
 }
 
-/** Edited-timeline position (seconds) for a given source time. */
+/**
+ * Edited-timeline position (seconds) of a given second of the recording.
+ * Appended clips hold no recording seconds, but they do occupy the timeline, so
+ * they contribute their duration and nothing else.
+ */
 export function sourceToTimeline(clips: Clip[], sourceTime: number): number {
   let acc = 0;
   for (const c of clips) {
-    if (sourceTime >= c.end) {
-      acc += clipDuration(c);
+    const d = clipDuration(c);
+    if (!readsRecording(c)) {
+      acc += d;
+    } else if (sourceTime >= c.end) {
+      acc += d;
     } else if (sourceTime >= c.start) {
       return acc + (sourceTime - c.start);
     } else {
-      return acc;
+      return acc; // the second was cut; it maps to this clip's cut point
     }
   }
   return acc;
 }
 
-/** Source time for a given edited-timeline position (seconds). */
+/**
+ * The recording second playing at a given edited-timeline position. Over an
+ * appended clip there is no such second, so the position clamps to the nearest
+ * recording moment. Callers anchored in the recording (captions) then land
+ * somewhere real instead of on an unrelated file's timestamp.
+ */
 export function timelineToSource(clips: Clip[], timelineTime: number): number {
   let acc = 0;
-  for (const c of clips) {
+  let lastRecordingEnd: number | null = null;
+  for (let i = 0; i < clips.length; i++) {
+    const c = clips[i];
     const d = clipDuration(c);
-    if (timelineTime <= acc + d) return c.start + (timelineTime - acc);
+    if (timelineTime <= acc + d) {
+      if (readsRecording(c)) return c.start + (timelineTime - acc);
+      if (lastRecordingEnd != null) return lastRecordingEnd;
+      const next = clips.slice(i).find(readsRecording);
+      return next ? next.start : 0;
+    }
     acc += d;
+    if (readsRecording(c)) lastRecordingEnd = c.end;
   }
-  return clips.length ? clips[clips.length - 1].end : 0;
-}
-
-/**
- * Given the current source time during playback, decide what to do:
- * - a number: seek the video to it (we're in a removed gap or before the start)
- * - "end": playback reached the end of the edited timeline
- * - null: we're inside a kept clip, keep playing
- */
-export function resolvePlayback(
-  clips: Clip[],
-  t: number,
-): number | "end" | null {
-  if (clips.length === 0) return "end";
-  for (const c of clips) {
-    if (t < c.start - EPS) return c.start;
-    if (t <= c.end - EPS) return null;
-  }
-  return "end";
+  return lastRecordingEnd ?? 0;
 }
 
 /** Cumulative edited-timeline start (seconds) of the clip at `index`. */
@@ -259,8 +269,9 @@ export function timelineToClip(clips: Clip[], t: number): TimelineHit | null {
 }
 
 /**
- * Edited-timeline position of the first clip (array order) whose source range
- * contains `sourceTime`. Used to jump the timeline to a clicked transcript word.
+ * Edited-timeline position of the first recording clip (array order) that keeps
+ * `sourceTime`. Used to jump the timeline to a clicked transcript word. Null
+ * when that second is not on the timeline at all.
  */
 export function sourceToTimelineSeq(
   clips: Clip[],
@@ -269,7 +280,11 @@ export function sourceToTimelineSeq(
   let acc = 0;
   for (let i = 0; i < clips.length; i++) {
     const c = clips[i];
-    if (sourceTime >= c.start - EPS && sourceTime <= c.end + EPS) {
+    if (
+      readsRecording(c) &&
+      sourceTime >= c.start - EPS &&
+      sourceTime <= c.end + EPS
+    ) {
       return { index: i, timeline: acc + Math.max(0, sourceTime - c.start) };
     }
     acc += clipDuration(c);
