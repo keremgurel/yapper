@@ -111,6 +111,7 @@ interface StudioContextValue {
   selectedOverlayIds: string[];
   selectOverlay: (id: string | null) => void;
   toggleOverlaySelection: (id: string) => void;
+  selectOverlays: (ids: string[]) => void;
   /** Split the selected element (or the clip under the playhead) at `timelineTime`. */
   splitSelected: (timelineTime: number) => void;
   deleteSelected: () => void;
@@ -1418,6 +1419,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedOverlayIds: selectedOverlayIds,
       selectOverlay: sel.selectOverlay,
       toggleOverlaySelection: sel.toggleOverlay,
+      selectOverlays: sel.replaceOverlays,
       splitSelected,
       deleteSelected,
       trimStart,

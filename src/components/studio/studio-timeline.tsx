@@ -22,6 +22,7 @@ import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import UpperTrackLane from "@/components/studio/upper-track-lane";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
+import { spansOverlap } from "@/lib/studio/marquee";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
@@ -100,6 +101,7 @@ export default function StudioTimeline({
     selectedOverlayIds,
     selectOverlay,
     toggleOverlaySelection,
+    selectOverlays,
     captions,
     captionStyle,
     selectedCaptionIds,
@@ -113,6 +115,9 @@ export default function StudioTimeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
+  // One row node per overlay, so the marquee can tell which upper tracks its
+  // box actually reaches down to.
+  const overlayRowsRef = useRef(new Map<string, HTMLDivElement | null>());
   const [pxPerSec, setPxPerSec] = useState(80);
   // Two distinct scales, and conflating them is what makes zoom drift: `target`
   // accumulates across the pinch events of a frame, while `rendered` is the
@@ -650,41 +655,47 @@ export default function StudioTimeline({
                     height: Math.abs(cy - sy),
                   });
                   const xHit = (l: number, r: number) =>
-                    r >= left && l <= left + width;
-                  // Which track rows the box vertically covers (client coords).
+                    spansOverlap(l, r, left, left + width);
+                  // A span of timeline seconds, in the same px as the box.
+                  const secHit = (from: number, to: number) =>
+                    xHit(padLeft + from * pxPerSec, padLeft + to * pxPerSec);
+                  // Which track rows the box vertically reaches (client coords).
                   const yTop = Math.min(startClientY, ev.clientY);
                   const yBot = Math.max(startClientY, ev.clientY);
-                  const overlaps = (node: HTMLElement | null) => {
+                  const rowHit = (node: HTMLElement | null) => {
                     if (!node) return false;
                     const r = node.getBoundingClientRect();
-                    return yBot >= r.top && yTop <= r.bottom;
+                    return spansOverlap(r.top, r.bottom, yTop, yBot);
                   };
-                  // Base clips (only when the box covers the base track).
+
+                  // The box owns the whole selection: every kind it catches is
+                  // selected, and every kind it misses is deselected. Leaving a
+                  // kind untouched would let a stale selection from before the
+                  // drag be swept up by the next Delete.
                   selectClips(
-                    overlaps(baseRowRef.current)
+                    rowHit(baseRowRef.current)
                       ? clips
-                          .filter((_, i) =>
-                            xHit(
-                              padLeft + offsets[i] * pxPerSec,
-                              padLeft +
-                                (offsets[i] + (clips[i].end - clips[i].start)) *
-                                  pxPerSec,
-                            ),
+                          .filter((c, i) =>
+                            secHit(offsets[i], offsets[i] + clipDuration(c)),
                           )
                           .map((c) => c.id)
                       : [],
                   );
-                  // Captions (only when the box covers the caption row).
+                  selectOverlays(
+                    overlays
+                      .filter(
+                        (o) =>
+                          rowHit(overlayRowsRef.current.get(o.id) ?? null) &&
+                          secHit(o.start, o.start + o.duration),
+                      )
+                      .map((o) => o.id),
+                  );
                   selectCaptions(
-                    overlaps(captionRowRef.current)
+                    rowHit(captionRowRef.current)
                       ? captions
                           .filter((c) => {
                             const r = captionTimelineRange(clips, c);
-                            if (r.end <= r.start) return false;
-                            return xHit(
-                              padLeft + r.start * pxPerSec,
-                              padLeft + r.end * pxPerSec,
-                            );
+                            return r.end > r.start && secHit(r.start, r.end);
                           })
                           .map((c) => c.id)
                       : [],
@@ -729,39 +740,49 @@ export default function StudioTimeline({
               {/* Upper video tracks — stacked above the base, topmost composites
                 on top (last in the overlays array renders highest). */}
               {[...overlays].reverse().map((o) => (
-                <UpperTrackLane
+                <div
                   key={o.id}
-                  overlay={o}
-                  pxPerSec={pxPerSec}
-                  visStartSec={visStartSec}
-                  visEndSec={visEndSec}
-                  strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
-                  peaks={waves.get(o.url) ?? []}
-                  mediaDuration={mediaDurationOf(o.url)}
-                  fullDuration={
-                    o.kind === "image" ? Infinity : mediaDurationOf(o.url)
-                  }
-                  selected={selectedOverlayIds.includes(o.id)}
-                  onSelect={(additive) =>
-                    additive
-                      ? toggleOverlaySelection(o.id)
-                      : selectOverlay(o.id)
-                  }
-                  liftY={overlayDrag?.id === o.id ? overlayLiftY : 0}
-                  droppingToBase={
-                    overlayDrag?.id === o.id && overlayLiftY > LIFT_THRESHOLD
-                  }
-                  onDragStart={(id, clientX, clientY, origStart) =>
-                    setOverlayDrag({
-                      id,
-                      startX: clientX,
-                      startY: clientY,
-                      origStart,
-                      gesture: newGestureId(),
-                    })
-                  }
-                  onTrim={setOverlayRange}
-                />
+                  ref={(node) => {
+                    const rows = overlayRowsRef.current;
+                    rows.set(o.id, node);
+                    return () => {
+                      rows.delete(o.id);
+                    };
+                  }}
+                >
+                  <UpperTrackLane
+                    overlay={o}
+                    pxPerSec={pxPerSec}
+                    visStartSec={visStartSec}
+                    visEndSec={visEndSec}
+                    strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
+                    peaks={waves.get(o.url) ?? []}
+                    mediaDuration={mediaDurationOf(o.url)}
+                    fullDuration={
+                      o.kind === "image" ? Infinity : mediaDurationOf(o.url)
+                    }
+                    selected={selectedOverlayIds.includes(o.id)}
+                    onSelect={(additive) =>
+                      additive
+                        ? toggleOverlaySelection(o.id)
+                        : selectOverlay(o.id)
+                    }
+                    liftY={overlayDrag?.id === o.id ? overlayLiftY : 0}
+                    droppingToBase={
+                      overlayDrag?.id === o.id && overlayLiftY > LIFT_THRESHOLD
+                    }
+                    onDragStart={(id, clientX, clientY, origStart) =>
+                      setOverlayDrag({
+                        id,
+                        startX: clientX,
+                        startY: clientY,
+                        origStart,
+                        gesture: newGestureId(),
+                      })
+                    }
+                    onTrim={setOverlayRange}
+                  />
+                </div>
               ))}
 
               {/* Bottom video layer */}
