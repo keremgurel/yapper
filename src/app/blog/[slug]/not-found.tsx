@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function BlogNotFound() {
   return (
-    <main className="bg-background flex min-h-screen items-center justify-center px-6">
+    <main className="bg-background flex flex-1 items-center justify-center px-6">
       <div className="border-border max-w-lg rounded-[2rem] border bg-white p-10 text-center shadow-[0_25px_70px_rgba(17,24,39,0.08)] dark:bg-zinc-900">
         <p className="text-foreground/40 text-xs tracking-[0.28em] uppercase">
           404

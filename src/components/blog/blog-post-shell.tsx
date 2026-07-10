@@ -40,7 +40,7 @@ export async function BlogPostShell({
   });
 
   return (
-    <div className="pt-28 pb-24">
+    <div className="pt-12 pb-24">
       <div className="mx-auto max-w-6xl px-6">
         {/* Back nav */}
         <Link
