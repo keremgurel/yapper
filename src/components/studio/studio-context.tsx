@@ -19,7 +19,7 @@ import {
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
-import { analyzeForTrim, speechBoundsInRange } from "@/lib/studio/silence";
+import { analyzeForTrim } from "@/lib/studio/silence";
 import {
   combineRetakeCuts,
   findEarlierTakeRanges,
@@ -33,6 +33,7 @@ import {
   type CaptionCase,
   type CaptionStyle,
 } from "@/lib/studio/captions";
+import { trimClipsToSpeech as trimToSpeech } from "@/lib/studio/auto-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
@@ -1165,15 +1166,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setDetecting(true);
     try {
       const analysis = analyzeForTrim(await decodeToMono16k(source.url));
-      const next = clips.map((c) => {
-        const b = speechBoundsInRange(analysis, c.start, c.end);
-        if (!b) return c; // no speech in this clip -> leave it
-        const start = Math.max(c.start, b.start - 0.05);
-        const end = Math.min(c.end, b.end + 0.08);
-        return end - start < 0.1 || (start === c.start && end === c.end)
-          ? c
-          : { ...c, start, end };
-      });
+      const next = trimToSpeech(clips, analysis);
       const changed = next.reduce((n, c, i) => (c !== clips[i] ? n + 1 : n), 0);
       if (changed > 0) setClips(() => next);
       return changed;
@@ -1347,14 +1340,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         // slivers the cuts leave behind so playback is clean, not stuttery.
         setAutoEditStep(4);
         try {
-          const analysis = await analysisPromise;
-          next = next.map((c) => {
-            const b = speechBoundsInRange(analysis, c.start, c.end);
-            if (!b) return c;
-            const start = Math.max(c.start, b.start - 0.05);
-            const end = Math.min(c.end, b.end + 0.08);
-            return end - start < 0.1 ? c : { ...c, start, end };
-          });
+          next = trimToSpeech(next, await analysisPromise);
         } catch {
           // leave clips as-is if the waveform can't be analysed
         }
