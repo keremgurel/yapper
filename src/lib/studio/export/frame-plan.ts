@@ -1,11 +1,13 @@
 import { captionTimelineRange, type CaptionStyle } from "@/lib/studio/captions";
 import { timelineToClip, totalDuration } from "@/lib/studio/clips";
+import { FULL_CROP } from "@/lib/studio/crop";
 import { paintOrder } from "@/lib/studio/tracks";
 import type {
   Caption,
   CaptionCase,
   Clip,
   Overlay,
+  OverlayRect,
   StudioSource,
 } from "@/lib/studio/types";
 
@@ -27,6 +29,8 @@ export interface OverlayFrame {
   y: number;
   w: number;
   h: number;
+  /** Which part of its media to sample, in media fractions. */
+  crop: OverlayRect;
 }
 
 /** The caption to draw at time `t`, already merged with the global style. */
@@ -81,6 +85,7 @@ export function overlaysAt(overlays: Overlay[], t: number): OverlayFrame[] {
       y: o.y ?? 0,
       w: o.w ?? 1,
       h: o.h ?? 1,
+      crop: o.crop ?? FULL_CROP,
     });
   }
   return out;

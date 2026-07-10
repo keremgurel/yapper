@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import OverlayCropEditor from "@/components/studio/overlay-crop-editor";
+import OverlayMenu, { type MenuAnchor } from "@/components/studio/overlay-menu";
+import { FULL_CROP, cropStyle, isFullCrop } from "@/lib/studio/crop";
+import { FULL_FRAME, fitBox, mediaAspect } from "@/lib/studio/overlay-box";
 import { paintOrder } from "@/lib/studio/tracks";
 import type { Overlay, OverlayRect } from "@/lib/studio/types";
 
@@ -91,7 +95,10 @@ function OverlayBox({
   playing,
   selected,
   others,
+  stageAspect,
+  aspect,
   onSelect,
+  onMenu,
   layerRef,
   onCommit,
   onGuides,
@@ -101,7 +108,12 @@ function OverlayBox({
   playing: boolean;
   selected: boolean;
   others: OverlayRect[];
+  /** The stage's width / height, which the box's fractions are measured in. */
+  stageAspect: number;
+  /** The media's own width / height, or undefined if it never reported one. */
+  aspect: number | undefined;
   onSelect: () => void;
+  onMenu: (e: React.MouseEvent) => void;
   layerRef: React.RefObject<HTMLDivElement | null>;
   onCommit: (rect: OverlayRect) => void;
   onGuides: (guides: Guides | null) => void;
@@ -267,11 +279,31 @@ function OverlayBox({
     }
   };
 
+  // Where the media sits inside its box: the crop rectangle, covered into the
+  // box. Without a known aspect there is no crop math to do, so it falls back
+  // to plain object-cover, which is what an uncropped overlay always was.
+  const style =
+    aspect && r.w > 0 && r.h > 0
+      ? cropStyle(overlay.crop ?? FULL_CROP, aspect, (r.w / r.h) * stageAspect)
+      : null;
+  const mediaStyle = style
+    ? {
+        left: `${style.left * 100}%`,
+        top: `${style.top * 100}%`,
+        width: `${style.width * 100}%`,
+        height: `${style.height * 100}%`,
+      }
+    : undefined;
+  const mediaClass = style
+    ? "pointer-events-none absolute max-w-none object-fill"
+    : "pointer-events-none h-full w-full object-cover";
+
   return (
     <div
       onPointerDown={start("move")}
       onPointerMove={move}
       onPointerUp={end}
+      onContextMenu={onMenu}
       style={{
         left: `${r.x * 100}%`,
         top: `${r.y * 100}%`,
@@ -292,7 +324,8 @@ function OverlayBox({
             src={overlay.url}
             alt=""
             draggable={false}
-            className="pointer-events-none h-full w-full object-cover"
+            style={mediaStyle}
+            className={mediaClass}
           />
         ) : (
           <video
@@ -300,7 +333,8 @@ function OverlayBox({
             src={overlay.url}
             muted={overlay.muted ?? true}
             playsInline
-            className="pointer-events-none h-full w-full object-cover"
+            style={mediaStyle}
+            className={mediaClass}
           />
         )}
       </div>
@@ -321,8 +355,9 @@ function OverlayBox({
 
 /**
  * Composites upper video/image tracks over the base preview at the master clock.
- * A higher track paints over a lower one. Tap an overlay to select
- * it, then drag to move or use the corner handle to resize.
+ * A higher track paints over a lower one. Tap an overlay to select it, then drag
+ * to move or use the corner handles to resize. Right-click it for what to do
+ * with the picture inside the box: crop it, fit it, fill the frame.
  */
 const rectOf = (o: Overlay): OverlayRect => ({
   x: o.x ?? 0,
@@ -340,10 +375,33 @@ export default function OverlayLayer({
   masterTime: number;
   playing: boolean;
 }) {
-  const { setOverlayRect } = useStudio();
+  const { setOverlayRect, setOverlayCrop, mediaAssets, aspect } = useStudio();
   const layerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [guides, setGuides] = useState<Guides | null>(null);
+  const [menu, setMenu] = useState<MenuAnchor | null>(null);
+  const [cropping, setCropping] = useState<string | null>(null);
+
+  // An overlay's media is a library asset, and that is where its shape is known.
+  const aspectOf = (o: Overlay) =>
+    mediaAspect(mediaAssets.find((m) => m.url === o.url) ?? {});
+
+  const openMenu = (o: Overlay) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const box = layerRef.current?.getBoundingClientRect();
+    if (!box) return;
+    setSelectedId(o.id);
+    setMenu({
+      id: o.id,
+      x: (e.clientX - box.left) / box.width,
+      y: (e.clientY - box.top) / box.height,
+    });
+  };
+
+  const menuOverlay = overlays.find((o) => o.id === menu?.id) ?? null;
+  const cropOverlay = overlays.find((o) => o.id === cropping) ?? null;
+  const cropAspect = cropOverlay ? aspectOf(cropOverlay) : undefined;
 
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0">
@@ -361,13 +419,51 @@ export default function OverlayLayer({
             others={overlays
               .filter((x) => x.id !== o.id && !x.hidden)
               .map(rectOf)}
+            stageAspect={aspect}
+            aspect={aspectOf(o)}
             onSelect={() => setSelectedId(o.id)}
+            onMenu={openMenu(o)}
             layerRef={layerRef}
             onCommit={(rect) => setOverlayRect(o.id, rect)}
             onGuides={setGuides}
           />
         );
       })}
+
+      {menu && menuOverlay && (
+        <OverlayMenu
+          anchor={menu}
+          cropped={!isFullCrop(menuOverlay.crop)}
+          onCrop={() => {
+            setCropping(menu.id);
+            setMenu(null);
+          }}
+          onFit={() => {
+            setOverlayRect(menu.id, fitBox(aspectOf(menuOverlay), aspect));
+            setMenu(null);
+          }}
+          onFill={() => {
+            setOverlayRect(menu.id, FULL_FRAME);
+            setMenu(null);
+          }}
+          onResetCrop={() => {
+            setOverlayCrop(menu.id, FULL_CROP);
+            setMenu(null);
+          }}
+          onClose={() => setMenu(null)}
+        />
+      )}
+
+      {cropOverlay && cropAspect && (
+        <OverlayCropEditor
+          overlay={cropOverlay}
+          aspect={cropAspect}
+          onChange={(crop, gesture) =>
+            setOverlayCrop(cropOverlay.id, crop, gesture)
+          }
+          onClose={() => setCropping(null)}
+        />
+      )}
 
       {/* Alignment guides shown live while dragging (Canva-style). */}
       {guides?.v.map((x, i) => (

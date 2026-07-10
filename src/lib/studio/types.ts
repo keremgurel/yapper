@@ -63,6 +63,8 @@ export interface Overlay {
   y?: number;
   w?: number;
   h?: number;
+  /** The part of its own media to show, in media fractions. Absent = all of it. */
+  crop?: OverlayRect;
 }
 
 export interface OverlayRect {

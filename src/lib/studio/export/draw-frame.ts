@@ -1,6 +1,8 @@
 import { drawCaption } from "@/lib/studio/export/draw-caption";
 import { drawCover } from "@/lib/studio/export/cover";
+import { croppedSourceRect } from "@/lib/studio/crop";
 import type { CaptionFrame } from "@/lib/studio/export/frame-plan";
+import type { OverlayRect } from "@/lib/studio/types";
 
 /** A media element ready to draw, with its intrinsic pixel size. */
 export interface DrawItem {
@@ -11,7 +13,9 @@ export interface DrawItem {
 
 export interface FrameContent {
   base: DrawItem | null;
-  overlays: Array<DrawItem & { x: number; y: number; w: number; h: number }>;
+  overlays: Array<
+    DrawItem & { x: number; y: number; w: number; h: number; crop: OverlayRect }
+  >;
   caption: CaptionFrame | null;
 }
 
@@ -44,7 +48,16 @@ export function drawFrame(
     ctx.beginPath();
     ctx.rect(dx, dy, dw, dh);
     ctx.clip();
-    drawCover(ctx, ov.el, ov.naturalW, ov.naturalH, dx, dy, dw, dh);
+    // Crop first, then cover what is left into the box: the same order the
+    // preview lays the media out in.
+    const { sx, sy, sw, sh } = croppedSourceRect(
+      ov.naturalW,
+      ov.naturalH,
+      ov.crop,
+      dw,
+      dh,
+    );
+    ctx.drawImage(ov.el, sx, sy, sw, sh, dx, dy, dw, dh);
     ctx.restore();
   }
 

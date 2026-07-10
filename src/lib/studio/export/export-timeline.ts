@@ -13,6 +13,7 @@ import {
 import { createVideoChunkEncoder } from "@/lib/studio/export/encode-video";
 import { baseAt, captionAt, overlaysAt } from "@/lib/studio/export/frame-plan";
 import { MediaPool } from "@/lib/studio/export/media-pool";
+import type { OverlayRect } from "@/lib/studio/types";
 import {
   isWebCodecsExportSupported,
   pickAvcCodec,
@@ -188,6 +189,7 @@ export async function exportTimeline(
           y: ov.y,
           w: ov.w,
           h: ov.h,
+          crop: ov.crop,
         });
       }
 
@@ -223,4 +225,5 @@ type FrameOverlay = DrawItem & {
   y: number;
   w: number;
   h: number;
+  crop: OverlayRect;
 };

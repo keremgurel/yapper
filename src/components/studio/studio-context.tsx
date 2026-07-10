@@ -157,6 +157,7 @@ interface StudioContextValue {
   setOverlayTrack: (id: string, track: number, gesture?: string) => void;
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
+  setOverlayCrop: (id: string, crop: OverlayRect, gesture?: string) => void;
   setOverlayRange: (
     id: string,
     start: number,
@@ -724,6 +725,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (next === o.start) return prev;
         return prev.map((x) => (x.id === id ? { ...x, start: next } : x));
       }, gesture);
+    },
+    [setOverlays],
+  );
+
+  // Which part of its own media an overlay shows. Undoable, and coalesced by
+  // gesture so one drag inside the crop editor is one step.
+  const setOverlayCrop = useCallback(
+    (id: string, crop: OverlayRect, gesture?: string) => {
+      setOverlays(
+        (prev) => prev.map((o) => (o.id === id ? { ...o, crop } : o)),
+        gesture,
+      );
     },
     [setOverlays],
   );
@@ -1509,6 +1522,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayCrop,
       setOverlayRange,
       toggleTrackHidden,
       toggleTrackMuted,
@@ -1604,6 +1618,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayCrop,
       setOverlayRange,
       toggleTrackHidden,
       toggleTrackMuted,
