@@ -1,5 +1,30 @@
 import { speechBoundsInRange, type TrimAnalysis } from "@/lib/studio/silence";
-import type { Clip } from "@/lib/studio/types";
+import {
+  findFillerIds,
+  pauseRanges,
+  selectionToRanges,
+} from "@/lib/studio/transcript-edit";
+import type { Clip, Word } from "@/lib/studio/types";
+
+/** A span of the recording's seconds, to be cut out of the timeline. */
+export type SourceRange = [number, number];
+
+/**
+ * Clips shorter than this are the leftover slivers of cut retakes and pauses.
+ * They make playback stutter instead of cut cleanly.
+ */
+export const MIN_CLIP_SEC = 0.08;
+
+export interface PauseCutOptions {
+  /** A gap between two words counts as a pause once it reaches this. */
+  minGap: number;
+  /** Silence at the head or tail is only worth cutting once it reaches this. */
+  minSilence: number;
+  /** Leave this much silence before the first word. */
+  headPad: number;
+  /** Leave this much after the last word: a soft final syllable decays slowly. */
+  tailPad: number;
+}
 
 /** Keep a breath of room around the speech so words aren't clipped short. */
 const LEAD_PAD = 0.05;
@@ -34,4 +59,38 @@ export function trimClipsToSpeech(
     if (start === c.start && end === c.end) return c;
     return { ...c, start, end };
   });
+}
+
+/**
+ * The silence worth cutting: the gaps between words, plus the dead air before
+ * the first word and after the last. Never touches speech.
+ *
+ * The thresholds are the caller's, because the two callers want different ones.
+ * "Remove pauses" is conservative, since the user asked for exactly this one
+ * thing. The one-click auto-edit is more aggressive, since it is already
+ * reshaping the whole take and a tighter cut is the point.
+ */
+export function pauseCuts(
+  words: Word[],
+  duration: number,
+  { minGap, minSilence, headPad, tailPad }: PauseCutOptions,
+): SourceRange[] {
+  if (words.length === 0) return [];
+  const ranges = pauseRanges(words, minGap);
+  const first = words[0];
+  const last = words[words.length - 1];
+  if (first.start >= minSilence) ranges.unshift([0, first.start - headPad]);
+  if (duration - last.end >= minSilence)
+    ranges.push([last.end + tailPad, duration]);
+  return ranges;
+}
+
+/** Filler words ("um", "uh", ...) as source ranges, adjacent ones merged. */
+export function fillerCuts(words: Word[]): SourceRange[] {
+  return selectionToRanges(words, new Set(findFillerIds(words)));
+}
+
+/** Drop the clips too short to play cleanly. */
+export function dropSlivers(clips: Clip[], minSec = MIN_CLIP_SEC): Clip[] {
+  return clips.filter((c) => c.end - c.start >= minSec);
 }

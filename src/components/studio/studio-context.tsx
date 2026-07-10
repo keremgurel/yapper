@@ -23,8 +23,6 @@ import { analyzeForTrim } from "@/lib/studio/silence";
 import {
   combineRetakeCuts,
   findEarlierTakeRanges,
-  findFillerIds,
-  pauseRanges,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
 import {
@@ -33,7 +31,13 @@ import {
   type CaptionCase,
   type CaptionStyle,
 } from "@/lib/studio/captions";
-import { trimClipsToSpeech as trimToSpeech } from "@/lib/studio/auto-edit";
+import {
+  dropSlivers,
+  fillerCuts,
+  pauseCuts,
+  trimClipsToSpeech as trimToSpeech,
+  type PauseCutOptions,
+} from "@/lib/studio/auto-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
@@ -61,9 +65,22 @@ import {
   type Word,
 } from "@/lib/studio/types";
 
-// Clips shorter than this are dropped after auto-edit — they're the leftover
-// slivers of retakes/pauses that make playback stutter instead of cut cleanly.
-const MIN_CLIP_SEC = 0.08;
+// "Remove pauses" is conservative: the user asked for exactly this one thing.
+const PAUSE_CUTS: PauseCutOptions = {
+  minGap: 0.4,
+  minSilence: 0.5,
+  headPad: 0.05,
+  tailPad: 0.1,
+};
+
+// The one-click pass cuts tighter, since it is reshaping the whole take anyway.
+// The generous tail pad keeps a soft-decay final word from being clipped.
+const AUTO_EDIT_CUTS: PauseCutOptions = {
+  minGap: 0.25,
+  minSilence: 0.4,
+  headPad: 0.04,
+  tailPad: 0.15,
+};
 
 interface CaptionLayout {
   x?: number;
@@ -1146,13 +1163,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // last word. Never removes speech.
   const removePauses = useCallback((): number => {
     if (words.length === 0) return 0;
-    const ranges = pauseRanges(words);
-    const first = words[0];
-    const last = words[words.length - 1];
-    if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
-    if (source && source.duration - last.end >= 0.5) {
-      ranges.push([last.end + 0.1, source.duration]);
-    }
+    const ranges = pauseCuts(words, source?.duration ?? 0, PAUSE_CUTS);
     cutAll(ranges);
     return ranges.length;
   }, [words, source, cutAll]);
@@ -1319,18 +1330,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
           // Step 3 — cut filler words, then pauses, then leading/trailing dead air.
           setAutoEditStep(3);
-          const ranges: [number, number][] = [
-            ...selectionToRanges(w, new Set(findFillerIds(w))),
-            ...pauseRanges(w, 0.25),
+          const ranges = [
+            ...fillerCuts(w),
+            ...pauseCuts(w, effDuration, AUTO_EDIT_CUTS),
           ];
-          const first = w[0];
-          const last = w[w.length - 1];
-          if (first.start >= 0.4) ranges.push([0, first.start - 0.04]);
-          // Use the raw last-word end with a safe margin so a soft-decay final
-          // word isn't clipped by the trailing-silence cut.
-          if (effDuration - last.end >= 0.4) {
-            ranges.push([last.end + 0.15, effDuration]);
-          }
           for (const [from, to] of ranges) {
             next = removeSourceRange(next, from, to);
           }
@@ -1344,7 +1347,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // leave clips as-is if the waveform can't be analysed
         }
-        next = next.filter((c) => c.end - c.start >= MIN_CLIP_SEC);
+        next = dropSlivers(next);
         if (next.length === 0) next = extend ? fullClip(effDuration) : clips;
 
         setClips(() => next);
