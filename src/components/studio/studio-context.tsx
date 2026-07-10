@@ -45,6 +45,7 @@ import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useEditorHistory } from "@/hooks/use-editor-history";
+import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
@@ -223,46 +224,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setBaseMuted],
   );
   const { aspectId, aspect, setAspectId } = useProjectAspect(source);
-  const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
-  // Timeline elements come in three kinds (base clips, upper-track overlays,
-  // captions). Selection is tracked per-kind; a plain click selects one kind and
-  // clears the others, so Delete always targets exactly what's highlighted.
-  const [selectedOverlayIds, setSelectedOverlayIds] = useState<string[]>([]);
-  // Single selection (for trim, which only makes sense on one clip).
-  const selectedClipId =
-    selectedClipIds.length === 1 ? selectedClipIds[0] : null;
-  const selectClip = useCallback((id: string | null) => {
-    setSelectedClipIds(id ? [id] : []);
-    if (id) {
-      setSelectedCaptionIds([]);
-      setSelectedOverlayIds([]);
-    }
-  }, []);
-  const toggleClipSelection = useCallback((id: string) => {
-    setSelectedClipIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-    setSelectedCaptionIds([]);
-    setSelectedOverlayIds([]);
-  }, []);
-  const selectClips = useCallback(
-    (ids: string[]) => setSelectedClipIds(ids),
-    [],
-  );
-  const selectOverlay = useCallback((id: string | null) => {
-    setSelectedOverlayIds(id ? [id] : []);
-    if (id) {
-      setSelectedClipIds([]);
-      setSelectedCaptionIds([]);
-    }
-  }, []);
-  const toggleOverlaySelection = useCallback((id: string) => {
-    setSelectedOverlayIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-    setSelectedClipIds([]);
-    setSelectedCaptionIds([]);
-  }, []);
+  const {
+    clipIds: selectedClipIds,
+    overlayIds: selectedOverlayIds,
+    captionIds: selectedCaptionIds,
+    selectedClipId,
+    selectedCaptionId,
+    actions: sel,
+  } = useEditorSelection();
   const [words, setWords] = useState<Word[]>([]);
   const [transcribeStatus, setTranscribeStatus] =
     useState<TranscribeStatus>("idle");
@@ -275,27 +244,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     useMediaLibrary();
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
-  );
-  const [selectedCaptionIds, setSelectedCaptionIds] = useState<string[]>([]);
-  const selectedCaptionId =
-    selectedCaptionIds.length === 1 ? selectedCaptionIds[0] : null;
-  const selectCaption = useCallback((id: string | null) => {
-    setSelectedCaptionIds(id ? [id] : []);
-    if (id) {
-      setSelectedClipIds([]);
-      setSelectedOverlayIds([]);
-    }
-  }, []);
-  const toggleCaptionSelection = useCallback((id: string) => {
-    setSelectedCaptionIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-    setSelectedClipIds([]);
-    setSelectedOverlayIds([]);
-  }, []);
-  const selectCaptions = useCallback(
-    (ids: string[]) => setSelectedCaptionIds(ids),
-    [],
   );
   const [captionApplyAll, setCaptionApplyAll] = useState(true);
   const [captionLines, setCaptionLines] = useState(2);
@@ -376,23 +324,22 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const removeCaption = useCallback(
     (id: string) => {
       setCaptions((prev) => prev.filter((c) => c.id !== id));
-      setSelectedCaptionIds((prev) => prev.filter((x) => x !== id));
+      sel.dropCaption(id);
     },
-    [setCaptions],
+    [setCaptions, sel],
   );
 
   const removeSelectedCaptions = useCallback(() => {
-    setSelectedCaptionIds((ids) => {
-      if (ids.length)
-        setCaptions((prev) => prev.filter((c) => !ids.includes(c.id)));
-      return [];
-    });
-  }, [setCaptions]);
+    const ids = new Set(selectedCaptionIds);
+    if (ids.size === 0) return;
+    setCaptions((prev) => prev.filter((c) => !ids.has(c.id)));
+    sel.clearCaptions();
+  }, [setCaptions, sel, selectedCaptionIds]);
 
   const clearCaptions = useCallback(() => {
     setCaptions([]);
-    setSelectedCaptionIds([]);
-  }, [setCaptions]);
+    sel.clearCaptions();
+  }, [setCaptions, sel]);
 
   // Edges come in as edited-timeline seconds; store them as source anchors so
   // the caption keeps following the clips.
@@ -509,9 +456,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         };
         return [...prev, created].sort((a, b) => a.sourceStart - b.sourceStart);
       });
-      selectCaption(id);
+      sel.selectCaption(id);
     },
-    [setCaptions, selectCaption],
+    [setCaptions, sel],
   );
 
   // Merge two or more captions into one spanning their full source range, with
@@ -540,9 +487,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           (a, b) => a.sourceStart - b.sourceStart,
         );
       });
-      selectCaption(null);
+      sel.clearCaptions();
     },
-    [setCaptions, selectCaption],
+    [setCaptions, sel],
   );
 
   // Apply a style change either to every caption (update the global style and
@@ -672,9 +619,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           },
         ],
       }));
-      setSelectedClipIds((prev) => prev.filter((x) => x !== clipId));
+      sel.dropClip(clipId);
     },
-    [source, clips, updateEditor],
+    [source, clips, updateEditor, sel],
   );
 
   // Mirror of liftClipToTrack: drag an overlay DOWN onto the base to fold it into
@@ -710,9 +657,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ],
         overlays: s.overlays.filter((x) => x.id !== overlayId),
       }));
-      setSelectedOverlayIds((prev) => prev.filter((x) => x !== overlayId));
+      sel.dropOverlay(overlayId);
     },
-    [overlays, source, mediaAssets, updateEditor],
+    [overlays, source, mediaAssets, updateEditor, sel],
   );
 
   // `gesture` collapses a whole drag into one undo step: these fire on every
@@ -804,8 +751,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       baseHidden: false,
       baseMuted: false,
     }));
-    setSelectedClipIds([]);
-  }, [updateEditor]);
+    sel.clearClips();
+  }, [updateEditor, sel]);
 
   const addAudio = useCallback(
     async (file: File) => {
@@ -864,8 +811,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setWords([]);
     setTranscribeStatus("idle");
     setCaptions([]);
-    setSelectedCaptionIds([]);
-  }, [setCaptions]);
+    sel.clearCaptions();
+  }, [setCaptions, sel]);
 
   const loadSource = useCallback(
     (next: StudioSource) => {
@@ -876,15 +823,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       // One reset clears every layer and its history: clips, captions, overlays,
       // audio, and the bottom track's flags.
       resetEditor({ clips: fullClip(next.duration) });
-      setSelectedClipIds([]);
-      setSelectedOverlayIds([]);
+      sel.clearClips();
+      sel.clearOverlays();
       resetTranscript();
       // Warm the audio decode now (it's the slow first step and dedupes by URL),
       // so by the time the user hits 1-Click or Transcribe it's already cached.
       if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
       registerSource(next);
     },
-    [resetEditor, resetTranscript, registerSource],
+    [resetEditor, resetTranscript, registerSource, sel],
   );
 
   // Removing a library asset removes every placement of it, at any level of the
@@ -897,8 +844,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       const isRecording = source?.url === url;
       const dropsClip = (c: Clip) => (c.src?.url ?? source?.url) === url;
 
-      setSelectedClipIds([]);
-      setSelectedOverlayIds([]);
+      sel.clearClips();
+      sel.clearOverlays();
 
       if (isRecording) {
         // Dropping the recording takes the transcript and captions with it, both
@@ -932,6 +879,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       updateEditor,
       resetEditor,
       resetTranscript,
+      sel,
     ],
   );
 
@@ -1023,10 +971,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     });
     // Empties every layer and drops the undo stack along with them.
     resetEditor({});
-    setSelectedClipIds([]);
-    setSelectedOverlayIds([]);
+    sel.clearClips();
+    sel.clearOverlays();
     resetTranscript();
-  }, [resetEditor, resetTranscript]);
+  }, [resetEditor, resetTranscript, sel]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit),
   // or load a Content Library item's saved recording via ?item=<id>.
@@ -1087,9 +1035,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           ];
         }),
       );
-      setSelectedOverlayIds([]);
+      sel.clearOverlays();
     },
-    [setOverlays],
+    [setOverlays, sel],
   );
 
   /**
@@ -1137,10 +1085,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ? s.captions.filter((c) => !captionIds.has(c.id))
         : s.captions,
     }));
-    setSelectedClipIds([]);
-    setSelectedOverlayIds([]);
-    setSelectedCaptionIds([]);
-  }, [updateEditor, selectedClipIds, selectedOverlayIds, selectedCaptionIds]);
+    sel.clearSelection();
+  }, [
+    updateEditor,
+    selectedClipIds,
+    selectedOverlayIds,
+    selectedCaptionIds,
+    sel,
+  ]);
 
   const trimStart = useCallback(
     (sourceTime: number) => {
@@ -1503,7 +1455,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       baseHidden,
       baseMuted,
     });
-    setSelectedClipIds([]);
+    sel.clearClips();
   }, [
     resetEditor,
     source,
@@ -1512,6 +1464,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     audioTracks,
     baseHidden,
     baseMuted,
+    sel,
   ]);
 
   const duration = useMemo(
@@ -1539,13 +1492,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeStatus,
       loadSource,
       clearSource,
-      selectClip,
-      selectedClipIds,
-      toggleClipSelection,
-      selectClips,
-      selectedOverlayIds,
-      selectOverlay,
-      toggleOverlaySelection,
+      selectClip: sel.selectClip,
+      selectedClipIds: selectedClipIds,
+      toggleClipSelection: sel.toggleClip,
+      selectClips: sel.replaceClips,
+      selectedOverlayIds: selectedOverlayIds,
+      selectOverlay: sel.selectOverlay,
+      toggleOverlaySelection: sel.toggleOverlay,
       splitSelected,
       deleteSelected,
       trimStart,
@@ -1587,16 +1540,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captions,
       captionStyle,
       selectedCaptionId,
-      selectedCaptionIds,
+      selectedCaptionIds: selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
-      selectCaption,
-      toggleCaptionSelection,
-      selectCaptions,
+      selectCaption: sel.selectCaption,
+      toggleCaptionSelection: sel.toggleCaption,
+      selectCaptions: sel.replaceCaptions,
       removeSelectedCaptions,
       setCaptionText,
       cycleCaptionCase,
@@ -1639,13 +1592,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeStatus,
       loadSource,
       clearSource,
-      selectClip,
-      selectedClipIds,
-      toggleClipSelection,
-      selectClips,
-      selectedOverlayIds,
-      selectOverlay,
-      toggleOverlaySelection,
+      sel,
       splitSelected,
       deleteSelected,
       trimStart,
@@ -1687,16 +1634,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captions,
       captionStyle,
       selectedCaptionId,
-      selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
-      selectCaption,
-      toggleCaptionSelection,
-      selectCaptions,
       removeSelectedCaptions,
       setCaptionText,
       cycleCaptionCase,
@@ -1719,6 +1662,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       canUndo,
       canRedo,
       reset,
+      selectedCaptionIds,
+      selectedClipIds,
+      selectedOverlayIds,
     ],
   );
 
