@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { clipDuration } from "@/lib/studio/clips";
 import {
   DRAG_JITTER_PX,
@@ -38,10 +38,13 @@ export interface ClipDragState {
  * Dragging a clip along the bottom track: sideways to reorder it, or far enough
  * up to lift it onto a new upper video track.
  *
- * The live position lives in closure variables as well as state. The state
- * drives the render; the closure is what `pointerup` reads, so the drop sees
- * where the clip actually finished rather than a state update that has not
- * flushed yet.
+ * The live position lives in refs as well as state. The state drives the render;
+ * the refs are what `pointerup` reads, so the drop sees where the clip actually
+ * finished rather than a state update that has not flushed yet.
+ *
+ * Refs and not closure variables: anything this effect depends on could change
+ * mid-drag and re-create it, resetting a closure to its initial value. The
+ * overlay drag lost its drop that way.
  */
 export function useClipDrag({
   clips,
@@ -58,10 +61,15 @@ export function useClipDrag({
   const [drag, setDrag] = useState<DragStart | null>(null);
   const [left, setLeft] = useState<number | null>(null);
   const [liftY, setLiftY] = useState(0);
+  const leftRef = useRef<number | null>(null);
+  const liftYRef = useRef(0);
 
   const begin = useCallback(
-    (id: string, clientX: number, clientY: number, origLeft: number) =>
-      setDrag({ id, clientX, clientY, origLeft }),
+    (id: string, clientX: number, clientY: number, origLeft: number) => {
+      leftRef.current = null;
+      liftYRef.current = 0;
+      setDrag({ id, clientX, clientY, origLeft });
+    },
     [],
   );
 
@@ -70,29 +78,30 @@ export function useClipDrag({
     const dragged = clips.find((c) => c.id === drag.id);
     const seconds = dragged ? clipDuration(dragged) : 0;
 
-    let liveLeft: number | null = null;
-    let liveLiftY = 0;
-
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - drag.clientX;
       const dy = e.clientY - drag.clientY;
       // A press that has not travelled yet is a click, not a drag.
-      if (liveLeft == null && Math.hypot(dx, dy) < DRAG_JITTER_PX) return;
-      liveLeft = drag.origLeft + dx;
-      liveLiftY = dy;
-      setLeft(liveLeft);
+      if (leftRef.current == null && Math.hypot(dx, dy) < DRAG_JITTER_PX)
+        return;
+      leftRef.current = drag.origLeft + dx;
+      liftYRef.current = dy;
+      setLeft(leftRef.current);
       setLiftY(dy);
     };
 
     const onUp = () => {
-      if (liveLeft != null) {
-        if (liveLiftY < -LIFT_THRESHOLD_PX) {
-          onLift(drag.id, Math.max(0, liveLeft / pxPerSec));
+      const finalLeft = leftRef.current;
+      if (finalLeft != null) {
+        if (liftYRef.current < -LIFT_THRESHOLD_PX) {
+          onLift(drag.id, Math.max(0, finalLeft / pxPerSec));
         } else {
-          const center = liveLeft / pxPerSec + seconds / 2;
+          const center = finalLeft / pxPerSec + seconds / 2;
           onReorder(drag.id, dropIndexAt(clips, drag.id, center));
         }
       }
+      leftRef.current = null;
+      liftYRef.current = 0;
       setLeft(null);
       setLiftY(0);
       setDrag(null);

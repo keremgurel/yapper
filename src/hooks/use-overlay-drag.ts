@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LIFT_THRESHOLD_PX } from "@/lib/studio/timeline-drag";
 import { newGestureId, type Overlay } from "@/lib/studio/types";
 
@@ -9,6 +9,8 @@ interface DragStart {
   clientX: number;
   clientY: number;
   origStart: number;
+  /** The overlay's length, read once. It cannot change while it is dragged. */
+  duration: number;
   /** Minted at pointerdown, so the whole drag collapses into one undo step. */
   gesture: string;
 }
@@ -34,9 +36,14 @@ export interface OverlayDragState {
  * a bottom-track clip up onto a track of its own.
  *
  * `onMove` fires on every pointermove and is undoable, so it takes a gesture id
- * minted once at pointerdown: one drag, one undo step. The vertical distance is
- * tracked in a closure as well as state, because pointerup has to read how far
- * the overlay actually got, not a setState that has not flushed.
+ * minted once at pointerdown: one drag, one undo step.
+ *
+ * The vertical distance lives in a ref, not a closure variable. `onMove` hands
+ * back a fresh overlays array on every pointermove, so anything this effect
+ * depended on would re-create it mid-drag and reset a closure to zero. React
+ * also flushes pending renders before a discrete event, so pointerup would read
+ * that zero even when the whole gesture happened inside one task. A ref is the
+ * only thing here that outlives the effect.
  */
 export function useOverlayDrag({
   overlays,
@@ -55,30 +62,40 @@ export function useOverlayDrag({
   const [drag, setDrag] = useState<DragStart | null>(null);
   const [liftY, setLiftY] = useState(0);
 
+  const strayRef = useRef(0);
+
   const begin = useCallback(
-    (id: string, clientX: number, clientY: number, origStart: number) =>
-      setDrag({ id, clientX, clientY, origStart, gesture: newGestureId() }),
-    [],
+    (id: string, clientX: number, clientY: number, origStart: number) => {
+      strayRef.current = 0;
+      setDrag({
+        id,
+        clientX,
+        clientY,
+        origStart,
+        duration: overlays.find((o) => o.id === id)?.duration ?? 0,
+        gesture: newGestureId(),
+      });
+    },
+    [overlays],
   );
 
   useEffect(() => {
     if (!drag) return;
-    const duration = overlays.find((o) => o.id === drag.id)?.duration ?? 0;
-    let liveLiftY = 0;
 
     const onPointerMove = (e: PointerEvent) => {
       const delta = (e.clientX - drag.clientX) / pxPerSec;
       onMove(
         drag.id,
-        snapStart(drag.origStart + delta, duration),
+        snapStart(drag.origStart + delta, drag.duration),
         drag.gesture,
       );
-      liveLiftY = e.clientY - drag.clientY;
-      setLiftY(liveLiftY);
+      strayRef.current = e.clientY - drag.clientY;
+      setLiftY(strayRef.current);
     };
 
     const onPointerUp = () => {
-      if (liveLiftY > LIFT_THRESHOLD_PX) onDropToBase(drag.id);
+      if (strayRef.current > LIFT_THRESHOLD_PX) onDropToBase(drag.id);
+      strayRef.current = 0;
       setLiftY(0);
       setDrag(null);
     };
@@ -89,7 +106,7 @@ export function useOverlayDrag({
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
     };
-  }, [drag, overlays, pxPerSec, snapStart, onMove, onDropToBase]);
+  }, [drag, pxPerSec, snapStart, onMove, onDropToBase]);
 
   return {
     id: drag?.id ?? null,
