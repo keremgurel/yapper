@@ -1,5 +1,5 @@
 import { captionTimelineRange, type CaptionStyle } from "@/lib/studio/captions";
-import { timelineToClip } from "@/lib/studio/clips";
+import { timelineToClip, totalDuration } from "@/lib/studio/clips";
 import type {
   Caption,
   CaptionCase,
@@ -39,19 +39,27 @@ export interface CaptionFrame {
   textCase: CaptionCase;
 }
 
-/** Which base source (and source-time) plays at edited-timeline time `t`. */
+/**
+ * Which base source (and source-time) plays at edited-timeline time `t`, or
+ * null when nothing does: the bottom track is empty, `t` is past its end (the
+ * layers above it run longer), or its media is gone. `timelineToClip` clamps to
+ * the last clip, so the past-the-end case has to be checked here — otherwise
+ * the final frame would freeze on screen for the rest of the export.
+ */
 export function baseAt(
   clips: Clip[],
-  source: StudioSource,
+  source: StudioSource | null,
   t: number,
 ): BaseFrame | null {
+  if (t >= totalDuration(clips)) return null;
   const hit = timelineToClip(clips, t);
   if (!hit) return null;
-  const clip = clips[hit.index];
-  const ref = clip.src;
+  const ref = clips[hit.index].src;
+  const url = ref?.url ?? source?.url;
+  if (!url) return null;
   return {
-    url: ref?.url ?? source.url,
-    kind: ref?.kind ?? source.kind ?? "video",
+    url,
+    kind: ref?.kind ?? source?.kind ?? "video",
     sourceTime: hit.sourceTime,
   };
 }

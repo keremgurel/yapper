@@ -9,12 +9,18 @@ import type {
 
 /** Everything the exporter needs to reproduce the editor preview as a file. */
 export interface ExportInput {
-  source: StudioSource;
+  /** Media for bottom-track clips without their own `src`. Null once removed. */
+  source: StudioSource | null;
   clips: Clip[];
   overlays: Overlay[];
   captions: Caption[];
   captionStyle: CaptionStyle;
   audioTracks: AudioTrack[];
+  /** The bottom track's own flags, mirroring any upper track's. */
+  baseHidden: boolean;
+  baseMuted: boolean;
+  /** Project frame width / height. Set by the user, not by any track. */
+  aspect: number;
 }
 
 /** Tunables. Defaults aim for visually lossless at the source's native size. */

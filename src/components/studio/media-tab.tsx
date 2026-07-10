@@ -67,7 +67,6 @@ export default function MediaTab() {
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {mediaAssets.map((asset) => {
-              const isBase = source?.url === asset.url;
               const count = usageCount(asset.url);
               return (
                 <div
@@ -101,16 +100,19 @@ export default function MediaTab() {
                         Added{count > 1 ? ` ×${count}` : ""}
                       </span>
                     )}
-                    {!isBase && (
-                      <button
-                        type="button"
-                        onClick={() => removeMediaAsset(asset.id)}
-                        className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
-                        aria-label="Remove"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeMediaAsset(asset.id)}
+                      className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+                      title={
+                        count > 0
+                          ? "Remove from the library and the timeline"
+                          : "Remove from the library"
+                      }
+                      aria-label="Remove"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                   <div className="p-2">
                     <p className="text-foreground/80 truncate text-[11px] font-bold">

@@ -6,6 +6,38 @@ export function clipDuration(clip: Clip): number {
   return Math.max(0, clip.end - clip.start);
 }
 
+/** The media a clip reads from: its own, else the project's recording. */
+export function clipMediaUrl(clip: Clip, baseUrl: string): string {
+  return clip.src?.url ?? baseUrl;
+}
+
+/** How long that media runs — the ceiling for trimming this clip's out-point. */
+export function clipMediaDuration(clip: Clip, baseDuration: number): number {
+  return clip.src?.duration ?? baseDuration;
+}
+
+/**
+ * How far a clip's edges can be dragged, in its own media's seconds. A clip is
+ * only fenced in by a neighbour that reads the same media (two slices of one
+ * recording can't overlap); otherwise it's free to use its whole media. Getting
+ * this wrong lets an appended clip trim against the recording's timestamps.
+ */
+export function trimBounds(
+  clips: Clip[],
+  index: number,
+  baseDuration: number,
+): { min: number; max: number } {
+  const clip = clips[index];
+  const prev = clips[index - 1];
+  const next = clips[index + 1];
+  const sameMedia = (other: Clip | undefined) =>
+    other != null && other.src?.url === clip.src?.url;
+  return {
+    min: sameMedia(prev) ? prev.end : 0,
+    max: sameMedia(next) ? next.start : clipMediaDuration(clip, baseDuration),
+  };
+}
+
 export function totalDuration(clips: Clip[]): number {
   return clips.reduce((sum, c) => sum + clipDuration(c), 0);
 }
@@ -14,17 +46,27 @@ export function fullClip(duration: number): Clip[] {
   return [{ id: newClipId(), start: 0, end: duration }];
 }
 
-/** Split the clip that contains `sourceTime` into two clips at that point. */
-export function splitAtSource(clips: Clip[], sourceTime: number): Clip[] {
-  return clips.flatMap((c) => {
-    if (sourceTime > c.start + EPS && sourceTime < c.end - EPS) {
-      return [
-        { id: newClipId(), start: c.start, end: sourceTime },
-        { id: newClipId(), start: sourceTime, end: c.end },
-      ];
-    }
-    return [c];
-  });
+/**
+ * Split the clip sitting at edited-timeline position `t` into two, at that
+ * point. The clip is identified by its position on the timeline rather than by
+ * a source timestamp, so it always cuts the clip you can see under the playhead:
+ * clips carrying their own media have source ranges that can collide with the
+ * recording's, and matching on source time alone would cut the wrong one.
+ */
+export function splitClipAt(clips: Clip[], t: number): Clip[] {
+  const hit = timelineToClip(clips, t);
+  if (!hit) return clips;
+  const at = hit.sourceTime;
+  const target = clips[hit.index];
+  if (at <= target.start + EPS || at >= target.end - EPS) return clips;
+  return clips.flatMap((c, i) =>
+    i === hit.index
+      ? [
+          { ...c, id: newClipId(), end: at },
+          { ...c, id: newClipId(), start: at },
+        ]
+      : [c],
+  );
 }
 
 export function removeClip(clips: Clip[], id: string): Clip[] {
@@ -49,7 +91,9 @@ export function restoreSourceRange(
   const out: Clip[] = [];
   for (const c of all) {
     const last = out[out.length - 1];
-    if (last && c.start <= last.end + EPS) {
+    // Only clips reading the same media can merge. Two clips can share a source
+    // range and still be different footage (an appended asset vs the recording).
+    if (last && c.start <= last.end + EPS && last.src?.url === c.src?.url) {
       last.end = Math.max(last.end, c.end);
     } else {
       out.push({ ...c });
@@ -70,10 +114,10 @@ export function removeSourceRange(
     if (to <= c.start + EPS || from >= c.end - EPS) return [c];
     const out: Clip[] = [];
     if (from > c.start + EPS) {
-      out.push({ id: newClipId(), start: c.start, end: from });
+      out.push({ ...c, id: newClipId(), end: from });
     }
     if (to < c.end - EPS) {
-      out.push({ id: newClipId(), start: to, end: c.end });
+      out.push({ ...c, id: newClipId(), start: to });
     }
     return out;
   });

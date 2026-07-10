@@ -1,39 +1,45 @@
 import type { StudioSource } from "@/lib/studio/types";
 
-// Fallback portrait size when the source never reported dimensions.
-const FALLBACK_W = 1080;
-const FALLBACK_H = 1920;
+// Fallback short side when no media ever reported dimensions.
+const FALLBACK_SHORT = 1080;
 // Guard against exceeding common H.264 encoder limits; only ever downscales.
 const MAX_LONG_SIDE = 3840;
 
 const toEven = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 
+/** The source's own shorter side, or a sane default when it has no dimensions. */
+export function nativeShortSide(source: StudioSource | null): number {
+  if (source?.width && source?.height) {
+    return Math.min(source.width, source.height);
+  }
+  return FALLBACK_SHORT;
+}
+
 /**
- * Output size for the export: the source's own native pixel dimensions, so
- * there is no resolution loss. Only clamped down if a side exceeds encoder
- * limits (never upscaled), and rounded to even numbers as H.264 requires.
+ * Output size for the export: the project's chosen `aspect` (width / height) at
+ * the source's native detail level, so there is no resolution loss. The frame
+ * shape comes from the project, never from whatever media happens to sit on the
+ * bottom track. Only clamped down if a side exceeds encoder limits (never
+ * upscaled), and rounded to even numbers as H.264 requires.
  */
 export function outputDimensions(
-  source: StudioSource,
+  source: StudioSource | null,
+  aspect: number,
   shortSide?: number,
 ): {
   width: number;
   height: number;
 } {
-  let w = source.width && source.height ? source.width : FALLBACK_W;
-  let h = source.width && source.height ? source.height : FALLBACK_H;
+  const native = nativeShortSide(source);
+  const short = Math.min(native, shortSide ?? native);
+
+  const portrait = aspect < 1;
+  let w = portrait ? short : short * aspect;
+  let h = portrait ? short / aspect : short;
 
   const longSide = Math.max(w, h);
   if (longSide > MAX_LONG_SIDE) {
     const scale = MAX_LONG_SIDE / longSide;
-    w *= scale;
-    h *= scale;
-  }
-
-  // Optional user-chosen resolution: scale so the shorter side matches (never up).
-  const shorter = Math.min(w, h);
-  if (shortSide && shorter > shortSide) {
-    const scale = shortSide / shorter;
     w *= scale;
     h *= scale;
   }

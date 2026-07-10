@@ -11,6 +11,7 @@ import { useTimelineExport } from "@/hooks/use-timeline-export";
 export default function ExportButton() {
   const {
     source,
+    aspect,
     canExport,
     hasCaptions,
     exporting,
@@ -45,11 +46,11 @@ export default function ExportButton() {
 
   return (
     <div className="inline-flex items-center gap-2">
-      {source ? (
+      {canExport ? (
         <ExportOptionsMenu
           source={source}
+          aspect={aspect}
           hasCaptions={hasCaptions}
-          disabled={!canExport}
           onExport={(request) => void run(request)}
         />
       ) : (

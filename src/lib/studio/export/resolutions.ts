@@ -1,3 +1,4 @@
+import { nativeShortSide } from "@/lib/studio/export/dimensions";
 import type { StudioSource } from "@/lib/studio/types";
 
 /** A user-selectable output resolution. `shortSide` undefined = source native. */
@@ -19,30 +20,27 @@ const STEPS = [
 
 const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
 
-/** Long side for a given short-side target, preserving the source aspect. */
-function longFor(source: StudioSource, shortSide: number): number {
-  const w = source.width || 1080;
-  const h = source.height || 1920;
-  const shorter = Math.min(w, h);
-  const longer = Math.max(w, h);
-  return even((longer / shorter) * shortSide);
-}
-
 /**
- * Resolution options for the export menu: "Original" at native size, plus any
+ * Resolution options for the export menu: "Original" at native detail, plus any
  * standard step smaller than the source (never an upscale). Hints spell out the
- * exact pixel size so the choice is concrete, like a camera's quality picker.
+ * exact pixel size at the project's chosen frame ratio, so the choice is
+ * concrete, like a camera's quality picker.
  */
-export function resolutionChoices(source: StudioSource): ResolutionChoice[] {
-  const w = source.width || 1080;
-  const h = source.height || 1920;
-  const shorter = Math.min(w, h);
-  const portrait = h >= w;
-  const dims = (short: number, long: number) =>
-    portrait ? `${short} x ${long}` : `${long} x ${short}`;
+export function resolutionChoices(
+  source: StudioSource | null,
+  aspect: number,
+): ResolutionChoice[] {
+  const shorter = nativeShortSide(source);
+  const portrait = aspect < 1;
+  const longFor = (short: number) =>
+    even(portrait ? short / aspect : short * aspect);
+  const dims = (short: number) =>
+    portrait
+      ? `${even(short)} x ${longFor(short)}`
+      : `${longFor(short)} x ${even(short)}`;
 
   const choices: ResolutionChoice[] = [
-    { id: "original", label: "Original", hint: dims(shorter, Math.max(w, h)) },
+    { id: "original", label: "Original", hint: dims(shorter) },
   ];
   for (const step of STEPS) {
     if (shorter > step.shortSide) {
@@ -50,7 +48,7 @@ export function resolutionChoices(source: StudioSource): ResolutionChoice[] {
         id: step.id,
         label: step.label,
         shortSide: step.shortSide,
-        hint: dims(step.shortSide, longFor(source, step.shortSide)),
+        hint: dims(step.shortSide),
       });
     }
   }

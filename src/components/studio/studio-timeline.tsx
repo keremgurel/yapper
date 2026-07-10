@@ -4,14 +4,19 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { Music2, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { clipDuration, totalDuration } from "@/lib/studio/clips";
-import { useFilmstrip } from "@/hooks/use-filmstrip";
-import { useWaveform } from "@/hooks/use-waveform";
+import { clipDuration, clipMediaUrl, trimBounds } from "@/lib/studio/clips";
+import {
+  useFilmstrips,
+  useWaveforms,
+  type TimelineMedia,
+} from "@/hooks/use-timeline-media";
+import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import UpperTrackLane from "@/components/studio/upper-track-lane";
@@ -19,7 +24,7 @@ import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
-import type { Clip } from "@/lib/studio/types";
+import type { Clip, StudioSource } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
@@ -53,21 +58,26 @@ interface TrimDrag {
 
 export default function StudioTimeline({
   clips,
-  sourceUrl,
-  sourceKind = "video",
-  sourceDuration,
+  source,
   currentTimelineTime,
   onSeek,
 }: {
   clips: Clip[];
-  sourceUrl: string;
-  sourceKind?: "video" | "image";
-  sourceDuration: number;
+  /** The project's recording. Null once it's been removed from the library. */
+  source: StudioSource | null;
   currentTimelineTime: number;
   onSeek: (timelineTime: number) => void;
 }) {
-  const isImage = sourceKind === "image";
+  const isImage = source?.kind === "image";
+  const sourceUrl = source?.url ?? "";
+  const sourceDuration = source?.duration ?? 0;
   const {
+    duration,
+    baseHidden,
+    baseMuted,
+    toggleBaseHidden,
+    toggleBaseMuted,
+    removeBaseTrack,
     selectedClipIds,
     selectClip,
     toggleClipSelection,
@@ -104,9 +114,12 @@ export default function StudioTimeline({
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
   const [pxPerSec, setPxPerSec] = useState(80);
-  // Live mirror of pxPerSec so rapid pinch events accumulate off the latest
-  // value, and the pending zoom anchor to apply after the width re-renders.
-  const pxRef = useRef(80);
+  // Two distinct scales, and conflating them is what makes zoom drift: `target`
+  // accumulates across the pinch events of a frame, while `rendered` is the
+  // scale the DOM (and therefore `scrollLeft`) is currently laid out at. The
+  // cursor anchor must always be derived from `rendered`.
+  const targetPxRef = useRef(80);
+  const renderedPxRef = useRef(80);
   const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
   const zoomRafRef = useRef(false);
   // scrollLeft at which the current render window was committed; we only
@@ -149,18 +162,51 @@ export default function StudioTimeline({
     width: number;
     height: number;
   } | null>(null);
-  const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
-  const peaks = useWaveform(sourceUrl, sourceDuration);
+  // Every distinct video on the timeline, no matter which layer it sits on, so
+  // each clip draws its own thumbnails and waveform rather than the recording's.
+  const timelineMedia = useMemo<TimelineMedia[]>(() => {
+    const seen = new Map<string, TimelineMedia>();
+    const add = (url: string, dur: number) => {
+      if (url && dur > 0 && !seen.has(url))
+        seen.set(url, { url, duration: dur });
+    };
+    if (source && source.kind !== "image") add(source.url, source.duration);
+    for (const c of clips) {
+      if (c.src?.kind === "video") add(c.src.url, c.src.duration);
+    }
+    for (const o of overlays) {
+      if (o.kind === "video") {
+        add(
+          o.url,
+          mediaAssets.find((m) => m.url === o.url)?.duration ??
+            o.sourceStart + o.duration,
+        );
+      }
+    }
+    return [...seen.values()];
+  }, [source, clips, overlays, mediaAssets]);
+  const strips = useFilmstrips(timelineMedia);
+  const waves = useWaveforms(timelineMedia);
+  const mediaDurationOf = useCallback(
+    (url: string) => timelineMedia.find((m) => m.url === url)?.duration ?? 0,
+    [timelineMedia],
+  );
   const [view, setView] = useState({ start: 0, width: 0 });
 
-  const total = totalDuration(clips);
+  // The ruler spans the whole project, not just the bottom track — a layer that
+  // outlasts it still needs timeline to sit on.
+  const total = duration;
   const trackWidth = Math.max(total * pxPerSec, 1);
   const playheadX = currentTimelineTime * pxPerSec;
 
-  // Empty gutter on each side so the start (or end) can be scrolled to center,
-  // giving room to drag. Content lives at x = padLeft; nothing sits before it.
+  // Empty gutter on each side, one full screen wide. Beyond giving room to drag
+  // past either end, that exact width is what lets zoom anchor perfectly: to pin
+  // instant `t` under a cursor at `offsetX` we need scrollLeft = t*px + pad -
+  // offsetX, whose range over t ∈ [0, total] and offsetX ∈ [0, width] is exactly
+  // [0, trackWidth + pad] — the scroll range a one-screen gutter provides. Any
+  // narrower and the browser clamps the target, and the timeline slides.
   const measured = view.width > 0;
-  const padLeft = measured ? Math.round(view.width / 2) : 240;
+  const padLeft = measured ? Math.round(view.width) : 240;
 
   // Snap a clip's start (or its end) to nearby edges when magnet mode is on.
   const snapStart = useCallback(
@@ -214,8 +260,11 @@ export default function StudioTimeline({
     const idx = clips.findIndex((c) => c.id === trim.id);
     const clip = clips[idx];
     if (!clip) return;
-    const prevEnd = clips[idx - 1]?.end ?? 0;
-    const nextStart = clips[idx + 1]?.start ?? sourceDuration;
+    const { min: prevEnd, max: nextStart } = trimBounds(
+      clips,
+      idx,
+      sourceDuration,
+    );
     // Magnet targets (in source seconds): neighbor edges and the playhead.
     const offset = clips
       .slice(0, idx)
@@ -379,29 +428,41 @@ export default function StudioTimeline({
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      const lineUnit = e.deltaMode === 1 ? 16 : 1; // normalize mouse "line" deltas
+      // Normalize "line" and "page" deltas onto pixels.
+      const lineUnit =
+        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
       // Trackpad pinch reports ctrlKey; ⌘/Ctrl+wheel is the explicit zoom.
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const rect = el.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const current = pxRef.current;
-        const timeAtCursor = (offsetX + el.scrollLeft - padLeft) / current;
+        const current = targetPxRef.current;
         const next = clamp(
           current * Math.exp(-e.deltaY * lineUnit * 0.0025),
           MIN_PX,
           MAX_PX,
         );
         if (next === current) return;
-        pxRef.current = next;
-        // Applied in a layout effect once the new width has rendered — no flash.
-        pendingZoomRef.current = { time: timeAtCursor, offsetX };
+        // Anchor against the RENDERED scale, since `scrollLeft` belongs to the
+        // layout we can actually measure. Reading it against the accumulated
+        // target would mix two scales and slide the timeline under the cursor.
+        const rect = el.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        pendingZoomRef.current = {
+          // Clamped into the content: pointing at the empty gutter anchors the
+          // nearest end rather than an instant the scroll range can't reach.
+          time: clamp(
+            (offsetX + el.scrollLeft - padLeft) / renderedPxRef.current,
+            0,
+            total,
+          ),
+          offsetX,
+        };
+        targetPxRef.current = next;
         // Coalesce rapid pinch events into one render per frame.
         if (!zoomRafRef.current) {
           zoomRafRef.current = true;
           requestAnimationFrame(() => {
             zoomRafRef.current = false;
-            setPxPerSec(pxRef.current);
+            setPxPerSec(targetPxRef.current);
           });
         }
         return;
@@ -415,21 +476,39 @@ export default function StudioTimeline({
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [padLeft]);
+  }, [padLeft, total]);
 
-  // Keep pxRef in sync and anchor the cursor point after a zoom re-render.
+  // Park 0:00 at the left edge, once. This has to wait for the first measurement:
+  // until `view.width` is known the gutter is only a placeholder, the content is
+  // narrower than its final width, and the browser would clamp the scroll away.
+  const didInitScrollRef = useRef(false);
   useLayoutEffect(() => {
-    pxRef.current = pxPerSec;
+    const el = scrollRef.current;
+    if (!el || !measured || didInitScrollRef.current) return;
+    didInitScrollRef.current = true;
+    el.scrollLeft = padLeft;
+    viewStartRef.current = el.scrollLeft;
+  }, [measured, padLeft]);
+
+  // The new width has rendered: pin the anchored instant back under the cursor.
+  useLayoutEffect(() => {
+    renderedPxRef.current = pxPerSec;
     const pending = pendingZoomRef.current;
     if (!pending) return;
     const el = scrollRef.current;
     if (el) {
+      // The gutters are a full screen wide on each side, so this target is
+      // always inside [0, maxScrollLeft] and never gets clamped out from under
+      // the cursor — that clamping is the other half of the zoom drift.
       el.scrollLeft = pending.time * pxPerSec + padLeft - pending.offsetX;
       // Re-anchor the render window to the new scale/position.
       viewStartRef.current = el.scrollLeft;
       setView({ start: el.scrollLeft, width: el.clientWidth });
     }
-    pendingZoomRef.current = null;
+    // Another pinch event landed before this frame committed, so its scale is
+    // still pending. Keep the anchor: the same instant must stay under the same
+    // cursor position for the whole gesture, not just this frame.
+    if (targetPxRef.current === pxPerSec) pendingZoomRef.current = null;
   }, [pxPerSec, padLeft]);
 
   /* ---- track the visible window (buffered) so panning stays native/smooth ---- */
@@ -440,8 +519,6 @@ export default function StudioTimeline({
       viewStartRef.current = el.scrollLeft;
       setView({ start: el.scrollLeft, width: el.clientWidth });
     };
-    // Start with 0:00 at the left edge; the gutter is scrollable to its left.
-    if (el.clientWidth > 0) el.scrollLeft = el.clientWidth / 2;
     commit();
     const onScroll = () => {
       // Re-window only after drifting past ~half a screen; the ±1-screen buffer
@@ -491,11 +568,17 @@ export default function StudioTimeline({
         <TrackHeaderRail
           overlays={overlays}
           audioTracks={audioTracks}
+          hasBaseTrack={clips.length > 0}
+          baseHidden={baseHidden}
+          baseMuted={baseMuted}
           placeholderTrack={overlays.length === 0}
           hasCaptions={captions.length > 0}
           onToggleOverlayHidden={toggleOverlayHidden}
           onToggleOverlayMuted={toggleOverlayMuted}
           onRemoveOverlay={removeOverlay}
+          onToggleBaseHidden={toggleBaseHidden}
+          onToggleBaseMuted={toggleBaseMuted}
+          onRemoveBaseTrack={removeBaseTrack}
           onToggleAudioMuted={toggleAudioMuted}
           onRemoveAudio={removeAudio}
         />
@@ -643,18 +726,11 @@ export default function StudioTimeline({
                   pxPerSec={pxPerSec}
                   visStartSec={visStartSec}
                   visEndSec={visEndSec}
-                  frames={frames}
-                  aspect={aspect}
-                  peaks={peaks}
-                  sourceUrl={sourceUrl}
-                  sourceDuration={sourceDuration}
+                  strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
+                  peaks={waves.get(o.url) ?? []}
+                  mediaDuration={mediaDurationOf(o.url)}
                   fullDuration={
-                    o.kind === "image"
-                      ? Infinity
-                      : o.url === sourceUrl
-                        ? sourceDuration
-                        : (mediaAssets.find((m) => m.url === o.url)?.duration ??
-                          o.sourceStart + o.duration)
+                    o.kind === "image" ? Infinity : mediaDurationOf(o.url)
                   }
                   selected={selectedOverlayIds.includes(o.id)}
                   onSelect={(additive) =>
@@ -678,8 +754,14 @@ export default function StudioTimeline({
                 />
               ))}
 
-              {/* Bottom (base) video layer */}
-              <div ref={baseRowRef} className="relative h-16">
+              {/* Bottom video layer */}
+              <div
+                ref={baseRowRef}
+                className={`relative h-16 ${baseHidden ? "opacity-40" : ""}`}
+              >
+                {clips.length === 0 && (
+                  <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+                )}
                 {clips.map((clip, i) => {
                   const isTrimming = trim?.id === clip.id && live;
                   const cStart = isTrimming ? live.start : clip.start;
@@ -709,8 +791,20 @@ export default function StudioTimeline({
                   // and extending the edge back out reveals real frames (not gray).
                   const edgeStart = isTrimming && trim?.edge === "start";
                   const edgeEnd = isTrimming && trim?.edge === "end";
-                  const prevEnd = clips[i - 1]?.end ?? 0;
-                  const nextStart = clips[i + 1]?.start ?? sourceDuration;
+                  const { min: prevEnd, max: nextStart } = trimBounds(
+                    clips,
+                    i,
+                    sourceDuration,
+                  );
+                  // Each clip draws from its OWN media, whether that's the
+                  // recording or something appended alongside it.
+                  const mediaUrl = clipMediaUrl(clip, sourceUrl);
+                  const strip = strips.get(mediaUrl) ?? EMPTY_FILMSTRIP;
+                  const clipPeaks = waves.get(mediaUrl) ?? [];
+                  const mediaDuration = mediaDurationOf(mediaUrl);
+                  const clipIsImage = clip.src
+                    ? clip.src.kind === "image"
+                    : isImage;
                   const contentStartSrc = edgeStart ? prevEnd : cStart;
                   const contentEndSrc = edgeEnd ? nextStart : cEnd;
                   const contentLeftSec = edgeStart
@@ -785,27 +879,20 @@ export default function StudioTimeline({
                       title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
-                      {clip.src ? (
-                        <span className="absolute inset-0 flex items-center gap-1.5 bg-sky-500/15 px-2 ring-1 ring-sky-500/30">
-                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300/90" />
-                          <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                            {clip.src.name}
-                          </span>
-                        </span>
-                      ) : isImage ? (
+                      {clipIsImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={sourceUrl}
+                          src={mediaUrl}
                           alt=""
                           draggable={false}
                           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         />
                       ) : (
                         span &&
-                        frames.length > 0 && (
+                        strip.frames.length > 0 && (
                           <ClipFilmstrip
-                            frames={frames}
-                            aspect={aspect}
+                            frames={strip.frames}
+                            aspect={strip.aspect}
                             leftPx={contentX}
                             widthPx={span.widthPx}
                             srcStart={span.srcA}
@@ -815,19 +902,30 @@ export default function StudioTimeline({
                         )
                       )}
 
-                      {!clip.src && span && peaks.length > 0 && (
+                      {!clipIsImage && span && clipPeaks.length > 0 && (
                         <span
                           className="pointer-events-none absolute bottom-0 bg-black/50"
                           style={{ left: contentX, width: span.widthPx }}
                         >
                           <WaveformCanvas
-                            peaks={peaks}
-                            sourceDuration={sourceDuration}
+                            peaks={clipPeaks}
+                            sourceDuration={mediaDuration}
                             clipStart={span.srcA}
                             clipEnd={span.srcB}
                             width={span.widthPx}
                             height={22}
                           />
+                        </span>
+                      )}
+
+                      {/* Appended media names itself, so a clip that isn't the
+                        recording is identifiable at a glance. */}
+                      {clip.src && (
+                        <span className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
+                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300/90" />
+                          <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
+                            {clip.src.name}
+                          </span>
                         </span>
                       )}
 

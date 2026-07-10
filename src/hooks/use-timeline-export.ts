@@ -39,18 +39,29 @@ function safeBaseName(name: string | undefined): string {
 
 /** Drives a full-timeline MP4 export: run/cancel plus progress and error state. */
 export function useTimelineExport() {
-  const { source, clips, overlays, captions, captionStyle, audioTracks } =
-    useStudio();
+  const {
+    source,
+    clips,
+    overlays,
+    captions,
+    captionStyle,
+    audioTracks,
+    duration,
+    baseHidden,
+    baseMuted,
+    aspect,
+  } = useStudio();
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const canExport = !!source && clips.length > 0;
+  // Anything on any layer is exportable — the bottom track isn't required.
+  const canExport = duration > 0;
 
   const run = useCallback(
     async (request: ExportRequest = {}) => {
-      if (!source || exporting) return;
+      if (!canExport || exporting) return;
       setError(null);
       setExporting(true);
       setStatus("Preparing…");
@@ -59,7 +70,17 @@ export function useTimelineExport() {
 
       try {
         const blob = await exportTimeline(
-          { source, clips, overlays, captions, captionStyle, audioTracks },
+          {
+            source,
+            clips,
+            overlays,
+            captions,
+            captionStyle,
+            audioTracks,
+            baseHidden,
+            baseMuted,
+            aspect,
+          },
           {
             options: {
               ...DEFAULT_EXPORT_OPTIONS,
@@ -69,7 +90,7 @@ export function useTimelineExport() {
             signal: controller.signal,
           },
         );
-        const base = safeBaseName(source.name);
+        const base = safeBaseName(source?.name);
         downloadBlob(blob, `${base}-export.mp4`);
         // Optional sidecar captions, timed to the exported (cut) video.
         if (request.downloadSrt && captions.length > 0) {
@@ -95,13 +116,26 @@ export function useTimelineExport() {
         abortRef.current = null;
       }
     },
-    [source, clips, overlays, captions, captionStyle, audioTracks, exporting],
+    [
+      source,
+      clips,
+      overlays,
+      captions,
+      captionStyle,
+      audioTracks,
+      baseHidden,
+      baseMuted,
+      aspect,
+      canExport,
+      exporting,
+    ],
   );
 
   const cancel = useCallback(() => abortRef.current?.abort(), []);
 
   return {
     source,
+    aspect,
     canExport,
     hasCaptions: captions.length > 0,
     exporting,

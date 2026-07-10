@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Image as ImageIcon, Video } from "lucide-react";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
-import type { Frame } from "@/hooks/use-filmstrip";
+import type { Filmstrip } from "@/lib/studio/filmstrip";
 import { visibleSpan } from "@/lib/studio/window";
 import type { Overlay } from "@/lib/studio/types";
 
@@ -17,20 +17,19 @@ interface TrimState {
 }
 
 /**
- * A clip on an upper video track. When it references the recording it shows the
- * real thumbnails + waveform for its source slice, so it reads as a real clip
- * (not a flat bar). Track controls live in the fixed header rail, not here.
+ * A clip on an upper video track. It shows the real thumbnails + waveform for
+ * its own media's slice — whether that's the recording or an uploaded asset —
+ * so it reads as a real clip, not a flat bar. Track controls live in the fixed
+ * header rail, not here.
  */
 export default function UpperTrackLane({
   overlay,
   pxPerSec,
   visStartSec,
   visEndSec,
-  frames,
-  aspect,
+  strip,
   peaks,
-  sourceUrl,
-  sourceDuration,
+  mediaDuration,
   fullDuration,
   selected,
   liftY,
@@ -43,11 +42,12 @@ export default function UpperTrackLane({
   pxPerSec: number;
   visStartSec: number;
   visEndSec: number;
-  frames: Frame[];
-  aspect: number;
+  /** Thumbnails for this overlay's own media. */
+  strip: Filmstrip;
+  /** Waveform peaks for this overlay's own media. */
   peaks: number[];
-  sourceUrl: string;
-  sourceDuration: number;
+  /** Length of that media, which the waveform is drawn against. */
+  mediaDuration: number;
   fullDuration: number;
   selected: boolean;
   liftY: number;
@@ -122,9 +122,9 @@ export default function UpperTrackLane({
 
   const left = o.start * pxPerSec;
   const width = Math.max(o.duration * pxPerSec, 8);
-  const isRecording = o.url === sourceUrl && o.kind === "video";
-  const span = isRecording
-    ? visibleSpan(
+  const span = isImg
+    ? null
+    : visibleSpan(
         o.start,
         o.duration,
         o.sourceStart,
@@ -132,8 +132,7 @@ export default function UpperTrackLane({
         visStartSec,
         visEndSec,
         pxPerSec,
-      )
-    : null;
+      );
 
   return (
     <div className="relative h-12">
@@ -164,10 +163,19 @@ export default function UpperTrackLane({
         } ${o.hidden ? "opacity-40" : ""}`}
       >
         <span className="absolute inset-0 bg-violet-500/10" />
-        {span && frames.length > 0 && (
+        {isImg && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={o.url}
+            alt=""
+            draggable={false}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          />
+        )}
+        {span && strip.frames.length > 0 && (
           <ClipFilmstrip
-            frames={frames}
-            aspect={aspect}
+            frames={strip.frames}
+            aspect={strip.aspect}
             leftPx={span.leftPx}
             widthPx={span.widthPx}
             srcStart={span.srcA}
@@ -175,14 +183,14 @@ export default function UpperTrackLane({
             height={48}
           />
         )}
-        {span && peaks.length > 0 && (
+        {span && peaks.length > 0 && mediaDuration > 0 && (
           <span
             className="pointer-events-none absolute bottom-0 bg-black/50"
             style={{ left: span.leftPx, width: span.widthPx }}
           >
             <WaveformCanvas
               peaks={peaks}
-              sourceDuration={sourceDuration}
+              sourceDuration={mediaDuration}
               clipStart={span.srcA}
               clipEnd={span.srcB}
               width={span.widthPx}

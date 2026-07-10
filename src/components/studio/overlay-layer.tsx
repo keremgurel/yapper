@@ -58,14 +58,23 @@ function snapEdge(pos: number, targets: number[]): number | null {
 
 type Corner = "tl" | "tr" | "bl" | "br";
 
-// Insets (not negative offsets) so handles are never clipped by the stage's
-// overflow-hidden, even when an overlay fills the whole frame.
+// Centred exactly on the box's corners. The media is clipped by an inner
+// wrapper rather than by the box itself, and the stage no longer clips its
+// chrome, so a handle sitting half outside the overlay is still fully drawn.
 const CORNERS: { id: Corner; className: string; cursor: string }[] = [
-  { id: "tl", className: "top-1 left-1", cursor: "cursor-nwse-resize" },
-  { id: "tr", className: "top-1 right-1", cursor: "cursor-nesw-resize" },
-  { id: "bl", className: "bottom-1 left-1", cursor: "cursor-nesw-resize" },
-  { id: "br", className: "right-1 bottom-1", cursor: "cursor-nwse-resize" },
+  { id: "tl", className: "top-0 left-0", cursor: "cursor-nwse-resize" },
+  { id: "tr", className: "top-0 right-0", cursor: "cursor-nesw-resize" },
+  { id: "bl", className: "bottom-0 left-0", cursor: "cursor-nesw-resize" },
+  { id: "br", className: "right-0 bottom-0", cursor: "cursor-nwse-resize" },
 ];
+
+// Half a handle, so translating by this centres it on the corner it names.
+const HANDLE_OFFSET: Record<Corner, string> = {
+  tl: "translate(-50%, -50%)",
+  tr: "translate(50%, -50%)",
+  bl: "translate(-50%, 50%)",
+  br: "translate(50%, 50%)",
+};
 
 interface DragState {
   mode: "move" | "resize";
@@ -268,29 +277,32 @@ function OverlayBox({
         width: `${r.w * 100}%`,
         height: `${r.h * 100}%`,
       }}
-      className={`pointer-events-auto absolute cursor-move overflow-hidden rounded-[2px] ${
+      className={`pointer-events-auto absolute cursor-move rounded-[2px] ${
         selected
           ? "ring-2 ring-cyan-400"
           : "ring-1 ring-white/20 hover:ring-white/60"
       }`}
     >
-      {overlay.kind === "image" ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={overlay.url}
-          alt=""
-          draggable={false}
-          className="pointer-events-none h-full w-full object-cover"
-        />
-      ) : (
-        <video
-          ref={videoRef}
-          src={overlay.url}
-          muted={overlay.muted ?? true}
-          playsInline
-          className="pointer-events-none h-full w-full object-cover"
-        />
-      )}
+      {/* Only the media is clipped, so the corner handles can overhang. */}
+      <div className="absolute inset-0 overflow-hidden rounded-[2px]">
+        {overlay.kind === "image" ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={overlay.url}
+            alt=""
+            draggable={false}
+            className="pointer-events-none h-full w-full object-cover"
+          />
+        ) : (
+          <video
+            ref={videoRef}
+            src={overlay.url}
+            muted={overlay.muted ?? true}
+            playsInline
+            className="pointer-events-none h-full w-full object-cover"
+          />
+        )}
+      </div>
       {selected &&
         CORNERS.map((corner) => (
           <span
@@ -298,7 +310,8 @@ function OverlayBox({
             onPointerDown={start("resize", corner.id)}
             onPointerMove={move}
             onPointerUp={end}
-            className={`absolute h-3.5 w-3.5 rounded-full border-2 border-cyan-400 bg-white shadow ${corner.className} ${corner.cursor}`}
+            style={{ transform: HANDLE_OFFSET[corner.id] }}
+            className={`absolute z-10 h-3.5 w-3.5 rounded-full border-2 border-cyan-400 bg-white shadow ${corner.className} ${corner.cursor}`}
           />
         ))}
     </div>

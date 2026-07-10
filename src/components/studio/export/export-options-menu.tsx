@@ -18,7 +18,10 @@ import { resolutionChoices } from "@/lib/studio/export/resolutions";
 import type { StudioSource } from "@/lib/studio/types";
 
 interface ExportOptionsMenuProps {
-  source: StudioSource;
+  /** Sets the native detail level. Null once the recording has been removed. */
+  source: StudioSource | null;
+  /** Project frame width / height, which fixes the shape of every choice. */
+  aspect: number;
   hasCaptions: boolean;
   disabled?: boolean;
   onExport: (request: ExportRequest) => void;
@@ -31,11 +34,15 @@ interface ExportOptionsMenuProps {
  */
 export default function ExportOptionsMenu({
   source,
+  aspect,
   hasCaptions,
   disabled,
   onExport,
 }: ExportOptionsMenuProps) {
-  const choices = useMemo(() => resolutionChoices(source), [source]);
+  const choices = useMemo(
+    () => resolutionChoices(source, aspect),
+    [source, aspect],
+  );
   const [resolutionId, setResolutionId] = useState(
     choices[0]?.id ?? "original",
   );

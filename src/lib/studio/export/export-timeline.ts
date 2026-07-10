@@ -1,5 +1,5 @@
 import { ArrayBufferTarget, Muxer } from "mp4-muxer";
-import { totalDuration } from "@/lib/studio/clips";
+import { projectDuration } from "@/lib/studio/project-duration";
 import { mixAudio } from "@/lib/studio/export/audio-mix";
 import {
   outputDimensions,
@@ -52,8 +52,11 @@ export async function exportTimeline(
     );
   }
 
-  const { source, clips, overlays, captions, captionStyle } = input;
-  const duration = totalDuration(clips);
+  const { source, clips, overlays, captions, captionStyle, audioTracks } =
+    input;
+  const { baseHidden, aspect } = input; // baseMuted is handled by mixAudio
+  // Every layer counts toward the length, not just the bottom track.
+  const duration = projectDuration(clips, overlays, audioTracks);
   if (duration <= 0)
     throw new Error("There's nothing on the timeline to export.");
 
@@ -70,7 +73,7 @@ export async function exportTimeline(
       options.maxVideoBitrate,
       Math.round(w * h * fps * options.bitsPerPixel),
     );
-  const native = outputDimensions(source, options.shortSide);
+  const native = outputDimensions(source, aspect, options.shortSide);
   const attempts = [
     native,
     scaleLongSide(native, 1440),
@@ -106,12 +109,15 @@ export async function exportTimeline(
   const pool = new MediaPool();
 
   try {
-    // Preload every base-track source (base + any appended clip media).
+    // Preload every bottom-track source (the recording + any appended clip
+    // media). A hidden bottom track is never drawn, so nothing to load.
     const trackSources = new Map<string, "video" | "image">();
-    for (const clip of clips) {
-      const url = clip.src?.url ?? source.url;
-      const kind = clip.src?.kind ?? source.kind ?? "video";
-      trackSources.set(url, kind);
+    if (!baseHidden) {
+      for (const clip of clips) {
+        const url = clip.src?.url ?? source?.url;
+        if (!url) continue;
+        trackSources.set(url, clip.src?.kind ?? source?.kind ?? "video");
+      }
     }
     for (const [url, kind] of trackSources) {
       throwIfAborted();
@@ -159,7 +165,7 @@ export async function exportTimeline(
       throwIfAborted();
       const t = i / fps;
 
-      const base = baseAt(clips, source, t);
+      const base = baseHidden ? null : baseAt(clips, source, t);
       let baseItem: DrawItem | null = null;
       if (base) {
         const m = pool.get(trackKey(base.url));

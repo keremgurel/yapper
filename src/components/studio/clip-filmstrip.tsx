@@ -1,6 +1,6 @@
 "use client";
 
-import type { Frame } from "@/hooks/use-filmstrip";
+import type { Frame } from "@/lib/studio/filmstrip";
 
 function nearestFrame(frames: Frame[], t: number): Frame {
   let best = frames[0];

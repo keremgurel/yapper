@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import AspectPicker from "@/components/studio/aspect-picker";
 import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
 import AutoEditProgress from "@/components/studio/auto-edit-progress";
 import OverlayLayer from "@/components/studio/overlay-layer";
@@ -20,10 +21,14 @@ export default function StudioWorkspace() {
   const {
     source,
     clips,
+    duration,
+    aspect,
+    baseHidden,
+    baseMuted,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
-    splitAt,
+    splitSelected,
     deleteSelected,
     audioTracks,
     overlays,
@@ -33,7 +38,16 @@ export default function StudioWorkspace() {
   } = useStudio();
   const [dropActive, setDropActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hasVideo = source ? source.kind !== "image" : true;
+  // The bottom track can drive a <video> clock only when it has clips and isn't
+  // a still. Otherwise playback falls back to its synthetic clock.
+  const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
+  const isImageBase = clips.length > 0 && source?.kind === "image";
+  // Anything on any layer means there's a project to show a stage for.
+  const hasProject =
+    !!source ||
+    clips.length > 0 ||
+    overlays.length > 0 ||
+    audioTracks.length > 0;
   const {
     timelineTime,
     sourceTime,
@@ -42,7 +56,12 @@ export default function StudioWorkspace() {
     pause,
     seekToTimeline,
     seekToSource,
-  } = useStudioPlayback(videoRef, clips, hasVideo, source?.url ?? "");
+  } = useStudioPlayback(videoRef, {
+    clips,
+    total: duration,
+    hasVideo,
+    baseUrl: source?.url ?? "",
+  });
   const { width, onPointerDown } = useResizablePanel();
 
   // Measure the preview area so we can size a fixed-aspect project stage.
@@ -108,8 +127,10 @@ export default function StudioWorkspace() {
         if (playing) pause();
         else play();
       } else if (e.key.toLowerCase() === "s" && !mod) {
+        // Timeline seconds, not the <video>'s own clock: the playhead is the one
+        // position every layer shares, and only the bottom track has a <video>.
         e.preventDefault();
-        splitAt(videoRef.current?.currentTime ?? sourceTime);
+        splitSelected(timelineTime);
       } else if (e.key === "Delete" || e.key === "Backspace") {
         // One delete for everything selected — base clips, overlays, captions,
         // or any mix of them.
@@ -131,17 +152,22 @@ export default function StudioWorkspace() {
     play,
     pause,
     playing,
-    sourceTime,
-    splitAt,
+    timelineTime,
+    splitSelected,
     deleteSelected,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
   ]);
 
-  const total = totalDuration(clips);
-  const aspect =
-    source?.width && source?.height ? source.width / source.height : 9 / 16;
+  // The bottom track only occupies the timeline up to its own end; past that
+  // (or when it's hidden) the stage shows the layers above it over black. When
+  // nothing outlasts it, the playhead resting on its final frame still shows
+  // that frame rather than blacking out the moment playback stops.
+  const baseTotal = totalDuration(clips);
+  const baseOutlasted =
+    duration > baseTotal + 0.03 && timelineTime >= baseTotal;
+  const baseVisible = !baseHidden && !baseOutlasted;
   let stageW = box.w;
   let stageH = box.w / aspect;
   if (stageH > box.h) {
@@ -159,27 +185,36 @@ export default function StudioWorkspace() {
           className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4"
         >
           <AutoEditProgress />
-          {source ? (
+          {hasProject ? (
             <>
+              {/* Not `overflow-hidden`: an overlay's corner handles sit on its
+                  edges, so a full-frame overlay's handles must be able to
+                  overhang the stage. Every layer clips its own media instead,
+                  and none of them can extend past the frame anyway. */}
               <div
-                className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
+                className="relative rounded-lg bg-black shadow-2xl"
                 style={{ width: stageW || 0, height: stageH || 0 }}
               >
-                {source.kind === "image" ? (
+                {isImageBase && source && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={source.url}
                     alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full rounded-lg object-cover"
+                    style={{ visibility: baseVisible ? "visible" : "hidden" }}
                     onClick={() => (playing ? pause() : play())}
                   />
-                ) : (
+                )}
+                {hasVideo && (
                   // src is managed imperatively by the playback hook so it can
-                  // switch between appended main-track sources.
+                  // switch between the bottom track's appended sources. Kept
+                  // mounted even while hidden — it's the clock.
                   <video
                     ref={videoRef}
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full rounded-lg object-cover"
                     playsInline
+                    muted={baseMuted}
+                    style={{ visibility: baseVisible ? "visible" : "hidden" }}
                     onClick={() => (playing ? pause() : play())}
                   />
                 )}
@@ -217,15 +252,16 @@ export default function StudioWorkspace() {
             <p className="text-foreground/55 truncate text-xs">
               {source?.name ?? "No video yet"}
             </p>
+            <AspectPicker />
           </div>
           <div className="shrink-0">
             <StudioTransport
               playing={playing}
               currentTimelineTime={timelineTime}
-              totalTimelineTime={total}
+              totalTimelineTime={duration}
               onPlay={play}
               onPause={pause}
-              onSplit={() => splitAt(sourceTime)}
+              onSplit={() => splitSelected(timelineTime)}
             />
           </div>
           <div
@@ -249,12 +285,10 @@ export default function StudioWorkspace() {
               }
             }}
           >
-            {source ? (
+            {hasProject ? (
               <StudioTimeline
                 clips={clips}
-                sourceUrl={source.url}
-                sourceKind={source.kind ?? "video"}
-                sourceDuration={source.duration}
+                source={source}
                 currentTimelineTime={timelineTime}
                 onSeek={seekToTimeline}
               />

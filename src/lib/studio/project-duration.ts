@@ -1,0 +1,19 @@
+import { totalDuration } from "@/lib/studio/clips";
+import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
+
+/**
+ * Length of the edited timeline: whichever layer runs longest. The bottom track
+ * is only the lowest layer, so it doesn't get to cut the project short — an
+ * overlay or audio clip that outlasts it still plays and still exports, and a
+ * project with no bottom track at all is still a project.
+ */
+export function projectDuration(
+  clips: Clip[],
+  overlays: Overlay[],
+  audioTracks: AudioTrack[],
+): number {
+  let end = totalDuration(clips);
+  for (const o of overlays) end = Math.max(end, o.start + o.duration);
+  for (const a of audioTracks) end = Math.max(end, a.start + a.duration);
+  return end;
+}

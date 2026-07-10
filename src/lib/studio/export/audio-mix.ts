@@ -1,4 +1,5 @@
-import { clipDuration, totalDuration } from "@/lib/studio/clips";
+import { clipDuration } from "@/lib/studio/clips";
+import { projectDuration } from "@/lib/studio/project-duration";
 import { extractPcm } from "@/lib/studio/audio/extract-pcm";
 import type { ExportInput } from "@/lib/studio/export/types";
 
@@ -14,8 +15,8 @@ const CHANNELS = 2;
 export async function mixAudio(
   input: ExportInput,
 ): Promise<AudioBuffer | null> {
-  const { source, clips, overlays, audioTracks } = input;
-  const duration = totalDuration(clips);
+  const { source, clips, overlays, audioTracks, baseMuted } = input;
+  const duration = projectDuration(clips, overlays, audioTracks);
   if (duration <= 0) return null;
 
   const ctx = new OfflineAudioContext(
@@ -87,17 +88,20 @@ export async function mixAudio(
     scheduled += 1;
   };
 
-  // Base track: each clip plays its own source range at its timeline position.
+  // Bottom track: each clip plays its own source range at its timeline position.
+  // A muted bottom track is as silent here as it is in the preview.
   let cursor = 0;
-  for (const clip of clips) {
-    const url = clip.src?.url ?? source.url;
-    const kind = clip.src?.kind ?? source.kind ?? "video";
-    const len = clipDuration(clip);
-    if (kind !== "image") {
-      const buffer = await decode(url);
-      if (buffer) schedule(buffer, cursor, clip.start, len);
+  if (!baseMuted) {
+    for (const clip of clips) {
+      const url = clip.src?.url ?? source?.url;
+      const kind = clip.src?.kind ?? source?.kind ?? "video";
+      const len = clipDuration(clip);
+      if (url && kind !== "image") {
+        const buffer = await decode(url);
+        if (buffer) schedule(buffer, cursor, clip.start, len);
+      }
+      cursor += len;
     }
-    cursor += len;
   }
 
   // Overlay audio: only unmuted, visible overlays contribute. Mirror the
