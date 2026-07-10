@@ -1,5 +1,7 @@
+import { fullClip, removeSourceRange } from "@/lib/studio/clips";
 import { speechBoundsInRange, type TrimAnalysis } from "@/lib/studio/silence";
 import {
+  combineRetakeCuts,
   findFillerIds,
   pauseRanges,
   selectionToRanges,
@@ -93,4 +95,100 @@ export function fillerCuts(words: Word[]): SourceRange[] {
 /** Drop the clips too short to play cleanly. */
 export function dropSlivers(clips: Clip[], minSec = MIN_CLIP_SEC): Clip[] {
   return clips.filter((c) => c.end - c.start >= minSec);
+}
+
+/**
+ * The one-click pass, as the progress UI names its stages. Decoding and
+ * transcription are the caller's; the rest is `planAutoEdit`.
+ */
+export const AUTO_EDIT_STEPS = {
+  PREPARE: 0,
+  TRANSCRIPT: 1,
+  RETAKES: 2,
+  SILENCE: 3,
+  TRIM: 4,
+  CAPTIONS: 5,
+} as const;
+
+/** The one-click pass cuts tighter than "remove pauses": it reshapes the take. */
+const AUTO_EDIT_CUTS: PauseCutOptions = {
+  minGap: 0.25,
+  minSilence: 0.4,
+  headPad: 0.04,
+  tailPad: 0.15,
+};
+
+export interface AutoEditInput {
+  clips: Clip[];
+  /** Empty when there is no transcript; the pass then only trims silence. */
+  words: Word[];
+  /** What the video element claims. Often short, for MediaRecorder WebM. */
+  sourceDuration: number;
+  /** What the decoded audio says, which is the honest answer. */
+  audioDuration: number;
+  /** null when the waveform could not be analysed: clips are left untrimmed. */
+  analysis: TrimAnalysis | null;
+  /** Word-INDEX pairs from the AI retake pass, not seconds. null when it failed. */
+  aiCuts: [number, number][] | null;
+  onStep?: (step: number) => void;
+}
+
+export interface AutoEditResult {
+  clips: Clip[];
+  /** The take's true length, which the caller writes back to the source. */
+  duration: number;
+}
+
+/**
+ * Everything the one-click pass does to the clips, given its inputs. Pure, so
+ * each stage sees the previous stage's clips directly rather than waiting on a
+ * React state flush, and so the whole pass can be tested without a browser.
+ *
+ * The caller owns the slow, impure half: decoding the audio, transcribing it,
+ * and asking the backend which lines are retakes. It reports steps 0 and 1 (and
+ * step 2, which spans the retake network call); `onStep` covers the rest.
+ */
+export function planAutoEdit({
+  clips,
+  words,
+  sourceDuration,
+  audioDuration,
+  analysis,
+  aiCuts,
+  onStep,
+}: AutoEditInput): AutoEditResult {
+  const duration = Math.max(sourceDuration, audioDuration);
+
+  // Speech past the video element's reported duration is real. Stretch the
+  // timeline to reach it, but only when the user has not cut anything yet:
+  // rewriting an edited timeline would throw their work away.
+  const pristine =
+    clips.length === 1 &&
+    clips[0].start <= 0.001 &&
+    clips[0].end >= sourceDuration - 0.1;
+  const extend = pristine && audioDuration > sourceDuration + 0.1;
+  const original = extend ? fullClip(duration) : clips;
+
+  let next = original;
+  const cut = (ranges: [number, number][]) => {
+    for (const [from, to] of ranges) next = removeSourceRange(next, from, to);
+  };
+
+  if (words.length > 0) {
+    onStep?.(AUTO_EDIT_STEPS.RETAKES);
+    cut(combineRetakeCuts(words, aiCuts));
+
+    onStep?.(AUTO_EDIT_STEPS.SILENCE);
+    cut([...fillerCuts(words), ...pauseCuts(words, duration, AUTO_EDIT_CUTS)]);
+  }
+
+  onStep?.(AUTO_EDIT_STEPS.TRIM);
+  if (analysis) next = trimClipsToSpeech(next, analysis);
+  next = dropSlivers(next);
+
+  // Cutting everything means the analysis disagreed with the transcript. Give
+  // the take back rather than handing over an empty timeline.
+  if (next.length === 0) next = original;
+
+  return { clips: next, duration };
 }

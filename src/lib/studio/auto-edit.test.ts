@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTO_EDIT_STEPS,
   dropSlivers,
   fillerCuts,
   pauseCuts,
+  planAutoEdit,
   trimClipsToSpeech,
 } from "@/lib/studio/auto-edit";
 import type { TrimAnalysis } from "@/lib/studio/silence";
@@ -160,5 +162,150 @@ describe("dropSlivers", () => {
 
   it("judges an appended clip by its own length, like any other", () => {
     expect(dropSlivers([appended(0, 0.01)], 0.08)).toEqual([]);
+  });
+});
+
+describe("planAutoEdit", () => {
+  /** No analysis, no ai cuts: only the transcript drives the pass. */
+  const plan = (over: Partial<Parameters<typeof planAutoEdit>[0]> = {}) =>
+    planAutoEdit({
+      clips: [rec(0, 10)],
+      words: [],
+      sourceDuration: 10,
+      audioDuration: 10,
+      analysis: null,
+      aiCuts: null,
+      ...over,
+    });
+
+  describe("the take's true length", () => {
+    it("believes the audio over the video element", () => {
+      expect(plan({ sourceDuration: 10, audioDuration: 12 }).duration).toBe(12);
+    });
+
+    it("stretches an untouched timeline to reach the audio's end", () => {
+      const { clips } = plan({
+        clips: [rec(0, 10)],
+        sourceDuration: 10,
+        audioDuration: 12,
+      });
+      expect(clips).toEqual([expect.objectContaining({ start: 0, end: 12 })]);
+    });
+
+    it("leaves an edited timeline alone rather than throwing the edit away", () => {
+      const edited = [rec(0, 3), rec(5, 10)];
+      const { clips } = plan({
+        clips: edited,
+        sourceDuration: 10,
+        audioDuration: 12,
+      });
+      expect(clips).toEqual(edited);
+    });
+
+    it("does not stretch when the video was telling the truth", () => {
+      const { clips, duration } = plan({
+        sourceDuration: 10,
+        audioDuration: 10,
+      });
+      expect(duration).toBe(10);
+      expect(clips).toEqual([rec(0, 10)]);
+    });
+  });
+
+  describe("cuts", () => {
+    it("cuts filler words out of the timeline", () => {
+      const { clips } = plan({
+        words: [word(0, 1, "hello"), word(1, 2, "um"), word(2, 3, "world")],
+      });
+      // The "um" second is gone, and so is the dead air after the last word.
+      expect(clips.map((c) => [c.start, c.end])).toEqual([
+        [0, 1],
+        [2, 3.15],
+      ]);
+    });
+
+    it("cuts a long pause between two words", () => {
+      const { clips } = plan({
+        clips: [rec(0, 5)],
+        sourceDuration: 5,
+        audioDuration: 5,
+        words: [word(0, 1), word(3, 4)],
+      });
+      // The pause is gone, and the tail silence after the last word with it.
+      expect(clips.map((c) => [c.start, c.end])).toEqual([
+        [0, 1],
+        [3, 4.15],
+      ]);
+    });
+
+    it("cuts the retakes the AI flags, by word index", () => {
+      // "one two" then "one two" again: the AI marks words 0..1 as an earlier take.
+      const words = [
+        word(0, 1, "one"),
+        word(1, 2, "two"),
+        word(2, 3, "one"),
+        word(3, 4, "two"),
+      ];
+      const { clips } = plan({
+        clips: [rec(0, 4)],
+        sourceDuration: 4,
+        audioDuration: 4,
+        words,
+        aiCuts: [[0, 1]],
+      });
+      expect(clips.map((c) => [c.start, c.end])).toEqual([[2, 4]]);
+    });
+
+    it("does nothing to the clips when there is no transcript", () => {
+      expect(plan({ words: [] }).clips).toEqual([rec(0, 10)]);
+    });
+  });
+
+  describe("trimming", () => {
+    it("trims clips to speech when the waveform was analysed", () => {
+      const { clips } = plan({ analysis });
+      expect(clips[0].start).toBeCloseTo(1.95, 5);
+      expect(clips[0].end).toBeCloseTo(5.08, 5);
+    });
+
+    it("leaves clips untrimmed when the waveform could not be analysed", () => {
+      expect(plan({ analysis: null }).clips).toEqual([rec(0, 10)]);
+    });
+
+    it("never trims an appended clip against the recording's waveform", () => {
+      const broll = appended(0, 4);
+      const { clips } = plan({ clips: [broll], analysis });
+      expect(clips[0]).toBe(broll);
+    });
+
+    it("drops the slivers the cuts leave behind", () => {
+      // A 0.02s clip is shorter than MIN_CLIP_SEC and would stutter.
+      const { clips } = plan({ clips: [rec(0, 0.02), rec(1, 5)] });
+      expect(clips).toEqual([rec(1, 5)]);
+    });
+
+    it("hands the take back rather than an empty timeline", () => {
+      // Every clip is a sliver, so the pass would otherwise cut everything.
+      const slivers = [rec(0, 0.01), rec(1, 1.01)];
+      expect(plan({ clips: slivers }).clips).toBe(slivers);
+    });
+  });
+
+  describe("progress", () => {
+    it("reports the stages it runs, in order", () => {
+      const steps: number[] = [];
+      plan({ words: [word(0, 1)], onStep: (s) => steps.push(s) });
+      expect(steps).toEqual([
+        AUTO_EDIT_STEPS.RETAKES,
+        AUTO_EDIT_STEPS.SILENCE,
+        AUTO_EDIT_STEPS.TRIM,
+      ]);
+    });
+
+    it("skips the transcript stages when there is no transcript", () => {
+      const steps: number[] = [];
+      plan({ words: [], onStep: (s) => steps.push(s) });
+      expect(steps).toEqual([AUTO_EDIT_STEPS.TRIM]);
+    });
   });
 });

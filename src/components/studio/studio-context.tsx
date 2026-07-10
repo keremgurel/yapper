@@ -32,9 +32,9 @@ import {
   type CaptionStyle,
 } from "@/lib/studio/captions";
 import {
-  dropSlivers,
-  fillerCuts,
+  AUTO_EDIT_STEPS,
   pauseCuts,
+  planAutoEdit,
   trimClipsToSpeech as trimToSpeech,
   type PauseCutOptions,
 } from "@/lib/studio/auto-edit";
@@ -71,15 +71,6 @@ const PAUSE_CUTS: PauseCutOptions = {
   minSilence: 0.5,
   headPad: 0.05,
   tailPad: 0.1,
-};
-
-// The one-click pass cuts tighter, since it is reshaping the whole take anyway.
-// The generous tail pad keeps a soft-decay final word from being clipped.
-const AUTO_EDIT_CUTS: PauseCutOptions = {
-  minGap: 0.25,
-  minSilence: 0.4,
-  headPad: 0.04,
-  tailPad: 0.15,
 };
 
 interface CaptionLayout {
@@ -1269,95 +1260,63 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [words, applyCuts]);
 
-  // One-click clean up: transcribe (if needed), trim each clip's silence, remove
-  // AI-flagged mistakes/retakes and pauses, and (when withCaptions) generate
-  // captions with sensible defaults. Everything is computed into local variables
-  // so each step sees the result of the previous one without waiting on React
-  // state to flush.
+  // One-click clean up: transcribe (if needed), then hand the clips to
+  // planAutoEdit. The slow, impure half lives here (decode, transcribe, ask the
+  // backend which lines are retakes); the edit itself is pure and tested.
   const autoEdit = useCallback(
     async (withCaptions = true): Promise<void> => {
       if (!source || source.kind === "image") return;
       setAutoEditCaptions(withCaptions);
       setAutoEditing(true);
       try {
-        // Step 0 — prepare: decode the audio (the slow part for a long/4K clip;
-        // the video's audio must be pulled out in-browser before anything else).
-        setAutoEditStep(0);
+        // Decoding is the slow part for a long or 4K take: the audio has to be
+        // pulled out of the video in-browser before anything else can happen.
+        setAutoEditStep(AUTO_EDIT_STEPS.PREPARE);
         const audio = await decodeToMono16k(source.url);
-        const audioDur = audio.length / 16000;
 
-        // Step 1 — transcript (reuse existing words when present).
-        setAutoEditStep(1);
-        let w = words;
-        // A failed transcription is not fatal here: the rest of the pass still
-        // trims silence, so keep going with no words rather than bailing out.
+        setAutoEditStep(AUTO_EDIT_STEPS.TRANSCRIPT);
+        let w = words; // reuse an existing transcript when there is one
+        // A failed transcription is not fatal: the rest of the pass still trims
+        // silence, so keep going with no words rather than bailing out.
         if (w.length === 0)
           w = (await transcribeAudio(audio, source.url)) ?? [];
 
-        // Extend an untouched timeline to the full audio length so speech past the
-        // video element's reported duration (the end of the take) isn't dropped.
-        const pristine =
-          clips.length === 1 &&
-          clips[0].start <= 0.001 &&
-          clips[0].end >= source.duration - 0.1;
-        const effDuration = Math.max(source.duration, audioDur);
-        const extend = pristine && audioDur > source.duration + 0.1;
-        if (audioDur > source.duration + 0.1) {
-          setSource((s) => (s ? { ...s, duration: effDuration } : s));
-        }
-        let next = extend ? fullClip(effDuration) : clips;
+        // Pure CPU, and independent of the retake round-trip below. Start it now
+        // so the two overlap.
+        const analysisPromise = Promise.resolve()
+          .then(() => analyzeForTrim(audio))
+          .catch(() => null);
 
-        // The waveform trim analysis is pure CPU and independent of the AI clean
-        // pass — kick it off now so it overlaps the network round-trip.
-        const analysisPromise = Promise.resolve().then(() =>
-          analyzeForTrim(audio),
-        );
-
+        let aiCuts: [number, number][] | null = null;
         if (w.length > 0) {
-          // Step 2 — remove retakes/mistakes: validated AI cuts unioned with the
-          // deterministic exact-repeat detector (never cuts a one-off line, and
-          // still catches restarts without an AI key).
-          setAutoEditStep(2);
-          let aiCuts: [number, number][] | null = null;
-          try {
-            aiCuts = await cleanTranscriptRemote(w);
-          } catch {
-            aiCuts = null; // fall back to deterministic-only inside combine
-          }
-          for (const [from, to] of combineRetakeCuts(w, aiCuts)) {
-            next = removeSourceRange(next, from, to);
-          }
-
-          // Step 3 — cut filler words, then pauses, then leading/trailing dead air.
-          setAutoEditStep(3);
-          const ranges = [
-            ...fillerCuts(w),
-            ...pauseCuts(w, effDuration, AUTO_EDIT_CUTS),
-          ];
-          for (const [from, to] of ranges) {
-            next = removeSourceRange(next, from, to);
-          }
+          // The label goes up before the network call, not after it.
+          setAutoEditStep(AUTO_EDIT_STEPS.RETAKES);
+          // Without a key this throws; combineRetakeCuts still finds the
+          // obvious restarts on its own.
+          aiCuts = await cleanTranscriptRemote(w).catch(() => null);
         }
 
-        // Step 4 — trim each remaining clip down to speech, then drop the tiny
-        // slivers the cuts leave behind so playback is clean, not stuttery.
-        setAutoEditStep(4);
-        try {
-          next = trimToSpeech(next, await analysisPromise);
-        } catch {
-          // leave clips as-is if the waveform can't be analysed
+        const plan = planAutoEdit({
+          clips,
+          words: w,
+          sourceDuration: source.duration,
+          audioDuration: audio.length / 16000, // decode target rate
+          analysis: await analysisPromise,
+          aiCuts,
+          onStep: setAutoEditStep,
+        });
+
+        if (plan.duration > source.duration + 0.1) {
+          setSource((cur) => (cur ? { ...cur, duration: plan.duration } : cur));
         }
-        next = dropSlivers(next);
-        if (next.length === 0) next = extend ? fullClip(effDuration) : clips;
+        setClips(() => plan.clips);
 
-        setClips(() => next);
-
-        // Step 5 — captions (only when asked): normal case, 3 words per caption,
-        // centered and one third of the frame height up from the bottom.
+        // Captions, only when asked: normal case, three words at a time,
+        // centered and a third of the frame up from the bottom.
         if (withCaptions && w.length > 0) {
-          setAutoEditStep(5);
-          setCaptionStyle((s) => ({
-            ...s,
+          setAutoEditStep(AUTO_EDIT_STEPS.CAPTIONS);
+          setCaptionStyle((st) => ({
+            ...st,
             textCase: "none",
             x: 0.5,
             y: 2 / 3,
@@ -1366,7 +1325,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           }));
           setCaptionWordsState(3);
           setCaptions(
-            generateCaptions(w, next, {
+            generateCaptions(w, plan.clips, {
               maxChars: captionLines * 30,
               maxWords: 3,
             }),
