@@ -23,8 +23,9 @@ import UpperTrackLane from "@/components/studio/upper-track-lane";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { spansOverlap } from "@/lib/studio/marquee";
-import { LIFT_THRESHOLD_PX } from "@/lib/studio/timeline-drag";
 import { useClipDrag } from "@/hooks/use-clip-drag";
+import { useOverlayDrag } from "@/hooks/use-overlay-drag";
+import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { newGestureId, type Clip, type StudioSource } from "@/lib/studio/types";
@@ -35,19 +36,6 @@ const MIN_CLIP = 0.2;
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
-}
-
-function snapValue(v: number, points: number[], threshold: number): number {
-  let best = v;
-  let bestD = threshold;
-  for (const p of points) {
-    const d = Math.abs(p - v);
-    if (d < bestD) {
-      bestD = d;
-      best = p;
-    }
-  }
-  return best;
 }
 
 interface TrimDrag {
@@ -143,16 +131,6 @@ export default function StudioTimeline({
     origStart: number;
     gesture: string;
   } | null>(null);
-  const [overlayDrag, setOverlayDrag] = useState<{
-    id: string;
-    startX: number;
-    startY: number;
-    origStart: number;
-    gesture: string;
-  } | null>(null);
-  // Vertical drag distance for an overlay (px, positive = down). Past
-  // LIFT_THRESHOLD_PX the overlay folds down into the base sequence.
-  const [overlayLiftY, setOverlayLiftY] = useState(0);
   const clipDrag = useClipDrag({
     clips,
     pxPerSec,
@@ -212,27 +190,27 @@ export default function StudioTimeline({
   const measured = view.width > 0;
   const padLeft = measured ? Math.round(view.width) : 240;
 
-  // Snap a clip's start (or its end) to nearby edges when magnet mode is on.
+  // Magnet mode: pull a dragged clip's nearer edge onto whatever it is passing.
   const snapStart = useCallback(
-    (start: number, dur: number): number => {
-      if (!snapping) return Math.max(0, start);
-      const threshold = 8 / pxPerSec;
-      const points = [
-        0,
-        total,
-        currentTimelineTime,
-        ...clips.map((_, i) =>
-          clips.slice(0, i + 1).reduce((s, c) => s + (c.end - c.start), 0),
-        ),
-      ];
-      const ss = snapValue(start, points, threshold);
-      if (ss !== start) return Math.max(0, ss);
-      const se = snapValue(start + dur, points, threshold);
-      if (se !== start + dur) return Math.max(0, se - dur);
-      return Math.max(0, start);
-    },
+    (start: number, dur: number): number =>
+      snapping
+        ? snapClipStart(
+            start,
+            dur,
+            timelineSnapPoints(clips, total, currentTimelineTime),
+            SNAP_PX / pxPerSec,
+          )
+        : Math.max(0, start),
     [snapping, pxPerSec, total, clips, currentTimelineTime],
   );
+
+  const overlayDrag = useOverlayDrag({
+    overlays,
+    pxPerSec,
+    snapStart,
+    onMove: moveOverlay,
+    onDropToBase: dropOverlayToBase,
+  });
 
   /* ---- scrub ---- */
   const seekFromClientX = useCallback(
@@ -348,42 +326,6 @@ export default function StudioTimeline({
       window.removeEventListener("pointerup", onUp);
     };
   }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
-
-  /* ---- overlay clip drag: move horizontally, or drop down into the base ---- */
-  useEffect(() => {
-    if (!overlayDrag) return;
-    const dur = overlays.find((o) => o.id === overlayDrag.id)?.duration ?? 0;
-    let liftY = 0;
-    const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - overlayDrag.startX) / pxPerSec;
-      moveOverlay(
-        overlayDrag.id,
-        snapStart(overlayDrag.origStart + delta, dur),
-        overlayDrag.gesture,
-      );
-      liftY = e.clientY - overlayDrag.startY;
-      setOverlayLiftY(liftY);
-    };
-    const onUp = () => {
-      // Dragged down far enough: fold this overlay into the base sequence.
-      if (liftY > LIFT_THRESHOLD_PX) dropOverlayToBase(overlayDrag.id);
-      setOverlayLiftY(0);
-      setOverlayDrag(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [
-    overlayDrag,
-    pxPerSec,
-    moveOverlay,
-    overlays,
-    snapStart,
-    dropOverlayToBase,
-  ]);
 
   /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -715,20 +657,11 @@ export default function StudioTimeline({
                         ? toggleOverlaySelection(o.id)
                         : selectOverlay(o.id)
                     }
-                    liftY={overlayDrag?.id === o.id ? overlayLiftY : 0}
+                    liftY={overlayDrag.id === o.id ? overlayDrag.liftY : 0}
                     droppingToBase={
-                      overlayDrag?.id === o.id &&
-                      overlayLiftY > LIFT_THRESHOLD_PX
+                      overlayDrag.id === o.id && overlayDrag.dropping
                     }
-                    onDragStart={(id, clientX, clientY, origStart) =>
-                      setOverlayDrag({
-                        id,
-                        startX: clientX,
-                        startY: clientY,
-                        origStart,
-                        gesture: newGestureId(),
-                      })
-                    }
+                    onDragStart={overlayDrag.begin}
                     onTrim={setOverlayRange}
                   />
                 </div>
