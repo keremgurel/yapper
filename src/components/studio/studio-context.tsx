@@ -123,6 +123,7 @@ interface StudioContextValue {
   addAssetToTimeline: (assetId: string, start?: number) => void;
   addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
+  dropOverlayToBase: (overlayId: string) => void;
   moveOverlay: (id: string, start: number) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
   setOverlayRange: (
@@ -678,6 +679,41 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       setSelectedClipIds((prev) => prev.filter((x) => x !== clipId));
     },
     [source, clips, setClips],
+  );
+
+  // Mirror of liftClipToTrack: drag an overlay DOWN onto the base to fold it into
+  // the bottom-layer sequence as another clip (appended). A base-referencing
+  // overlay becomes a plain source slice; any other asset becomes a clip that
+  // carries its own media. Images can't drive the base clock, so they're left as
+  // overlays.
+  const dropOverlayToBase = useCallback(
+    (overlayId: string) => {
+      const o = overlays.find((x) => x.id === overlayId);
+      if (!o || o.kind !== "video") return;
+      const carriesOwnMedia = !source || o.url !== source.url;
+      const assetDuration =
+        mediaAssets.find((m) => m.url === o.url)?.duration ??
+        o.sourceStart + o.duration;
+      setClips((prev) => [
+        ...prev,
+        {
+          id: newClipId(),
+          start: o.sourceStart,
+          end: o.sourceStart + o.duration,
+          src: carriesOwnMedia
+            ? {
+                url: o.url,
+                kind: "video",
+                name: o.name,
+                duration: assetDuration,
+              }
+            : undefined,
+        },
+      ]);
+      setOverlays((prev) => prev.filter((x) => x.id !== overlayId));
+      setSelectedOverlayIds((prev) => prev.filter((x) => x !== overlayId));
+    },
+    [overlays, source, mediaAssets, setClips],
   );
 
   const moveOverlay = useCallback((id: string, start: number) => {
@@ -1386,6 +1422,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToTimeline,
       addAssetToMainTrack,
       liftClipToTrack,
+      dropOverlayToBase,
       moveOverlay,
       setOverlayRect,
       setOverlayRange,
@@ -1476,6 +1513,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToTimeline,
       addAssetToMainTrack,
       liftClipToTrack,
+      dropOverlayToBase,
       moveOverlay,
       setOverlayRect,
       setOverlayRange,

@@ -86,6 +86,7 @@ export default function StudioTimeline({
     toggleOverlayMuted,
     removeOverlay,
     liftClipToTrack,
+    dropOverlayToBase,
     selectedOverlayIds,
     selectOverlay,
     toggleOverlaySelection,
@@ -123,8 +124,12 @@ export default function StudioTimeline({
   const [overlayDrag, setOverlayDrag] = useState<{
     id: string;
     startX: number;
+    startY: number;
     origStart: number;
   } | null>(null);
+  // Vertical drag distance for an overlay (px, positive = down). Past
+  // LIFT_THRESHOLD the overlay folds down into the base sequence.
+  const [overlayLiftY, setOverlayLiftY] = useState(0);
   // Reorder drag for main-track clips: origLeft is the clip's resting left (px),
   // clipLive is its current dragged left (px, null until the pointer moves).
   const [clipDrag, setClipDrag] = useState<{
@@ -287,25 +292,40 @@ export default function StudioTimeline({
     };
   }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
 
-  /* ---- overlay clip drag ---- */
+  /* ---- overlay clip drag: move horizontally, or drop down into the base ---- */
   useEffect(() => {
     if (!overlayDrag) return;
     const dur = overlays.find((o) => o.id === overlayDrag.id)?.duration ?? 0;
+    let liftY = 0;
     const onMove = (e: PointerEvent) => {
       const delta = (e.clientX - overlayDrag.startX) / pxPerSec;
       moveOverlay(
         overlayDrag.id,
         snapStart(overlayDrag.origStart + delta, dur),
       );
+      liftY = e.clientY - overlayDrag.startY;
+      setOverlayLiftY(liftY);
     };
-    const onUp = () => setOverlayDrag(null);
+    const onUp = () => {
+      // Dragged down far enough: fold this overlay into the base sequence.
+      if (liftY > LIFT_THRESHOLD) dropOverlayToBase(overlayDrag.id);
+      setOverlayLiftY(0);
+      setOverlayDrag(null);
+    };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [overlayDrag, pxPerSec, moveOverlay, overlays, snapStart]);
+  }, [
+    overlayDrag,
+    pxPerSec,
+    moveOverlay,
+    overlays,
+    snapStart,
+    dropOverlayToBase,
+  ]);
 
   /* ---- main-clip drag: reorder, or lift up to a new upper track ---- */
   useEffect(() => {
@@ -642,14 +662,23 @@ export default function StudioTimeline({
                       ? toggleOverlaySelection(o.id)
                       : selectOverlay(o.id)
                   }
-                  onDragStart={(id, clientX, origStart) =>
-                    setOverlayDrag({ id, startX: clientX, origStart })
+                  liftY={overlayDrag?.id === o.id ? overlayLiftY : 0}
+                  droppingToBase={
+                    overlayDrag?.id === o.id && overlayLiftY > LIFT_THRESHOLD
+                  }
+                  onDragStart={(id, clientX, clientY, origStart) =>
+                    setOverlayDrag({
+                      id,
+                      startX: clientX,
+                      startY: clientY,
+                      origStart,
+                    })
                   }
                   onTrim={setOverlayRange}
                 />
               ))}
 
-              {/* Main (base) video track */}
+              {/* Bottom (base) video layer */}
               <div ref={baseRowRef} className="relative h-16">
                 {clips.map((clip, i) => {
                   const isTrimming = trim?.id === clip.id && live;

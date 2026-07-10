@@ -33,6 +33,8 @@ export default function UpperTrackLane({
   sourceDuration,
   fullDuration,
   selected,
+  liftY,
+  droppingToBase,
   onSelect,
   onDragStart,
   onTrim,
@@ -48,8 +50,15 @@ export default function UpperTrackLane({
   sourceDuration: number;
   fullDuration: number;
   selected: boolean;
+  liftY: number;
+  droppingToBase: boolean;
   onSelect: (additive: boolean) => void;
-  onDragStart: (id: string, clientX: number, origStart: number) => void;
+  onDragStart: (
+    id: string,
+    clientX: number,
+    clientY: number,
+    origStart: number,
+  ) => void;
   onTrim: (
     id: string,
     start: number,
@@ -129,7 +138,11 @@ export default function UpperTrackLane({
   return (
     <div className="relative h-12">
       <div
-        style={{ left, width }}
+        style={{
+          left,
+          width,
+          transform: liftY ? `translateY(${liftY}px)` : undefined,
+        }}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.preventDefault();
@@ -138,10 +151,16 @@ export default function UpperTrackLane({
           onSelect(additive);
           // ⌘/Ctrl-click toggles selection without starting a drag.
           if (additive) return;
-          onDragStart(o.id, e.clientX, o.start);
+          onDragStart(o.id, e.clientX, e.clientY, o.start);
         }}
         className={`group absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-violet-500/15 active:cursor-grabbing ${
-          selected ? "z-10 ring-2 ring-cyan-400" : "ring-1 ring-violet-400/40"
+          droppingToBase
+            ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+            : liftY
+              ? "z-30 opacity-90 ring-2 ring-violet-300"
+              : selected
+                ? "z-10 ring-2 ring-cyan-400"
+                : "ring-1 ring-violet-400/40"
         } ${o.hidden ? "opacity-40" : ""}`}
       >
         <span className="absolute inset-0 bg-violet-500/10" />
