@@ -14,6 +14,7 @@ import {
   removeClip,
   removeSourceRange,
   restoreSourceRange,
+  sourceToTimeline,
   splitClipAt,
   timelineToSource,
   trimClipEnd,
@@ -50,6 +51,7 @@ import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
 import { fitBox, mediaAspect } from "@/lib/studio/overlay-box";
+import { MIN_SPAN_SEC, type PlacedSpan } from "@/lib/studio/overlay-plan";
 import {
   clampStartToTrack,
   compactTracks,
@@ -158,6 +160,8 @@ interface StudioContextValue {
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
   setOverlayCrop: (id: string, crop: OverlayRect, gesture?: string) => void;
+  /** Lay AI-chosen cutaways onto upper tracks. Returns the ones that landed. */
+  placeOverlays: (spans: PlacedSpan[]) => PlacedSpan[];
   setOverlayRange: (
     id: string,
     start: number,
@@ -739,6 +743,55 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [setOverlays],
+  );
+
+  /**
+   * Lay a batch of AI-chosen cutaways onto upper tracks, as one undo step.
+   *
+   * The spans arrive in the recording's seconds, because that is what the
+   * transcript is anchored in. They are mapped through the clips to edited-
+   * timeline seconds here, so a placement over speech that has since been cut
+   * collapses to nothing and is dropped rather than landing somewhere arbitrary.
+   * Returns how many actually made it onto a track.
+   */
+  const placeOverlays = useCallback(
+    (spans: PlacedSpan[]): PlacedSpan[] => {
+      // Built before the commit, not inside it: a state updater has to be pure,
+      // and this one mints ids.
+      const made: Overlay[] = [];
+      const used: PlacedSpan[] = [];
+      let taken = overlays;
+      for (const span of spans) {
+        const asset = mediaAssets.find((m) => m.name === span.file);
+        if (!asset) continue;
+        const start = sourceToTimeline(clips, span.sourceStart);
+        const end = sourceToTimeline(clips, span.sourceEnd);
+        if (end - start < MIN_SPAN_SEC) continue;
+        const duration =
+          asset.kind === "video"
+            ? Math.min(end - start, asset.duration)
+            : end - start;
+        const overlay: Overlay = {
+          id: newOverlayId(),
+          kind: asset.kind,
+          url: asset.url,
+          name: asset.name,
+          track: firstFreeTrack(taken, { id: "new", start, duration }),
+          start,
+          duration,
+          sourceStart: 0,
+          muted: true,
+          ...fitBox(mediaAspect(asset), aspect),
+        };
+        made.push(overlay);
+        used.push(span);
+        taken = [...taken, overlay];
+      }
+      if (made.length === 0) return [];
+      updateEditor((s) => ({ ...s, overlays: [...s.overlays, ...made] }));
+      return used;
+    },
+    [clips, overlays, mediaAssets, aspect, updateEditor],
   );
 
   const setOverlayRect = useCallback(
@@ -1523,6 +1576,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       moveOverlay,
       setOverlayRect,
       setOverlayCrop,
+      placeOverlays,
       setOverlayRange,
       toggleTrackHidden,
       toggleTrackMuted,
@@ -1619,6 +1673,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       moveOverlay,
       setOverlayRect,
       setOverlayCrop,
+      placeOverlays,
       setOverlayRange,
       toggleTrackHidden,
       toggleTrackMuted,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import AiAssistant from "@/components/studio/ai-assistant";
 import { useStudio } from "@/components/studio/studio-context";
 import PreviewStage from "@/components/studio/preview-stage";
 import RightPanel from "@/components/studio/right-panel";
@@ -162,6 +163,8 @@ export default function StudioWorkspace() {
     </div>
   );
 
+  const assistant = <AiAssistant />;
+
   const panel = (
     <RightPanel
       currentSourceTime={sourceTime}
@@ -188,6 +191,7 @@ export default function StudioWorkspace() {
         >
           {stage}
         </aside>
+        {assistant}
       </div>
     );
   }
@@ -206,6 +210,7 @@ export default function StudioWorkspace() {
       >
         {panel}
       </aside>
+      {assistant}
     </div>
   );
 }
