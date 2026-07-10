@@ -4,7 +4,7 @@ import { Captions, Loader2, Sparkles, Type } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 
 const ACTION =
-  "flex flex-1 flex-col items-center gap-1 rounded-xl border border-border px-2 py-2.5 text-center transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-40";
+  "flex flex-1 flex-col items-center gap-1.5 rounded-xl border border-border px-2 py-3 text-center transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-40";
 
 /**
  * Placing a cutaway needs the words, and there is no reason to send anyone
@@ -17,8 +17,8 @@ export default function AiTranscribePrompt() {
 
   if (busy) {
     return (
-      <div className="text-foreground/60 flex items-center justify-center gap-2 py-3 text-xs">
-        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      <div className="text-foreground/60 flex items-center justify-center gap-2 py-4 text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" />
         {autoEditing ? "Editing your video" : "Reading your video"}
       </div>
     );
@@ -26,20 +26,20 @@ export default function AiTranscribePrompt() {
 
   return (
     <div>
-      <p className="text-foreground/45 mb-2 text-[11px]">
+      <p className="text-foreground/55 mb-2.5 text-sm">
         First I need the words. Pick one, and I will know where everything is
         said.
       </p>
-      <div className="flex gap-1.5">
+      <div className="flex gap-2">
         <button
           type="button"
           disabled={busy}
           onClick={() => void transcribe()}
           className={ACTION}
         >
-          <Type className="text-foreground/60 h-4 w-4" />
-          <span className="text-[11px] font-bold">Transcribe</span>
-          <span className="text-foreground/40 text-[10px] leading-tight">
+          <Type className="text-foreground/60 h-5 w-5" />
+          <span className="text-sm font-bold">Transcribe</span>
+          <span className="text-foreground/50 text-xs leading-tight">
             Just the words
           </span>
         </button>
@@ -49,9 +49,9 @@ export default function AiTranscribePrompt() {
           onClick={() => void autoEdit(false)}
           className={ACTION}
         >
-          <Sparkles className="h-4 w-4 text-[color:var(--sg-accent)]" />
-          <span className="text-[11px] font-bold">1-Click Edit</span>
-          <span className="text-foreground/40 text-[10px] leading-tight">
+          <Sparkles className="h-5 w-5 text-[color:var(--sg-accent)]" />
+          <span className="text-sm font-bold">1-Click Edit</span>
+          <span className="text-foreground/50 text-xs leading-tight">
             Cut the retakes
           </span>
         </button>
@@ -61,9 +61,9 @@ export default function AiTranscribePrompt() {
           onClick={() => void autoEdit(true)}
           className={ACTION}
         >
-          <Captions className="h-4 w-4 text-[color:var(--sg-accent)]" />
-          <span className="text-[11px] font-bold">Edit + Captions</span>
-          <span className="text-foreground/40 text-[10px] leading-tight">
+          <Captions className="h-5 w-5 text-[color:var(--sg-accent)]" />
+          <span className="text-sm font-bold">Edit + Captions</span>
+          <span className="text-foreground/50 text-xs leading-tight">
             And burn them in
           </span>
         </button>

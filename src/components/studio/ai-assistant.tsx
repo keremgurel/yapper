@@ -3,10 +3,7 @@
 import { useCallback, useState } from "react";
 import AiCommandBar from "@/components/studio/ai-command-bar";
 import { useStudio } from "@/components/studio/studio-context";
-import {
-  BirdMascot,
-  type ChirpyExpression,
-} from "@/components/brand/bird-mascot";
+import { Chirpy, type ChirpyExpression } from "@/components/brand/chirpy";
 import { useDraggableAnchor, type Anchor } from "@/hooks/use-draggable-anchor";
 import { useOverlayPlacement } from "@/hooks/use-overlay-placement";
 
@@ -28,7 +25,7 @@ const startingCorner = (viewport: { w: number; h: number }): Anchor => ({
  * edges the bird is nearest, so it is never half off the screen.
  */
 export default function AiAssistant() {
-  const { words, mediaAssets } = useStudio();
+  const { words, mediaAssets, source, clips } = useStudio();
   const placement = useOverlayPlacement();
   const [open, setOpen] = useState(false);
   const [hover, setHover] = useState(false);
@@ -81,6 +78,7 @@ export default function AiAssistant() {
       >
         <AiCommandBar
           assets={mediaAssets}
+          hasProject={!!source || clips.length > 0}
           hasTranscript={words.length > 0}
           open={open}
           placement={placement}
@@ -121,7 +119,7 @@ export default function AiAssistant() {
             : ""
         }`}
       >
-        <BirdMascot
+        <Chirpy
           expression={expression}
           talking={thinking}
           size={38}

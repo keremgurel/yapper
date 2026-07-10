@@ -48,7 +48,7 @@ export default function VideoUploader() {
           Drop a video to edit
         </p>
         <p className="text-foreground/55 max-w-sm text-sm">
-          Trim clips, cut silences, and clean up takes — all in your browser.
+          Trim clips, cut silences, and clean up takes, all in your browser.
           Nothing is uploaded.
         </p>
         <span className="bg-foreground text-background mt-2 rounded-full px-4 py-2.5 text-sm font-black">

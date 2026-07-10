@@ -3,18 +3,23 @@
 import { useEffect, useMemo, useRef } from "react";
 import { ArrowUp, GripVertical, Loader2, X } from "lucide-react";
 import { useAutosizeTextarea } from "@/hooks/use-autosize-textarea";
+import AiEmptyPrompt from "@/components/studio/ai-empty-prompt";
 import AiTranscribePrompt from "@/components/studio/ai-transcribe-prompt";
 import { useMentionInput } from "@/hooks/use-mention-input";
 import type { useOverlayPlacement } from "@/hooks/use-overlay-placement";
 import type { MediaAsset } from "@/lib/studio/types";
 
 /**
- * The expanded assistant: say where the media goes, in words. Typing `@` offers
- * the library. It only knows about placing cutaways for now; the bar is the
- * place to put whatever it learns next.
+ * The expanded assistant, in three states: no video, no transcript, and ready to
+ * take an instruction. Each earlier state offers the one thing that unlocks the
+ * next, so the bar is never a wall of text telling you what you cannot do.
+ *
+ * Typing `@` offers the library. Placing cutaways is all it knows for now; the
+ * bar is the place to put whatever it learns next.
  */
 export default function AiCommandBar({
   assets,
+  hasProject,
   hasTranscript,
   open,
   placement,
@@ -22,6 +27,8 @@ export default function AiCommandBar({
   onClose,
 }: {
   assets: MediaAsset[];
+  /** Without a video there is nothing to lay a cutaway over. */
+  hasProject: boolean;
   hasTranscript: boolean;
   /** The bar stays mounted while closed so it can shrink away, not blink out. */
   open: boolean;
@@ -37,7 +44,7 @@ export default function AiCommandBar({
   const { status, message, result, run, reset } = placement;
   useAutosizeTextarea(inputRef, mention.value);
   const busy = status === "thinking";
-  const ready = hasTranscript && assets.length > 0;
+  const ready = hasProject && hasTranscript && assets.length > 0;
 
   // Only once it is actually open. A hidden box that steals focus on mount
   // would swallow the editor's Space, S, and Delete.
@@ -52,14 +59,14 @@ export default function AiCommandBar({
   };
 
   return (
-    <div className="border-border bg-card w-[30rem] max-w-[calc(100vw-2.5rem)] rounded-2xl border shadow-2xl">
+    <div className="border-border bg-card w-[32rem] max-w-[calc(100vw-2.5rem)] rounded-2xl border shadow-2xl">
       <div
         onPointerDown={onDragHandle}
-        className="border-border/60 flex cursor-grab items-center gap-2 border-b px-3 py-2 active:cursor-grabbing"
+        className="border-border/60 flex cursor-grab items-center gap-2 border-b px-3.5 py-2.5 active:cursor-grabbing"
       >
-        <GripVertical className="text-foreground/25 h-3.5 w-3.5 shrink-0" />
-        <span className="text-foreground/70 flex-1 text-xs font-bold">
-          Tell the editor what to do
+        <GripVertical className="text-foreground/25 h-4 w-4 shrink-0" />
+        <span className="text-foreground/80 flex-1 text-sm font-bold">
+          {hasProject ? "Tell the editor what to do" : "Let's make something"}
         </span>
         <button
           type="button"
@@ -67,13 +74,13 @@ export default function AiCommandBar({
           aria-label="Close"
           className="text-foreground/40 hover:text-foreground/80"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="relative px-3 py-2.5">
+      <div className="relative px-3.5 py-3">
         {mention.suggestions.length > 0 && (
-          <ul className="border-border bg-popover absolute right-3 bottom-full z-10 mb-1 max-h-56 overflow-auto rounded-lg border py-1 shadow-xl">
+          <ul className="border-border bg-popover absolute right-3.5 bottom-full z-10 mb-1 max-h-56 overflow-auto rounded-lg border py-1 shadow-xl">
             {mention.suggestions.map((name, i) => (
               <li key={name}>
                 <button
@@ -83,7 +90,7 @@ export default function AiCommandBar({
                     e.preventDefault();
                     mention.accept(name);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs ${
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm ${
                     i === mention.active
                       ? "bg-foreground/10 text-foreground"
                       : "text-foreground/70"
@@ -97,7 +104,9 @@ export default function AiCommandBar({
           </ul>
         )}
 
-        {!hasTranscript ? (
+        {!hasProject ? (
+          <AiEmptyPrompt />
+        ) : !hasTranscript ? (
           <AiTranscribePrompt />
         ) : (
           <>
@@ -130,18 +139,18 @@ export default function AiCommandBar({
                 disabled={!ready || busy || !mention.value.trim()}
                 aria-label="Send"
                 style={{ background: "var(--sg-accent-gradient)" }}
-                className="mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg text-white transition-opacity disabled:opacity-30"
+                className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white transition-opacity disabled:opacity-30"
               >
                 {busy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <ArrowUp className="h-3.5 w-3.5" />
+                  <ArrowUp className="h-4 w-4" />
                 )}
               </button>
             </div>
 
             {assets.length === 0 && (
-              <p className="text-foreground/40 mt-2 text-[11px]">
+              <p className="text-foreground/50 mt-2.5 text-xs">
                 Upload a photo or a clip, then tell me where it goes.
               </p>
             )}
@@ -149,14 +158,14 @@ export default function AiCommandBar({
         )}
 
         {status === "done" && result && result.placed > 0 && (
-          <div className="mt-2.5">
-            <p className="text-xs font-bold text-[color:var(--sg-green-500)]">
+          <div className="mt-3">
+            <p className="text-sm font-bold text-[color:var(--sg-green-500)]">
               Placed {result.placed}{" "}
               {result.placed === 1 ? "cutaway" : "cutaways"}. Undo puts it back.
             </p>
             <ul className="mt-1 space-y-0.5">
               {result.notes.map((n) => (
-                <li key={n} className="text-foreground/50 truncate text-[11px]">
+                <li key={n} className="text-foreground/55 truncate text-xs">
                   {n}
                 </li>
               ))}
@@ -166,10 +175,10 @@ export default function AiCommandBar({
 
         {message && (
           <p
-            className={`mt-2.5 text-[11px] ${
+            className={`mt-3 text-xs ${
               status === "error"
                 ? "text-[color:var(--sg-pink-500)]"
-                : "text-foreground/50"
+                : "text-foreground/55"
             }`}
           >
             {message}
@@ -184,7 +193,7 @@ export default function AiCommandBar({
               mention.setValue("");
               inputRef.current?.focus();
             }}
-            className="text-foreground/40 hover:text-foreground/70 mt-2 text-[11px] font-bold"
+            className="text-foreground/50 hover:text-foreground/80 mt-2.5 text-xs font-bold"
           >
             Ask for something else
           </button>
