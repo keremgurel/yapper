@@ -19,17 +19,12 @@ import {
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
-import {
-  analyzeForTrim,
-  detectSpeechSegments,
-  speechBoundsInRange,
-} from "@/lib/studio/silence";
+import { analyzeForTrim, speechBoundsInRange } from "@/lib/studio/silence";
 import {
   combineRetakeCuts,
   findEarlierTakeRanges,
   findFillerIds,
   pauseRanges,
-  refineWordTimings,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
 import {
@@ -39,12 +34,12 @@ import {
   type CaptionStyle,
 } from "@/lib/studio/captions";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
-import { transcribeUrl } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useEditorHistory } from "@/hooks/use-editor-history";
+import { useTranscript, type TranscribeStatus } from "@/hooks/use-transcript";
 import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
@@ -55,7 +50,6 @@ import {
   newCaptionId,
   newClipId,
   newOverlayId,
-  newWordId,
   type AudioTrack,
   type Caption,
   type Clip,
@@ -77,7 +71,7 @@ interface CaptionLayout {
   scale?: number;
 }
 
-export type TranscribeStatus = "idle" | "transcribing" | "done" | "error";
+export type { TranscribeStatus } from "@/hooks/use-transcript";
 
 interface StudioContextValue {
   source: StudioSource | null;
@@ -232,9 +226,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     selectedCaptionId,
     actions: sel,
   } = useEditorSelection();
-  const [words, setWords] = useState<Word[]>([]);
-  const [transcribeStatus, setTranscribeStatus] =
-    useState<TranscribeStatus>("idle");
+  const {
+    words,
+    status: transcribeStatus,
+    run: runTranscribe,
+    runOn: transcribeAudio,
+    reset: resetWords,
+  } = useTranscript();
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
@@ -807,12 +805,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setAudioTracks],
   );
 
+  // Captions are anchored in the transcript's seconds, so they go with it.
   const resetTranscript = useCallback(() => {
-    setWords([]);
-    setTranscribeStatus("idle");
+    resetWords();
     setCaptions([]);
     sel.clearCaptions();
-  }, [setCaptions, sel]);
+  }, [resetWords, setCaptions, sel]);
 
   const loadSource = useCallback(
     (next: StudioSource) => {
@@ -1184,25 +1182,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source, clips, setClips]);
 
-  // Decoded audio -> words, via the hosted backend (Deepgram). There is no
-  // on-device fallback: it was markedly less accurate (it merges repeated takes,
-  // silently dropping retakes), so any failure throws to the caller instead of
-  // quietly downgrading the transcript.
-  const wordsFromAudio = useCallback(
-    async (audio: Float32Array, url: string): Promise<Word[]> => {
-      // Transcribe the ORIGINAL native-rate audio (accurate: no 16 kHz resample,
-      // which merges retakes). The decoded 16 kHz PCM is still used locally to
-      // refine word timings against precise VAD edges.
-      const raw = await transcribeUrl(url);
-      const segments = detectSpeechSegments(audio);
-      return refineWordTimings(
-        raw.map((w, i) => ({ id: newWordId(i), ...w })),
-        segments,
-      );
-    },
-    [],
-  );
-
   // The decoded audio is the source of truth for length. A video element often
   // under-reports duration (MediaRecorder WebM especially), which would leave
   // words spoken past that point outside the only clip — treated as cut, so they
@@ -1227,17 +1206,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source || source.kind === "image") return;
-    setTranscribeStatus("transcribing");
-    try {
-      const audio = await decodeToMono16k(source.url);
-      coverFullAudio(audio.length);
-      setWords(await wordsFromAudio(audio, source.url));
-      setTranscribeStatus("done");
-    } catch (e) {
-      console.error("[studio] transcription failed", e);
-      setTranscribeStatus("error");
-    }
-  }, [source, wordsFromAudio, coverFullAudio]);
+    await runTranscribe(source.url, (audio) => coverFullAudio(audio.length));
+  }, [source, runTranscribe, coverFullAudio]);
 
   const applyCuts = useCallback(
     (ranges: [number, number][]) => {
@@ -1315,17 +1285,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         // Step 1 — transcript (reuse existing words when present).
         setAutoEditStep(1);
         let w = words;
-        if (w.length === 0) {
-          setTranscribeStatus("transcribing");
-          try {
-            w = await wordsFromAudio(audio, source.url);
-            setWords(w);
-            setTranscribeStatus("done");
-          } catch (e) {
-            console.error("[studio] auto-edit transcription failed", e);
-            setTranscribeStatus("error");
-          }
-        }
+        // A failed transcription is not fatal here: the rest of the pass still
+        // trims silence, so keep going with no words rather than bailing out.
+        if (w.length === 0)
+          w = (await transcribeAudio(audio, source.url)) ?? [];
 
         // Extend an untouched timeline to the full audio length so speech past the
         // video element's reported duration (the end of the take) isn't dropped.
@@ -1425,7 +1388,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setAutoEditStep(-1);
       }
     },
-    [source, words, clips, setClips, setCaptions, wordsFromAudio, captionLines],
+    [
+      source,
+      words,
+      clips,
+      setClips,
+      setCaptions,
+      transcribeAudio,
+      captionLines,
+    ],
   );
 
   // Undelete: add cut words' source ranges back into the timeline.
