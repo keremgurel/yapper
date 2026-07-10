@@ -45,6 +45,7 @@ import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useEditorHistory } from "@/hooks/use-editor-history";
+import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
 import type { AspectId } from "@/lib/studio/aspect";
@@ -52,7 +53,6 @@ import {
   newAudioId,
   newCaptionId,
   newClipId,
-  newMediaId,
   newOverlayId,
   newWordId,
   type AudioTrack,
@@ -271,7 +271,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [autoEditing, setAutoEditing] = useState(false);
   const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
   const [autoEditCaptions, setAutoEditCaptions] = useState(true); // does the running pass add captions?
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
+  const { mediaAssets, addMediaAsset, registerSource, dropAsset } =
+    useMediaLibrary();
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
   );
@@ -624,46 +625,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [captionApplyAll, setCaptions],
   );
 
-  const addMediaAsset = useCallback(async (file: File) => {
-    if (file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      const dims = await new Promise<{ w: number; h: number }>((res) => {
-        const im = new Image();
-        im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight });
-        im.onerror = () => res({ w: 0, h: 0 });
-        im.src = url;
-      });
-      setMediaAssets((prev) => [
-        ...prev,
-        {
-          id: newMediaId(),
-          kind: "image",
-          url,
-          name: file.name,
-          duration: 5,
-          width: dims.w || undefined,
-          height: dims.h || undefined,
-        },
-      ]);
-      return;
-    }
-    if (file.type.startsWith("video/")) {
-      const media = await loadVideoSource(file, file.name);
-      setMediaAssets((prev) => [
-        ...prev,
-        {
-          id: newMediaId(),
-          kind: "video",
-          url: media.url,
-          name: media.name,
-          duration: media.duration,
-          width: media.width,
-          height: media.height,
-        },
-      ]);
-    }
-  }, []);
-
   const addOverlayFromAsset = useCallback(
     (assetId: string, start = 0) => {
       const asset = mediaAssets.find((m) => m.id === assetId);
@@ -921,40 +882,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       // Warm the audio decode now (it's the slow first step and dedupes by URL),
       // so by the time the user hits 1-Click or Transcribe it's already cached.
       if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
-      // Register the recording in the media library too, so it's just another
-      // asset — re-addable to the main track or as an overlay, exactly like any
-      // uploaded clip. The main track isn't a special one-time thing.
-      setMediaAssets((prev) =>
-        prev.some((m) => m.url === next.url)
-          ? prev
-          : [
-              {
-                id: newMediaId(),
-                kind: next.kind === "image" ? "image" : "video",
-                url: next.url,
-                name: next.name,
-                duration: next.duration,
-                width: next.width,
-                height: next.height,
-              },
-              ...prev,
-            ],
-      );
+      registerSource(next);
     },
-    [resetEditor, resetTranscript],
+    [resetEditor, resetTranscript, registerSource],
   );
 
   // Removing a library asset removes every placement of it, at any level of the
   // stack — no asset is pinned to the library just because a track uses it.
   const removeMediaAsset = useCallback(
     (id: string) => {
-      const asset = mediaAssets.find((m) => m.id === id);
+      const asset = dropAsset(id);
       if (!asset) return;
       const { url } = asset;
       const isRecording = source?.url === url;
       const dropsClip = (c: Clip) => (c.src?.url ?? source?.url) === url;
 
-      setMediaAssets((prev) => prev.filter((m) => m.id !== id));
       setSelectedClipIds([]);
       setSelectedOverlayIds([]);
 
@@ -982,7 +924,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       // clips back, and a revoked URL would restore footage that cannot play.
     },
     [
-      mediaAssets,
+      dropAsset,
       source,
       clips,
       overlays,
