@@ -18,7 +18,7 @@ const MAX_SUGGESTIONS = 6;
 export function useMentionInput(
   names: string[],
   /** The box itself, so accepting a suggestion can move the real caret. */
-  inputRef: React.RefObject<HTMLInputElement | null>,
+  inputRef: React.RefObject<HTMLTextAreaElement | null>,
 ) {
   const [value, setValue] = useState("");
   const [caret, setCaret] = useState(0);
@@ -35,7 +35,7 @@ export function useMentionInput(
     [names, query],
   );
 
-  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setValue(e.target.value);
     setCaret(e.target.selectionStart ?? e.target.value.length);
     setDismissed(false);
@@ -44,7 +44,7 @@ export function useMentionInput(
 
   /** Track the caret when it moves without the text changing (arrows, clicks). */
   const onCaretMove = useCallback(
-    (e: React.SyntheticEvent<HTMLInputElement>) => {
+    (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
       setCaret(e.currentTarget.selectionStart ?? 0);
     },
     [],
@@ -68,7 +68,7 @@ export function useMentionInput(
 
   /** Returns true when the key belonged to the suggestion popup. */
   const onKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>): boolean => {
+    (e: React.KeyboardEvent<HTMLTextAreaElement>): boolean => {
       if (suggestions.length === 0) return false;
       if (e.key === "ArrowDown") {
         setActive((i) => (i + 1) % suggestions.length);

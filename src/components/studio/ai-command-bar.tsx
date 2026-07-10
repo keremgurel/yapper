@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { ArrowUp, Loader2, Sparkles, X } from "lucide-react";
+import { useAutosizeTextarea } from "@/hooks/use-autosize-textarea";
 import { useMentionInput } from "@/hooks/use-mention-input";
 import { useOverlayPlacement } from "@/hooks/use-overlay-placement";
 import type { MediaAsset } from "@/lib/studio/types";
@@ -23,10 +24,11 @@ export default function AiCommandBar({
   open: boolean;
   onClose: () => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const names = useMemo(() => assets.map((a) => a.name), [assets]);
   const mention = useMentionInput(names, inputRef);
   const { status, message, result, run, reset } = useOverlayPlacement();
+  useAutosizeTextarea(inputRef, mention.value);
   const busy = status === "thinking";
   const ready = hasTranscript && assets.length > 0;
 
@@ -43,7 +45,7 @@ export default function AiCommandBar({
   };
 
   return (
-    <div className="border-border bg-card w-[26rem] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border shadow-2xl">
+    <div className="border-border bg-card w-[30rem] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border shadow-2xl">
       <div className="border-border/60 flex items-center gap-2 border-b px-3 py-2">
         <Sparkles className="h-3.5 w-3.5 shrink-0 text-fuchsia-400" />
         <span className="text-foreground/70 flex-1 text-xs font-bold">
@@ -85,9 +87,10 @@ export default function AiCommandBar({
           </ul>
         )}
 
-        <div className="bg-foreground/5 flex items-center gap-2 rounded-xl px-3 py-2">
-          <input
+        <div className="bg-foreground/5 flex items-end gap-2 rounded-xl px-3 py-2">
+          <textarea
             ref={inputRef}
+            rows={1}
             value={mention.value}
             disabled={!ready || busy}
             placeholder={
@@ -98,17 +101,21 @@ export default function AiCommandBar({
             {...mention.handlers}
             onKeyDown={(e) => {
               if (mention.handlers.onKeyDown(e)) return;
-              if (e.key === "Enter") submit();
+              // Enter sends. A newline needs Shift, as it does in every chat box.
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                submit();
+              }
               if (e.key === "Escape") onClose();
             }}
-            className="placeholder:text-foreground/30 min-w-0 flex-1 bg-transparent text-sm outline-none disabled:cursor-not-allowed"
+            className="placeholder:text-foreground/30 max-h-40 min-w-0 flex-1 resize-none bg-transparent py-1 text-sm leading-relaxed outline-none disabled:cursor-not-allowed"
           />
           <button
             type="button"
             onClick={submit}
             disabled={!ready || busy || !mention.value.trim()}
             aria-label="Send"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-fuchsia-500 text-white transition-opacity disabled:opacity-30"
+            className="mb-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-fuchsia-500 text-white transition-opacity disabled:opacity-30"
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
