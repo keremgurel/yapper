@@ -197,3 +197,110 @@ export const contentItems = pgTable(
     uniqueIndex("content_items_import_unique").on(t.userId, t.sourceClientId),
   ],
 );
+
+/** The social platforms one edited video can be cross-posted to. Shared by the
+ * connection and the job so a job can only target a platform we can connect. */
+export const publishPlatforms = ["youtube", "tiktok", "instagram"] as const;
+export type PublishPlatform = (typeof publishPlatforms)[number];
+
+export const connectionStatuses = ["active", "revoked", "expired"] as const;
+export type ConnectionStatus = (typeof connectionStatuses)[number];
+
+/** One OAuth link between a user and a platform. Tokens are stored encrypted
+ * (AES-GCM); only the server ever decrypts them, to refresh or to publish. At
+ * most one connection per (user, platform) — reconnecting overwrites in place. */
+export const platformConnections = pgTable(
+  "platform_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: publishPlatforms }).notNull(),
+    // The platform's own id for the connected account/channel, and a display
+    // handle for the UI ("@name" / channel title). Both filled at callback.
+    externalAccountId: text("external_account_id"),
+    handle: text("handle"),
+    accessTokenEnc: text("access_token_enc").notNull(),
+    refreshTokenEnc: text("refresh_token_enc"), // absent when a platform omits it
+    scope: text("scope"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    status: text("status", { enum: connectionStatuses })
+      .notNull()
+      .default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("platform_connections_user_platform_unique").on(
+      t.userId,
+      t.platform,
+    ),
+    check(
+      "platform_connections_platform_check",
+      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+    ),
+    check(
+      "platform_connections_status_check",
+      sql`${t.status} in ('active','revoked','expired')`,
+    ),
+  ],
+);
+
+export const publishJobStatuses = [
+  "queued",
+  "uploading",
+  "processing",
+  "published",
+  "failed",
+] as const;
+export type PublishJobStatus = (typeof publishJobStatuses)[number];
+
+/** One attempt to post one video to one platform. `mediaKey` is the R2 object
+ * (the exported MP4) being posted; `externalPostId`/`externalUrl` are filled on
+ * success. A single "post everywhere" action creates one row per platform. */
+export const publishJobs = pgTable(
+  "publish_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Optional link back to the Content Library item, so its status can flip to
+    // 'posted' when a job publishes. Nulled if the item is later deleted.
+    contentItemId: uuid("content_item_id").references(() => contentItems.id, {
+      onDelete: "set null",
+    }),
+    platform: text("platform", { enum: publishPlatforms }).notNull(),
+    mediaKey: text("media_key").notNull(),
+    status: text("status", { enum: publishJobStatuses })
+      .notNull()
+      .default("queued"),
+    caption: text("caption"),
+    title: text("title"),
+    externalPostId: text("external_post_id"),
+    externalUrl: text("external_url"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("publish_jobs_user_idx").on(t.userId, t.createdAt),
+    check(
+      "publish_jobs_platform_check",
+      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+    ),
+    check(
+      "publish_jobs_status_check",
+      sql`${t.status} in ('queued','uploading','processing','published','failed')`,
+    ),
+  ],
+);
