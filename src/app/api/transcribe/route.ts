@@ -1,7 +1,14 @@
+import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
 import type { RawWord } from "@/lib/studio/transcribe-remote";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+/** An ASR result plus how many seconds of audio the provider actually heard. */
+interface AsrResult {
+  words: RawWord[];
+  heardSec: number;
+}
 
 /**
  * Backend transcription, returning word-level timings. Runs an ordered failover
@@ -18,11 +25,18 @@ export async function POST(req: Request): Promise<Response> {
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
+  // How many seconds of audio the client built. The proxy/middleware layer caps
+  // the request body at `experimental.proxyClientMaxBodySize` and truncates it
+  // SILENTLY past that (rewriting Content-Length to the short size, so byte
+  // counts can't catch it) — the ASR then transcribes only the first N seconds
+  // and the tail of the video goes quietly missing from the transcript. We
+  // compare this against the duration the ASR actually heard, below.
+  const expectedDuration = Number(req.headers.get("x-audio-duration") ?? 0);
   // Forward the payload's own type (audio/aac for native AAC, audio/wav for
   // decoded PCM) so Deepgram parses the container correctly.
   const contentType = req.headers.get("content-type") || "audio/wav";
 
-  const providers: { name: string; run: () => Promise<RawWord[]> }[] = [];
+  const providers: { name: string; run: () => Promise<AsrResult> }[] = [];
   if (deepgram) {
     providers.push({
       name: "deepgram",
@@ -49,7 +63,20 @@ export async function POST(req: Request): Promise<Response> {
   let lastError: unknown;
   for (const provider of providers) {
     try {
-      return Response.json({ words: await provider.run() });
+      const { words, heardSec } = await provider.run();
+      if (isAudioTruncated(expectedDuration, heardSec)) {
+        // The ASR heard less than the client sent: the body was truncated in
+        // transit. Refuse rather than return a transcript missing its tail.
+        return Response.json(
+          {
+            error: "audio_truncated",
+            expectedSec: expectedDuration,
+            heardSec,
+          },
+          { status: 413 },
+        );
+      }
+      return Response.json({ words });
     } catch (e) {
       lastError = e;
       console.error(`[transcribe] ${provider.name} failed`, e);
@@ -75,7 +102,7 @@ async function viaDeepgram(
   audio: ArrayBuffer,
   key: string,
   contentType: string,
-): Promise<RawWord[]> {
+): Promise<AsrResult> {
   const res = await fetch(
     "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
     {
@@ -88,11 +115,16 @@ async function viaDeepgram(
   const json = await res.json();
   const words: DeepgramWord[] =
     json?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
-  return words.map((w) => ({
-    text: w.punctuated_word ?? w.word,
-    start: w.start,
-    end: w.end,
-  }));
+  return {
+    // metadata.duration is the length of audio Deepgram actually decoded — the
+    // truncation signal.
+    heardSec: Number(json?.metadata?.duration ?? 0),
+    words: words.map((w) => ({
+      text: w.punctuated_word ?? w.word,
+      start: w.start,
+      end: w.end,
+    })),
+  };
 }
 
 interface OpenAiWord {
@@ -107,7 +139,7 @@ async function viaOpenAiCompatible(
   base: string,
   model: string,
   contentType: string,
-): Promise<RawWord[]> {
+): Promise<AsrResult> {
   const ext = contentType.includes("aac") ? "aac" : "wav";
   const form = new FormData();
   form.append("file", new File([audio], `audio.${ext}`, { type: contentType }));
@@ -122,5 +154,8 @@ async function viaOpenAiCompatible(
   if (!res.ok) throw new Error(`asr_${res.status}`);
   const json = await res.json();
   const words: OpenAiWord[] = json?.words ?? [];
-  return words.map((w) => ({ text: w.word, start: w.start, end: w.end }));
+  return {
+    heardSec: Number(json?.duration ?? 0),
+    words: words.map((w) => ({ text: w.word, start: w.start, end: w.end })),
+  };
 }
