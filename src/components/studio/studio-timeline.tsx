@@ -29,6 +29,7 @@ import {
   trackCount,
   trackOccupied,
 } from "@/lib/studio/tracks";
+import { useAudioDrag } from "@/hooks/use-audio-drag";
 import { useClipDrag } from "@/hooks/use-clip-drag";
 import {
   useOverlayDrag,
@@ -37,12 +38,7 @@ import {
 import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
-import {
-  newGestureId,
-  type Clip,
-  type Overlay,
-  type StudioSource,
-} from "@/lib/studio/types";
+import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
@@ -141,14 +137,6 @@ export default function StudioTimeline({
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
-  // `gesture` is minted at pointerdown and passed to the undoable setter on
-  // every move, so one drag is one undo step.
-  const [audioDrag, setAudioDrag] = useState<{
-    id: string;
-    startX: number;
-    origStart: number;
-    gesture: string;
-  } | null>(null);
   const clipDrag = useClipDrag({
     clips,
     pxPerSec,
@@ -261,6 +249,13 @@ export default function StudioTimeline({
     onDrop: onOverlayDrop,
   });
 
+  const audioDrag = useAudioDrag({
+    audioTracks,
+    pxPerSec,
+    snapStart,
+    onMove: moveAudio,
+  });
+
   // The drag's ring color: what letting go over this lane would actually do,
   // including nothing. A hint that promises a move the drop then refuses is
   // worse than no hint at all.
@@ -366,27 +361,6 @@ export default function StudioTimeline({
     snapping,
     currentTimelineTime,
   ]);
-
-  /* ---- audio clip drag ---- */
-  useEffect(() => {
-    if (!audioDrag) return;
-    const dur = audioTracks.find((t) => t.id === audioDrag.id)?.duration ?? 0;
-    const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - audioDrag.startX) / pxPerSec;
-      moveAudio(
-        audioDrag.id,
-        snapStart(audioDrag.origStart + delta, dur),
-        audioDrag.gesture,
-      );
-    };
-    const onUp = () => setAudioDrag(null);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
 
   /* ---- wheel: scroll the tracks, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -978,12 +952,7 @@ export default function StudioTimeline({
                       onPointerDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setAudioDrag({
-                          id: a.id,
-                          startX: e.clientX,
-                          origStart: a.start,
-                          gesture: newGestureId(),
-                        });
+                        audioDrag.begin(a.id, e.clientX, a.start);
                       }}
                       className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 ring-1 ring-emerald-500/35 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
                     >
