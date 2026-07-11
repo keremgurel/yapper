@@ -17,15 +17,15 @@ export interface RawWord {
  */
 export async function transcribeUrl(url: string): Promise<RawWord[]> {
   try {
-    const { blob } = await buildAsrAudio(url);
-    return await transcribeRemote(blob);
+    const { blob, durationSec } = await buildAsrAudio(url);
+    return await transcribeRemote(blob, durationSec);
   } catch (e) {
     console.warn(
       "[transcribe] native audio path failed, falling back to 16kHz WAV",
       e,
     );
     const pcm = await decodeToMono16k(url);
-    return transcribeRemote(encodeWav(pcm, 16000));
+    return transcribeRemote(encodeWav(pcm, 16000), pcm.length / 16000);
   }
 }
 
@@ -39,25 +39,45 @@ export async function transcribeUrl(url: string): Promise<RawWord[]> {
  * persistent error throws so the caller can show an error and let the user
  * retry, instead of producing a quietly worse transcript.
  */
-export async function transcribeRemote(audio: Blob): Promise<RawWord[]> {
+export async function transcribeRemote(
+  audio: Blob,
+  durationSec = 0,
+): Promise<RawWord[]> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await fetch("/api/transcribe", {
         method: "POST",
-        headers: { "Content-Type": audio.type || "application/octet-stream" },
+        headers: {
+          "Content-Type": audio.type || "application/octet-stream",
+          // Lets the backend detect a body truncated in transit by the
+          // proxy/middleware size cap (it hears less than we sent).
+          ...(durationSec > 0
+            ? { "x-audio-duration": String(durationSec) }
+            : {}),
+        },
         body: audio,
       });
       if (res.status === 501) {
         throw new Error("transcribe_no_provider");
+      }
+      if (res.status === 413) {
+        throw new Error("transcribe_audio_truncated");
       }
       if (!res.ok) throw new Error(`remote_transcribe_${res.status}`);
       const data = (await res.json()) as { words?: RawWord[] };
       return data.words ?? [];
     } catch (e) {
       lastErr = e;
-      // A missing provider won't fix itself on retry — fail fast.
-      if (e instanceof Error && e.message === "transcribe_no_provider") throw e;
+      // Neither a missing provider nor a truncated upload fixes itself on a
+      // retry — fail fast so the caller can surface it.
+      if (
+        e instanceof Error &&
+        (e.message === "transcribe_no_provider" ||
+          e.message === "transcribe_audio_truncated")
+      ) {
+        throw e;
+      }
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error("remote_transcribe");

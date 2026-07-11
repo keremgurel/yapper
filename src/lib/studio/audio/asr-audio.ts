@@ -8,6 +8,9 @@ export interface AsrAudio {
   blob: Blob;
   /** Debug/telemetry label for how the payload was produced. */
   via: "aac" | "wav48" | "wav16";
+  /** The payload's true length in seconds, sent so the backend can detect a
+   * body truncated in transit (the ASR would hear less than this). */
+  durationSec: number;
 }
 
 /** Average all channels into one, keeping the native sample rate (no resample). */
@@ -43,9 +46,13 @@ export async function buildAsrAudio(url: string): Promise<AsrAudio> {
 
   const adts = aacToAdts(demuxed);
   if (adts) {
+    // Chunk durations are microseconds (see demux-audio.ts).
+    const durationSec =
+      demuxed.chunks.reduce((s, c) => s + c.duration, 0) / 1_000_000;
     return {
       blob: new Blob([adts as BlobPart], { type: "audio/aac" }),
       via: "aac",
+      durationSec,
     };
   }
 
@@ -56,5 +63,6 @@ export async function buildAsrAudio(url: string): Promise<AsrAudio> {
   return {
     blob: encodeWav(mono, sampleRate),
     via: "wav48",
+    durationSec: sampleRate > 0 ? mono.length / sampleRate : 0,
   };
 }
