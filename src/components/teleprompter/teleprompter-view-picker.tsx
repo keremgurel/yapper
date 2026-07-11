@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   VIEW_OPTIONS,
   type TeleprompterView,
@@ -46,7 +47,7 @@ export default function TeleprompterViewPicker({
               onClick={() => onSelect(view)}
               className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40 ${
                 selected
-                  ? "border-cyan-400 bg-cyan-500/10"
+                  ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/15"
                   : "border-border hover:bg-muted/40"
               }`}
             >
@@ -58,19 +59,17 @@ export default function TeleprompterViewPicker({
                   {enabled ? desc : "Nothing written for this yet"}
                 </span>
               </span>
-              {selected && <Check className="h-4 w-4 shrink-0 text-cyan-500" />}
+              {selected && (
+                <Check className="h-4 w-4 shrink-0 text-[color:var(--sg-accent)]" />
+              )}
             </button>
           );
         })}
       </div>
 
-      <button
-        type="button"
-        onClick={onStart}
-        className="mt-6 w-full rounded-full bg-cyan-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-cyan-600"
-      >
+      <Button type="button" size="lg" onClick={onStart} className="mt-6 w-full">
         Set up camera
-      </button>
+      </Button>
     </div>
   );
 }

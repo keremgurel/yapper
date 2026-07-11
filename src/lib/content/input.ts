@@ -65,6 +65,12 @@ export function parseContentInput(body: Record<string, unknown>): {
     else badStatus = true;
   }
 
+  if (body.pillar === null) input.pillar = null;
+  else {
+    const pillar = str(body.pillar, 80);
+    if (pillar !== undefined) input.pillar = pillar;
+  }
+
   const scheduledFor = date(body.scheduledFor);
   if (scheduledFor !== undefined) input.scheduledFor = scheduledFor;
 

@@ -2,9 +2,12 @@ import { clipIndexAtSource, sourceToTimeline } from "@/lib/studio/clips";
 import {
   newCaptionId,
   type Caption,
+  type CaptionCase,
   type Clip,
   type Word,
 } from "@/lib/studio/types";
+
+export type { CaptionCase } from "@/lib/studio/types";
 
 /** A caption's edited-timeline range, derived from its source anchors + clips. */
 export function captionTimelineRange(
@@ -16,8 +19,6 @@ export function captionTimelineRange(
     end: sourceToTimeline(clips, c.sourceEnd),
   };
 }
-
-export type CaptionCase = "none" | "lower" | "upper";
 
 export interface CaptionStyle {
   fontFamily: string;
@@ -56,6 +57,12 @@ export const CAPTION_FONTS = [
 ] as const;
 
 export const CHARS_PER_LINE = 30;
+
+// Transcriber word starts lag the true acoustic onset by ~0.1-0.2s, so a caption
+// anchored exactly at its first word reads slightly late. Give each caption a
+// small head-start into the silent gap before it (never crossing the previous
+// word), so it appears right as the words are spoken.
+const CAPTION_LEAD_SEC = 0.12;
 
 export const DEFAULT_CAPTION_STYLE: CaptionStyle = {
   fontFamily: CAPTION_FONTS[0].stack,
@@ -99,6 +106,7 @@ export function generateCaptions(
   let cur: Caption | null = null;
   let curWords = 0;
   let prevEndTl = 0;
+  let prevWordEnd = 0; // source end of the previous kept word
   for (const w of kept) {
     // Timeline gap only drives where captions break (edited pauses); the caption
     // itself is anchored in source time so it follows later edits.
@@ -112,8 +120,10 @@ export function generateCaptions(
       if (cur) captions.push(cur);
       cur = {
         id: newCaptionId(),
+        // Lead into the silent gap before the first word, never past the
+        // previous word's end, so the caption is on time but never overlaps it.
+        sourceStart: Math.max(prevWordEnd, w.start - CAPTION_LEAD_SEC),
         text: w.text,
-        sourceStart: w.start,
         sourceEnd: w.end,
       };
       curWords = 1;
@@ -123,6 +133,7 @@ export function generateCaptions(
       curWords += 1;
     }
     prevEndTl = sourceToTimeline(clips, w.end);
+    prevWordEnd = w.end;
     // Flush on sentence end only in phrase mode; word mode is strictly N words.
     if (
       maxWords === 0 &&

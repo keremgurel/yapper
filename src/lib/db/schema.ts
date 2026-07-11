@@ -165,6 +165,9 @@ export const contentItems = pgTable(
     status: text("status", { enum: contentStatuses })
       .notNull()
       .default("drafted"),
+    // The content pillar this idea belongs to (a free-form name, matched to the
+    // user's inspiration pillars at capture time).
+    pillar: text("pillar"),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     sourceUrl: text("source_url"),
     sourceTitle: text("source_title"),

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { detectPlatform, youtubeId } from "@/lib/inspiration/platform";
+import {
+  detectKind,
+  detectPlatform,
+  extractHandle,
+  youtubeId,
+} from "@/lib/inspiration/platform";
 import { resolveMetadata } from "@/lib/inspiration/oembed";
 import { fetchYoutubeTranscript } from "@/lib/inspiration/youtube-transcript";
 import type { ResolvedLink } from "@/lib/inspiration/types";
@@ -21,10 +26,13 @@ export async function POST(req: Request) {
   }
 
   const platform = detectPlatform(url);
+  const kind = detectKind(url);
+  const handle = extractHandle(url) ?? undefined;
 
+  // Only fetch a transcript for actual videos on YouTube; a profile has none.
   const [meta, transcript] = await Promise.all([
     resolveMetadata(platform, url),
-    platform === "youtube"
+    kind === "video" && platform === "youtube"
       ? (async () => {
           const id = youtubeId(url);
           return id ? fetchYoutubeTranscript(id) : null;
@@ -32,18 +40,31 @@ export async function POST(req: Request) {
       : Promise.resolve(null),
   ]);
 
-  const resolved: ResolvedLink = {
-    platform,
-    title: meta.title || fallbackTitle(platform),
-    author: meta.author,
-    thumbnail: meta.thumbnail,
-    transcript: transcript ?? undefined,
-  };
+  const handleLabel = handle ? `@${handle}` : undefined;
+
+  const resolved: ResolvedLink =
+    kind === "creator"
+      ? {
+          kind,
+          platform,
+          title: meta.title || handleLabel || creatorFallback(platform),
+          author: handleLabel,
+          handle,
+          thumbnail: meta.thumbnail,
+        }
+      : {
+          kind,
+          platform,
+          title: meta.title || videoFallback(platform),
+          author: meta.author,
+          thumbnail: meta.thumbnail,
+          transcript: transcript ?? undefined,
+        };
 
   return NextResponse.json(resolved);
 }
 
-function fallbackTitle(platform: ResolvedLink["platform"]): string {
+function videoFallback(platform: ResolvedLink["platform"]): string {
   switch (platform) {
     case "youtube":
       return "YouTube video";
@@ -53,5 +74,18 @@ function fallbackTitle(platform: ResolvedLink["platform"]): string {
       return "Instagram post";
     default:
       return "Saved link";
+  }
+}
+
+function creatorFallback(platform: ResolvedLink["platform"]): string {
+  switch (platform) {
+    case "youtube":
+      return "YouTube channel";
+    case "tiktok":
+      return "TikTok creator";
+    case "instagram":
+      return "Instagram creator";
+    default:
+      return "Creator";
   }
 }

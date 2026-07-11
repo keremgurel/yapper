@@ -125,7 +125,7 @@ export default async function BlogPostPage({ params }: PageProps) {
           __html: safeJsonLdStringify(breadcrumbJsonLd),
         }}
       />
-      <main className="bg-background min-h-screen">
+      <main className="bg-background flex-1">
         <BlogPostShell post={post} relatedPosts={relatedPosts} />
       </main>
     </>

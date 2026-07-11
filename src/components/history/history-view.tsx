@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { Loader2, Mic, Sparkles, Trash2, Video } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import FeedbackResult from "@/components/studio/feedback/feedback-result";
 import type { Coaching } from "@/lib/feedback/coach";
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
@@ -104,9 +105,7 @@ export default function HistoryView() {
           Sign in to see your past recordings and AI feedback in one place.
         </p>
         <SignInButton mode="modal" withSignUp>
-          <button className="rounded-full bg-cyan-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-cyan-600">
-            Sign in
-          </button>
+          <Button>Sign in</Button>
         </SignInButton>
       </div>
     );

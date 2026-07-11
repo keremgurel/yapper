@@ -33,5 +33,9 @@ export function useContentList(enabled: boolean) {
     setItems((prev) => prev?.filter((row) => row.id !== id) ?? prev);
   }, []);
 
-  return { items, refresh, patchRow, removeRow };
+  const prependRow = useCallback((row: ContentSummary) => {
+    setItems((prev) => [row, ...(prev ?? [])]);
+  }, []);
+
+  return { items, refresh, patchRow, removeRow, prependRow };
 }

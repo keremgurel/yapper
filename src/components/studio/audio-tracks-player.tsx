@@ -25,7 +25,7 @@ export default function AudioTracksPlayer({
       const local = masterTime - t.start;
       const active = playing && !t.muted && local >= 0 && local < t.duration;
       if (active) {
-        if (Math.abs(el.currentTime - local) > 0.3) el.currentTime = local;
+        if (Math.abs(el.currentTime - local) > 0.12) el.currentTime = local;
         if (el.paused) void el.play().catch(() => {});
       } else if (!el.paused) {
         el.pause();

@@ -15,6 +15,8 @@ export default function MediaTab() {
     addMediaAsset,
     removeMediaAsset,
     addAssetToTimeline,
+    addAssetToMainTrack,
+    addOverlayFromAsset,
   } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
   const isEmpty = !source && mediaAssets.length === 0;
@@ -63,30 +65,10 @@ export default function MediaTab() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {/* Base loaded from the uploader (not in the library) — show it once. */}
-            {source && !mediaAssets.some((m) => m.url === source.url) && (
-              <div className="border-border bg-card overflow-hidden rounded-xl border ring-1 ring-cyan-500/40">
-                <div className="bg-muted relative aspect-video">
-                  <video
-                    src={source.url}
-                    muted
-                    className="h-full w-full object-cover"
-                  />
-                  <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
-                    Added
-                  </span>
-                </div>
-                <div className="p-2">
-                  <p className="text-foreground/80 truncate text-[11px] font-bold">
-                    {source.name}
-                  </p>
-                  <p className="text-foreground/40 text-[10px]">Main track</p>
-                </div>
-              </div>
-            )}
+          // Columns follow the panel's width rather than being counted out:
+          // two in the narrow classic dock, four or more in the wide cinema one.
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3">
             {mediaAssets.map((asset) => {
-              const isBase = source?.url === asset.url;
               const count = usageCount(asset.url);
               return (
                 <div
@@ -97,7 +79,7 @@ export default function MediaTab() {
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   className={`border-border bg-card group cursor-grab overflow-hidden rounded-xl border active:cursor-grabbing ${
-                    count > 0 ? "ring-1 ring-cyan-500/40" : ""
+                    count > 0 ? "ring-1 ring-[color:var(--sg-accent)]/40" : ""
                   }`}
                 >
                   <div className="bg-muted relative aspect-video">
@@ -116,33 +98,61 @@ export default function MediaTab() {
                       />
                     )}
                     {count > 0 && (
-                      <span className="absolute top-1 left-1 rounded-md bg-cyan-500/90 px-1.5 py-0.5 text-[10px] font-black text-white">
+                      <span className="absolute top-1 left-1 rounded-md bg-[color:var(--sg-accent)]/90 px-1.5 py-0.5 text-[10px] font-black text-white">
                         Added{count > 1 ? ` ×${count}` : ""}
                       </span>
                     )}
-                    {!isBase && (
-                      <button
-                        type="button"
-                        onClick={() => removeMediaAsset(asset.id)}
-                        className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
-                        aria-label="Remove"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeMediaAsset(asset.id)}
+                      className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+                      title={
+                        count > 0
+                          ? "Remove from the library and the timeline"
+                          : "Remove from the library"
+                      }
+                      aria-label="Remove"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                   <div className="p-2">
                     <p className="text-foreground/80 truncate text-[11px] font-bold">
                       {asset.name}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => addAssetToTimeline(asset.id)}
-                      className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
-                    >
-                      <Plus className="h-3 w-3" />
-                      {count > 0 ? "Add again" : "Add to timeline"}
-                    </button>
+                    {!source ? (
+                      <button
+                        type="button"
+                        onClick={() => addAssetToTimeline(asset.id)}
+                        className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add to timeline
+                      </button>
+                    ) : (
+                      <div className="mt-1.5 flex gap-1.5">
+                        {asset.kind === "video" && (
+                          <button
+                            type="button"
+                            onClick={() => addAssetToMainTrack(asset.id)}
+                            title="Add to the bottom layer sequence as another clip"
+                            className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Base
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => addOverlayFromAsset(asset.id, 0)}
+                          title="Add as an overlay on an upper track"
+                          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                        >
+                          <Plus className="h-3 w-3" />
+                          Overlay
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

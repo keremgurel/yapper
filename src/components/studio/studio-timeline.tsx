@@ -4,43 +4,48 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { Music2, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { clipDuration, totalDuration } from "@/lib/studio/clips";
-import { useFilmstrip } from "@/hooks/use-filmstrip";
-import { useWaveform } from "@/hooks/use-waveform";
+import { clipDuration, clipMediaUrl, trimBounds } from "@/lib/studio/clips";
+import {
+  useFilmstrips,
+  useWaveforms,
+  type TimelineMedia,
+} from "@/hooks/use-timeline-media";
+import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
-import UpperTrackLane from "@/components/studio/upper-track-lane";
+import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
+import { spansOverlap } from "@/lib/studio/marquee";
+import {
+  overlayTrimBounds,
+  overlaysOnTrack,
+  trackCount,
+  trackOccupied,
+} from "@/lib/studio/tracks";
+import { useAudioDrag } from "@/hooks/use-audio-drag";
+import { useClipDrag } from "@/hooks/use-clip-drag";
+import {
+  useOverlayDrag,
+  type OverlayDropTarget,
+} from "@/hooks/use-overlay-drag";
+import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
-import type { Clip } from "@/lib/studio/types";
+import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
 const MIN_CLIP = 0.2;
-const LIFT_THRESHOLD = 40; // drag a clip up this far to spawn a new upper track
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
-}
-
-function snapValue(v: number, points: number[], threshold: number): number {
-  let best = v;
-  let bestD = threshold;
-  for (const p of points) {
-    const d = Math.abs(p - v);
-    if (d < bestD) {
-      bestD = d;
-      best = p;
-    }
-  }
-  return best;
 }
 
 interface TrimDrag {
@@ -53,21 +58,26 @@ interface TrimDrag {
 
 export default function StudioTimeline({
   clips,
-  sourceUrl,
-  sourceKind = "video",
-  sourceDuration,
+  source,
   currentTimelineTime,
   onSeek,
 }: {
   clips: Clip[];
-  sourceUrl: string;
-  sourceKind?: "video" | "image";
-  sourceDuration: number;
+  /** The project's recording. Null once it's been removed from the library. */
+  source: StudioSource | null;
   currentTimelineTime: number;
   onSeek: (timelineTime: number) => void;
 }) {
-  const isImage = sourceKind === "image";
+  const isImage = source?.kind === "image";
+  const sourceUrl = source?.url ?? "";
+  const sourceDuration = source?.duration ?? 0;
   const {
+    duration,
+    baseHidden,
+    baseMuted,
+    toggleBaseHidden,
+    toggleBaseMuted,
+    removeBaseTrack,
     selectedClipIds,
     selectClip,
     toggleClipSelection,
@@ -82,10 +92,16 @@ export default function StudioTimeline({
     mediaAssets,
     moveOverlay,
     setOverlayRange,
-    toggleOverlayHidden,
-    toggleOverlayMuted,
-    removeOverlay,
+    setOverlayTrack,
+    toggleTrackHidden,
+    toggleTrackMuted,
+    removeTrack,
     liftClipToTrack,
+    dropOverlayToBase,
+    selectedOverlayIds,
+    selectOverlay,
+    toggleOverlaySelection,
+    selectOverlays,
     captions,
     captionStyle,
     selectedCaptionIds,
@@ -99,10 +115,19 @@ export default function StudioTimeline({
   const scrollRef = useRef<HTMLDivElement>(null);
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
+  // The fixed rail of track controls. It doesn't scroll itself; it is dragged
+  // along vertically so every row stays beside the lane it belongs to.
+  const railRef = useRef<HTMLDivElement>(null);
+  // One row node per upper track (the empty top lane included), so the marquee
+  // knows which lanes its box reaches and a vertical drag knows where it landed.
+  const trackRowsRef = useRef(new Map<number, HTMLDivElement | null>());
   const [pxPerSec, setPxPerSec] = useState(80);
-  // Live mirror of pxPerSec so rapid pinch events accumulate off the latest
-  // value, and the pending zoom anchor to apply after the width re-renders.
-  const pxRef = useRef(80);
+  // Two distinct scales, and conflating them is what makes zoom drift: `target`
+  // accumulates across the pinch events of a frame, while `rendered` is the
+  // scale the DOM (and therefore `scrollLeft`) is currently laid out at. The
+  // cursor anchor must always be derived from `rendered`.
+  const targetPxRef = useRef(80);
+  const renderedPxRef = useRef(80);
   const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
   const zoomRafRef = useRef(false);
   // scrollLeft at which the current render window was committed; we only
@@ -112,28 +137,12 @@ export default function StudioTimeline({
   const [scrubbing, setScrubbing] = useState(false);
   const [trim, setTrim] = useState<TrimDrag | null>(null);
   const [live, setLive] = useState<{ start: number; end: number } | null>(null);
-  const [audioDrag, setAudioDrag] = useState<{
-    id: string;
-    startX: number;
-    origStart: number;
-  } | null>(null);
-  const [overlayDrag, setOverlayDrag] = useState<{
-    id: string;
-    startX: number;
-    origStart: number;
-  } | null>(null);
-  // Reorder drag for main-track clips: origLeft is the clip's resting left (px),
-  // clipLive is its current dragged left (px, null until the pointer moves).
-  const [clipDrag, setClipDrag] = useState<{
-    id: string;
-    startX: number;
-    startY: number;
-    origLeft: number;
-  } | null>(null);
-  const [clipLive, setClipLive] = useState<number | null>(null);
-  // Vertical drag distance (px, negative = up). Past LIFT_THRESHOLD the clip
-  // lifts onto a new upper video track instead of reordering.
-  const [clipLiftY, setClipLiftY] = useState(0);
+  const clipDrag = useClipDrag({
+    clips,
+    pxPerSec,
+    onReorder: moveClip,
+    onLift: liftClipToTrack,
+  });
   // Marquee rectangle (content-div px) for drag-select over main clips.
   const [marquee, setMarquee] = useState<{
     left: number;
@@ -141,40 +150,123 @@ export default function StudioTimeline({
     width: number;
     height: number;
   } | null>(null);
-  const { frames, aspect } = useFilmstrip(sourceUrl, sourceDuration);
-  const peaks = useWaveform(sourceUrl, sourceDuration);
+  // Every distinct video on the timeline, no matter which layer it sits on, so
+  // each clip draws its own thumbnails and waveform rather than the recording's.
+  const timelineMedia = useMemo<TimelineMedia[]>(() => {
+    const seen = new Map<string, TimelineMedia>();
+    const add = (url: string, dur: number) => {
+      if (url && dur > 0 && !seen.has(url))
+        seen.set(url, { url, duration: dur });
+    };
+    if (source && source.kind !== "image") add(source.url, source.duration);
+    for (const c of clips) {
+      if (c.src?.kind === "video") add(c.src.url, c.src.duration);
+    }
+    for (const o of overlays) {
+      if (o.kind === "video") {
+        add(
+          o.url,
+          mediaAssets.find((m) => m.url === o.url)?.duration ??
+            o.sourceStart + o.duration,
+        );
+      }
+    }
+    return [...seen.values()];
+  }, [source, clips, overlays, mediaAssets]);
+  const strips = useFilmstrips(timelineMedia);
+  const waves = useWaveforms(timelineMedia);
+  const mediaDurationOf = useCallback(
+    (url: string) => timelineMedia.find((m) => m.url === url)?.duration ?? 0,
+    [timelineMedia],
+  );
   const [view, setView] = useState({ start: 0, width: 0 });
 
-  const total = totalDuration(clips);
+  // The ruler spans the whole project, not just the bottom track — a layer that
+  // outlasts it still needs timeline to sit on.
+  const total = duration;
   const trackWidth = Math.max(total * pxPerSec, 1);
   const playheadX = currentTimelineTime * pxPerSec;
 
-  // Empty gutter on each side so the start (or end) can be scrolled to center,
-  // giving room to drag. Content lives at x = padLeft; nothing sits before it.
+  // Empty gutter on each side, one full screen wide. Beyond giving room to drag
+  // past either end, that exact width is what lets zoom anchor perfectly: to pin
+  // instant `t` under a cursor at `offsetX` we need scrollLeft = t*px + pad -
+  // offsetX, whose range over t ∈ [0, total] and offsetX ∈ [0, width] is exactly
+  // [0, trackWidth + pad] — the scroll range a one-screen gutter provides. Any
+  // narrower and the browser clamps the target, and the timeline slides.
   const measured = view.width > 0;
-  const padLeft = measured ? Math.round(view.width / 2) : 240;
+  const padLeft = measured ? Math.round(view.width) : 240;
 
-  // Snap a clip's start (or its end) to nearby edges when magnet mode is on.
+  // Magnet mode: pull a dragged clip's nearer edge onto whatever it is passing.
   const snapStart = useCallback(
-    (start: number, dur: number): number => {
-      if (!snapping) return Math.max(0, start);
-      const threshold = 8 / pxPerSec;
-      const points = [
-        0,
-        total,
-        currentTimelineTime,
-        ...clips.map((_, i) =>
-          clips.slice(0, i + 1).reduce((s, c) => s + (c.end - c.start), 0),
-        ),
-      ];
-      const ss = snapValue(start, points, threshold);
-      if (ss !== start) return Math.max(0, ss);
-      const se = snapValue(start + dur, points, threshold);
-      if (se !== start + dur) return Math.max(0, se - dur);
-      return Math.max(0, start);
-    },
+    (start: number, dur: number): number =>
+      snapping
+        ? snapClipStart(
+            start,
+            dur,
+            timelineSnapPoints(clips, total, currentTimelineTime),
+            SNAP_PX / pxPerSec,
+          )
+        : Math.max(0, start),
     [snapping, pxPerSec, total, clips, currentTimelineTime],
   );
+
+  // Which lane the pointer is over. Reads the laid-out rows rather than
+  // measuring row heights in code, so it stays right whatever the CSS says. Its
+  // identity must be stable: it is a dependency of the live drag listener.
+  const resolveDropTarget = useCallback(
+    (clientY: number): OverlayDropTarget | null => {
+      const base = baseRowRef.current?.getBoundingClientRect();
+      // The base row and everything under it (the audio lanes) folds the clip in.
+      if (base && clientY >= base.top) return { kind: "base" };
+      for (const [track, node] of trackRowsRef.current) {
+        if (!node) continue;
+        const r = node.getBoundingClientRect();
+        if (clientY >= r.top && clientY <= r.bottom)
+          return { kind: "track", track };
+      }
+      // The gaps between lanes, and anything above the timeline: stay put.
+      return null;
+    },
+    [],
+  );
+
+  const onOverlayDrop = useCallback(
+    (id: string, target: OverlayDropTarget, gesture: string) => {
+      // Both carry the drag's gesture id, so the sideways move and whatever the
+      // drop did to the clip's layer undo together, as one edit.
+      if (target.kind === "base") dropOverlayToBase(id, gesture);
+      else setOverlayTrack(id, target.track, gesture);
+    },
+    [dropOverlayToBase, setOverlayTrack],
+  );
+
+  const overlayDrag = useOverlayDrag({
+    overlays,
+    pxPerSec,
+    snapStart,
+    resolveTarget: resolveDropTarget,
+    onMove: moveOverlay,
+    onDrop: onOverlayDrop,
+  });
+
+  const audioDrag = useAudioDrag({
+    audioTracks,
+    pxPerSec,
+    snapStart,
+    onMove: moveAudio,
+  });
+
+  // The drag's ring color: what letting go over this lane would actually do,
+  // including nothing. A hint that promises a move the drop then refuses is
+  // worse than no hint at all.
+  const dropHintFor = (o: Overlay): DropHint => {
+    const target = overlayDrag.id === o.id ? overlayDrag.target : null;
+    if (!target) return "none";
+    // Images can't drive the base clock, so they never fold into it.
+    if (target.kind === "base") return o.kind === "video" ? "base" : "none";
+    if (target.track === o.track) return "none";
+    return trackOccupied(overlays, target.track, o) ? "blocked" : "track";
+  };
 
   /* ---- scrub ---- */
   const seekFromClientX = useCallback(
@@ -206,8 +298,11 @@ export default function StudioTimeline({
     const idx = clips.findIndex((c) => c.id === trim.id);
     const clip = clips[idx];
     if (!clip) return;
-    const prevEnd = clips[idx - 1]?.end ?? 0;
-    const nextStart = clips[idx + 1]?.start ?? sourceDuration;
+    const { min: prevEnd, max: nextStart } = trimBounds(
+      clips,
+      idx,
+      sourceDuration,
+    );
     // Magnet targets (in source seconds): neighbor edges and the playhead.
     const offset = clips
       .slice(0, idx)
@@ -267,146 +362,89 @@ export default function StudioTimeline({
     currentTimelineTime,
   ]);
 
-  /* ---- audio clip drag ---- */
-  useEffect(() => {
-    if (!audioDrag) return;
-    const dur = audioTracks.find((t) => t.id === audioDrag.id)?.duration ?? 0;
-    const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - audioDrag.startX) / pxPerSec;
-      moveAudio(audioDrag.id, snapStart(audioDrag.origStart + delta, dur));
-    };
-    const onUp = () => setAudioDrag(null);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [audioDrag, pxPerSec, moveAudio, audioTracks, snapStart]);
-
-  /* ---- overlay clip drag ---- */
-  useEffect(() => {
-    if (!overlayDrag) return;
-    const dur = overlays.find((o) => o.id === overlayDrag.id)?.duration ?? 0;
-    const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - overlayDrag.startX) / pxPerSec;
-      moveOverlay(
-        overlayDrag.id,
-        snapStart(overlayDrag.origStart + delta, dur),
-      );
-    };
-    const onUp = () => setOverlayDrag(null);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [overlayDrag, pxPerSec, moveOverlay, overlays, snapStart]);
-
-  /* ---- main-clip drag: reorder, or lift up to a new upper track ---- */
-  useEffect(() => {
-    if (!clipDrag) return;
-    const dragged = clips.find((c) => c.id === clipDrag.id);
-    const dur = dragged ? clipDuration(dragged) : 0;
-    // Track the drag in closure vars so the drop can read the final position
-    // directly (no setState-inside-setState, which React warns about).
-    let live: number | null = null;
-    let liftY = 0;
-    const onMove = (e: PointerEvent) => {
-      const dx = e.clientX - clipDrag.startX;
-      const dy = e.clientY - clipDrag.startY;
-      if (live == null && Math.hypot(dx, dy) < 4) return; // ignore a click's jitter
-      live = clipDrag.origLeft + dx;
-      liftY = dy;
-      setClipLive(live);
-      setClipLiftY(dy);
-    };
-    const onUp = () => {
-      if (live != null && liftY < -LIFT_THRESHOLD) {
-        // Lifted up: move this segment onto a new upper video track.
-        liftClipToTrack(clipDrag.id, Math.max(0, live / pxPerSec));
-      } else if (live != null) {
-        // Drop where the dragged clip's center lands among the others.
-        const center = live / pxPerSec + dur / 2;
-        let acc = 0;
-        let target = 0;
-        for (const c of clips) {
-          const d = clipDuration(c);
-          const mid = acc + d / 2;
-          if (c.id !== clipDrag.id && mid < center) target++;
-          acc += d;
-        }
-        moveClip(clipDrag.id, target);
-      }
-      setClipLive(null);
-      setClipLiftY(0);
-      setClipDrag(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [clipDrag, clips, pxPerSec, moveClip, liftClipToTrack]);
-
-  /* ---- wheel: pan by default, zoom-at-cursor on pinch / ⌘-scroll ---- */
+  /* ---- wheel: scroll the tracks, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
-      const lineUnit = e.deltaMode === 1 ? 16 : 1; // normalize mouse "line" deltas
+      // Normalize "line" and "page" deltas onto pixels.
+      const lineUnit =
+        e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
       // Trackpad pinch reports ctrlKey; ⌘/Ctrl+wheel is the explicit zoom.
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const rect = el.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const current = pxRef.current;
-        const timeAtCursor = (offsetX + el.scrollLeft - padLeft) / current;
+        const current = targetPxRef.current;
         const next = clamp(
           current * Math.exp(-e.deltaY * lineUnit * 0.0025),
           MIN_PX,
           MAX_PX,
         );
         if (next === current) return;
-        pxRef.current = next;
-        // Applied in a layout effect once the new width has rendered — no flash.
-        pendingZoomRef.current = { time: timeAtCursor, offsetX };
+        // Anchor against the RENDERED scale, since `scrollLeft` belongs to the
+        // layout we can actually measure. Reading it against the accumulated
+        // target would mix two scales and slide the timeline under the cursor.
+        const rect = el.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        pendingZoomRef.current = {
+          // Clamped into the content: pointing at the empty gutter anchors the
+          // nearest end rather than an instant the scroll range can't reach.
+          time: clamp(
+            (offsetX + el.scrollLeft - padLeft) / renderedPxRef.current,
+            0,
+            total,
+          ),
+          offsetX,
+        };
+        targetPxRef.current = next;
         // Coalesce rapid pinch events into one render per frame.
         if (!zoomRafRef.current) {
           zoomRafRef.current = true;
           requestAnimationFrame(() => {
             zoomRafRef.current = false;
-            setPxPerSec(pxRef.current);
+            setPxPerSec(targetPxRef.current);
           });
         }
         return;
       }
-      // Horizontal-intent gestures scroll natively (smooth, compositor-threaded).
-      // Only convert vertical intent (mouse wheel) into horizontal panning.
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY * lineUnit;
-      }
+      // Everything else scrolls natively, in the direction it was aimed: down
+      // the stack of tracks, or along the timeline. Turning a vertical wheel
+      // into a horizontal pan would leave the lower tracks unreachable.
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, [padLeft]);
+  }, [padLeft, total]);
 
-  // Keep pxRef in sync and anchor the cursor point after a zoom re-render.
+  // Park 0:00 at the left edge, once. This has to wait for the first measurement:
+  // until `view.width` is known the gutter is only a placeholder, the content is
+  // narrower than its final width, and the browser would clamp the scroll away.
+  const didInitScrollRef = useRef(false);
   useLayoutEffect(() => {
-    pxRef.current = pxPerSec;
+    const el = scrollRef.current;
+    if (!el || !measured || didInitScrollRef.current) return;
+    didInitScrollRef.current = true;
+    el.scrollLeft = padLeft;
+    viewStartRef.current = el.scrollLeft;
+  }, [measured, padLeft]);
+
+  // The new width has rendered: pin the anchored instant back under the cursor.
+  useLayoutEffect(() => {
+    renderedPxRef.current = pxPerSec;
     const pending = pendingZoomRef.current;
     if (!pending) return;
     const el = scrollRef.current;
     if (el) {
+      // The gutters are a full screen wide on each side, so this target is
+      // always inside [0, maxScrollLeft] and never gets clamped out from under
+      // the cursor — that clamping is the other half of the zoom drift.
       el.scrollLeft = pending.time * pxPerSec + padLeft - pending.offsetX;
       // Re-anchor the render window to the new scale/position.
       viewStartRef.current = el.scrollLeft;
       setView({ start: el.scrollLeft, width: el.clientWidth });
     }
-    pendingZoomRef.current = null;
+    // Another pinch event landed before this frame committed, so its scale is
+    // still pending. Keep the anchor: the same instant must stay under the same
+    // cursor position for the whole gesture, not just this frame.
+    if (targetPxRef.current === pxPerSec) pendingZoomRef.current = null;
   }, [pxPerSec, padLeft]);
 
   /* ---- track the visible window (buffered) so panning stays native/smooth ---- */
@@ -417,10 +455,10 @@ export default function StudioTimeline({
       viewStartRef.current = el.scrollLeft;
       setView({ start: el.scrollLeft, width: el.clientWidth });
     };
-    // Start with 0:00 at the left edge; the gutter is scrollable to its left.
-    if (el.clientWidth > 0) el.scrollLeft = el.clientWidth / 2;
     commit();
     const onScroll = () => {
+      // The rail is outside the scroller, so it has to be told.
+      if (railRef.current) railRef.current.scrollTop = el.scrollTop;
       // Re-window only after drifting past ~half a screen; the ±1-screen buffer
       // covers everything in between, so scrolling doesn't re-render each frame.
       if (
@@ -449,22 +487,45 @@ export default function StudioTimeline({
 
   const ticks = buildTicks(total, pxPerSec);
 
+  // Lanes, top to bottom. One past the last used track, so there is always an
+  // empty lane to drop a clip onto when it wants a track to itself.
+  const upperTracks = trackCount(overlays);
+  const lanes = Array.from(
+    { length: upperTracks + 1 },
+    (_, i) => upperTracks - i,
+  );
+
   // Cumulative timeline offset (seconds) for each clip, from committed durations.
   const offsets = clips.map((_, i) =>
     clips.slice(0, i).reduce((s, c) => s + (c.end - c.start), 0),
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col select-none">
+    <div
+      className="flex h-full min-h-0 flex-col select-none"
+      // Clicking anywhere in the timeline ends caption-text editing, so Space
+      // goes back to play/pause instead of typing a space into the caption.
+      onPointerDownCapture={() => {
+        const a = document.activeElement as HTMLElement | null;
+        if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) a.blur();
+      }}
+    >
       <div className="flex min-h-0 flex-1">
         <TrackHeaderRail
+          scrollRef={railRef}
           overlays={overlays}
+          lanes={lanes}
           audioTracks={audioTracks}
-          placeholderTrack={overlays.length === 0}
+          hasBaseTrack={clips.length > 0}
+          baseHidden={baseHidden}
+          baseMuted={baseMuted}
           hasCaptions={captions.length > 0}
-          onToggleOverlayHidden={toggleOverlayHidden}
-          onToggleOverlayMuted={toggleOverlayMuted}
-          onRemoveOverlay={removeOverlay}
+          onToggleTrackHidden={toggleTrackHidden}
+          onToggleTrackMuted={toggleTrackMuted}
+          onRemoveTrack={removeTrack}
+          onToggleBaseHidden={toggleBaseHidden}
+          onToggleBaseMuted={toggleBaseMuted}
+          onRemoveBaseTrack={removeBaseTrack}
           onToggleAudioMuted={toggleAudioMuted}
           onRemoveAudio={removeAudio}
         />
@@ -527,41 +588,47 @@ export default function StudioTimeline({
                     height: Math.abs(cy - sy),
                   });
                   const xHit = (l: number, r: number) =>
-                    r >= left && l <= left + width;
-                  // Which track rows the box vertically covers (client coords).
+                    spansOverlap(l, r, left, left + width);
+                  // A span of timeline seconds, in the same px as the box.
+                  const secHit = (from: number, to: number) =>
+                    xHit(padLeft + from * pxPerSec, padLeft + to * pxPerSec);
+                  // Which track rows the box vertically reaches (client coords).
                   const yTop = Math.min(startClientY, ev.clientY);
                   const yBot = Math.max(startClientY, ev.clientY);
-                  const overlaps = (node: HTMLElement | null) => {
+                  const rowHit = (node: HTMLElement | null) => {
                     if (!node) return false;
                     const r = node.getBoundingClientRect();
-                    return yBot >= r.top && yTop <= r.bottom;
+                    return spansOverlap(r.top, r.bottom, yTop, yBot);
                   };
-                  // Base clips (only when the box covers the base track).
+
+                  // The box owns the whole selection: every kind it catches is
+                  // selected, and every kind it misses is deselected. Leaving a
+                  // kind untouched would let a stale selection from before the
+                  // drag be swept up by the next Delete.
                   selectClips(
-                    overlaps(baseRowRef.current)
+                    rowHit(baseRowRef.current)
                       ? clips
-                          .filter((_, i) =>
-                            xHit(
-                              padLeft + offsets[i] * pxPerSec,
-                              padLeft +
-                                (offsets[i] + (clips[i].end - clips[i].start)) *
-                                  pxPerSec,
-                            ),
+                          .filter((c, i) =>
+                            secHit(offsets[i], offsets[i] + clipDuration(c)),
                           )
                           .map((c) => c.id)
                       : [],
                   );
-                  // Captions (only when the box covers the caption row).
+                  selectOverlays(
+                    overlays
+                      .filter(
+                        (o) =>
+                          rowHit(trackRowsRef.current.get(o.track) ?? null) &&
+                          secHit(o.start, o.start + o.duration),
+                      )
+                      .map((o) => o.id),
+                  );
                   selectCaptions(
-                    overlaps(captionRowRef.current)
+                    rowHit(captionRowRef.current)
                       ? captions
                           .filter((c) => {
                             const r = captionTimelineRange(clips, c);
-                            if (r.end <= r.start) return false;
-                            return xHit(
-                              padLeft + r.start * pxPerSec,
-                              padLeft + r.end * pxPerSec,
-                            );
+                            return r.end > r.start && secHit(r.start, r.end);
                           })
                           .map((c) => c.id)
                       : [],
@@ -595,45 +662,60 @@ export default function StudioTimeline({
                 </div>
               )}
 
-              {/* Empty upper-track drop zone so the timeline always shows room
-                for at least a second track. */}
-              {overlays.length === 0 && (
-                <div className="relative h-12">
-                  <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+              {/* Upper video tracks, topmost first. The last lane is always
+                empty: drop a clip there to give it a track of its own. */}
+              {lanes.map((track) => (
+                <div
+                  key={track}
+                  ref={(node) => {
+                    const rows = trackRowsRef.current;
+                    rows.set(track, node);
+                    return () => {
+                      rows.delete(track);
+                    };
+                  }}
+                  className="relative h-12"
+                >
+                  {overlaysOnTrack(overlays, track).length === 0 && (
+                    <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+                  )}
+                  {overlaysOnTrack(overlays, track).map((o) => (
+                    <OverlayClip
+                      key={o.id}
+                      overlay={o}
+                      pxPerSec={pxPerSec}
+                      visStartSec={visStartSec}
+                      visEndSec={visEndSec}
+                      strip={strips.get(o.url) ?? EMPTY_FILMSTRIP}
+                      peaks={waves.get(o.url) ?? []}
+                      mediaDuration={mediaDurationOf(o.url)}
+                      fullDuration={
+                        o.kind === "image" ? Infinity : mediaDurationOf(o.url)
+                      }
+                      bounds={overlayTrimBounds(overlays, o)}
+                      selected={selectedOverlayIds.includes(o.id)}
+                      onSelect={(additive) =>
+                        additive
+                          ? toggleOverlaySelection(o.id)
+                          : selectOverlay(o.id)
+                      }
+                      liftY={overlayDrag.id === o.id ? overlayDrag.liftY : 0}
+                      dropHint={dropHintFor(o)}
+                      onDragStart={overlayDrag.begin}
+                      onTrim={setOverlayRange}
+                    />
+                  ))}
                 </div>
-              )}
-
-              {/* Upper video tracks — stacked above the base, topmost composites
-                on top (last in the overlays array renders highest). */}
-              {[...overlays].reverse().map((o) => (
-                <UpperTrackLane
-                  key={o.id}
-                  overlay={o}
-                  pxPerSec={pxPerSec}
-                  visStartSec={visStartSec}
-                  visEndSec={visEndSec}
-                  frames={frames}
-                  aspect={aspect}
-                  peaks={peaks}
-                  sourceUrl={sourceUrl}
-                  sourceDuration={sourceDuration}
-                  fullDuration={
-                    o.kind === "image"
-                      ? Infinity
-                      : o.url === sourceUrl
-                        ? sourceDuration
-                        : (mediaAssets.find((m) => m.url === o.url)?.duration ??
-                          o.sourceStart + o.duration)
-                  }
-                  onDragStart={(id, clientX, origStart) =>
-                    setOverlayDrag({ id, startX: clientX, origStart })
-                  }
-                  onTrim={setOverlayRange}
-                />
               ))}
 
-              {/* Main (base) video track */}
-              <div ref={baseRowRef} className="relative h-16">
+              {/* Bottom video layer */}
+              <div
+                ref={baseRowRef}
+                className={`relative h-16 ${baseHidden ? "opacity-40" : ""}`}
+              >
+                {clips.length === 0 && (
+                  <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
+                )}
                 {clips.map((clip, i) => {
                   const isTrimming = trim?.id === clip.id && live;
                   const cStart = isTrimming ? live.start : clip.start;
@@ -651,9 +733,10 @@ export default function StudioTimeline({
                   const onlyThisSelected =
                     selectedClipIds.length === 1 &&
                     selectedClipIds[0] === clip.id;
-                  const isGhost = clipDrag?.id === clip.id && clipLive != null;
+                  const isGhost =
+                    clipDrag.id === clip.id && clipDrag.left != null;
                   const containerLeftPx = isGhost
-                    ? (clipLive as number)
+                    ? (clipDrag.left as number)
                     : leftSec * pxPerSec;
                   // While trimming, draw frames/waveform against the FULL extent the
                   // edge can be dragged across (down to the previous clip's end / up
@@ -663,8 +746,20 @@ export default function StudioTimeline({
                   // and extending the edge back out reveals real frames (not gray).
                   const edgeStart = isTrimming && trim?.edge === "start";
                   const edgeEnd = isTrimming && trim?.edge === "end";
-                  const prevEnd = clips[i - 1]?.end ?? 0;
-                  const nextStart = clips[i + 1]?.start ?? sourceDuration;
+                  const { min: prevEnd, max: nextStart } = trimBounds(
+                    clips,
+                    i,
+                    sourceDuration,
+                  );
+                  // Each clip draws from its OWN media, whether that's the
+                  // recording or something appended alongside it.
+                  const mediaUrl = clipMediaUrl(clip, sourceUrl);
+                  const strip = strips.get(mediaUrl) ?? EMPTY_FILMSTRIP;
+                  const clipPeaks = waves.get(mediaUrl) ?? [];
+                  const mediaDuration = mediaDurationOf(mediaUrl);
+                  const clipIsImage = clip.src
+                    ? clip.src.kind === "image"
+                    : isImage;
                   const contentStartSrc = edgeStart ? prevEnd : cStart;
                   const contentEndSrc = edgeEnd ? nextStart : cEnd;
                   const contentLeftSec = edgeStart
@@ -684,17 +779,17 @@ export default function StudioTimeline({
                   const contentX = span
                     ? contentLeftSec * pxPerSec - containerLeftPx + span.leftPx
                     : 0;
-                  const isLifting = isGhost && clipLiftY < -LIFT_THRESHOLD;
+                  const isLifting = isGhost && clipDrag.lifting;
                   return (
                     <div
                       key={clip.id}
                       style={{
                         left: isGhost
-                          ? (clipLive as number)
+                          ? (clipDrag.left as number)
                           : leftSec * pxPerSec,
                         width,
                         transform: isGhost
-                          ? `translateY(${clipLiftY}px)`
+                          ? `translateY(${clipDrag.liftY}px)`
                           : undefined,
                         transition:
                           trim || isGhost
@@ -710,12 +805,12 @@ export default function StudioTimeline({
                           return;
                         }
                         if (!selected) selectClip(clip.id);
-                        setClipDrag({
-                          id: clip.id,
-                          startX: e.clientX,
-                          startY: e.clientY,
-                          origLeft: offsets[i] * pxPerSec,
-                        });
+                        clipDrag.begin(
+                          clip.id,
+                          e.clientX,
+                          e.clientY,
+                          offsets[i] * pxPerSec,
+                        );
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
@@ -728,32 +823,31 @@ export default function StudioTimeline({
                             ? "z-30 opacity-90 ring-2 ring-cyan-400"
                             : selected
                               ? "z-10 ring-2 ring-cyan-500"
-                              : "ring-1 ring-white/10 hover:ring-white/25"
+                              : // Every clip gets a bold two-tone border (a bright
+                                // inner edge over a dark outer one) so adjacent
+                                // clips show a clear double seam and each clip's
+                                // start/end reads at a glance on both dark gaps and
+                                // bright thumbnails. Inset so the parent's overflow
+                                // can't clip it away.
+                                "shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9),inset_0_0_0_3px_rgba(0,0,0,0.55)] hover:shadow-[inset_0_0_0_2px_rgba(56,189,248,0.95),inset_0_0_0_3px_rgba(0,0,0,0.55)]"
                       }`}
-                      title={`${cStart.toFixed(2)}s – ${cEnd.toFixed(2)}s`}
+                      title={`${cStart.toFixed(2)}s to ${cEnd.toFixed(2)}s`}
                     >
                       <span className="bg-foreground/15 absolute inset-0" />
-                      {clip.src ? (
-                        <span className="absolute inset-0 flex items-center gap-1.5 bg-sky-500/15 px-2 ring-1 ring-sky-500/30">
-                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300/90" />
-                          <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                            {clip.src.name}
-                          </span>
-                        </span>
-                      ) : isImage ? (
+                      {clipIsImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={sourceUrl}
+                          src={mediaUrl}
                           alt=""
                           draggable={false}
                           className="pointer-events-none absolute inset-0 h-full w-full object-cover"
                         />
                       ) : (
                         span &&
-                        frames.length > 0 && (
+                        strip.frames.length > 0 && (
                           <ClipFilmstrip
-                            frames={frames}
-                            aspect={aspect}
+                            frames={strip.frames}
+                            aspect={strip.aspect}
                             leftPx={contentX}
                             widthPx={span.widthPx}
                             srcStart={span.srcA}
@@ -763,19 +857,30 @@ export default function StudioTimeline({
                         )
                       )}
 
-                      {!clip.src && span && peaks.length > 0 && (
+                      {!clipIsImage && span && clipPeaks.length > 0 && (
                         <span
                           className="pointer-events-none absolute bottom-0 bg-black/50"
                           style={{ left: contentX, width: span.widthPx }}
                         >
                           <WaveformCanvas
-                            peaks={peaks}
-                            sourceDuration={sourceDuration}
+                            peaks={clipPeaks}
+                            sourceDuration={mediaDuration}
                             clipStart={span.srcA}
                             clipEnd={span.srcB}
                             width={span.widthPx}
                             height={22}
                           />
+                        </span>
+                      )}
+
+                      {/* Appended media names itself, so a clip that isn't the
+                        recording is identifiable at a glance. */}
+                      {clip.src && (
+                        <span className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-1.5 bg-gradient-to-b from-black/70 to-transparent px-2 py-1">
+                          <Video className="h-3.5 w-3.5 shrink-0 text-sky-300/90" />
+                          <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-white/90">
+                            {clip.src.name}
+                          </span>
                         </span>
                       )}
 
@@ -847,11 +952,7 @@ export default function StudioTimeline({
                       onPointerDown={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        setAudioDrag({
-                          id: a.id,
-                          startX: e.clientX,
-                          origStart: a.start,
-                        });
+                        audioDrag.begin(a.id, e.clientX, a.start);
                       }}
                       className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 ring-1 ring-emerald-500/35 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
                     >
@@ -889,9 +990,9 @@ export default function StudioTimeline({
         </div>
       </div>
       <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
-        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll to pan ·
-        ⌘/pinch-scroll to zoom · drag a clip to reorder · drag it up for a new
-        track · drag its edges to trim
+        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll across
+        the tracks · shift-scroll to pan · ⌘/pinch-scroll to zoom · drag a clip
+        between tracks · drag its edges to trim
       </p>
     </div>
   );

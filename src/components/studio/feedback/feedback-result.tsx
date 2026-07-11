@@ -30,7 +30,7 @@ export default function FeedbackResult({
       {/* Score + summary */}
       <div className="border-border bg-card rounded-2xl border p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-lg font-black text-cyan-500 tabular-nums">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:var(--sg-accent)]/15 text-lg font-black text-[color:var(--sg-accent)] tabular-nums">
             {c.score}
           </div>
           <p className="text-foreground/80 text-[13px] leading-5">
@@ -88,7 +88,8 @@ export default function FeedbackResult({
       {c.upgradeLines.length > 0 && (
         <section className="space-y-2">
           <h3 className="text-foreground/50 flex items-center gap-1.5 text-[11px] font-black tracking-wide uppercase">
-            <Sparkles className="h-3.5 w-3.5 text-cyan-500" /> Punch it up
+            <Sparkles className="h-3.5 w-3.5 text-[color:var(--sg-accent)]" />{" "}
+            Punch it up
           </h3>
           {c.upgradeLines.map((u, i) => (
             <div
@@ -99,7 +100,7 @@ export default function FeedbackResult({
                 {u.before}
               </p>
               <p className="text-foreground flex items-start gap-1.5 text-[13px] leading-5 font-semibold">
-                <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-500" />
+                <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[color:var(--sg-accent)]" />
                 {u.after}
               </p>
             </div>

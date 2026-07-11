@@ -13,6 +13,8 @@ import {
   Volume2,
   Wand2,
 } from "lucide-react";
+import ExportButton from "@/components/studio/export/export-button";
+import { Button } from "@/components/ui/button";
 import { useStudio } from "@/components/studio/studio-context";
 
 function fmt(seconds: number): string {
@@ -38,6 +40,8 @@ export default function StudioTransport({
   const {
     source,
     selectedClipIds,
+    selectedOverlayIds,
+    selectedCaptionIds,
     deleteSelected,
     trimClipsToSpeech,
     detecting,
@@ -52,17 +56,15 @@ export default function StudioTransport({
     reset,
   } = useStudio();
   const canAutoEdit = !!source && source.kind !== "image";
-
-  const pillBtn =
-    "border-border text-foreground/70 hover:bg-muted hover:text-foreground inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-default disabled:opacity-40";
   const divider = "bg-border mx-1 h-5 w-px shrink-0";
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <button
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Button
         type="button"
+        variant="secondary"
+        size="icon-sm"
         onClick={playing ? onPause : onPlay}
-        className="bg-foreground text-background inline-flex h-10 w-10 items-center justify-center rounded-full transition-opacity hover:opacity-90"
         aria-label={playing ? "Pause" : "Play"}
       >
         {playing ? (
@@ -70,100 +72,117 @@ export default function StudioTransport({
         ) : (
           <Play className="h-4 w-4 translate-x-px" />
         )}
-      </button>
-      <span className="text-foreground/60 mr-1 font-mono text-xs tabular-nums">
+      </Button>
+      <span className="text-foreground/60 mx-1 font-mono text-xs tabular-nums">
         {fmt(currentTimelineTime)} / {fmt(totalTimelineTime)}
       </span>
 
+      <ExportButton />
+      <span className={divider} aria-hidden />
+
       {canAutoEdit && (
         <>
-          <button
+          <Button
             type="button"
-            onClick={() => void autoEdit()}
+            variant="secondary"
+            size="sm"
+            onClick={() => void autoEdit(true)}
             disabled={autoEditing}
-            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3.5 py-2 text-xs font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
-            title="Transcribe, remove mistakes, cut pauses and silences, and caption — in one click"
+            title="Transcribe, remove mistakes, cut pauses and silences, and add captions — in one click"
           >
             {autoEditing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <Wand2 className="h-3.5 w-3.5" />
             )}
-            {autoEditing ? "Editing…" : "1-Click Edit"}
-          </button>
+            {autoEditing ? "Editing…" : "1-Click + Captions"}
+          </Button>
           <span className={divider} aria-hidden />
         </>
       )}
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={undo}
         disabled={!canUndo}
-        className={pillBtn}
         title="Undo (⌘/Ctrl+Z)"
       >
         <Undo2 className="h-3.5 w-3.5" />
         Undo
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={redo}
         disabled={!canRedo}
-        className={pillBtn}
         title="Redo (⌘/Ctrl+Shift+Z)"
       >
         <Redo2 className="h-3.5 w-3.5" />
         Redo
-      </button>
+      </Button>
 
       <span className={divider} aria-hidden />
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={toggleSnapping}
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors ${
-          snapping
-            ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-600 dark:text-cyan-300"
-            : "border-border text-foreground/80 hover:bg-muted hover:text-foreground"
-        }`}
-        title="Magnet (snap clips to edges)"
         aria-pressed={snapping}
+        title="Magnet (snap clips to edges)"
+        className={
+          snapping
+            ? "bg-[color:var(--sg-accent)]/15 text-[color:var(--sg-accent)] hover:bg-[color:var(--sg-accent)]/20 hover:text-[color:var(--sg-accent)]"
+            : undefined
+        }
       >
         <Magnet className="h-3.5 w-3.5" />
         Magnet
-      </button>
+      </Button>
 
-      <button type="button" onClick={onSplit} className={pillBtn}>
+      <Button type="button" variant="ghost" size="sm" onClick={onSplit}>
         <Scissors className="h-3.5 w-3.5" />
         Split
-      </button>
-      <button
-        type="button"
-        onClick={deleteSelected}
-        disabled={selectedClipIds.length === 0}
-        className={pillBtn}
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-        {selectedClipIds.length > 1
-          ? `Delete ${selectedClipIds.length} clips`
-          : "Delete clip"}
-      </button>
+      </Button>
+      {(() => {
+        const count =
+          selectedClipIds.length +
+          selectedOverlayIds.length +
+          selectedCaptionIds.length;
+        return (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={deleteSelected}
+            disabled={count === 0}
+            title="Delete the selected clips, overlays, or captions"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {count > 1 ? `Delete ${count}` : "Delete"}
+          </Button>
+        );
+      })()}
       {source?.kind !== "image" && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void trimClipsToSpeech()}
           disabled={detecting}
-          className={pillBtn}
           title="Trim each clip's start and end down to speech"
         >
           <Volume2 className="h-3.5 w-3.5" />
           {detecting ? "Scanning…" : "Trim silence"}
-        </button>
+        </Button>
       )}
-      <button type="button" onClick={reset} className={pillBtn}>
+      <Button type="button" variant="ghost" size="sm" onClick={reset}>
         <RotateCcw className="h-3.5 w-3.5" />
         Reset
-      </button>
+      </Button>
     </div>
   );
 }

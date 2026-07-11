@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ideaToScript, type ScriptSource } from "@/lib/inspiration/idea-format";
 
 export default function CopyScriptButton({ idea }: { idea: ScriptSource }) {
@@ -18,22 +19,18 @@ export default function CopyScriptButton({ idea }: { idea: ScriptSource }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={copy}
-      className="border-border text-foreground/80 hover:bg-muted hover:text-foreground inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors"
-    >
+    <Button type="button" variant="outline" size="sm" onClick={copy}>
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5 text-emerald-500" />
+          <Check className="h-4 w-4 text-emerald-500" />
           Copied
         </>
       ) : (
         <>
-          <Copy className="h-3.5 w-3.5" />
+          <Copy className="h-4 w-4" />
           Copy script
         </>
       )}
-    </button>
+    </Button>
   );
 }

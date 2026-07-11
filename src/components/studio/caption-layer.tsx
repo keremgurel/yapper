@@ -58,6 +58,8 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
   const y = active.y ?? captionStyle.y;
   const w = active.w ?? captionStyle.width;
   const scale = active.scale ?? captionStyle.fontScale;
+  const fontFamily = active.fontFamily ?? captionStyle.fontFamily;
+  const textCase = active.textCase ?? captionStyle.textCase;
   const selected = selectedCaptionId === active.id;
   const fontSize = box.h ? scale * box.h : 20;
   const widthPx = box.w ? w * box.w : undefined;
@@ -111,9 +113,9 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
           top: `${y * 100}%`,
           width: widthPx,
           transform: "translate(-50%, -50%)",
-          fontFamily: captionStyle.fontFamily,
+          fontFamily,
           fontSize,
-          textTransform: caseTransform(captionStyle.textCase),
+          textTransform: caseTransform(textCase),
           textShadow: "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
         }}
         className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap text-white ${

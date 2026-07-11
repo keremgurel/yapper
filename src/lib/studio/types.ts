@@ -41,25 +41,30 @@ export interface MediaAsset {
 }
 
 /**
- * A clip on an upper video track, composited full-frame over the base track
- * (top track wins). Carries its own source in-point so a segment of the
- * recording can be lifted up as a cutaway.
+ * A clip on an upper video track, composited over the base track (a higher
+ * track wins). Carries its own source in-point so a segment of the recording
+ * can be lifted up as a cutaway. Several overlays share one track as long as
+ * they don't overlap in time; see `lib/studio/tracks.ts`.
  */
 export interface Overlay {
   id: string;
   kind: "video" | "image";
   url: string;
   name: string;
+  /** Which upper track it sits on. 0 is the lane just above the base. */
+  track: number;
   start: number; // edited-timeline seconds (position on its track)
   duration: number;
   sourceStart: number; // in-point into its own media, seconds
-  hidden?: boolean; // track hidden (not composited)
-  muted?: boolean; // track audio muted
+  hidden?: boolean; // hidden (not composited)
+  muted?: boolean; // audio muted
   // Position + size as fractions of the preview stage (default full-frame).
   x?: number;
   y?: number;
   w?: number;
   h?: number;
+  /** The part of its own media to show, in media fractions. Absent = all of it. */
+  crop?: OverlayRect;
 }
 
 export interface OverlayRect {
@@ -93,12 +98,27 @@ export interface AudioTrack {
   muted: boolean;
 }
 
+/**
+ * A token identifying one continuous gesture (a drag, a trim). Passed to the
+ * undoable setters so every event in the gesture collapses into a single undo
+ * step, while two separate gestures stay separately undoable.
+ */
+export function newGestureId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `gesture-${crypto.randomUUID()}`;
+  }
+  return `gesture-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
+}
+
 export function newAudioId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return `aud-${crypto.randomUUID()}`;
   }
   return `aud-${Date.now()}-${Math.round(Math.random() * 1e6)}`;
 }
+
+/** Display-only casing for a caption. Lives here so a Caption can override it. */
+export type CaptionCase = "none" | "lower" | "upper";
 
 /** A transcribed token (word or short phrase) with source timestamps. */
 export interface Word {
@@ -131,6 +151,10 @@ export interface Caption {
   y?: number;
   w?: number; // box width override (fraction of stage)
   scale?: number;
+  // Per-caption style overrides. When set, they win over the global caption
+  // style, so a single caption can be recased/refont without touching the rest.
+  fontFamily?: string;
+  textCase?: CaptionCase;
 }
 
 export function newCaptionId(): string {

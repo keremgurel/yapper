@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import {
   Loader2,
+  RefreshCw,
   RotateCcw,
   Scissors,
   Sparkles,
@@ -10,6 +11,7 @@ import {
   Wand2,
   X,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useStudio } from "@/components/studio/studio-context";
 import { isRangeCut, isWordCut } from "@/lib/studio/transcript-edit";
 import type { Word } from "@/lib/studio/types";
@@ -36,7 +38,10 @@ export default function TranscriptWords({
     aiCleaning,
     autoEdit,
     autoEditing,
+    transcribe,
+    transcribeStatus,
   } = useStudio();
+  const transcribing = transcribeStatus === "transcribing";
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [aiMsg, setAiMsg] = useState("");
@@ -50,9 +55,7 @@ export default function TranscriptWords({
   const onAiClean = async () => {
     setAiMsg("");
     const n = await aiRemoveMistakes();
-    if (n === -1) setAiMsg("Add SURPLUS_API_KEY to enable the AI pass.");
-    else if (n === -2) setAiMsg("AI cleanup failed — try again.");
-    else if (n === 0) setAiMsg("No mistakes found.");
+    if (n === 0) setAiMsg("No retakes found.");
     else setAiMsg(`Marked ${n} section${n === 1 ? "" : "s"} to cut.`);
   };
 
@@ -117,19 +120,44 @@ export default function TranscriptWords({
   return (
     <div className="flex h-full flex-col">
       <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
-        <button
+        <Button
           type="button"
-          onClick={() => void autoEdit()}
+          size="sm"
+          onClick={() => void autoEdit(true)}
           disabled={autoEditing}
-          className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
-          title="Trim silence, remove mistakes, cut pauses, and caption — in one click"
+          className="text-xs font-bold"
+          title="Trim silence, remove mistakes, cut pauses, and add captions — in one click"
         >
           {autoEditing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
             <Wand2 className="h-3.5 w-3.5" />
           )}
-          {autoEditing ? "Editing…" : "1-Click Edit"}
+          {autoEditing ? "Editing…" : "1-Click Edit + Captions"}
+        </Button>
+        <button
+          type="button"
+          onClick={() => void autoEdit(false)}
+          disabled={autoEditing}
+          className={toolBtn}
+          title="Trim silence, remove mistakes, and cut pauses — without captions"
+        >
+          <Wand2 className="h-3.5 w-3.5" />
+          1-Click Edit
+        </button>
+        <button
+          type="button"
+          onClick={() => void transcribe()}
+          disabled={transcribing}
+          className={toolBtn}
+          title="Re-run transcription from the audio"
+        >
+          {transcribing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+          {transcribing ? "Transcribing…" : "Transcribe again"}
         </button>
         <button
           type="button"

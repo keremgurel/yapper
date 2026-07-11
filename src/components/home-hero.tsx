@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Show, SignInButton } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
 import { GlassyButton } from "@/components/ui/glassy-button";
 
 interface HomeHeroProps {
@@ -37,23 +38,17 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
       <div className="flex flex-wrap items-center justify-center gap-3">
         <Show when="signed-out">
           <SignInButton mode="modal" withSignUp>
-            <button
-              type="button"
-              className="rounded-full bg-cyan-500 px-6 text-[15px] font-bold text-white shadow-sm transition-colors hover:bg-cyan-600"
-              style={{ height: 48 }}
-            >
+            <Button type="button" size="lg" className="h-12 px-6 text-[15px]">
               Get started free
-            </button>
+            </Button>
           </SignInButton>
         </Show>
         <Show when="signed-in">
-          <Link
-            href="/studio/library"
-            className="inline-flex items-center rounded-full bg-cyan-500 px-6 text-[15px] font-bold text-white no-underline shadow-sm transition-colors hover:bg-cyan-600"
-            style={{ height: 48 }}
-          >
-            Open your studio
-          </Link>
+          <Button asChild size="lg" className="h-12 px-6 text-[15px]">
+            <Link href="/studio/library" className="no-underline">
+              Open your studio
+            </Link>
+          </Button>
         </Show>
 
         <GlassyButton onClick={onJumpToPractice} height={48}>

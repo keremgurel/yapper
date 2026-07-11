@@ -1,39 +1,71 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import AiAssistant from "@/components/studio/ai-assistant";
 import { useStudio } from "@/components/studio/studio-context";
-import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
-import AutoEditProgress from "@/components/studio/auto-edit-progress";
-import OverlayLayer from "@/components/studio/overlay-layer";
-import CaptionLayer from "@/components/studio/caption-layer";
+import PreviewStage from "@/components/studio/preview-stage";
 import RightPanel from "@/components/studio/right-panel";
-import StudioTimeline from "@/components/studio/studio-timeline";
-import StudioTransport from "@/components/studio/studio-transport";
-import EmptyTimeline from "@/components/studio/empty-timeline";
-import { MEDIA_DND_TYPE } from "@/components/studio/media-tab";
-import VideoUploader from "@/components/studio/video-uploader";
-import { totalDuration } from "@/lib/studio/clips";
+import TimelinePanel from "@/components/studio/timeline-panel";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
+import { usePanelHeight } from "@/hooks/use-panel-height";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
+import { useStudioLayout } from "@/hooks/use-studio-layout";
 
+/** The gap between the timeline card and everything around it. */
+const CARD_GUTTER = "px-3 pb-3";
+
+function RowHandle({
+  onPointerDown,
+}: {
+  onPointerDown: (e: React.PointerEvent) => void;
+}) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      className="group flex h-3 shrink-0 cursor-row-resize items-center justify-center"
+    >
+      <span className="bg-foreground/20 group-hover:bg-foreground/40 h-0.5 w-10 rounded-full transition-colors" />
+    </div>
+  );
+}
+
+function ColHandle({
+  onPointerDown,
+}: {
+  onPointerDown: (e: React.PointerEvent) => void;
+}) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      className="bg-border hover:bg-foreground/30 hidden w-1 shrink-0 cursor-col-resize transition-colors lg:block"
+      role="separator"
+      aria-orientation="vertical"
+    />
+  );
+}
+
+/**
+ * The editor's shell. It owns the master clock and the keyboard, and arranges
+ * three panes: the picture, the tracks, and the side panel. Where those panes
+ * go is the layout's business and nothing else's.
+ */
 export default function StudioWorkspace() {
   const {
     source,
     clips,
+    duration,
     selectedClipIds,
     selectedCaptionIds,
-    removeSelectedCaptions,
-    splitAt,
+    selectedOverlayIds,
+    splitSelected,
     deleteSelected,
-    audioTracks,
-    overlays,
-    addAssetToTimeline,
     undo,
     redo,
   } = useStudio();
-  const [dropActive, setDropActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hasVideo = source ? source.kind !== "image" : true;
+  // The bottom track can drive a <video> clock only when it has clips and isn't
+  // a still. Otherwise playback falls back to its synthetic clock.
+  const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
   const {
     timelineTime,
     sourceTime,
@@ -42,52 +74,19 @@ export default function StudioWorkspace() {
     pause,
     seekToTimeline,
     seekToSource,
-  } = useStudioPlayback(videoRef, clips, hasVideo, source?.url ?? "");
-  const { width, onPointerDown } = useResizablePanel();
-
-  // Measure the preview area so we can size a fixed-aspect project stage.
-  const previewRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = previewRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() =>
-      setBox({ w: el.clientWidth, h: el.clientHeight }),
-    );
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [source]);
-
-  // Vertical resize of the timeline panel (takes height from the preview).
-  const [bottomH, setBottomH] = useState(380);
-  const [resizingH, setResizingH] = useState(false);
-  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
-
-  const onResizeDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      dragRef.current = { startY: e.clientY, startH: bottomH };
-      setResizingH(true);
-    },
-    [bottomH],
-  );
-
-  useEffect(() => {
-    if (!resizingH) return;
-    const onMove = (e: PointerEvent) => {
-      const d = dragRef.current;
-      if (!d) return;
-      const next = d.startH + (d.startY - e.clientY);
-      setBottomH(Math.max(280, Math.min(window.innerHeight * 0.75, next)));
-    };
-    const onUp = () => setResizingH(false);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [resizingH]);
+  } = useStudioPlayback(videoRef, {
+    clips,
+    total: duration,
+    hasVideo,
+    baseUrl: source?.url ?? "",
+  });
+  // Two docked widths, because the two layouts dock two different things: the
+  // side panel in classic, the picture in cinema. Sharing one would make the
+  // preview open at a panel's width the moment you switched.
+  const side = useResizablePanel();
+  const preview = useResizablePanel(560, 360, 1200);
+  const { height, onResizeDown } = usePanelHeight(380);
+  const { layout, setLayout } = useStudioLayout();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -102,18 +101,24 @@ export default function StudioWorkspace() {
         e.preventDefault();
         redo();
       } else if (e.key === " ") {
+        // Key off playback state, not the <video> element — image-base projects
+        // have no <video>, so an element check would make Space a no-op there.
         e.preventDefault();
-        const v = videoRef.current;
-        if (v?.paused) play();
-        else if (v) pause();
+        if (playing) pause();
+        else play();
       } else if (e.key.toLowerCase() === "s" && !mod) {
+        // Timeline seconds, not the <video>'s own clock: the playhead is the one
+        // position every layer shares, and only the bottom track has a <video>.
         e.preventDefault();
-        splitAt(videoRef.current?.currentTime ?? 0);
+        splitSelected(timelineTime);
       } else if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedCaptionIds.length) {
-          e.preventDefault();
-          removeSelectedCaptions();
-        } else if (selectedClipIds.length) {
+        // One delete for everything selected — base clips, overlays, captions,
+        // or any mix of them.
+        if (
+          selectedClipIds.length ||
+          selectedOverlayIds.length ||
+          selectedCaptionIds.length
+        ) {
           e.preventDefault();
           deleteSelected();
         }
@@ -126,158 +131,86 @@ export default function StudioWorkspace() {
     redo,
     play,
     pause,
-    splitAt,
+    playing,
+    timelineTime,
+    splitSelected,
     deleteSelected,
     selectedClipIds,
     selectedCaptionIds,
-    removeSelectedCaptions,
+    selectedOverlayIds,
   ]);
 
-  const total = totalDuration(clips);
-  const aspect =
-    source?.width && source?.height ? source.width / source.height : 9 / 16;
-  let stageW = box.w;
-  let stageH = box.w / aspect;
-  if (stageH > box.h) {
-    stageH = box.h;
-    stageW = box.h * aspect;
+  const stage = (
+    <PreviewStage
+      videoRef={videoRef}
+      timelineTime={timelineTime}
+      playing={playing}
+      onTogglePlay={() => (playing ? pause() : play())}
+    />
+  );
+
+  const timeline = (
+    <div style={{ height }} className={`shrink-0 ${CARD_GUTTER}`}>
+      <TimelinePanel
+        timelineTime={timelineTime}
+        playing={playing}
+        onPlay={play}
+        onPause={pause}
+        onSeek={seekToTimeline}
+        layout={layout}
+        onLayout={setLayout}
+      />
+    </div>
+  );
+
+  const assistant = <AiAssistant />;
+
+  const panel = (
+    <RightPanel
+      currentSourceTime={sourceTime}
+      onSeek={seekToSource}
+      onSeekTimeline={seekToTimeline}
+    />
+  );
+
+  // Cinema: a tall picture down the right, with the panels and the tracks
+  // stacked beside it. Worth it for a 9:16 project, where a wide preview pane
+  // is mostly empty space either side of the frame.
+  if (layout === "cinema") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col max-lg:order-last">
+          <div className="min-h-0 flex-1 overflow-hidden">{panel}</div>
+          <RowHandle onPointerDown={onResizeDown} />
+          {timeline}
+        </div>
+        <ColHandle onPointerDown={preview.onPointerDown} />
+        <aside
+          style={{ width: preview.width }}
+          className="border-border flex min-h-0 shrink-0 flex-col border-l max-lg:!h-[50vh] max-lg:!w-full max-lg:border-l-0"
+        >
+          {stage}
+        </aside>
+        {assistant}
+      </div>
+    );
   }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      {/* Main: preview + transport + timeline */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div
-          ref={previewRef}
-          style={{ background: "var(--sg-bg-2)" }}
-          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4"
-        >
-          <AutoEditProgress />
-          {source ? (
-            <>
-              <div
-                className="relative overflow-hidden rounded-lg bg-black shadow-2xl"
-                style={{ width: stageW || 0, height: stageH || 0 }}
-              >
-                {source.kind === "image" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={source.url}
-                    alt=""
-                    className="absolute inset-0 h-full w-full object-cover"
-                    onClick={() => (playing ? pause() : play())}
-                  />
-                ) : (
-                  // src is managed imperatively by the playback hook so it can
-                  // switch between appended main-track sources.
-                  <video
-                    ref={videoRef}
-                    className="absolute inset-0 h-full w-full object-cover"
-                    playsInline
-                    onClick={() => (playing ? pause() : play())}
-                  />
-                )}
-                <OverlayLayer
-                  overlays={overlays}
-                  masterTime={timelineTime}
-                  playing={playing}
-                />
-                <CaptionLayer masterTime={timelineTime} />
-              </div>
-              <AudioTracksPlayer
-                tracks={audioTracks}
-                masterTime={timelineTime}
-                playing={playing}
-              />
-            </>
-          ) : (
-            <VideoUploader />
-          )}
-        </div>
-
-        {/* Vertical resize handle */}
-        <div
-          onPointerDown={onResizeDown}
-          className="border-border bg-card hover:bg-muted flex h-2 shrink-0 cursor-row-resize items-center justify-center border-t"
-        >
-          <span className="bg-foreground/25 h-0.5 w-10 rounded-full" />
-        </div>
-
-        <div
-          style={{ height: bottomH }}
-          className="bg-card flex shrink-0 flex-col px-4 pt-2 pb-3"
-        >
-          <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-            <p className="text-foreground/55 truncate text-xs">
-              {source?.name ?? "No video yet"}
-            </p>
-          </div>
-          <div className="shrink-0">
-            <StudioTransport
-              playing={playing}
-              currentTimelineTime={timelineTime}
-              totalTimelineTime={total}
-              onPlay={play}
-              onPause={pause}
-              onSplit={() => splitAt(sourceTime)}
-            />
-          </div>
-          <div
-            className={`mt-3 min-h-0 flex-1 rounded-md transition-shadow ${
-              dropActive ? "ring-2 ring-cyan-500/70" : ""
-            }`}
-            onDragOver={(e) => {
-              if (e.dataTransfer.types.includes(MEDIA_DND_TYPE)) {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
-                setDropActive(true);
-              }
-            }}
-            onDragLeave={() => setDropActive(false)}
-            onDrop={(e) => {
-              const id = e.dataTransfer.getData(MEDIA_DND_TYPE);
-              setDropActive(false);
-              if (id) {
-                e.preventDefault();
-                addAssetToTimeline(id, timelineTime);
-              }
-            }}
-          >
-            {source ? (
-              <StudioTimeline
-                clips={clips}
-                sourceUrl={source.url}
-                sourceKind={source.kind ?? "video"}
-                sourceDuration={source.duration}
-                currentTimelineTime={timelineTime}
-                onSeek={seekToTimeline}
-              />
-            ) : (
-              <EmptyTimeline />
-            )}
-          </div>
-        </div>
+        {stage}
+        <RowHandle onPointerDown={onResizeDown} />
+        {timeline}
       </div>
-
-      {/* Drag handle (desktop) */}
-      <div
-        onPointerDown={onPointerDown}
-        className="bg-border hover:bg-foreground/30 hidden w-1 shrink-0 cursor-col-resize transition-colors lg:block"
-        role="separator"
-        aria-orientation="vertical"
-      />
-
-      {/* Right panel: Media + Transcript tabs (resizable / stacks on mobile) */}
+      <ColHandle onPointerDown={side.onPointerDown} />
       <aside
-        style={{ width }}
+        style={{ width: side.width }}
         className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
       >
-        <RightPanel
-          currentSourceTime={sourceTime}
-          onSeek={seekToSource}
-          onSeekTimeline={seekToTimeline}
-        />
+        {panel}
       </aside>
+      {assistant}
     </div>
   );
 }

@@ -37,7 +37,12 @@ export function savePillars(pillars: Pillar[]): void {
 }
 
 export function loadItems(): InspirationItem[] {
-  return read<InspirationItem[]>(ITEMS_KEY, []);
+  // Items saved before the video/creator split have no `kind` — treat them as
+  // videos so the existing library keeps rendering.
+  return read<InspirationItem[]>(ITEMS_KEY, []).map((it) => ({
+    ...it,
+    kind: it.kind ?? "video",
+  }));
 }
 
 export function saveItems(items: InspirationItem[]): void {

@@ -10,7 +10,7 @@ export interface SegOption<T> {
 
 /**
  * A compact segmented control: one row, a track of pill buttons, exactly one
- * active. The active pill is a solid cyan fill with white text so it stays
+ * active. The active pill is a solid brand-accent fill with white text so it stays
  * readable regardless of theme (no inherited foreground colour to fight).
  */
 export default function Segmented<T extends string | number>({
@@ -40,7 +40,7 @@ export default function Segmented<T extends string | number>({
               style={o.style}
               className={`flex-1 rounded-md px-2 py-1 text-xs font-bold transition-colors ${
                 active
-                  ? "bg-cyan-500 text-white shadow-sm"
+                  ? "bg-[color:var(--sg-accent)] text-white shadow-sm"
                   : "text-foreground/60 hover:text-foreground hover:bg-muted"
               }`}
             >

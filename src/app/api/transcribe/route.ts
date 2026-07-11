@@ -1,50 +1,67 @@
-import type { RawWord } from "@/lib/studio/transcribe";
+import type { RawWord } from "@/lib/studio/transcribe-remote";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /**
- * Backend transcription. Sends the posted WAV to whichever hosted provider has
- * a key configured (Deepgram > Groq > OpenAI), returning word-level timings.
- * Responds 501 when no key is set, so the client can fall back to on-device.
+ * Backend transcription, returning word-level timings. Runs an ordered failover
+ * chain: Deepgram (nova-3) is the transcriber of record; Groq (whisper-large-v3)
+ * is the backup, invoked only if Deepgram actually errors at runtime. Both
+ * return per-word timings, so either result drives the editor unchanged.
+ * Responds 501 when no provider key is configured.
  */
 export async function POST(req: Request): Promise<Response> {
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
-  const openai = process.env.OPENAI_API_KEY;
-  if (!deepgram && !groq && !openai) {
-    return Response.json({ error: "no_provider" }, { status: 501 });
-  }
 
   const audio = await req.arrayBuffer();
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
+  // Forward the payload's own type (audio/aac for native AAC, audio/wav for
+  // decoded PCM) so Deepgram parses the container correctly.
+  const contentType = req.headers.get("content-type") || "audio/wav";
 
-  try {
-    let words: RawWord[];
-    if (deepgram) words = await viaDeepgram(audio, deepgram);
-    else if (groq)
-      words = await viaOpenAiCompatible(
-        audio,
-        groq,
-        "https://api.groq.com/openai/v1",
-        "whisper-large-v3",
-      );
-    else
-      words = await viaOpenAiCompatible(
-        audio,
-        openai as string,
-        "https://api.openai.com/v1",
-        "whisper-1",
-      );
-    return Response.json({ words });
-  } catch (e) {
-    return Response.json(
-      { error: e instanceof Error ? e.message : "transcribe_failed" },
-      { status: 502 },
-    );
+  const providers: { name: string; run: () => Promise<RawWord[]> }[] = [];
+  if (deepgram) {
+    providers.push({
+      name: "deepgram",
+      run: () => viaDeepgram(audio, deepgram, contentType),
+    });
   }
+  if (groq) {
+    providers.push({
+      name: "groq",
+      run: () =>
+        viaOpenAiCompatible(
+          audio,
+          groq,
+          "https://api.groq.com/openai/v1",
+          "whisper-large-v3",
+          contentType,
+        ),
+    });
+  }
+  if (providers.length === 0) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+
+  let lastError: unknown;
+  for (const provider of providers) {
+    try {
+      return Response.json({ words: await provider.run() });
+    } catch (e) {
+      lastError = e;
+      console.error(`[transcribe] ${provider.name} failed`, e);
+    }
+  }
+  return Response.json(
+    {
+      error:
+        lastError instanceof Error ? lastError.message : "transcribe_failed",
+    },
+    { status: 502 },
+  );
 }
 
 interface DeepgramWord {
@@ -57,12 +74,13 @@ interface DeepgramWord {
 async function viaDeepgram(
   audio: ArrayBuffer,
   key: string,
+  contentType: string,
 ): Promise<RawWord[]> {
   const res = await fetch(
     "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
     {
       method: "POST",
-      headers: { Authorization: `Token ${key}`, "Content-Type": "audio/wav" },
+      headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
       body: audio,
     },
   );
@@ -88,9 +106,11 @@ async function viaOpenAiCompatible(
   key: string,
   base: string,
   model: string,
+  contentType: string,
 ): Promise<RawWord[]> {
+  const ext = contentType.includes("aac") ? "aac" : "wav";
   const form = new FormData();
-  form.append("file", new File([audio], "audio.wav", { type: "audio/wav" }));
+  form.append("file", new File([audio], `audio.${ext}`, { type: contentType }));
   form.append("model", model);
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");

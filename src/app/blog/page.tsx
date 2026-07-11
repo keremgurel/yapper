@@ -34,8 +34,8 @@ export default function BlogPage() {
   const featuredPost = getFeaturedBlogPost(posts);
 
   return (
-    <main className="bg-background min-h-screen">
-      <section className="mx-auto max-w-6xl px-6 pt-28 pb-24">
+    <main className="bg-background flex-1">
+      <section className="mx-auto max-w-6xl px-6 pt-12 pb-24">
         <BlogExplorer
           categories={categories}
           featuredPost={featuredPost}

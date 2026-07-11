@@ -14,20 +14,16 @@ import {
   removeClip,
   removeSourceRange,
   restoreSourceRange,
-  splitAtSource,
+  sourceToTimeline,
+  splitClipAt,
   timelineToSource,
   trimClipEnd,
   trimClipStart,
 } from "@/lib/studio/clips";
+import { analyzeForTrim } from "@/lib/studio/silence";
 import {
-  analyzeForTrim,
-  detectSpeechSegments,
-  speechBoundsInRange,
-} from "@/lib/studio/silence";
-import {
+  combineRetakeCuts,
   findEarlierTakeRanges,
-  pauseRanges,
-  refineWordTimings,
   selectionToRanges,
 } from "@/lib/studio/transcript-edit";
 import {
@@ -36,21 +32,39 @@ import {
   type CaptionCase,
   type CaptionStyle,
 } from "@/lib/studio/captions";
+import {
+  AUTO_EDIT_STEPS,
+  pauseCuts,
+  planAutoEdit,
+  trimClipsToSpeech as trimToSpeech,
+  type PauseCutOptions,
+} from "@/lib/studio/auto-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
-import { transcribeAudio } from "@/lib/studio/transcribe";
-import { transcribeRemote } from "@/lib/studio/transcribe-remote";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
-import { useClipHistory } from "@/hooks/use-clip-history";
+import { useEditorHistory } from "@/hooks/use-editor-history";
+import { useTranscript, type TranscribeStatus } from "@/hooks/use-transcript";
+import { useEditorSelection } from "@/hooks/use-editor-selection";
+import { useMediaLibrary } from "@/hooks/use-media-library";
+import { useProjectAspect } from "@/hooks/use-project-aspect";
+import { projectDuration } from "@/lib/studio/project-duration";
+import { fitBox, mediaAspect } from "@/lib/studio/overlay-box";
+import { MIN_SPAN_SEC, type PlacedSpan } from "@/lib/studio/overlay-plan";
+import {
+  clampStartToTrack,
+  compactTracks,
+  firstFreeTrack,
+  moveToTrack,
+  overlaysOnTrack,
+} from "@/lib/studio/tracks";
+import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
   newCaptionId,
   newClipId,
-  newMediaId,
   newOverlayId,
-  newWordId,
   type AudioTrack,
   type Caption,
   type Clip,
@@ -61,6 +75,14 @@ import {
   type Word,
 } from "@/lib/studio/types";
 
+// "Remove pauses" is conservative: the user asked for exactly this one thing.
+const PAUSE_CUTS: PauseCutOptions = {
+  minGap: 0.4,
+  minSilence: 0.5,
+  headPad: 0.05,
+  tailPad: 0.1,
+};
+
 interface CaptionLayout {
   x?: number;
   y?: number;
@@ -68,29 +90,40 @@ interface CaptionLayout {
   scale?: number;
 }
 
-export type TranscribeStatus =
-  | "idle"
-  | "loading"
-  | "transcribing"
-  | "done"
-  | "error";
+export type { TranscribeStatus } from "@/hooks/use-transcript";
 
 interface StudioContextValue {
   source: StudioSource | null;
   clips: Clip[];
+  /** Length of the longest layer — what the transport and export run to. */
+  duration: number;
+  /** The bottom video track's own flags, identical to any upper track's. */
+  baseHidden: boolean;
+  baseMuted: boolean;
+  toggleBaseHidden: () => void;
+  toggleBaseMuted: () => void;
+  removeBaseTrack: () => void;
+  /** Project frame shape, independent of any track. */
+  aspectId: AspectId;
+  aspect: number;
+  setAspectId: (id: AspectId) => void;
   selectedClipId: string | null;
   selectedClipIds: string[];
   detecting: boolean;
   words: Word[];
   audioTracks: AudioTrack[];
   transcribeStatus: TranscribeStatus;
-  transcribeProgress: number;
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
   toggleClipSelection: (id: string) => void;
   selectClips: (ids: string[]) => void;
-  splitAt: (sourceTime: number) => void;
+  selectedOverlayIds: string[];
+  selectOverlay: (id: string | null) => void;
+  toggleOverlaySelection: (id: string) => void;
+  selectOverlays: (ids: string[]) => void;
+  /** Split the selected element (or the clip under the playhead) at `timelineTime`. */
+  splitSelected: (timelineTime: number) => void;
   deleteSelected: () => void;
   trimStart: (sourceTime: number) => void;
   trimEnd: (sourceTime: number) => void;
@@ -105,11 +138,13 @@ interface StudioContextValue {
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
-  autoEdit: () => Promise<void>;
+  autoEdit: (withCaptions?: boolean) => Promise<void>;
   autoEditing: boolean;
   autoEditStep: number;
+  autoEditCaptions: boolean;
   addAudio: (file: File) => Promise<void>;
-  moveAudio: (id: string, start: number) => void;
+  /** `gesture`: one key per drag, so the whole drag is a single undo step. */
+  moveAudio: (id: string, start: number, gesture?: string) => void;
   toggleAudioMuted: (id: string) => void;
   removeAudio: (id: string) => void;
   mediaAssets: MediaAsset[];
@@ -118,18 +153,25 @@ interface StudioContextValue {
   removeMediaAsset: (id: string) => void;
   addOverlayFromAsset: (assetId: string, start?: number) => void;
   addAssetToTimeline: (assetId: string, start?: number) => void;
+  addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
-  moveOverlay: (id: string, start: number) => void;
+  dropOverlayToBase: (overlayId: string, gesture?: string) => void;
+  setOverlayTrack: (id: string, track: number, gesture?: string) => void;
+  moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
+  setOverlayCrop: (id: string, crop: OverlayRect, gesture?: string) => void;
+  /** Lay AI-chosen cutaways onto upper tracks. Returns the ones that landed. */
+  placeOverlays: (spans: PlacedSpan[]) => PlacedSpan[];
   setOverlayRange: (
     id: string,
     start: number,
     duration: number,
     sourceStart: number,
+    gesture?: string,
   ) => void;
-  toggleOverlayHidden: (id: string) => void;
-  toggleOverlayMuted: (id: string) => void;
-  removeOverlay: (id: string) => void;
+  toggleTrackHidden: (track: number) => void;
+  toggleTrackMuted: (track: number) => void;
+  removeTrack: (track: number) => void;
   captions: Caption[];
   captionStyle: CaptionStyle;
   selectedCaptionId: string | null;
@@ -145,6 +187,9 @@ interface StudioContextValue {
   selectCaptions: (ids: string[]) => void;
   removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
+  cycleCaptionCase: (id: string) => void;
+  addCaption: (atSource: number) => void;
+  mergeCaptions: (ids: string[]) => void;
   removeCaption: (id: string) => void;
   clearCaptions: () => void;
   updateCaptionLayout: (id: string, layout: CaptionLayout) => void;
@@ -168,55 +213,59 @@ const StudioContext = createContext<StudioContextValue | null>(null);
 
 export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [source, setSource] = useState<StudioSource | null>(null);
-  const { clips, setClips, resetClips, undo, redo, canUndo, canRedo } =
-    useClipHistory();
-  const [selectedClipIds, setSelectedClipIds] = useState<string[]>([]);
-  // Single selection (for trim, which only makes sense on one clip).
-  const selectedClipId =
-    selectedClipIds.length === 1 ? selectedClipIds[0] : null;
-  const selectClip = useCallback(
-    (id: string | null) => setSelectedClipIds(id ? [id] : []),
-    [],
+  const {
+    clips,
+    captions,
+    overlays,
+    audioTracks,
+    baseHidden,
+    baseMuted,
+    setClips,
+    setCaptions,
+    setOverlays,
+    setAudioTracks,
+    setBaseHidden,
+    setBaseMuted,
+    updateEditor,
+    resetEditor,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+  } = useEditorHistory();
+  const toggleBaseHidden = useCallback(
+    () => setBaseHidden((v) => !v),
+    [setBaseHidden],
   );
-  const toggleClipSelection = useCallback((id: string) => {
-    setSelectedClipIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
-  const selectClips = useCallback(
-    (ids: string[]) => setSelectedClipIds(ids),
-    [],
+  const toggleBaseMuted = useCallback(
+    () => setBaseMuted((v) => !v),
+    [setBaseMuted],
   );
-  const [words, setWords] = useState<Word[]>([]);
-  const [transcribeStatus, setTranscribeStatus] =
-    useState<TranscribeStatus>("idle");
-  const [transcribeProgress, setTranscribeProgress] = useState(0);
+  const { aspectId, aspect, setAspectId } = useProjectAspect(source);
+  const {
+    clipIds: selectedClipIds,
+    overlayIds: selectedOverlayIds,
+    captionIds: selectedCaptionIds,
+    selectedClipId,
+    selectedCaptionId,
+    actions: sel,
+  } = useEditorSelection();
+  const {
+    words,
+    status: transcribeStatus,
+    run: runTranscribe,
+    runOn: transcribeAudio,
+    reset: resetWords,
+  } = useTranscript();
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
   const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
-  const [audioTracks, setAudioTracks] = useState<AudioTrack[]>([]);
-  const [mediaAssets, setMediaAssets] = useState<MediaAsset[]>([]);
-  const [overlays, setOverlays] = useState<Overlay[]>([]);
-  const [captions, setCaptions] = useState<Caption[]>([]);
+  const [autoEditCaptions, setAutoEditCaptions] = useState(true); // does the running pass add captions?
+  const { mediaAssets, addMediaAsset, registerSource, dropAsset } =
+    useMediaLibrary();
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
-  );
-  const [selectedCaptionIds, setSelectedCaptionIds] = useState<string[]>([]);
-  const selectedCaptionId =
-    selectedCaptionIds.length === 1 ? selectedCaptionIds[0] : null;
-  const selectCaption = useCallback(
-    (id: string | null) => setSelectedCaptionIds(id ? [id] : []),
-    [],
-  );
-  const toggleCaptionSelection = useCallback((id: string) => {
-    setSelectedCaptionIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
-  const selectCaptions = useCallback(
-    (ids: string[]) => setSelectedCaptionIds(ids),
-    [],
   );
   const [captionApplyAll, setCaptionApplyAll] = useState(true);
   const [captionLines, setCaptionLines] = useState(2);
@@ -232,7 +281,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         maxWords: captionWords || undefined,
       }),
     );
-  }, [words, clips, captionLines, captionWords]);
+  }, [words, clips, captionLines, captionWords, setCaptions]);
 
   const autoBreakCaptions = useCallback(
     (lines: number) => {
@@ -244,7 +293,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [words, clips, captionWords],
+    [words, clips, captionWords, setCaptions],
   );
 
   const setCaptionWords = useCallback(
@@ -257,30 +306,62 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [words, clips, captionLines],
+    [words, clips, captionLines, setCaptions],
   );
 
-  const setCaptionText = useCallback((id: string, text: string) => {
-    setCaptions((prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)));
-  }, []);
+  const setCaptionText = useCallback(
+    (id: string, text: string) => {
+      // Coalesce keystrokes on one caption into a single undo step.
+      setCaptions(
+        (prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)),
+        `text:${id}`,
+      );
+    },
+    [setCaptions],
+  );
 
-  const removeCaption = useCallback((id: string) => {
-    setCaptions((prev) => prev.filter((c) => c.id !== id));
-    setSelectedCaptionIds((prev) => prev.filter((x) => x !== id));
-  }, []);
+  // Per-caption case, cycled Original -> lower -> UPPER, independent of the
+  // global case — so one caption can be recased even when "lower" is applied to
+  // all. Uses the effective case (its own override, else the global) as the
+  // starting point so the first click always visibly changes it.
+  const cycleCaptionCase = useCallback(
+    (id: string) => {
+      setCaptions((prev) =>
+        prev.map((c) => {
+          if (c.id !== id) return c;
+          const current = c.textCase ?? captionStyle.textCase;
+          const next: CaptionCase =
+            current === "none"
+              ? "lower"
+              : current === "lower"
+                ? "upper"
+                : "none";
+          return { ...c, textCase: next };
+        }),
+      );
+    },
+    [setCaptions, captionStyle.textCase],
+  );
+
+  const removeCaption = useCallback(
+    (id: string) => {
+      setCaptions((prev) => prev.filter((c) => c.id !== id));
+      sel.dropCaption(id);
+    },
+    [setCaptions, sel],
+  );
 
   const removeSelectedCaptions = useCallback(() => {
-    setSelectedCaptionIds((ids) => {
-      if (ids.length)
-        setCaptions((prev) => prev.filter((c) => !ids.includes(c.id)));
-      return [];
-    });
-  }, []);
+    const ids = new Set(selectedCaptionIds);
+    if (ids.size === 0) return;
+    setCaptions((prev) => prev.filter((c) => !ids.has(c.id)));
+    sel.clearCaptions();
+  }, [setCaptions, sel, selectedCaptionIds]);
 
   const clearCaptions = useCallback(() => {
     setCaptions([]);
-    setSelectedCaptionIds([]);
-  }, []);
+    sel.clearCaptions();
+  }, [setCaptions, sel]);
 
   // Edges come in as edited-timeline seconds; store them as source anchors so
   // the caption keeps following the clips.
@@ -297,7 +378,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ),
       );
     },
-    [clips],
+    [clips, setCaptions],
   );
 
   // Break a caption into two at timeline time `at` (converted to source),
@@ -337,52 +418,146 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         }),
       );
     },
-    [clips],
+    [clips, setCaptions],
   );
 
   // Break a caption at a word boundary (Enter in the editor). `wordsBefore` is
   // how many words stay in the first caption; source time is split by word count.
-  const splitCaptionAtWord = useCallback((id: string, wordsBefore: number) => {
-    setCaptions((prev) =>
-      prev.flatMap((c) => {
-        if (c.id !== id) return [c];
-        const parts = c.text.split(/\s+/).filter(Boolean);
-        if (parts.length < 2) return [c];
-        const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
-        const atSrc =
-          c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
-        return [
-          {
-            ...c,
-            id: newCaptionId(),
-            sourceEnd: atSrc,
-            text: parts.slice(0, k).join(" "),
-          },
-          {
-            ...c,
-            id: newCaptionId(),
-            sourceStart: atSrc,
-            text: parts.slice(k).join(" "),
-          },
-        ];
-      }),
-    );
-  }, []);
+  const splitCaptionAtWord = useCallback(
+    (id: string, wordsBefore: number) => {
+      setCaptions((prev) =>
+        prev.flatMap((c) => {
+          if (c.id !== id) return [c];
+          const parts = c.text.split(/\s+/).filter(Boolean);
+          if (parts.length < 2) return [c];
+          const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
+          const atSrc =
+            c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
+          return [
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceEnd: atSrc,
+              text: parts.slice(0, k).join(" "),
+            },
+            {
+              ...c,
+              id: newCaptionId(),
+              sourceStart: atSrc,
+              text: parts.slice(k).join(" "),
+            },
+          ];
+        }),
+      );
+    },
+    [setCaptions],
+  );
 
-  const setCaptionFont = useCallback((fontFamily: string) => {
-    setCaptionStyle((s) => ({ ...s, fontFamily }));
-  }, []);
+  // Add a caption at the playhead (source seconds). It gets a short default
+  // span, trimmed so it doesn't overrun the next caption, and is inserted in
+  // temporal order so the list and timeline stay ordered. Selected so the user
+  // can immediately type; anchored in source time so it tracks the clips.
+  const addCaption = useCallback(
+    (atSource: number) => {
+      const id = newCaptionId();
+      const start = Math.max(0, atSource);
+      setCaptions((prev) => {
+        let end = start + 1.8;
+        const nextStart = prev
+          .map((c) => c.sourceStart)
+          .filter((s) => s > start)
+          .sort((a, b) => a - b)[0];
+        if (nextStart !== undefined && nextStart < end) {
+          end = Math.max(start + 0.3, nextStart - 0.02);
+        }
+        const created: Caption = {
+          id,
+          text: "New caption",
+          sourceStart: start,
+          sourceEnd: end,
+        };
+        return [...prev, created].sort((a, b) => a.sourceStart - b.sourceStart);
+      });
+      sel.selectCaption(id);
+    },
+    [setCaptions, sel],
+  );
 
-  const setCaptionScale = useCallback((fontScale: number) => {
-    setCaptionStyle((s) => ({ ...s, fontScale }));
-    setCaptions((prev) => prev.map((c) => ({ ...c, scale: undefined })));
-  }, []);
+  // Merge two or more captions into one spanning their full source range, with
+  // their text joined in temporal order. Timing stays anchored in source time,
+  // so the merged line keeps matching the speech.
+  const mergeCaptions = useCallback(
+    (ids: string[]) => {
+      if (ids.length < 2) return;
+      const set = new Set(ids);
+      setCaptions((prev) => {
+        const targets = prev
+          .filter((c) => set.has(c.id))
+          .sort((a, b) => a.sourceStart - b.sourceStart);
+        if (targets.length < 2) return prev;
+        const merged: Caption = {
+          ...targets[0],
+          id: newCaptionId(),
+          sourceStart: Math.min(...targets.map((c) => c.sourceStart)),
+          sourceEnd: Math.max(...targets.map((c) => c.sourceEnd)),
+          text: targets
+            .map((c) => c.text.trim())
+            .filter(Boolean)
+            .join(" "),
+        };
+        return [...prev.filter((c) => !set.has(c.id)), merged].sort(
+          (a, b) => a.sourceStart - b.sourceStart,
+        );
+      });
+      sel.clearCaptions();
+    },
+    [setCaptions, sel],
+  );
+
+  // Apply a style change either to every caption (update the global style and
+  // clear the matching per-caption overrides) or, when Apply-to-all is off, to
+  // just the selected caption(s). `global` patches the shared style; `perCaption`
+  // is the same change expressed as a per-caption override.
+  const applyCaptionStyle = useCallback(
+    (global: Partial<CaptionStyle>, perCaption: Partial<Caption>) => {
+      if (captionApplyAll) {
+        setCaptionStyle((s) => ({ ...s, ...global }));
+        const keys = Object.keys(perCaption) as (keyof Caption)[];
+        setCaptions((prev) =>
+          prev.map((c) => {
+            const next = { ...c };
+            for (const k of keys) delete next[k];
+            return next;
+          }),
+        );
+      } else if (selectedCaptionIds.length > 0) {
+        const target = new Set(selectedCaptionIds);
+        setCaptions((prev) =>
+          prev.map((c) => (target.has(c.id) ? { ...c, ...perCaption } : c)),
+        );
+      }
+    },
+    [captionApplyAll, selectedCaptionIds, setCaptions],
+  );
+
+  const setCaptionFont = useCallback(
+    (fontFamily: string) => applyCaptionStyle({ fontFamily }, { fontFamily }),
+    [applyCaptionStyle],
+  );
+
+  const setCaptionScale = useCallback(
+    (fontScale: number) =>
+      applyCaptionStyle({ fontScale }, { scale: fontScale }),
+    [applyCaptionStyle],
+  );
 
   // Casing is a non-destructive display style (rendered via CSS text-transform),
   // so it's fully revertible — "Original" leaves the transcribed text untouched.
-  const setCaptionCase = useCallback((mode: CaptionCase) => {
-    setCaptionStyle((s) => ({ ...s, textCase: mode }));
-  }, []);
+  const setCaptionCase = useCallback(
+    (mode: CaptionCase) =>
+      applyCaptionStyle({ textCase: mode }, { textCase: mode }),
+    [applyCaptionStyle],
+  );
 
   const toggleCaptionApplyAll = useCallback(
     () => setCaptionApplyAll((v) => !v),
@@ -416,193 +591,356 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         );
       }
     },
-    [captionApplyAll],
+    [captionApplyAll, setCaptions],
   );
-
-  const addMediaAsset = useCallback(async (file: File) => {
-    if (file.type.startsWith("image/")) {
-      const url = URL.createObjectURL(file);
-      const dims = await new Promise<{ w: number; h: number }>((res) => {
-        const im = new Image();
-        im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight });
-        im.onerror = () => res({ w: 0, h: 0 });
-        im.src = url;
-      });
-      setMediaAssets((prev) => [
-        ...prev,
-        {
-          id: newMediaId(),
-          kind: "image",
-          url,
-          name: file.name,
-          duration: 5,
-          width: dims.w || undefined,
-          height: dims.h || undefined,
-        },
-      ]);
-      return;
-    }
-    if (file.type.startsWith("video/")) {
-      const media = await loadVideoSource(file, file.name);
-      setMediaAssets((prev) => [
-        ...prev,
-        {
-          id: newMediaId(),
-          kind: "video",
-          url: media.url,
-          name: media.name,
-          duration: media.duration,
-          width: media.width,
-          height: media.height,
-        },
-      ]);
-    }
-  }, []);
-
-  const removeMediaAsset = useCallback((id: string) => {
-    setMediaAssets((prev) => prev.filter((m) => m.id !== id));
-  }, []);
 
   const addOverlayFromAsset = useCallback(
     (assetId: string, start = 0) => {
       const asset = mediaAssets.find((m) => m.id === assetId);
       if (!asset) return;
-      setOverlays((prev) => [
-        ...prev,
-        {
+      setOverlays((prev) => {
+        const span = {
           id: newOverlayId(),
-          kind: asset.kind,
-          url: asset.url,
-          name: asset.name,
           start: Math.max(0, start),
           duration: asset.duration,
-          sourceStart: 0,
-          muted: true,
-        },
-      ]);
+        };
+        return [
+          ...prev,
+          {
+            ...span,
+            kind: asset.kind,
+            url: asset.url,
+            name: asset.name,
+            track: firstFreeTrack(prev, span),
+            sourceStart: 0,
+            muted: true,
+            // Its own shape, centred: an overlay that arrives cropped to the
+            // project's frame is an overlay nobody asked for.
+            ...fitBox(mediaAspect(asset), aspect),
+          },
+        ];
+      });
     },
-    [mediaAssets],
+    [mediaAssets, aspect, setOverlays],
   );
 
   // Move a base-track clip up onto a new upper video track (full-frame cutaway).
-  // The clip leaves the base (which stays non-empty since it drives the clock).
+  // It keeps the whole frame rather than being fitted to its own aspect: it was
+  // filling the stage a moment ago, and lifting a clip is not a resize.
+  // Lifting the last one is fine — an empty bottom track is a valid project.
   const liftClipToTrack = useCallback(
     (clipId: string, timelineStart: number) => {
       if (!source) return;
       const clip = clips.find((c) => c.id === clipId);
-      if (!clip || clips.length <= 1) return;
-      setOverlays((prev) => [
-        ...prev,
-        {
+      if (!clip) return;
+      // Leaving the base and joining an upper track is one edit, so it undoes in
+      // one step rather than stranding the clip on neither track.
+      updateEditor((s) => {
+        const span = {
           id: newOverlayId(),
-          kind: "video",
-          url: source.url,
-          name: source.name,
           start: Math.max(0, timelineStart),
           duration: Math.max(0.1, clip.end - clip.start),
-          sourceStart: clip.start,
-          muted: true,
-        },
-      ]);
-      setClips((prev) => removeClip(prev, clipId));
-      setSelectedClipIds((prev) => prev.filter((x) => x !== clipId));
+        };
+        return {
+          ...s,
+          clips: removeClip(s.clips, clipId),
+          overlays: [
+            ...s.overlays,
+            {
+              ...span,
+              kind: "video",
+              url: source.url,
+              name: source.name,
+              track: firstFreeTrack(s.overlays, span),
+              sourceStart: clip.start,
+              muted: true,
+            },
+          ],
+        };
+      });
+      sel.dropClip(clipId);
     },
-    [source, clips, setClips],
+    [source, clips, updateEditor, sel],
   );
 
-  const moveOverlay = useCallback((id: string, start: number) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, start: Math.max(0, start) } : o)),
-    );
-  }, []);
+  // Mirror of liftClipToTrack: drag an overlay DOWN onto the base to fold it into
+  // the bottom-layer sequence as another clip (appended). A base-referencing
+  // overlay becomes a plain source slice; any other asset becomes a clip that
+  // carries its own media. Images can't drive the base clock, so they're left as
+  // overlays.
+  const dropOverlayToBase = useCallback(
+    (overlayId: string, gesture?: string) => {
+      const o = overlays.find((x) => x.id === overlayId);
+      if (!o || o.kind !== "video") return;
+      const carriesOwnMedia = !source || o.url !== source.url;
+      const assetDuration =
+        mediaAssets.find((m) => m.url === o.url)?.duration ??
+        o.sourceStart + o.duration;
+      updateEditor(
+        (s) => ({
+          ...s,
+          clips: [
+            ...s.clips,
+            {
+              id: newClipId(),
+              start: o.sourceStart,
+              end: o.sourceStart + o.duration,
+              src: carriesOwnMedia
+                ? {
+                    url: o.url,
+                    kind: "video",
+                    name: o.name,
+                    duration: assetDuration,
+                  }
+                : undefined,
+            },
+          ],
+          overlays: s.overlays.filter((x) => x.id !== overlayId),
+        }),
+        gesture,
+      );
+      sel.dropOverlay(overlayId);
+    },
+    [overlays, source, mediaAssets, updateEditor, sel],
+  );
 
-  const setOverlayRect = useCallback((id: string, rect: OverlayRect) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
-    );
-  }, []);
+  // Where a dragged overlay lands: another upper track, or a fresh one above
+  // them all. Refused when the target track is already busy at those seconds.
+  // Shares the drag's gesture id, so the move and the track change undo as one.
+  const setOverlayTrack = useCallback(
+    (id: string, track: number, gesture?: string) => {
+      setOverlays((prev) => moveToTrack(prev, id, track), gesture);
+    },
+    [setOverlays],
+  );
+
+  // `gesture` collapses a whole drag into one undo step: these fire on every
+  // pointermove, and without it a single drag would stack hundreds of steps.
+  //
+  // A clip stops against its neighbours instead of sliding under them: clips on
+  // one track never overlap, whether they got there sideways or from a lane
+  // above. To pass a neighbour, take the clip to another track.
+  const moveOverlay = useCallback(
+    (id: string, start: number, gesture?: string) => {
+      setOverlays((prev) => {
+        const o = prev.find((x) => x.id === id);
+        if (!o) return prev;
+        const next = clampStartToTrack(prev, o.track, { ...o, start });
+        if (next === o.start) return prev;
+        return prev.map((x) => (x.id === id ? { ...x, start: next } : x));
+      }, gesture);
+    },
+    [setOverlays],
+  );
+
+  // Which part of its own media an overlay shows. Undoable, and coalesced by
+  // gesture so one drag inside the crop editor is one step.
+  const setOverlayCrop = useCallback(
+    (id: string, crop: OverlayRect, gesture?: string) => {
+      setOverlays(
+        (prev) => prev.map((o) => (o.id === id ? { ...o, crop } : o)),
+        gesture,
+      );
+    },
+    [setOverlays],
+  );
+
+  /**
+   * Lay a batch of AI-chosen cutaways onto upper tracks, as one undo step.
+   *
+   * The spans arrive in the recording's seconds, because that is what the
+   * transcript is anchored in. They are mapped through the clips to edited-
+   * timeline seconds here, so a placement over speech that has since been cut
+   * collapses to nothing and is dropped rather than landing somewhere arbitrary.
+   * Returns how many actually made it onto a track.
+   */
+  const placeOverlays = useCallback(
+    (spans: PlacedSpan[]): PlacedSpan[] => {
+      // Built before the commit, not inside it: a state updater has to be pure,
+      // and this one mints ids.
+      const made: Overlay[] = [];
+      const used: PlacedSpan[] = [];
+      let taken = overlays;
+      for (const span of spans) {
+        const asset = mediaAssets.find((m) => m.name === span.file);
+        if (!asset) continue;
+        const start = sourceToTimeline(clips, span.sourceStart);
+        const end = sourceToTimeline(clips, span.sourceEnd);
+        if (end - start < MIN_SPAN_SEC) continue;
+        const duration =
+          asset.kind === "video"
+            ? Math.min(end - start, asset.duration)
+            : end - start;
+        const overlay: Overlay = {
+          id: newOverlayId(),
+          kind: asset.kind,
+          url: asset.url,
+          name: asset.name,
+          track: firstFreeTrack(taken, { id: "new", start, duration }),
+          start,
+          duration,
+          sourceStart: 0,
+          muted: true,
+          ...fitBox(mediaAspect(asset), aspect),
+        };
+        made.push(overlay);
+        used.push(span);
+        taken = [...taken, overlay];
+      }
+      if (made.length === 0) return [];
+      updateEditor((s) => ({ ...s, overlays: [...s.overlays, ...made] }));
+      return used;
+    },
+    [clips, overlays, mediaAssets, aspect, updateEditor],
+  );
+
+  const setOverlayRect = useCallback(
+    (id: string, rect: OverlayRect) => {
+      setOverlays((prev) =>
+        prev.map((o) => (o.id === id ? { ...o, ...rect } : o)),
+      );
+    },
+    [setOverlays],
+  );
 
   // Trim an upper-track clip's timeline range and in-point (edge drag). The
   // lane clamps against the media length; this just stores the result.
   const setOverlayRange = useCallback(
-    (id: string, start: number, duration: number, sourceStart: number) => {
-      setOverlays((prev) =>
-        prev.map((o) =>
-          o.id === id
-            ? {
-                ...o,
-                start: Math.max(0, start),
-                duration: Math.max(0.1, duration),
-                sourceStart: Math.max(0, sourceStart),
-              }
-            : o,
-        ),
+    (
+      id: string,
+      start: number,
+      duration: number,
+      sourceStart: number,
+      gesture?: string,
+    ) => {
+      setOverlays(
+        (prev) =>
+          prev.map((o) =>
+            o.id === id
+              ? {
+                  ...o,
+                  start: Math.max(0, start),
+                  duration: Math.max(0.1, duration),
+                  sourceStart: Math.max(0, sourceStart),
+                }
+              : o,
+          ),
+        gesture,
       );
     },
-    [],
+    [setOverlays],
   );
 
-  const toggleOverlayHidden = useCallback((id: string) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, hidden: !o.hidden } : o)),
-    );
-  }, []);
+  // The rail's controls belong to a whole upper track, exactly like the base
+  // track's. One clip on a track being hidden means the eye is off, so the
+  // toggle turns the whole track on again.
+  const toggleTrackHidden = useCallback(
+    (track: number) => {
+      setOverlays((prev) => {
+        const hidden = !overlaysOnTrack(prev, track).every((o) => o.hidden);
+        return prev.map((o) => (o.track === track ? { ...o, hidden } : o));
+      });
+    },
+    [setOverlays],
+  );
 
-  const toggleOverlayMuted = useCallback((id: string) => {
-    setOverlays((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, muted: !(o.muted ?? true) } : o)),
-    );
-  }, []);
+  const toggleTrackMuted = useCallback(
+    (track: number) => {
+      setOverlays((prev) => {
+        const muted = !overlaysOnTrack(prev, track).every(
+          (o) => o.muted ?? true,
+        );
+        return prev.map((o) => (o.track === track ? { ...o, muted } : o));
+      });
+    },
+    [setOverlays],
+  );
 
-  const removeOverlay = useCallback((id: string) => {
-    setOverlays((prev) => prev.filter((o) => o.id !== id));
-  }, []);
+  // Deleting a track is the one edit that closes the stack up: the lane is gone,
+  // so nothing should be left where it used to be. Merely emptying a track by
+  // moving its last clip away leaves the lane behind, on purpose.
+  const removeTrack = useCallback(
+    (track: number) => {
+      for (const o of overlaysOnTrack(overlays, track)) sel.dropOverlay(o.id);
+      setOverlays((prev) =>
+        compactTracks(prev.filter((o) => o.track !== track)),
+      );
+    },
+    [overlays, sel, setOverlays],
+  );
 
-  const addAudio = useCallback(async (file: File) => {
-    if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
-      return;
-    }
-    const media = await loadVideoSource(file, file.name);
-    setAudioTracks((prev) => [
-      ...prev,
-      {
-        id: newAudioId(),
-        name: media.name,
-        url: media.url,
-        duration: media.duration,
-        start: 0,
-        muted: false,
-      },
-    ]);
-  }, []);
+  // Delete the bottom track, exactly like deleting an upper one: its clips go,
+  // everything stacked above or beside it stays where it is and keeps playing.
+  // The recording itself survives in the media library, so it can be re-added.
+  const removeBaseTrack = useCallback(() => {
+    updateEditor((s) => ({
+      ...s,
+      clips: [],
+      baseHidden: false,
+      baseMuted: false,
+    }));
+    sel.clearClips();
+  }, [updateEditor, sel]);
 
-  const moveAudio = useCallback((id: string, start: number) => {
-    setAudioTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, start: Math.max(0, start) } : t)),
-    );
-  }, []);
+  const addAudio = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+        return;
+      }
+      const media = await loadVideoSource(file, file.name);
+      setAudioTracks((prev) => [
+        ...prev,
+        {
+          id: newAudioId(),
+          name: media.name,
+          url: media.url,
+          duration: media.duration,
+          start: 0,
+          muted: false,
+        },
+      ]);
+    },
+    [setAudioTracks],
+  );
 
-  const toggleAudioMuted = useCallback((id: string) => {
-    setAudioTracks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, muted: !t.muted } : t)),
-    );
-  }, []);
+  const moveAudio = useCallback(
+    (id: string, start: number, gesture?: string) => {
+      setAudioTracks(
+        (prev) =>
+          prev.map((t) =>
+            t.id === id ? { ...t, start: Math.max(0, start) } : t,
+          ),
+        gesture,
+      );
+    },
+    [setAudioTracks],
+  );
 
-  const removeAudio = useCallback((id: string) => {
-    setAudioTracks((prev) => {
-      const found = prev.find((t) => t.id === id);
-      if (found) URL.revokeObjectURL(found.url);
-      return prev.filter((t) => t.id !== id);
-    });
-  }, []);
+  const toggleAudioMuted = useCallback(
+    (id: string) => {
+      setAudioTracks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, muted: !t.muted } : t)),
+      );
+    },
+    [setAudioTracks],
+  );
 
+  // The object URL is deliberately NOT revoked: undo brings this track back, and
+  // a revoked URL would restore a track that can never play. Object URLs are
+  // released when the project is replaced or cleared.
+  const removeAudio = useCallback(
+    (id: string) => {
+      setAudioTracks((prev) => prev.filter((t) => t.id !== id));
+    },
+    [setAudioTracks],
+  );
+
+  // Captions are anchored in the transcript's seconds, so they go with it.
   const resetTranscript = useCallback(() => {
-    setWords([]);
-    setTranscribeStatus("idle");
-    setTranscribeProgress(0);
+    resetWords();
     setCaptions([]);
-    setSelectedCaptionIds([]);
-  }, []);
+    sel.clearCaptions();
+  }, [resetWords, setCaptions, sel]);
 
   const loadSource = useCallback(
     (next: StudioSource) => {
@@ -610,17 +948,67 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (prev) URL.revokeObjectURL(prev.url);
         return next;
       });
-      resetClips(fullClip(next.duration));
-      setSelectedClipIds([]);
+      // One reset clears every layer and its history: clips, captions, overlays,
+      // audio, and the bottom track's flags.
+      resetEditor({ clips: fullClip(next.duration) });
+      sel.clearClips();
+      sel.clearOverlays();
       resetTranscript();
-      setAudioTracks((prev) => {
-        prev.forEach((t) => URL.revokeObjectURL(t.url));
-        return [];
-      });
-      setOverlays([]);
-      // Keep the media library — it's a library, not part of the edit state.
+      // Warm the audio decode now (it's the slow first step and dedupes by URL),
+      // so by the time the user hits 1-Click or Transcribe it's already cached.
+      if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
+      registerSource(next);
     },
-    [resetClips, resetTranscript],
+    [resetEditor, resetTranscript, registerSource, sel],
+  );
+
+  // Removing a library asset removes every placement of it, at any level of the
+  // stack — no asset is pinned to the library just because a track uses it.
+  const removeMediaAsset = useCallback(
+    (id: string) => {
+      const asset = dropAsset(id);
+      if (!asset) return;
+      const { url } = asset;
+      const isRecording = source?.url === url;
+      const dropsClip = (c: Clip) => (c.src?.url ?? source?.url) === url;
+
+      sel.clearClips();
+      sel.clearOverlays();
+
+      if (isRecording) {
+        // Dropping the recording takes the transcript and captions with it, both
+        // being anchored in its seconds. Undo can't resurrect the source itself,
+        // so this clears history rather than leaving a stack that restores clips
+        // pointing at media the project no longer has.
+        setSource(null);
+        resetTranscript();
+        resetEditor({
+          clips: clips.filter((c) => !dropsClip(c)),
+          overlays: overlays.filter((o) => o.url !== url),
+          audioTracks,
+        });
+        return;
+      }
+      // Every placement of the asset goes at once, as a single undo step.
+      updateEditor((s) => ({
+        ...s,
+        clips: s.clips.filter((c) => !dropsClip(c)),
+        overlays: s.overlays.filter((o) => o.url !== url),
+      }));
+      // The object URL outlives the library entry on purpose: undo brings those
+      // clips back, and a revoked URL would restore footage that cannot play.
+    },
+    [
+      dropAsset,
+      source,
+      clips,
+      overlays,
+      audioTracks,
+      updateEditor,
+      resetEditor,
+      resetTranscript,
+      sel,
+    ],
   );
 
   // Add a library asset to the timeline: the first video becomes the base
@@ -667,19 +1055,54 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [mediaAssets, source, loadSource, addOverlayFromAsset, setClips],
   );
 
+  // Append an asset to the MAIN (base) track as another clip — the main track is
+  // just "the layer shown behind everything", not a single fixed thing, so the
+  // same media (or any other) can be added to it as many times as wanted. With
+  // no base yet, the asset becomes the base. Images can't drive the base clock,
+  // so they fall back to an overlay.
+  const addAssetToMainTrack = useCallback(
+    (assetId: string) => {
+      const asset = mediaAssets.find((m) => m.id === assetId);
+      if (!asset) return;
+      if (!source) {
+        addAssetToTimeline(assetId);
+        return;
+      }
+      if (asset.kind !== "video") {
+        addOverlayFromAsset(assetId, 0);
+        return;
+      }
+      setClips((prev) => [
+        ...prev,
+        {
+          id: newClipId(),
+          start: 0,
+          end: asset.duration,
+          src: {
+            url: asset.url,
+            kind: "video",
+            name: asset.name,
+            duration: asset.duration,
+            width: asset.width,
+            height: asset.height,
+          },
+        },
+      ]);
+    },
+    [mediaAssets, source, addAssetToTimeline, addOverlayFromAsset, setClips],
+  );
+
   const clearSource = useCallback(() => {
     setSource((prev) => {
       if (prev) URL.revokeObjectURL(prev.url);
       return null;
     });
-    resetClips([]);
-    setSelectedClipIds([]);
+    // Empties every layer and drops the undo stack along with them.
+    resetEditor({});
+    sel.clearClips();
+    sel.clearOverlays();
     resetTranscript();
-    setAudioTracks((prev) => {
-      prev.forEach((t) => URL.revokeObjectURL(t.url));
-      return [];
-    });
-  }, [resetClips, resetTranscript]);
+  }, [resetEditor, resetTranscript, sel]);
 
   // Pick up a recording handed over from the practice flow (Record -> Edit),
   // or load a Content Library item's saved recording via ?item=<id>.
@@ -717,19 +1140,87 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [source]);
 
-  const splitAt = useCallback(
-    (sourceTime: number) => {
-      setClips((prev) => splitAtSource(prev, sourceTime));
+  // Cut an upper-track clip in two at the playhead. The right half keeps playing
+  // from where the left half stopped; a still image has no in-point to advance.
+  const splitOverlays = useCallback(
+    (ids: string[], timelineTime: number) => {
+      const targets = new Set(ids);
+      setOverlays((prev) =>
+        prev.flatMap((o) => {
+          if (!targets.has(o.id)) return [o];
+          const local = timelineTime - o.start;
+          if (local <= 0.05 || local >= o.duration - 0.05) return [o];
+          return [
+            { ...o, id: newOverlayId(), duration: local },
+            {
+              ...o,
+              id: newOverlayId(),
+              start: timelineTime,
+              duration: o.duration - local,
+              sourceStart:
+                o.kind === "image" ? o.sourceStart : o.sourceStart + local,
+            },
+          ];
+        }),
+      );
+      sel.clearOverlays();
     },
-    [setClips],
+    [setOverlays, sel],
   );
 
+  /**
+   * Split whatever is selected at the playhead. Every timeline element splits —
+   * an upper-track clip, a caption, or a bottom-track clip — and with nothing
+   * selected it falls back to the bottom-track clip under the playhead.
+   */
+  const splitSelected = useCallback(
+    (timelineTime: number) => {
+      if (selectedOverlayIds.length) {
+        splitOverlays(selectedOverlayIds, timelineTime);
+        return;
+      }
+      if (selectedCaptionIds.length) {
+        for (const id of selectedCaptionIds) splitCaption(id, timelineTime);
+        return;
+      }
+      setClips((prev) => splitClipAt(prev, timelineTime));
+    },
+    [
+      selectedOverlayIds,
+      selectedCaptionIds,
+      splitOverlays,
+      splitCaption,
+      setClips,
+    ],
+  );
+
+  // Delete whatever is selected, across all three kinds at once: base clips,
+  // upper-track overlays, and captions. Emptying the bottom track is allowed —
+  // the clock comes from the longest layer, not from the base. One delete is one
+  // undo step even when it spans every layer.
   const deleteSelected = useCallback(() => {
-    setClips((prev) =>
-      selectedClipId ? removeClip(prev, selectedClipId) : prev,
-    );
-    setSelectedClipIds([]);
-  }, [setClips, selectedClipId]);
+    const clipIds = new Set(selectedClipIds);
+    const overlayIds = new Set(selectedOverlayIds);
+    const captionIds = new Set(selectedCaptionIds);
+    if (!clipIds.size && !overlayIds.size && !captionIds.size) return;
+    updateEditor((s) => ({
+      ...s,
+      clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
+      overlays: overlayIds.size
+        ? s.overlays.filter((o) => !overlayIds.has(o.id))
+        : s.overlays,
+      captions: captionIds.size
+        ? s.captions.filter((c) => !captionIds.has(c.id))
+        : s.captions,
+    }));
+    sel.clearSelection();
+  }, [
+    updateEditor,
+    selectedClipIds,
+    selectedOverlayIds,
+    selectedCaptionIds,
+    sel,
+  ]);
 
   const trimStart = useCallback(
     (sourceTime: number) => {
@@ -784,13 +1275,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // last word. Never removes speech.
   const removePauses = useCallback((): number => {
     if (words.length === 0) return 0;
-    const ranges = pauseRanges(words);
-    const first = words[0];
-    const last = words[words.length - 1];
-    if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
-    if (source && source.duration - last.end >= 0.5) {
-      ranges.push([last.end + 0.1, source.duration]);
-    }
+    const ranges = pauseCuts(words, source?.duration ?? 0, PAUSE_CUTS);
     cutAll(ranges);
     return ranges.length;
   }, [words, source, cutAll]);
@@ -804,15 +1289,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setDetecting(true);
     try {
       const analysis = analyzeForTrim(await decodeToMono16k(source.url));
-      const next = clips.map((c) => {
-        const b = speechBoundsInRange(analysis, c.start, c.end);
-        if (!b) return c; // no speech in this clip -> leave it
-        const start = Math.max(c.start, b.start - 0.05);
-        const end = Math.min(c.end, b.end + 0.08);
-        return end - start < 0.1 || (start === c.start && end === c.end)
-          ? c
-          : { ...c, start, end };
-      });
+      const next = trimToSpeech(clips, analysis);
       const changed = next.reduce((n, c, i) => (c !== clips[i] ? n + 1 : n), 0);
       if (changed > 0) setClips(() => next);
       return changed;
@@ -821,50 +1298,32 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [source, clips, setClips]);
 
-  // Decoded audio -> words. Prefers the hosted backend (best accuracy) and falls
-  // back to on-device Whisper when no key is configured or the request fails.
-  const wordsFromAudio = useCallback(
-    async (audio: Float32Array): Promise<Word[]> => {
-      let raw = null as Awaited<ReturnType<typeof transcribeRemote>>;
-      try {
-        raw = await transcribeRemote(audio);
-      } catch {
-        raw = null;
-      }
-      if (!raw) {
-        raw = await transcribeAudio(audio, (p) => {
-          if (p.status === "loading" && typeof p.progress === "number") {
-            setTranscribeStatus("loading");
-            setTranscribeProgress(Math.round(p.progress));
-          } else if (p.status === "transcribing") {
-            setTranscribeStatus("transcribing");
-          }
-        });
-      }
-      // Correct approximate word times against the precise VAD edges.
-      const segments = detectSpeechSegments(audio);
-      return refineWordTimings(
-        raw.map((w, i) => ({ id: newWordId(i), ...w })),
-        segments,
-      );
+  // The decoded audio is the source of truth for length. A video element often
+  // under-reports duration (MediaRecorder WebM especially), which would leave
+  // words spoken past that point outside the only clip — treated as cut, so they
+  // vanish from the transcript/captions/export. Extend an untouched timeline to
+  // the true audio length so the whole recording, including the end, is kept.
+  const coverFullAudio = useCallback(
+    (audioSamples: number) => {
+      if (!source) return;
+      const audioDur = audioSamples / 16000; // decode target rate
+      if (audioDur <= source.duration + 0.1) return;
+      setSource((s) => (s ? { ...s, duration: audioDur } : s));
+      setClips((prev) => {
+        const pristine =
+          prev.length === 1 &&
+          prev[0].start <= 0.001 &&
+          prev[0].end >= source.duration - 0.1;
+        return pristine ? fullClip(audioDur) : prev;
+      });
     },
-    [],
+    [source, setClips],
   );
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source || source.kind === "image") return;
-    // Neutral "Transcribing…" up front; "Downloading speech model" is only for
-    // the on-device fallback, and only while it actually downloads.
-    setTranscribeStatus("transcribing");
-    setTranscribeProgress(0);
-    try {
-      const audio = await decodeToMono16k(source.url);
-      setWords(await wordsFromAudio(audio));
-      setTranscribeStatus("done");
-    } catch {
-      setTranscribeStatus("error");
-    }
-  }, [source, wordsFromAudio]);
+    await runTranscribe(source.url, (audio) => coverFullAudio(audio.length));
+  }, [source, runTranscribe, coverFullAudio]);
 
   const applyCuts = useCallback(
     (ranges: [number, number][]) => {
@@ -899,129 +1358,115 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
-  // Clean up retakes: an LLM marks earlier attempts of restarted lines (and
-  // stumbles/self-corrections) as struck-through for review — not removed.
-  // Returns count, or -1 (no AI key) / -2 (request failed).
+  // Clean up retakes: the AI flags earlier attempts of restarted lines and
+  // stumbles; those cuts are validated (a line that isn't restated later is
+  // never removed) and unioned with a deterministic exact-repeat detector that
+  // catches obvious restarts the AI misses. Works even without an AI key
+  // (deterministic only). Returns the number of ranges marked to cut.
   const aiRemoveMistakes = useCallback(async (): Promise<number> => {
     if (words.length === 0) return 0;
     setAiCleaning(true);
     try {
-      const cuts = await cleanTranscriptRemote(words);
-      if (cuts === null) return -1;
-      const ranges = cuts
-        .map(([i, j]) => [words[i].start, words[j].end] as [number, number])
-        .filter(([a, b]) => b > a);
+      let aiCuts: [number, number][] | null = null;
+      try {
+        aiCuts = await cleanTranscriptRemote(words);
+      } catch (e) {
+        console.error("[studio] AI retake cleanup failed", e);
+      }
+      const ranges = combineRetakeCuts(words, aiCuts);
       applyCuts(ranges);
       return ranges.length;
-    } catch {
-      return -2;
     } finally {
       setAiCleaning(false);
     }
   }, [words, applyCuts]);
 
-  // One-click clean up: transcribe (if needed), trim each clip's silence, remove
-  // AI-flagged mistakes/retakes and pauses, then generate captions with sensible
-  // defaults. Everything is computed into local variables so each step sees the
-  // result of the previous one without waiting on React state to flush.
-  const autoEdit = useCallback(async (): Promise<void> => {
-    if (!source || source.kind === "image") return;
-    setAutoEditing(true);
-    try {
-      const audio = await decodeToMono16k(source.url);
-
-      // Step 0 — transcript.
-      setAutoEditStep(0);
-      let w = words;
-      if (w.length === 0) {
-        setTranscribeStatus("transcribing");
-        setTranscribeProgress(0);
-        try {
-          w = await wordsFromAudio(audio);
-          setWords(w);
-          setTranscribeStatus("done");
-        } catch {
-          setTranscribeStatus("error");
-        }
-      }
-
-      let next = clips;
-
-      if (w.length > 0) {
-        // Step 1 — remove AI-flagged mistakes/retakes.
-        setAutoEditStep(1);
-        try {
-          const cuts = await cleanTranscriptRemote(w);
-          if (cuts) {
-            for (const [i, j] of cuts) {
-              const a = w[i]?.start;
-              const b = w[j]?.end;
-              if (a != null && b != null && b > a) {
-                next = removeSourceRange(next, a, b);
-              }
-            }
-          }
-        } catch {
-          // skip mistake removal if the service is unavailable
-        }
-
-        // Step 2 — cut pauses (plus leading/trailing dead air).
-        setAutoEditStep(2);
-        const ranges = pauseRanges(w);
-        const first = w[0];
-        const last = w[w.length - 1];
-        if (first.start >= 0.5) ranges.unshift([0, first.start - 0.05]);
-        if (source.duration - last.end >= 0.5) {
-          ranges.push([last.end + 0.1, source.duration]);
-        }
-        for (const [from, to] of ranges) {
-          next = removeSourceRange(next, from, to);
-        }
-      }
-
-      // Step 3 — trim silence on the FINAL clips, so every clip left after the
-      // cuts starts and ends on speech (not just the original single clip).
-      setAutoEditStep(3);
+  // One-click clean up: transcribe (if needed), then hand the clips to
+  // planAutoEdit. The slow, impure half lives here (decode, transcribe, ask the
+  // backend which lines are retakes); the edit itself is pure and tested.
+  const autoEdit = useCallback(
+    async (withCaptions = true): Promise<void> => {
+      if (!source || source.kind === "image") return;
+      setAutoEditCaptions(withCaptions);
+      setAutoEditing(true);
       try {
-        const analysis = analyzeForTrim(audio);
-        next = next.map((c) => {
-          const b = speechBoundsInRange(analysis, c.start, c.end);
-          if (!b) return c;
-          const start = Math.max(c.start, b.start - 0.05);
-          const end = Math.min(c.end, b.end + 0.08);
-          return end - start < 0.1 ? c : { ...c, start, end };
+        // Decoding is the slow part for a long or 4K take: the audio has to be
+        // pulled out of the video in-browser before anything else can happen.
+        setAutoEditStep(AUTO_EDIT_STEPS.PREPARE);
+        const audio = await decodeToMono16k(source.url);
+
+        setAutoEditStep(AUTO_EDIT_STEPS.TRANSCRIPT);
+        let w = words; // reuse an existing transcript when there is one
+        // A failed transcription is not fatal: the rest of the pass still trims
+        // silence, so keep going with no words rather than bailing out.
+        if (w.length === 0)
+          w = (await transcribeAudio(audio, source.url)) ?? [];
+
+        // Pure CPU, and independent of the retake round-trip below. Start it now
+        // so the two overlap.
+        const analysisPromise = Promise.resolve()
+          .then(() => analyzeForTrim(audio))
+          .catch(() => null);
+
+        let aiCuts: [number, number][] | null = null;
+        if (w.length > 0) {
+          // The label goes up before the network call, not after it.
+          setAutoEditStep(AUTO_EDIT_STEPS.RETAKES);
+          // Without a key this throws; combineRetakeCuts still finds the
+          // obvious restarts on its own.
+          aiCuts = await cleanTranscriptRemote(w).catch(() => null);
+        }
+
+        const plan = planAutoEdit({
+          clips,
+          words: w,
+          sourceDuration: source.duration,
+          audioDuration: audio.length / 16000, // decode target rate
+          analysis: await analysisPromise,
+          aiCuts,
+          onStep: setAutoEditStep,
         });
-      } catch {
-        // leave clips as-is if the waveform can't be analysed
-      }
 
-      setClips(() => next);
+        if (plan.duration > source.duration + 0.1) {
+          setSource((cur) => (cur ? { ...cur, duration: plan.duration } : cur));
+        }
+        setClips(() => plan.clips);
 
-      // Step 4 — captions: normal case, 3 words per caption, horizontally
-      // centered and sitting one third of the frame height up from the bottom.
-      setAutoEditStep(4);
-      setCaptionStyle((s) => ({
-        ...s,
-        textCase: "none",
-        x: 0.5,
-        y: 2 / 3,
-        width: 0.8,
-        fontScale: 0.032,
-      }));
-      setCaptionWordsState(3);
-      if (w.length > 0) {
-        setCaptions(
-          generateCaptions(w, next, {
-            maxChars: captionLines * 30,
-            maxWords: 3,
-          }),
-        );
+        // Captions, only when asked: normal case, three words at a time,
+        // centered and a third of the frame up from the bottom.
+        if (withCaptions && w.length > 0) {
+          setAutoEditStep(AUTO_EDIT_STEPS.CAPTIONS);
+          setCaptionStyle((st) => ({
+            ...st,
+            textCase: "none",
+            x: 0.5,
+            y: 2 / 3,
+            width: 0.8,
+            fontScale: 0.032,
+          }));
+          setCaptionWordsState(3);
+          setCaptions(
+            generateCaptions(w, plan.clips, {
+              maxChars: captionLines * 30,
+              maxWords: 3,
+            }),
+          );
+        }
+      } finally {
+        setAutoEditing(false);
+        setAutoEditStep(-1);
       }
-    } finally {
-      setAutoEditing(false);
-      setAutoEditStep(-1);
-    }
-  }, [source, words, clips, setClips, wordsFromAudio, captionLines]);
+    },
+    [
+      source,
+      words,
+      clips,
+      setClips,
+      setCaptions,
+      transcribeAudio,
+      captionLines,
+    ],
+  );
 
   // Undelete: add cut words' source ranges back into the timeline.
   const restoreWords = useCallback(
@@ -1039,28 +1484,63 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [words, setClips],
   );
 
+  // Reset the bottom track's cuts. The layers stacked on it, and the captions,
+  // are the user's work and survive.
   const reset = useCallback(() => {
-    resetClips(source ? fullClip(source.duration) : []);
-    setSelectedClipIds([]);
-  }, [resetClips, source]);
+    resetEditor({
+      clips: source ? fullClip(source.duration) : [],
+      captions,
+      overlays,
+      audioTracks,
+      baseHidden,
+      baseMuted,
+    });
+    sel.clearClips();
+  }, [
+    resetEditor,
+    source,
+    captions,
+    overlays,
+    audioTracks,
+    baseHidden,
+    baseMuted,
+    sel,
+  ]);
+
+  const duration = useMemo(
+    () => projectDuration(clips, overlays, audioTracks),
+    [clips, overlays, audioTracks],
+  );
 
   const value = useMemo<StudioContextValue>(
     () => ({
       source,
       clips,
+      duration,
+      baseHidden,
+      baseMuted,
+      toggleBaseHidden,
+      toggleBaseMuted,
+      removeBaseTrack,
+      aspectId,
+      aspect,
+      setAspectId,
       selectedClipId,
       detecting,
       words,
       audioTracks,
       transcribeStatus,
-      transcribeProgress,
       loadSource,
       clearSource,
-      selectClip,
-      selectedClipIds,
-      toggleClipSelection,
-      selectClips,
-      splitAt,
+      selectClip: sel.selectClip,
+      selectedClipIds: selectedClipIds,
+      toggleClipSelection: sel.toggleClip,
+      selectClips: sel.replaceClips,
+      selectedOverlayIds: selectedOverlayIds,
+      selectOverlay: sel.selectOverlay,
+      toggleOverlaySelection: sel.toggleOverlay,
+      selectOverlays: sel.replaceOverlays,
+      splitSelected,
       deleteSelected,
       trimStart,
       trimEnd,
@@ -1078,6 +1558,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEdit,
       autoEditing,
       autoEditStep,
+      autoEditCaptions,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -1088,28 +1569,36 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,
+      addAssetToMainTrack,
       liftClipToTrack,
+      dropOverlayToBase,
+      setOverlayTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayCrop,
+      placeOverlays,
       setOverlayRange,
-      toggleOverlayHidden,
-      toggleOverlayMuted,
-      removeOverlay,
+      toggleTrackHidden,
+      toggleTrackMuted,
+      removeTrack,
       captions,
       captionStyle,
       selectedCaptionId,
-      selectedCaptionIds,
+      selectedCaptionIds: selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
-      selectCaption,
-      toggleCaptionSelection,
-      selectCaptions,
+      selectCaption: sel.selectCaption,
+      toggleCaptionSelection: sel.toggleCaption,
+      selectCaptions: sel.replaceCaptions,
       removeSelectedCaptions,
       setCaptionText,
+      cycleCaptionCase,
+      addCaption,
+      mergeCaptions,
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
@@ -1131,19 +1620,24 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [
       source,
       clips,
+      duration,
+      baseHidden,
+      baseMuted,
+      toggleBaseHidden,
+      toggleBaseMuted,
+      removeBaseTrack,
+      aspectId,
+      aspect,
+      setAspectId,
       selectedClipId,
       detecting,
       words,
       audioTracks,
       transcribeStatus,
-      transcribeProgress,
       loadSource,
       clearSource,
-      selectClip,
-      selectedClipIds,
-      toggleClipSelection,
-      selectClips,
-      splitAt,
+      sel,
+      splitSelected,
       deleteSelected,
       trimStart,
       trimEnd,
@@ -1161,6 +1655,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEdit,
       autoEditing,
       autoEditStep,
+      autoEditCaptions,
       addAudio,
       moveAudio,
       toggleAudioMuted,
@@ -1171,28 +1666,32 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,
+      addAssetToMainTrack,
       liftClipToTrack,
+      dropOverlayToBase,
+      setOverlayTrack,
       moveOverlay,
       setOverlayRect,
+      setOverlayCrop,
+      placeOverlays,
       setOverlayRange,
-      toggleOverlayHidden,
-      toggleOverlayMuted,
-      removeOverlay,
+      toggleTrackHidden,
+      toggleTrackMuted,
+      removeTrack,
       captions,
       captionStyle,
       selectedCaptionId,
-      selectedCaptionIds,
       captionApplyAll,
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
       autoBreakCaptions,
       setCaptionWords,
-      selectCaption,
-      toggleCaptionSelection,
-      selectCaptions,
       removeSelectedCaptions,
       setCaptionText,
+      cycleCaptionCase,
+      addCaption,
+      mergeCaptions,
       removeCaption,
       clearCaptions,
       updateCaptionLayout,
@@ -1210,6 +1709,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       canUndo,
       canRedo,
       reset,
+      selectedCaptionIds,
+      selectedClipIds,
+      selectedOverlayIds,
     ],
   );
 

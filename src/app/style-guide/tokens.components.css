@@ -129,31 +129,40 @@
   }
 }
 
-/* --- Accent button (primary CTA, warm brand gradient, shared radius) ------ */
+/* --- Accent button (primary CTA, machined like the aluminum button) -------
+ * Gradient bezel on the border box, lit face on the padding box, inner
+ * specular edge, layered cast shadows that collapse on press. */
 .sg-btn-accent {
   display: inline-flex;
   align-items: center;
   gap: var(--sg-space-2);
   padding: var(--sg-space-3) var(--sg-space-5);
   border-radius: var(--sg-radius-btn);
-  border: none;
-  background: var(--sg-accent-gradient);
-  color: #fff;
   font-family: var(--sg-font-display);
   font-weight: 600;
   font-size: var(--sg-text-base);
   cursor: pointer;
-  box-shadow: var(--sg-accent-glow);
+  border: 2px solid transparent;
+  background:
+    var(--sg-accent-face) padding-box,
+    var(--sg-accent-bezel) border-box;
+  color: var(--sg-accent-fg);
+  text-shadow: var(--sg-accent-text-shadow);
+  box-shadow: var(--sg-accent-shadow), var(--sg-accent-inner-shadow);
   transition:
-    transform var(--sg-dur-fast) var(--sg-ease-spring),
-    filter var(--sg-dur-fast) var(--sg-ease-out);
+    transform 0.4s var(--sg-ease-spring),
+    box-shadow 0.3s ease,
+    filter 0.3s ease;
 }
 .sg-btn-accent:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.05);
+  box-shadow: var(--sg-accent-shadow-hover), var(--sg-accent-inner-shadow);
+  filter: brightness(1.03);
 }
 .sg-btn-accent:active {
-  transform: translateY(0) scale(0.98);
+  transform: scale(0.97);
+  box-shadow:
+    var(--sg-accent-shadow-pressed), var(--sg-accent-inner-shadow-pressed);
+  filter: brightness(0.98);
 }
 
 /* The aluminum button is NOT reproduced in CSS — we always use the real
