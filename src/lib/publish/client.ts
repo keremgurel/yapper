@@ -67,6 +67,25 @@ export interface CrossPostResult {
   url: string;
 }
 
+export async function generateCaption(input: {
+  title: string;
+  context?: string;
+  matchStyle: boolean;
+}): Promise<{ title: string; description: string }> {
+  const res = await fetch("/api/publish/caption", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    throw new Error(res.status === 501 ? "no_provider" : "failed");
+  }
+  const data = (await res.json()) as {
+    caption: { title: string; description: string };
+  };
+  return data.caption;
+}
+
 export async function crossPostToYouTube(
   input: CrossPostInput,
 ): Promise<CrossPostResult> {

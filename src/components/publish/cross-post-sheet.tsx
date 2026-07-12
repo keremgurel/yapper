@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Loader2, Send } from "lucide-react";
+import { ExternalLink, Loader2, Send, Sparkles } from "lucide-react";
+import { generateCaption } from "@/lib/publish/client";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -33,9 +34,34 @@ export default function CrossPostSheet({
   const [open, setOpen] = useState(true);
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState("");
+  const [matchStyle, setMatchStyle] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const { state, error, result, post } = useCrossPost();
 
   const busy = state === "posting";
+
+  const generate = async () => {
+    if (generating) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const caption = await generateCaption({
+        title: title.trim() || item.title,
+        matchStyle,
+      });
+      setTitle(caption.title || title);
+      setDescription(caption.description);
+    } catch (e) {
+      setGenError(
+        e instanceof Error && e.message === "no_provider"
+          ? "AI captions aren't set up yet."
+          : "Couldn't generate. Try again.",
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
   const close = (o: boolean) => {
     setOpen(o);
     if (!o) onClose();
@@ -85,6 +111,43 @@ export default function CrossPostSheet({
           </div>
         ) : (
           <div className="flex flex-col gap-4 p-4">
+            <div className="border-border flex flex-col gap-2 rounded-lg border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-foreground/70 text-xs font-bold">
+                  Draft with AI
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void generate()}
+                  disabled={generating || busy}
+                  style={{ background: "var(--sg-accent-gradient)" }}
+                  className="text-white"
+                >
+                  {generating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-3.5 w-3.5" />
+                  )}
+                  Generate
+                </Button>
+              </div>
+              <label className="text-foreground/70 flex cursor-pointer items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={matchStyle}
+                  onChange={(e) => setMatchStyle(e.target.checked)}
+                  className="accent-[color:var(--sg-accent)]"
+                />
+                Match my past captions
+              </label>
+              {genError && (
+                <p className="text-[11px] font-bold text-[color:var(--sg-pink-500)]">
+                  {genError}
+                </p>
+              )}
+            </div>
+
             <label className="flex flex-col gap-1.5">
               <span className="text-foreground/70 text-xs font-bold">
                 Title
