@@ -34,3 +34,22 @@ export async function disconnectPlatform(
 export function connectUrl(platform: PublishPlatform): string {
   return `/api/publish/connect/${platform}`;
 }
+
+export interface PlatformVideo {
+  id: string;
+  title: string;
+  thumbnail: string | null;
+  viewCount: number;
+  publishedAt: string;
+  privacyStatus: string;
+  url: string;
+}
+
+export async function fetchYouTubeVideos(): Promise<{
+  connected: boolean;
+  videos: PlatformVideo[];
+}> {
+  const res = await fetch("/api/publish/youtube/videos");
+  if (!res.ok) return { connected: false, videos: [] };
+  return (await res.json()) as { connected: boolean; videos: PlatformVideo[] };
+}

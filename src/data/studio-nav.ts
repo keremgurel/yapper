@@ -1,4 +1,4 @@
-export type StudioIcon = "library" | "layers" | "record" | "scissors";
+export type StudioIcon = "share" | "library" | "layers" | "record" | "scissors";
 
 export interface StudioNavItem {
   title: string;
@@ -12,6 +12,13 @@ export interface StudioNavItem {
  * dropdown, and the mobile menu from one place.
  */
 export const studioNav: StudioNavItem[] = [
+  {
+    title: "Connections",
+    href: "/studio/connections",
+    description:
+      "Your videos across platforms — connect accounts and cross-post the gaps.",
+    icon: "share",
+  },
   {
     title: "Inspiration",
     href: "/studio/inspiration",

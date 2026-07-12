@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Film, Loader2, Plus, Share2, Upload } from "lucide-react";
+import { Film, Loader2, Plus, Upload } from "lucide-react";
 import { useAddVideo } from "@/hooks/use-add-video";
 import StatusSelect from "@/components/library/status-select";
 import PillarSelect from "@/components/library/pillar-select";
@@ -103,12 +103,6 @@ export default function ContentLibrary() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/studio/connections">
-              <Share2 className="h-4 w-4" />
-              Connections
-            </Link>
-          </Button>
           <Button
             type="button"
             variant="outline"

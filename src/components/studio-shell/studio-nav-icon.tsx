@@ -1,7 +1,8 @@
-import { Layers, Library, Scissors, Video } from "lucide-react";
+import { Layers, Library, Scissors, Share2, Video } from "lucide-react";
 import type { StudioIcon } from "@/data/studio-nav";
 
 const map = {
+  share: Share2,
   library: Library,
   layers: Layers,
   record: Video,

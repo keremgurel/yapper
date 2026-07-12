@@ -94,11 +94,15 @@ export default function ConnectionsPanel() {
                   </Button>
                 </span>
               ) : canConnect ? (
-                <Button asChild size="sm">
-                  {/* A real navigation (not client routing): it hits the OAuth
-                      redirect route. */}
-                  <a href={connectUrl(p)}>Connect</a>
-                </Button>
+                // A real navigation (not client routing): it hits the OAuth
+                // redirect route.
+                <a
+                  href={connectUrl(p)}
+                  style={{ background: "var(--sg-accent-gradient)" }}
+                  className="rounded-lg px-4 py-1.5 text-sm font-black text-white no-underline transition-opacity hover:opacity-90"
+                >
+                  Connect
+                </a>
               ) : (
                 <span className="text-muted-foreground text-xs font-bold">
                   Coming soon
