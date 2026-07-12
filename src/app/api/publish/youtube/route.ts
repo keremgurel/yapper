@@ -8,6 +8,7 @@ import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
+import { getOwnedMediaKey } from "@/lib/db/submissions";
 import { uploadYouTubeVideo } from "@/lib/publish/youtube";
 import { getObjectBytes, ownsKey, r2Configured } from "@/lib/r2";
 
@@ -26,6 +27,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const body = (await req.json().catch(() => ({}))) as {
+    submissionId?: string;
     mediaKey?: string;
     title?: string;
     description?: string;
@@ -33,12 +35,19 @@ export async function POST(req: Request): Promise<Response> {
     privacyStatus?: "private" | "unlisted" | "public";
     contentItemId?: string;
   };
-  const { mediaKey, title } = body;
-  if (!mediaKey || !title?.trim()) {
+  const { title } = body;
+  if (!title?.trim()) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  // The mediaKey must be under the caller's own R2 prefix — never post someone
-  // else's object.
+
+  // Prefer a submissionId (resolved to its media key, scoped to the caller);
+  // fall back to a raw mediaKey. Either way the key must be the caller's own.
+  const mediaKey = body.submissionId
+    ? await getOwnedMediaKey(userId, body.submissionId)
+    : body.mediaKey;
+  if (!mediaKey) {
+    return Response.json({ error: "media_not_found" }, { status: 404 });
+  }
   if (!ownsKey(userId, mediaKey)) {
     return Response.json({ error: "forbidden" }, { status: 403 });
   }

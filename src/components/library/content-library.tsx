@@ -4,8 +4,11 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Film, Loader2, Plus, Upload } from "lucide-react";
+import { Film, Loader2, Plus, Send, Upload } from "lucide-react";
 import { useAddVideo } from "@/hooks/use-add-video";
+import CrossPostSheet, {
+  type CrossPostTarget,
+} from "@/components/publish/cross-post-sheet";
 import StatusSelect from "@/components/library/status-select";
 import PillarSelect from "@/components/library/pillar-select";
 import IdeaCapture from "@/components/library/idea-capture";
@@ -75,6 +78,7 @@ export default function ContentLibrary() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const { state: addState, error: addError, add } = useAddVideo(onCaptured);
+  const [postItem, setPostItem] = useState<CrossPostTarget | null>(null);
 
   const changeStatus = (row: ContentSummary, status: ContentStatus) => {
     const scheduledFor =
@@ -192,7 +196,7 @@ export default function ContentLibrary() {
           )}
           <Card className="gap-0 overflow-hidden py-0">
             {/* Header row */}
-            <div className="sg-field-label bg-muted/40 hidden grid-cols-[1fr_130px_150px_40px] gap-3 border-b px-4 py-3 sm:grid">
+            <div className="sg-field-label bg-muted/40 hidden grid-cols-[1fr_130px_150px_72px] gap-3 border-b px-4 py-3 sm:grid">
               <span>Title</span>
               <span>Status</span>
               <span>Updated</span>
@@ -218,7 +222,7 @@ export default function ContentLibrary() {
                     router.push(`/studio/library/${row.id}`);
                   }
                 }}
-                className={`grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b px-4 py-3.5 text-left transition-colors last:border-b-0 sm:grid-cols-[1fr_130px_150px_40px] ${
+                className={`grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b px-4 py-3.5 text-left transition-colors last:border-b-0 sm:grid-cols-[1fr_130px_150px_72px] ${
                   freshId === row.id
                     ? "bg-[color:var(--sg-accent)]/10"
                     : "hover:bg-muted/40"
@@ -243,23 +247,49 @@ export default function ContentLibrary() {
                 <span className="text-muted-foreground hidden text-sm sm:block">
                   {when(row.updatedAt)}
                 </span>
-                <span className="hidden justify-self-end sm:block">
+                <span className="hidden items-center gap-1 justify-self-end sm:flex">
                   {row.submissionId && (
-                    <Link
-                      href={`/studio/editor?item=${row.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-muted-foreground hover:text-foreground block p-1"
-                      title="Edit this recording"
-                      aria-label="Edit this recording"
-                    >
-                      <Film className="h-4 w-4" />
-                    </Link>
+                    <>
+                      <Link
+                        href={`/studio/editor?item=${row.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-muted-foreground hover:text-foreground block p-1"
+                        title="Edit this recording"
+                        aria-label="Edit this recording"
+                      >
+                        <Film className="h-4 w-4" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPostItem({
+                            id: row.id,
+                            title: row.title.trim() || "Untitled",
+                            submissionId: row.submissionId!,
+                          });
+                        }}
+                        className="p-1 text-[color:var(--sg-accent)] hover:opacity-80"
+                        title="Post to YouTube"
+                        aria-label="Post to YouTube"
+                      >
+                        <Send className="h-4 w-4" />
+                      </button>
+                    </>
                   )}
                 </span>
               </div>
             ))}
           </Card>
         </>
+      )}
+
+      {postItem && (
+        <CrossPostSheet
+          key={postItem.id}
+          item={postItem}
+          onClose={() => setPostItem(null)}
+        />
       )}
     </div>
   );

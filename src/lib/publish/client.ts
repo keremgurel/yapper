@@ -53,3 +53,29 @@ export async function fetchYouTubeVideos(): Promise<{
   if (!res.ok) return { connected: false, videos: [] };
   return (await res.json()) as { connected: boolean; videos: PlatformVideo[] };
 }
+
+export interface CrossPostInput {
+  submissionId: string;
+  title: string;
+  description?: string;
+  contentItemId?: string;
+}
+
+export interface CrossPostResult {
+  jobId: string;
+  videoId: string;
+  url: string;
+}
+
+export async function crossPostToYouTube(
+  input: CrossPostInput,
+): Promise<CrossPostResult> {
+  const res = await fetch("/api/publish/youtube", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (res.status === 409) throw new Error("not_connected");
+  if (!res.ok) throw new Error("post_failed");
+  return (await res.json()) as CrossPostResult;
+}
