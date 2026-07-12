@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Film, Loader2, Plus, Share2 } from "lucide-react";
+import { Film, Loader2, Plus, Share2, Upload } from "lucide-react";
+import { useAddVideo } from "@/hooks/use-add-video";
 import StatusSelect from "@/components/library/status-select";
 import PillarSelect from "@/components/library/pillar-select";
 import IdeaCapture from "@/components/library/idea-capture";
@@ -72,6 +73,9 @@ export default function ContentLibrary() {
     );
   };
 
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { state: addState, error: addError, add } = useAddVideo(onCaptured);
+
   const changeStatus = (row: ContentSummary, status: ContentStatus) => {
     const scheduledFor =
       status === "scheduled"
@@ -118,8 +122,42 @@ export default function ContentLibrary() {
             )}
             Blank idea
           </Button>
+          <Button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={addState === "uploading"}
+          >
+            {addState === "uploading" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            Add video
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void add(file);
+            }}
+          />
         </div>
       </div>
+      {addError && (
+        <p className="mb-4 text-sm font-bold text-[color:var(--sg-pink-500)]">
+          {addError === "storage_full"
+            ? "You're out of storage. Free some space and try again."
+            : addError === "locked"
+              ? "Adding videos needs an upgrade."
+              : addError === "not_video"
+                ? "That's not a video file."
+                : "Couldn't add that video. Try again."}
+        </p>
+      )}
 
       {/* Talk-or-type capture: the primary way ideas enter the library. */}
       <div className="mb-6">
