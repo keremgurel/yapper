@@ -99,6 +99,37 @@ export async function exchangeCode(
   };
 }
 
+/** Trade a refresh token for a fresh access token. Google does not return a new
+ * refresh token here, so the caller keeps the existing one. */
+export async function refreshAccessToken(
+  platform: PublishPlatform,
+  refreshToken: string,
+): Promise<{ accessToken: string; expiresAt: Date | null }> {
+  const { id, secret } = creds(platform);
+  const res = await fetch(endpoints(platform).token, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: id,
+      client_secret: secret,
+      refresh_token: refreshToken,
+      grant_type: "refresh_token",
+    }),
+  });
+  if (!res.ok) throw new Error(`oauth_refresh_${res.status}`);
+  const json = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+  };
+  if (!json.access_token) throw new Error("oauth_refresh_no_token");
+  return {
+    accessToken: json.access_token,
+    expiresAt: json.expires_in
+      ? new Date(Date.now() + json.expires_in * 1000)
+      : null,
+  };
+}
+
 export interface OAuthAccount {
   externalAccountId: string | null;
   handle: string | null;
