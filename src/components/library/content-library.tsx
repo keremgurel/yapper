@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Film, Loader2, Plus } from "lucide-react";
+import { Film, Loader2, Plus, Share2 } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import PillarSelect from "@/components/library/pillar-select";
 import IdeaCapture from "@/components/library/idea-capture";
@@ -98,19 +98,27 @@ export default function ContentLibrary() {
             {importing && " Importing your saved ideas…"}
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => void newIdea()}
-          disabled={creating}
-        >
-          {creating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          Blank idea
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/studio/connections">
+              <Share2 className="h-4 w-4" />
+              Connections
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void newIdea()}
+            disabled={creating}
+          >
+            {creating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Blank idea
+          </Button>
+        </div>
       </div>
 
       {/* Talk-or-type capture: the primary way ideas enter the library. */}
