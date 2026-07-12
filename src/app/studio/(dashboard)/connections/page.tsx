@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import ConnectionsPanel from "@/components/publish/connections-panel";
-import YouTubeVideos from "@/components/publish/youtube-videos";
+import PlatformVideos from "@/components/publish/platform-videos";
 
 export const metadata: Metadata = {
   title: "Connections",
@@ -23,7 +23,7 @@ export default function Page() {
       <Suspense>
         <ConnectionsPanel />
       </Suspense>
-      <YouTubeVideos />
+      <PlatformVideos />
     </div>
   );
 }
