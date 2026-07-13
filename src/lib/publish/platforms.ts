@@ -3,12 +3,13 @@ import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 /**
  * What "post" actually does on a platform, because it is not the same promise
  * everywhere:
- * - `direct-public`: posts straight to the public feed (YouTube Shorts).
- * - `draft-inbox`: lands in the user's drafts; they tap publish in the app
- *   (TikTok, until the app passes TikTok's direct-post audit).
- * - `business-only`: works only for Business/Creator accounts (Instagram).
+ * - `direct`: the API posts straight to the feed (YouTube Shorts, Instagram
+ *   Reels). Still gated by the platform's own rules (see `requiresProfessional`
+ *   and each platform's audit state) but no manual step in the app.
+ * - `draft-inbox`: lands in the user's drafts/inbox; they tap publish in the
+ *   app (TikTok, until the app passes TikTok's direct-post audit).
  */
-export type PublishMode = "direct-public" | "draft-inbox" | "business-only";
+export type PublishMode = "direct" | "draft-inbox";
 
 export interface PlatformSpec {
   id: PublishPlatform;
@@ -18,6 +19,12 @@ export interface PlatformSpec {
   scopes: string[];
   /** The platform fetches the video from a public URL instead of taking bytes. */
   needsPublicUrl: boolean;
+  /**
+   * The account must be a Professional account (Business OR Creator). This is
+   * Instagram's real gate: OAuth succeeds on a personal account but the
+   * Content Publishing API rejects it. Not "business only" — Creator works too.
+   */
+  requiresProfessional: boolean;
   /** Env var names that must be set for this platform to be usable. */
   env: { clientId: string; clientSecret: string };
   /** One-line, user-facing truth about what pressing "post" does here. */
@@ -27,18 +34,19 @@ export interface PlatformSpec {
 /**
  * The single source of truth for the three platforms. The OAuth flow reads
  * `scopes` and `env`, the publish pipeline reads `mode` and `needsPublicUrl`,
- * and the UI reads `label` and `postMeaning`.
+ * and the UI reads `label`, `postMeaning`, and `requiresProfessional`.
  */
 export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
   youtube: {
     id: "youtube",
     label: "YouTube",
-    mode: "direct-public",
+    mode: "direct",
     scopes: [
       "https://www.googleapis.com/auth/youtube.upload",
       "https://www.googleapis.com/auth/youtube.readonly",
     ],
     needsPublicUrl: false,
+    requiresProfessional: false,
     env: {
       clientId: "YOUTUBE_CLIENT_ID",
       clientSecret: "YOUTUBE_CLIENT_SECRET",
@@ -51,6 +59,7 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
     mode: "draft-inbox",
     scopes: ["user.info.basic", "video.upload"],
     needsPublicUrl: false,
+    requiresProfessional: false,
     env: {
       clientId: "TIKTOK_CLIENT_KEY",
       clientSecret: "TIKTOK_CLIENT_SECRET",
@@ -60,14 +69,17 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
   instagram: {
     id: "instagram",
     label: "Instagram",
-    mode: "business-only",
-    scopes: ["instagram_basic", "instagram_content_publish", "pages_show_list"],
+    mode: "direct",
+    // Instagram API with Instagram Login: the user logs in with Instagram
+    // directly, no linked Facebook Page needed. The account must be Professional.
+    scopes: ["instagram_business_basic", "instagram_business_content_publish"],
     needsPublicUrl: true,
+    requiresProfessional: true,
     env: {
       clientId: "INSTAGRAM_APP_ID",
       clientSecret: "INSTAGRAM_APP_SECRET",
     },
-    postMeaning: "Posts a Reel (Business or Creator accounts only).",
+    postMeaning: "Posts a Reel (needs a Business or Creator account).",
   },
 };
 

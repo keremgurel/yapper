@@ -1,31 +1,35 @@
 import type { PublishPlatform } from "@/lib/db/schema";
 import { PLATFORMS } from "@/lib/publish/platforms";
+import { google } from "./oauth/google";
+import { instagram } from "./oauth/instagram";
+import {
+  type Creds,
+  type OAuthAccount,
+  type OAuthProvider,
+  type OAuthTokens,
+} from "./oauth/provider";
+import { tiktok } from "./oauth/tiktok";
+
+export type { OAuthAccount, OAuthTokens } from "./oauth/provider";
 
 /**
- * OAuth 2.0 authorization-code flow for the publish platforms. YouTube (Google)
- * is wired up first; TikTok and Instagram slot in by adding their endpoints and
- * an `fetchAccount` branch. Scopes and env-var names come from the platform
- * registry so there is one source of truth.
+ * OAuth 2.0 authorization-code flow for the publish platforms. Each platform's
+ * dialect lives in its own provider module (oauth/google, oauth/tiktok,
+ * oauth/instagram); this file resolves credentials from the registry and
+ * dispatches to one, so the connect/callback routes and the token-refresh
+ * orchestrator stay platform-agnostic.
  */
-interface OAuthEndpoints {
-  authorize: string;
-  token: string;
-}
-
-const ENDPOINTS: Partial<Record<PublishPlatform, OAuthEndpoints>> = {
-  youtube: {
-    authorize: "https://accounts.google.com/o/oauth2/v2/auth",
-    token: "https://oauth2.googleapis.com/token",
-  },
+const PROVIDERS: Record<PublishPlatform, OAuthProvider> = {
+  youtube: google,
+  tiktok,
+  instagram,
 };
 
-function endpoints(platform: PublishPlatform): OAuthEndpoints {
-  const ep = ENDPOINTS[platform];
-  if (!ep) throw new Error(`oauth_unsupported_${platform}`);
-  return ep;
+function provider(platform: PublishPlatform): OAuthProvider {
+  return PROVIDERS[platform];
 }
 
-function creds(platform: PublishPlatform): { id: string; secret: string } {
+function creds(platform: PublishPlatform): Creds {
   const { clientId, clientSecret } = PLATFORMS[platform].env;
   const id = process.env[clientId];
   const secret = process.env[clientSecret];
@@ -33,131 +37,32 @@ function creds(platform: PublishPlatform): { id: string; secret: string } {
   return { id, secret };
 }
 
-/** The consent URL to send the user to. `state` is our CSRF nonce. */
 export function buildAuthUrl(
   platform: PublishPlatform,
   redirectUri: string,
   state: string,
 ): string {
-  const { id } = creds(platform);
-  const params = new URLSearchParams({
-    client_id: id,
-    redirect_uri: redirectUri,
-    response_type: "code",
-    scope: PLATFORMS[platform].scopes.join(" "),
-    // offline + consent so Google returns a refresh token every time, even on a
-    // reconnect (it otherwise omits it after the first grant).
-    access_type: "offline",
-    prompt: "consent",
-    include_granted_scopes: "true",
-    state,
-  });
-  return `${endpoints(platform).authorize}?${params.toString()}`;
+  return provider(platform).buildAuthUrl(creds(platform), redirectUri, state);
 }
 
-export interface OAuthTokens {
-  accessToken: string;
-  refreshToken: string | null;
-  expiresAt: Date | null;
-  scope: string | null;
-}
-
-/** Exchange the authorization code for tokens. redirectUri must match the one
- * used in `buildAuthUrl` (the provider checks it). */
-export async function exchangeCode(
+export function exchangeCode(
   platform: PublishPlatform,
   code: string,
   redirectUri: string,
 ): Promise<OAuthTokens> {
-  const { id, secret } = creds(platform);
-  const res = await fetch(endpoints(platform).token, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: id,
-      client_secret: secret,
-      code,
-      redirect_uri: redirectUri,
-      grant_type: "authorization_code",
-    }),
-  });
-  if (!res.ok) throw new Error(`oauth_exchange_${res.status}`);
-  const json = (await res.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-    scope?: string;
-  };
-  if (!json.access_token) throw new Error("oauth_no_access_token");
-  return {
-    accessToken: json.access_token,
-    refreshToken: json.refresh_token ?? null,
-    expiresAt: json.expires_in
-      ? new Date(Date.now() + json.expires_in * 1000)
-      : null,
-    scope: json.scope ?? null,
-  };
+  return provider(platform).exchangeCode(creds(platform), code, redirectUri);
 }
 
-/** Trade a refresh token for a fresh access token. Google does not return a new
- * refresh token here, so the caller keeps the existing one. */
-export async function refreshAccessToken(
+export function refreshAccessToken(
   platform: PublishPlatform,
   refreshToken: string,
 ): Promise<{ accessToken: string; expiresAt: Date | null }> {
-  const { id, secret } = creds(platform);
-  const res = await fetch(endpoints(platform).token, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: id,
-      client_secret: secret,
-      refresh_token: refreshToken,
-      grant_type: "refresh_token",
-    }),
-  });
-  if (!res.ok) throw new Error(`oauth_refresh_${res.status}`);
-  const json = (await res.json()) as {
-    access_token?: string;
-    expires_in?: number;
-  };
-  if (!json.access_token) throw new Error("oauth_refresh_no_token");
-  return {
-    accessToken: json.access_token,
-    expiresAt: json.expires_in
-      ? new Date(Date.now() + json.expires_in * 1000)
-      : null,
-  };
+  return provider(platform).refreshAccessToken(creds(platform), refreshToken);
 }
 
-export interface OAuthAccount {
-  externalAccountId: string | null;
-  handle: string | null;
-}
-
-/** Identify the connected account for display (channel/handle). Best-effort:
- * a failure here must not fail the connection, so it returns nulls. */
-export async function fetchAccount(
+export function fetchAccount(
   platform: PublishPlatform,
   accessToken: string,
 ): Promise<OAuthAccount> {
-  if (platform === "youtube") {
-    const res = await fetch(
-      "https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true",
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!res.ok) return { externalAccountId: null, handle: null };
-    const json = (await res.json()) as {
-      items?: {
-        id?: string;
-        snippet?: { title?: string; customUrl?: string };
-      }[];
-    };
-    const ch = json.items?.[0];
-    return {
-      externalAccountId: ch?.id ?? null,
-      handle: ch?.snippet?.customUrl ?? ch?.snippet?.title ?? null,
-    };
-  }
-  return { externalAccountId: null, handle: null };
+  return provider(platform).fetchAccount(accessToken);
 }

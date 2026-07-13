@@ -21,6 +21,13 @@ describe("platform registry", () => {
     expect(needing).toEqual(["instagram"]);
   });
 
+  it("only Instagram requires a Professional (Business/Creator) account", () => {
+    const gated = publishPlatforms.filter(
+      (p) => PLATFORMS[p].requiresProfessional,
+    );
+    expect(gated).toEqual(["instagram"]);
+  });
+
   it("every platform requests at least one scope and names both env vars", () => {
     for (const p of publishPlatforms) {
       const spec = PLATFORMS[p];
