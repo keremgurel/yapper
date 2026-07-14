@@ -6,11 +6,11 @@ import { PLATFORMS } from "@/lib/publish/platforms";
 import type { PublishPlatform } from "@/lib/db/schema";
 import type { CrossPostError, CrossPostState } from "@/hooks/use-cross-post";
 import type { CrossPostResult } from "@/lib/publish/client";
+import ProfessionalAccountHelp from "./professional-account-help";
 
 const ERROR_COPY: Record<CrossPostError, string> = {
   not_connected: "Connect this platform first, from Connections.",
-  not_professional:
-    "Instagram needs a Business or Creator account. Switch in the Instagram app (it's free), then try again.",
+  not_professional: "Your Instagram needs to be a Professional account",
   failed: "Couldn't post. Try again.",
 };
 
@@ -78,10 +78,21 @@ export default function ComposeActions({
 
   return (
     <div className="flex flex-col gap-3">
-      {error && (
-        <p className="text-sm font-bold text-[color:var(--sg-pink-500)]">
-          {ERROR_COPY[error]}
-        </p>
+      {error === "not_professional" ? (
+        <div className="border-border rounded-lg border border-[color:var(--sg-pink-500)]/40 bg-[color:var(--sg-pink-500)]/5 p-3">
+          <p className="text-sm font-bold text-[color:var(--sg-pink-500)]">
+            {ERROR_COPY.not_professional}
+          </p>
+          <div className="mt-2">
+            <ProfessionalAccountHelp />
+          </div>
+        </div>
+      ) : (
+        error && (
+          <p className="text-sm font-bold text-[color:var(--sg-pink-500)]">
+            {ERROR_COPY[error]}
+          </p>
+        )
       )}
       <Button
         type="button"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { crossPostToInstagram } from "@/lib/publish/client";
 import { useCrossPost } from "@/hooks/use-cross-post";
 import ComposeActions from "./compose-actions";
+import ProfessionalAccountHelp from "./professional-account-help";
 import type { CrossPostTarget } from "./types";
 
 /** Compose an Instagram Reel: one caption. Instagram pulls the video and posts
@@ -32,10 +33,17 @@ export default function InstagramCompose({
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-muted-foreground text-xs">
-        Posts a Reel to your Instagram. Needs a Business or Creator account
-        (switching is free in the Instagram app).
-      </p>
+      <div className="text-muted-foreground text-xs">
+        <p>Posts a Reel to your Instagram.</p>
+        <details className="mt-1">
+          <summary className="cursor-pointer font-bold text-[color:var(--sg-accent)] hover:opacity-80">
+            Needs a Business or Creator account. How do I switch?
+          </summary>
+          <div className="mt-2">
+            <ProfessionalAccountHelp />
+          </div>
+        </details>
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-foreground/70 text-xs font-bold">Caption</span>
