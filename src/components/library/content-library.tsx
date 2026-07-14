@@ -270,8 +270,8 @@ export default function ContentLibrary() {
                           });
                         }}
                         className="p-1 text-[color:var(--sg-accent)] hover:opacity-80"
-                        title="Post to YouTube"
-                        aria-label="Post to YouTube"
+                        title="Post to a platform"
+                        aria-label="Post to a platform"
                       >
                         <Send className="h-4 w-4" />
                       </button>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ExternalLink, Loader2, Send, Sparkles } from "lucide-react";
-import { generateCaption } from "@/lib/publish/client";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,18 +10,21 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useCrossPost } from "@/hooks/use-cross-post";
+import { useConnections } from "@/hooks/use-connections";
+import type { PublishPlatform } from "@/lib/db/schema";
+import InstagramCompose from "./compose/instagram-compose";
+import PlatformPicker from "./compose/platform-picker";
+import TikTokCompose from "./compose/tiktok-compose";
+import type { CrossPostTarget } from "./compose/types";
+import YouTubeCompose from "./compose/youtube-compose";
 
-export interface CrossPostTarget {
-  id: string;
-  title: string;
-  submissionId: string;
-}
+export type { CrossPostTarget } from "./compose/types";
 
 /**
- * Compose a YouTube post for one master video and send it. Mounted per target
- * (keyed by the parent), so its fields seed from the item without a
- * set-state-in-effect; unmounts when closed.
+ * Post one master video to a connected platform. Mounted per target (keyed by
+ * the parent, so fields seed without a set-state-in-effect and reset on close).
+ * The sheet only picks the platform and hosts the right compose body; each body
+ * owns its own fields and posting.
  */
 export default function CrossPostSheet({
   item,
@@ -32,176 +34,83 @@ export default function CrossPostSheet({
   onClose: () => void;
 }) {
   const [open, setOpen] = useState(true);
-  const [title, setTitle] = useState(item.title);
-  const [description, setDescription] = useState("");
-  const [matchStyle, setMatchStyle] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState<string | null>(null);
-  const { state, error, result, post } = useCrossPost();
+  const [override, setOverride] = useState<PublishPlatform | null>(null);
+  const { connections } = useConnections(open);
 
-  const busy = state === "posting";
-
-  const generate = async () => {
-    if (generating) return;
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const caption = await generateCaption({
-        title: title.trim() || item.title,
-        matchStyle,
-      });
-      setTitle(caption.title || title);
-      setDescription(caption.description);
-    } catch (e) {
-      setGenError(
-        e instanceof Error && e.message === "no_provider"
-          ? "AI captions aren't set up yet."
-          : "Couldn't generate. Try again.",
-      );
-    } finally {
-      setGenerating(false);
-    }
-  };
   const close = (o: boolean) => {
     setOpen(o);
     if (!o) onClose();
   };
-  const submit = () => {
-    if (!title.trim() || busy) return;
-    void post({
-      submissionId: item.submissionId,
-      title: title.trim(),
-      description: description.trim() || undefined,
-      contentItemId: item.id,
-    });
-  };
+
+  const connected = connections?.map((c) => c.platform) ?? [];
+  // Effective platform derived (not seeded via effect): the override if it's
+  // still connected, else the first connected platform.
+  const active =
+    override && connected.includes(override) ? override : connected[0];
 
   return (
     <Sheet open={open} onOpenChange={close}>
       <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Post to YouTube</SheetTitle>
-          <SheetDescription>
-            Uploads to your channel. It stays private until your YouTube API
-            audit clears.
-          </SheetDescription>
+          <SheetTitle>Post your video</SheetTitle>
+          <SheetDescription>Choose where to share it.</SheetDescription>
         </SheetHeader>
 
-        {state === "done" && result ? (
-          <div className="flex flex-col gap-3 p-4">
-            <p className="text-sm font-bold text-[color:var(--sg-green-500)]">
-              Posted to YouTube (private).
-            </p>
-            <a
-              href={result.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-foreground flex items-center gap-1.5 text-sm font-bold hover:text-[color:var(--sg-accent)]"
-            >
-              <ExternalLink className="h-4 w-4" />
-              View on YouTube
-            </a>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => close(false)}
-            >
-              Done
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 p-4">
-            <div className="border-border flex flex-col gap-2 rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-foreground/70 text-xs font-bold">
-                  Draft with AI
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void generate()}
-                  disabled={generating || busy}
-                  style={{ background: "var(--sg-accent-gradient)" }}
-                  className="text-white"
-                >
-                  {generating ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  )}
-                  Generate
-                </Button>
-              </div>
-              <label className="text-foreground/70 flex cursor-pointer items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={matchStyle}
-                  onChange={(e) => setMatchStyle(e.target.checked)}
-                  className="accent-[color:var(--sg-accent)]"
-                />
-                Match my past captions
-              </label>
-              {genError && (
-                <p className="text-[11px] font-bold text-[color:var(--sg-pink-500)]">
-                  {genError}
-                </p>
-              )}
+        <div className="flex flex-col gap-4 p-4">
+          {connections === null ? (
+            <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading your
+              connections…
             </div>
-
-            <label className="flex flex-col gap-1.5">
-              <span className="text-foreground/70 text-xs font-bold">
-                Title
-              </span>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                maxLength={100}
-                disabled={busy}
-                className="border-border bg-card rounded-lg border px-3 py-2 text-sm outline-none focus:border-[color:var(--sg-accent)]"
-              />
-              <span className="text-muted-foreground text-[11px]">
-                {title.length}/100
-              </span>
-            </label>
-            <label className="flex flex-col gap-1.5">
-              <span className="text-foreground/70 text-xs font-bold">
-                Description
-              </span>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                maxLength={5000}
-                rows={5}
-                disabled={busy}
-                placeholder="Optional"
-                className="border-border bg-card placeholder:text-foreground/30 resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:border-[color:var(--sg-accent)]"
-              />
-            </label>
-
-            {error && (
-              <p className="text-sm font-bold text-[color:var(--sg-pink-500)]">
-                {error === "not_connected"
-                  ? "Connect YouTube first (Connections)."
-                  : "Couldn't post. Try again."}
+          ) : connected.length === 0 || !active ? (
+            <div className="text-muted-foreground py-6 text-sm">
+              <p className="text-foreground font-bold">
+                No platforms connected
               </p>
-            )}
-
-            <Button
-              type="button"
-              onClick={submit}
-              disabled={!title.trim() || busy}
-              style={{ background: "var(--sg-accent-gradient)" }}
-              className="text-white"
-            >
-              {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
+              <p className="mt-1">
+                Connect YouTube, TikTok, or Instagram first, then come back to
+                post.
+              </p>
+              <Link
+                href="/studio/connections"
+                className="mt-3 inline-block font-bold text-[color:var(--sg-accent)] hover:opacity-80"
+              >
+                Go to Connections
+              </Link>
+            </div>
+          ) : (
+            <>
+              {connected.length > 1 && (
+                <PlatformPicker
+                  platforms={connected}
+                  active={active}
+                  onChange={setOverride}
+                />
               )}
-              {busy ? "Posting…" : "Post to YouTube"}
-            </Button>
-          </div>
-        )}
+              {active === "youtube" && (
+                <YouTubeCompose
+                  key={item.id}
+                  item={item}
+                  onDone={() => close(false)}
+                />
+              )}
+              {active === "instagram" && (
+                <InstagramCompose
+                  key={item.id}
+                  item={item}
+                  onDone={() => close(false)}
+                />
+              )}
+              {active === "tiktok" && (
+                <TikTokCompose
+                  key={item.id}
+                  item={item}
+                  onDone={() => close(false)}
+                />
+              )}
+            </>
+          )}
+        </div>
       </SheetContent>
     </Sheet>
   );

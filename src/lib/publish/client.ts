@@ -61,10 +61,24 @@ export interface CrossPostInput {
   contentItemId?: string;
 }
 
+export interface InstagramPostInput {
+  submissionId: string;
+  caption?: string;
+  contentItemId?: string;
+}
+
+export interface TikTokPostInput {
+  submissionId: string;
+  contentItemId?: string;
+}
+
+/** The shape every platform's post resolves to. `url` is present when the post
+ * lands somewhere linkable (YouTube, Instagram); `draft` is true when it lands
+ * in the app's drafts to finish there (TikTok), which has no URL yet. */
 export interface CrossPostResult {
   jobId: string;
-  videoId: string;
-  url: string;
+  url?: string;
+  draft?: boolean;
 }
 
 export async function generateCaption(input: {
@@ -90,6 +104,38 @@ export async function crossPostToYouTube(
   input: CrossPostInput,
 ): Promise<CrossPostResult> {
   const res = await fetch("/api/publish/youtube", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (res.status === 409) throw new Error("not_connected");
+  if (!res.ok) throw new Error("post_failed");
+  return (await res.json()) as CrossPostResult;
+}
+
+export async function crossPostToInstagram(
+  input: InstagramPostInput,
+): Promise<CrossPostResult> {
+  const res = await fetch("/api/publish/instagram", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (res.status === 409) throw new Error("not_connected");
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    // A personal account OAuths fine but the publish call rejects it.
+    throw new Error(
+      data.error === "not_professional" ? "not_professional" : "post_failed",
+    );
+  }
+  return (await res.json()) as CrossPostResult;
+}
+
+export async function crossPostToTikTok(
+  input: TikTokPostInput,
+): Promise<CrossPostResult> {
+  const res = await fetch("/api/publish/tiktok", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
