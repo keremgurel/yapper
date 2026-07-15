@@ -1,4 +1,7 @@
-import { nativeShortSide } from "@/lib/studio/export/dimensions";
+import {
+  nativeShortSide,
+  outputDimensions,
+} from "@/lib/studio/export/dimensions";
 import type { StudioSource } from "@/lib/studio/types";
 
 /** A user-selectable output resolution. `shortSide` undefined = source native. */
@@ -18,29 +21,26 @@ const STEPS = [
   { id: "720p", label: "720p", shortSide: 720 },
 ] as const;
 
-const even = (n: number) => Math.max(2, Math.round(n / 2) * 2);
-
 /**
  * Resolution options for the export menu: "Original" at native detail, plus any
  * standard step smaller than the source (never an upscale). Hints spell out the
  * exact pixel size at the project's chosen frame ratio, so the choice is
- * concrete, like a camera's quality picker.
+ * concrete, like a camera's quality picker. The hint is derived from the very
+ * function that sizes the export (outputDimensions), so it can never disagree
+ * with the file that lands, including its encoder-limit clamp.
  */
 export function resolutionChoices(
   source: StudioSource | null,
   aspect: number,
 ): ResolutionChoice[] {
   const shorter = nativeShortSide(source);
-  const portrait = aspect < 1;
-  const longFor = (short: number) =>
-    even(portrait ? short / aspect : short * aspect);
-  const dims = (short: number) =>
-    portrait
-      ? `${even(short)} x ${longFor(short)}`
-      : `${longFor(short)} x ${even(short)}`;
+  const dims = (shortSide?: number) => {
+    const { width, height } = outputDimensions(source, aspect, shortSide);
+    return `${width} x ${height}`;
+  };
 
   const choices: ResolutionChoice[] = [
-    { id: "original", label: "Original", hint: dims(shorter) },
+    { id: "original", label: "Original", hint: dims() },
   ];
   for (const step of STEPS) {
     if (shorter > step.shortSide) {
