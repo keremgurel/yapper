@@ -6,9 +6,8 @@ import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import type { Filmstrip } from "@/lib/studio/filmstrip";
 import { visibleSpan } from "@/lib/studio/window";
+import { trimEndEdge, trimStartEdge } from "@/lib/studio/trim-edge";
 import { newGestureId, type Overlay } from "@/lib/studio/types";
-
-const MIN = 0.1; // minimum overlay duration (seconds)
 
 /** What letting go right now would do to this clip, for the drag's ring color. */
 export type DropHint = "none" | "track" | "base" | "blocked";
@@ -84,32 +83,13 @@ export default function OverlayClip({
     if (!trim) return;
     const onMove = (e: PointerEvent) => {
       const delta = (e.clientX - trim.startX) / pxPerSec;
-      const g = trim.orig;
-      if (trim.edge === "start") {
-        // Left edge: shift start + in-point, keep the right edge fixed.
-        let d = delta;
-        d = Math.min(d, g.duration - MIN); // keep >= MIN
-        d = Math.max(d, bounds.min - g.start); // don't cross 0:00 or a neighbour
-        if (!isImg) d = Math.max(d, -g.sourceStart); // don't cross media in-point
-        onTrim(
-          o.id,
-          g.start + d,
-          g.duration - d,
-          isImg ? g.sourceStart : g.sourceStart + d,
-          trim.gesture,
-        );
-      } else {
-        // Right edge: change duration only.
-        let d = delta;
-        d = Math.max(d, MIN - g.duration);
-        if (Number.isFinite(fullDuration)) {
-          d = Math.min(d, fullDuration - (g.sourceStart + g.duration));
-        }
-        if (Number.isFinite(bounds.max)) {
-          d = Math.min(d, bounds.max - (g.start + g.duration));
-        }
-        onTrim(o.id, g.start, g.duration + d, g.sourceStart, trim.gesture);
-      }
+      // Left edge shifts start + in-point with the right edge fixed; right edge
+      // only changes duration. Same clamp math the base and audio clips use.
+      const next =
+        trim.edge === "start"
+          ? trimStartEdge(trim.orig, delta, { min: bounds.min, isImage: isImg })
+          : trimEndEdge(trim.orig, delta, { max: bounds.max, fullDuration });
+      onTrim(o.id, next.start, next.duration, next.sourceStart, trim.gesture);
     };
     const onUp = () => setTrim(null);
     window.addEventListener("pointermove", onMove);
