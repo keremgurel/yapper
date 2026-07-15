@@ -1,25 +1,42 @@
 import { clipDuration } from "@/lib/studio/clips";
-import type { Clip } from "@/lib/studio/types";
+import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
 
 /** How close a dragged edge must come to a snap point, in screen pixels. */
 export const SNAP_PX = 8;
 
 /**
  * The instants a dragged clip wants to line up with: the start and end of the
- * project, the playhead, and every seam in the bottom track.
+ * project, the playhead, every seam in the bottom track, and the start and end
+ * of every other overlay and audio clip. Lining up with a neighbor's edge is
+ * what a pro editor's magnet does, so cutaways and music butt up cleanly.
+ *
+ * `excludeId` is the clip being dragged: it must never snap to its own edges,
+ * which would pin it in place. A hidden overlay is composited nowhere, so it
+ * offers no edge to snap to either.
  */
 export function timelineSnapPoints(
   clips: Clip[],
+  overlays: Overlay[],
+  audioTracks: AudioTrack[],
   total: number,
   playhead: number,
+  excludeId?: string,
 ): number[] {
-  const seams: number[] = [];
+  const points: number[] = [0, total, playhead];
   let acc = 0;
   for (const clip of clips) {
     acc += clipDuration(clip);
-    seams.push(acc);
+    points.push(acc);
   }
-  return [0, total, playhead, ...seams];
+  for (const o of overlays) {
+    if (o.id === excludeId || o.hidden) continue;
+    points.push(o.start, o.start + o.duration);
+  }
+  for (const a of audioTracks) {
+    if (a.id === excludeId) continue;
+    points.push(a.start, a.start + a.duration);
+  }
+  return points;
 }
 
 /** The nearest point within `threshold` of `v`, or `v` itself. */

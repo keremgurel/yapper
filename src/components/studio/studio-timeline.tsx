@@ -186,14 +186,32 @@ export default function StudioTimeline({
   const measured = view.width > 0;
   const padLeft = measured ? Math.round(view.width) : 240;
 
+  // The lanes read live through refs, so `snapStart` stays a stable identity for
+  // the whole drag even as the dragged clip (and thus these arrays) changes on
+  // every pointermove. Only the OTHER clips' edges matter as snap targets, and
+  // those hold still; the dragged one is excluded by id.
+  const overlaysRef = useRef(overlays);
+  const audioTracksRef = useRef(audioTracks);
+  useEffect(() => {
+    overlaysRef.current = overlays;
+    audioTracksRef.current = audioTracks;
+  }, [overlays, audioTracks]);
+
   // Magnet mode: pull a dragged clip's nearer edge onto whatever it is passing.
   const snapStart = useCallback(
-    (start: number, dur: number): number =>
+    (start: number, dur: number, excludeId?: string): number =>
       snapping
         ? snapClipStart(
             start,
             dur,
-            timelineSnapPoints(clips, total, currentTimelineTime),
+            timelineSnapPoints(
+              clips,
+              overlaysRef.current,
+              audioTracksRef.current,
+              total,
+              currentTimelineTime,
+              excludeId,
+            ),
             SNAP_PX / pxPerSec,
           )
         : Math.max(0, start),

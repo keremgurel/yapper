@@ -38,8 +38,8 @@ export function useAudioDrag({
 }: {
   audioTracks: AudioTrack[];
   pxPerSec: number;
-  /** Magnetism, shared with the other lanes. */
-  snapStart: (start: number, duration: number) => number;
+  /** Magnetism, shared with the other lanes. `excludeId` skips self-snapping. */
+  snapStart: (start: number, duration: number, excludeId?: string) => number;
   onMove: (id: string, start: number, gesture: string) => void;
 }): AudioDragState {
   const [drag, setDrag] = useState<AudioDragStart | null>(null);
@@ -63,7 +63,7 @@ export function useAudioDrag({
       const delta = (e.clientX - drag.clientX) / pxPerSec;
       onMove(
         drag.id,
-        snapStart(drag.origStart + delta, drag.duration),
+        snapStart(drag.origStart + delta, drag.duration, drag.id),
         drag.gesture,
       );
     };

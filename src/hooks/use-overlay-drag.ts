@@ -60,8 +60,8 @@ export function useOverlayDrag({
 }: {
   overlays: Overlay[];
   pxPerSec: number;
-  /** Magnetism, shared with the other lanes. */
-  snapStart: (start: number, duration: number) => number;
+  /** Magnetism, shared with the other lanes. `excludeId` skips self-snapping. */
+  snapStart: (start: number, duration: number, excludeId?: string) => number;
   /** Which lane a screen y sits over. Must not change identity mid-drag. */
   resolveTarget: (clientY: number) => OverlayDropTarget | null;
   onMove: (id: string, start: number, gesture: string) => void;
@@ -95,7 +95,7 @@ export function useOverlayDrag({
       const delta = (e.clientX - drag.clientX) / pxPerSec;
       onMove(
         drag.id,
-        snapStart(drag.origStart + delta, drag.duration),
+        snapStart(drag.origStart + delta, drag.duration, drag.id),
         drag.gesture,
       );
       targetRef.current = resolveTarget(e.clientY);

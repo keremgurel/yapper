@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
-import type { Clip } from "@/lib/studio/types";
+import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
 
 const clip = (id: string, start: number, end: number): Clip => ({
   id,
@@ -8,15 +8,39 @@ const clip = (id: string, start: number, end: number): Clip => ({
   end,
 });
 
+function overlay(fields: Partial<Overlay> & { id: string }): Overlay {
+  return {
+    kind: "video",
+    url: "blob:x",
+    name: "clip",
+    track: 0,
+    start: 0,
+    duration: 0,
+    sourceStart: 0,
+    ...fields,
+  };
+}
+
+function audio(fields: Partial<AudioTrack> & { id: string }): AudioTrack {
+  return {
+    name: "track",
+    url: "blob:a",
+    duration: 0,
+    start: 0,
+    muted: false,
+    ...fields,
+  };
+}
+
 describe("timelineSnapPoints", () => {
   it("offers the project's ends and the playhead", () => {
-    expect(timelineSnapPoints([], 30, 7)).toEqual([0, 30, 7]);
+    expect(timelineSnapPoints([], [], [], 30, 7)).toEqual([0, 30, 7]);
   });
 
   it("offers every seam in the bottom track", () => {
     // Two clips of 2s and 3s: seams at 2 and 5.
     const clips = [clip("a", 0, 2), clip("b", 4, 7)];
-    expect(timelineSnapPoints(clips, 5, 0)).toEqual([0, 5, 0, 2, 5]);
+    expect(timelineSnapPoints(clips, [], [], 5, 0)).toEqual([0, 5, 0, 2, 5]);
   });
 
   it("measures a seam by the clip's length, not its source times", () => {
@@ -28,7 +52,33 @@ describe("timelineSnapPoints", () => {
       end: 102,
       src: { url: "b.mp4", kind: "video", name: "b.mp4", duration: 200 },
     };
-    expect(timelineSnapPoints([appended], 2, 0)).toEqual([0, 2, 0, 2]);
+    expect(timelineSnapPoints([appended], [], [], 2, 0)).toEqual([0, 2, 0, 2]);
+  });
+
+  it("offers both edges of every overlay and audio clip", () => {
+    const overlays = [overlay({ id: "o", start: 3, duration: 2 })]; // edges 3, 5
+    const audios = [audio({ id: "a", start: 8, duration: 4 })]; // edges 8, 12
+    expect(timelineSnapPoints([], overlays, audios, 20, 0)).toEqual([
+      0, 20, 0, 3, 5, 8, 12,
+    ]);
+  });
+
+  it("excludes the dragged clip's own edges so it can't snap to itself", () => {
+    const overlays = [
+      overlay({ id: "self", start: 3, duration: 2 }),
+      overlay({ id: "other", start: 9, duration: 1 }),
+    ];
+    // Only the other overlay's edges (9, 10) survive; self's 3 and 5 are gone.
+    expect(timelineSnapPoints([], overlays, [], 20, 0, "self")).toEqual([
+      0, 20, 0, 9, 10,
+    ]);
+  });
+
+  it("ignores a hidden overlay, which is composited nowhere", () => {
+    const overlays = [
+      overlay({ id: "o", start: 3, duration: 2, hidden: true }),
+    ];
+    expect(timelineSnapPoints([], overlays, [], 20, 0)).toEqual([0, 20, 0]);
   });
 });
 
