@@ -39,7 +39,11 @@ import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
-const MIN_PX = 12;
+// Zoom-out floor: how few pixels one second may shrink to. Low enough that a
+// several-minute timeline fits on screen at once for an overview; clips still
+// render at a 4px minimum, so nothing vanishes. Zoom-in ceiling for frame-level
+// trimming.
+const MIN_PX = 4;
 const MAX_PX = 800;
 
 function clamp(v: number, lo: number, hi: number) {
