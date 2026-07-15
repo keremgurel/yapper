@@ -49,16 +49,21 @@ export function outputDimensions(
 
 /**
  * Scale a size down so its longest side is at most `target`, preserving aspect
- * ratio and keeping even dimensions. Never upscales — a size already within the
- * target is returned unchanged. Used as an export fallback when the encoder
- * can't handle the native frame size.
+ * ratio and always returning even dimensions (H.264 requires them). Never
+ * upscales — a size already within the target keeps its pixels, only rounded to
+ * even. Used as an export fallback when the encoder can't handle the native
+ * frame size.
  */
 export function scaleLongSide(
   size: { width: number; height: number },
   target: number,
 ): { width: number; height: number } {
   const longSide = Math.max(size.width, size.height);
-  if (longSide <= target) return size;
+  // Even within target, still guarantee even sides — an odd input would fail
+  // the encoder just the same as an oversized one.
+  if (longSide <= target) {
+    return { width: toEven(size.width), height: toEven(size.height) };
+  }
   const scale = target / longSide;
   return {
     width: toEven(size.width * scale),
