@@ -143,6 +143,13 @@ interface StudioContextValue {
   addAudio: (file: File) => Promise<void>;
   /** `gesture`: one key per drag, so the whole drag is a single undo step. */
   moveAudio: (id: string, start: number, gesture?: string) => void;
+  setAudioRange: (
+    id: string,
+    start: number,
+    duration: number,
+    sourceStart: number,
+    gesture?: string,
+  ) => void;
   toggleAudioMuted: (id: string) => void;
   removeAudio: (id: string) => void;
   selectedAudioIds: string[];
@@ -920,6 +927,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           url: media.url,
           duration: media.duration,
           start: 0,
+          sourceStart: 0,
+          mediaDuration: media.duration,
           muted: false,
         },
       ]);
@@ -933,6 +942,35 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         (prev) =>
           prev.map((t) =>
             t.id === id ? { ...t, start: Math.max(0, start) } : t,
+          ),
+        gesture,
+      );
+    },
+    [setAudioTracks],
+  );
+
+  // Trim an audio clip: its timeline position, played length, and media
+  // in-point, clamped so it stays within its own file. `gesture` collapses the
+  // whole drag into one undo step.
+  const setAudioRange = useCallback(
+    (
+      id: string,
+      start: number,
+      duration: number,
+      sourceStart: number,
+      gesture?: string,
+    ) => {
+      setAudioTracks(
+        (prev) =>
+          prev.map((t) =>
+            t.id === id
+              ? {
+                  ...t,
+                  start: Math.max(0, start),
+                  duration: Math.max(0.1, duration),
+                  sourceStart: Math.max(0, sourceStart),
+                }
+              : t,
           ),
         gesture,
       );
@@ -1576,6 +1614,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEditCaptions,
       addAudio,
       moveAudio,
+      setAudioRange,
       toggleAudioMuted,
       removeAudio,
       mediaAssets,
@@ -1673,6 +1712,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       autoEditCaptions,
       addAudio,
       moveAudio,
+      setAudioRange,
       toggleAudioMuted,
       removeAudio,
       mediaAssets,

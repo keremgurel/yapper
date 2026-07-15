@@ -15,6 +15,10 @@ export interface TimelineMedia {
  *
  * Filmstrips deliberately do NOT get the audio tracks: an audio-only file has no
  * frames to seek, so adding it to that pipeline would only burn time timing out.
+ *
+ * Each audio entry uses the track's full `mediaDuration`, not its (trimmable)
+ * timeline `duration`: the peaks always cover the whole file, and keying on the
+ * immutable length keeps a trim drag from re-decoding the file on every move.
  */
 export function waveformMedia(
   video: TimelineMedia[],
@@ -23,9 +27,9 @@ export function waveformMedia(
   const seen = new Set(video.map((m) => m.url));
   const out = [...video];
   for (const a of audioTracks) {
-    if (!a.url || a.duration <= 0 || seen.has(a.url)) continue;
+    if (!a.url || a.mediaDuration <= 0 || seen.has(a.url)) continue;
     seen.add(a.url);
-    out.push({ url: a.url, duration: a.duration });
+    out.push({ url: a.url, duration: a.mediaDuration });
   }
   return out;
 }

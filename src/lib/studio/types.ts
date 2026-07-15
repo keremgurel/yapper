@@ -93,8 +93,13 @@ export interface AudioTrack {
   id: string;
   name: string;
   url: string;
+  /** How long it plays on the timeline, in seconds. Shrinks when trimmed. */
   duration: number;
   start: number; // edited-timeline seconds
+  /** In-point into its own media, seconds. 0 until the left edge is trimmed. */
+  sourceStart: number;
+  /** Full length of the underlying file, the ceiling for the out-point. */
+  mediaDuration: number;
   muted: boolean;
 }
 

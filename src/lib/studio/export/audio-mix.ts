@@ -114,11 +114,11 @@ export async function mixAudio(
     if (buffer) schedule(buffer, o.start, o.sourceStart, o.duration);
   }
 
-  // Extra audio tracks.
+  // Extra audio tracks, each from its own (possibly trimmed) in-point.
   for (const t of audioTracks) {
     if (t.muted) continue;
     const buffer = await decode(t.url);
-    if (buffer) schedule(buffer, t.start, 0, t.duration);
+    if (buffer) schedule(buffer, t.start, t.sourceStart, t.duration);
   }
 
   if (scheduled === 0) return null;

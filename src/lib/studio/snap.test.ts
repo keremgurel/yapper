@@ -27,6 +27,8 @@ function audio(fields: Partial<AudioTrack> & { id: string }): AudioTrack {
     url: "blob:a",
     duration: 0,
     start: 0,
+    sourceStart: 0,
+    mediaDuration: 3600,
     muted: false,
     ...fields,
   };

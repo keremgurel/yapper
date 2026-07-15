@@ -32,6 +32,8 @@ const audio = (id: string, start = 0): AudioTrack => ({
   url: "a.mp3",
   duration: 3,
   start,
+  sourceStart: 0,
+  mediaDuration: 3,
   muted: false,
 });
 

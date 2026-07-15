@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Music2, Video } from "lucide-react";
+import { Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipDuration, clipMediaUrl, trimBounds } from "@/lib/studio/clips";
 import { useFilmstrips, useWaveforms } from "@/hooks/use-timeline-media";
@@ -16,6 +16,7 @@ import { waveformMedia, type TimelineMedia } from "@/lib/studio/timeline-media";
 import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
+import AudioClip from "@/components/studio/audio-clip";
 import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
@@ -75,6 +76,7 @@ export default function StudioTimeline({
     moveClip,
     audioTracks,
     moveAudio,
+    setAudioRange,
     toggleAudioMuted,
     removeAudio,
     selectedAudioIds,
@@ -913,83 +915,33 @@ export default function StudioTimeline({
               </div>
 
               {/* Audio tracks */}
-              {audioTracks.map((a) => {
-                const left = a.start * pxPerSec;
-                const width = Math.max(a.duration * pxPerSec, 8);
-                const selected = selectedAudioIds.includes(a.id);
-                return (
-                  <div
-                    key={a.id}
-                    ref={(node) => {
-                      const rows = audioRowsRef.current;
-                      rows.set(a.id, node);
-                      return () => {
-                        rows.delete(a.id);
-                      };
-                    }}
-                    className="relative h-8"
-                  >
-                    <div
-                      style={{ left, width }}
-                      onPointerDown={(e) => {
-                        if (e.button !== 0) return;
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // ⌘/Ctrl-click toggles multi-selection (no drag).
-                        if (e.metaKey || e.ctrlKey) {
-                          toggleAudioSelection(a.id);
-                          return;
-                        }
-                        if (!selected) selectAudio(a.id);
-                        audioDrag.begin(a.id, e.clientX, a.start);
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (!(e.metaKey || e.ctrlKey)) selectAudio(a.id);
-                      }}
-                      className={`absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-emerald-500/15 active:cursor-grabbing ${selected ? "ring-2 ring-cyan-500" : "ring-1 ring-emerald-500/35"} ${a.muted ? "opacity-40" : ""}`}
-                    >
-                      {/* Waveform, windowed to the visible span like the video
-                        tracks so the canvas never grows past ~two screens. */}
-                      {(() => {
-                        const peaks = waves.get(a.url) ?? [];
-                        if (peaks.length === 0) return null;
-                        const span = visibleSpan(
-                          a.start,
-                          a.duration,
-                          0,
-                          a.duration,
-                          visStartSec,
-                          visEndSec,
-                          pxPerSec,
-                        );
-                        if (!span) return null;
-                        return (
-                          <span
-                            className="pointer-events-none absolute inset-y-0 opacity-70"
-                            style={{ left: span.leftPx, width: span.widthPx }}
-                          >
-                            <WaveformCanvas
-                              peaks={peaks}
-                              sourceDuration={a.duration}
-                              clipStart={span.srcA}
-                              clipEnd={span.srcB}
-                              width={span.widthPx}
-                              height={32}
-                            />
-                          </span>
-                        );
-                      })()}
-                      <span className="pointer-events-none absolute inset-0 flex items-center gap-1.5 px-2">
-                        <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                        <span className="text-foreground/90 min-w-0 flex-1 truncate text-[11px] font-bold [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
-                          {a.name}
-                        </span>
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+              {audioTracks.map((a) => (
+                <div
+                  key={a.id}
+                  ref={(node) => {
+                    const rows = audioRowsRef.current;
+                    rows.set(a.id, node);
+                    return () => {
+                      rows.delete(a.id);
+                    };
+                  }}
+                  className="relative h-8"
+                >
+                  <AudioClip
+                    track={a}
+                    pxPerSec={pxPerSec}
+                    visStartSec={visStartSec}
+                    visEndSec={visEndSec}
+                    peaks={waves.get(a.url) ?? []}
+                    selected={selectedAudioIds.includes(a.id)}
+                    onSelect={(additive) =>
+                      additive ? toggleAudioSelection(a.id) : selectAudio(a.id)
+                    }
+                    onMoveStart={audioDrag.begin}
+                    onTrim={setAudioRange}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* Marquee drag-select rectangle */}

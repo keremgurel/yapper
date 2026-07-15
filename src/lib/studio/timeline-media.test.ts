@@ -8,6 +8,8 @@ function audio(fields: Partial<AudioTrack> & { id: string }): AudioTrack {
     url: `blob:${fields.id}`,
     duration: 10,
     start: 0,
+    sourceStart: 0,
+    mediaDuration: 10,
     muted: false,
     ...fields,
   };
@@ -19,9 +21,15 @@ const video: TimelineMedia[] = [
 ];
 
 describe("waveformMedia", () => {
-  it("keeps every video and appends each audio track's own file", () => {
+  it("keeps every video and appends each audio file at its full media length", () => {
+    // A trimmed track (duration 12) still loads peaks for its whole file (60).
     const out = waveformMedia(video, [
-      audio({ id: "music", url: "blob:music", duration: 60 }),
+      audio({
+        id: "music",
+        url: "blob:music",
+        duration: 12,
+        mediaDuration: 60,
+      }),
     ]);
     expect(out).toEqual([
       { url: "blob:rec", duration: 30 },
@@ -32,7 +40,7 @@ describe("waveformMedia", () => {
 
   it("does not decode a URL twice when an audio track reuses a video's URL", () => {
     const out = waveformMedia(video, [
-      audio({ id: "same", url: "blob:rec", duration: 30 }),
+      audio({ id: "same", url: "blob:rec", mediaDuration: 30 }),
     ]);
     expect(out.filter((m) => m.url === "blob:rec")).toHaveLength(1);
     expect(out).toHaveLength(2);
@@ -42,19 +50,19 @@ describe("waveformMedia", () => {
     const out = waveformMedia(
       [],
       [
-        audio({ id: "a", url: "blob:m", duration: 20 }),
-        audio({ id: "b", url: "blob:m", duration: 20 }),
+        audio({ id: "a", url: "blob:m", mediaDuration: 20 }),
+        audio({ id: "b", url: "blob:m", mediaDuration: 20 }),
       ],
     );
     expect(out).toHaveLength(1);
   });
 
-  it("skips an audio track with no URL or no duration", () => {
+  it("skips an audio track with no URL or no media length", () => {
     const out = waveformMedia(
       [],
       [
-        audio({ id: "empty", url: "", duration: 10 }),
-        audio({ id: "zero", url: "blob:z", duration: 0 }),
+        audio({ id: "empty", url: "", mediaDuration: 10 }),
+        audio({ id: "zero", url: "blob:z", mediaDuration: 0 }),
       ],
     );
     expect(out).toEqual([]);
