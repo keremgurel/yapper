@@ -18,9 +18,13 @@ export function videosByCreator(
     if (it.kind !== "video") return false;
     // Explicit link always wins.
     if (it.creatorItemId) return it.creatorItemId === creator.id;
-    // Fall back to author-name matching only for unlinked clips.
+    // Fall back to author-name matching only for unlinked clips. Both sides are
+    // held to >= 3 chars so a 1-2 char handle can't spuriously substring-match
+    // an unrelated creator (e.g. "tj" inside "outjump").
     if (keys.length === 0) return false;
-    const hay = [it.author, it.handle].map(normalizeHandle).filter(Boolean);
+    const hay = [it.author, it.handle]
+      .map(normalizeHandle)
+      .filter((h) => h.length >= 3);
     return hay.some((h) => keys.some((k) => h.includes(k) || k.includes(h)));
   });
 }
