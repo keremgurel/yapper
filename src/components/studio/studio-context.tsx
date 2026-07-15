@@ -57,6 +57,7 @@ import {
   moveToTrack,
   overlaysOnTrack,
 } from "@/lib/studio/tracks";
+import { liftedOverlayFromClip } from "@/lib/studio/lift";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
@@ -628,34 +629,30 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // Lifting the last one is fine — an empty bottom track is a valid project.
   const liftClipToTrack = useCallback(
     (clipId: string, timelineStart: number) => {
-      if (!source) return;
       const clip = clips.find((c) => c.id === clipId);
       if (!clip) return;
+      // An appended clip carries its own media, so the lifted overlay must point
+      // at THAT, not the recording, or it shows the wrong footage.
+      const lifted = liftedOverlayFromClip(clip, source, timelineStart);
+      if (!lifted) return;
       // Leaving the base and joining an upper track is one edit, so it undoes in
       // one step rather than stranding the clip on neither track.
-      updateEditor((s) => {
-        const span = {
-          id: newOverlayId(),
-          start: Math.max(0, timelineStart),
-          duration: Math.max(0.1, clip.end - clip.start),
-        };
-        return {
-          ...s,
-          clips: removeClip(s.clips, clipId),
-          overlays: [
-            ...s.overlays,
-            {
-              ...span,
-              kind: "video",
-              url: source.url,
-              name: source.name,
-              track: firstFreeTrack(s.overlays, span),
-              sourceStart: clip.start,
-              muted: true,
-            },
-          ],
-        };
-      });
+      updateEditor((s) => ({
+        ...s,
+        clips: removeClip(s.clips, clipId),
+        overlays: [
+          ...s.overlays,
+          {
+            ...lifted,
+            id: newOverlayId(),
+            track: firstFreeTrack(s.overlays, {
+              id: clipId,
+              start: lifted.start,
+              duration: lifted.duration,
+            }),
+          },
+        ],
+      }));
       sel.dropClip(clipId);
     },
     [source, clips, updateEditor, sel],
