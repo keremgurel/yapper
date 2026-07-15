@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useConnections } from "@/hooks/use-connections";
+import { connectedInOrder } from "@/lib/publish/connected-order";
 import type { PublishPlatform } from "@/lib/db/schema";
 import InstagramCompose from "./compose/instagram-compose";
 import PlatformPicker from "./compose/platform-picker";
@@ -42,7 +43,9 @@ export default function CrossPostSheet({
     if (!o) onClose();
   };
 
-  const connected = connections?.map((c) => c.platform) ?? [];
+  // Canonical order (YouTube, TikTok, Instagram), so the picker and the default
+  // selection are stable rather than following whatever order the API returned.
+  const connected = connectedInOrder(connections?.map((c) => c.platform) ?? []);
   // Effective platform derived (not seeded via effect): the override if it's
   // still connected, else the first connected platform.
   const active =

@@ -1,4 +1,5 @@
-import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import { type PublishPlatform } from "@/lib/db/schema";
+import { connectedInOrder } from "@/lib/publish/connected-order";
 import { PLATFORMS, type PublishMode } from "@/lib/publish/platforms";
 
 /** One platform a "post to all" fan-out will target, annotated with what
@@ -25,19 +26,16 @@ export interface CrossPostTarget {
 export function crossPostTargets(
   connected: PublishPlatform[],
 ): CrossPostTarget[] {
-  const set = new Set(connected);
-  return publishPlatforms
-    .filter((p) => set.has(p))
-    .map((p) => {
-      const spec = PLATFORMS[p];
-      return {
-        platform: p,
-        label: spec.label,
-        mode: spec.mode,
-        postMeaning: spec.postMeaning,
-        requiresProfessional: spec.requiresProfessional,
-      };
-    });
+  return connectedInOrder(connected).map((p) => {
+    const spec = PLATFORMS[p];
+    return {
+      platform: p,
+      label: spec.label,
+      mode: spec.mode,
+      postMeaning: spec.postMeaning,
+      requiresProfessional: spec.requiresProfessional,
+    };
+  });
 }
 
 /** A short, honest summary of what "post to all" will do across the targets:
