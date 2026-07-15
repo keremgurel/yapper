@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -50,10 +49,11 @@ function NavMenu({ items }: { items: StudioNavItem[] }) {
 
 /** The Studio workflow nav rail. Sits BELOW the global site navbar (which
  * carries the logo + account), so it holds only the Studio surfaces. The main
- * workflow leads; the supporting surfaces (Connections, and later Settings)
- * sit in a muted footer group so they don't compete with the flow. Collapses
- * to an icon rail on desktop, a sheet on mobile. The `top-14` offset keeps the
- * fixed rail under the 56px sticky header. */
+ * workflow leads; the supporting surfaces (Connections, and later Settings and
+ * automations) sit in their own labeled "Setup" group right under the flow, so
+ * they read as separate plumbing rather than a buried footer afterthought.
+ * Collapses to an icon rail on desktop, a sheet on mobile. The `top-14` offset
+ * keeps the fixed rail under the 56px sticky header. */
 export default function AppSidebar() {
   return (
     <Sidebar collapsible="icon" className="top-14 h-[calc(100svh-3.5rem)]">
@@ -64,15 +64,14 @@ export default function AppSidebar() {
             <NavMenu items={studioFlowNav} />
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarContent>
 
-      <SidebarFooter>
-        <SidebarGroup className="p-0">
+        <SidebarGroup>
+          <SidebarGroupLabel>Setup</SidebarGroupLabel>
           <SidebarGroupContent>
             <NavMenu items={studioUtilityNav} />
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarFooter>
+      </SidebarContent>
 
       <SidebarRail />
     </Sidebar>
