@@ -35,6 +35,7 @@ import {
 } from "@/hooks/use-overlay-drag";
 import { useTrimDrag } from "@/hooks/use-trim-drag";
 import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
+import { snappedTrimDelta } from "@/lib/studio/snap-trim";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
@@ -231,6 +232,37 @@ export default function StudioTimeline({
             SNAP_PX / pxPerSec,
           )
         : Math.max(0, start),
+    [snapping, pxPerSec, total, clips, currentTimelineTime],
+  );
+
+  // Same magnet, for a trim: pull the dragged edge of an overlay or audio clip
+  // onto a neighbour edge, seam, or the playhead. Off when magnet mode is off,
+  // where it returns the raw delta so trimming is exactly as before.
+  const snapTrimDelta = useCallback(
+    (
+      edge: "start" | "end",
+      start: number,
+      dur: number,
+      deltaSec: number,
+      excludeId: string,
+    ): number =>
+      snapping
+        ? snappedTrimDelta(
+            edge,
+            start,
+            dur,
+            deltaSec,
+            timelineSnapPoints(
+              clips,
+              overlaysRef.current,
+              audioTracksRef.current,
+              total,
+              currentTimelineTime,
+              excludeId,
+            ),
+            SNAP_PX / pxPerSec,
+          )
+        : deltaSec,
     [snapping, pxPerSec, total, clips, currentTimelineTime],
   );
 
@@ -678,6 +710,7 @@ export default function StudioTimeline({
                       dropHint={dropHintFor(o)}
                       onDragStart={overlayDrag.begin}
                       onTrim={setOverlayRange}
+                      snapTrimDelta={snapTrimDelta}
                     />
                   ))}
                 </div>
@@ -943,6 +976,7 @@ export default function StudioTimeline({
                     }
                     onMoveStart={audioDrag.begin}
                     onTrim={setAudioRange}
+                    snapTrimDelta={snapTrimDelta}
                   />
                 </div>
               ))}

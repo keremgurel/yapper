@@ -31,6 +31,7 @@ export default function AudioClip({
   onSelect,
   onMoveStart,
   onTrim,
+  snapTrimDelta,
 }: {
   track: AudioTrack;
   pxPerSec: number;
@@ -48,6 +49,14 @@ export default function AudioClip({
     sourceStart: number,
     gesture: string,
   ) => void;
+  /** Snap the dragged trim edge to a magnet, returning the adjusted delta. */
+  snapTrimDelta: (
+    edge: "start" | "end",
+    start: number,
+    duration: number,
+    deltaSec: number,
+    excludeId: string,
+  ) => number;
 }) {
   const a = track;
   const [trim, setTrim] = useState<TrimState | null>(null);
@@ -55,7 +64,14 @@ export default function AudioClip({
   useEffect(() => {
     if (!trim) return;
     const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - trim.startX) / pxPerSec;
+      const raw = (e.clientX - trim.startX) / pxPerSec;
+      const delta = snapTrimDelta(
+        trim.edge,
+        trim.orig.start,
+        trim.orig.duration,
+        raw,
+        a.id,
+      );
       const next =
         trim.edge === "start"
           ? trimStartEdge(trim.orig, delta, { min: 0, isImage: false })
@@ -72,7 +88,7 @@ export default function AudioClip({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [trim, pxPerSec, a.id, a.mediaDuration, onTrim]);
+  }, [trim, pxPerSec, a.id, a.mediaDuration, onTrim, snapTrimDelta]);
 
   const beginTrim = (edge: "start" | "end") => (e: React.PointerEvent) => {
     e.preventDefault();

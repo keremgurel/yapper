@@ -42,6 +42,7 @@ export default function OverlayClip({
   onSelect,
   onDragStart,
   onTrim,
+  snapTrimDelta,
 }: {
   overlay: Overlay;
   pxPerSec: number;
@@ -74,6 +75,14 @@ export default function OverlayClip({
     sourceStart: number,
     gesture: string,
   ) => void;
+  /** Snap the dragged trim edge to a magnet, returning the adjusted delta. */
+  snapTrimDelta: (
+    edge: "start" | "end",
+    start: number,
+    duration: number,
+    deltaSec: number,
+    excludeId: string,
+  ) => number;
 }) {
   const o = overlay;
   const [trim, setTrim] = useState<TrimState | null>(null);
@@ -82,7 +91,14 @@ export default function OverlayClip({
   useEffect(() => {
     if (!trim) return;
     const onMove = (e: PointerEvent) => {
-      const delta = (e.clientX - trim.startX) / pxPerSec;
+      const raw = (e.clientX - trim.startX) / pxPerSec;
+      const delta = snapTrimDelta(
+        trim.edge,
+        trim.orig.start,
+        trim.orig.duration,
+        raw,
+        o.id,
+      );
       // Left edge shifts start + in-point with the right edge fixed; right edge
       // only changes duration. Same clamp math the base and audio clips use.
       const next =
@@ -98,7 +114,16 @@ export default function OverlayClip({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [trim, pxPerSec, fullDuration, bounds, isImg, o.id, onTrim]);
+  }, [
+    trim,
+    pxPerSec,
+    fullDuration,
+    bounds,
+    isImg,
+    o.id,
+    onTrim,
+    snapTrimDelta,
+  ]);
 
   const beginTrim = (edge: "start" | "end") => (e: React.PointerEvent) => {
     e.preventDefault();
