@@ -58,6 +58,7 @@ export default function StudioWorkspace() {
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
+    selectedAudioIds,
     splitSelected,
     deleteSelected,
     clearSelection,
@@ -127,7 +128,8 @@ export default function StudioWorkspace() {
         if (
           selectedClipIds.length ||
           selectedOverlayIds.length ||
-          selectedCaptionIds.length
+          selectedCaptionIds.length ||
+          selectedAudioIds.length
         ) {
           e.preventDefault();
           deleteSelected();
@@ -138,7 +140,8 @@ export default function StudioWorkspace() {
         if (
           selectedClipIds.length ||
           selectedOverlayIds.length ||
-          selectedCaptionIds.length
+          selectedCaptionIds.length ||
+          selectedAudioIds.length
         ) {
           e.preventDefault();
           clearSelection();
@@ -171,6 +174,7 @@ export default function StudioWorkspace() {
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
+    selectedAudioIds,
   ]);
 
   const stage = (

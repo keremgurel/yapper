@@ -145,6 +145,10 @@ interface StudioContextValue {
   moveAudio: (id: string, start: number, gesture?: string) => void;
   toggleAudioMuted: (id: string) => void;
   removeAudio: (id: string) => void;
+  selectedAudioIds: string[];
+  selectAudio: (id: string | null) => void;
+  toggleAudioSelection: (id: string) => void;
+  selectAudios: (ids: string[]) => void;
   mediaAssets: MediaAsset[];
   overlays: Overlay[];
   addMediaAsset: (file: File) => Promise<void>;
@@ -248,6 +252,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     clipIds: selectedClipIds,
     overlayIds: selectedOverlayIds,
     captionIds: selectedCaptionIds,
+    audioIds: selectedAudioIds,
     selectedClipId,
     selectedCaptionId,
     actions: sel,
@@ -950,8 +955,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const removeAudio = useCallback(
     (id: string) => {
       setAudioTracks((prev) => prev.filter((t) => t.id !== id));
+      sel.dropAudio(id);
     },
-    [setAudioTracks],
+    [setAudioTracks, sel],
   );
 
   // Captions are anchored in the transcript's seconds, so they go with it.
@@ -1221,7 +1227,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     const clipIds = new Set(selectedClipIds);
     const overlayIds = new Set(selectedOverlayIds);
     const captionIds = new Set(selectedCaptionIds);
-    if (!clipIds.size && !overlayIds.size && !captionIds.size) return;
+    const audioIds = new Set(selectedAudioIds);
+    if (!clipIds.size && !overlayIds.size && !captionIds.size && !audioIds.size)
+      return;
     updateEditor((s) => ({
       ...s,
       clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
@@ -1231,6 +1239,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captions: captionIds.size
         ? s.captions.filter((c) => !captionIds.has(c.id))
         : s.captions,
+      audioTracks: audioIds.size
+        ? s.audioTracks.filter((a) => !audioIds.has(a.id))
+        : s.audioTracks,
     }));
     sel.clearSelection();
   }, [
@@ -1238,6 +1249,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     selectedClipIds,
     selectedOverlayIds,
     selectedCaptionIds,
+    selectedAudioIds,
     sel,
   ]);
 
@@ -1541,6 +1553,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectOverlay: sel.selectOverlay,
       toggleOverlaySelection: sel.toggleOverlay,
       selectOverlays: sel.replaceOverlays,
+      selectedAudioIds: selectedAudioIds,
+      selectAudio: sel.selectAudio,
+      toggleAudioSelection: sel.toggleAudio,
+      selectAudios: sel.replaceAudios,
       splitSelected,
       deleteSelected,
       setClipRange,
@@ -1712,6 +1728,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectedCaptionIds,
       selectedClipIds,
       selectedOverlayIds,
+      selectedAudioIds,
     ],
   );
 

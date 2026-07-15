@@ -80,6 +80,10 @@ export default function StudioTimeline({
     moveAudio,
     toggleAudioMuted,
     removeAudio,
+    selectedAudioIds,
+    selectAudio,
+    toggleAudioSelection,
+    selectAudios,
     overlays,
     mediaAssets,
     moveOverlay,
@@ -113,6 +117,9 @@ export default function StudioTimeline({
   // One row node per upper track (the empty top lane included), so the marquee
   // knows which lanes its box reaches and a vertical drag knows where it landed.
   const trackRowsRef = useRef(new Map<number, HTMLDivElement | null>());
+  // One row node per audio track (keyed by id), so the marquee can tell which
+  // audio clips its box reaches, the same way it does for the upper tracks.
+  const audioRowsRef = useRef(new Map<string, HTMLDivElement | null>());
   const [pxPerSec, setPxPerSec] = useState(80);
   // Two distinct scales, and conflating them is what makes zoom drift: `target`
   // accumulates across the pinch events of a frame, while `rendered` is the
@@ -583,6 +590,15 @@ export default function StudioTimeline({
                           .map((c) => c.id)
                       : [],
                   );
+                  selectAudios(
+                    audioTracks
+                      .filter(
+                        (a) =>
+                          rowHit(audioRowsRef.current.get(a.id) ?? null) &&
+                          secHit(a.start, a.start + a.duration),
+                      )
+                      .map((a) => a.id),
+                  );
                 };
                 const onUp = () => {
                   setMarquee(null);
@@ -897,16 +913,38 @@ export default function StudioTimeline({
               {audioTracks.map((a) => {
                 const left = a.start * pxPerSec;
                 const width = Math.max(a.duration * pxPerSec, 8);
+                const selected = selectedAudioIds.includes(a.id);
                 return (
-                  <div key={a.id} className="relative h-8">
+                  <div
+                    key={a.id}
+                    ref={(node) => {
+                      const rows = audioRowsRef.current;
+                      rows.set(a.id, node);
+                      return () => {
+                        rows.delete(a.id);
+                      };
+                    }}
+                    className="relative h-8"
+                  >
                     <div
                       style={{ left, width }}
                       onPointerDown={(e) => {
+                        if (e.button !== 0) return;
                         e.preventDefault();
                         e.stopPropagation();
+                        // ⌘/Ctrl-click toggles multi-selection (no drag).
+                        if (e.metaKey || e.ctrlKey) {
+                          toggleAudioSelection(a.id);
+                          return;
+                        }
+                        if (!selected) selectAudio(a.id);
                         audioDrag.begin(a.id, e.clientX, a.start);
                       }}
-                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 ring-1 ring-emerald-500/35 active:cursor-grabbing ${a.muted ? "opacity-40" : ""}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!(e.metaKey || e.ctrlKey)) selectAudio(a.id);
+                      }}
+                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 active:cursor-grabbing ${selected ? "ring-2 ring-cyan-500" : "ring-1 ring-emerald-500/35"} ${a.muted ? "opacity-40" : ""}`}
                     >
                       <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
                       <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">

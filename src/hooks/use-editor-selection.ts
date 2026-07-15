@@ -31,14 +31,21 @@ export interface SelectionActions {
   dropCaption: (id: string) => void;
   clearCaptions: () => void;
 
+  selectAudio: (id: string | null) => void;
+  toggleAudio: (id: string) => void;
+  replaceAudios: (ids: string[]) => void;
+  dropAudio: (id: string) => void;
+  clearAudios: () => void;
+
   /** Deselect everything, of every kind. */
   clearSelection: () => void;
 }
 
 /**
- * What's selected on the timeline. Elements come in three kinds (base clips,
- * upper-track overlays, captions) and a click selects one kind while clearing
- * the others, so Delete and Split always act on exactly what's highlighted.
+ * What's selected on the timeline. Elements come in four kinds (base clips,
+ * upper-track overlays, captions, audio tracks) and a click selects one kind
+ * while clearing the others, so Delete and Split always act on exactly what's
+ * highlighted.
  *
  * Two deliberate asymmetries, both preserved from the code this replaces.
  * Selecting nothing (`selectX(null)`) clears only its own kind, so clicking
@@ -50,12 +57,14 @@ export function useEditorSelection() {
   const clips = useIdSelection();
   const overlays = useIdSelection();
   const captions = useIdSelection();
+  const audios = useIdSelection();
 
   // Pulled out by name because every one of them is stable, which is what keeps
   // `actions` below stable in turn.
   const { select: pickClip, toggle: flipClip } = clips;
   const { select: pickOverlay, toggle: flipOverlay } = overlays;
   const { select: pickCaption, toggle: flipCaption } = captions;
+  const { select: pickAudio, toggle: flipAudio } = audios;
   const { replace: replaceClips, remove: dropClip, clear: clearClips } = clips;
   const {
     replace: replaceOverlays,
@@ -67,12 +76,18 @@ export function useEditorSelection() {
     remove: dropCaption,
     clear: clearCaptions,
   } = captions;
+  const {
+    replace: replaceAudios,
+    remove: dropAudio,
+    clear: clearAudios,
+  } = audios;
 
   const clearSelection = useCallback(() => {
     clearClips();
     clearOverlays();
     clearCaptions();
-  }, [clearClips, clearOverlays, clearCaptions]);
+    clearAudios();
+  }, [clearClips, clearOverlays, clearCaptions, clearAudios]);
 
   const selectClip = useCallback(
     (id: string | null) => {
@@ -80,9 +95,10 @@ export function useEditorSelection() {
       if (id) {
         clearOverlays();
         clearCaptions();
+        clearAudios();
       }
     },
-    [pickClip, clearOverlays, clearCaptions],
+    [pickClip, clearOverlays, clearCaptions, clearAudios],
   );
 
   const toggleClip = useCallback(
@@ -90,8 +106,9 @@ export function useEditorSelection() {
       flipClip(id);
       clearOverlays();
       clearCaptions();
+      clearAudios();
     },
-    [flipClip, clearOverlays, clearCaptions],
+    [flipClip, clearOverlays, clearCaptions, clearAudios],
   );
 
   const selectOverlay = useCallback(
@@ -100,9 +117,10 @@ export function useEditorSelection() {
       if (id) {
         clearClips();
         clearCaptions();
+        clearAudios();
       }
     },
-    [pickOverlay, clearClips, clearCaptions],
+    [pickOverlay, clearClips, clearCaptions, clearAudios],
   );
 
   const toggleOverlay = useCallback(
@@ -110,8 +128,9 @@ export function useEditorSelection() {
       flipOverlay(id);
       clearClips();
       clearCaptions();
+      clearAudios();
     },
-    [flipOverlay, clearClips, clearCaptions],
+    [flipOverlay, clearClips, clearCaptions, clearAudios],
   );
 
   const selectCaption = useCallback(
@@ -120,9 +139,10 @@ export function useEditorSelection() {
       if (id) {
         clearClips();
         clearOverlays();
+        clearAudios();
       }
     },
-    [pickCaption, clearClips, clearOverlays],
+    [pickCaption, clearClips, clearOverlays, clearAudios],
   );
 
   const toggleCaption = useCallback(
@@ -130,8 +150,31 @@ export function useEditorSelection() {
       flipCaption(id);
       clearClips();
       clearOverlays();
+      clearAudios();
     },
-    [flipCaption, clearClips, clearOverlays],
+    [flipCaption, clearClips, clearOverlays, clearAudios],
+  );
+
+  const selectAudio = useCallback(
+    (id: string | null) => {
+      pickAudio(id);
+      if (id) {
+        clearClips();
+        clearOverlays();
+        clearCaptions();
+      }
+    },
+    [pickAudio, clearClips, clearOverlays, clearCaptions],
+  );
+
+  const toggleAudio = useCallback(
+    (id: string) => {
+      flipAudio(id);
+      clearClips();
+      clearOverlays();
+      clearCaptions();
+    },
+    [flipAudio, clearClips, clearOverlays, clearCaptions],
   );
 
   const actions = useMemo<SelectionActions>(
@@ -151,6 +194,11 @@ export function useEditorSelection() {
       replaceCaptions,
       dropCaption,
       clearCaptions,
+      selectAudio,
+      toggleAudio,
+      replaceAudios,
+      dropAudio,
+      clearAudios,
       clearSelection,
     }),
     [
@@ -169,6 +217,11 @@ export function useEditorSelection() {
       replaceCaptions,
       dropCaption,
       clearCaptions,
+      selectAudio,
+      toggleAudio,
+      replaceAudios,
+      dropAudio,
+      clearAudios,
       clearSelection,
     ],
   );
@@ -177,6 +230,7 @@ export function useEditorSelection() {
     clipIds: clips.ids,
     overlayIds: overlays.ids,
     captionIds: captions.ids,
+    audioIds: audios.ids,
     /** The one selected clip, or null. Trim only makes sense on exactly one. */
     selectedClipId: clips.only,
     /** The one selected caption, or null. */
