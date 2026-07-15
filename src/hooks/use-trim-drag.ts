@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { trimBounds } from "@/lib/studio/clips";
+import { nearest } from "@/lib/studio/snap";
 import type { Clip } from "@/lib/studio/types";
 
 /** Shortest a base clip may be trimmed to, in source seconds. */
@@ -81,12 +82,12 @@ export function useTrimDrag({
     const playheadSource = clip.start + (currentTimelineTime - offset);
     const snapEdge = (t: number) => {
       if (!snapping) return t;
-      const th = 8 / pxPerSec;
       const points = playheadInClip
         ? [prevEnd, nextStart, playheadSource]
         : [prevEnd, nextStart];
-      for (const p of points) if (Math.abs(p - t) < th) return p;
-      return t;
+      // Nearest in-range magnet, matching the clip-move snap (was first-in-range,
+      // which snapped to a clip bound over a closer playhead).
+      return nearest(t, points, 8 / pxPerSec);
     };
 
     let current: { start: number; end: number } | null = null;

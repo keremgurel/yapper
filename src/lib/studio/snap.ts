@@ -39,8 +39,17 @@ export function timelineSnapPoints(
   return points;
 }
 
-/** The nearest point within `threshold` of `v`, or `v` itself. */
-function nearest(v: number, points: number[], threshold: number): number {
+/**
+ * The nearest point within `threshold` of `v`, or `v` itself. Picks the CLOSEST
+ * in-range point, not the first, so with several magnets in range the edge lands
+ * on the one it is actually nearest to. Shared by the clip-move snap and the
+ * trim-edge snap so both magnets behave identically.
+ */
+export function nearest(
+  v: number,
+  points: number[],
+  threshold: number,
+): number {
   let best = v;
   let bestDistance = threshold;
   for (const p of points) {

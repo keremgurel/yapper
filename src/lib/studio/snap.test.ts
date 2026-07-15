@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
+import { nearest, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
 
 const clip = (id: string, start: number, end: number): Clip => ({
@@ -81,6 +81,24 @@ describe("timelineSnapPoints", () => {
       overlay({ id: "o", start: 3, duration: 2, hidden: true }),
     ];
     expect(timelineSnapPoints([], overlays, [], 20, 0)).toEqual([0, 20, 0]);
+  });
+});
+
+describe("nearest", () => {
+  it("returns v unchanged when nothing is within the threshold", () => {
+    expect(nearest(5, [0, 9], 1)).toBe(5);
+  });
+
+  it("picks the closest in-range point, not the first one listed", () => {
+    // Both 4 and 4.5 are within 1 of 4.4, but 4.5 is closer. First-wins would
+    // wrongly return 4; this must return 4.5.
+    expect(nearest(4.4, [4, 4.5], 1)).toBe(4.5);
+    // Order must not matter: same points, first listed is the far one.
+    expect(nearest(4.4, [4.5, 4], 1)).toBe(4.5);
+  });
+
+  it("does not snap at exactly the threshold", () => {
+    expect(nearest(4.5, [4], 0.5)).toBe(4.5);
   });
 });
 
