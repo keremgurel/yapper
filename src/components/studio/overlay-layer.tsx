@@ -293,9 +293,15 @@ export default function OverlayLayer({
   masterTime: number;
   playing: boolean;
 }) {
-  const { setOverlayRect, setOverlayCrop, mediaAssets, aspect } = useStudio();
+  const {
+    setOverlayRect,
+    setOverlayCrop,
+    mediaAssets,
+    aspect,
+    selectedOverlayIds,
+    selectOverlay,
+  } = useStudio();
   const layerRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [guides, setGuides] = useState<Guides | null>(null);
   const [menu, setMenu] = useState<MenuAnchor | null>(null);
   const [cropping, setCropping] = useState<string | null>(null);
@@ -309,7 +315,7 @@ export default function OverlayLayer({
     e.stopPropagation();
     const box = layerRef.current?.getBoundingClientRect();
     if (!box) return;
-    setSelectedId(o.id);
+    selectOverlay(o.id);
     setMenu({
       id: o.id,
       x: (e.clientX - box.left) / box.width,
@@ -333,13 +339,13 @@ export default function OverlayLayer({
             overlay={o}
             local={local}
             playing={playing}
-            selected={selectedId === o.id}
+            selected={selectedOverlayIds.includes(o.id)}
             others={overlays
               .filter((x) => x.id !== o.id && !x.hidden)
               .map(rectOf)}
             stageAspect={aspect}
             aspect={aspectOf(o)}
-            onSelect={() => setSelectedId(o.id)}
+            onSelect={() => selectOverlay(o.id)}
             onMenu={openMenu(o)}
             layerRef={layerRef}
             onCommit={(rect) => setOverlayRect(o.id, rect)}
