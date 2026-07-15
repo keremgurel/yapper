@@ -6,10 +6,14 @@ import OverlayCropEditor from "@/components/studio/overlay-crop-editor";
 import OverlayMenu, { type MenuAnchor } from "@/components/studio/overlay-menu";
 import {
   horizontalTargets,
-  snapEdge,
   snapSpan,
   verticalTargets,
 } from "@/lib/studio/align";
+import {
+  resizeRect,
+  snapResize,
+  type Corner,
+} from "@/lib/studio/overlay-resize";
 import { FULL_CROP, cropStyle, isFullCrop } from "@/lib/studio/crop";
 import { FULL_FRAME, fitBox, mediaAspect } from "@/lib/studio/overlay-box";
 import { paintOrder } from "@/lib/studio/tracks";
@@ -19,15 +23,11 @@ function clamp01(v: number, max = 1): number {
   return Math.max(0, Math.min(max, v));
 }
 
-const MIN = 0.1; // minimum overlay size (fraction of stage)
-
 /** Active alignment guides while dragging, as stage fractions (0..1). */
 export interface Guides {
   v: number[];
   h: number[];
 }
-
-type Corner = "tl" | "tr" | "bl" | "br";
 
 // Centred exactly on the box's corners. The media is clipped by an inner
 // wrapper rather than by the box itself, and the stage no longer clips its
@@ -167,56 +167,18 @@ function OverlayBox({
       setLive({ x: nx, y: ny, w, h });
       return;
     }
-    // Resize: grow/shrink from the dragged corner, keeping the opposite edge fixed.
-    const { x, y, w, h } = d.rect;
+    // Resize from the dragged corner (opposite edges fixed), then snap the two
+    // moving edges onto the alignment guides.
     const c = d.corner ?? "br";
-    let nx = x;
-    let ny = y;
-    let nw = w;
-    let nh = h;
-    if (c === "br" || c === "tr") {
-      nw = Math.max(MIN, Math.min(1 - x, w + dx));
-    } else {
-      nw = Math.max(MIN, Math.min(x + w, w - dx));
-      nx = x + w - nw;
-    }
-    if (c === "br" || c === "bl") {
-      nh = Math.max(MIN, Math.min(1 - y, h + dy));
-    } else {
-      nh = Math.max(MIN, Math.min(y + h, h - dy));
-      ny = y + h - nh;
-    }
-    // Snap the two moving edges to the same targets, showing a guide when they do.
-    const gv: number[] = [];
-    const gh: number[] = [];
-    const rightMoving = c === "br" || c === "tr";
-    const vEdge = rightMoving ? nx + nw : nx;
-    const sv = snapEdge(vEdge, vTargets);
-    if (sv !== null) {
-      if (rightMoving) {
-        nw = Math.max(MIN, Math.min(1 - nx, sv - nx));
-      } else {
-        const right = x + w; // opposite edge stays fixed
-        nx = Math.max(0, Math.min(right - MIN, sv));
-        nw = right - nx;
-      }
-      gv.push(sv);
-    }
-    const bottomMoving = c === "br" || c === "bl";
-    const hEdge = bottomMoving ? ny + nh : ny;
-    const sh = snapEdge(hEdge, hTargets);
-    if (sh !== null) {
-      if (bottomMoving) {
-        nh = Math.max(MIN, Math.min(1 - ny, sh - ny));
-      } else {
-        const bottom = y + h; // opposite edge stays fixed
-        ny = Math.max(0, Math.min(bottom - MIN, sh));
-        nh = bottom - ny;
-      }
-      gh.push(sh);
-    }
-    onGuides(gv.length || gh.length ? { v: gv, h: gh } : null);
-    setLive({ x: nx, y: ny, w: nw, h: nh });
+    const { rect, guides } = snapResize(
+      resizeRect(d.rect, c, dx, dy),
+      d.rect,
+      c,
+      vTargets,
+      hTargets,
+    );
+    onGuides(guides.v.length || guides.h.length ? guides : null);
+    setLive(rect);
   };
 
   const end = (e: React.PointerEvent) => {
