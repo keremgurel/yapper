@@ -66,6 +66,14 @@ async function loadVideo(url: string): Promise<PooledMedia> {
         return;
       }
       lastRequested = clamped;
+      // Already sitting on this frame (notably the first frame at t=0 on a fresh
+      // video): assigning currentTime its current value may not fire 'seeked' at
+      // all (WebKit especially), which would hang the export forever. Present the
+      // current frame instead of waiting for an event that never comes.
+      if (Math.abs(el.currentTime - clamped) < SEEK_EPSILON) {
+        awaitPresented(resolve);
+        return;
+      }
       const onSeeked = () => {
         el.removeEventListener("seeked", onSeeked);
         awaitPresented(resolve);
