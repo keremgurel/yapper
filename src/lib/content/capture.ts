@@ -31,7 +31,17 @@ const SYSTEM =
   "one VERBATIM; only invent a new short pillar name if none fit. Keep everything " +
   "concrete and in the creator's voice. No prose outside the JSON.";
 
-function parse(content: string, pillars: string[]): CapturedIdea {
+/**
+ * Pull the captured-idea object out of an LLM response and sanitize it against
+ * untrusted output. Exported so its guards can be unit-tested: the title is
+ * required, arrays drop non-strings, and the pillar is snapped back to an
+ * existing one (or dropped entirely when blank) so the Content Library never
+ * grows a spurious empty pillar bucket.
+ */
+export function parseCapturedIdea(
+  content: string,
+  pillars: string[],
+): CapturedIdea {
   const s = content.indexOf("{");
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("capture_unparseable");
@@ -42,8 +52,11 @@ function parse(content: string, pillars: string[]): CapturedIdea {
   const title = typeof raw.title === "string" ? raw.title.trim() : "";
   if (!title) throw new Error("capture_empty");
 
-  // Snap the pillar back to an existing one when the model paraphrased it.
-  let pillar = typeof raw.pillar === "string" ? raw.pillar.trim() : undefined;
+  // Snap the pillar back to an existing one when the model paraphrased it. A
+  // blank pillar becomes undefined, never "", so it lands as NULL in the
+  // library rather than an empty tag that would bucket on its own.
+  let pillar: string | undefined =
+    (typeof raw.pillar === "string" ? raw.pillar.trim() : "") || undefined;
   if (pillar && pillars.length) {
     const hit = pillars.find((p) => p.toLowerCase() === pillar!.toLowerCase());
     pillar = hit ?? pillar;
@@ -94,5 +107,8 @@ export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {
   });
   if (!res.ok) throw new Error(`capture_${res.status}`);
   const json = await res.json();
-  return parse(json?.choices?.[0]?.message?.content ?? "{}", pillars);
+  return parseCapturedIdea(
+    json?.choices?.[0]?.message?.content ?? "{}",
+    pillars,
+  );
 }
