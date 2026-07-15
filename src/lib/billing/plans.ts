@@ -8,7 +8,10 @@
  * To go live: create the products/prices in Stripe, then set the env vars.
  */
 
-export type PlanKey = "starter" | "pro";
+export type PlanKey = "starter" | "plus" | "pro";
+
+/** 1 GiB in bytes, for the per-tier storage quotas below. */
+const GB = 1024 * 1024 * 1024;
 
 export interface SubscriptionPlan {
   key: PlanKey;
@@ -17,8 +20,16 @@ export interface SubscriptionPlan {
   priceId: string;
   /** Credits granted on each successful billing period (and on trial start). */
   monthlyCredits: number;
+  /**
+   * Included media storage for this tier, in bytes. A hard cap: when a save
+   * would exceed it the write is rejected and the user deletes clips or upgrades
+   * (iCloud style). No metered overage. See storageQuotaFor.
+   */
+  storageBytes: number;
   /** Display-only; Stripe's price is authoritative for the charge. */
   priceLabel: string;
+  /** Display-only storage line, e.g. "25 GB". */
+  storageLabel: string;
   blurb: string;
 }
 
@@ -38,18 +49,32 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     key: "starter",
     name: "Starter",
     priceId: process.env.STRIPE_PRICE_STARTER ?? "",
-    monthlyCredits: 50,
-    priceLabel: "$12/mo",
+    monthlyCredits: 100,
+    storageBytes: 25 * GB,
+    priceLabel: "$9.99/mo",
+    storageLabel: "25 GB",
     blurb:
-      "For creators finding their voice: enough AI for a few videos a week.",
+      "For creators finding their voice: a few videos a week with room to grow.",
+  },
+  {
+    key: "plus",
+    name: "Plus",
+    priceId: process.env.STRIPE_PRICE_PLUS ?? "",
+    monthlyCredits: 400,
+    storageBytes: 150 * GB,
+    priceLabel: "$24.99/mo",
+    storageLabel: "150 GB",
+    blurb: "For consistent posters: daily feedback and generation headroom.",
   },
   {
     key: "pro",
     name: "Pro",
     priceId: process.env.STRIPE_PRICE_PRO ?? "",
-    monthlyCredits: 200,
-    priceLabel: "$29/mo",
-    blurb: "For consistent posters: daily feedback and generation headroom.",
+    monthlyCredits: 1000,
+    storageBytes: 500 * GB,
+    priceLabel: "$49.99/mo",
+    storageLabel: "500 GB",
+    blurb: "For power users: high-volume feedback, scripts, and storage.",
   },
 ];
 

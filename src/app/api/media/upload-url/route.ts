@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { FREE_STORAGE_BYTES } from "@/lib/db/constants";
+import { getStorageQuota } from "@/lib/db/billing";
 import { getStorageBytes } from "@/lib/db/users";
 import { mediaKey, presignUpload, r2Configured } from "@/lib/r2";
 
@@ -27,10 +27,13 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const used = await getStorageBytes(userId);
-  if (used + sizeBytes > FREE_STORAGE_BYTES) {
+  const [used, quota] = await Promise.all([
+    getStorageBytes(userId),
+    getStorageQuota(userId),
+  ]);
+  if (used + sizeBytes > quota) {
     return Response.json(
-      { error: "storage_full", used, quota: FREE_STORAGE_BYTES },
+      { error: "storage_full", used, quota },
       { status: 402 },
     );
   }

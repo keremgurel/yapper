@@ -24,7 +24,7 @@ export default function PricingCards({
   onStart: (key: string) => void;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-3">
       {SUBSCRIPTION_PLANS.map((plan) => (
         <article key={plan.key} className="sg-card flex flex-col gap-5 p-6">
           <div>
@@ -33,6 +33,7 @@ export default function PricingCards({
             <p className="sg-label mt-1">
               {plan.monthlyCredits} credits / month
             </p>
+            <p className="sg-label">{plan.storageLabel} storage</p>
           </div>
           <p className="text-sm leading-6" style={muted}>
             {plan.blurb}

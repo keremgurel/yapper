@@ -4,10 +4,10 @@ import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import {
   FEEDBACK_CREDITS,
-  FREE_STORAGE_BYTES,
   MAX_CLIP_BYTES,
   type FeedbackTier,
 } from "@/lib/db/constants";
+import { getStorageQuota } from "@/lib/db/billing";
 import {
   deductWithinTx,
   getBalance,
@@ -174,8 +174,11 @@ async function runTier(
   // Enforce on the *actual* object size, presigned PUTs can't cap upload size,
   // so the client's claimed sizeBytes at upload-url time is only advisory.
   if (bytes.byteLength > MAX_CLIP_BYTES) throw new Error("clip_too_large");
-  const used = await getStorageBytes(userId);
-  if (used + bytes.byteLength > FREE_STORAGE_BYTES) {
+  const [used, quota] = await Promise.all([
+    getStorageBytes(userId),
+    getStorageQuota(userId),
+  ]);
+  if (used + bytes.byteLength > quota) {
     throw new Error("storage_full");
   }
   const uri = await uploadBytesToGemini(bytes, mimeType);

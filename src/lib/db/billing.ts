@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "./client";
 import { users } from "./schema";
+import { storageQuotaFor } from "@/lib/billing/storage";
 
 /** A user's Stripe/subscription state (the raw fields; entitlement is derived). */
 export interface BillingState {
@@ -23,6 +24,12 @@ export async function getBillingState(
     .from(users)
     .where(eq(users.id, userId));
   return row ?? null;
+}
+
+/** The user's media-storage quota (bytes), derived from their current plan and
+ * entitlement. Free-tier quota when there is no active subscription. */
+export async function getStorageQuota(userId: string): Promise<number> {
+  return storageQuotaFor(await getBillingState(userId));
 }
 
 export async function setStripeCustomerId(

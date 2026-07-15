@@ -2,11 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 import { desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { FREE_STORAGE_BYTES, MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_CLIP_BYTES } from "@/lib/db/constants";
 import { submissions } from "@/lib/db/schema";
 import { countMediaOnce } from "@/lib/db/storage-accounting";
 import { ensureUser, getStorageBytes } from "@/lib/db/users";
 import { canUsePremium } from "@/lib/billing/gate";
+import { getStorageQuota } from "@/lib/db/billing";
 import { headObjectBytes, ownsKey } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -82,8 +83,11 @@ export async function POST(req: NextRequest): Promise<Response> {
     .where(eq(submissions.mediaKey, mediaKey))
     .limit(1);
   if (!existing) {
-    const used = await getStorageBytes(userId);
-    if (used + bytes > FREE_STORAGE_BYTES) {
+    const [used, quota] = await Promise.all([
+      getStorageBytes(userId),
+      getStorageQuota(userId),
+    ]);
+    if (used + bytes > quota) {
       return Response.json({ error: "storage_full" }, { status: 402 });
     }
   }
