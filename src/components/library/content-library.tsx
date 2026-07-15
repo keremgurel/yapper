@@ -1,21 +1,21 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Film, Loader2, Plus, Send, Upload } from "lucide-react";
+import { Loader2, Plus, Upload } from "lucide-react";
 import { useAddVideo } from "@/hooks/use-add-video";
 import CrossPostSheet, {
   type CrossPostTarget,
 } from "@/components/publish/cross-post-sheet";
-import StatusSelect from "@/components/library/status-select";
 import PillarSelect from "@/components/library/pillar-select";
 import IdeaCapture from "@/components/library/idea-capture";
+import ContentTable from "@/components/library/content-table";
+import ContentTableSkeleton from "@/components/library/content-table-skeleton";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
+import { useContentSort } from "@/hooks/use-content-sort";
 import {
   createContent,
   defaultScheduleDate,
@@ -25,13 +25,9 @@ import {
 } from "@/lib/content/client";
 import type { ContentStatus } from "@/lib/db/schema";
 
-function when(iso: string): string {
-  const d = new Date(iso);
-  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })} · ${d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`;
-}
-
-/** The Content Library: the user's pipeline of ideas/scripts as a status
- * table. Rows open the script workbench. */
+/** The Content Library: the user's pipeline of ideas/scripts as a sortable
+ * status table. Orchestrates capture, the pillar filter, and the table; the
+ * table, rows, sorting, and loading state each live in their own module. */
 export default function ContentLibrary() {
   const router = useRouter();
   const { isSignedIn } = useUser();
@@ -54,6 +50,8 @@ export default function ContentLibrary() {
       ? items.filter((r) => r.pillar === pillarFilter)
       : items;
   }, [items, pillarFilter]);
+
+  const { sort, toggle, sorted } = useContentSort(visibleItems);
 
   const newIdea = async () => {
     setCreating(true);
@@ -163,9 +161,7 @@ export default function ContentLibrary() {
       </div>
 
       {items === null ? (
-        <div className="text-muted-foreground flex items-center gap-2 py-12 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-        </div>
+        <ContentTableSkeleton />
       ) : items.length === 0 ? (
         <div className="text-muted-foreground px-6 py-14 text-center">
           <p className="text-foreground text-base font-bold">
@@ -194,93 +190,21 @@ export default function ContentLibrary() {
               )}
             </div>
           )}
-          <Card className="gap-0 overflow-hidden py-0">
-            {/* Header row */}
-            <div className="sg-field-label bg-muted/40 hidden grid-cols-[1fr_130px_150px_72px] gap-3 border-b px-4 py-3 sm:grid">
-              <span>Title</span>
-              <span>Status</span>
-              <span>Updated</span>
-              <span />
-            </div>
-            {(visibleItems ?? []).length === 0 && (
-              <div className="text-muted-foreground px-4 py-8 text-center text-sm">
-                No ideas in this pillar yet.
-              </div>
-            )}
-            {(visibleItems ?? []).map((row) => (
-              // Not a <button>: the status control inside is itself a button, and
-              // button-in-button is invalid HTML (hydration error, DOM reparenting).
-              // A div with button semantics keeps the row clickable + keyboardable.
-              <div
-                key={row.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push(`/studio/library/${row.id}`)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    router.push(`/studio/library/${row.id}`);
-                  }
-                }}
-                className={`grid w-full cursor-pointer grid-cols-[1fr_auto] items-center gap-3 border-b px-4 py-3.5 text-left transition-colors last:border-b-0 sm:grid-cols-[1fr_130px_150px_72px] ${
-                  freshId === row.id
-                    ? "bg-[color:var(--sg-accent)]/10"
-                    : "hover:bg-muted/40"
-                }`}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className="text-foreground min-w-0 truncate text-[15px] font-bold">
-                    {row.title.trim() || "Untitled idea"}
-                  </span>
-                  {row.pillar && (
-                    <span className="hidden shrink-0 rounded-full bg-[color:var(--sg-accent)]/15 px-2 py-0.5 text-[11px] font-black whitespace-nowrap text-[color:var(--sg-accent)] sm:inline">
-                      {row.pillar}
-                    </span>
-                  )}
-                </span>
-                <span>
-                  <StatusSelect
-                    value={row.status}
-                    onChange={(status) => changeStatus(row, status)}
-                  />
-                </span>
-                <span className="text-muted-foreground hidden text-sm sm:block">
-                  {when(row.updatedAt)}
-                </span>
-                <span className="hidden items-center gap-1 justify-self-end sm:flex">
-                  {row.submissionId && (
-                    <>
-                      <Link
-                        href={`/studio/editor?item=${row.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-muted-foreground hover:text-foreground block p-1"
-                        title="Edit this recording"
-                        aria-label="Edit this recording"
-                      >
-                        <Film className="h-4 w-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPostItem({
-                            id: row.id,
-                            title: row.title.trim() || "Untitled",
-                            submissionId: row.submissionId!,
-                          });
-                        }}
-                        className="p-1 text-[color:var(--sg-accent)] hover:opacity-80"
-                        title="Post to a platform"
-                        aria-label="Post to a platform"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    </>
-                  )}
-                </span>
-              </div>
-            ))}
-          </Card>
+          <ContentTable
+            rows={sorted ?? []}
+            sort={sort}
+            onToggleSort={toggle}
+            onOpen={(id) => router.push(`/studio/library/${id}`)}
+            onStatus={changeStatus}
+            onPost={(row) =>
+              setPostItem({
+                id: row.id,
+                title: row.title.trim() || "Untitled",
+                submissionId: row.submissionId!,
+              })
+            }
+            freshId={freshId}
+          />
         </>
       )}
 
