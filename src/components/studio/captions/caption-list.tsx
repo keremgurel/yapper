@@ -19,10 +19,10 @@ const CASE_LABEL: Record<CaptionCase, string> = {
 /** The editable list of caption lines. Click a row to select + seek to it. */
 export default function CaptionList({
   onSeek,
-  currentSourceTime,
+  currentTimelineTime,
 }: {
   onSeek: (timelineTime: number) => void;
-  currentSourceTime: number;
+  currentTimelineTime: number;
 }) {
   const {
     clips,
@@ -62,7 +62,7 @@ export default function CaptionList({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => addCaption(currentSourceTime)}
+          onClick={() => addCaption(currentTimelineTime)}
           className="border-border hover:bg-muted/50 text-foreground flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold"
           title="Add a caption at the playhead"
         >

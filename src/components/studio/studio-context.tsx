@@ -59,6 +59,7 @@ import {
   overlaysOnTrack,
 } from "@/lib/studio/tracks";
 import { liftedOverlayFromClip } from "@/lib/studio/lift";
+import { newCaptionAtTimeline } from "@/lib/studio/new-caption";
 import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
@@ -468,34 +469,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setCaptions],
   );
 
-  // Add a caption at the playhead (source seconds). It gets a short default
-  // span, trimmed so it doesn't overrun the next caption, and is inserted in
-  // temporal order so the list and timeline stay ordered. Selected so the user
-  // can immediately type; anchored in source time so it tracks the clips.
+  // Add a caption at the timeline playhead. `newCaptionAtTimeline` anchors it in
+  // recording source time (so a caption added over an appended b-roll clip lands
+  // on the real cut, not the b-roll's own clock) and picks a short default span
+  // trimmed so it doesn't overrun the next caption. Inserted in temporal order
+  // and selected so the user can type right away.
   const addCaption = useCallback(
-    (atSource: number) => {
-      const id = newCaptionId();
-      const start = Math.max(0, atSource);
-      setCaptions((prev) => {
-        let end = start + 1.8;
-        const nextStart = prev
-          .map((c) => c.sourceStart)
-          .filter((s) => s > start)
-          .sort((a, b) => a - b)[0];
-        if (nextStart !== undefined && nextStart < end) {
-          end = Math.max(start + 0.3, nextStart - 0.02);
-        }
-        const created: Caption = {
-          id,
-          text: "New caption",
-          sourceStart: start,
-          sourceEnd: end,
-        };
-        return [...prev, created].sort((a, b) => a.sourceStart - b.sourceStart);
-      });
-      sel.selectCaption(id);
+    (timelineTime: number) => {
+      const created = newCaptionAtTimeline(clips, captions, timelineTime);
+      setCaptions((prev) =>
+        [...prev, created].sort((a, b) => a.sourceStart - b.sourceStart),
+      );
+      sel.selectCaption(created.id);
     },
-    [setCaptions, sel],
+    [clips, captions, setCaptions, sel],
   );
 
   // Merge two or more captions into one spanning their full source range, with

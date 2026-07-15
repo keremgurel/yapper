@@ -205,6 +205,7 @@ export default function StudioWorkspace() {
   const panel = (
     <RightPanel
       currentSourceTime={sourceTime}
+      currentTimelineTime={timelineTime}
       onSeek={seekToSource}
       onSeekTimeline={seekToTimeline}
     />

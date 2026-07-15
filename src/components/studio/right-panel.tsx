@@ -11,10 +11,12 @@ type Tab = "media" | "transcript" | "captions" | "feedback";
 
 export default function RightPanel({
   currentSourceTime,
+  currentTimelineTime,
   onSeek,
   onSeekTimeline,
 }: {
   currentSourceTime: number;
+  currentTimelineTime: number;
   onSeek: (t: number) => void;
   onSeekTimeline: (t: number) => void;
 }) {
@@ -91,7 +93,7 @@ export default function RightPanel({
         ) : tab === "captions" ? (
           <CaptionsTab
             onSeek={onSeekTimeline}
-            currentSourceTime={currentSourceTime}
+            currentTimelineTime={currentTimelineTime}
           />
         ) : tab === "feedback" ? (
           <FeedbackTab />
