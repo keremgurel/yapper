@@ -8,7 +8,10 @@ import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
  * project with no bottom track at all is still a project.
  *
  * A hidden overlay is composited nowhere (frame plan, export, and audio mix all
- * skip it), so it must not pad the timeline with trailing empty frames.
+ * skip it), so it must not pad the timeline with trailing empty frames. A muted
+ * audio track is the audio analogue: it makes no sound (the mix skips it) and
+ * has no picture, so it must not pad the timeline either. A muted but visible
+ * overlay still renders, so it does still count.
  */
 export function projectDuration(
   clips: Clip[],
@@ -20,6 +23,9 @@ export function projectDuration(
     if (o.hidden) continue;
     end = Math.max(end, o.start + o.duration);
   }
-  for (const a of audioTracks) end = Math.max(end, a.start + a.duration);
+  for (const a of audioTracks) {
+    if (a.muted) continue;
+    end = Math.max(end, a.start + a.duration);
+  }
   return end;
 }

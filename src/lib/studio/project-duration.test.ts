@@ -77,4 +77,21 @@ describe("projectDuration", () => {
       ),
     ).toBe(15);
   });
+
+  it("ignores a muted audio track, composited nowhere like a hidden overlay", () => {
+    const clips = [clip(0, 6)];
+    // A muted audio track makes no sound (the audio mix skips it) and has no
+    // picture, so it must not pad the timeline with a silent, blank tail.
+    expect(
+      projectDuration(
+        clips,
+        [],
+        [audio({ start: 0, duration: 30, muted: true })],
+      ),
+    ).toBe(6);
+    // An unmuted track of the same length still extends it.
+    expect(
+      projectDuration(clips, [], [audio({ start: 0, duration: 30 })]),
+    ).toBe(30);
+  });
 });
