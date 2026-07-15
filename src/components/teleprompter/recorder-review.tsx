@@ -11,6 +11,7 @@ import {
   Scissors,
 } from "lucide-react";
 import { setPendingVideo } from "@/lib/studio/handoff";
+import { recordingFileName } from "@/lib/studio/recording-file";
 import { useSaveTake } from "@/hooks/use-save-take";
 
 /** After a take: play it back, then retake, edit in the studio, or download.
@@ -41,7 +42,10 @@ export default function RecorderReview({
   const download = () => {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `yapper-take-${new Date().toISOString().slice(0, 19)}.webm`;
+    a.download = recordingFileName(
+      `yapper-take-${new Date().toISOString().slice(0, 19)}`,
+      blob.type,
+    );
     a.click();
   };
 

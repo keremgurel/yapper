@@ -7,6 +7,7 @@ import {
   requestVideoStream,
   resetTrackZoom,
 } from "@/lib/media";
+import { recordingFileName } from "@/lib/studio/recording-file";
 
 export function useMediaStream() {
   const [cameraOn, setCameraOn] = useState(false);
@@ -288,7 +289,10 @@ export function useMediaStream() {
     const downloadUrl = URL.createObjectURL(recordedBlob);
     const anchor = document.createElement("a");
     anchor.href = downloadUrl;
-    anchor.download = `yapper-${new Date().toISOString().slice(0, 19)}.webm`;
+    anchor.download = recordingFileName(
+      `yapper-${new Date().toISOString().slice(0, 19)}`,
+      recordedBlob.type,
+    );
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
   }, [recordedBlob]);
