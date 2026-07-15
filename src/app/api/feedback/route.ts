@@ -9,10 +9,9 @@ import {
   type FeedbackTier,
 } from "@/lib/db/constants";
 import {
-  deductCredits,
+  deductWithinTx,
   getBalance,
   InsufficientCreditsError,
-  refundCredits,
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
 import { ensureUser, getStorageBytes } from "@/lib/db/users";
@@ -44,8 +43,9 @@ interface FeedbackResult {
  * - video: ?fileUri=… (video already uploaded to Gemini) → on-camera coaching.
  * - full:  ?fileUri=… + WAV body → Deepgram meters + Gemini video coaching.
  *
- * Create submission → deduct → run → store; refund + mark failed on any error,
- * so a failure never costs a credit.
+ * Run the work first, then charge and store the result in one transaction, so a
+ * crash before commit leaves the user uncharged (we absorb the compute) rather
+ * than charged-without-result. No refund path, no reconcile sweep.
  */
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
@@ -75,6 +75,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!(await canUsePremium(userId))) {
     return Response.json({ error: "not_entitled" }, { status: 402 });
   }
+  // Fast reject before spending compute; the debit at the end re-checks the
+  // balance atomically, so this is only a courtesy early-out.
+  if ((await getBalance(userId)) < cost) {
+    return Response.json({ error: "insufficient_credits" }, { status: 402 });
+  }
 
   const db = getDb();
   const [submission] = await db
@@ -88,37 +93,34 @@ export async function POST(req: NextRequest): Promise<Response> {
     .returning({ id: submissions.id });
 
   try {
-    await deductCredits(userId, cost, { submissionId: submission.id });
-  } catch (e) {
-    await db.delete(submissions).where(eq(submissions.id, submission.id));
-    if (e instanceof InsufficientCreditsError) {
-      return Response.json({ error: "insufficient_credits" }, { status: 402 });
-    }
-    throw e;
-  }
-
-  try {
     const result = await runTier(tier, audio, mediaKey, mimeType, userId);
-    await db
-      .update(submissions)
-      .set({
-        status: "complete",
-        durationSec: result.metrics?.durationSec ?? null,
-        transcript: result.words ?? null,
-        feedback: { metrics: result.metrics, coaching: result.coaching },
-        scores: { delivery: result.coaching.score },
-        mediaKey: mediaKey ?? null,
-        mediaBytes: result.mediaBytes ?? 0,
-        updatedAt: new Date(),
-      })
-      .where(eq(submissions.id, submission.id));
+    // Charge and mark complete in one transaction: a crash before commit rolls
+    // back the debit, so the user is never charged without a result.
+    const balance = await db.transaction(async (tx) => {
+      const bal = await deductWithinTx(tx, userId, cost, {
+        submissionId: submission.id,
+      });
+      await tx
+        .update(submissions)
+        .set({
+          status: "complete",
+          durationSec: result.metrics?.durationSec ?? null,
+          transcript: result.words ?? null,
+          feedback: { metrics: result.metrics, coaching: result.coaching },
+          scores: { delivery: result.coaching.score },
+          mediaKey: mediaKey ?? null,
+          mediaBytes: result.mediaBytes ?? 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(submissions.id, submission.id));
+      return bal;
+    });
     // Count the stored recording against the user's quota, but only once per
     // object, so re-analyzing the same mediaKey can't inflate the counter.
     if (mediaKey && result.mediaBytes) {
       await countMediaOnce(userId, mediaKey, result.mediaBytes, submission.id);
     }
 
-    const balance = await getBalance(userId);
     return Response.json({
       submissionId: submission.id,
       balance,
@@ -126,9 +128,9 @@ export async function POST(req: NextRequest): Promise<Response> {
       coaching: result.coaching,
     });
   } catch (e) {
-    const detail = e instanceof Error ? e.message : "feedback_failed";
-    // The upload is now an orphan (uncounted, unreferenced), reclaim it so a
-    // failed run can't leak R2 storage.
+    // The work failed, or the balance ran out at charge time. Either way the
+    // transaction rolled back, so nothing was charged and there is nothing to
+    // refund. The uploaded clip is now an orphan, reclaim it.
     if (mediaKey) {
       try {
         await deleteObject(mediaKey);
@@ -136,24 +138,22 @@ export async function POST(req: NextRequest): Promise<Response> {
         // a lifecycle sweep can reclaim it later
       }
     }
-    let balance: number | undefined;
-    try {
-      balance = await refundCredits(userId, cost, submission.id);
-    } catch {
-      // reconcile sweep retries the refund
-    }
-    try {
-      await db
-        .update(submissions)
-        .set({ status: "failed", error: detail, updatedAt: new Date() })
-        .where(eq(submissions.id, submission.id));
-    } catch {
-      // reconcile sweep fails the stranded submission
-    }
-    return Response.json(
-      { error: "feedback_failed", detail, balance },
-      { status: 502 },
-    );
+    const insufficient = e instanceof InsufficientCreditsError;
+    const detail = insufficient
+      ? "insufficient_credits"
+      : e instanceof Error
+        ? e.message
+        : "feedback_failed";
+    await db
+      .update(submissions)
+      .set({ status: "failed", error: detail, updatedAt: new Date() })
+      .where(eq(submissions.id, submission.id))
+      .catch(() => {
+        // best effort; a stranded "processing" row is cosmetic (never charged)
+      });
+    return insufficient
+      ? Response.json({ error: "insufficient_credits" }, { status: 402 })
+      : Response.json({ error: "feedback_failed", detail }, { status: 502 });
   }
 }
 

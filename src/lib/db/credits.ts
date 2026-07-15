@@ -1,6 +1,17 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, type ExtractTablesWithRelations } from "drizzle-orm";
+import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 import { getDb } from "./client";
 import { creditLedger, users, type CreditReason } from "./schema";
+import type * as schema from "./schema";
+
+/** A live transaction handle, so callers can compose a debit into a larger
+ * atomic unit (e.g. "charge the user and store the result together"). */
+export type DbTx = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 /** Thrown by `deductCredits` when the user can't cover the cost. */
 export class InsufficientCreditsError extends Error {
@@ -100,34 +111,45 @@ export async function grantCreditsIdempotent(
   });
 }
 
-/** Spend credits for an action. The conditional UPDATE only succeeds if the
- * balance covers the cost, so the check-and-decrement is atomic (no race).
- * Throws `InsufficientCreditsError` otherwise. Returns the new balance. */
-export async function deductCredits(
+/**
+ * Spend credits inside an existing transaction. The conditional UPDATE only
+ * succeeds if the balance covers the cost, so the check-and-decrement is atomic.
+ * Throws `InsufficientCreditsError` otherwise. Compose this with other writes in
+ * one `db.transaction(...)` to charge a user and persist the result together, so
+ * a crash can never charge without delivering (no reconcile sweep needed).
+ */
+export async function deductWithinTx(
+  tx: DbTx,
   userId: string,
   amount: number,
   opts: LedgerOpts = {},
 ): Promise<number> {
   if (amount <= 0) throw new Error("deduct amount must be positive");
-  return getDb().transaction(async (tx) => {
-    const [u] = await tx
-      .update(users)
-      .set({ creditsBalance: sql`${users.creditsBalance} - ${amount}` })
-      .where(
-        and(eq(users.id, userId), sql`${users.creditsBalance} >= ${amount}`),
-      )
-      .returning({ balance: users.creditsBalance });
-    if (!u) throw new InsufficientCreditsError();
-    await tx.insert(creditLedger).values({
-      userId,
-      delta: -amount,
-      reason: "deduction",
-      balanceAfter: u.balance,
-      submissionId: opts.submissionId,
-      metadata: opts.metadata,
-    });
-    return u.balance;
+  const [u] = await tx
+    .update(users)
+    .set({ creditsBalance: sql`${users.creditsBalance} - ${amount}` })
+    .where(and(eq(users.id, userId), sql`${users.creditsBalance} >= ${amount}`))
+    .returning({ balance: users.creditsBalance });
+  if (!u) throw new InsufficientCreditsError();
+  await tx.insert(creditLedger).values({
+    userId,
+    delta: -amount,
+    reason: "deduction",
+    balanceAfter: u.balance,
+    submissionId: opts.submissionId,
+    metadata: opts.metadata,
   });
+  return u.balance;
+}
+
+/** Spend credits for an action in its own transaction. Returns the new balance;
+ * throws `InsufficientCreditsError` if the balance can't cover it. */
+export async function deductCredits(
+  userId: string,
+  amount: number,
+  opts: LedgerOpts = {},
+): Promise<number> {
+  return getDb().transaction((tx) => deductWithinTx(tx, userId, amount, opts));
 }
 
 /**
