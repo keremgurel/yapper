@@ -181,6 +181,8 @@ interface StudioContextValue {
   selectCaption: (id: string | null) => void;
   toggleCaptionSelection: (id: string) => void;
   selectCaptions: (ids: string[]) => void;
+  /** Deselect everything, of every kind. */
+  clearSelection: () => void;
   removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
   cycleCaptionCase: (id: string) => void;
@@ -1570,6 +1572,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectCaption: sel.selectCaption,
       toggleCaptionSelection: sel.toggleCaption,
       selectCaptions: sel.replaceCaptions,
+      clearSelection: sel.clearSelection,
       removeSelectedCaptions,
       setCaptionText,
       cycleCaptionCase,

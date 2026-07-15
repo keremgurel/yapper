@@ -60,6 +60,7 @@ export default function StudioWorkspace() {
     selectedOverlayIds,
     splitSelected,
     deleteSelected,
+    clearSelection,
     undo,
     redo,
   } = useStudio();
@@ -123,6 +124,17 @@ export default function StudioWorkspace() {
           e.preventDefault();
           deleteSelected();
         }
+      } else if (e.key === "Escape") {
+        // Clear whatever is highlighted. Only swallow Escape when there is a
+        // selection, so it still closes menus and popovers otherwise.
+        if (
+          selectedClipIds.length ||
+          selectedOverlayIds.length ||
+          selectedCaptionIds.length
+        ) {
+          e.preventDefault();
+          clearSelection();
+        }
       } else {
         // Transport: arrows step the playhead (a second with Shift), Home/End
         // jump to the ends. A seek during playback keeps playing from the new
@@ -146,6 +158,7 @@ export default function StudioWorkspace() {
     seekToTimeline,
     splitSelected,
     deleteSelected,
+    clearSelection,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
