@@ -58,6 +58,7 @@ import {
   overlaysOnTrack,
 } from "@/lib/studio/tracks";
 import { liftedOverlayFromClip } from "@/lib/studio/lift";
+import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
@@ -153,6 +154,8 @@ interface StudioContextValue {
   addAssetToMainTrack: (assetId: string) => void;
   liftClipToTrack: (clipId: string, timelineStart: number) => void;
   dropOverlayToBase: (overlayId: string, gesture?: string) => void;
+  /** Copy the selected overlays, each just after itself, and select the copies. */
+  duplicateSelectedOverlays: () => void;
   setOverlayTrack: (id: string, track: number, gesture?: string) => void;
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
@@ -698,6 +701,27 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     },
     [overlays, source, mediaAssets, updateEditor, sel],
   );
+
+  // Duplicate every selected overlay, each placed just after itself (its own
+  // track when free there, otherwise a free one). Built before the commit since
+  // it mints ids, threading `taken` so the copies don't land on one another. The
+  // copies become the new selection, so a repeated shortcut duplicates those.
+  const duplicateSelectedOverlays = useCallback(() => {
+    if (selectedOverlayIds.length === 0) return;
+    let taken = overlays;
+    const made: Overlay[] = [];
+    for (const id of selectedOverlayIds) {
+      const o = overlays.find((x) => x.id === id);
+      if (!o) continue;
+      const { start, track } = duplicatedOverlayPosition(taken, o);
+      const copy: Overlay = { ...o, id: newOverlayId(), start, track };
+      made.push(copy);
+      taken = [...taken, copy];
+    }
+    if (made.length === 0) return;
+    updateEditor((s) => ({ ...s, overlays: [...s.overlays, ...made] }));
+    sel.replaceOverlays(made.map((c) => c.id));
+  }, [overlays, selectedOverlayIds, updateEditor, sel]);
 
   // Where a dragged overlay lands: another upper track, or a fresh one above
   // them all. Refused when the target track is already busy at those seconds.
@@ -1547,6 +1571,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToMainTrack,
       liftClipToTrack,
       dropOverlayToBase,
+      duplicateSelectedOverlays,
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,
@@ -1643,6 +1668,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       addAssetToMainTrack,
       liftClipToTrack,
       dropOverlayToBase,
+      duplicateSelectedOverlays,
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,

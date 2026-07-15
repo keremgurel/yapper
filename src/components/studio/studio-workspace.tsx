@@ -61,6 +61,7 @@ export default function StudioWorkspace() {
     splitSelected,
     deleteSelected,
     clearSelection,
+    duplicateSelectedOverlays,
     undo,
     redo,
   } = useStudio();
@@ -102,6 +103,13 @@ export default function StudioWorkspace() {
       } else if (mod && e.key.toLowerCase() === "y") {
         e.preventDefault();
         redo();
+      } else if (mod && e.key.toLowerCase() === "d") {
+        // Duplicate the selected overlays. Only claim the shortcut when there is
+        // something to copy, so it falls through to the browser otherwise.
+        if (selectedOverlayIds.length) {
+          e.preventDefault();
+          duplicateSelectedOverlays();
+        }
       } else if (e.key === " ") {
         // Key off playback state, not the <video> element — image-base projects
         // have no <video>, so an element check would make Space a no-op there.
@@ -159,6 +167,7 @@ export default function StudioWorkspace() {
     splitSelected,
     deleteSelected,
     clearSelection,
+    duplicateSelectedOverlays,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
