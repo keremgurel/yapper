@@ -1,3 +1,4 @@
+import { decodeEntities } from "./html-entities";
 import type { Platform, ResolvedLink } from "./types";
 
 const UA =
@@ -28,7 +29,10 @@ function metaTag(html: string, property: string): string | undefined {
     `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`,
     "i",
   );
-  return html.match(re)?.[1] ?? html.match(alt)?.[1];
+  const raw = html.match(re)?.[1] ?? html.match(alt)?.[1];
+  // og: content is HTML-encoded (&amp;, &#x27;, ...); decode it so the card
+  // shows real text, not the raw entities.
+  return raw === undefined ? undefined : decodeEntities(raw);
 }
 
 async function scrapeOpenGraph(url: string): Promise<OEmbed | null> {
