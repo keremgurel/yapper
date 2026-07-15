@@ -301,12 +301,23 @@ export function useMediaStream() {
     }
   }, [attachStream, cameraOn]);
 
+  // Revoke the recorded object URL when it is replaced or on unmount. (The
+  // setters already revoke on replace; this also covers the unmount case.)
   useEffect(() => {
     return () => {
       if (recordedUrl) URL.revokeObjectURL(recordedUrl);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, [recordedUrl]);
+
+  // Release the live camera/mic ONLY on unmount. This was once keyed on
+  // recordedUrl, which tore the stream down every time a take finished: retake
+  // then had to fully re-acquire the camera (flicker, permission light) instead
+  // of the cheap re-attach reattachStream does when the track is still live.
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
 
   return {
     cameraOn,
