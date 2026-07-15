@@ -1,11 +1,18 @@
 import type { InspirationKind, Platform } from "./types";
 
+/** True when `host` is exactly `domain` or a subdomain of it. Guards against the
+ * `endsWith` trap where "notyoutube.com" would match "youtube.com". */
+function hostMatches(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 export function detectPlatform(rawUrl: string): Platform {
   try {
     const host = new URL(rawUrl).hostname.replace(/^www\./, "").toLowerCase();
-    if (host === "youtu.be" || host.endsWith("youtube.com")) return "youtube";
-    if (host.endsWith("tiktok.com")) return "tiktok";
-    if (host.endsWith("instagram.com")) return "instagram";
+    if (host === "youtu.be" || hostMatches(host, "youtube.com"))
+      return "youtube";
+    if (hostMatches(host, "tiktok.com")) return "tiktok";
+    if (hostMatches(host, "instagram.com")) return "instagram";
     return "unknown";
   } catch {
     return "unknown";
@@ -45,19 +52,19 @@ export function detectKind(rawUrl: string): InspirationKind {
   const segments = path.split("/").filter(Boolean);
 
   if (host === "youtu.be") return "video";
-  if (host.endsWith("youtube.com")) {
+  if (hostMatches(host, "youtube.com")) {
     if (u.searchParams.get("v") || segments[0] === "shorts") return "video";
     if (segments[0]?.startsWith("@")) return "creator";
     if (["channel", "c", "user"].includes(segments[0] ?? "")) return "creator";
     return "video";
   }
-  if (host.endsWith("tiktok.com")) {
+  if (hostMatches(host, "tiktok.com")) {
     // /@handle/video/123 is a clip; /@handle on its own is the creator.
     if (segments.includes("video")) return "video";
     if (segments[0]?.startsWith("@") && segments.length === 1) return "creator";
     return "video";
   }
-  if (host.endsWith("instagram.com")) {
+  if (hostMatches(host, "instagram.com")) {
     if (["p", "reel", "reels", "tv"].includes(segments[0] ?? ""))
       return "video";
     // A bare /handle path is the profile.
@@ -80,12 +87,12 @@ export function extractHandle(rawUrl: string): string | null {
   const segments = u.pathname.split("/").filter(Boolean);
   const first = segments[0] ?? "";
 
-  if (host.endsWith("youtube.com")) {
+  if (hostMatches(host, "youtube.com")) {
     if (first.startsWith("@")) return first.slice(1);
     if (["channel", "c", "user"].includes(first)) return segments[1] ?? null;
     return null;
   }
-  if (host.endsWith("tiktok.com") || host.endsWith("instagram.com")) {
+  if (hostMatches(host, "tiktok.com") || hostMatches(host, "instagram.com")) {
     return first.replace(/^@/, "") || null;
   }
   return null;
