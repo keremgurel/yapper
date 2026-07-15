@@ -4,7 +4,8 @@ export type StudioIcon =
   | "library"
   | "layers"
   | "record"
-  | "scissors";
+  | "scissors"
+  | "send";
 
 export interface StudioNavItem {
   title: string;
@@ -14,23 +15,12 @@ export interface StudioNavItem {
 }
 
 /**
- * The Studio surfaces, in workflow order. Drives the sidebar, the header
- * dropdown, and the mobile menu from one place.
+ * The Studio workflow, in the order a creator moves through it: collect
+ * inspiration, shape it in the library, record, edit, then post. Poster is the
+ * last step, where a finished cut goes out and gets scheduled. This drives the
+ * primary sidebar group, the header dropdown, and the marketing homepage.
  */
-export const studioNav: StudioNavItem[] = [
-  {
-    title: "Connections",
-    href: "/studio/connections",
-    description:
-      "Your videos across platforms — connect accounts and cross-post the gaps.",
-    icon: "share",
-  },
-  {
-    title: "Calendar",
-    href: "/studio/calendar",
-    description: "Your scheduled posts by month and week — drag to reschedule.",
-    icon: "calendar",
-  },
+export const studioFlowNav: StudioNavItem[] = [
   {
     title: "Inspiration",
     href: "/studio/inspiration",
@@ -57,4 +47,31 @@ export const studioNav: StudioNavItem[] = [
     description: "Cut words, fillers, and silences by editing the transcript.",
     icon: "scissors",
   },
+  {
+    title: "Poster",
+    href: "/studio/poster",
+    description: "Post a finished cut and see everything on your calendar.",
+    icon: "send",
+  },
+];
+
+/**
+ * The supporting surfaces that sit beneath the workflow: plumbing you set up
+ * once and rarely touch, not steps you move through. Rendered as a muted second
+ * group so the main flow stays uncluttered.
+ */
+export const studioUtilityNav: StudioNavItem[] = [
+  {
+    title: "Connections",
+    href: "/studio/connections",
+    description:
+      "Connect your platform accounts once, so posting can go straight out.",
+    icon: "share",
+  },
+];
+
+/** Every Studio surface, flow first then utility. For menus that list them all. */
+export const studioNav: StudioNavItem[] = [
+  ...studioFlowNav,
+  ...studioUtilityNav,
 ];

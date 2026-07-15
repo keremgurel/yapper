@@ -3,6 +3,7 @@ import {
   Layers,
   Library,
   Scissors,
+  Send,
   Share2,
   Video,
 } from "lucide-react";
@@ -15,6 +16,7 @@ const map = {
   layers: Layers,
   record: Video,
   scissors: Scissors,
+  send: Send,
 } as const;
 
 export default function StudioNavIcon({

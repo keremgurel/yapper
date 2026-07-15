@@ -11,8 +11,8 @@ import {
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioNav } from "@/data/studio-nav";
 
-/** Header dropdown for the Studio (the main app): Inspiration, Content
- * Library, Recorder, Editor. */
+/** Header dropdown for the Studio (the main app): the workflow surfaces
+ * followed by the supporting ones (Connections). */
 export default function StudioNavDropdown() {
   return (
     <DropdownMenu>

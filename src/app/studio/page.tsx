@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
-import { studioNav } from "@/data/studio-nav";
+import { studioFlowNav } from "@/data/studio-nav";
 
 export const metadata: Metadata = {
   title: "Yapper Studio — from spoken idea to posted video",
@@ -77,16 +77,16 @@ export default function StudioMarketingPage() {
         </div>
       </section>
 
-      {/* The four surfaces */}
+      {/* The workflow surfaces */}
       <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
         <p className="sg-field-label text-center text-[color:var(--sg-accent)]">
           Everything you need
         </p>
         <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-black sm:text-3xl">
-          Four tools, one workflow
+          One workflow, start to finish
         </h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {studioNav.map((item) => (
+          {studioFlowNav.map((item) => (
             <Card
               key={item.href}
               className="gap-0 p-6 transition-colors hover:border-[color:var(--sg-accent)]/40"

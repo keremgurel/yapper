@@ -1,23 +1,7 @@
-import type { Metadata } from "next";
-import ContentCalendar from "@/components/calendar/content-calendar";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Calendar",
-  description: "Your scheduled content across the month.",
-  robots: { index: false }, // personal dashboard surface
-};
-
+// The calendar folded into the Poster hub. Keep the old path working for
+// bookmarks and in-flight links by sending it to the calendar tab there.
 export default function Page() {
-  return (
-    <div className="mx-auto max-w-6xl">
-      <h1 className="font-display text-foreground text-2xl font-black tracking-tight">
-        Calendar
-      </h1>
-      <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        Everything you&apos;ve scheduled, at a glance. Drag a post to another
-        day to reschedule.
-      </p>
-      <ContentCalendar />
-    </div>
-  );
+  redirect("/studio/poster?tab=calendar");
 }

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
-import { studioNav } from "@/data/studio-nav";
+import { studioFlowNav } from "@/data/studio-nav";
 
 /** Homepage section marketing the Studio workflow (the main app). */
 export default function StudioFlowSection() {
@@ -18,13 +18,13 @@ export default function StudioFlowSection() {
           </h2>
           <p className="text-foreground/60 mx-auto mt-4 max-w-xl text-[15px] leading-relaxed">
             Collect inspiration, shape ideas into scripts with AI, track them
-            through your content pipeline, record with a teleprompter, and edit
-            by editing the transcript.
+            through your content pipeline, record with a teleprompter, edit by
+            editing the transcript, and post it everywhere.
           </p>
         </div>
 
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {studioNav.map((item, i) => (
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {studioFlowNav.map((item, i) => (
             <Link
               key={item.href}
               href={item.href}
