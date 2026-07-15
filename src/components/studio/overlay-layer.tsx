@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import OverlayCropEditor from "@/components/studio/overlay-crop-editor";
 import OverlayMenu, { type MenuAnchor } from "@/components/studio/overlay-menu";
+import {
+  horizontalTargets,
+  snapEdge,
+  snapSpan,
+  verticalTargets,
+} from "@/lib/studio/align";
 import { FULL_CROP, cropStyle, isFullCrop } from "@/lib/studio/crop";
 import { FULL_FRAME, fitBox, mediaAspect } from "@/lib/studio/overlay-box";
 import { paintOrder } from "@/lib/studio/tracks";
@@ -14,51 +20,11 @@ function clamp01(v: number, max = 1): number {
 }
 
 const MIN = 0.1; // minimum overlay size (fraction of stage)
-const SNAP = 0.012; // snap distance (fraction of stage) — like Canva's magnet
 
 /** Active alignment guides while dragging, as stage fractions (0..1). */
 export interface Guides {
   v: number[];
   h: number[];
-}
-
-/**
- * Snap one span (its start / center / end) to the nearest target line. Returns
- * the delta to shift the span by and the guide line it snapped to, or null.
- */
-function snapSpan(
-  start: number,
-  size: number,
-  targets: number[],
-): { delta: number; guide: number } | null {
-  const edges = [start, start + size / 2, start + size];
-  let best: { delta: number; guide: number } | null = null;
-  for (const e of edges) {
-    for (const t of targets) {
-      const delta = t - e;
-      if (
-        Math.abs(delta) <= SNAP &&
-        (!best || Math.abs(delta) < Math.abs(best.delta))
-      ) {
-        best = { delta, guide: t };
-      }
-    }
-  }
-  return best;
-}
-
-/** Snap a single edge to the nearest target line, or null if none are close. */
-function snapEdge(pos: number, targets: number[]): number | null {
-  let best: number | null = null;
-  for (const t of targets) {
-    if (
-      Math.abs(t - pos) <= SNAP &&
-      (best === null || Math.abs(t - pos) < Math.abs(best - pos))
-    ) {
-      best = t;
-    }
-  }
-  return best;
 }
 
 type Corner = "tl" | "tr" | "bl" | "br";
@@ -172,18 +138,8 @@ function OverlayBox({
   // Alignment targets: the stage's own edges + center, plus every other
   // overlay's edges + center. Snapping to these makes centering and lining up
   // with another overlay click into place, Canva-style.
-  const vTargets = [
-    0,
-    0.5,
-    1,
-    ...others.flatMap((o) => [o.x, o.x + o.w / 2, o.x + o.w]),
-  ];
-  const hTargets = [
-    0,
-    0.5,
-    1,
-    ...others.flatMap((o) => [o.y, o.y + o.h / 2, o.y + o.h]),
-  ];
+  const vTargets = verticalTargets(others);
+  const hTargets = horizontalTargets(others);
 
   const move = (e: React.PointerEvent) => {
     const d = dragRef.current;
