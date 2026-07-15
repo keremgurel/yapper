@@ -1,4 +1,10 @@
-export type StudioIcon = "share" | "library" | "layers" | "record" | "scissors";
+export type StudioIcon =
+  | "share"
+  | "calendar"
+  | "library"
+  | "layers"
+  | "record"
+  | "scissors";
 
 export interface StudioNavItem {
   title: string;
@@ -18,6 +24,12 @@ export const studioNav: StudioNavItem[] = [
     description:
       "Your videos across platforms — connect accounts and cross-post the gaps.",
     icon: "share",
+  },
+  {
+    title: "Calendar",
+    href: "/studio/calendar",
+    description: "Your scheduled posts by month and week — drag to reschedule.",
+    icon: "calendar",
   },
   {
     title: "Inspiration",

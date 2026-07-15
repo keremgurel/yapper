@@ -1,8 +1,16 @@
-import { Layers, Library, Scissors, Share2, Video } from "lucide-react";
+import {
+  CalendarDays,
+  Layers,
+  Library,
+  Scissors,
+  Share2,
+  Video,
+} from "lucide-react";
 import type { StudioIcon } from "@/data/studio-nav";
 
 const map = {
   share: Share2,
+  calendar: CalendarDays,
   library: Library,
   layers: Layers,
   record: Video,
