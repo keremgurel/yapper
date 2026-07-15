@@ -59,6 +59,7 @@ import {
   overlaysOnTrack,
 } from "@/lib/studio/tracks";
 import { liftedOverlayFromClip } from "@/lib/studio/lift";
+import { overlayToBaseClip } from "@/lib/studio/fold";
 import { newCaptionAtTimeline } from "@/lib/studio/new-caption";
 import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
@@ -670,29 +671,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (overlayId: string, gesture?: string) => {
       const o = overlays.find((x) => x.id === overlayId);
       if (!o || o.kind !== "video") return;
-      const carriesOwnMedia = !source || o.url !== source.url;
       const assetDuration =
         mediaAssets.find((m) => m.url === o.url)?.duration ??
         o.sourceStart + o.duration;
       updateEditor(
         (s) => ({
           ...s,
-          clips: [
-            ...s.clips,
-            {
-              id: newClipId(),
-              start: o.sourceStart,
-              end: o.sourceStart + o.duration,
-              src: carriesOwnMedia
-                ? {
-                    url: o.url,
-                    kind: "video",
-                    name: o.name,
-                    duration: assetDuration,
-                  }
-                : undefined,
-            },
-          ],
+          clips: [...s.clips, overlayToBaseClip(o, source, assetDuration)],
           overlays: s.overlays.filter((x) => x.id !== overlayId),
         }),
         gesture,
