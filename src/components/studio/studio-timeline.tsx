@@ -35,6 +35,7 @@ import {
   useOverlayDrag,
   type OverlayDropTarget,
 } from "@/hooks/use-overlay-drag";
+import { useTrimDrag } from "@/hooks/use-trim-drag";
 import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { visibleSpan } from "@/lib/studio/window";
 import { captionTimelineRange } from "@/lib/studio/captions";
@@ -42,18 +43,9 @@ import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
 const MIN_PX = 12;
 const MAX_PX = 800;
-const MIN_CLIP = 0.2;
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
-}
-
-interface TrimDrag {
-  id: string;
-  edge: "start" | "end";
-  startX: number;
-  origStart: number;
-  origEnd: number;
 }
 
 export default function StudioTimeline({
@@ -135,8 +127,6 @@ export default function StudioTimeline({
   // is pure native scroll (no re-render).
   const viewStartRef = useRef(0);
   const [scrubbing, setScrubbing] = useState(false);
-  const [trim, setTrim] = useState<TrimDrag | null>(null);
-  const [live, setLive] = useState<{ start: number; end: number } | null>(null);
   const clipDrag = useClipDrag({
     clips,
     pxPerSec,
@@ -256,6 +246,18 @@ export default function StudioTimeline({
     onMove: moveAudio,
   });
 
+  const trimDrag = useTrimDrag({
+    clips,
+    sourceDuration,
+    pxPerSec,
+    snapping,
+    currentTimelineTime,
+    onCommit: setClipRange,
+  });
+  // A plain local so `isTrimming ? live.start` keeps its non-null narrowing
+  // (TypeScript won't narrow a property access like trimDrag.live the same way).
+  const live = trimDrag.live;
+
   // The drag's ring color: what letting go over this lane would actually do,
   // including nothing. A hint that promises a move the drop then refuses is
   // worse than no hint at all.
@@ -291,76 +293,6 @@ export default function StudioTimeline({
       window.removeEventListener("pointerup", onUp);
     };
   }, [scrubbing, seekFromClientX]);
-
-  /* ---- trim ---- */
-  useEffect(() => {
-    if (!trim) return;
-    const idx = clips.findIndex((c) => c.id === trim.id);
-    const clip = clips[idx];
-    if (!clip) return;
-    const { min: prevEnd, max: nextStart } = trimBounds(
-      clips,
-      idx,
-      sourceDuration,
-    );
-    // Magnet targets (in source seconds): neighbor edges and the playhead.
-    const offset = clips
-      .slice(0, idx)
-      .reduce((s, c) => s + (c.end - c.start), 0);
-    const clipDur = clip.end - clip.start;
-    const playheadInClip =
-      currentTimelineTime >= offset && currentTimelineTime <= offset + clipDur;
-    const playheadSource = clip.start + (currentTimelineTime - offset);
-    const snapEdge = (t: number) => {
-      if (!snapping) return t;
-      const th = 8 / pxPerSec;
-      const points = playheadInClip
-        ? [prevEnd, nextStart, playheadSource]
-        : [prevEnd, nextStart];
-      for (const p of points) if (Math.abs(p - t) < th) return p;
-      return t;
-    };
-
-    let current: { start: number; end: number } | null = null;
-    const onMove = (e: PointerEvent) => {
-      const deltaSec = (e.clientX - trim.startX) / pxPerSec;
-      if (trim.edge === "start") {
-        const start = clamp(
-          snapEdge(trim.origStart + deltaSec),
-          prevEnd,
-          trim.origEnd - MIN_CLIP,
-        );
-        current = { start, end: trim.origEnd };
-      } else {
-        const end = clamp(
-          snapEdge(trim.origEnd + deltaSec),
-          trim.origStart + MIN_CLIP,
-          nextStart,
-        );
-        current = { start: trim.origStart, end };
-      }
-      setLive(current);
-    };
-    const onUp = () => {
-      if (current) setClipRange(trim.id, current.start, current.end);
-      setLive(null);
-      setTrim(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [
-    trim,
-    clips,
-    sourceDuration,
-    pxPerSec,
-    setClipRange,
-    snapping,
-    currentTimelineTime,
-  ]);
 
   /* ---- wheel: scroll the tracks, zoom-at-cursor on pinch / ⌘-scroll ---- */
   useEffect(() => {
@@ -717,7 +649,7 @@ export default function StudioTimeline({
                   <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
                 )}
                 {clips.map((clip, i) => {
-                  const isTrimming = trim?.id === clip.id && live;
+                  const isTrimming = trimDrag.id === clip.id && live;
                   const cStart = isTrimming ? live.start : clip.start;
                   const cEnd = isTrimming ? live.end : clip.end;
                   const dur = cEnd - cStart;
@@ -725,7 +657,7 @@ export default function StudioTimeline({
                   // Left-trim keeps the right edge fixed so the dragged edge tracks
                   // the cursor; right-trim keeps the left edge fixed.
                   const leftSec =
-                    isTrimming && trim?.edge === "start"
+                    isTrimming && trimDrag.edge === "start"
                       ? offsets[i] + (origDur - dur)
                       : offsets[i];
                   const width = Math.max(dur * pxPerSec, 4);
@@ -744,8 +676,8 @@ export default function StudioTimeline({
                   // reveal/hide it. The content's source range and absolute position
                   // stay fixed for the whole drag, so the untrimmed side never moves
                   // and extending the edge back out reveals real frames (not gray).
-                  const edgeStart = isTrimming && trim?.edge === "start";
-                  const edgeEnd = isTrimming && trim?.edge === "end";
+                  const edgeStart = isTrimming && trimDrag.edge === "start";
+                  const edgeEnd = isTrimming && trimDrag.edge === "end";
                   const { min: prevEnd, max: nextStart } = trimBounds(
                     clips,
                     i,
@@ -792,7 +724,7 @@ export default function StudioTimeline({
                           ? `translateY(${clipDrag.liftY}px)`
                           : undefined,
                         transition:
-                          trim || isGhost
+                          trimDrag.id || isGhost
                             ? "none"
                             : "left 90ms ease, width 90ms ease",
                       }}
@@ -893,7 +825,7 @@ export default function StudioTimeline({
                               e.preventDefault();
                               e.stopPropagation();
                               selectClip(clip.id);
-                              setTrim({
+                              trimDrag.begin({
                                 id: clip.id,
                                 edge: "start",
                                 startX: e.clientX,
@@ -905,7 +837,8 @@ export default function StudioTimeline({
                           >
                             <span
                               className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                                trim?.id === clip.id && trim.edge === "start"
+                                trimDrag.id === clip.id &&
+                                trimDrag.edge === "start"
                                   ? "w-0.5"
                                   : "w-1.5"
                               } opacity-100`}
@@ -916,7 +849,7 @@ export default function StudioTimeline({
                               e.preventDefault();
                               e.stopPropagation();
                               selectClip(clip.id);
-                              setTrim({
+                              trimDrag.begin({
                                 id: clip.id,
                                 edge: "end",
                                 startX: e.clientX,
@@ -928,7 +861,8 @@ export default function StudioTimeline({
                           >
                             <span
                               className={`h-full rounded-full bg-cyan-300 transition-[width,opacity] ${
-                                trim?.id === clip.id && trim.edge === "end"
+                                trimDrag.id === clip.id &&
+                                trimDrag.edge === "end"
                                   ? "w-0.5"
                                   : "w-1.5"
                               } opacity-100`}
