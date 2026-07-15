@@ -79,8 +79,9 @@ export const creditLedger = pgTable(
     uniqueIndex("credit_ledger_one_welcome_per_user")
       .on(t.userId)
       .where(sql`${t.reason} = 'welcome_grant'`),
-    // At most one refund per submission — makes refunds idempotent so the
-    // inline catch and the reconciliation sweep can never double-refund.
+    // At most one refund per submission — a latent guard that keeps any
+    // per-submission refund idempotent (no caller today; charging happens on
+    // success, so nothing is charged-then-reversed).
     uniqueIndex("credit_ledger_one_refund_per_submission")
       .on(t.submissionId)
       .where(sql`${t.reason} = 'refund'`),
