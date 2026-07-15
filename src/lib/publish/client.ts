@@ -49,9 +49,20 @@ export async function fetchYouTubeVideos(): Promise<{
   connected: boolean;
   videos: PlatformVideo[];
 }> {
-  const res = await fetch("/api/publish/youtube/videos");
-  if (!res.ok) return { connected: false, videos: [] };
-  return (await res.json()) as { connected: boolean; videos: PlatformVideo[] };
+  try {
+    const res = await fetch("/api/publish/youtube/videos");
+    if (!res.ok) return { connected: false, videos: [] };
+    return (await res.json()) as {
+      connected: boolean;
+      videos: PlatformVideo[];
+    };
+  } catch {
+    // A network error (offline, DNS, CORS) or a non-JSON body would otherwise
+    // reject. The videos hook keys loading off `videos === null`, so a rejection
+    // leaves the Posts tab spinning forever. Fail to the same empty shape a
+    // non-ok response already yields.
+    return { connected: false, videos: [] };
+  }
 }
 
 export interface CrossPostInput {
