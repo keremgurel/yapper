@@ -91,6 +91,19 @@ export function generateFilmstrip(
 }
 
 /**
+ * Scale peaks into 0..1 by the loudest one, with a floor so a near-silent clip
+ * doesn't divide by ~0 and blow up into a wall of ones. Uses a plain loop, NOT
+ * `Math.max(0.01, ...peaks)`: a long clip produces tens of thousands of buckets,
+ * and spreading that many arguments overflows the engine's argument limit and
+ * throws on some browsers (which then silently drops the whole waveform).
+ */
+export function normalizePeaks(peaks: number[]): number[] {
+  let peak = 0.01;
+  for (const v of peaks) if (v > peak) peak = v;
+  return peaks.map((v) => v / peak);
+}
+
+/**
  * Decode a media URL's audio into normalized peak amplitudes (0–1) spanning its
  * full duration, so a timeline can draw a waveform aligned to it. Resolves to []
  * when there is no audio track or the bytes can't be decoded.
@@ -123,8 +136,7 @@ export async function generateWaveform(
       }
       out.push(max);
     }
-    const peak = Math.max(0.01, ...out);
-    return out.map((v) => v / peak);
+    return normalizePeaks(out);
   } catch {
     return []; // no audio track / decode failure
   } finally {
