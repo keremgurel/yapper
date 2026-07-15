@@ -17,8 +17,6 @@ import {
   sourceToTimeline,
   splitClipAt,
   timelineToSource,
-  trimClipEnd,
-  trimClipStart,
 } from "@/lib/studio/clips";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
@@ -125,8 +123,6 @@ interface StudioContextValue {
   /** Split the selected element (or the clip under the playhead) at `timelineTime`. */
   splitSelected: (timelineTime: number) => void;
   deleteSelected: () => void;
-  trimStart: (sourceTime: number) => void;
-  trimEnd: (sourceTime: number) => void;
   setClipRange: (id: string, start: number, end: number) => void;
   moveClip: (id: string, toIndex: number) => void;
   removePauses: () => number;
@@ -1222,24 +1218,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     sel,
   ]);
 
-  const trimStart = useCallback(
-    (sourceTime: number) => {
-      setClips((prev) =>
-        selectedClipId ? trimClipStart(prev, selectedClipId, sourceTime) : prev,
-      );
-    },
-    [setClips, selectedClipId],
-  );
-
-  const trimEnd = useCallback(
-    (sourceTime: number) => {
-      setClips((prev) =>
-        selectedClipId ? trimClipEnd(prev, selectedClipId, sourceTime) : prev,
-      );
-    },
-    [setClips, selectedClipId],
-  );
-
   const setClipRange = useCallback(
     (id: string, start: number, end: number) => {
       if (end - start < 0.1) return;
@@ -1542,8 +1520,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       selectOverlays: sel.replaceOverlays,
       splitSelected,
       deleteSelected,
-      trimStart,
-      trimEnd,
       setClipRange,
       moveClip,
       removePauses,
@@ -1639,8 +1615,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       sel,
       splitSelected,
       deleteSelected,
-      trimStart,
-      trimEnd,
       setClipRange,
       moveClip,
       removePauses,

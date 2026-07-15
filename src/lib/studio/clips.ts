@@ -151,30 +151,6 @@ export function removeSourceRange(
   });
 }
 
-export function trimClipStart(
-  clips: Clip[],
-  id: string,
-  sourceTime: number,
-): Clip[] {
-  return clips.map((c) =>
-    c.id === id && sourceTime > c.start && sourceTime < c.end - EPS
-      ? { ...c, start: sourceTime }
-      : c,
-  );
-}
-
-export function trimClipEnd(
-  clips: Clip[],
-  id: string,
-  sourceTime: number,
-): Clip[] {
-  return clips.map((c) =>
-    c.id === id && sourceTime < c.end && sourceTime > c.start + EPS
-      ? { ...c, end: sourceTime }
-      : c,
-  );
-}
-
 /**
  * Index of the recording clip that keeps source second `t`, or -1 when that
  * second was cut. Appended clips are skipped: their `start`/`end` count seconds
