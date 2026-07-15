@@ -6,6 +6,9 @@ import type { AudioTrack, Clip, Overlay } from "@/lib/studio/types";
  * is only the lowest layer, so it doesn't get to cut the project short — an
  * overlay or audio clip that outlasts it still plays and still exports, and a
  * project with no bottom track at all is still a project.
+ *
+ * A hidden overlay is composited nowhere (frame plan, export, and audio mix all
+ * skip it), so it must not pad the timeline with trailing empty frames.
  */
 export function projectDuration(
   clips: Clip[],
@@ -13,7 +16,10 @@ export function projectDuration(
   audioTracks: AudioTrack[],
 ): number {
   let end = totalDuration(clips);
-  for (const o of overlays) end = Math.max(end, o.start + o.duration);
+  for (const o of overlays) {
+    if (o.hidden) continue;
+    end = Math.max(end, o.start + o.duration);
+  }
   for (const a of audioTracks) end = Math.max(end, a.start + a.duration);
   return end;
 }
