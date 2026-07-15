@@ -18,6 +18,7 @@ import {
   splitClipAt,
   timelineToSource,
 } from "@/lib/studio/clips";
+import { splitAudioAt } from "@/lib/studio/split-audio";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
   combineRetakeCuts,
@@ -1236,6 +1237,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
    * an upper-track clip, a caption, or a bottom-track clip — and with nothing
    * selected it falls back to the bottom-track clip under the playhead.
    */
+  // Cut every selected audio clip at the playhead. Selection is exclusive, so
+  // this only fires when audio is what's highlighted. One split is one undo step.
+  const splitAudio = useCallback(
+    (ids: string[], timelineTime: number) => {
+      setAudioTracks((prev) => {
+        let next = prev;
+        for (const id of ids) next = splitAudioAt(next, id, timelineTime);
+        return next;
+      });
+      sel.clearAudios();
+    },
+    [setAudioTracks, sel],
+  );
+
   const splitSelected = useCallback(
     (timelineTime: number) => {
       if (selectedOverlayIds.length) {
@@ -1246,13 +1261,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         for (const id of selectedCaptionIds) splitCaption(id, timelineTime);
         return;
       }
+      // Audio before the base fallthrough: with an audio clip selected, `s`
+      // must cut that clip, not silently split the bottom track underneath it.
+      if (selectedAudioIds.length) {
+        splitAudio(selectedAudioIds, timelineTime);
+        return;
+      }
       setClips((prev) => splitClipAt(prev, timelineTime));
     },
     [
       selectedOverlayIds,
       selectedCaptionIds,
+      selectedAudioIds,
       splitOverlays,
       splitCaption,
+      splitAudio,
       setClips,
     ],
   );
