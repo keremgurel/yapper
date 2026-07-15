@@ -10,12 +10,10 @@ import FeedbackTab from "@/components/studio/feedback/feedback-tab";
 type Tab = "media" | "transcript" | "captions" | "feedback";
 
 export default function RightPanel({
-  currentSourceTime,
   currentTimelineTime,
   onSeek,
   onSeekTimeline,
 }: {
-  currentSourceTime: number;
   currentTimelineTime: number;
   onSeek: (t: number) => void;
   onSeekTimeline: (t: number) => void;
@@ -99,7 +97,7 @@ export default function RightPanel({
           <FeedbackTab />
         ) : (
           <StudioTranscript
-            currentSourceTime={currentSourceTime}
+            currentTimelineTime={currentTimelineTime}
             onSeek={onSeek}
           />
         )}

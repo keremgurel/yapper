@@ -13,17 +13,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/components/studio/studio-context";
+import { activeWordId } from "@/lib/studio/active-word";
 import { isRangeCut, isWordCut } from "@/lib/studio/transcript-edit";
 import type { Word } from "@/lib/studio/types";
 
 const MIN_GAP = 0.4; // seconds; shorter pauses aren't shown as chips
 
 export default function TranscriptWords({
-  currentSourceTime,
+  currentTimelineTime,
   onSeek,
   showDeleted,
 }: {
-  currentSourceTime: number;
+  currentTimelineTime: number;
   onSeek: (t: number) => void;
   showDeleted: boolean;
 }) {
@@ -65,17 +66,13 @@ export default function TranscriptWords({
     return m;
   }, [words]);
 
-  // The single active word under the playhead (latest match wins, so
-  // overlapping word timings don't light up two words at once).
-  const activeId = useMemo(() => {
-    for (let i = words.length - 1; i >= 0; i--) {
-      const w = words[i];
-      if (currentSourceTime >= w.start && currentSourceTime <= w.end) {
-        return w.id;
-      }
-    }
-    return null;
-  }, [words, currentSourceTime]);
+  // The single active word under the playhead. The playhead is a timeline
+  // position; activeWordId maps it to recording source (so it stays right over
+  // a b-roll) and picks the covering word, latest match winning.
+  const activeId = useMemo(
+    () => activeWordId(words, clips, currentTimelineTime),
+    [words, clips, currentTimelineTime],
+  );
 
   const clearSelection = () => {
     setSelected(new Set());

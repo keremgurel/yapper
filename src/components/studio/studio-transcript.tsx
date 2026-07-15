@@ -17,10 +17,10 @@ import TranscriptWords from "@/components/studio/transcript-words";
 import { Button } from "@/components/ui/button";
 
 export default function StudioTranscript({
-  currentSourceTime,
+  currentTimelineTime,
   onSeek,
 }: {
-  currentSourceTime: number;
+  currentTimelineTime: number;
   onSeek: (t: number) => void;
 }) {
   const {
@@ -65,7 +65,7 @@ export default function StudioTranscript({
       {hasTranscript ? (
         <div className="min-h-0 flex-1">
           <TranscriptWords
-            currentSourceTime={currentSourceTime}
+            currentTimelineTime={currentTimelineTime}
             onSeek={onSeek}
             showDeleted={showDeleted}
           />

@@ -70,20 +70,13 @@ export default function StudioWorkspace() {
   // The bottom track can drive a <video> clock only when it has clips and isn't
   // a still. Otherwise playback falls back to its synthetic clock.
   const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
-  const {
-    timelineTime,
-    sourceTime,
-    playing,
-    play,
-    pause,
-    seekToTimeline,
-    seekToSource,
-  } = useStudioPlayback(videoRef, {
-    clips,
-    total: duration,
-    hasVideo,
-    baseUrl: source?.url ?? "",
-  });
+  const { timelineTime, playing, play, pause, seekToTimeline, seekToSource } =
+    useStudioPlayback(videoRef, {
+      clips,
+      total: duration,
+      hasVideo,
+      baseUrl: source?.url ?? "",
+    });
   // Two docked widths, because the two layouts dock two different things: the
   // side panel in classic, the picture in cinema. Sharing one would make the
   // preview open at a panel's width the moment you switched.
@@ -204,7 +197,6 @@ export default function StudioWorkspace() {
 
   const panel = (
     <RightPanel
-      currentSourceTime={sourceTime}
       currentTimelineTime={timelineTime}
       onSeek={seekToSource}
       onSeekTimeline={seekToTimeline}
