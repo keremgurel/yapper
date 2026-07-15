@@ -37,6 +37,7 @@ import { useTrimDrag } from "@/hooks/use-trim-drag";
 import { SNAP_PX, snapClipStart, timelineSnapPoints } from "@/lib/studio/snap";
 import { snappedTrimDelta } from "@/lib/studio/snap-trim";
 import { visibleSpan } from "@/lib/studio/window";
+import { buildTicks } from "@/lib/studio/ruler";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
@@ -1012,23 +1013,4 @@ export default function StudioTimeline({
       </p>
     </div>
   );
-}
-
-function buildTicks(total: number, pxPerSec: number) {
-  if (total <= 0) return [] as { sec: number; x: number; label: string }[];
-  const targetPx = 90;
-  const raw = targetPx / pxPerSec;
-  const steps = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300];
-  const step = steps.find((s) => s >= raw) ?? 600;
-  const out: { sec: number; x: number; label: string }[] = [];
-  for (let s = 0; s <= total + 0.001; s += step) {
-    const m = Math.floor(s / 60);
-    const sec = Math.round(s % 60);
-    out.push({
-      sec: s,
-      x: s * pxPerSec,
-      label: `${m}:${String(sec).padStart(2, "0")}`,
-    });
-  }
-  return out;
 }
