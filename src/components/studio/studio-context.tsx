@@ -60,6 +60,7 @@ import {
 } from "@/lib/studio/tracks";
 import { liftedOverlayFromClip } from "@/lib/studio/lift";
 import { overlayToBaseClip } from "@/lib/studio/fold";
+import { NUDGE_STEP, NUDGE_STEP_BIG, nudgeRect } from "@/lib/studio/nudge";
 import { newCaptionAtTimeline } from "@/lib/studio/new-caption";
 import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
@@ -170,6 +171,8 @@ interface StudioContextValue {
   dropOverlayToBase: (overlayId: string, gesture?: string) => void;
   /** Copy the selected overlays, each just after itself, and select the copies. */
   duplicateSelectedOverlays: () => void;
+  /** Nudge the lone selected overlay by (dx, dy) direction steps; big = Shift. */
+  nudgeSelectedOverlay: (dx: number, dy: number, big: boolean) => void;
   setOverlayTrack: (id: string, track: number, gesture?: string) => void;
   moveOverlay: (id: string, start: number, gesture?: string) => void;
   setOverlayRect: (id: string, rect: OverlayRect) => void;
@@ -805,6 +808,25 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [setOverlays],
+  );
+
+  // Arrow-key nudge of the one selected overlay's position on the stage, for the
+  // pixel-precise placement dragging can't hit. Only fires for a lone overlay
+  // selection; the keyboard owns the "is this a nudge or a seek" decision.
+  const nudgeSelectedOverlay = useCallback(
+    (dx: number, dy: number, big: boolean) => {
+      if (selectedOverlayIds.length !== 1) return;
+      const o = overlays.find((x) => x.id === selectedOverlayIds[0]);
+      if (!o) return;
+      const rect = nudgeRect(
+        { x: o.x ?? 0, y: o.y ?? 0, w: o.w ?? 1, h: o.h ?? 1 },
+        dx,
+        dy,
+        big ? NUDGE_STEP_BIG : NUDGE_STEP,
+      );
+      setOverlayRect(o.id, rect);
+    },
+    [selectedOverlayIds, overlays, setOverlayRect],
   );
 
   // Trim an upper-track clip's timeline range and in-point (edge drag). The
@@ -1622,6 +1644,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       liftClipToTrack,
       dropOverlayToBase,
       duplicateSelectedOverlays,
+      nudgeSelectedOverlay,
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,
@@ -1720,6 +1743,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       liftClipToTrack,
       dropOverlayToBase,
       duplicateSelectedOverlays,
+      nudgeSelectedOverlay,
       setOverlayTrack,
       moveOverlay,
       setOverlayRect,

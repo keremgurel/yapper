@@ -8,6 +8,7 @@ import RightPanel from "@/components/studio/right-panel";
 import TimelinePanel from "@/components/studio/timeline-panel";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
 import { transportSeek } from "@/lib/studio/playback-keys";
+import { nudgeDelta } from "@/lib/studio/nudge";
 import { usePanelHeight } from "@/hooks/use-panel-height";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { useStudioLayout } from "@/hooks/use-studio-layout";
@@ -63,6 +64,7 @@ export default function StudioWorkspace() {
     deleteSelected,
     clearSelection,
     duplicateSelectedOverlays,
+    nudgeSelectedOverlay,
     undo,
     redo,
   } = useStudio();
@@ -139,6 +141,19 @@ export default function StudioWorkspace() {
           e.preventDefault();
           clearSelection();
         }
+      } else if (
+        nudgeDelta(e.key) &&
+        selectedOverlayIds.length === 1 &&
+        !selectedClipIds.length &&
+        !selectedCaptionIds.length &&
+        !selectedAudioIds.length
+      ) {
+        // A lone overlay is selected: arrows nudge its position on the stage
+        // (a bigger step with Shift), the canvas-editor convention. Everything
+        // else falls through to transport below.
+        const delta = nudgeDelta(e.key)!;
+        e.preventDefault();
+        nudgeSelectedOverlay(delta.dx, delta.dy, e.shiftKey);
       } else {
         // Transport: arrows step the playhead (a second with Shift), Home/End
         // jump to the ends. A seek during playback keeps playing from the new
@@ -164,6 +179,7 @@ export default function StudioWorkspace() {
     deleteSelected,
     clearSelection,
     duplicateSelectedOverlays,
+    nudgeSelectedOverlay,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
