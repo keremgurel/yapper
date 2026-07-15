@@ -13,7 +13,13 @@ function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    // Corrupt or schema-shifted storage must not crash a caller that maps over
+    // the result (loadItems, loadPillars). A stored value whose array-ness no
+    // longer matches the fallback is treated as absent, not blindly cast.
+    if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+    return parsed as T;
   } catch {
     return fallback;
   }
