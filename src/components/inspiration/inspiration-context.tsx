@@ -15,6 +15,11 @@ import {
   saveItems,
   savePillars,
 } from "@/lib/inspiration/store";
+import {
+  creatorScrapePatch,
+  isScrapeFailure,
+  type CreatorScrapeResponse,
+} from "@/lib/inspiration/creator-scrape";
 import type {
   InspirationItem,
   Pillar,
@@ -163,20 +168,13 @@ export function InspirationProvider({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: item.url }),
         });
-        const data = (await res.json()) as {
-          name?: string;
-          avatar?: string;
-          videos?: InspirationItem["videos"];
-          scrapedAt?: number;
-        };
-        updateItem(item.id, {
-          videos: data.videos ?? [],
-          scrapedAt: data.scrapedAt ?? Date.now(),
-          ...(data.avatar && !item.thumbnail ? { thumbnail: data.avatar } : {}),
-          ...(data.name && item.title.startsWith("@")
-            ? { title: data.name }
-            : {}),
-        });
+        const data = (await res.json()) as CreatorScrapeResponse;
+        // The route soft-fails with HTTP 200 + {error}, so an error note (or a
+        // real HTTP error) must not be recorded as an empty successful feed.
+        if (isScrapeFailure(res.ok, data)) {
+          throw new Error(data.error ?? `creator_${res.status}`);
+        }
+        updateItem(item.id, creatorScrapePatch(data, item, Date.now()));
       } catch {
         // Leave the item as-is; the UI shows a retry affordance.
         updateItem(item.id, { scrapedAt: Date.now() });
