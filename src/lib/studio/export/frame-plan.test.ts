@@ -193,4 +193,18 @@ describe("captionAt", () => {
     const c = caption(1, 2, "orphan");
     expect(captionAt([appended("b", 0, 4)], [c], style, 1)).toBeNull();
   });
+
+  it("skips a blanked caption so it can't shadow a real overlapping one", () => {
+    // The .srt sidecar drops empty-text cues; burn-in must too, or a blanked
+    // caption listed first would win .find and hide the real caption behind it.
+    const clips = [rec("a", 0, 10)];
+    const blank = caption(2, 4, "   ");
+    const real = caption(2, 4, "hello");
+    expect(captionAt(clips, [blank, real], style, 3)?.text).toBe("hello");
+  });
+
+  it("shows no caption when the only one covering t is blank", () => {
+    const clips = [rec("a", 0, 10)];
+    expect(captionAt(clips, [caption(2, 4, "")], style, 3)).toBeNull();
+  });
 });

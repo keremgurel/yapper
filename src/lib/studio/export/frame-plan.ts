@@ -99,6 +99,7 @@ export function captionAt(
   t: number,
 ): CaptionFrame | null {
   const active = captions.find((c) => {
+    if (c.text.trim().length === 0) return false; // matches the .srt survival test
     const r = captionTimelineRange(clips, c);
     return r.end > r.start && t >= r.start && t < r.end;
   });
