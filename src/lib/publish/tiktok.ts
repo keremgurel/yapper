@@ -11,7 +11,8 @@
 const INBOX_INIT =
   "https://open.tiktokapis.com/v2/post/publish/inbox/video/init/";
 
-const MAX_CHUNK = 64 * 1024 * 1024; // 64MB, TikTok's per-chunk ceiling.
+const MAX_CHUNK = 64 * 1024 * 1024; // 64MB, TikTok's per-chunk ceiling when splitting.
+const MAX_SINGLE = 128 * 1024 * 1024; // A single (final) chunk may run up to 128MB.
 
 export interface TikTokUploadInput {
   accessToken: string;
@@ -26,10 +27,16 @@ async function safeText(res: Response): Promise<string> {
   return (await res.text().catch(() => "")).slice(0, 300);
 }
 
-/** Chunk plan honoring TikTok's rules: whole file in one chunk when it fits,
- * otherwise fixed-size chunks with the last one running to the end. */
-function planChunks(size: number): { chunkSize: number; count: number } {
-  if (size <= MAX_CHUNK) return { chunkSize: size, count: 1 };
+/**
+ * Chunk plan honoring TikTok's rules. A file that fits a single chunk (up to
+ * 128MB, the final-chunk ceiling) is announced as chunk_size = video_size,
+ * count = 1 — TikTok's documented whole-file shape. Announcing a 64MB chunk with
+ * count 1 for, say, a 100MB file is inconsistent (64MB x 1 != 100MB) and can be
+ * rejected. Larger files split into 64MB chunks with the last absorbing the
+ * remainder (which stays under 128MB, so total_chunk_count = floor(size/64MB)).
+ */
+export function planChunks(size: number): { chunkSize: number; count: number } {
+  if (size <= MAX_SINGLE) return { chunkSize: size, count: 1 };
   const count = Math.floor(size / MAX_CHUNK);
   return { chunkSize: MAX_CHUNK, count };
 }
