@@ -6,12 +6,9 @@ import {
   generateWaveform,
   type Filmstrip,
 } from "@/lib/studio/filmstrip";
+import type { TimelineMedia } from "@/lib/studio/timeline-media";
 
-/** A distinct piece of video on the timeline, whatever layer it sits on. */
-export interface TimelineMedia {
-  url: string;
-  duration: number;
-}
+export type { TimelineMedia };
 
 /** Stable identity for a media set, so an unrelated re-render doesn't restart work. */
 function mediaKey(media: TimelineMedia[]): string {

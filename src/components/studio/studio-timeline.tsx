@@ -11,11 +11,8 @@ import {
 import { Music2, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipDuration, clipMediaUrl, trimBounds } from "@/lib/studio/clips";
-import {
-  useFilmstrips,
-  useWaveforms,
-  type TimelineMedia,
-} from "@/hooks/use-timeline-media";
+import { useFilmstrips, useWaveforms } from "@/hooks/use-timeline-media";
+import { waveformMedia, type TimelineMedia } from "@/lib/studio/timeline-media";
 import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
@@ -171,7 +168,13 @@ export default function StudioTimeline({
     return [...seen.values()];
   }, [source, clips, overlays, mediaAssets]);
   const strips = useFilmstrips(timelineMedia);
-  const waves = useWaveforms(timelineMedia);
+  // Filmstrips are video-only (an audio-only file has no frames to seek), but
+  // waveforms also cover the audio tracks, so each audio clip shows its shape.
+  const waveMedia = useMemo(
+    () => waveformMedia(timelineMedia, audioTracks),
+    [timelineMedia, audioTracks],
+  );
+  const waves = useWaveforms(waveMedia);
   const mediaDurationOf = useCallback(
     (url: string) => timelineMedia.find((m) => m.url === url)?.duration ?? 0,
     [timelineMedia],
@@ -944,11 +947,44 @@ export default function StudioTimeline({
                         e.stopPropagation();
                         if (!(e.metaKey || e.ctrlKey)) selectAudio(a.id);
                       }}
-                      className={`absolute inset-y-0 flex cursor-grab items-center gap-1.5 overflow-hidden rounded-md bg-emerald-500/15 px-2 active:cursor-grabbing ${selected ? "ring-2 ring-cyan-500" : "ring-1 ring-emerald-500/35"} ${a.muted ? "opacity-40" : ""}`}
+                      className={`absolute inset-y-0 cursor-grab overflow-hidden rounded-md bg-emerald-500/15 active:cursor-grabbing ${selected ? "ring-2 ring-cyan-500" : "ring-1 ring-emerald-500/35"} ${a.muted ? "opacity-40" : ""}`}
                     >
-                      <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                      <span className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                        {a.name}
+                      {/* Waveform, windowed to the visible span like the video
+                        tracks so the canvas never grows past ~two screens. */}
+                      {(() => {
+                        const peaks = waves.get(a.url) ?? [];
+                        if (peaks.length === 0) return null;
+                        const span = visibleSpan(
+                          a.start,
+                          a.duration,
+                          0,
+                          a.duration,
+                          visStartSec,
+                          visEndSec,
+                          pxPerSec,
+                        );
+                        if (!span) return null;
+                        return (
+                          <span
+                            className="pointer-events-none absolute inset-y-0 opacity-70"
+                            style={{ left: span.leftPx, width: span.widthPx }}
+                          >
+                            <WaveformCanvas
+                              peaks={peaks}
+                              sourceDuration={a.duration}
+                              clipStart={span.srcA}
+                              clipEnd={span.srcB}
+                              width={span.widthPx}
+                              height={32}
+                            />
+                          </span>
+                        );
+                      })()}
+                      <span className="pointer-events-none absolute inset-0 flex items-center gap-1.5 px-2">
+                        <Music2 className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                        <span className="text-foreground/90 min-w-0 flex-1 truncate text-[11px] font-bold [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
+                          {a.name}
+                        </span>
                       </span>
                     </div>
                   </div>
