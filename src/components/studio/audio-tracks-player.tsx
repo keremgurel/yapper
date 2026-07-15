@@ -25,6 +25,12 @@ export default function AudioTracksPlayer({
       if (!el) continue;
       const { active, target } = audioCue(t, masterTime, playing);
       if (active) {
+        // Seeking before metadata loads is silently dropped, so a trimmed clip
+        // (target > 0) would start from 0, i.e. the wrong seconds. Wait for
+        // HAVE_METADATA; playback ticks re-run this effect, so a not-yet-ready
+        // track just joins a frame or two late at the right position. Mirrors
+        // the overlay <video>'s readiness gate.
+        if (el.readyState < 1) continue;
         if (Math.abs(el.currentTime - target) > 0.12) el.currentTime = target;
         if (el.paused) void el.play().catch(() => {});
       } else if (!el.paused) {
