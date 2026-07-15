@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { audioCue } from "@/lib/studio/audio-cue";
 import type { AudioTrack } from "@/lib/studio/types";
 
 /**
@@ -22,10 +23,9 @@ export default function AudioTracksPlayer({
     for (const t of tracks) {
       const el = refs.current.get(t.id);
       if (!el) continue;
-      const local = masterTime - t.start;
-      const active = playing && !t.muted && local >= 0 && local < t.duration;
+      const { active, target } = audioCue(t, masterTime, playing);
       if (active) {
-        if (Math.abs(el.currentTime - local) > 0.12) el.currentTime = local;
+        if (Math.abs(el.currentTime - target) > 0.12) el.currentTime = target;
         if (el.paused) void el.play().catch(() => {});
       } else if (!el.paused) {
         el.pause();
