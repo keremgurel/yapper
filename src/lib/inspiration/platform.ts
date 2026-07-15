@@ -1,5 +1,10 @@
 import type { InspirationKind, Platform } from "./types";
 
+/** Instagram path prefixes that name a piece of content, not a creator. A URL
+ * whose first segment is one of these carries a post id, never a handle. Shared
+ * so detectKind and extractHandle can never disagree about what is a profile. */
+const INSTAGRAM_CONTENT_SEGMENTS = ["p", "reel", "reels", "tv"];
+
 /** True when `host` is exactly `domain` or a subdomain of it. Guards against the
  * `endsWith` trap where "notyoutube.com" would match "youtube.com". */
 function hostMatches(host: string, domain: string): boolean {
@@ -65,8 +70,7 @@ export function detectKind(rawUrl: string): InspirationKind {
     return "video";
   }
   if (hostMatches(host, "instagram.com")) {
-    if (["p", "reel", "reels", "tv"].includes(segments[0] ?? ""))
-      return "video";
+    if (INSTAGRAM_CONTENT_SEGMENTS.includes(segments[0] ?? "")) return "video";
     // A bare /handle path is the profile.
     if (segments.length === 1) return "creator";
     return "video";
@@ -92,7 +96,14 @@ export function extractHandle(rawUrl: string): string | null {
     if (["channel", "c", "user"].includes(first)) return segments[1] ?? null;
     return null;
   }
-  if (hostMatches(host, "tiktok.com") || hostMatches(host, "instagram.com")) {
+  if (hostMatches(host, "tiktok.com")) {
+    // TikTok always @-prefixes a handle, in both /@handle and /@handle/video/123.
+    // A non-@ first segment (/tag, /music, /discover) is not a handle.
+    return first.startsWith("@") ? first.slice(1) || null : null;
+  }
+  if (hostMatches(host, "instagram.com")) {
+    // A content path (/reel/id, /p/id) has no handle; only a bare /handle does.
+    if (INSTAGRAM_CONTENT_SEGMENTS.includes(first)) return null;
     return first.replace(/^@/, "") || null;
   }
   return null;

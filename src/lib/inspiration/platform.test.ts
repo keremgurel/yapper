@@ -71,4 +71,23 @@ describe("extractHandle", () => {
   it("returns null for look-alike hosts", () => {
     expect(extractHandle("https://notyoutube.com/@creator")).toBeNull();
   });
+
+  it("returns null for instagram content URLs, not the content-type word", () => {
+    // /reel, /p, /tv carry a post id, never a handle. Returning "reel" here
+    // leaks a bogus "@reel" title and scrape target through the add-link flow.
+    expect(extractHandle("https://instagram.com/reel/ABC123")).toBeNull();
+    expect(extractHandle("https://instagram.com/p/XYZ")).toBeNull();
+    expect(extractHandle("https://instagram.com/tv/XYZ")).toBeNull();
+  });
+
+  it("still pulls the @handle from a tiktok clip URL", () => {
+    expect(extractHandle("https://tiktok.com/@creator/video/123")).toBe(
+      "creator",
+    );
+  });
+
+  it("returns null for tiktok non-profile paths", () => {
+    // TikTok always @-prefixes a handle; /tag, /music, /discover are not handles.
+    expect(extractHandle("https://tiktok.com/tag/foo")).toBeNull();
+  });
 });
