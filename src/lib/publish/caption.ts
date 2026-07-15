@@ -18,7 +18,14 @@ const SYSTEM =
   'may include a few relevant hashtags>"}\n' +
   "Write in the creator's voice, concrete not corporate. No prose outside JSON.";
 
-function parseCaption(content: string): GeneratedCaption {
+/**
+ * Pull the caption object out of a model response and clamp it to what the
+ * platform accepts. Exported so its guards can be unit-tested against untrusted
+ * LLM output: titles over 100 chars and descriptions over 5000 are rejected by
+ * the YouTube API, and an all-empty result must throw so a paid caller isn't
+ * billed for nothing.
+ */
+export function parseCaption(content: string): GeneratedCaption {
   const s = content.indexOf("{");
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("caption_unparseable");
