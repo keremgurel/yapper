@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarDays, Send } from "lucide-react";
 import ContentCalendar from "@/components/calendar/content-calendar";
 import PlatformVideos from "@/components/publish/platform-videos";
+import PostableTakes from "@/components/publish/postable-takes";
 
 export type PosterTab = "posts" | "calendar";
 
@@ -49,7 +50,14 @@ export default function PosterHub({
         })}
       </div>
 
-      {tab === "posts" ? <PlatformVideos /> : <ContentCalendar />}
+      {tab === "posts" ? (
+        <div className="flex flex-col gap-10">
+          <PostableTakes />
+          <PlatformVideos />
+        </div>
+      ) : (
+        <ContentCalendar />
+      )}
     </div>
   );
 }
