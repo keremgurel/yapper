@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { failedSaveRetargets } from "@/lib/save-queue";
 
 export type SaveState = "idle" | "saving" | "saved" | "error";
 
@@ -74,11 +75,16 @@ export function useAutosave<T extends object>(
           if (Object.keys(pendingRef.current).length === 0) set("saved");
         },
         () => {
-          // Newer pending edits win over the failed payload's values; the
-          // retry batch keeps the failed batch's save target.
+          set("error");
+          // If the queue was re-pointed at another record while this save was in
+          // flight, the pending batch now belongs to that record. Re-merging the
+          // failed fields would write them to the WRONG record, so drop them
+          // instead. Losing one unsaved increment beats cross-record corruption.
+          if (failedSaveRetargets(saveFn, batchSaveRef.current)) return;
+          // Same target: newer pending edits win over the failed payload's
+          // values, and the retry batch keeps the failed batch's save target.
           pendingRef.current = { ...dirty, ...pendingRef.current };
           batchSaveRef.current ??= saveFn;
-          set("error");
         },
       );
     return chainRef.current;
