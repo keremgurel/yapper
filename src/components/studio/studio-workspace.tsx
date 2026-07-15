@@ -7,6 +7,7 @@ import PreviewStage from "@/components/studio/preview-stage";
 import RightPanel from "@/components/studio/right-panel";
 import TimelinePanel from "@/components/studio/timeline-panel";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
+import { transportSeek } from "@/lib/studio/playback-keys";
 import { usePanelHeight } from "@/hooks/use-panel-height";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { useStudioLayout } from "@/hooks/use-studio-layout";
@@ -122,6 +123,14 @@ export default function StudioWorkspace() {
           e.preventDefault();
           deleteSelected();
         }
+      } else {
+        // Transport: arrows step the playhead (a second with Shift), Home/End
+        // jump to the ends. A seek during playback keeps playing from the new
+        // spot; pause first (Space) to step frame by frame.
+        const target = transportSeek(e.key, timelineTime, duration, e.shiftKey);
+        if (target == null) return;
+        e.preventDefault();
+        seekToTimeline(target);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -133,6 +142,8 @@ export default function StudioWorkspace() {
     pause,
     playing,
     timelineTime,
+    duration,
+    seekToTimeline,
     splitSelected,
     deleteSelected,
     selectedClipIds,
