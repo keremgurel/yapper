@@ -10,6 +10,11 @@ export interface Filmstrip {
 
 export const EMPTY_FILMSTRIP: Filmstrip = { frames: [], aspect: 16 / 9 };
 
+// A stalled remote video can fire neither loadeddata nor error; these caps make
+// generateFilmstrip always settle so the sequential loader can't hang on it.
+const LOAD_TIMEOUT_MS = 15000; // give up waiting for a video to load
+const SEEK_TIMEOUT_MS = 3000; // skip a frame whose seek never lands
+
 /**
  * Generate evenly-spaced thumbnail frames from a video URL, entirely in-browser
  * (offscreen <video> + <canvas>). Frames stream out through `onProgress` as they
@@ -35,11 +40,17 @@ export function generateFilmstrip(
 
   const seek = (t: number) =>
     new Promise<void>((resolve) => {
-      const onSeeked = () => {
-        video.removeEventListener("seeked", onSeeked);
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        video.removeEventListener("seeked", finish);
         resolve();
       };
-      video.addEventListener("seeked", onSeeked);
+      // Resolve even if 'seeked' never fires, so one bad seek can't hang capture.
+      const timer = setTimeout(finish, SEEK_TIMEOUT_MS);
+      video.addEventListener("seeked", finish);
       video.currentTime = Math.min(t, Math.max(0, duration - 0.05));
     });
 
@@ -74,16 +85,28 @@ export function generateFilmstrip(
   };
 
   return new Promise<void>((resolve) => {
-    const done = () => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(loadTimer);
+      clearInterval(cancelPoll);
       video.removeAttribute("src");
       video.load();
       resolve();
     };
-    video.addEventListener("error", done, { once: true });
+    // Backstop a load that never fires loadeddata or error, and give up promptly
+    // once this strip is no longer wanted (its media left the timeline).
+    const loadTimer = setTimeout(finish, LOAD_TIMEOUT_MS);
+    const cancelPoll = setInterval(() => {
+      if (cancelled()) finish();
+    }, 250);
+    video.addEventListener("error", finish, { once: true });
     video.addEventListener(
       "loadeddata",
       () => {
-        void capture().then(done, done);
+        clearTimeout(loadTimer); // loaded; capture bounds its own time and cancel
+        void capture().then(finish, finish);
       },
       { once: true },
     );
