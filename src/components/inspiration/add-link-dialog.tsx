@@ -13,6 +13,7 @@ import {
   isLikelyUrl,
 } from "@/lib/inspiration/platform";
 import { guessCreatorForVideo } from "@/lib/inspiration/relations";
+import { findDuplicateInspoItem } from "@/lib/inspiration/dedupe";
 import type { InspirationKind, ResolvedLink } from "@/lib/inspiration/types";
 
 const COPY: Record<InspirationKind, { help: string; placeholder: string }> = {
@@ -112,13 +113,19 @@ export default function AddLinkDialog({
 
   const save = () => {
     if (!preview) return;
+    const trimmedUrl = url.trim();
+    // Saving a link already in the library would silently make a second card.
+    if (findDuplicateInspoItem(items, trimmedUrl)) {
+      setStatus("error");
+      setError("You've already saved this link.");
+      return;
+    }
     // The toggle wins over auto-detection: coerce the preview to the chosen
     // bucket, dropping video-only fields when saving as a creator.
     const resolved: ResolvedLink =
       kind === "creator"
         ? { ...preview, kind, transcript: undefined }
         : { ...preview, kind };
-    const trimmedUrl = url.trim();
     const id = addItem(trimmedUrl, resolved, pillarId, {
       note,
       creatorItemId: creatorItemId ?? undefined,
