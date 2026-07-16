@@ -20,16 +20,22 @@ async function fetchOEmbed(endpoint: string): Promise<OEmbed | null> {
   }
 }
 
-function metaTag(html: string, property: string): string | undefined {
+/**
+ * The content of an og:/twitter: meta tag, entity-decoded, or undefined. The
+ * content value is matched to the SAME quote that opened it (a backreference),
+ * so a title delimited by double quotes may hold a raw apostrophe (`content="Mom's
+ * recipe"`) without being truncated at that apostrophe. Exported for testing.
+ */
+export function metaTag(html: string, property: string): string | undefined {
   const re = new RegExp(
-    `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=["']([^"']+)["']`,
+    `<meta[^>]+(?:property|name)=["']${property}["'][^>]+content=(["'])(.*?)\\1`,
     "i",
   );
   const alt = new RegExp(
-    `<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property}["']`,
+    `<meta[^>]+content=(["'])(.*?)\\1[^>]+(?:property|name)=["']${property}["']`,
     "i",
   );
-  const raw = html.match(re)?.[1] ?? html.match(alt)?.[1];
+  const raw = html.match(re)?.[2] ?? html.match(alt)?.[2];
   // og: content is HTML-encoded (&amp;, &#x27;, ...); decode it so the card
   // shows real text, not the raw entities.
   return raw === undefined ? undefined : decodeEntities(raw);
