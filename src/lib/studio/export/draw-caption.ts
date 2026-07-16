@@ -1,39 +1,11 @@
 import type { CaptionCase } from "@/lib/studio/captions";
+import { wrapLines } from "@/lib/studio/export/caption-wrap";
 import type { CaptionFrame } from "@/lib/studio/export/frame-plan";
 
 function applyCase(text: string, mode: CaptionCase): string {
   if (mode === "upper") return text.toUpperCase();
   if (mode === "lower") return text.toLowerCase();
   return text;
-}
-
-/** Greedy word-wrap `text` into lines no wider than `maxWidth` (honours any
- * explicit newlines first, matching the preview's `whitespace-pre-wrap`). */
-function wrapLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const lines: string[] = [];
-  for (const paragraph of text.split("\n")) {
-    const words = paragraph.split(/\s+/).filter(Boolean);
-    if (words.length === 0) {
-      lines.push("");
-      continue;
-    }
-    let current = "";
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (current && ctx.measureText(next).width > maxWidth) {
-        lines.push(current);
-        current = word;
-      } else {
-        current = next;
-      }
-    }
-    if (current) lines.push(current);
-  }
-  return lines;
 }
 
 /**
@@ -61,7 +33,7 @@ export function drawCaption(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
-  const lines = wrapLines(ctx, text, boxWidth);
+  const lines = wrapLines((s) => ctx.measureText(s).width, text, boxWidth);
   const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
 
   // Pass 1: soft shadow for contrast. Pass 2: crisp white on top.
