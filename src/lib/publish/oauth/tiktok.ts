@@ -60,7 +60,11 @@ export const tiktok: OAuthProvider = {
   async refreshAccessToken(
     creds: Creds,
     refreshToken: string,
-  ): Promise<{ accessToken: string; expiresAt: Date | null }> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresAt: Date | null;
+  }> {
     const res = await fetch(TOKEN, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -74,11 +78,15 @@ export const tiktok: OAuthProvider = {
     if (!res.ok) throw new Error(`oauth_refresh_${res.status}`);
     const json = (await res.json()) as {
       access_token?: string;
+      refresh_token?: string;
       expires_in?: number;
     };
     if (!json.access_token) throw new Error("oauth_refresh_no_token");
     return {
       accessToken: json.access_token,
+      // TikTok rotates the refresh token on every refresh; persist the new one
+      // or the connection dies ~365 days after the ORIGINAL auth regardless.
+      refreshToken: json.refresh_token ?? null,
       expiresAt: expiryFrom(json.expires_in),
     };
   },
