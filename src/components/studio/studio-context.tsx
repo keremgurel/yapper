@@ -21,6 +21,7 @@ import { splitAudioAt } from "@/lib/studio/split-audio";
 import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { planSpanOverlays } from "@/lib/studio/place-spans";
 import { overlayFromAsset } from "@/lib/studio/overlay-from-asset";
+import { clipFromAsset } from "@/lib/studio/clip-from-asset";
 import { mergeCaptionsById } from "@/lib/studio/caption-merge";
 import {
   applyLayoutToCaptions,
@@ -78,7 +79,6 @@ import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
-  newClipId,
   newOverlayId,
   type AudioTrack,
   type Caption,
@@ -970,22 +970,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }
       if (asset.kind === "video") {
         // Append to the main track as a clip carrying its own source.
-        setClips((prev) => [
-          ...prev,
-          {
-            id: newClipId(),
-            start: 0,
-            end: asset.duration,
-            src: {
-              url: asset.url,
-              kind: "video",
-              name: asset.name,
-              duration: asset.duration,
-              width: asset.width,
-              height: asset.height,
-            },
-          },
-        ]);
+        setClips((prev) => [...prev, clipFromAsset(asset)]);
         return;
       }
       // Images layer onto a non-main track at the drop position.
@@ -1011,22 +996,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         addOverlayFromAsset(assetId, 0);
         return;
       }
-      setClips((prev) => [
-        ...prev,
-        {
-          id: newClipId(),
-          start: 0,
-          end: asset.duration,
-          src: {
-            url: asset.url,
-            kind: "video",
-            name: asset.name,
-            duration: asset.duration,
-            width: asset.width,
-            height: asset.height,
-          },
-        },
-      ]);
+      setClips((prev) => [...prev, clipFromAsset(asset)]);
     },
     [mediaAssets, source, addAssetToTimeline, addOverlayFromAsset, setClips],
   );
