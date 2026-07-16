@@ -1,6 +1,6 @@
-import { clipDuration } from "@/lib/studio/clips";
 import { projectDuration } from "@/lib/studio/project-duration";
 import { extractPcm } from "@/lib/studio/audio/extract-pcm";
+import { planAudioMix } from "@/lib/studio/export/audio-plan";
 import type { ExportInput } from "@/lib/studio/export/types";
 
 const SAMPLE_RATE = 48_000;
@@ -15,9 +15,14 @@ const CHANNELS = 2;
 export async function mixAudio(
   input: ExportInput,
 ): Promise<AudioBuffer | null> {
-  const { source, clips, overlays, audioTracks, baseMuted } = input;
+  const { clips, overlays, audioTracks } = input;
   const duration = projectDuration(clips, overlays, audioTracks);
   if (duration <= 0) return null;
+
+  // What plays, where, and for how long is decided purely (and under test) in
+  // planAudioMix; this function only decodes and renders it.
+  const placements = planAudioMix(input, duration);
+  if (placements.length === 0) return null;
 
   const ctx = new OfflineAudioContext(
     CHANNELS,
@@ -73,52 +78,21 @@ export async function mixAudio(
     return buffer;
   };
 
+  // A planned slice that fails to decode (a valid file with no audio track)
+  // contributes nothing, so an all-undecodable plan still renders to silence.
   let scheduled = 0;
-  const schedule = (
-    buffer: AudioBuffer,
-    when: number,
-    offset: number,
-    length: number,
-  ) => {
-    if (length <= 0 || when >= duration) return;
+  for (const p of placements) {
+    const buffer = await decode(p.url);
+    if (!buffer) continue;
     const node = ctx.createBufferSource();
     node.buffer = buffer;
     node.connect(ctx.destination);
-    node.start(when, Math.max(0, offset), Math.min(length, duration - when));
+    node.start(
+      p.when,
+      Math.max(0, p.offset),
+      Math.min(p.length, duration - p.when),
+    );
     scheduled += 1;
-  };
-
-  // Bottom track: each clip plays its own source range at its timeline position.
-  // A muted bottom track is as silent here as it is in the preview.
-  let cursor = 0;
-  if (!baseMuted) {
-    for (const clip of clips) {
-      const url = clip.src?.url ?? source?.url;
-      const kind = clip.src?.kind ?? source?.kind ?? "video";
-      const len = clipDuration(clip);
-      if (url && kind !== "image") {
-        const buffer = await decode(url);
-        if (buffer) schedule(buffer, cursor, clip.start, len);
-      }
-      cursor += len;
-    }
-  }
-
-  // Overlay audio: only unmuted, visible overlays contribute. Mirror the
-  // preview, where an overlay <video> is muted by default (muted ?? true), so
-  // an overlay whose flag was never set stays silent here too.
-  for (const o of overlays) {
-    const muted = o.muted ?? true;
-    if (o.hidden || muted || o.kind !== "video") continue;
-    const buffer = await decode(o.url);
-    if (buffer) schedule(buffer, o.start, o.sourceStart, o.duration);
-  }
-
-  // Extra audio tracks, each from its own (possibly trimmed) in-point.
-  for (const t of audioTracks) {
-    if (t.muted) continue;
-    const buffer = await decode(t.url);
-    if (buffer) schedule(buffer, t.start, t.sourceStart, t.duration);
   }
 
   if (scheduled === 0) return null;
