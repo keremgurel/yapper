@@ -1,6 +1,7 @@
 import { aacToAdts } from "@/lib/studio/audio/aac-adts";
 import { decodeAudioChunks } from "@/lib/studio/audio/decode-track";
 import { demuxAudioTrackCached } from "@/lib/studio/audio/demux-cache";
+import { downmixMono } from "@/lib/studio/audio/downmix";
 import { encodeWav } from "@/lib/studio/wav";
 
 /** Audio payload ready to POST to the transcription backend. */
@@ -11,20 +12,6 @@ export interface AsrAudio {
   /** The payload's true length in seconds, sent so the backend can detect a
    * body truncated in transit (the ASR would hear less than this). */
   durationSec: number;
-}
-
-/** Average all channels into one, keeping the native sample rate (no resample). */
-function downmixMono(channels: Float32Array[]): Float32Array {
-  const n = channels[0]?.length ?? 0;
-  const ch = channels.length;
-  if (ch === 1) return channels[0] ?? new Float32Array(0);
-  const out = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    let sum = 0;
-    for (let c = 0; c < ch; c++) sum += channels[c][i] ?? 0;
-    out[i] = sum / ch;
-  }
-  return out;
 }
 
 /**
