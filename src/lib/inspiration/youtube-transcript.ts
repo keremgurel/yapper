@@ -5,55 +5,15 @@
  * so callers can degrade gracefully.
  */
 
-import { decodeEntities } from "./html-entities";
+import {
+  extractArray,
+  parseTimedText,
+  pickTrack,
+  type CaptionTrack,
+} from "./youtube-transcript-parse";
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
-
-interface CaptionTrack {
-  baseUrl: string;
-  languageCode?: string;
-  kind?: string;
-}
-
-/**
- * Extract the balanced JSON array that follows `"key":` in a blob. A plain regex
- * fails because caption track entries contain nested arrays (name.runs), so we
- * bracket-match while respecting string literals.
- */
-function extractArray(html: string, key: string): string | null {
-  const marker = `"${key}":`;
-  const start = html.indexOf(marker);
-  if (start === -1) return null;
-  const open = start + marker.length;
-  if (html[open] !== "[") return null;
-
-  let depth = 0;
-  let inStr = false;
-  let esc = false;
-  for (let i = open; i < html.length; i++) {
-    const c = html[i];
-    if (inStr) {
-      if (esc) esc = false;
-      else if (c === "\\") esc = true;
-      else if (c === '"') inStr = false;
-      continue;
-    }
-    if (c === '"') inStr = true;
-    else if (c === "[") depth++;
-    else if (c === "]" && --depth === 0) return html.slice(open, i + 1);
-  }
-  return null;
-}
-
-function pickTrack(tracks: CaptionTrack[]): CaptionTrack | null {
-  if (tracks.length === 0) return null;
-  const manualEn = tracks.find(
-    (t) => t.languageCode?.startsWith("en") && t.kind !== "asr",
-  );
-  const anyEn = tracks.find((t) => t.languageCode?.startsWith("en"));
-  return manualEn ?? anyEn ?? tracks[0];
-}
 
 export async function fetchYoutubeTranscript(
   videoId: string,
@@ -87,12 +47,7 @@ export async function fetchYoutubeTranscript(
     });
     if (!xmlRes.ok) return null;
     const xml = await xmlRes.text();
-
-    const lines = [...xml.matchAll(/<text[^>]*>(.*?)<\/text>/g)].map((m) =>
-      decodeEntities(m[1].replace(/<[^>]+>/g, "")).trim(),
-    );
-    const transcript = lines.filter(Boolean).join(" ").replace(/\s+/g, " ");
-    return transcript.length > 0 ? transcript : null;
+    return parseTimedText(xml);
   } catch {
     return null;
   }
