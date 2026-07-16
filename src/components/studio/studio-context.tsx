@@ -21,6 +21,11 @@ import { splitAudioAt } from "@/lib/studio/split-audio";
 import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { planSpanOverlays } from "@/lib/studio/place-spans";
 import { overlayFromAsset } from "@/lib/studio/overlay-from-asset";
+import {
+  applyLayoutToCaptions,
+  applyStyleToCaptions,
+  type CaptionLayout,
+} from "@/lib/studio/caption-apply";
 import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
@@ -92,13 +97,6 @@ const PAUSE_CUTS: PauseCutOptions = {
   headPad: 0.05,
   tailPad: 0.1,
 };
-
-interface CaptionLayout {
-  x?: number;
-  y?: number;
-  w?: number;
-  scale?: number;
-}
 
 export type { TranscribeStatus } from "@/hooks/use-transcript";
 
@@ -485,22 +483,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // is the same change expressed as a per-caption override.
   const applyCaptionStyle = useCallback(
     (global: Partial<CaptionStyle>, perCaption: Partial<Caption>) => {
-      if (captionApplyAll) {
-        setCaptionStyle((s) => ({ ...s, ...global }));
-        const keys = Object.keys(perCaption) as (keyof Caption)[];
-        setCaptions((prev) =>
-          prev.map((c) => {
-            const next = { ...c };
-            for (const k of keys) delete next[k];
-            return next;
-          }),
-        );
-      } else if (selectedCaptionIds.length > 0) {
-        const target = new Set(selectedCaptionIds);
-        setCaptions((prev) =>
-          prev.map((c) => (target.has(c.id) ? { ...c, ...perCaption } : c)),
-        );
-      }
+      if (captionApplyAll) setCaptionStyle((s) => ({ ...s, ...global }));
+      setCaptions((prev) =>
+        applyStyleToCaptions(
+          prev,
+          captionApplyAll,
+          new Set(selectedCaptionIds),
+          perCaption,
+        ),
+      );
     },
     [captionApplyAll, selectedCaptionIds, setCaptions],
   );
@@ -541,20 +532,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           width: layout.w ?? s.width,
           fontScale: layout.scale ?? s.fontScale,
         }));
-        setCaptions((prev) =>
-          prev.map((c) => ({
-            ...c,
-            x: layout.x != null ? undefined : c.x,
-            y: layout.y != null ? undefined : c.y,
-            w: layout.w != null ? undefined : c.w,
-            scale: layout.scale != null ? undefined : c.scale,
-          })),
-        );
-      } else {
-        setCaptions((prev) =>
-          prev.map((c) => (c.id === id ? { ...c, ...layout } : c)),
-        );
       }
+      setCaptions((prev) =>
+        applyLayoutToCaptions(prev, captionApplyAll, id, layout),
+      );
     },
     [captionApplyAll, setCaptions],
   );
