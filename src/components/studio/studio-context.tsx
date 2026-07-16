@@ -19,6 +19,7 @@ import {
   timelineToSource,
 } from "@/lib/studio/clips";
 import { splitAudioAt } from "@/lib/studio/split-audio";
+import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
   combineRetakeCuts,
@@ -1236,25 +1237,20 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // the clock comes from the longest layer, not from the base. One delete is one
   // undo step even when it spans every layer.
   const deleteSelected = useCallback(() => {
-    const clipIds = new Set(selectedClipIds);
-    const overlayIds = new Set(selectedOverlayIds);
-    const captionIds = new Set(selectedCaptionIds);
-    const audioIds = new Set(selectedAudioIds);
-    if (!clipIds.size && !overlayIds.size && !captionIds.size && !audioIds.size)
+    const ids = {
+      clipIds: new Set(selectedClipIds),
+      overlayIds: new Set(selectedOverlayIds),
+      captionIds: new Set(selectedCaptionIds),
+      audioIds: new Set(selectedAudioIds),
+    };
+    if (
+      !ids.clipIds.size &&
+      !ids.overlayIds.size &&
+      !ids.captionIds.size &&
+      !ids.audioIds.size
+    )
       return;
-    updateEditor((s) => ({
-      ...s,
-      clips: clipIds.size ? s.clips.filter((c) => !clipIds.has(c.id)) : s.clips,
-      overlays: overlayIds.size
-        ? s.overlays.filter((o) => !overlayIds.has(o.id))
-        : s.overlays,
-      captions: captionIds.size
-        ? s.captions.filter((c) => !captionIds.has(c.id))
-        : s.captions,
-      audioTracks: audioIds.size
-        ? s.audioTracks.filter((a) => !audioIds.has(a.id))
-        : s.audioTracks,
-    }));
+    updateEditor((s) => deleteSelectedFrom(s, ids));
     sel.clearSelection();
   }, [
     updateEditor,
