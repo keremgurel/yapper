@@ -33,17 +33,14 @@ const isUpgradeLine = (u: unknown): u is { before: string; after: string } =>
   typeof (u as Record<string, unknown>).after === "string";
 
 /**
- * Salvage the outer {...} and JSON.parse it (tolerates fences / prose), then
- * sanitize every field against untrusted model output: the score is clamped to
- * its documented 0-100 range so a hallucinated value can't overflow the delivery
- * bar or store a negative, the summary must be a real string, and the list
- * fields drop anything that isn't the shape the UI renders.
+ * Coerce an arbitrary parsed object into a valid Coaching, sanitizing every
+ * field against untrusted model output: the score is clamped to its documented
+ * 0-100 range so a hallucinated value can't overflow the delivery bar or store a
+ * negative, the summary must be a real string, and the list fields drop anything
+ * that isn't the shape the UI renders. Shared by the audio and video coaching
+ * parsers so both sanitize identically.
  */
-export function parseCoaching(content: string): Coaching {
-  const s = content.indexOf("{");
-  const e = content.lastIndexOf("}");
-  if (s < 0 || e <= s) throw new Error("coach_unparseable");
-  const raw = JSON.parse(content.slice(s, e + 1)) as Record<string, unknown>;
+export function sanitizeCoaching(raw: Record<string, unknown>): Coaching {
   return {
     score:
       typeof raw.score === "number" && Number.isFinite(raw.score)
@@ -56,6 +53,17 @@ export function parseCoaching(content: string): Coaching {
       ? raw.upgradeLines.filter(isUpgradeLine)
       : [],
   };
+}
+
+/** Salvage the outer {...} and JSON.parse it (tolerates fences / prose), then
+ * sanitize it against untrusted model output. */
+export function parseCoaching(content: string): Coaching {
+  const s = content.indexOf("{");
+  const e = content.lastIndexOf("}");
+  if (s < 0 || e <= s) throw new Error("coach_unparseable");
+  return sanitizeCoaching(
+    JSON.parse(content.slice(s, e + 1)) as Record<string, unknown>,
+  );
 }
 
 /**

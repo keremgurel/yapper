@@ -1,4 +1,4 @@
-import type { Coaching } from "./coach";
+import { sanitizeCoaching, type Coaching } from "./coach";
 import { geminiGenerate, VIDEO_MODEL } from "./gemini";
 
 const SYSTEM =
@@ -15,18 +15,14 @@ const SYSTEM =
   "3-5 items in strengths/improvements; 2-4 upgradeLines framed as concrete " +
   "on-camera adjustments. No prose outside the JSON.";
 
-function parse(content: string): Coaching {
+/** Parse + sanitize the video model's coaching JSON. Exported for testing. */
+export function parseVideoCoaching(content: string): Coaching {
   const s = content.indexOf("{");
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("video_unparseable");
-  const raw = JSON.parse(content.slice(s, e + 1)) as Partial<Coaching>;
-  const coaching: Coaching = {
-    score: typeof raw.score === "number" ? Math.round(raw.score) : 0,
-    summary: raw.summary ?? "",
-    strengths: Array.isArray(raw.strengths) ? raw.strengths : [],
-    improvements: Array.isArray(raw.improvements) ? raw.improvements : [],
-    upgradeLines: Array.isArray(raw.upgradeLines) ? raw.upgradeLines : [],
-  };
+  const coaching = sanitizeCoaching(
+    JSON.parse(content.slice(s, e + 1)) as Record<string, unknown>,
+  );
   if (!coaching.summary && coaching.strengths.length === 0) {
     throw new Error("video_empty");
   }
@@ -48,5 +44,5 @@ export async function coachOnCamera(
     SYSTEM,
     VIDEO_MODEL,
   );
-  return parse(text);
+  return parseVideoCoaching(text);
 }
