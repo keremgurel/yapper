@@ -1,3 +1,10 @@
+import {
+  instagramVideo,
+  pick,
+  str,
+  tiktokVideo,
+  youtubeVideo,
+} from "./apify-parse";
 import type { Platform, ScrapedVideo } from "./types";
 
 /** Result of scraping a creator profile: their normalized feed plus whatever
@@ -9,9 +16,6 @@ export interface CreatorScrape {
 }
 
 const RUN_BASE = "https://api.apify.com/v2/acts";
-const num = (v: unknown): number => (typeof v === "number" && v > 0 ? v : 0);
-const str = (v: unknown): string | undefined =>
-  typeof v === "string" && v.trim() ? v : undefined;
 
 /** Run an Apify actor synchronously and get its dataset items back in one call.
  * The response body is the items array directly. Kept modest (30 items) so the
@@ -36,37 +40,15 @@ async function runActor(
   return Array.isArray(data) ? data : [];
 }
 
-/** Safe nested getter for actor items with unknown shapes. */
-function pick(obj: unknown, ...path: string[]): unknown {
-  let cur: unknown = obj;
-  for (const key of path) {
-    if (cur && typeof cur === "object" && key in cur) {
-      cur = (cur as Record<string, unknown>)[key];
-    } else {
-      return undefined;
-    }
-  }
-  return cur;
-}
-
 async function scrapeInstagram(url: string): Promise<CreatorScrape> {
   const items = await runActor("apify~instagram-scraper", {
     directUrls: [url],
     resultsType: "posts",
     resultsLimit: 30,
   });
-  const videos: ScrapedVideo[] = items.map((it) => ({
-    url: str(pick(it, "url")) ?? url,
-    thumbnail: str(pick(it, "displayUrl")),
-    title: str(pick(it, "caption")) ?? "Instagram post",
-    views: num(pick(it, "videoViewCount")) || num(pick(it, "videoPlayCount")),
-    likes: num(pick(it, "likesCount")),
-    comments: num(pick(it, "commentsCount")),
-    postedAt: str(pick(it, "timestamp")),
-  }));
   return {
     name: str(pick(items[0], "ownerFullName")),
-    videos,
+    videos: items.map((it) => instagramVideo(it, url)),
   };
 }
 
@@ -79,21 +61,10 @@ async function scrapeTikTok(handle: string): Promise<CreatorScrape> {
     shouldDownloadVideos: false,
     shouldDownloadCovers: false,
   });
-  const videos: ScrapedVideo[] = items.map((it) => ({
-    url: str(pick(it, "webVideoUrl")) ?? "",
-    thumbnail:
-      str(pick(it, "videoMeta", "coverUrl")) ??
-      str(pick(it, "videoMeta", "originalCoverUrl")),
-    title: str(pick(it, "text")) ?? "TikTok video",
-    views: num(pick(it, "playCount")),
-    likes: num(pick(it, "diggCount")),
-    comments: num(pick(it, "commentCount")),
-    postedAt: str(pick(it, "createTimeISO")),
-  }));
   return {
     name: str(pick(items[0], "authorMeta", "nickName")),
     avatar: str(pick(items[0], "authorMeta", "avatar")),
-    videos: videos.filter((v) => v.url),
+    videos: items.map(tiktokVideo).filter((v) => v.url),
   };
 }
 
@@ -107,18 +78,9 @@ async function scrapeYouTube(url: string): Promise<CreatorScrape> {
     maxResults: 30,
     sortVideosBy: "NEWEST",
   });
-  const videos: ScrapedVideo[] = items.map((it) => ({
-    url: str(pick(it, "url")) ?? "",
-    thumbnail: str(pick(it, "thumbnailUrl")),
-    title: str(pick(it, "title")) ?? "YouTube video",
-    views: num(pick(it, "viewCount")),
-    likes: num(pick(it, "likes")),
-    comments: num(pick(it, "commentsCount")),
-    postedAt: str(pick(it, "date")),
-  }));
   return {
     name: str(pick(items[0], "channelName")),
-    videos: videos.filter((v) => v.url),
+    videos: items.map(youtubeVideo).filter((v) => v.url),
   };
 }
 
