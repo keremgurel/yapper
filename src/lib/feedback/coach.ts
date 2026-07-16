@@ -23,18 +23,38 @@ const SYSTEM =
   '"upgradeLines": [{"before":"<their words>","after":"<punchier rewrite>"}]}\n' +
   "3-5 items in strengths/improvements; 2-4 upgradeLines. No prose outside JSON.";
 
-/** Salvage the outer {...} and JSON.parse it (tolerates fences / prose). */
-function parseCoaching(content: string): Coaching {
+const strArr = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+const isUpgradeLine = (u: unknown): u is { before: string; after: string } =>
+  typeof u === "object" &&
+  u !== null &&
+  typeof (u as Record<string, unknown>).before === "string" &&
+  typeof (u as Record<string, unknown>).after === "string";
+
+/**
+ * Salvage the outer {...} and JSON.parse it (tolerates fences / prose), then
+ * sanitize every field against untrusted model output: the score is clamped to
+ * its documented 0-100 range so a hallucinated value can't overflow the delivery
+ * bar or store a negative, the summary must be a real string, and the list
+ * fields drop anything that isn't the shape the UI renders.
+ */
+export function parseCoaching(content: string): Coaching {
   const s = content.indexOf("{");
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("coach_unparseable");
-  const raw = JSON.parse(content.slice(s, e + 1)) as Partial<Coaching>;
+  const raw = JSON.parse(content.slice(s, e + 1)) as Record<string, unknown>;
   return {
-    score: typeof raw.score === "number" ? Math.round(raw.score) : 0,
-    summary: raw.summary ?? "",
-    strengths: Array.isArray(raw.strengths) ? raw.strengths : [],
-    improvements: Array.isArray(raw.improvements) ? raw.improvements : [],
-    upgradeLines: Array.isArray(raw.upgradeLines) ? raw.upgradeLines : [],
+    score:
+      typeof raw.score === "number" && Number.isFinite(raw.score)
+        ? Math.min(100, Math.max(0, Math.round(raw.score)))
+        : 0,
+    summary: typeof raw.summary === "string" ? raw.summary : "",
+    strengths: strArr(raw.strengths),
+    improvements: strArr(raw.improvements),
+    upgradeLines: Array.isArray(raw.upgradeLines)
+      ? raw.upgradeLines.filter(isUpgradeLine)
+      : [],
   };
 }
 
