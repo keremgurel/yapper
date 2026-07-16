@@ -21,6 +21,7 @@ import { splitAudioAt } from "@/lib/studio/split-audio";
 import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { planSpanOverlays } from "@/lib/studio/place-spans";
 import { overlayFromAsset } from "@/lib/studio/overlay-from-asset";
+import { mergeCaptionsById } from "@/lib/studio/caption-merge";
 import {
   applyLayoutToCaptions,
   applyStyleToCaptions,
@@ -77,7 +78,6 @@ import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
-  newCaptionId,
   newClipId,
   newOverlayId,
   type AudioTrack,
@@ -452,26 +452,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const mergeCaptions = useCallback(
     (ids: string[]) => {
       if (ids.length < 2) return;
-      const set = new Set(ids);
-      setCaptions((prev) => {
-        const targets = prev
-          .filter((c) => set.has(c.id))
-          .sort((a, b) => a.sourceStart - b.sourceStart);
-        if (targets.length < 2) return prev;
-        const merged: Caption = {
-          ...targets[0],
-          id: newCaptionId(),
-          sourceStart: Math.min(...targets.map((c) => c.sourceStart)),
-          sourceEnd: Math.max(...targets.map((c) => c.sourceEnd)),
-          text: targets
-            .map((c) => c.text.trim())
-            .filter(Boolean)
-            .join(" "),
-        };
-        return [...prev.filter((c) => !set.has(c.id)), merged].sort(
-          (a, b) => a.sourceStart - b.sourceStart,
-        );
-      });
+      setCaptions((prev) => mergeCaptionsById(prev, new Set(ids)));
       sel.clearCaptions();
     },
     [setCaptions, sel],
