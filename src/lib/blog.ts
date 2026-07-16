@@ -94,7 +94,9 @@ function resolveBlogFilePath(slug: string): string | null {
   return null;
 }
 
-function extractHeadings(content: string): BlogHeading[] {
+/** Table-of-contents headings (h2/h3) from markdown, skipping code fences and
+ * stripping inline markdown. Exported for testing. */
+export function extractHeadings(content: string): BlogHeading[] {
   const headings: BlogHeading[] = [];
   const lines = content.split("\n");
   let insideCodeFence = false;
