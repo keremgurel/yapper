@@ -20,6 +20,7 @@ import {
 import { splitAudioAt } from "@/lib/studio/split-audio";
 import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { planSpanOverlays } from "@/lib/studio/place-spans";
+import { overlayFromAsset } from "@/lib/studio/overlay-from-asset";
 import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
@@ -51,7 +52,6 @@ import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
-import { fitBox, mediaAspect } from "@/lib/studio/overlay-box";
 import { type PlacedSpan } from "@/lib/studio/overlay-plan";
 import {
   clampStartToTrack,
@@ -563,28 +563,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (assetId: string, start = 0) => {
       const asset = mediaAssets.find((m) => m.id === assetId);
       if (!asset) return;
-      setOverlays((prev) => {
-        const span = {
-          id: newOverlayId(),
-          start: Math.max(0, start),
-          duration: asset.duration,
-        };
-        return [
-          ...prev,
-          {
-            ...span,
-            kind: asset.kind,
-            url: asset.url,
-            name: asset.name,
-            track: firstFreeTrack(prev, span),
-            sourceStart: 0,
-            muted: true,
-            // Its own shape, centred: an overlay that arrives cropped to the
-            // project's frame is an overlay nobody asked for.
-            ...fitBox(mediaAspect(asset), aspect),
-          },
-        ];
-      });
+      setOverlays((prev) => [
+        ...prev,
+        { ...overlayFromAsset(asset, start, prev, aspect), id: newOverlayId() },
+      ]);
     },
     [mediaAssets, aspect, setOverlays],
   );
