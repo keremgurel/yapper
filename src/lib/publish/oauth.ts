@@ -56,7 +56,11 @@ export function exchangeCode(
 export function refreshAccessToken(
   platform: PublishPlatform,
   refreshToken: string,
-): Promise<{ accessToken: string; expiresAt: Date | null }> {
+): Promise<{
+  accessToken: string;
+  refreshToken?: string | null;
+  expiresAt: Date | null;
+}> {
   return provider(platform).refreshAccessToken(creds(platform), refreshToken);
 }
 

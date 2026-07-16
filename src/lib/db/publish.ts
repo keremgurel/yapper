@@ -82,11 +82,17 @@ export async function updateAccessToken(
   platform: PublishPlatform,
   accessToken: string,
   expiresAt: Date | null,
+  // Persisted only when the provider rotated its refresh token (e.g. Instagram's
+  // self-refreshing long-lived token); omitted keeps the stored refresh token.
+  newRefreshToken?: string | null,
 ): Promise<void> {
   await getDb()
     .update(platformConnections)
     .set({
       accessTokenEnc: encryptToken(accessToken),
+      ...(newRefreshToken
+        ? { refreshTokenEnc: encryptToken(newRefreshToken) }
+        : {}),
       expiresAt,
       status: "active",
       updatedAt: new Date(),

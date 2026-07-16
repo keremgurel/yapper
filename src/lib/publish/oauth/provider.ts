@@ -32,11 +32,20 @@ export interface OAuthProvider {
     code: string,
     redirectUri: string,
   ): Promise<OAuthTokens>;
-  /** Trade a refresh token (or long-lived token) for a fresh access token. */
+  /**
+   * Trade a refresh token (or long-lived token) for a fresh access token.
+   * `refreshToken` comes back only when the provider ROTATES it (Instagram's
+   * long-lived token refreshes itself, so the new token replaces the old one);
+   * providers with a stable refresh token omit it and the stored one is kept.
+   */
   refreshAccessToken(
     creds: Creds,
     refreshToken: string,
-  ): Promise<{ accessToken: string; expiresAt: Date | null }>;
+  ): Promise<{
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresAt: Date | null;
+  }>;
   /** Identify the connected account for display. Best-effort: a failure here
    * must not fail the connection, so it returns nulls. */
   fetchAccount(accessToken: string): Promise<OAuthAccount>;

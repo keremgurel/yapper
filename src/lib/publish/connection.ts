@@ -31,6 +31,14 @@ export async function getFreshAccessToken(
   }
   const refreshToken = decryptToken(row.refreshTokenEnc);
   const fresh = await refreshAccessToken(platform, refreshToken);
-  await updateAccessToken(userId, platform, fresh.accessToken, fresh.expiresAt);
+  await updateAccessToken(
+    userId,
+    platform,
+    fresh.accessToken,
+    fresh.expiresAt,
+    // Instagram rotates its token on refresh; persist the new one so the next
+    // refresh does not reach for the expired original.
+    fresh.refreshToken,
+  );
   return fresh.accessToken;
 }

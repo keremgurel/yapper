@@ -79,7 +79,11 @@ export const instagram: OAuthProvider = {
   async refreshAccessToken(
     _creds: Creds,
     refreshToken: string,
-  ): Promise<{ accessToken: string; expiresAt: Date | null }> {
+  ): Promise<{
+    accessToken: string;
+    refreshToken?: string | null;
+    expiresAt: Date | null;
+  }> {
     const url = new URL(`${GRAPH}/refresh_access_token`);
     url.searchParams.set("grant_type", "ig_refresh_token");
     url.searchParams.set("access_token", refreshToken);
@@ -92,6 +96,9 @@ export const instagram: OAuthProvider = {
     if (!json.access_token) throw new Error("oauth_refresh_no_token");
     return {
       accessToken: json.access_token,
+      // The refreshed long-lived token replaces the old one as BOTH tokens;
+      // there is no separate refresh token to keep.
+      refreshToken: json.access_token,
       expiresAt: expiryFrom(json.expires_in),
     };
   },
