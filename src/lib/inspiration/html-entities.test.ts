@@ -27,4 +27,12 @@ describe("decodeEntities", () => {
       'Ben & Jerry\'s "best"',
     );
   });
+
+  it("decodes in a single pass, never re-decoding its own output", () => {
+    // A naive sequence of .replace() calls that resolves &amp; first would turn
+    // an escaped entity into a live one: "&amp;#39;" -> "&#39;" -> "'". The
+    // real text is the literal "&#39;", so a single pass must stop there.
+    expect(decodeEntities("&amp;#39;")).toBe("&#39;");
+    expect(decodeEntities("A &amp;amp; B")).toBe("A &amp; B");
+  });
 });
