@@ -19,6 +19,7 @@ import {
   timelineToSource,
 } from "@/lib/studio/clips";
 import { splitAudioAt } from "@/lib/studio/split-audio";
+import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
@@ -1160,25 +1161,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // from where the left half stopped; a still image has no in-point to advance.
   const splitOverlays = useCallback(
     (ids: string[], timelineTime: number) => {
-      const targets = new Set(ids);
-      setOverlays((prev) =>
-        prev.flatMap((o) => {
-          if (!targets.has(o.id)) return [o];
-          const local = timelineTime - o.start;
-          if (local <= 0.05 || local >= o.duration - 0.05) return [o];
-          return [
-            { ...o, id: newOverlayId(), duration: local },
-            {
-              ...o,
-              id: newOverlayId(),
-              start: timelineTime,
-              duration: o.duration - local,
-              sourceStart:
-                o.kind === "image" ? o.sourceStart : o.sourceStart + local,
-            },
-          ];
-        }),
-      );
+      setOverlays((prev) => splitOverlaysAt(prev, new Set(ids), timelineTime));
       sel.clearOverlays();
     },
     [setOverlays, sel],
