@@ -22,7 +22,13 @@ const SYSTEM =
   "question, story open). 3-5 punchy talking points. Keep it concrete and in " +
   "the creator's voice, not corporate. No prose outside the JSON.";
 
-function parseIdea(content: string): GeneratedIdea {
+/**
+ * Pull the idea object out of a model response. Exported so its guards can be
+ * unit-tested: arrays drop non-strings, and a result with no hooks AND no points
+ * throws so the route (which charges only when this returns) never bills a
+ * creator for an empty or content-filtered generation.
+ */
+export function parseIdea(content: string): GeneratedIdea {
   const s = content.indexOf("{");
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("idea_unparseable");
