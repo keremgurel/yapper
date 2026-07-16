@@ -1282,7 +1282,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setClips],
   );
 
-  const cutAll = useCallback(
+  // Apply a batch of source-time cut ranges to the bottom track, one after the
+  // next. Order is irrelevant: removeSourceRange works in the recording's own
+  // seconds, which no earlier cut shifts. Shared by every cut path (pauses,
+  // word deletion, a dragged range).
+  const applyCuts = useCallback(
     (ranges: [number, number][]) => {
       if (ranges.length === 0) return;
       setClips((prev) =>
@@ -1301,9 +1305,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const removePauses = useCallback((): number => {
     if (words.length === 0) return 0;
     const ranges = pauseCuts(words, source?.duration ?? 0, PAUSE_CUTS);
-    cutAll(ranges);
+    applyCuts(ranges);
     return ranges.length;
-  }, [words, source, cutAll]);
+  }, [words, source, applyCuts]);
 
   // Trim each clip's START and END down to speech from the audio waveform (no
   // transcript needed), so combined clips begin and end on words, not silence.
@@ -1349,20 +1353,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     if (!source || source.kind === "image") return;
     await runTranscribe(source.url, (audio) => coverFullAudio(audio.length));
   }, [source, runTranscribe, coverFullAudio]);
-
-  const applyCuts = useCallback(
-    (ranges: [number, number][]) => {
-      if (ranges.length === 0) return;
-      setClips((prev) => {
-        let next = prev;
-        for (const [from, to] of ranges) {
-          next = removeSourceRange(next, from, to);
-        }
-        return next;
-      });
-    },
-    [setClips],
-  );
 
   const deleteWords = useCallback(
     (ids: string[]) => {
