@@ -62,6 +62,10 @@ import { liftedOverlayFromClip } from "@/lib/studio/lift";
 import { overlayToBaseClip } from "@/lib/studio/fold";
 import { NUDGE_STEP, NUDGE_STEP_BIG, nudgeRect } from "@/lib/studio/nudge";
 import { newCaptionAtTimeline } from "@/lib/studio/new-caption";
+import {
+  splitCaptionAtTime,
+  splitCaptionAtWordIndex,
+} from "@/lib/studio/caption-split";
 import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
@@ -407,35 +411,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (id: string, at: number) => {
       const atSrc = timelineToSource(clips, at);
       setCaptions((prev) =>
-        prev.flatMap((c) => {
-          if (
-            c.id !== id ||
-            atSrc <= c.sourceStart + 0.05 ||
-            atSrc >= c.sourceEnd - 0.05
-          ) {
-            return [c];
-          }
-          const parts = c.text.split(/\s+/).filter(Boolean);
-          const frac = (atSrc - c.sourceStart) / (c.sourceEnd - c.sourceStart);
-          const k = Math.max(
-            1,
-            Math.min(parts.length - 1, Math.round(frac * parts.length)),
-          );
-          return [
-            {
-              ...c,
-              id: newCaptionId(),
-              sourceEnd: atSrc,
-              text: parts.slice(0, k).join(" "),
-            },
-            {
-              ...c,
-              id: newCaptionId(),
-              sourceStart: atSrc,
-              text: parts.slice(k).join(" "),
-            },
-          ];
-        }),
+        prev.flatMap((c) => (c.id === id ? splitCaptionAtTime(c, atSrc) : [c])),
       );
     },
     [clips, setCaptions],
@@ -446,28 +422,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const splitCaptionAtWord = useCallback(
     (id: string, wordsBefore: number) => {
       setCaptions((prev) =>
-        prev.flatMap((c) => {
-          if (c.id !== id) return [c];
-          const parts = c.text.split(/\s+/).filter(Boolean);
-          if (parts.length < 2) return [c];
-          const k = Math.max(1, Math.min(parts.length - 1, wordsBefore));
-          const atSrc =
-            c.sourceStart + (k / parts.length) * (c.sourceEnd - c.sourceStart);
-          return [
-            {
-              ...c,
-              id: newCaptionId(),
-              sourceEnd: atSrc,
-              text: parts.slice(0, k).join(" "),
-            },
-            {
-              ...c,
-              id: newCaptionId(),
-              sourceStart: atSrc,
-              text: parts.slice(k).join(" "),
-            },
-          ];
-        }),
+        prev.flatMap((c) =>
+          c.id === id ? splitCaptionAtWordIndex(c, wordsBefore) : [c],
+        ),
       );
     },
     [setCaptions],
