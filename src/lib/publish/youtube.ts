@@ -23,13 +23,23 @@ export interface YouTubeUploadResult {
 const RESUMABLE_INIT =
   "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status";
 
+/**
+ * Prepare a title/description for YouTube's snippet: strip the `<` and `>`
+ * characters the Data API rejects (invalidTitle / invalidDescription), matching
+ * how YouTube's own UI drops them, then clamp to the field's length limit. Pure.
+ * Without this a stray "<3" or "A > B" 400s the whole upload after the bytes go.
+ */
+export function youtubeSnippetText(s: string | undefined, max: number): string {
+  return (s ?? "").replace(/[<>]/g, "").slice(0, max);
+}
+
 export async function uploadYouTubeVideo(
   input: YouTubeUploadInput,
 ): Promise<YouTubeUploadResult> {
   const metadata = {
     snippet: {
-      title: input.title.slice(0, 100),
-      description: input.description?.slice(0, 5000) ?? "",
+      title: youtubeSnippetText(input.title, 100),
+      description: youtubeSnippetText(input.description, 5000),
       tags: input.tags ?? [],
       categoryId: "22", // People & Blogs
     },
