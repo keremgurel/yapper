@@ -14,12 +14,12 @@ import {
   removeClip,
   removeSourceRange,
   restoreSourceRange,
-  sourceToTimeline,
   splitClipAt,
   timelineToSource,
 } from "@/lib/studio/clips";
 import { splitAudioAt } from "@/lib/studio/split-audio";
 import { splitOverlaysAt } from "@/lib/studio/split-overlay";
+import { planSpanOverlays } from "@/lib/studio/place-spans";
 import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
 import { analyzeForTrim } from "@/lib/studio/silence";
 import {
@@ -52,7 +52,7 @@ import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
 import { projectDuration } from "@/lib/studio/project-duration";
 import { fitBox, mediaAspect } from "@/lib/studio/overlay-box";
-import { MIN_SPAN_SEC, type PlacedSpan } from "@/lib/studio/overlay-plan";
+import { type PlacedSpan } from "@/lib/studio/overlay-plan";
 import {
   clampStartToTrack,
   compactTracks,
@@ -722,40 +722,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
    */
   const placeOverlays = useCallback(
     (spans: PlacedSpan[]): PlacedSpan[] => {
-      // Built before the commit, not inside it: a state updater has to be pure,
-      // and this one mints ids.
-      const made: Overlay[] = [];
-      const used: PlacedSpan[] = [];
-      let taken = overlays;
-      for (const span of spans) {
-        const asset = mediaAssets.find((m) => m.name === span.file);
-        if (!asset) continue;
-        const start = sourceToTimeline(clips, span.sourceStart);
-        const end = sourceToTimeline(clips, span.sourceEnd);
-        if (end - start < MIN_SPAN_SEC) continue;
-        const duration =
-          asset.kind === "video"
-            ? Math.min(end - start, asset.duration)
-            : end - start;
-        const overlay: Overlay = {
-          id: newOverlayId(),
-          kind: asset.kind,
-          url: asset.url,
-          name: asset.name,
-          track: firstFreeTrack(taken, { id: "new", start, duration }),
-          start,
-          duration,
-          sourceStart: 0,
-          muted: true,
-          ...fitBox(mediaAspect(asset), aspect),
-        };
-        made.push(overlay);
-        used.push(span);
-        taken = [...taken, overlay];
-      }
-      if (made.length === 0) return [];
+      const planned = planSpanOverlays(
+        spans,
+        overlays,
+        clips,
+        mediaAssets,
+        aspect,
+      );
+      if (planned.length === 0) return [];
+      // Mint the ids out here: the state updater has to stay pure.
+      const made = planned.map((p) => ({ ...p.overlay, id: newOverlayId() }));
       updateEditor((s) => ({ ...s, overlays: [...s.overlays, ...made] }));
-      return used;
+      return planned.map((p) => p.span);
     },
     [clips, overlays, mediaAssets, aspect, updateEditor],
   );
