@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { clipDuration, clipMediaUrl, trimBounds } from "@/lib/studio/clips";
+import { clipMediaUrl, trimBounds } from "@/lib/studio/clips";
 import { useFilmstrips, useWaveforms } from "@/hooks/use-timeline-media";
 import { waveformMedia, type TimelineMedia } from "@/lib/studio/timeline-media";
 import { EMPTY_FILMSTRIP } from "@/lib/studio/filmstrip";
@@ -21,6 +21,7 @@ import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
 import { spansOverlap } from "@/lib/studio/marquee";
+import { marqueeSelection } from "@/lib/studio/marquee-select";
 import {
   overlayTrimBounds,
   overlaysOnTrack,
@@ -578,20 +579,17 @@ export default function StudioTimeline({
                   const cy = ev.clientY - rect.top + el.scrollTop;
                   if (!moved && Math.hypot(cx - sx, cy - sy) < 4) return;
                   moved = true;
-                  const left = Math.min(sx, cx);
-                  const width = Math.abs(cx - sx);
+                  const boxLeft = Math.min(sx, cx);
+                  const boxRight = Math.max(sx, cx);
                   setMarquee({
-                    left,
+                    left: boxLeft,
                     top: Math.min(sy, cy),
-                    width,
+                    width: boxRight - boxLeft,
                     height: Math.abs(cy - sy),
                   });
-                  const xHit = (l: number, r: number) =>
-                    spansOverlap(l, r, left, left + width);
-                  // A span of timeline seconds, in the same px as the box.
-                  const secHit = (from: number, to: number) =>
-                    xHit(padLeft + from * pxPerSec, padLeft + to * pxPerSec);
-                  // Which track rows the box vertically reaches (client coords).
+                  // Which lanes the box vertically reaches (client coords). The
+                  // geometry within each hit lane is pure; only this row-level
+                  // hit-test needs the live DOM rects.
                   const yTop = Math.min(startClientY, ev.clientY);
                   const yBot = Math.max(startClientY, ev.clientY);
                   const rowHit = (node: HTMLElement | null) => {
@@ -599,48 +597,40 @@ export default function StudioTimeline({
                     const r = node.getBoundingClientRect();
                     return spansOverlap(r.top, r.bottom, yTop, yBot);
                   };
+                  const tracks = new Set<number>();
+                  for (const [track, node] of trackRowsRef.current)
+                    if (rowHit(node)) tracks.add(track);
+                  const audio = new Set<string>();
+                  for (const [id, node] of audioRowsRef.current)
+                    if (rowHit(node)) audio.add(id);
 
                   // The box owns the whole selection: every kind it catches is
-                  // selected, and every kind it misses is deselected. Leaving a
+                  // selected, and every kind it misses is cleared. Leaving a
                   // kind untouched would let a stale selection from before the
                   // drag be swept up by the next Delete.
-                  selectClips(
-                    rowHit(baseRowRef.current)
-                      ? clips
-                          .filter((c, i) =>
-                            secHit(offsets[i], offsets[i] + clipDuration(c)),
-                          )
-                          .map((c) => c.id)
-                      : [],
+                  const sel = marqueeSelection(
+                    { left: boxLeft, right: boxRight },
+                    padLeft,
+                    pxPerSec,
+                    {
+                      base: rowHit(baseRowRef.current),
+                      caption: rowHit(captionRowRef.current),
+                      tracks,
+                      audio,
+                    },
+                    {
+                      clips,
+                      clipOffsets: offsets,
+                      overlays,
+                      captions,
+                      captionRange: (c) => captionTimelineRange(clips, c),
+                      audioTracks,
+                    },
                   );
-                  selectOverlays(
-                    overlays
-                      .filter(
-                        (o) =>
-                          rowHit(trackRowsRef.current.get(o.track) ?? null) &&
-                          secHit(o.start, o.start + o.duration),
-                      )
-                      .map((o) => o.id),
-                  );
-                  selectCaptions(
-                    rowHit(captionRowRef.current)
-                      ? captions
-                          .filter((c) => {
-                            const r = captionTimelineRange(clips, c);
-                            return r.end > r.start && secHit(r.start, r.end);
-                          })
-                          .map((c) => c.id)
-                      : [],
-                  );
-                  selectAudios(
-                    audioTracks
-                      .filter(
-                        (a) =>
-                          rowHit(audioRowsRef.current.get(a.id) ?? null) &&
-                          secHit(a.start, a.start + a.duration),
-                      )
-                      .map((a) => a.id),
-                  );
+                  selectClips(sel.clipIds);
+                  selectOverlays(sel.overlayIds);
+                  selectCaptions(sel.captionIds);
+                  selectAudios(sel.audioIds);
                 };
                 const onUp = () => {
                   setMarquee(null);
