@@ -139,6 +139,14 @@ export const Component = () => {
           <p className="whitespace-nowrap">
             &copy;{currentYear} OCX Software Inc. All rights reserved.
           </p>
+          <div className="flex items-center gap-4">
+            <a href="/terms" className="hover:text-[var(--sg-text)]">
+              Terms
+            </a>
+            <a href="/privacy" className="hover:text-[var(--sg-text)]">
+              Privacy
+            </a>
+          </div>
           <div className="flex items-center gap-3">
             <a
               href="https://www.tiktok.com/@ypr.app"
