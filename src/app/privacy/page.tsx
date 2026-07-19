@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { LegalPage, Section } from "@/components/legal/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Yapper",
+  title: "Privacy Policy",
   description:
     "How Yapper, by OCX Software Inc., collects, uses, shares, and protects your data, including data from connected social platforms.",
   alternates: { canonical: "/privacy" },
