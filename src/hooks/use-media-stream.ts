@@ -9,6 +9,14 @@ import {
 } from "@/lib/media";
 import { recordingFileName } from "@/lib/studio/recording-file";
 
+/** getUserMedia audio constraint for an optional specific microphone. Defined
+ * at module scope so it stays stable and never lands in a callback's deps. */
+function audioConstraintFor(
+  deviceId: string | null,
+): MediaTrackConstraints | boolean {
+  return deviceId ? { deviceId: { exact: deviceId } } : true;
+}
+
 export function useMediaStream() {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
@@ -17,11 +25,18 @@ export function useMediaStream() {
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  // The chosen camera/mic. State drives the picker UI; the refs let the stream
+  // callbacks read the current pick without becoming a dependency (which would
+  // churn the memoized mutators the React Compiler lint watches).
+  const [videoDeviceId, setVideoDeviceId] = useState<string | null>(null);
+  const [audioDeviceId, setAudioDeviceId] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const videoDeviceRef = useRef<string | null>(null);
+  const audioDeviceRef = useRef<string | null>(null);
   // If the component unmounts mid-recording (e.g. navigating away during a
   // take), the unmount track-stop fires onstop *after* unmount — the resulting
   // setState is dropped, so any object URL created there would leak. Guard on it.
@@ -56,7 +71,9 @@ export function useMediaStream() {
       track.stop();
     });
 
-    const nextVideoStream = await requestVideoStream();
+    const nextVideoStream = await requestVideoStream({
+      deviceId: videoDeviceRef.current ?? undefined,
+    });
     const nextVideoTrack = nextVideoStream.getVideoTracks()[0];
     await resetTrackZoom(nextVideoTrack);
 
@@ -203,7 +220,7 @@ export function useMediaStream() {
     try {
       if (streamRef.current) {
         const audioStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
+          audio: audioConstraintFor(audioDeviceRef.current),
         });
         const audioTrack = audioStream.getAudioTracks()[0];
         streamRef.current.addTrack(audioTrack);
@@ -213,7 +230,7 @@ export function useMediaStream() {
               const nextVideoStream = await requestVideoStream();
               const nextAudioStream = await navigator.mediaDevices.getUserMedia(
                 {
-                  audio: true,
+                  audio: audioConstraintFor(audioDeviceRef.current),
                 },
               );
               const mergedStream = new MediaStream();
@@ -226,7 +243,7 @@ export function useMediaStream() {
               return mergedStream;
             })()
           : await navigator.mediaDevices.getUserMedia({
-              audio: true,
+              audio: audioConstraintFor(audioDeviceRef.current),
               video: false,
             });
         streamRef.current = nextStream;
@@ -254,7 +271,7 @@ export function useMediaStream() {
           if (audioTrack) streamRef.current.removeTrack(audioTrack);
           try {
             const freshAudio = await navigator.mediaDevices.getUserMedia({
-              audio: true,
+              audio: audioConstraintFor(audioDeviceRef.current),
             });
             streamRef.current.addTrack(freshAudio.getAudioTracks()[0]);
           } catch {
@@ -280,6 +297,44 @@ export function useMediaStream() {
     },
     [attachStream, replaceVideoTrack],
   );
+
+  // --- Device selection ---
+
+  const selectVideoDevice = useCallback(
+    async (deviceId: string) => {
+      videoDeviceRef.current = deviceId;
+      setVideoDeviceId(deviceId);
+      // Swap the live camera track if one is running; otherwise the pick just
+      // applies the next time the camera turns on.
+      if (streamRef.current?.getVideoTracks().length) {
+        try {
+          await replaceVideoTrack();
+        } catch {
+          setMediaError("Could not switch camera.");
+        }
+      }
+    },
+    [replaceVideoTrack],
+  );
+
+  const selectAudioDevice = useCallback(async (deviceId: string) => {
+    audioDeviceRef.current = deviceId;
+    setAudioDeviceId(deviceId);
+    const stream = streamRef.current;
+    if (!stream || stream.getAudioTracks().length === 0) return;
+    stream.getAudioTracks().forEach((track) => {
+      stream.removeTrack(track);
+      track.stop();
+    });
+    try {
+      const fresh = await navigator.mediaDevices.getUserMedia({
+        audio: audioConstraintFor(deviceId),
+      });
+      stream.addTrack(fresh.getAudioTracks()[0]);
+    } catch {
+      setMediaError("Could not switch microphone.");
+    }
+  }, []);
 
   // --- Download ---
 
@@ -340,5 +395,9 @@ export function useMediaStream() {
     clearRecordedMedia,
     reattachStream,
     downloadRecording,
+    videoDeviceId,
+    audioDeviceId,
+    selectVideoDevice,
+    selectAudioDevice,
   };
 }

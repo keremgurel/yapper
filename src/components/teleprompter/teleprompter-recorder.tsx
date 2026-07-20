@@ -10,6 +10,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
+import { useMediaDevices } from "@/hooks/use-media-devices";
 import {
   useTeleprompterScroll,
   WPM_PRESETS,
@@ -20,6 +21,7 @@ import {
   useElapsedSeconds,
 } from "@/hooks/use-record-timer";
 import TeleprompterOverlay from "@/components/teleprompter/teleprompter-overlay";
+import RecorderDevices from "@/components/teleprompter/recorder-devices";
 import RecorderReview from "@/components/teleprompter/recorder-review";
 
 const iconBtn =
@@ -58,7 +60,12 @@ export default function TeleprompterRecorder({
     stopRecording,
     clearRecordedMedia,
     reattachStream,
+    videoDeviceId,
+    audioDeviceId,
+    selectVideoDevice,
+    selectAudioDevice,
   } = useMediaStream();
+  const { cameras, mics } = useMediaDevices(cameraOn || micOn);
   const scroll = useTeleprompterScroll();
   const { play: scrollPlay, pause: scrollPause, reset: scrollReset } = scroll;
   const {
@@ -181,6 +188,21 @@ export default function TeleprompterRecorder({
             <Maximize2 className="h-4 w-4" />
           )}
         </button>
+
+        {/* Camera / mic picker + flip (hidden while recording). */}
+        {!isRecording && (cameras.length > 0 || mics.length > 0) && (
+          <div className="absolute top-4 left-4 z-50">
+            <RecorderDevices
+              cameras={cameras}
+              mics={mics}
+              videoDeviceId={videoDeviceId}
+              audioDeviceId={audioDeviceId}
+              onSelectCamera={selectVideoDevice}
+              onSelectMic={selectAudioDevice}
+              disabled={count !== null}
+            />
+          </div>
+        )}
 
         {/* 3-2-1 pre-roll. */}
         {count !== null && (

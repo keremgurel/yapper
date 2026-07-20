@@ -30,16 +30,27 @@ export async function resetTrackZoom(
   }
 }
 
-export async function requestVideoStream(): Promise<MediaStream> {
-  // Minimal constraints — just front camera + frame rate. Do NOT specify width,
+/** Which camera to open: a specific device, or a facing direction. */
+export interface VideoStreamOptions {
+  deviceId?: string;
+  facingMode?: "user" | "environment";
+}
+
+export async function requestVideoStream(
+  options: VideoStreamOptions = {},
+): Promise<MediaStream> {
+  // Minimal constraints — just the camera + frame rate. Do NOT specify width,
   // height, or aspectRatio: iOS front cameras are natively 4:3 and will
   // crop/zoom to satisfy any resolution hint, losing field of view.  Safari
   // already rotates the feed based on device orientation, so portrait phones
   // get portrait 3:4 and landscape desktops get landscape 4:3 automatically.
-  return navigator.mediaDevices.getUserMedia({
-    video: {
-      facingMode: "user",
-      frameRate: { ideal: 30, max: 60 },
-    },
-  });
+  const video: MediaTrackConstraints = { frameRate: { ideal: 30, max: 60 } };
+  if (options.deviceId) {
+    // An explicit pick wins; do not also constrain facingMode or the device may
+    // be rejected on machines where the two disagree.
+    video.deviceId = { exact: options.deviceId };
+  } else {
+    video.facingMode = options.facingMode ?? "user";
+  }
+  return navigator.mediaDevices.getUserMedia({ video });
 }
