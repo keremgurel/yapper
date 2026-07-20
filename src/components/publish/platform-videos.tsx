@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useYouTubeVideos, type VideoSort } from "@/hooks/use-youtube-videos";
+import { usePlatformVideos, type VideoSort } from "@/hooks/use-platform-videos";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import type { PlatformVideo } from "@/lib/publish/client";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
@@ -35,9 +35,10 @@ const SORTS: { key: VideoSort; label: string }[] = [
 ];
 
 /**
- * Your videos on one platform, chosen from a dropdown. YouTube is live (real
- * uploads, sortable by recency or views); TikTok and Instagram are placeholders
- * until their listing is wired. The first step toward the cross-platform matrix.
+ * Your videos on one platform, chosen from a dropdown. YouTube (sortable by
+ * recency or views) and Instagram list real uploads; TikTok's API will not
+ * return a user's posted videos, so it shows a note instead. Instagram rows
+ * carry a downloadable file, the source for backfilling to other platforms.
  */
 export default function PlatformVideos() {
   const [platform, setPlatform] = useState<PublishPlatform>("youtube");
@@ -87,25 +88,33 @@ export default function PlatformVideos() {
         )}
       </div>
 
-      {platform === "youtube" ? (
-        <YouTubeGrid sort={sort} />
-      ) : (
+      {platform === "tiktok" ? (
         <div className="text-muted-foreground border-border rounded-xl border border-dashed py-12 text-center text-sm">
-          {PLATFORMS[platform].label} videos are coming soon.
+          TikTok does not let apps pull your posted videos back out, so they
+          cannot be listed here. TikTok stays a cross-post destination.
         </div>
+      ) : (
+        <PlatformGrid key={platform} platform={platform} sort={sort} />
       )}
     </section>
   );
 }
 
-function YouTubeGrid({ sort }: { sort: VideoSort }) {
+function PlatformGrid({
+  platform,
+  sort,
+}: {
+  platform: PublishPlatform;
+  sort: VideoSort;
+}) {
   const { isSignedIn } = useUser();
-  const { videos, connected } = useYouTubeVideos(!!isSignedIn, sort);
+  const { videos, connected } = usePlatformVideos(platform, !!isSignedIn, sort);
+  const label = PLATFORMS[platform].label;
 
   if (!connected && videos !== null) {
     return (
       <p className="text-muted-foreground py-10 text-sm">
-        Connect YouTube above to see your videos here.
+        Connect {label} above to see your videos here.
       </p>
     );
   }
@@ -118,9 +127,7 @@ function YouTubeGrid({ sort }: { sort: VideoSort }) {
   }
   if (videos.length === 0) {
     return (
-      <p className="text-muted-foreground py-10 text-sm">
-        No videos on this channel yet.
-      </p>
+      <p className="text-muted-foreground py-10 text-sm">No videos here yet.</p>
     );
   }
   return (
@@ -161,8 +168,14 @@ function VideoCard({ video }: { video: PlatformVideo }) {
           {video.title}
         </p>
         <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
-          <Eye className="h-3 w-3" />
-          {compactViews(video.viewCount)} · {when(video.publishedAt)}
+          {video.viewCount > 0 ? (
+            <>
+              <Eye className="h-3 w-3" />
+              {compactViews(video.viewCount)} · {when(video.publishedAt)}
+            </>
+          ) : (
+            when(video.publishedAt)
+          )}
         </p>
       </div>
     </a>
