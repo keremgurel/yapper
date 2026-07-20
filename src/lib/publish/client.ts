@@ -43,14 +43,20 @@ export interface PlatformVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
+  /** The downloadable source file, present only for platforms we can backfill
+   * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
+   * back a file, so those rows are view-only. */
+  sourceFileUrl?: string;
 }
 
-export async function fetchYouTubeVideos(): Promise<{
+/** A connected platform's own videos. `/api/publish/<platform>/videos` returns
+ * `connected: false` rather than erroring when the platform is not linked. */
+export async function fetchPlatformVideos(platform: PublishPlatform): Promise<{
   connected: boolean;
   videos: PlatformVideo[];
 }> {
   try {
-    const res = await fetch("/api/publish/youtube/videos");
+    const res = await fetch(`/api/publish/${platform}/videos`);
     if (!res.ok) return { connected: false, videos: [] };
     return (await res.json()) as {
       connected: boolean;
@@ -63,6 +69,14 @@ export async function fetchYouTubeVideos(): Promise<{
     // non-ok response already yields.
     return { connected: false, videos: [] };
   }
+}
+
+/** YouTube's own uploads. Kept as a named alias for the existing content hub. */
+export function fetchYouTubeVideos(): Promise<{
+  connected: boolean;
+  videos: PlatformVideo[];
+}> {
+  return fetchPlatformVideos("youtube");
 }
 
 export interface CrossPostInput {

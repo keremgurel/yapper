@@ -1,23 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchYouTubeVideos, type PlatformVideo } from "@/lib/publish/client";
+import { fetchPlatformVideos, type PlatformVideo } from "@/lib/publish/client";
+import type { PublishPlatform } from "@/lib/db/schema";
 
 export type VideoSort = "recent" | "views";
 
 /**
- * The connected YouTube channel's own uploads, sortable by recency or view
- * count. `null` while loading; `connected` says whether YouTube is even linked
- * (so the UI shows "connect" vs "no videos yet").
+ * A connected platform's own videos, sortable by recency or view count. `null`
+ * while loading; `connected` says whether the platform is even linked (so the
+ * UI shows "connect" vs "no videos yet"). Switching platform reloads. Only the
+ * fetch differs per platform, so one hook serves them all.
  */
-export function useYouTubeVideos(enabled: boolean, sort: VideoSort) {
+export function usePlatformVideos(
+  platform: PublishPlatform,
+  enabled: boolean,
+  sort: VideoSort,
+) {
   const [videos, setVideos] = useState<PlatformVideo[] | null>(null);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
     let live = true;
-    void fetchYouTubeVideos().then((data) => {
+    void fetchPlatformVideos(platform).then((data) => {
       if (!live) return;
       setConnected(data.connected);
       setVideos(data.videos);
@@ -25,7 +31,7 @@ export function useYouTubeVideos(enabled: boolean, sort: VideoSort) {
     return () => {
       live = false;
     };
-  }, [enabled]);
+  }, [enabled, platform]);
 
   const sorted =
     videos &&
