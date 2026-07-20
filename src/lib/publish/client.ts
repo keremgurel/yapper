@@ -79,22 +79,44 @@ export function fetchYouTubeVideos(): Promise<{
   return fetchPlatformVideos("youtube");
 }
 
+/** A post's source is either a Yapper recording (`submissionId`) or a raw R2
+ * key (`mediaKey`) for an uploaded or imported video. Exactly one is set. */
 export interface CrossPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   title: string;
   description?: string;
   contentItemId?: string;
 }
 
 export interface InstagramPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   caption?: string;
   contentItemId?: string;
 }
 
 export interface TikTokPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   contentItemId?: string;
+}
+
+/** Pull an Instagram video into the user's own storage so it can be cross-posted
+ * elsewhere. Returns the R2 key of the stored file plus a suggested title. */
+export async function importInstagramMedia(
+  mediaId: string,
+): Promise<{ mediaKey: string; title: string }> {
+  const res = await fetch("/api/publish/instagram/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mediaId }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "import_failed");
+  }
+  return (await res.json()) as { mediaKey: string; title: string };
 }
 
 /** The shape every platform's post resolves to. `url` is present when the post

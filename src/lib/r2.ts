@@ -87,6 +87,24 @@ export async function getObjectBytes(key: string): Promise<ArrayBuffer> {
   ) as ArrayBuffer;
 }
 
+/** Server-side write of raw bytes to a key. Used to stash a video pulled from
+ * another platform (e.g. an Instagram Reel) so the normal publish path, which
+ * only posts from R2, can re-post it elsewhere. */
+export async function putObjectBytes(
+  key: string,
+  bytes: ArrayBuffer | Uint8Array,
+  contentType: string,
+): Promise<void> {
+  await s3().send(
+    new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Body: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
+      ContentType: contentType,
+    }),
+  );
+}
+
 export async function deleteObject(key: string): Promise<void> {
   await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
 }

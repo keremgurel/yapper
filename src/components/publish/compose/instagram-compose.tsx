@@ -25,8 +25,9 @@ export default function InstagramCompose({
     void post(() =>
       crossPostToInstagram({
         submissionId: item.submissionId,
+        mediaKey: item.mediaKey,
         caption: caption.trim() || undefined,
-        contentItemId: item.id,
+        contentItemId: item.contentItemId,
       }),
     );
   };
