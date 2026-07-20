@@ -1,12 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Camera, CameraOff, Mic, MicOff } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  Camera,
+  CameraOff,
+  Maximize2,
+  Mic,
+  MicOff,
+  Minimize2,
+} from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
 import {
   useTeleprompterScroll,
   WPM_PRESETS,
 } from "@/hooks/use-teleprompter-scroll";
+import {
+  formatElapsed,
+  useCountdown,
+  useElapsedSeconds,
+} from "@/hooks/use-record-timer";
 import TeleprompterOverlay from "@/components/teleprompter/teleprompter-overlay";
 import RecorderReview from "@/components/teleprompter/recorder-review";
 
@@ -16,8 +28,9 @@ const iconBtn =
 /**
  * TikTok-style teleprompter recorder: live camera with the chosen prompt
  * scrolling over the top. Composes the media stream and the scroll engine —
- * starting a recording also starts the scroll; stopping stops it and drops into
- * review. Camera + mic are enabled once on mount.
+ * starting a recording runs a 3-2-1 countdown, then records and scrolls;
+ * stopping drops into review. An immersive mode fills the screen so nothing
+ * else is on-camera. Camera + mic are enabled once on mount.
  */
 export default function TeleprompterRecorder({
   text,
@@ -48,6 +61,13 @@ export default function TeleprompterRecorder({
   } = useMediaStream();
   const scroll = useTeleprompterScroll();
   const { play: scrollPlay, pause: scrollPause, reset: scrollReset } = scroll;
+  const {
+    count,
+    start: startCountdown,
+    cancel: cancelCountdown,
+  } = useCountdown();
+  const elapsed = useElapsedSeconds(isRecording);
+  const [immersive, setImmersive] = useState(false);
   const hasText = text.trim().length > 0;
   // With no camera and no mic there's nothing to capture — startRecording would
   // silently no-op, so gate on it (else the prompt scrolls while nothing records).
@@ -73,14 +93,23 @@ export default function TeleprompterRecorder({
     else scrollPause();
   }, [isRecording, hasText, scrollPlay, scrollPause]);
 
+  const beginRecording = () => {
+    scrollReset();
+    startRecording();
+  };
+
   const toggleRecord = () => {
     if (isRecording) {
       stopRecording();
       return;
     }
+    if (count !== null) {
+      // Tapping during the pre-roll cancels it.
+      cancelCountdown();
+      return;
+    }
     if (!canRecord) return;
-    scrollReset();
-    startRecording();
+    startCountdown(3, beginRecording);
   };
 
   const retake = () => {
@@ -102,8 +131,20 @@ export default function TeleprompterRecorder({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-col items-center px-4 py-6">
-      <div className="relative aspect-[9/16] w-full overflow-hidden rounded-3xl bg-black">
+    <div
+      className={
+        immersive
+          ? "fixed inset-0 z-50 flex items-center justify-center bg-black"
+          : "mx-auto flex w-full max-w-md flex-col items-center px-4 py-6"
+      }
+    >
+      <div
+        className={
+          immersive
+            ? "relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden bg-black"
+            : "relative aspect-[9/16] w-full overflow-hidden rounded-3xl bg-black"
+        }
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -116,22 +157,49 @@ export default function TeleprompterRecorder({
           <TeleprompterOverlay scrollRef={scroll.scrollRef} text={text} />
         )}
 
+        {/* Recording indicator with elapsed time. */}
         {isRecording && (
           <div className="absolute top-4 left-4 z-40 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 backdrop-blur-md">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-            <span className="font-mono text-xs font-bold text-white">REC</span>
+            <span className="font-mono text-xs font-bold text-white">
+              {formatElapsed(elapsed)}
+            </span>
+          </div>
+        )}
+
+        {/* Fullscreen / immersive toggle. */}
+        <button
+          type="button"
+          onClick={() => setImmersive((v) => !v)}
+          className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70"
+          title={immersive ? "Exit fullscreen" : "Fullscreen"}
+          aria-label={immersive ? "Exit fullscreen" : "Fullscreen"}
+        >
+          {immersive ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </button>
+
+        {/* 3-2-1 pre-roll. */}
+        {count !== null && (
+          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+            <span className="font-mono text-8xl font-black text-white drop-shadow-lg">
+              {count}
+            </span>
           </div>
         )}
 
         {mediaError && (
-          <div className="absolute inset-x-4 top-4 z-40 rounded-lg bg-red-950/80 px-3 py-2 text-xs font-bold text-red-200 backdrop-blur-md">
+          <div className="absolute inset-x-4 top-16 z-40 rounded-lg bg-red-950/80 px-3 py-2 text-xs font-bold text-red-200 backdrop-blur-md">
             {mediaError}
           </div>
         )}
 
         {/* Bottom control bar */}
         <div className="absolute inset-x-0 bottom-0 z-40 flex flex-col items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-4 pt-10 pb-5">
-          {hasText && !isRecording && (
+          {hasText && !isRecording && count === null && (
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] font-bold text-white/70">Speed</span>
               {WPM_PRESETS.map((preset) => (
@@ -155,7 +223,7 @@ export default function TeleprompterRecorder({
             <button
               type="button"
               onClick={() => void toggleMic()}
-              disabled={isRecording}
+              disabled={isRecording || count !== null}
               className={iconBtn}
               title={micOn ? "Mute" : "Unmute"}
             >
@@ -169,19 +237,21 @@ export default function TeleprompterRecorder({
             <button
               type="button"
               onClick={toggleRecord}
-              disabled={!isRecording && !canRecord}
+              disabled={!isRecording && count === null && !canRecord}
               className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/80 bg-transparent disabled:opacity-40"
               title={
                 !canRecord
                   ? "Turn on your camera or mic first"
                   : isRecording
                     ? "Stop"
-                    : "Record"
+                    : count !== null
+                      ? "Cancel"
+                      : "Record"
               }
             >
               <span
                 className={
-                  isRecording
+                  isRecording || count !== null
                     ? "h-6 w-6 rounded-md bg-red-500"
                     : "h-12 w-12 rounded-full bg-red-500"
                 }
@@ -191,7 +261,7 @@ export default function TeleprompterRecorder({
             <button
               type="button"
               onClick={() => void toggleCamera()}
-              disabled={isRecording}
+              disabled={isRecording || count !== null}
               className={iconBtn}
               title={cameraOn ? "Camera off" : "Camera on"}
             >
@@ -205,7 +275,7 @@ export default function TeleprompterRecorder({
         </div>
       </div>
 
-      {!isRecording && onExit && (
+      {!isRecording && !immersive && onExit && (
         <button
           type="button"
           onClick={onExit}
