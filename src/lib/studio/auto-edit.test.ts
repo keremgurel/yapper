@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   AUTO_EDIT_STEPS,
+  hasUsableAutoEditTranscript,
   dropSlivers,
   fillerCuts,
   pauseCuts,
@@ -307,5 +308,16 @@ describe("planAutoEdit", () => {
       plan({ words: [], onStep: (s) => steps.push(s) });
       expect(steps).toEqual([AUTO_EDIT_STEPS.TRIM]);
     });
+  });
+});
+
+describe("hasUsableAutoEditTranscript", () => {
+  it("aborts one-click editing after a failed or empty transcription", () => {
+    expect(hasUsableAutoEditTranscript(null)).toBe(false);
+    expect(hasUsableAutoEditTranscript([])).toBe(false);
+  });
+
+  it("allows one-click editing once at least one timed word exists", () => {
+    expect(hasUsableAutoEditTranscript([word(0, 1)])).toBe(true);
   });
 });

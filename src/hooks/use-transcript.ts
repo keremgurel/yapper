@@ -11,7 +11,7 @@ import {
 
 export type TranscribeStatus = "idle" | "transcribing" | "done" | "error";
 
-function correctWordSpellings(
+export function correctWordSpellings(
   current: Word[],
   dictionary: TranscriptionDictionaryEntry[],
 ): Word[] {
@@ -24,10 +24,27 @@ function correctWordSpellings(
   const idsByRange = new Map(
     current.map((word) => [`${word.start}:${word.end}`, word.id]),
   );
-  return corrected.map((word, i) => ({
-    ...word,
-    id: idsByRange.get(`${word.start}:${word.end}`) ?? newWordId(i),
-  }));
+  // Collapsing a multi-token alias shortens the array. Generating its ID from
+  // the corrected index can then collide with an unchanged word's original ID
+  // (for example new `w-2` beside retained `w-2`). Allocate beyond the original
+  // ID space and still check the actual strings, since imported words need not
+  // use the default ID format.
+  const reserved = new Set(current.map((word) => word.id));
+  const assigned = new Set<string>();
+  let nextId = current.length;
+  const freshId = () => {
+    let id: string;
+    do id = newWordId(nextId++);
+    while (reserved.has(id) || assigned.has(id));
+    assigned.add(id);
+    return id;
+  };
+  return corrected.map((word) => {
+    const existing = idsByRange.get(`${word.start}:${word.end}`);
+    const id = existing && !assigned.has(existing) ? existing : freshId();
+    assigned.add(id);
+    return { ...word, id };
+  });
 }
 
 /**

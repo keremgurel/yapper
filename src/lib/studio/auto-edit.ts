@@ -110,6 +110,13 @@ export const AUTO_EDIT_STEPS = {
   CAPTIONS: 5,
 } as const;
 
+/** One-click editing must never proceed on a failed or empty transcript. */
+export function hasUsableAutoEditTranscript(
+  words: Word[] | null,
+): words is Word[] {
+  return words !== null && words.length > 0;
+}
+
 /** The one-click pass cuts tighter than "remove pauses": it reshapes the take. */
 const AUTO_EDIT_CUTS: PauseCutOptions = {
   minGap: 0.25,

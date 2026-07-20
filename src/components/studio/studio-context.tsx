@@ -43,6 +43,7 @@ import {
 } from "@/lib/studio/captions";
 import {
   AUTO_EDIT_STEPS,
+  hasUsableAutoEditTranscript,
   pauseCuts,
   planAutoEdit,
   trimClipsToSpeech as trimToSpeech,
@@ -1353,12 +1354,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         setAutoEditStep(AUTO_EDIT_STEPS.TRANSCRIPT);
         let w = words; // reuse an existing transcript when there is one
         if (w.length === 0) {
-          w = (await transcribeAudio(audio, source.url)) ?? [];
+          const transcribed = await transcribeAudio(audio, source.url);
           // One-click editing is transcript-driven. Continuing after an upload
           // or ASR failure used to make the feature look successful while only
           // trimming silence, and could leave users with an unexplained result.
           // The transcript view already exposes the actionable error/retry UI.
-          if (w.length === 0) return;
+          if (!hasUsableAutoEditTranscript(transcribed)) return;
+          w = transcribed;
         }
 
         // Pure CPU, and independent of the retake round-trip below. Start it now

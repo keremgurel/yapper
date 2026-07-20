@@ -59,6 +59,13 @@ const nextConfig: NextConfig = {
   },
   // Required to support PostHog trailing slash API requests
   skipTrailingSlashRedirect: true,
+  experimental: {
+    // Video uploads go directly to presigned R2 URLs, and editor transcription
+    // is chunked below the hosting limit. Audio/full coaching still posts a
+    // native WAV through /api/feedback, which can exceed Next's proxy default
+    // for a long recording, so retain the larger self-host/local proxy ceiling.
+    proxyClientMaxBodySize: "64mb",
+  },
 };
 
 export default nextConfig;
