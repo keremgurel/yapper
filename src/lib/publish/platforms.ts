@@ -72,7 +72,12 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
     mode: "direct",
     // Instagram API with Instagram Login: the user logs in with Instagram
     // directly, no linked Facebook Page needed. The account must be Professional.
-    scopes: ["instagram_business_basic", "instagram_business_content_publish"],
+    scopes: [
+      "instagram_business_basic",
+      "instagram_business_content_publish",
+      // Read play/view counts for the user's own media, shown in the Poster.
+      "instagram_business_manage_insights",
+    ],
     needsPublicUrl: true,
     requiresProfessional: true,
     env: {

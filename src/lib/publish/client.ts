@@ -43,14 +43,20 @@ export interface PlatformVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
+  /** The downloadable source file, present only for platforms we can backfill
+   * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
+   * back a file, so those rows are view-only. */
+  sourceFileUrl?: string;
 }
 
-export async function fetchYouTubeVideos(): Promise<{
+/** A connected platform's own videos. `/api/publish/<platform>/videos` returns
+ * `connected: false` rather than erroring when the platform is not linked. */
+export async function fetchPlatformVideos(platform: PublishPlatform): Promise<{
   connected: boolean;
   videos: PlatformVideo[];
 }> {
   try {
-    const res = await fetch("/api/publish/youtube/videos");
+    const res = await fetch(`/api/publish/${platform}/videos`);
     if (!res.ok) return { connected: false, videos: [] };
     return (await res.json()) as {
       connected: boolean;
@@ -65,22 +71,52 @@ export async function fetchYouTubeVideos(): Promise<{
   }
 }
 
+/** YouTube's own uploads. Kept as a named alias for the existing content hub. */
+export function fetchYouTubeVideos(): Promise<{
+  connected: boolean;
+  videos: PlatformVideo[];
+}> {
+  return fetchPlatformVideos("youtube");
+}
+
+/** A post's source is either a Yapper recording (`submissionId`) or a raw R2
+ * key (`mediaKey`) for an uploaded or imported video. Exactly one is set. */
 export interface CrossPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   title: string;
   description?: string;
   contentItemId?: string;
 }
 
 export interface InstagramPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   caption?: string;
   contentItemId?: string;
 }
 
 export interface TikTokPostInput {
-  submissionId: string;
+  submissionId?: string;
+  mediaKey?: string;
   contentItemId?: string;
+}
+
+/** Pull an Instagram video into the user's own storage so it can be cross-posted
+ * elsewhere. Returns the R2 key of the stored file plus a suggested title. */
+export async function importInstagramMedia(
+  mediaId: string,
+): Promise<{ mediaKey: string; title: string }> {
+  const res = await fetch("/api/publish/instagram/import", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mediaId }),
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(data.error ?? "import_failed");
+  }
+  return (await res.json()) as { mediaKey: string; title: string };
 }
 
 /** The shape every platform's post resolves to. `url` is present when the post

@@ -66,6 +66,7 @@ export default function PostableTakes() {
                     id: v.id,
                     title: v.title,
                     submissionId: v.submissionId,
+                    contentItemId: v.id,
                   })
                 }
                 className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-black transition-opacity hover:opacity-90"

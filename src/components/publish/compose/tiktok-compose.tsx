@@ -23,7 +23,8 @@ export default function TikTokCompose({
     void post(() =>
       crossPostToTikTok({
         submissionId: item.submissionId,
-        contentItemId: item.id,
+        mediaKey: item.mediaKey,
+        contentItemId: item.contentItemId,
       }),
     );
   };

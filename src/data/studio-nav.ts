@@ -6,7 +6,8 @@ export type StudioIcon =
   | "record"
   | "scissors"
   | "dictionary"
-  | "send";
+  | "send"
+  | "zap";
 
 export interface StudioNavItem {
   title: string;
@@ -15,70 +16,107 @@ export interface StudioNavItem {
   icon: StudioIcon;
 }
 
+/** A labeled section of the Studio sidebar. */
+export interface StudioNavGroup {
+  label: string;
+  items: StudioNavItem[];
+}
+
+const inspiration: StudioNavItem = {
+  title: "Inspiration",
+  href: "/studio/inspiration",
+  description:
+    "Save clips from creators you like and turn them into video ideas.",
+  icon: "library",
+};
+
+const contentLibrary: StudioNavItem = {
+  title: "Content Library",
+  href: "/studio/library",
+  description:
+    "Your pipeline: shape ideas into scripts and track them to posted.",
+  icon: "layers",
+};
+
+const recorder: StudioNavItem = {
+  title: "Recorder",
+  href: "/studio/recorder",
+  description: "Record a take, with your script on the teleprompter.",
+  icon: "record",
+};
+
+const editor: StudioNavItem = {
+  title: "Editor",
+  href: "/studio/editor",
+  description: "Cut words, fillers, and silences by editing the transcript.",
+  icon: "scissors",
+};
+
+const poster: StudioNavItem = {
+  title: "Poster",
+  href: "/studio/poster",
+  description: "Send a finished video out to your platforms.",
+  icon: "send",
+};
+
+const calendar: StudioNavItem = {
+  title: "Calendar",
+  href: "/studio/calendar",
+  description: "See and plan everything you have scheduled to post.",
+  icon: "calendar",
+};
+
+const automations: StudioNavItem = {
+  title: "Automations",
+  href: "/studio/automations",
+  description:
+    "Post once and let Yapper cross-post it to your other platforms.",
+  icon: "zap",
+};
+
+const dictionary: StudioNavItem = {
+  title: "Dictionary",
+  href: "/studio/dictionary",
+  description: "Teach captions the names and vocabulary you use.",
+  icon: "dictionary",
+};
+
+const connections: StudioNavItem = {
+  title: "Connections",
+  href: "/studio/connections",
+  description:
+    "Connect your platform accounts once, so posting can go straight out.",
+  icon: "share",
+};
+
 /**
- * The Studio workflow, in the order a creator moves through it: collect
- * inspiration, shape it in the library, record, edit, then post. Poster is the
- * last step, where a finished cut goes out and gets scheduled. This drives the
- * primary sidebar group, the header dropdown, and the marketing homepage.
+ * The Studio sidebar, grouped by what you are doing: Lab is where ideas come
+ * from, Studio is where you make the video, Press is where it goes out, and
+ * Settings is one-time plumbing. This drives the sidebar's labeled sections;
+ * the flat lists below are derived for the header and homepage.
+ */
+export const studioNavGroups: StudioNavGroup[] = [
+  { label: "Lab", items: [inspiration, contentLibrary] },
+  { label: "Studio", items: [recorder, editor] },
+  { label: "Press", items: [poster, calendar, automations] },
+  { label: "Settings", items: [dictionary, connections] },
+];
+
+/**
+ * The create-to-post workflow in order, for the marketing homepage and the flow
+ * section. Calendar and Connections are left out: they are surfaces you visit,
+ * not steps you move through.
  */
 export const studioFlowNav: StudioNavItem[] = [
-  {
-    title: "Inspiration",
-    href: "/studio/inspiration",
-    description:
-      "Save clips from creators you like and turn them into video ideas.",
-    icon: "library",
-  },
-  {
-    title: "Content Library",
-    href: "/studio/library",
-    description:
-      "Your pipeline: shape ideas into scripts and track them to posted.",
-    icon: "layers",
-  },
-  {
-    title: "Recorder",
-    href: "/studio/recorder",
-    description: "Record a take, with your script on the teleprompter.",
-    icon: "record",
-  },
-  {
-    title: "Editor",
-    href: "/studio/editor",
-    description: "Cut words, fillers, and silences by editing the transcript.",
-    icon: "scissors",
-  },
-  {
-    title: "Poster",
-    href: "/studio/poster",
-    description: "Post a finished cut and see everything on your calendar.",
-    icon: "send",
-  },
+  inspiration,
+  contentLibrary,
+  recorder,
+  editor,
+  poster,
 ];
 
-/**
- * The supporting surfaces that sit beneath the workflow: plumbing you set up
- * once and rarely touch, not steps you move through. Rendered as a muted second
- * group so the main flow stays uncluttered.
- */
-export const studioUtilityNav: StudioNavItem[] = [
-  {
-    title: "Dictionary",
-    href: "/studio/dictionary",
-    description: "Teach captions the names and vocabulary you use.",
-    icon: "dictionary",
-  },
-  {
-    title: "Connections",
-    href: "/studio/connections",
-    description:
-      "Connect your platform accounts once, so posting can go straight out.",
-    icon: "share",
-  },
-];
-
-/** Every Studio surface, flow first then utility. For menus that list them all. */
-export const studioNav: StudioNavItem[] = [
-  ...studioFlowNav,
-  ...studioUtilityNav,
-];
+/** Every Studio surface, in sidebar order. For menus and active-route matching
+ * that need the full list (header dropdown, mobile nav, page-title lookup). */
+export const studioNav: StudioNavItem[] = studioNavGroups.flatMap(
+  (g) => g.items,
+);

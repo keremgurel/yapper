@@ -52,9 +52,10 @@ export default function YouTubeCompose({
     void post(() =>
       crossPostToYouTube({
         submissionId: item.submissionId,
+        mediaKey: item.mediaKey,
         title: title.trim(),
         description: description.trim() || undefined,
-        contentItemId: item.id,
+        contentItemId: item.contentItemId,
       }),
     );
   };

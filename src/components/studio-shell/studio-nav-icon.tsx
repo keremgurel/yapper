@@ -7,6 +7,7 @@ import {
   Send,
   Share2,
   Video,
+  Zap,
 } from "lucide-react";
 import type { StudioIcon } from "@/data/studio-nav";
 
@@ -19,6 +20,7 @@ const map = {
   scissors: Scissors,
   send: Send,
   dictionary: BookType,
+  zap: Zap,
 } as const;
 
 export default function StudioNavIcon({
