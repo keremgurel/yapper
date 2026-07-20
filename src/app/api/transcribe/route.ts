@@ -20,17 +20,20 @@ interface AsrResult {
 export async function POST(req: Request): Promise<Response> {
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
+  const keyterms = [...new URL(req.url).searchParams.getAll("keyterm")]
+    .map((term) => term.trim().slice(0, 80))
+    .filter(Boolean)
+    .filter((term, index, all) => all.indexOf(term) === index)
+    .slice(0, 100);
 
   const audio = await req.arrayBuffer();
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
-  // How many seconds of audio the client built. The proxy/middleware layer caps
-  // the request body at `experimental.proxyClientMaxBodySize` and truncates it
-  // SILENTLY past that (rewriting Content-Length to the short size, so byte
-  // counts can't catch it) — the ASR then transcribes only the first N seconds
-  // and the tail of the video goes quietly missing from the transcript. We
-  // compare this against the duration the ASR actually heard, below.
+  // How many seconds of audio the client built. Hosting infrastructure can cap
+  // a body before this route runs, and some proxies truncate bodies silently.
+  // The client now sends upload-safe chunks; this duration check remains a
+  // final guard against ever accepting a chunk whose tail went missing.
   const expectedDuration = Number(req.headers.get("x-audio-duration") ?? 0);
   // Forward the payload's own type (audio/aac for native AAC, audio/wav for
   // decoded PCM) so Deepgram parses the container correctly.
@@ -40,7 +43,7 @@ export async function POST(req: Request): Promise<Response> {
   if (deepgram) {
     providers.push({
       name: "deepgram",
-      run: () => viaDeepgram(audio, deepgram, contentType),
+      run: () => viaDeepgram(audio, deepgram, contentType, keyterms),
     });
   }
   if (groq) {
@@ -53,6 +56,7 @@ export async function POST(req: Request): Promise<Response> {
           "https://api.groq.com/openai/v1",
           "whisper-large-v3",
           contentType,
+          keyterms,
         ),
     });
   }
@@ -102,15 +106,18 @@ async function viaDeepgram(
   audio: ArrayBuffer,
   key: string,
   contentType: string,
+  keyterms: string[],
 ): Promise<AsrResult> {
-  const res = await fetch(
-    "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
-    {
-      method: "POST",
-      headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
-      body: audio,
-    },
-  );
+  const endpoint = new URL("https://api.deepgram.com/v1/listen");
+  endpoint.searchParams.set("model", "nova-3");
+  endpoint.searchParams.set("smart_format", "true");
+  endpoint.searchParams.set("punctuate", "true");
+  for (const term of keyterms) endpoint.searchParams.append("keyterm", term);
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
+    body: audio,
+  });
   if (!res.ok) throw new Error(`deepgram_${res.status}`);
   const json = await res.json();
   const words: DeepgramWord[] =
@@ -139,6 +146,7 @@ async function viaOpenAiCompatible(
   base: string,
   model: string,
   contentType: string,
+  keyterms: string[],
 ): Promise<AsrResult> {
   const ext = contentType.includes("aac") ? "aac" : "wav";
   const form = new FormData();
@@ -146,6 +154,9 @@ async function viaOpenAiCompatible(
   form.append("model", model);
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");
+  if (keyterms.length > 0) {
+    form.append("prompt", `Preferred vocabulary: ${keyterms.join(", ")}`);
+  }
   const res = await fetch(`${base}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}` },

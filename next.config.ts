@@ -59,13 +59,6 @@ const nextConfig: NextConfig = {
   },
   // Required to support PostHog trailing slash API requests
   skipTrailingSlashRedirect: true,
-  experimental: {
-    // Because this app uses a proxy (the PostHog /ingest rewrites), Next buffers
-    // request bodies and, past this limit, SILENTLY TRUNCATES them (no error).
-    // The transcription audio (native-rate mono WAV / AAC) runs ~11-30MB, so the
-    // 10MB default was cutting off the end of the audio and dropping words.
-    proxyClientMaxBodySize: "64mb",
-  },
 };
 
 export default nextConfig;

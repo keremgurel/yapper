@@ -1,6 +1,11 @@
-import { buildAsrAudio } from "@/lib/studio/audio/asr-audio";
+import {
+  buildAsrAudioChunks,
+  chunkMono16k,
+  type AsrAudio,
+} from "@/lib/studio/audio/asr-audio";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
-import { encodeWav } from "@/lib/studio/wav";
+import type { TranscriptionDictionaryEntry } from "@/lib/studio/transcription-dictionary";
+import { dictionaryKeyterms } from "@/lib/studio/transcription-dictionary";
 
 export interface RawWord {
   text: string;
@@ -15,18 +20,80 @@ export interface RawWord {
  * words. Falls back to a 16 kHz WAV only if no native payload can be built
  * (a container mp4box/WebCodecs can't read).
  */
-export async function transcribeUrl(url: string): Promise<RawWord[]> {
+export async function transcribeUrl(
+  url: string,
+  dictionary: TranscriptionDictionaryEntry[] = [],
+): Promise<RawWord[]> {
+  const keyterms = dictionaryKeyterms(dictionary);
+  let chunks: AsrAudio[];
   try {
-    const { blob, durationSec } = await buildAsrAudio(url);
-    return await transcribeRemote(blob, durationSec);
+    chunks = await buildAsrAudioChunks(url);
   } catch (e) {
     console.warn(
       "[transcribe] native audio path failed, falling back to 16kHz WAV",
       e,
     );
     const pcm = await decodeToMono16k(url);
-    return transcribeRemote(encodeWav(pcm, 16000), pcm.length / 16000);
+    chunks = chunkMono16k(pcm);
   }
+  return transcribeAsrChunks(chunks, keyterms);
+}
+
+interface TranscribedChunk extends AsrAudio {
+  words: RawWord[];
+}
+
+/**
+ * Merge overlapping ASR responses without fuzzy text matching. Each chunk owns
+ * the audio up to the midpoint of its overlap with the next, which removes
+ * duplicates while leaving every source timestamp represented exactly once.
+ */
+export function mergeTranscribedChunks(chunks: TranscribedChunk[]): RawWord[] {
+  return chunks.flatMap((chunk, index) => {
+    const previous = chunks[index - 1];
+    const next = chunks[index + 1];
+    const lower = previous
+      ? (chunk.offsetSec + previous.offsetSec + previous.durationSec) / 2
+      : Number.NEGATIVE_INFINITY;
+    const upper = next
+      ? (next.offsetSec + chunk.offsetSec + chunk.durationSec) / 2
+      : Number.POSITIVE_INFINITY;
+    return chunk.words
+      .map((word) => ({
+        ...word,
+        start: word.start + chunk.offsetSec,
+        end: word.end + chunk.offsetSec,
+      }))
+      .filter((word) => {
+        const midpoint = (word.start + word.end) / 2;
+        return midpoint >= lower && midpoint < upper;
+      });
+  });
+}
+
+export async function transcribeAsrChunks(
+  chunks: AsrAudio[],
+  keyterms: string[],
+): Promise<RawWord[]> {
+  const completed: TranscribedChunk[] = [];
+  // Two concurrent uploads keep long recordings responsive without flooding
+  // the provider or making all chunks fail together on a transient rate limit.
+  for (let i = 0; i < chunks.length; i += 2) {
+    const batch = chunks.slice(i, i + 2);
+    completed.push(
+      ...(await Promise.all(
+        batch.map(async (chunk) => ({
+          ...chunk,
+          words: await transcribeRemote(
+            chunk.blob,
+            chunk.durationSec,
+            keyterms,
+          ),
+        })),
+      )),
+    );
+  }
+  return mergeTranscribedChunks(completed);
 }
 
 /**
@@ -42,11 +109,15 @@ export async function transcribeUrl(url: string): Promise<RawWord[]> {
 export async function transcribeRemote(
   audio: Blob,
   durationSec = 0,
+  keyterms: string[] = [],
 ): Promise<RawWord[]> {
   let lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await fetch("/api/transcribe", {
+      const params = new URLSearchParams();
+      for (const term of keyterms) params.append("keyterm", term);
+      const endpoint = `/api/transcribe${params.size ? `?${params}` : ""}`;
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": audio.type || "application/octet-stream",

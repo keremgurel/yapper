@@ -15,6 +15,22 @@ const transcribe = (text: string): Word[] =>
     .split(" ")
     .map((t, i) => ({ id: `w-${i}`, text: t, start: i, end: i + 1 }));
 
+/** One-second words with a one-second pause between utterances. */
+const transcribeUtterances = (...lines: string[]): Word[] => {
+  let cursor = 0;
+  let id = 0;
+  return lines.flatMap((line) => {
+    const words = line.split(" ").map((text) => ({
+      id: `u-${id++}`,
+      text,
+      start: cursor,
+      end: ++cursor,
+    }));
+    cursor++;
+    return words;
+  });
+};
+
 describe("selectionToRanges", () => {
   const words = transcribe("a b c d e f");
   const ids = (...idx: number[]) => new Set(idx.map((i) => `w-${i}`));
@@ -101,15 +117,17 @@ describe("findEarlierTakeRanges", () => {
 });
 
 describe("isRetakeCut", () => {
-  it("trusts a very short cut without checking context", () => {
-    const words = transcribe("alpha bravo charlie delta echo foxtrot");
-    expect(isRetakeCut(words, 0, 1)).toBe(true);
+  it("allows a filler but refuses a unique short phrase", () => {
+    expect(isRetakeCut(transcribe("um alpha bravo"), 0, 0)).toBe(true);
+    expect(isRetakeCut(transcribe("alpha bravo charlie delta"), 0, 1)).toBe(
+      false,
+    );
   });
 
   it("trusts a cut whose words are restated nearby", () => {
-    // The cut phrase recurs immediately after it: a genuine restart.
-    const words = transcribe(
-      "alpha bravo charlie delta alpha bravo charlie delta",
+    const words = transcribeUtterances(
+      "alpha bravo charlie delta.",
+      "alpha bravo charlie delta.",
     );
     expect(isRetakeCut(words, 0, 3)).toBe(true);
   });
@@ -123,8 +141,9 @@ describe("isRetakeCut", () => {
 });
 
 describe("combineRetakeCuts", () => {
-  const words = transcribe(
-    "alpha bravo charlie delta alpha bravo charlie delta",
+  const words = transcribeUtterances(
+    "alpha bravo charlie delta.",
+    "alpha bravo charlie delta.",
   );
 
   it("trusts only the validated AI cuts when the AI returns some", () => {
@@ -139,10 +158,26 @@ describe("combineRetakeCuts", () => {
   });
 
   it("falls back to the deterministic detector when the AI is unavailable", () => {
-    expect(combineRetakeCuts(words, null)).toEqual([[0, 4]]);
+    expect(combineRetakeCuts(words, null)).toEqual([[0, 5]]);
   });
 
   it("falls back to the deterministic detector when the AI finds nothing", () => {
-    expect(combineRetakeCuts(words, [])).toEqual([[0, 4]]);
+    const exact = transcribe(
+      "alpha bravo charlie delta alpha bravo charlie delta",
+    );
+    expect(combineRetakeCuts(exact, [])).toEqual([[0, 4]]);
+  });
+
+  it("preserves a unique hook inside a broad AI cut but removes its proven retake", () => {
+    const sample = transcribeUtterances(
+      "If you are taking the CELPIP test.",
+      "The course includes realistic practice questions.",
+      "The course includes realistic practice questions and feedback.",
+    );
+
+    // This mirrors the sample video's failure: the model grouped the unique
+    // opening and an earlier take into one broad deletion. Only the second
+    // utterance has a later semantic counterpart, so the hook must survive.
+    expect(combineRetakeCuts(sample, [[0, 12]])).toEqual([[8, 14]]);
   });
 });

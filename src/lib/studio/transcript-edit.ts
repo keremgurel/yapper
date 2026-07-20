@@ -63,6 +63,40 @@ function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9']/g, "");
 }
 
+const RETAKE_STOPWORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "but",
+  "by",
+  "for",
+  "from",
+  "has",
+  "have",
+  "i",
+  "in",
+  "is",
+  "it",
+  "my",
+  "of",
+  "on",
+  "or",
+  "so",
+  "that",
+  "the",
+  "this",
+  "to",
+  "was",
+  "we",
+  "with",
+  "you",
+  "your",
+]);
+
 /**
  * Build source ranges to cut from a selection. Walks the full transcript in
  * order so each maximal run of selected words becomes one continuous range
@@ -181,38 +215,163 @@ export function findEarlierTakeRanges(
 }
 
 /**
- * Safety net for an AI-proposed cut: it is a genuine retake/stumble only if most
- * of what it removes RECURS in the surrounding speech (the span before or after
- * it) — that's what a restart looks like, since the speaker says nearly the same
- * words again. If the removed content barely appears nearby, it's likely unique
- * content the AI misjudged, so we refuse the cut rather than delete real speech.
- *
- * Overlap is measured as a token-set ratio over a window on BOTH sides, so a
- * reworded restart ("22,000 views organically" -> "25,000 organic views") still
- * counts as a repeat even though it isn't a verbatim substring. Short cuts
- * (a stumble or a doubled word or two) are always trusted.
+ * Break speech into complete thoughts. An AI cut may cover several thoughts at
+ * once, so validation happens per thought instead of letting common words from
+ * a repeated sentence justify deleting an unrelated sentence beside it.
  */
-export function isRetakeCut(
-  words: Word[],
-  from: number,
-  to: number,
-  windowWords = 60,
-): boolean {
-  const cut = words
-    .slice(from, to + 1)
-    .map((w) => norm(w.text))
+interface Utterance {
+  from: number;
+  to: number;
+}
+
+function utterances(words: Word[]): Utterance[] {
+  if (words.length === 0) return [];
+  const result: Utterance[] = [];
+  let from = 0;
+  for (let i = 0; i < words.length - 1; i++) {
+    const gap = words[i + 1].start - words[i].end;
+    const sentenceEnd = /[.!?]["']?$/.test(words[i].text);
+    // A real pause is the strongest boundary. Punctuation also separates the
+    // LLM's sentence-sized proposals, while the word cap handles unpunctuated
+    // ASR output without creating giant units.
+    if (gap >= 0.65 || sentenceEnd || i - from + 1 >= 36) {
+      result.push({ from, to: i });
+      from = i + 1;
+    }
+  }
+  result.push({ from, to: words.length - 1 });
+  return result;
+}
+
+function tokenMultiset(tokens: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1);
+  return counts;
+}
+
+function multisetCoverage(source: string[], candidate: string[]): number {
+  if (source.length === 0) return 0;
+  const available = tokenMultiset(candidate);
+  let hits = 0;
+  for (const token of source) {
+    const count = available.get(token) ?? 0;
+    if (count <= 0) continue;
+    hits++;
+    available.set(token, count - 1);
+  }
+  return hits / source.length;
+}
+
+function lcsCoverage(source: string[], candidate: string[]): number {
+  if (source.length === 0) return 0;
+  let previous = new Array<number>(candidate.length + 1).fill(0);
+  for (const token of source) {
+    const current = new Array<number>(candidate.length + 1).fill(0);
+    for (let j = 0; j < candidate.length; j++) {
+      current[j + 1] =
+        token === candidate[j]
+          ? previous[j] + 1
+          : Math.max(current[j], previous[j + 1]);
+    }
+    previous = current;
+  }
+  return previous[candidate.length] / source.length;
+}
+
+function tokensFor(words: Word[], range: Utterance): string[] {
+  return words
+    .slice(range.from, range.to + 1)
+    .map((word) => norm(word.text))
     .filter(Boolean);
-  if (cut.length < 3) return true;
-  const context = new Set(
-    [
-      ...words.slice(Math.max(0, from - windowWords), from),
-      ...words.slice(to + 1, to + 1 + windowWords),
-    ]
-      .map((w) => norm(w.text))
-      .filter(Boolean),
+}
+
+function isRestatedLater(
+  words: Word[],
+  source: Utterance,
+  units: Utterance[],
+  excluded: [number, number][],
+): boolean {
+  const sourceTokens = tokensFor(words, source);
+  const content = sourceTokens.filter((token) => !RETAKE_STOPWORDS.has(token));
+  if (content.length < 2) return false;
+
+  return units.some((candidate) => {
+    if (candidate.from <= source.to) return false; // always keep the last take
+    if (words[candidate.from].start - words[source.from].start > 120)
+      return false;
+    if (
+      excluded.some(
+        ([from, to]) => candidate.from >= from && candidate.to <= to,
+      )
+    )
+      return false;
+    const candidateTokens = tokensFor(words, candidate);
+    const candidateContent = candidateTokens.filter(
+      (token) => !RETAKE_STOPWORDS.has(token),
+    );
+    return (
+      multisetCoverage(content, candidateContent) >= 0.6 &&
+      lcsCoverage(sourceTokens, candidateTokens) >= 0.5
+    );
+  });
+}
+
+function shortStumbleIsSafe(words: Word[], from: number, to: number): boolean {
+  const removed = words
+    .slice(from, to + 1)
+    .map((word) => norm(word.text))
+    .filter(Boolean);
+  if (removed.length === 0) return false;
+  if (removed.every((token) => FILLERS.has(token))) return true;
+  const soonAfter = words
+    .slice(to + 1, to + 9)
+    .map((word) => norm(word.text))
+    .filter(Boolean);
+  return multisetCoverage(removed, soonAfter) === 1;
+}
+
+/**
+ * Return only the independently proven portions of an AI proposal. Complete
+ * utterances require a similar later take; partial utterances are accepted only
+ * for a tiny repeated stumble. Ambiguity therefore leaves extra footage rather
+ * than deleting unique speech.
+ */
+function safeRetakeSubranges(
+  words: Word[],
+  proposal: [number, number],
+  allProposals: [number, number][],
+): [number, number][] {
+  const [from, to] = proposal;
+  const units = utterances(words);
+  const safe: [number, number][] = [];
+  for (const unit of units) {
+    if (unit.to < from || unit.from > to) continue;
+    const overlapFrom = Math.max(from, unit.from);
+    const overlapTo = Math.min(to, unit.to);
+    const complete = overlapFrom === unit.from && overlapTo === unit.to;
+    if (
+      (complete && isRestatedLater(words, unit, units, allProposals)) ||
+      (!complete &&
+        overlapTo - overlapFrom < 3 &&
+        shortStumbleIsSafe(words, overlapFrom, overlapTo))
+    ) {
+      safe.push([overlapFrom, overlapTo]);
+    }
+  }
+  return safe;
+}
+
+/** True only when the whole proposed span is independently safe to remove. */
+export function isRetakeCut(words: Word[], from: number, to: number): boolean {
+  const safe = safeRetakeSubranges(words, [from, to], [[from, to]]);
+  return (
+    safe.length > 0 &&
+    safe[0][0] === from &&
+    safe[safe.length - 1][1] === to &&
+    safe.every(
+      (range, index) => index === 0 || range[0] <= safe[index - 1][1] + 1,
+    )
   );
-  const hits = cut.filter((t) => context.has(t)).length;
-  return hits / cut.length >= 0.5;
 }
 
 /**
@@ -231,9 +390,11 @@ export function combineRetakeCuts(
   aiCuts: [number, number][] | null,
 ): [number, number][] {
   if (!aiCuts || aiCuts.length === 0) return findEarlierTakeRanges(words);
-  const ai = aiCuts
-    .filter(([i, j]) => words[i] && words[j] && words[j].end > words[i].start)
-    .filter(([i, j]) => isRetakeCut(words, i, j))
+  const valid = aiCuts.filter(
+    ([i, j]) => words[i] && words[j] && words[j].end > words[i].start,
+  );
+  const ai = valid
+    .flatMap((proposal) => safeRetakeSubranges(words, proposal, valid))
     .map(([i, j]) => [words[i].start, words[j].end] as [number, number]);
   return mergeRanges(ai);
 }

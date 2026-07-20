@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  BookType,
   Layers,
   Library,
   Scissors,
@@ -17,6 +18,7 @@ const map = {
   record: Video,
   scissors: Scissors,
   send: Send,
+  dictionary: BookType,
 } as const;
 
 export default function StudioNavIcon({

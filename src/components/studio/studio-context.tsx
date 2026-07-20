@@ -49,6 +49,7 @@ import {
   type PauseCutOptions,
 } from "@/lib/studio/auto-edit";
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
+import { chunkMonoPcm } from "@/lib/studio/audio/asr-audio";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
@@ -58,6 +59,16 @@ import { useTranscript, type TranscribeStatus } from "@/hooks/use-transcript";
 import { useEditorSelection } from "@/hooks/use-editor-selection";
 import { useMediaLibrary } from "@/hooks/use-media-library";
 import { useProjectAspect } from "@/hooks/use-project-aspect";
+import { useTranscriptionDictionary } from "@/hooks/use-transcription-dictionary";
+import {
+  editedWordsToSourceWords,
+  renderCurrentCutAudio,
+} from "@/lib/studio/recaption";
+import { transcribeAsrChunks } from "@/lib/studio/transcribe-remote";
+import {
+  applyTranscriptionDictionary,
+  dictionaryKeyterms,
+} from "@/lib/studio/transcription-dictionary";
 import { projectDuration } from "@/lib/studio/project-duration";
 import { type PlacedSpan } from "@/lib/studio/overlay-plan";
 import {
@@ -201,6 +212,9 @@ interface StudioContextValue {
   captionLines: number;
   captionWords: number;
   generateCaptionsFromTranscript: () => void;
+  retranscribeCurrentCut: () => Promise<void>;
+  recaptioning: boolean;
+  recaptionError: string | null;
   autoBreakCaptions: (lines: number) => void;
   setCaptionWords: (n: number) => void;
   selectCaption: (id: string | null) => void;
@@ -210,6 +224,7 @@ interface StudioContextValue {
   clearSelection: () => void;
   removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
+  rememberCaptionCorrection: (heard: string, term: string) => Promise<void>;
   cycleCaptionCase: (id: string) => void;
   addCaption: (atSource: number) => void;
   mergeCaptions: (ids: string[]) => void;
@@ -274,13 +289,15 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     selectedCaptionId,
     actions: sel,
   } = useEditorSelection();
+  const { entries: transcriptionDictionary, rememberCorrection } =
+    useTranscriptionDictionary();
   const {
     words,
     status: transcribeStatus,
     run: runTranscribe,
     runOn: transcribeAudio,
     reset: resetWords,
-  } = useTranscript();
+  } = useTranscript(transcriptionDictionary);
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
@@ -294,6 +311,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const [captionApplyAll, setCaptionApplyAll] = useState(true);
   const [captionLines, setCaptionLines] = useState(2);
   const [captionWords, setCaptionWordsState] = useState(0); // 0 = phrase mode
+  const [recaptioning, setRecaptioning] = useState(false);
+  const [recaptionError, setRecaptionError] = useState<string | null>(null);
   const [snapping, setSnapping] = useState(true);
 
   const toggleSnapping = useCallback(() => setSnapping((s) => !s), []);
@@ -306,6 +325,49 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       }),
     );
   }, [words, clips, captionLines, captionWords, setCaptions]);
+
+  const retranscribeCurrentCut = useCallback(async (): Promise<void> => {
+    if (!source || source.kind === "image" || clips.length === 0) return;
+    setRecaptioning(true);
+    setRecaptionError(null);
+    try {
+      const { samples, sampleRate } = await renderCurrentCutAudio(
+        source.url,
+        clips,
+      );
+      const raw = applyTranscriptionDictionary(
+        await transcribeAsrChunks(
+          chunkMonoPcm(samples, sampleRate),
+          dictionaryKeyterms(transcriptionDictionary),
+        ),
+        transcriptionDictionary,
+      );
+      const currentWords = editedWordsToSourceWords(raw, clips);
+      setCaptions(
+        generateCaptions(currentWords, clips, {
+          maxChars: captionLines * 30,
+          maxWords: captionWords || undefined,
+        }),
+      );
+    } catch (error) {
+      console.error("[studio] current-cut recaption failed", error);
+      setRecaptionError(
+        error instanceof Error &&
+          error.message === "recaption_appended_media_unsupported"
+          ? "Current-cut retranscription does not support appended main-track media yet."
+          : "Couldn't retranscribe the current cut. Please try again.",
+      );
+    } finally {
+      setRecaptioning(false);
+    }
+  }, [
+    source,
+    clips,
+    transcriptionDictionary,
+    captionLines,
+    captionWords,
+    setCaptions,
+  ]);
 
   const autoBreakCaptions = useCallback(
     (lines: number) => {
@@ -342,6 +404,13 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       );
     },
     [setCaptions],
+  );
+
+  const rememberCaptionCorrection = useCallback(
+    async (heard: string, term: string) => {
+      await rememberCorrection(heard, term);
+    },
+    [rememberCorrection],
   );
 
   // Per-caption case, cycled Original -> lower -> UPPER, independent of the
@@ -1283,10 +1352,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
         setAutoEditStep(AUTO_EDIT_STEPS.TRANSCRIPT);
         let w = words; // reuse an existing transcript when there is one
-        // A failed transcription is not fatal: the rest of the pass still trims
-        // silence, so keep going with no words rather than bailing out.
-        if (w.length === 0)
+        if (w.length === 0) {
           w = (await transcribeAudio(audio, source.url)) ?? [];
+          // One-click editing is transcript-driven. Continuing after an upload
+          // or ASR failure used to make the feature look successful while only
+          // trimming silence, and could leave users with an unexplained result.
+          // The transcript view already exposes the actionable error/retry UI.
+          if (w.length === 0) return;
+        }
 
         // Pure CPU, and independent of the retake round-trip below. Start it now
         // so the two overlap.
@@ -1480,6 +1553,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
+      retranscribeCurrentCut,
+      recaptioning,
+      recaptionError,
       autoBreakCaptions,
       setCaptionWords,
       selectCaption: sel.selectCaption,
@@ -1488,6 +1564,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       clearSelection: sel.clearSelection,
       removeSelectedCaptions,
       setCaptionText,
+      rememberCaptionCorrection,
       cycleCaptionCase,
       addCaption,
       mergeCaptions,
@@ -1578,10 +1655,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       captionLines,
       captionWords,
       generateCaptionsFromTranscript,
+      retranscribeCurrentCut,
+      recaptioning,
+      recaptionError,
       autoBreakCaptions,
       setCaptionWords,
       removeSelectedCaptions,
       setCaptionText,
+      rememberCaptionCorrection,
       cycleCaptionCase,
       addCaption,
       mergeCaptions,

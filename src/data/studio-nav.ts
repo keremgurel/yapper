@@ -5,6 +5,7 @@ export type StudioIcon =
   | "layers"
   | "record"
   | "scissors"
+  | "dictionary"
   | "send";
 
 export interface StudioNavItem {
@@ -61,6 +62,12 @@ export const studioFlowNav: StudioNavItem[] = [
  * group so the main flow stays uncluttered.
  */
 export const studioUtilityNav: StudioNavItem[] = [
+  {
+    title: "Dictionary",
+    href: "/studio/dictionary",
+    description: "Teach captions the names and vocabulary you use.",
+    icon: "dictionary",
+  },
   {
     title: "Connections",
     href: "/studio/connections",

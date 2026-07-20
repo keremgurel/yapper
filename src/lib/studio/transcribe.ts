@@ -2,6 +2,10 @@ import { detectSpeechSegments } from "@/lib/studio/silence";
 import { transcribeUrl } from "@/lib/studio/transcribe-remote";
 import { refineWordTimings } from "@/lib/studio/transcript-edit";
 import { newWordId, type Word } from "@/lib/studio/types";
+import {
+  applyTranscriptionDictionary,
+  type TranscriptionDictionaryEntry,
+} from "@/lib/studio/transcription-dictionary";
 
 /**
  * Decoded audio plus its source url, in: timed words, out.
@@ -17,8 +21,12 @@ import { newWordId, type Word } from "@/lib/studio/types";
 export async function transcribeToWords(
   audio: Float32Array,
   url: string,
+  dictionary: TranscriptionDictionaryEntry[] = [],
 ): Promise<Word[]> {
-  const raw = await transcribeUrl(url);
+  const raw = applyTranscriptionDictionary(
+    await transcribeUrl(url, dictionary),
+    dictionary,
+  );
   const segments = detectSpeechSegments(audio);
   return refineWordTimings(
     raw.map((w, i) => ({ id: newWordId(i), ...w })),
