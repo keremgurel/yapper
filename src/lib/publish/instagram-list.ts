@@ -84,5 +84,34 @@ export async function listInstagramVideos(
   const res = await fetch(url);
   if (!res.ok) throw new Error(`instagram_media_${res.status}`);
   const json = (await res.json()) as { data?: InstagramMedia[] };
-  return mapInstagramMedia(json.data ?? []);
+  const videos = mapInstagramMedia(json.data ?? []);
+
+  // View counts are not on the media node; each needs its own insights call
+  // (requires instagram_business_manage_insights). Fetch in parallel and fail
+  // soft to 0 so a missing metric never blocks the list.
+  const views = await Promise.all(
+    videos.map((v) => fetchViewCount(accessToken, v.id)),
+  );
+  return videos.map((v, i) => ({ ...v, viewCount: views[i] }));
+}
+
+/** The play/view count for one media, or 0 if insights are unavailable (older
+ * media, missing scope, or a metric the account cannot report). */
+async function fetchViewCount(
+  accessToken: string,
+  mediaId: string,
+): Promise<number> {
+  try {
+    const url = `${GRAPH}/${mediaId}/insights?metric=views&access_token=${encodeURIComponent(
+      accessToken,
+    )}`;
+    const res = await fetch(url);
+    if (!res.ok) return 0;
+    const json = (await res.json()) as {
+      data?: { values?: { value?: number }[] }[];
+    };
+    return json.data?.[0]?.values?.[0]?.value ?? 0;
+  } catch {
+    return 0;
+  }
 }

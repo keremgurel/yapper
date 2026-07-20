@@ -38,11 +38,11 @@ const SORTS: { key: VideoSort; label: string }[] = [
 ];
 
 /**
- * Your videos on one platform, chosen from a dropdown. YouTube (sortable by
- * recency or views) and Instagram list real uploads; TikTok's API will not
- * return a user's posted videos, so it shows a note instead. Instagram rows
- * carry a downloadable file, so they get a Cross-post action that pulls the
- * video into storage and opens the compose sheet for the other platforms.
+ * Your videos on one platform, chosen from a dropdown. YouTube and Instagram
+ * list real uploads, sortable by recency or views; TikTok's API will not return
+ * a user's posted videos, so it shows a note instead. Instagram rows carry a
+ * downloadable file, so they get a Cross-post action that pulls the video into
+ * storage and opens the compose sheet for the other platforms.
  */
 export default function PlatformVideos() {
   const [platform, setPlatform] = useState<PublishPlatform>("youtube");
@@ -72,7 +72,7 @@ export default function PlatformVideos() {
           </DropdownMenu>
           videos
         </h2>
-        {platform === "youtube" && (
+        {platform !== "tiktok" && (
           <div className="bg-muted/60 flex rounded-lg p-0.5">
             {SORTS.map((s) => (
               <button

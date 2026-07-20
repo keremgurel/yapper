@@ -5,7 +5,8 @@ export type StudioIcon =
   | "layers"
   | "record"
   | "scissors"
-  | "send";
+  | "send"
+  | "zap";
 
 export interface StudioNavItem {
   title: string;
@@ -64,6 +65,14 @@ const calendar: StudioNavItem = {
   icon: "calendar",
 };
 
+const automations: StudioNavItem = {
+  title: "Automations",
+  href: "/studio/automations",
+  description:
+    "Post once and let Yapper cross-post it to your other platforms.",
+  icon: "zap",
+};
+
 const connections: StudioNavItem = {
   title: "Connections",
   href: "/studio/connections",
@@ -81,7 +90,7 @@ const connections: StudioNavItem = {
 export const studioNavGroups: StudioNavGroup[] = [
   { label: "Lab", items: [inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
-  { label: "Press", items: [poster, calendar] },
+  { label: "Press", items: [poster, calendar, automations] },
   { label: "Settings", items: [connections] },
 ];
 
