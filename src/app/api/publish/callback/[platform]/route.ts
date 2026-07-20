@@ -9,9 +9,10 @@ export const runtime = "nodejs";
 
 type Params = { params: Promise<{ platform: string }> };
 
-/** Where the user lands after the OAuth dance, connected or with a reason. */
+/** Where the user lands after the OAuth dance, connected or with a reason: back
+ * on the Connections page they started from, not the library. */
 function back(origin: string, params: Record<string, string>): NextResponse {
-  const url = new URL("/studio/library", origin);
+  const url = new URL("/studio/connections", origin);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return NextResponse.redirect(url);
 }
