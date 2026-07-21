@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   CameraOff,
+  Grid3x3,
   Maximize2,
   Mic,
   MicOff,
@@ -12,6 +13,7 @@ import {
 } from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
 import { useMediaDevices } from "@/hooks/use-media-devices";
+import { useAudioLevel } from "@/hooks/use-audio-level";
 import {
   useTeleprompterScroll,
   WPM_PRESETS,
@@ -25,6 +27,8 @@ import {
 import TeleprompterOverlay from "@/components/teleprompter/teleprompter-overlay";
 import TeleprompterSettingsPanel from "@/components/teleprompter/teleprompter-settings";
 import RecorderDevices from "@/components/teleprompter/recorder-devices";
+import RecorderGuides from "@/components/teleprompter/recorder-guides";
+import AudioMeter from "@/components/teleprompter/audio-meter";
 import RecorderReview from "@/components/teleprompter/recorder-review";
 
 const iconBtn =
@@ -67,8 +71,10 @@ export default function TeleprompterRecorder({
     audioDeviceId,
     selectVideoDevice,
     selectAudioDevice,
+    getStream,
   } = useMediaStream();
   const { cameras, mics } = useMediaDevices(cameraOn || micOn);
+  const audioLevel = useAudioLevel(getStream, micOn, audioDeviceId);
   const { settings: tp, update: updateTp } = useTeleprompterSettings();
   const scroll = useTeleprompterScroll(tp.fontScale);
   const { play: scrollPlay, pause: scrollPause, reset: scrollReset } = scroll;
@@ -80,6 +86,7 @@ export default function TeleprompterRecorder({
   const elapsed = useElapsedSeconds(isRecording);
   const [immersive, setImmersive] = useState(false);
   const [tpOpen, setTpOpen] = useState(false);
+  const [showGuides, setShowGuides] = useState(false);
   const hasText = text.trim().length > 0;
   // With no camera and no mic there's nothing to capture — startRecording would
   // silently no-op, so gate on it (else the prompt scrolls while nothing records).
@@ -170,6 +177,8 @@ export default function TeleprompterRecorder({
           className="h-full w-full -scale-x-100 object-cover"
         />
 
+        {showGuides && <RecorderGuides />}
+
         {hasText && (
           <TeleprompterOverlay
             scrollRef={scroll.scrollRef}
@@ -190,20 +199,36 @@ export default function TeleprompterRecorder({
           </div>
         )}
 
-        {/* Fullscreen / immersive toggle. */}
-        <button
-          type="button"
-          onClick={() => setImmersive((v) => !v)}
-          className="absolute top-4 right-4 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-          title={immersive ? "Exit fullscreen" : "Fullscreen"}
-          aria-label={immersive ? "Exit fullscreen" : "Fullscreen"}
-        >
-          {immersive ? (
-            <Minimize2 className="h-4 w-4" />
-          ) : (
-            <Maximize2 className="h-4 w-4" />
-          )}
-        </button>
+        {/* Top-right controls: fullscreen + framing guides. */}
+        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+          <button
+            type="button"
+            onClick={() => setImmersive((v) => !v)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70"
+            title={immersive ? "Exit fullscreen" : "Fullscreen"}
+            aria-label={immersive ? "Exit fullscreen" : "Fullscreen"}
+          >
+            {immersive ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowGuides((v) => !v)}
+            aria-pressed={showGuides}
+            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
+              showGuides
+                ? "bg-white text-black"
+                : "bg-black/50 text-white hover:bg-black/70"
+            }`}
+            title="Framing guides"
+            aria-label="Framing guides"
+          >
+            <Grid3x3 className="h-4 w-4" />
+          </button>
+        </div>
 
         {/* Camera / mic picker + flip (hidden while recording). */}
         {!isRecording && (cameras.length > 0 || mics.length > 0) && (
@@ -277,6 +302,8 @@ export default function TeleprompterRecorder({
               </div>
             </div>
           )}
+
+          {micOn && <AudioMeter level={audioLevel} />}
 
           <div className="flex items-center gap-4">
             <button

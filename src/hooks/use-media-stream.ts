@@ -399,5 +399,8 @@ export function useMediaStream() {
     audioDeviceId,
     selectVideoDevice,
     selectAudioDevice,
+    // Stable getter so a level meter can read the live stream without the stream
+    // itself becoming a dependency.
+    getStream: useCallback(() => streamRef.current, []),
   };
 }
