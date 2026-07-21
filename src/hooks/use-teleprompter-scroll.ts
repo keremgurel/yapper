@@ -15,7 +15,7 @@ const PX_PER_WORD = 9;
  * scroll position over time at a chosen reading pace, with play/pause/reset and
  * a live speed control. Returns a ref to attach to the scrolling element.
  */
-export function useTeleprompterScroll() {
+export function useTeleprompterScroll(fontScale = 1) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [wpm, setWpm] = useState<number>(DEFAULT_WPM);
   const [running, setRunning] = useState(false);
@@ -28,6 +28,11 @@ export function useTeleprompterScroll() {
   useEffect(() => {
     wpmRef.current = wpm;
   }, [wpm]);
+  // Bigger text is taller, so scroll faster to hold the same reading pace.
+  const fontScaleRef = useRef(fontScale);
+  useEffect(() => {
+    fontScaleRef.current = fontScale;
+  }, [fontScale]);
 
   const stopLoop = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -53,7 +58,8 @@ export function useTeleprompterScroll() {
       }
       if (lastTsRef.current !== null) {
         const dt = (ts - lastTsRef.current) / 1000;
-        const pxPerSec = (wpmRef.current / 60) * PX_PER_WORD;
+        const pxPerSec =
+          (wpmRef.current / 60) * PX_PER_WORD * fontScaleRef.current;
         offsetRef.current += pxPerSec * dt;
         el.scrollTop = offsetRef.current;
         // Stop at the bottom so we don't spin forever once the script is read.

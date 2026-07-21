@@ -8,6 +8,7 @@ import {
   Mic,
   MicOff,
   Minimize2,
+  Type,
 } from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
 import { useMediaDevices } from "@/hooks/use-media-devices";
@@ -15,12 +16,14 @@ import {
   useTeleprompterScroll,
   WPM_PRESETS,
 } from "@/hooks/use-teleprompter-scroll";
+import { useTeleprompterSettings } from "@/hooks/use-teleprompter-settings";
 import {
   formatElapsed,
   useCountdown,
   useElapsedSeconds,
 } from "@/hooks/use-record-timer";
 import TeleprompterOverlay from "@/components/teleprompter/teleprompter-overlay";
+import TeleprompterSettingsPanel from "@/components/teleprompter/teleprompter-settings";
 import RecorderDevices from "@/components/teleprompter/recorder-devices";
 import RecorderReview from "@/components/teleprompter/recorder-review";
 
@@ -66,7 +69,8 @@ export default function TeleprompterRecorder({
     selectAudioDevice,
   } = useMediaStream();
   const { cameras, mics } = useMediaDevices(cameraOn || micOn);
-  const scroll = useTeleprompterScroll();
+  const { settings: tp, update: updateTp } = useTeleprompterSettings();
+  const scroll = useTeleprompterScroll(tp.fontScale);
   const { play: scrollPlay, pause: scrollPause, reset: scrollReset } = scroll;
   const {
     count,
@@ -75,6 +79,7 @@ export default function TeleprompterRecorder({
   } = useCountdown();
   const elapsed = useElapsedSeconds(isRecording);
   const [immersive, setImmersive] = useState(false);
+  const [tpOpen, setTpOpen] = useState(false);
   const hasText = text.trim().length > 0;
   // With no camera and no mic there's nothing to capture — startRecording would
   // silently no-op, so gate on it (else the prompt scrolls while nothing records).
@@ -96,9 +101,14 @@ export default function TeleprompterRecorder({
   // never run without a live recording — and it stops if the recorder errors
   // out (not just on an explicit Stop press).
   useEffect(() => {
-    if (isRecording && hasText) scrollPlay();
-    else scrollPause();
-  }, [isRecording, hasText, scrollPlay, scrollPause]);
+    if (isRecording && hasText) {
+      // Hold the prompt still for the lead-in so you can open on camera before
+      // it starts scrolling.
+      const id = setTimeout(() => scrollPlay(), tp.leadInSec * 1000);
+      return () => clearTimeout(id);
+    }
+    scrollPause();
+  }, [isRecording, hasText, scrollPlay, scrollPause, tp.leadInSec]);
 
   const beginRecording = () => {
     scrollReset();
@@ -161,7 +171,13 @@ export default function TeleprompterRecorder({
         />
 
         {hasText && (
-          <TeleprompterOverlay scrollRef={scroll.scrollRef} text={text} />
+          <TeleprompterOverlay
+            scrollRef={scroll.scrollRef}
+            text={text}
+            fontScale={tp.fontScale}
+            heightPct={tp.heightPct}
+            opacity={tp.opacity}
+          />
         )}
 
         {/* Recording indicator with elapsed time. */}
@@ -222,22 +238,43 @@ export default function TeleprompterRecorder({
         {/* Bottom control bar */}
         <div className="absolute inset-x-0 bottom-0 z-40 flex flex-col items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-4 pt-10 pb-5">
           {hasText && !isRecording && count === null && (
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-bold text-white/70">Speed</span>
-              {WPM_PRESETS.map((preset) => (
+            <div className="flex w-full flex-col items-center gap-2">
+              {tpOpen && (
+                <TeleprompterSettingsPanel settings={tp} onChange={updateTp} />
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-white/70">
+                  Speed
+                </span>
+                {WPM_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => scroll.setWpm(preset)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                      scroll.wpm === preset
+                        ? "bg-white text-black"
+                        : "bg-white/15 text-white hover:bg-white/25"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
                 <button
-                  key={preset}
                   type="button"
-                  onClick={() => scroll.setWpm(preset)}
-                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors ${
-                    scroll.wpm === preset
+                  onClick={() => setTpOpen((v) => !v)}
+                  aria-pressed={tpOpen}
+                  className={`ml-1 flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                    tpOpen
                       ? "bg-white text-black"
                       : "bg-white/15 text-white hover:bg-white/25"
                   }`}
+                  title="Teleprompter settings"
+                  aria-label="Teleprompter settings"
                 >
-                  {preset}
+                  <Type className="h-4 w-4" />
                 </button>
-              ))}
+              </div>
             </div>
           )}
 
