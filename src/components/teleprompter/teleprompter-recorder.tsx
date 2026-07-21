@@ -136,6 +136,37 @@ export default function TeleprompterRecorder({
     startCountdown(3, beginRecording);
   };
 
+  // Desktop shortcuts: Space records/stops, F toggles fullscreen, G toggles
+  // guides. toggleRecord closes over live state, so read it through a ref kept
+  // fresh each render rather than re-binding the listener every render.
+  const toggleRecordRef = useRef(toggleRecord);
+  useEffect(() => {
+    toggleRecordRef.current = toggleRecord;
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.isContentEditable)
+      ) {
+        return;
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        toggleRecordRef.current();
+      } else if (e.key === "f" || e.key === "F") {
+        setImmersive((v) => !v);
+      } else if (e.key === "g" || e.key === "G") {
+        setShowGuides((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const retake = () => {
     clearRecordedMedia();
     scroll.reset();
