@@ -43,6 +43,13 @@ export async function POST(req: NextRequest): Promise<Response> {
       ? crypto.randomUUID()
       : `${Date.now()}`;
   const key = mediaKey(userId, id, (ext ?? "webm").replace(/[^a-z0-9]/gi, ""));
-  const url = await presignUpload(key, mimeType);
+  // A big file on a slow uplink must not outlive its presigned PUT. Budget for a
+  // very slow ~40 KB/s and clamp to 30 min .. 6 hours, so e.g. a 267 MB upload
+  // (~114 min at that floor) still has a valid URL the whole way.
+  const expiresIn = Math.min(
+    21_600,
+    Math.max(1_800, Math.ceil(sizeBytes / 40_960)),
+  );
+  const url = await presignUpload(key, mimeType, expiresIn);
   return Response.json({ url, key });
 }
