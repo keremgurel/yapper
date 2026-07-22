@@ -27,7 +27,10 @@ const RATE_INDEX: Record<number, number> = {
  * Returns null when the track isn't AAC-LC (the only codec ADTS frames here
  * describe), so the caller can fall back to a decoded-PCM path.
  */
-export function aacToAdts(demuxed: DemuxedAudio): Uint8Array | null {
+export function aacToAdts(
+  demuxed: DemuxedAudio,
+  chunks: DemuxedAudio["chunks"] = demuxed.chunks,
+): Uint8Array | null {
   if (!/mp4a\.40/.test(demuxed.codec)) return null;
   const freqIdx = RATE_INDEX[demuxed.sampleRate];
   if (freqIdx === undefined) return null;
@@ -39,10 +42,10 @@ export function aacToAdts(demuxed: DemuxedAudio): Uint8Array | null {
   const objectType = demuxed.description ? demuxed.description[0] >> 3 : 2;
   const profile = Math.max(0, objectType - 1) & 0x3;
 
-  const total = demuxed.chunks.reduce((n, c) => n + 7 + c.data.length, 0);
+  const total = chunks.reduce((n, c) => n + 7 + c.data.length, 0);
   const out = new Uint8Array(total);
   let pos = 0;
-  for (const chunk of demuxed.chunks) {
+  for (const chunk of chunks) {
     const frameLen = 7 + chunk.data.length;
     out[pos] = 0xff;
     out[pos + 1] = 0xf1; // syncword tail, MPEG-4, layer 0, no CRC
