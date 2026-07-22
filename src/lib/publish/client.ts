@@ -87,6 +87,8 @@ export interface CrossPostInput {
   title: string;
   description?: string;
   contentItemId?: string;
+  /** R2 key of a custom thumbnail/cover image, if the user picked one. */
+  thumbnailKey?: string;
 }
 
 export interface InstagramPostInput {
@@ -94,6 +96,7 @@ export interface InstagramPostInput {
   mediaKey?: string;
   caption?: string;
   contentItemId?: string;
+  thumbnailKey?: string;
 }
 
 export interface TikTokPostInput {

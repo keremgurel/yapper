@@ -9,8 +9,8 @@ import {
   NoConnectionError,
 } from "@/lib/publish/connection";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
-import { uploadYouTubeVideo } from "@/lib/publish/youtube";
-import { getObjectBytes, r2Configured } from "@/lib/r2";
+import { setYouTubeThumbnail, uploadYouTubeVideo } from "@/lib/publish/youtube";
+import { getObjectBytes, ownsKey, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -34,6 +34,7 @@ export async function POST(req: Request): Promise<Response> {
     tags?: string[];
     privacyStatus?: "private" | "unlisted" | "public";
     contentItemId?: string;
+    thumbnailKey?: string;
   };
   const { title } = body;
   if (!title?.trim()) {
@@ -77,6 +78,19 @@ export async function POST(req: Request): Promise<Response> {
       externalPostId: result.videoId,
       externalUrl: result.url,
     });
+    // Custom thumbnail is best-effort: it needs a verified channel, so a failure
+    // must not fail the post that already succeeded.
+    if (body.thumbnailKey && ownsKey(userId, body.thumbnailKey)) {
+      try {
+        const thumb = await getObjectBytes(body.thumbnailKey);
+        const mime = body.thumbnailKey.endsWith(".png")
+          ? "image/png"
+          : "image/jpeg";
+        await setYouTubeThumbnail(accessToken, result.videoId, thumb, mime);
+      } catch (err) {
+        console.error("[publish] youtube thumbnail failed", err);
+      }
+    }
     return Response.json({ jobId, ...result });
   } catch (e) {
     const message = e instanceof Error ? e.message : "upload_failed";

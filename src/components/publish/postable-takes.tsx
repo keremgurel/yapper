@@ -26,7 +26,7 @@ function uploadErrorText(e: AddVideoError): string {
     case "storage_full":
       return "Your storage is full. Delete something or upgrade to add more.";
     case "locked":
-      return "Sign in to upload a video.";
+      return "Uploading videos needs a plan. Start a trial or upgrade to add one.";
     default:
       return "Upload failed. Please try again.";
   }

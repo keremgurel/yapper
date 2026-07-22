@@ -11,7 +11,7 @@ import {
 } from "@/lib/publish/connection";
 import { postInstagramReel } from "@/lib/publish/instagram";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
-import { presignView, r2Configured } from "@/lib/r2";
+import { ownsKey, presignView, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -34,6 +34,7 @@ export async function POST(req: Request): Promise<Response> {
     mediaKey?: string;
     caption?: string;
     contentItemId?: string;
+    thumbnailKey?: string;
   };
 
   const media = await resolveOwnedMediaKey(userId, body);
@@ -69,11 +70,17 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const videoUrl = await presignView(media.mediaKey, 3600);
+    // A custom cover, if the client uploaded one under the user's own prefix.
+    const coverUrl =
+      body.thumbnailKey && ownsKey(userId, body.thumbnailKey)
+        ? await presignView(body.thumbnailKey, 3600)
+        : undefined;
     const result = await postInstagramReel({
       accessToken,
       igUserId,
       videoUrl,
       caption: body.caption,
+      coverUrl,
     });
     await completePublishJob(jobId, {
       externalPostId: result.mediaId,

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { crossPostToInstagram } from "@/lib/publish/client";
 import { useCrossPost } from "@/hooks/use-cross-post";
+import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 import ComposeActions from "./compose-actions";
 import ProfessionalAccountHelp from "./professional-account-help";
+import ThumbnailPicker from "./thumbnail-picker";
 import type { CrossPostTarget } from "./types";
 
 /** Compose an Instagram Reel: one caption. Instagram pulls the video and posts
@@ -19,6 +21,7 @@ export default function InstagramCompose({
   const [caption, setCaption] = useState("");
   const { state, error, result, post } = useCrossPost();
   const busy = state === "posting";
+  const thumb = useThumbnailUpload();
 
   const onPost = () => {
     if (busy) return;
@@ -28,6 +31,7 @@ export default function InstagramCompose({
         mediaKey: item.mediaKey,
         caption: caption.trim() || undefined,
         contentItemId: item.contentItemId,
+        thumbnailKey: thumb.thumbnailKey ?? undefined,
       }),
     );
   };
@@ -61,6 +65,14 @@ export default function InstagramCompose({
           {caption.length}/2200
         </span>
       </label>
+
+      <ThumbnailPicker
+        previewUrl={thumb.previewUrl}
+        uploading={thumb.uploading}
+        error={thumb.error}
+        onPick={thumb.pick}
+        onClear={thumb.clear}
+      />
 
       <ComposeActions
         platform="instagram"

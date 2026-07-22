@@ -12,6 +12,8 @@ export interface InstagramPostInput {
   igUserId: string;
   videoUrl: string;
   caption?: string;
+  /** Public URL of a custom cover image; Instagram fetches it like the video. */
+  coverUrl?: string;
 }
 
 export interface InstagramPostResult {
@@ -34,6 +36,7 @@ async function createContainer(input: InstagramPostInput): Promise<string> {
     access_token: input.accessToken,
   });
   if (input.caption) body.set("caption", input.caption.slice(0, 2200));
+  if (input.coverUrl) body.set("cover_url", input.coverUrl);
   const res = await fetch(`${GRAPH}/${input.igUserId}/media`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

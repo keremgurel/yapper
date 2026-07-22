@@ -5,7 +5,9 @@ import { Loader2, Sparkles } from "lucide-react";
 import { crossPostToYouTube, generateCaption } from "@/lib/publish/client";
 import { Button } from "@/components/ui/button";
 import { useCrossPost } from "@/hooks/use-cross-post";
+import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 import ComposeActions from "./compose-actions";
+import ThumbnailPicker from "./thumbnail-picker";
 import type { CrossPostTarget } from "./types";
 
 /** Compose a YouTube post: title + description, with an opt-in AI draft that can
@@ -24,6 +26,7 @@ export default function YouTubeCompose({
   const [genError, setGenError] = useState<string | null>(null);
   const { state, error, result, post } = useCrossPost();
   const busy = state === "posting";
+  const thumb = useThumbnailUpload();
 
   const generate = async () => {
     if (generating) return;
@@ -56,6 +59,7 @@ export default function YouTubeCompose({
         title: title.trim(),
         description: description.trim() || undefined,
         contentItemId: item.contentItemId,
+        thumbnailKey: thumb.thumbnailKey ?? undefined,
       }),
     );
   };
@@ -131,6 +135,14 @@ export default function YouTubeCompose({
           className="border-border bg-card placeholder:text-foreground/30 resize-none rounded-lg border px-3 py-2 text-sm outline-none focus:border-[color:var(--sg-accent)]"
         />
       </label>
+
+      <ThumbnailPicker
+        previewUrl={thumb.previewUrl}
+        uploading={thumb.uploading}
+        error={thumb.error}
+        onPick={thumb.pick}
+        onClear={thumb.clear}
+      />
 
       <ComposeActions
         platform="youtube"

@@ -78,6 +78,33 @@ export async function uploadYouTubeVideo(
   return { videoId: json.id, url: `https://youtube.com/watch?v=${json.id}` };
 }
 
+/**
+ * Set a custom thumbnail on an uploaded video. Requires the channel to be
+ * verified (phone), so callers treat a failure as non-fatal: the video is
+ * already up, it just keeps YouTube's auto-generated frame.
+ */
+export async function setYouTubeThumbnail(
+  accessToken: string,
+  videoId: string,
+  bytes: ArrayBuffer,
+  mimeType: string,
+): Promise<void> {
+  const res = await fetch(
+    `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${videoId}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": mimeType || "image/jpeg",
+      },
+      body: bytes,
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`youtube_thumbnail_${res.status}: ${await safeText(res)}`);
+  }
+}
+
 async function safeText(res: Response): Promise<string> {
   return (await res.text().catch(() => "")).slice(0, 300);
 }
