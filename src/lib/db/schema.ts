@@ -35,6 +35,35 @@ export const users = pgTable("users", {
     .defaultNow(),
 });
 
+/** A user's preferred ASR spellings and the mishearings they explicitly chose
+ * to correct. `termKey` is a punctuation/case-insensitive uniqueness key; the
+ * display spelling remains untouched in `term`. */
+export const transcriptionDictionary = pgTable(
+  "transcription_dictionary",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    term: text("term").notNull(),
+    termKey: text("term_key").notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("transcription_dictionary_user_term_unique").on(
+      t.userId,
+      t.termKey,
+    ),
+    index("transcription_dictionary_user_idx").on(t.userId, t.updatedAt),
+  ],
+);
+
 export const creditReasons = [
   "welcome_grant",
   "subscription_grant",

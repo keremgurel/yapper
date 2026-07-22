@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  BookType,
   Layers,
   Library,
   Scissors,
@@ -18,6 +19,7 @@ const map = {
   record: Video,
   scissors: Scissors,
   send: Send,
+  dictionary: BookType,
   zap: Zap,
 } as const;
 

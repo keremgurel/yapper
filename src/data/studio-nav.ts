@@ -5,6 +5,7 @@ export type StudioIcon =
   | "layers"
   | "record"
   | "scissors"
+  | "dictionary"
   | "send"
   | "zap";
 
@@ -73,6 +74,13 @@ const automations: StudioNavItem = {
   icon: "zap",
 };
 
+const dictionary: StudioNavItem = {
+  title: "Dictionary",
+  href: "/studio/dictionary",
+  description: "Teach captions the names and vocabulary you use.",
+  icon: "dictionary",
+};
+
 const connections: StudioNavItem = {
   title: "Connections",
   href: "/studio/connections",
@@ -91,7 +99,7 @@ export const studioNavGroups: StudioNavGroup[] = [
   { label: "Lab", items: [inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
-  { label: "Settings", items: [connections] },
+  { label: "Settings", items: [dictionary, connections] },
 ];
 
 /**

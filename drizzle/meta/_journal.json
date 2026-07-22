@@ -57,6 +57,13 @@
       "when": 1783809183842,
       "tag": "0007_organic_kronos",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784535248256,
+      "tag": "0008_groovy_old_lace",
+      "breakpoints": true
     }
   ]
 }
