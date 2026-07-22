@@ -4,11 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   CameraOff,
+  Check,
   Grid3x3,
   Maximize2,
   Mic,
   MicOff,
   Minimize2,
+  Pause,
   Type,
 } from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
@@ -57,6 +59,7 @@ export default function TeleprompterRecorder({
     cameraOn,
     micOn,
     isRecording,
+    isPaused,
     recordedBlob,
     recordedUrl,
     mediaError,
@@ -65,6 +68,8 @@ export default function TeleprompterRecorder({
     toggleMic,
     startRecording,
     stopRecording,
+    pauseRecording,
+    resumeRecording,
     clearRecordedMedia,
     reattachStream,
     videoDeviceId,
@@ -83,7 +88,10 @@ export default function TeleprompterRecorder({
     start: startCountdown,
     cancel: cancelCountdown,
   } = useCountdown();
-  const elapsed = useElapsedSeconds(isRecording);
+  // One recording session spans its pauses/resumes; a fresh take bumps it so the
+  // timer and the teleprompter lead-in reset. Paused time is excluded.
+  const [session, setSession] = useState(0);
+  const elapsed = useElapsedSeconds(isRecording && !isPaused, session);
   const [immersive, setImmersive] = useState(false);
   const [tpOpen, setTpOpen] = useState(false);
   const [showGuides, setShowGuides] = useState(false);
@@ -107,41 +115,59 @@ export default function TeleprompterRecorder({
   // Drive the teleprompter off the *actual* recording state, so the scroll can
   // never run without a live recording — and it stops if the recorder errors
   // out (not just on an explicit Stop press).
+  // Scroll only while actively recording (not paused). Hold for the lead-in at
+  // the very start of a take, then continue immediately across resumes.
+  const leadInDoneRef = useRef(false);
   useEffect(() => {
-    if (isRecording && hasText) {
-      // Hold the prompt still for the lead-in so you can open on camera before
-      // it starts scrolling.
-      const id = setTimeout(() => scrollPlay(), tp.leadInSec * 1000);
+    if (isRecording && !isPaused && hasText) {
+      if (leadInDoneRef.current) {
+        scrollPlay();
+        return;
+      }
+      const id = setTimeout(() => {
+        leadInDoneRef.current = true;
+        scrollPlay();
+      }, tp.leadInSec * 1000);
       return () => clearTimeout(id);
     }
     scrollPause();
-  }, [isRecording, hasText, scrollPlay, scrollPause, tp.leadInSec]);
+  }, [isRecording, isPaused, hasText, scrollPlay, scrollPause, tp.leadInSec]);
 
   const beginRecording = () => {
+    leadInDoneRef.current = false;
+    setSession((s) => s + 1);
     scrollReset();
     startRecording();
   };
 
-  const toggleRecord = () => {
-    if (isRecording) {
-      stopRecording();
-      return;
-    }
+  // Center button: start a take (with a 3-2-1 pre-roll), then pause and resume
+  // it with the same button. The check on the right finishes the take.
+  const onRecordButton = () => {
     if (count !== null) {
-      // Tapping during the pre-roll cancels it.
       cancelCountdown();
       return;
     }
-    if (!canRecord) return;
-    startCountdown(3, beginRecording);
+    if (!isRecording) {
+      if (!canRecord) return;
+      startCountdown(3, beginRecording);
+      return;
+    }
+    if (isPaused) resumeRecording();
+    else pauseRecording();
   };
 
-  // Desktop shortcuts: Space records/stops, F toggles fullscreen, G toggles
-  // guides. toggleRecord closes over live state, so read it through a ref kept
+  const finishRecording = () => {
+    if (isRecording) stopRecording();
+  };
+
+  // Desktop shortcuts: Space starts/pauses/resumes, Enter finishes, F fullscreen,
+  // G guides. The handlers close over live state, so read them through refs kept
   // fresh each render rather than re-binding the listener every render.
-  const toggleRecordRef = useRef(toggleRecord);
+  const onRecordButtonRef = useRef(onRecordButton);
+  const finishRef = useRef(finishRecording);
   useEffect(() => {
-    toggleRecordRef.current = toggleRecord;
+    onRecordButtonRef.current = onRecordButton;
+    finishRef.current = finishRecording;
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -156,7 +182,9 @@ export default function TeleprompterRecorder({
       }
       if (e.code === "Space") {
         e.preventDefault();
-        toggleRecordRef.current();
+        onRecordButtonRef.current();
+      } else if (e.key === "Enter") {
+        finishRef.current();
       } else if (e.key === "f" || e.key === "F") {
         setImmersive((v) => !v);
       } else if (e.key === "g" || e.key === "G") {
@@ -220,13 +248,22 @@ export default function TeleprompterRecorder({
           />
         )}
 
-        {/* Recording indicator with elapsed time. */}
+        {/* Recording indicator with elapsed time (pauses with the recording). */}
         {isRecording && (
           <div className="absolute top-4 left-4 z-40 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 backdrop-blur-md">
-            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+            {isPaused ? (
+              <Pause className="h-3 w-3 text-white" />
+            ) : (
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+            )}
             <span className="font-mono text-xs font-bold text-white">
               {formatElapsed(elapsed)}
             </span>
+            {isPaused && (
+              <span className="text-[10px] font-bold text-white/70">
+                Paused
+              </span>
+            )}
           </div>
         )}
 
@@ -336,58 +373,80 @@ export default function TeleprompterRecorder({
 
           {micOn && <AudioMeter level={audioLevel} />}
 
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => void toggleMic()}
-              disabled={isRecording || count !== null}
-              className={iconBtn}
-              title={micOn ? "Mute" : "Unmute"}
-            >
-              {micOn ? (
-                <Mic className="h-4 w-4" />
-              ) : (
-                <MicOff className="h-4 w-4" />
-              )}
-            </button>
+          <div className="flex items-center gap-6">
+            {/* Left: mic toggle when idle, spacer while recording (keeps the
+                record button centered). */}
+            {isRecording ? (
+              <div className="h-11 w-11" />
+            ) : (
+              <button
+                type="button"
+                onClick={() => void toggleMic()}
+                disabled={count !== null}
+                className={iconBtn}
+                title={micOn ? "Mute" : "Unmute"}
+              >
+                {micOn ? (
+                  <Mic className="h-4 w-4" />
+                ) : (
+                  <MicOff className="h-4 w-4" />
+                )}
+              </button>
+            )}
 
+            {/* Center: record, then pause / resume with the same button. */}
             <button
               type="button"
-              onClick={toggleRecord}
+              onClick={onRecordButton}
               disabled={!isRecording && count === null && !canRecord}
               className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white/80 bg-transparent disabled:opacity-40"
               title={
-                !canRecord
+                !canRecord && !isRecording
                   ? "Turn on your camera or mic first"
-                  : isRecording
-                    ? "Stop"
-                    : count !== null
-                      ? "Cancel"
+                  : count !== null
+                    ? "Cancel"
+                    : isRecording
+                      ? isPaused
+                        ? "Resume"
+                        : "Pause"
                       : "Record"
               }
             >
               <span
                 className={
-                  isRecording || count !== null
+                  (isRecording && !isPaused) || count !== null
                     ? "h-6 w-6 rounded-md bg-red-500"
                     : "h-12 w-12 rounded-full bg-red-500"
                 }
               />
             </button>
 
-            <button
-              type="button"
-              onClick={() => void toggleCamera()}
-              disabled={isRecording || count !== null}
-              className={iconBtn}
-              title={cameraOn ? "Camera off" : "Camera on"}
-            >
-              {cameraOn ? (
-                <Camera className="h-4 w-4" />
-              ) : (
-                <CameraOff className="h-4 w-4" />
-              )}
-            </button>
+            {/* Right: camera toggle when idle, Done check while recording. */}
+            {isRecording ? (
+              <button
+                type="button"
+                onClick={finishRecording}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-opacity hover:opacity-90"
+                title="Done"
+                aria-label="Finish recording"
+              >
+                <Check className="h-5 w-5" strokeWidth={3} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void toggleCamera()}
+                disabled={count !== null}
+                className={iconBtn}
+                title={cameraOn ? "Camera off" : "Camera on"}
+              >
+                {cameraOn ? (
+                  <Camera className="h-4 w-4" />
+                ) : (
+                  <CameraOff className="h-4 w-4" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

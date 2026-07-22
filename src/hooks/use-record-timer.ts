@@ -51,27 +51,37 @@ export function useCountdown() {
  * throttling, and it only setStates inside the interval callback (never in the
  * effect body) to satisfy the React Compiler lint. Returns 0 whenever idle.
  */
-export function useElapsedSeconds(running: boolean): number {
+export function useElapsedSeconds(running: boolean, sessionId = 0): number {
   const [seconds, setSeconds] = useState(0);
+  // ms banked from earlier run segments in this session (pause/resume), plus the
+  // start of the current segment; the session id resets the bank for a new take.
+  const accRef = useRef(0);
   const startRef = useRef(0);
+  const sessionRef = useRef(sessionId);
 
   useEffect(() => {
+    if (sessionRef.current !== sessionId) {
+      sessionRef.current = sessionId;
+      accRef.current = 0;
+    }
     if (!running) return;
     startRef.current = Date.now();
-    // Read the ref (and setState) only inside callbacks — never in the effect
-    // body or during render — so both React Compiler lints stay happy. The rAF
-    // resets to 0 on the next frame; the interval keeps it current.
+    // setState only in callbacks (never the effect body / render) for the lint.
     const update = () =>
-      setSeconds(Math.floor((Date.now() - startRef.current) / 1000));
+      setSeconds(
+        Math.floor((accRef.current + (Date.now() - startRef.current)) / 1000),
+      );
     const raf = requestAnimationFrame(update);
     const id = setInterval(update, 250);
     return () => {
       cancelAnimationFrame(raf);
       clearInterval(id);
+      // Bank this segment so a resume continues from here rather than from 0.
+      accRef.current += Date.now() - startRef.current;
     };
-  }, [running]);
+  }, [running, sessionId]);
 
-  return running ? seconds : 0;
+  return seconds;
 }
 
 /** Seconds as m:ss for the on-camera timer (e.g. 75 -> "1:15"). */

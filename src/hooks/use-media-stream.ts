@@ -21,6 +21,9 @@ export function useMediaStream() {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  // A recording session can be paused (MediaRecorder.pause) and resumed; the
+  // resulting clip is one continuous take with the paused gaps dropped.
+  const [isPaused, setIsPaused] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [isPreparingDownload, setIsPreparingDownload] = useState(false);
@@ -96,14 +99,37 @@ export function useMediaStream() {
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (recorderRef.current?.state === "recording") {
-      recorderRef.current.stop();
+    const state = recorderRef.current?.state;
+    if (state === "recording" || state === "paused") {
+      recorderRef.current?.stop();
       setIsRecording(false);
+      setIsPaused(false);
       return;
     }
 
     recorderRef.current = null;
+    setIsPaused(false);
     setIsPreparingDownload(false);
+  }, []);
+
+  const pauseRecording = useCallback(() => {
+    if (recorderRef.current?.state !== "recording") return;
+    try {
+      recorderRef.current.pause();
+      setIsPaused(true);
+    } catch {
+      setMediaError("Could not pause the recording.");
+    }
+  }, []);
+
+  const resumeRecording = useCallback(() => {
+    if (recorderRef.current?.state !== "paused") return;
+    try {
+      recorderRef.current.resume();
+      setIsPaused(false);
+    } catch {
+      setMediaError("Could not resume the recording.");
+    }
   }, []);
 
   const startRecording = useCallback(() => {
@@ -164,6 +190,7 @@ export function useMediaStream() {
       };
       recorder.start(200);
       setIsRecording(true);
+      setIsPaused(false);
     } catch {
       recorderRef.current = null;
       setIsPreparingDownload(false);
@@ -382,6 +409,9 @@ export function useMediaStream() {
     cameraOn,
     micOn,
     isRecording,
+    isPaused,
+    pauseRecording,
+    resumeRecording,
     recordedBlob,
     recordedUrl,
     isPreparingDownload,
