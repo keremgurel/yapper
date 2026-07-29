@@ -49,6 +49,10 @@ export async function POST(req: Request): Promise<Response> {
     "- Preserve a meaningful unique setup clause before a restarted clause. " +
     "Keep the setup as a complete thought, then use the final complete version " +
     "of the restarted clause; never discard the setup or keep half a clause.\n" +
+    "- When that setup runs into the abandoned clause, drop the abandoned " +
+    'bridge/starter too (for example its trailing "and I" or "so I"), then ' +
+    "keep the starter from the final attempt. Never create a duplicate join " +
+    'such as "and I I can".\n' +
     "- Never reorder sentences or clauses. The surviving words must stay in " +
     "their original chronological order in the recording.\n" +
     "- Do NOT paraphrase, reword, fix grammar, or change numbers. Output the " +
