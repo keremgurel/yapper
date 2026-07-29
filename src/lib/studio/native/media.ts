@@ -195,13 +195,34 @@ export async function nativeWaveformStream(
 // right after upload. Caching the IN-FLIGHT PROMISE (not just the resolved
 // bytes) is what makes concurrent callers share one ffmpeg process instead
 // of each spawning their own for the identical file.
-const audioBytesCache = new Map<string, Promise<ArrayBuffer>>();
+type NativeBytes = ArrayBuffer | ArrayBufferView | number[];
+
+function nativeBytes(value: NativeBytes, label: string): Uint8Array {
+  if (Array.isArray(value)) return Uint8Array.from(value);
+  if (ArrayBuffer.isView(value)) {
+    return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+  }
+  // Tauri's raw IPC value can come from a separate WKWebView realm, where
+  // `instanceof ArrayBuffer` is false. The typed-array constructor accepts the
+  // cross-realm buffer directly.
+  try {
+    return new Uint8Array(value);
+  } catch {
+    throw new Error(
+      `invalid native ${label} type (${Object.prototype.toString.call(value)})`,
+    );
+  }
+}
+
+const audioBytesCache = new Map<string, Promise<Uint8Array>>();
 const AUDIO_CACHE_LIMIT = 3;
 
-function extractAudioBytes(path: string): Promise<ArrayBuffer> {
+function extractAudioBytes(path: string): Promise<Uint8Array> {
   let pending = audioBytesCache.get(path);
   if (!pending) {
-    pending = invoke<ArrayBuffer>("extract_audio_bytes", { path });
+    pending = invoke<NativeBytes>("extract_audio_bytes", { path }).then(
+      (value) => nativeBytes(value, "audio payload"),
+    );
     audioBytesCache.set(path, pending);
     while (audioBytesCache.size > AUDIO_CACHE_LIMIT) {
       const oldest = audioBytesCache.keys().next().value;
@@ -221,7 +242,35 @@ function extractAudioBytes(path: string): Promise<ArrayBuffer> {
  */
 export async function nativeAudioBlob(path: string): Promise<Blob> {
   const buf = await extractAudioBytes(path);
-  return new Blob([buf], { type: "audio/mp4" });
+  return new Blob([buf.slice().buffer], { type: "audio/mp4" });
+}
+
+/** Native mono 16 kHz float PCM for VAD and trim analysis. */
+export async function nativePcm16k(path: string): Promise<Float32Array> {
+  const { byteLength } = await invoke<{ byteLength: number }>("prepare_pcm", {
+    path,
+  });
+  if (byteLength <= 0 || byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
+    throw new Error("invalid native PCM byte length");
+  }
+  const output = new Uint8Array(byteLength);
+  const chunkSize = 2 * 1024 * 1024;
+  for (let offset = 0; offset < byteLength; offset += chunkSize) {
+    const length = Math.min(chunkSize, byteLength - offset);
+    const response = await invoke<NativeBytes>("extract_pcm_chunk", {
+      path,
+      offset,
+      length,
+    });
+    const chunk = nativeBytes(response, "PCM chunk");
+    if (chunk.byteLength !== length) {
+      throw new Error(
+        `invalid native PCM chunk length (${chunk.byteLength}/${length})`,
+      );
+    }
+    output.set(chunk, offset);
+  }
+  return new Float32Array(output.buffer);
 }
 
 /**
@@ -234,5 +283,5 @@ export async function nativeWaveform(
   duration: number,
 ): Promise<number[]> {
   const bytes = await extractAudioBytes(path);
-  return waveformFromBytes(bytes, duration);
+  return waveformFromBytes(bytes.slice().buffer, duration);
 }

@@ -27,6 +27,7 @@ export default function StudioTranscript({
     source,
     words,
     transcribeStatus,
+    transcribeError,
     transcribe,
     autoEdit,
     autoEditing,
@@ -183,6 +184,9 @@ export default function StudioTranscript({
             <div className="space-y-3">
               <p className="text-sm font-bold text-red-500">
                 Couldn&apos;t transcribe this video.
+              </p>
+              <p className="text-foreground/55 text-xs leading-5 break-words">
+                {transcribeError ?? "No diagnostic was captured."}
               </p>
               <button
                 type="button"

@@ -35,8 +35,26 @@ export async function POST(req: Request): Promise<Response> {
     "- For each restarted line, keep the LAST complete attempt and drop all " +
     "earlier ones.\n" +
     "- Remove mid-sentence stutters, false starts, and duplicated words.\n" +
-    "- NEVER drop a sentence that is only said once — if it appears a single " +
-    "time it is real content, keep it even if it sounds like a new topic.\n" +
+    "- Keep the LAST attempt as one coherent take. Do not splice a prefix from " +
+    "an earlier attempt onto the ending of a later one.\n" +
+    '- Keep sentence starters and discourse words such as "so", "and", and ' +
+    '"but" when the speaker says them in the final complete attempt.\n' +
+    "- Judge a retake CLUSTER by meaning and recording position, not only exact " +
+    'word repetition. Variants such as "practice tests" versus "mock exams" ' +
+    "can be competing attempts at the same line; keep only the last complete " +
+    "coherent version.\n" +
+    "- Keep genuinely unique content, but remove a one-off fragment when it is " +
+    "in the middle of an obvious retake cluster and the final attempt clearly " +
+    "supersedes the same idea. Do not mistake that fragment for a new topic.\n" +
+    "- Preserve a meaningful unique setup clause before a restarted clause. " +
+    "Keep the setup as a complete thought, then use the final complete version " +
+    "of the restarted clause; never discard the setup or keep half a clause.\n" +
+    "- When that setup runs into the abandoned clause, drop the abandoned " +
+    'bridge/starter too (for example its trailing "and I" or "so I"), then ' +
+    "keep the starter from the final attempt. Never create a duplicate join " +
+    'such as "and I I can".\n' +
+    "- Never reorder sentences or clauses. The surviving words must stay in " +
+    "their original chronological order in the recording.\n" +
     "- Do NOT paraphrase, reword, fix grammar, or change numbers. Output the " +
     "speaker's EXACT words, just with the retakes and stutters removed.\n\n" +
     "Output plain text only — no quotes, labels, or commentary.";
