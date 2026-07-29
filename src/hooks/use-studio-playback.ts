@@ -349,6 +349,23 @@ export function useStudioPlayback(
 
   useEffect(() => stopRaf, [stopRaf]);
 
+  // Clearing a project (or replacing it with a shorter source) must not leave
+  // the old playhead beyond the new duration. Besides the incorrect readout,
+  // that stale clock made the next Play start from an unrelated source time.
+  useEffect(() => {
+    if (clockRef.current <= total + EPS) return;
+    const next = total <= EPS ? 0 : total;
+    seekGenerationRef.current += 1;
+    seekPendingRef.current = false;
+    stopRaf();
+    videoRef.current?.pause();
+    clockRef.current = next;
+    timelineClock.set(next);
+    setTimelineTime(next);
+    setSourceTime(next);
+    setPlaying(false);
+  }, [total, stopRaf, timelineClock, videoRef]);
+
   // The clock source changed (the bottom track was deleted, added, or swapped
   // between video and still). Stop, rather than leave `playing` true with the
   // old clock gone and nothing ticking in its place.

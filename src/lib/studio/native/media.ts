@@ -98,7 +98,7 @@ export async function nativeThumbnailsStream(
   // A useful overview matters more than hundreds of nearly-identical frames.
   // Cap the initial strip and let native ffmpeg seek to those positions in
   // parallel, so the end of a long timeline appears with the beginning.
-  const samplingFps = Math.min(fps, 48 / Math.max(duration, 0.001));
+  const samplingFps = Math.min(fps, 24 / Math.max(duration, 0.001));
   const dir = await invoke<string>("start_thumbnails", {
     path,
     fps: samplingFps,

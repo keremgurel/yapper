@@ -363,7 +363,7 @@ fn start_thumbnails(
     let stem = file_stem(&path.to_string_lossy());
     let cache_key = media_cache_key(&path)?;
     let mut dir = std::env::temp_dir();
-    dir.push(format!("yapper_thumbs2_{stem}_{cache_key}"));
+    dir.push(format!("yapper_thumbs3_{stem}_{cache_key}"));
     let done_path = dir.join(".done");
     let error_path = dir.join(".error");
     let working_path = dir.join(".working");
@@ -394,23 +394,45 @@ fn start_thumbnails(
         let next = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let failed = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let worker_count = frame_count.min(8);
+        // Fill the whole timeline in the first wave, then refine the gaps.
+        // Sequential indices made the UI show only the beginning of a long
+        // clip even though eight independent seek workers were already active.
+        let mut frame_order = Vec::with_capacity(frame_count);
+        for lane in 0..worker_count {
+            let index = lane * frame_count / worker_count;
+            if !frame_order.contains(&index) {
+                frame_order.push(index);
+            }
+        }
+        for index in 0..frame_count {
+            if !frame_order.contains(&index) {
+                frame_order.push(index);
+            }
+        }
+        let frame_order = std::sync::Arc::new(frame_order);
         let mut workers = Vec::with_capacity(worker_count);
         for _ in 0..worker_count {
             let next = next.clone();
             let failed = failed.clone();
             let path = path.clone();
             let dir = dir.clone();
+            let frame_order = frame_order.clone();
             workers.push(std::thread::spawn(move || loop {
-                let index = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                if index >= frame_count {
+                let order = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                if order >= frame_count {
                     break;
                 }
+                let index = frame_order[order];
                 let output = dir.join(format!("t_{:04}.jpg", index + 1));
                 let time = (index as f64 + 0.5) / rate;
-                if !thumbnail_at_command(&path, &output, time, height)
+                if thumbnail_at_command(&path, &output, time, height)
                     .status()
                     .is_ok_and(|status| status.success())
                 {
+                    // The sidecar marker makes partial JPEGs invisible to the
+                    // polling frontend until ffmpeg has closed the file.
+                    let _ = std::fs::write(output.with_extension("ready"), b"ok");
+                } else {
                     failed.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
             }));
@@ -448,28 +470,36 @@ fn list_thumbnails(dir: String, fps: f64) -> Result<ThumbnailBatch, String> {
     let valid_name = dir_path
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with("yapper_thumbs2_"));
+        .is_some_and(|name| name.starts_with("yapper_thumbs3_"));
     if !dir_path.starts_with(temp_dir) || !valid_name {
         return Err("invalid thumb dir".into());
     }
     let done = dir_path.join(".done").exists();
     let failed = dir_path.join(".error").exists();
-    let mut out: Vec<Thumb> = Vec::new();
-    let mut i = 1u32;
-    loop {
-        let f = dir_path.join(format!("t_{i:04}.jpg"));
-        if !f.exists() {
-            break;
-        }
-        if !done && !dir_path.join(format!("t_{:04}.jpg", i + 1)).exists() {
-            break;
-        }
-        out.push(Thumb {
-            time: (i as f64 - 0.5) / rate,
-            path: f.to_string_lossy().into_owned(),
-        });
-        i += 1;
-    }
+    let mut out: Vec<Thumb> = std::fs::read_dir(&dir_path)
+        .map_err(|e| format!("read thumb dir: {e}"))?
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            if path.extension().and_then(|ext| ext.to_str()) != Some("jpg") {
+                return None;
+            }
+            if !done && !path.with_extension("ready").exists() {
+                return None;
+            }
+            let index: u32 = path
+                .file_stem()?
+                .to_str()?
+                .strip_prefix("t_")?
+                .parse()
+                .ok()?;
+            Some(Thumb {
+                time: (index as f64 - 0.5) / rate,
+                path: path.to_string_lossy().into_owned(),
+            })
+        })
+        .collect();
+    out.sort_by(|a, b| a.time.total_cmp(&b.time));
     Ok(ThumbnailBatch {
         thumbs: out,
         done,
