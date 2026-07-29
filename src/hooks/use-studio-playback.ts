@@ -109,26 +109,18 @@ export function useStudioPlayback(
   // still be unresolved when a separate, later `play()` comes in and finds
   // currentTime already "correct."
   //
-  // Waiting for `v.seeking` to clear (checked here, and via the `seeked`
-  // event below) is still not quite enough on its own: `seeking`/`seeked`
-  // reflect the DECODE finishing, not the resulting frame actually being
-  // PAINTED — those can be a beat apart, and playing the instant `seeked`
-  // fires can still show one stale frame before the correct one composites,
-  // which is the residual hop. `requestVideoFrameCallback` fires once a
-  // frame has genuinely been presented, so waiting for ONE more of those
-  // after `seeked` is the real "it's safe to resume now" signal. Every cut
-  // boundary during normal playback of an edited clip runs through this
-  // same path, not just an explicit scrub, so this is what was making a
-  // heavily-cut video feel continuously choppy.
+  // `seeked` is the usable resume signal in WKWebView. Waiting for
+  // requestVideoFrameCallback while the element is paused creates a deadlock:
+  // WebKit often won't present another frame until playback starts, so the
+  // callback never arrives and the timeout makes every resume feel stuck.
+  // The important guard is to never beat `seeked` (the old 400ms fallback did);
+  // once it fires, start immediately.
   const seekThenPlay = useCallback(
     (v: HTMLVideoElement, generation = seekGenerationRef.current) => {
       if (!seekPendingRef.current && !v.seeking) {
         void v.play().catch(() => {});
         return;
       }
-      const vfc = v as HTMLVideoElement & {
-        requestVideoFrameCallback?: (cb: () => void) => number;
-      };
       let settled = false;
       const resumePlaying = () => {
         if (settled) return;
@@ -142,15 +134,7 @@ export function useStudioPlayback(
         void v.play().catch(() => {});
       };
       const onSeeked = () => {
-        if (generation !== seekGenerationRef.current) {
-          resumePlaying();
-          return;
-        }
-        if (typeof vfc.requestVideoFrameCallback === "function") {
-          vfc.requestVideoFrameCallback(resumePlaying);
-        } else {
-          resumePlaying();
-        }
+        resumePlaying();
       };
       // Broken media can omit `seeked`/rVFC. The timeout is deliberately long
       // enough for a sparse-keyframe 4K HEVC seek; the previous 400ms fallback
@@ -337,6 +321,11 @@ export function useStudioPlayback(
   ]);
 
   const pause = useCallback(() => {
+    // Cancel every delayed seek-resume belonging to the previous play request.
+    // Without this, pressing Pause after a scrub could be undone later by the
+    // old seek's timeout, producing a ghost restart / apparent fast-forward.
+    seekGenerationRef.current += 1;
+    seekPendingRef.current = false;
     stopRaf();
     videoRef.current?.pause();
     setPlaying(false);
