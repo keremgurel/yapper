@@ -55,6 +55,7 @@ export function correctWordSpellings(
 export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
   const [rawWords, setRawWords] = useState<Word[]>([]);
   const [status, setStatus] = useState<TranscribeStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   // A word remembered after transcription also fixes this open project, so
   // regenerating captions cannot bring the old misspelling back.
   const words = useMemo(
@@ -69,6 +70,7 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
   const runOn = useCallback(
     async (audio: Float32Array, url: string): Promise<Word[] | null> => {
       setStatus("transcribing");
+      setErrorMessage(null);
       try {
         const next = await transcribeToWords(audio, url, dictionary);
         setRawWords(next);
@@ -76,6 +78,11 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
         return next;
       } catch (e) {
         console.error("[studio] transcription failed", e);
+        setErrorMessage(
+          e instanceof Error
+            ? e.message
+            : "An unexpected transcription error occurred.",
+        );
         setStatus("error");
         return null;
       }
@@ -96,11 +103,15 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
       onDecoded?: (audio: Float32Array) => void,
     ): Promise<Word[] | null> => {
       setStatus("transcribing");
+      setErrorMessage(null);
       let audio: Float32Array;
       try {
         audio = await decodeToMono16k(url);
       } catch (e) {
         console.error("[studio] transcription failed", e);
+        setErrorMessage(
+          e instanceof Error ? e.message : "The audio could not be prepared.",
+        );
         setStatus("error");
         return null;
       }
@@ -113,7 +124,8 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
   const reset = useCallback(() => {
     setRawWords([]);
     setStatus("idle");
+    setErrorMessage(null);
   }, []);
 
-  return { words, status, run, runOn, reset };
+  return { words, status, errorMessage, run, runOn, reset };
 }

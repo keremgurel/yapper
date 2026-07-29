@@ -44,7 +44,10 @@ async function decodeFresh(url: string): Promise<Float32Array> {
       try {
         return await nativePcm16k(native.proxyPath ?? native.path);
       } catch (e) {
-        console.warn("[audio] native decode failed, falling back", e);
+        const detail = e instanceof Error ? e.message : String(e);
+        throw new Error(`Desktop audio preparation failed: ${detail}`, {
+          cause: e,
+        });
       }
     }
   }

@@ -18,6 +18,29 @@ describe("cutsFromCleanedText", () => {
     ).toEqual([[0, 1]]);
   });
 
+  it("keeps one coherent final take instead of stitching several attempts together", () => {
+    const source = words(
+      "Intro. You can take full tests, drill questions, and use the modules. " +
+        "You can take tests, drill— you have everything you need to— " +
+        "You have everything you need to practice. Final.",
+    );
+    const cleaned = "Intro. You have everything you need to practice. Final.";
+
+    expect(cutsFromCleanedText(source, cleaned)).toEqual([[1, 22]]);
+  });
+
+  it("keeps the final sentence starter with the final attempt", () => {
+    const source = words(
+      "Lead. So comment founder and send the link, let's see. " +
+        "So comment founder and send the link, follow on— " +
+        "So comment founder and send the link, follow to the end.",
+    );
+    const cleaned =
+      "Lead. So comment founder and send the link, follow to the end.";
+
+    expect(cutsFromCleanedText(source, cleaned)).toEqual([[1, 18]]);
+  });
+
   it("cuts a leading stutter", () => {
     expect(cutsFromCleanedText(words("I I am here"), "I am here")).toEqual([
       [0, 0],

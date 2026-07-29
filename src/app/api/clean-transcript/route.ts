@@ -35,6 +35,10 @@ export async function POST(req: Request): Promise<Response> {
     "- For each restarted line, keep the LAST complete attempt and drop all " +
     "earlier ones.\n" +
     "- Remove mid-sentence stutters, false starts, and duplicated words.\n" +
+    "- Keep the LAST attempt as one coherent take. Do not splice a prefix from " +
+    "an earlier attempt onto the ending of a later one.\n" +
+    '- Keep sentence starters and discourse words such as "so", "and", and ' +
+    '"but" when the speaker says them in the final complete attempt.\n' +
     "- NEVER drop a sentence that is only said once — if it appears a single " +
     "time it is real content, keep it even if it sounds like a new topic.\n" +
     "- Do NOT paraphrase, reword, fix grammar, or change numbers. Output the " +

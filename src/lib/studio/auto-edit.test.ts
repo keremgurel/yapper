@@ -93,7 +93,7 @@ describe("pauseCuts", () => {
 
   it("cuts the gap between two words when it is long enough", () => {
     const w = [word(0, 1), word(2, 3)]; // 1s gap
-    expect(pauseCuts(w, 3, opts)).toEqual([[1, 2]]);
+    expect(pauseCuts(w, 3, opts)).toEqual([[1.1, 1.95]]);
   });
 
   it("leaves a gap shorter than minGap alone", () => {
@@ -234,8 +234,8 @@ describe("planAutoEdit", () => {
       });
       // The pause is gone, and the tail silence after the last word with it.
       expect(clips.map((c) => [c.start, c.end])).toEqual([
-        [0, 1],
-        [3, 4.15],
+        [0, 1.15],
+        [2.96, 4.15],
       ]);
     });
 
@@ -271,6 +271,26 @@ describe("planAutoEdit", () => {
 
     it("leaves clips untrimmed when the waveform could not be analysed", () => {
       expect(plan({ analysis: null }).clips).toEqual([rec(0, 10)]);
+    });
+
+    it("never trims away a quiet sentence starter the transcript kept", () => {
+      const quietStarterAnalysis: TrimAnalysis = {
+        frameSec: 0.1,
+        threshold: 0,
+        // VAD sees speech only from 1.4s, but ASR heard the quiet "So" at 1.0s.
+        db: Array.from({ length: 30 }, (_, i) => (i >= 14 && i < 25 ? 1 : -1)),
+      };
+      const words = [word(1, 1.25, "So"), word(1.4, 2.4, "continue")];
+      const { clips } = plan({
+        clips: [rec(0, 3)],
+        sourceDuration: 3,
+        audioDuration: 3,
+        analysis: quietStarterAnalysis,
+        words,
+        aiCuts: [],
+      });
+
+      expect(clips[0].start).toBeLessThanOrEqual(1);
     });
 
     it("never trims an appended clip against the recording's waveform", () => {

@@ -133,6 +133,7 @@ interface StudioContextValue {
   words: Word[];
   audioTracks: AudioTrack[];
   transcribeStatus: TranscribeStatus;
+  transcribeError: string | null;
   loadSource: (source: StudioSource) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
@@ -302,6 +303,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const {
     words,
     status: transcribeStatus,
+    errorMessage: transcribeError,
     run: runTranscribe,
     runOn: transcribeAudio,
     reset: resetWords,
@@ -1272,14 +1274,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setDetecting(true);
     try {
       const analysis = analyzeForTrim(await decodeToMono16k(source.url));
-      const next = trimToSpeech(clips, analysis);
+      const next = trimToSpeech(clips, analysis, words);
       const changed = next.reduce((n, c, i) => (c !== clips[i] ? n + 1 : n), 0);
       if (changed > 0) setClips(() => next);
       return changed;
     } finally {
       setDetecting(false);
     }
-  }, [source, clips, setClips]);
+  }, [source, clips, words, setClips]);
 
   // The decoded audio is the source of truth for length. A video element often
   // under-reports duration (MediaRecorder WebM especially), which would leave
@@ -1518,6 +1520,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       words,
       audioTracks,
       transcribeStatus,
+      transcribeError,
       loadSource,
       clearSource,
       selectClip: sel.selectClip,
@@ -1635,6 +1638,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       words,
       audioTracks,
       transcribeStatus,
+      transcribeError,
       loadSource,
       clearSource,
       sel,

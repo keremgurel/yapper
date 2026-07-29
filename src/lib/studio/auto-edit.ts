@@ -50,13 +50,28 @@ const MIN_TRIMMED_SEC = 0.1;
 export function trimClipsToSpeech(
   clips: Clip[],
   analysis: TrimAnalysis,
+  words: Word[] = [],
 ): Clip[] {
   return clips.map((c) => {
     if (c.src != null) return c;
     const bounds = speechBoundsInRange(analysis, c.start, c.end);
     if (!bounds) return c; // no speech in this clip, nothing to trim to
-    const start = Math.max(c.start, bounds.start - LEAD_PAD);
-    const end = Math.min(c.end, bounds.end + TAIL_PAD);
+    let start = Math.max(c.start, bounds.start - LEAD_PAD);
+    let end = Math.min(c.end, bounds.end + TAIL_PAD);
+    // VAD can miss a quiet sentence starter ("so", "and", "I") even while ASR
+    // correctly found it. A waveform trim must never override the transcript
+    // and eat a word that the edit intentionally kept.
+    const keptWords = words.filter((word) => {
+      const midpoint = (word.start + word.end) / 2;
+      return midpoint >= c.start && midpoint <= c.end;
+    });
+    if (keptWords.length > 0) {
+      start = Math.min(start, Math.max(c.start, keptWords[0].start - LEAD_PAD));
+      end = Math.max(
+        end,
+        Math.min(c.end, keptWords[keptWords.length - 1].end + TAIL_PAD),
+      );
+    }
     if (end - start < MIN_TRIMMED_SEC) return c;
     if (start === c.start && end === c.end) return c;
     return { ...c, start, end };
@@ -78,7 +93,9 @@ export function pauseCuts(
   { minGap, minSilence, headPad, tailPad }: PauseCutOptions,
 ): SourceRange[] {
   if (words.length === 0) return [];
-  const ranges = pauseRanges(words, minGap);
+  const ranges = pauseRanges(words, minGap)
+    .map(([from, to]) => [from + tailPad, to - headPad] as [number, number])
+    .filter(([from, to]) => to > from);
   const first = words[0];
   const last = words[words.length - 1];
   if (first.start >= minSilence) ranges.unshift([0, first.start - headPad]);
@@ -190,7 +207,7 @@ export function planAutoEdit({
   }
 
   onStep?.(AUTO_EDIT_STEPS.TRIM);
-  if (analysis) next = trimClipsToSpeech(next, analysis);
+  if (analysis) next = trimClipsToSpeech(next, analysis, words);
   next = dropSlivers(next);
 
   // Cutting everything means the analysis disagreed with the transcript. Give

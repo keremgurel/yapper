@@ -4,6 +4,10 @@ import type { RawWord } from "@/lib/studio/transcribe-remote";
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+// Core product vocabulary should be correct on a brand-new install, before a
+// creator has had a chance to build their personal transcription dictionary.
+const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
+
 /** An ASR result plus how many seconds of audio the provider actually heard. */
 interface AsrResult {
   words: RawWord[];
@@ -20,7 +24,10 @@ interface AsrResult {
 export async function POST(req: Request): Promise<Response> {
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
-  const keyterms = [...new URL(req.url).searchParams.getAll("keyterm")]
+  const keyterms = [
+    ...DEFAULT_KEYTERMS,
+    ...new URL(req.url).searchParams.getAll("keyterm"),
+  ]
     .map((term) => term.trim().slice(0, 80))
     .filter(Boolean)
     .filter((term, index, all) => all.indexOf(term) === index)

@@ -4,120 +4,115 @@
  * more reliable than asking it to count token positions. We then align that
  * cleaned text to the original words to decide which to keep.
  *
- * The alignment is a Ratcliff/Obershelp-style matching-blocks search (the
- * algorithm behind Python's difflib): recursively find the single longest
- * contiguous run shared between the two token streams, then recurse on the
- * gaps before and after it. Finding the best block globally, rather than
- * walking token-by-token from one end, matters a lot on a transcript full of
- * near-identical retakes: a naive nearest-neighbor walk can latch onto a
- * single stray shared word (e.g. "the") deep inside an earlier, wrong take and
- * zig-zag across several takes instead of resolving to one clean run. That
- * scatters false "keep" hits through the takes that should be cut whole.
+ * Alignment uses a global sequence score with an affine source-gap penalty.
+ * Matching a token is valuable, but opening a new source gap has a cost while
+ * extending that same gap is nearly free. That distinction is essential for
+ * retakes: it makes one coherent final attempt beat a "Frankenstein" sentence
+ * assembled from matching prefixes and suffixes across several earlier takes.
+ * Exact-score ties skip source tokens first, which right-anchors duplicate
+ * phrases to the speaker's last take.
  */
 
 function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9']/g, "");
 }
 
-interface MatchBlock {
-  srcStart: number;
-  cleanedStart: number;
-  length: number;
-}
+const MATCH_SCORE = 100;
+const SOURCE_GAP_OPEN = 3;
+const SOURCE_GAP_EXTEND = 0.01;
+const CLEANED_GAP = 25;
 
-/**
- * The longest contiguous run of tokens shared between src[srcLo, srcHi) and
- * cleaned[cleanedLo, cleanedHi). Ties prefer the run that starts latest in
- * src, so a phrase repeated across several retakes resolves to its most
- * recent occurrence — the one the speaker actually kept — rather than an
- * earlier attempt.
- */
-function findLongestMatch(
-  src: string[],
-  cleaned: string[],
-  srcLo: number,
-  srcHi: number,
-  cleanedLo: number,
-  cleanedHi: number,
-): MatchBlock {
-  const positionsByToken = new Map<string, number[]>();
-  for (let j = cleanedLo; j < cleanedHi; j++) {
-    const token = cleaned[j];
-    if (!token) continue;
-    const list = positionsByToken.get(token);
-    if (list) list.push(j);
-    else positionsByToken.set(token, [j]);
-  }
+const ACTION_MATCH = 1;
+const ACTION_DELETE_SOURCE = 2;
+const ACTION_SKIP_CLEANED = 3;
 
-  let bestSrcStart = srcLo;
-  let bestCleanedStart = cleanedLo;
-  let bestLength = 0;
-  let runLengthEndingAt = new Map<number, number>();
-  for (let i = srcLo; i < srcHi; i++) {
-    const nextRunLengths = new Map<number, number>();
-    const token = src[i];
-    const positions = token ? positionsByToken.get(token) : undefined;
-    if (positions) {
-      for (const j of positions) {
-        const length = (runLengthEndingAt.get(j - 1) ?? 0) + 1;
-        nextRunLengths.set(j, length);
-        const startInSrc = i - length + 1;
-        if (
-          length > bestLength ||
-          (length === bestLength && startInSrc >= bestSrcStart)
-        ) {
-          bestLength = length;
-          bestSrcStart = startInSrc;
-          bestCleanedStart = j - length + 1;
-        }
-      }
+/** Which source tokens form the most coherent exact rendering of `cleaned`. */
+function coherentKeepMask(src: string[], cleaned: string[]): boolean[] {
+  const rows = src.length + 1;
+  const columns = cleaned.length + 1;
+  const cellCount = rows * columns;
+  // One byte of backtracking state per cell and gap-state. Scores only need
+  // the current and next source row, keeping the large part linear in cells.
+  const actions = new Uint8Array(cellCount * 2);
+  const actionIndex = (gap: 0 | 1, i: number, j: number) =>
+    gap * cellCount + i * columns + j;
+
+  let nextNoGap = new Float64Array(columns);
+  let nextGap = new Float64Array(columns);
+  for (let j = cleaned.length; j >= 0; j--) {
+    const score = -(cleaned.length - j) * CLEANED_GAP;
+    nextNoGap[j] = score;
+    nextGap[j] = score;
+    if (j < cleaned.length) {
+      actions[actionIndex(0, src.length, j)] = ACTION_SKIP_CLEANED;
+      actions[actionIndex(1, src.length, j)] = ACTION_SKIP_CLEANED;
     }
-    runLengthEndingAt = nextRunLengths;
   }
-  return {
-    srcStart: bestSrcStart,
-    cleanedStart: bestCleanedStart,
-    length: bestLength,
-  };
-}
 
-function matchingBlocks(
-  src: string[],
-  cleaned: string[],
-  srcLo: number,
-  srcHi: number,
-  cleanedLo: number,
-  cleanedHi: number,
-  out: MatchBlock[],
-): void {
-  const match = findLongestMatch(
-    src,
-    cleaned,
-    srcLo,
-    srcHi,
-    cleanedLo,
-    cleanedHi,
-  );
-  if (match.length === 0) return;
-  matchingBlocks(
-    src,
-    cleaned,
-    srcLo,
-    match.srcStart,
-    cleanedLo,
-    match.cleanedStart,
-    out,
-  );
-  out.push(match);
-  matchingBlocks(
-    src,
-    cleaned,
-    match.srcStart + match.length,
-    srcHi,
-    match.cleanedStart + match.length,
-    cleanedHi,
-    out,
-  );
+  for (let i = src.length - 1; i >= 0; i--) {
+    const currentNoGap = new Float64Array(columns);
+    const currentGap = new Float64Array(columns);
+    currentNoGap[cleaned.length] =
+      -SOURCE_GAP_OPEN - (src.length - i) * SOURCE_GAP_EXTEND;
+    currentGap[cleaned.length] = -(src.length - i) * SOURCE_GAP_EXTEND;
+    actions[actionIndex(0, i, cleaned.length)] = ACTION_DELETE_SOURCE;
+    actions[actionIndex(1, i, cleaned.length)] = ACTION_DELETE_SOURCE;
+
+    for (let j = cleaned.length - 1; j >= 0; j--) {
+      const match =
+        src[i] && src[i] === cleaned[j]
+          ? MATCH_SCORE + nextNoGap[j + 1]
+          : Number.NEGATIVE_INFINITY;
+      const skipCleaned = -CLEANED_GAP + currentNoGap[j + 1];
+
+      const choose = (
+        deleteSource: number,
+      ): { score: number; action: number } => {
+        // Prefer deleting source on a tie: the identical matching token later
+        // in the recording is the final take.
+        if (deleteSource >= match && deleteSource >= skipCleaned) {
+          return { score: deleteSource, action: ACTION_DELETE_SOURCE };
+        }
+        if (match >= skipCleaned) {
+          return { score: match, action: ACTION_MATCH };
+        }
+        return { score: skipCleaned, action: ACTION_SKIP_CLEANED };
+      };
+
+      const withoutGap = choose(-SOURCE_GAP_OPEN + nextGap[j]);
+      currentNoGap[j] = withoutGap.score;
+      actions[actionIndex(0, i, j)] = withoutGap.action;
+
+      const inGap = choose(-SOURCE_GAP_EXTEND + nextGap[j]);
+      currentGap[j] = inGap.score;
+      actions[actionIndex(1, i, j)] = inGap.action;
+    }
+    nextNoGap = currentNoGap;
+    nextGap = currentGap;
+  }
+
+  const keep = new Array(src.length).fill(false);
+  let i = 0;
+  let j = 0;
+  let gap: 0 | 1 = 0;
+  while (i < src.length || j < cleaned.length) {
+    const action = actions[actionIndex(gap, i, j)];
+    if (action === ACTION_MATCH) {
+      keep[i] = true;
+      i++;
+      j++;
+      gap = 0;
+    } else if (action === ACTION_DELETE_SOURCE) {
+      i++;
+      gap = 1;
+    } else if (action === ACTION_SKIP_CLEANED) {
+      j++;
+      gap = 0;
+    } else {
+      break;
+    }
+  }
+  return keep;
 }
 
 /**
@@ -136,12 +131,7 @@ export function cutsFromCleanedText(
     .map(norm)
     .filter((t) => t.length > 0);
 
-  const keep = new Array(words.length).fill(false);
-  const blocks: MatchBlock[] = [];
-  matchingBlocks(src, cleaned, 0, src.length, 0, cleaned.length, blocks);
-  for (const block of blocks) {
-    for (let k = 0; k < block.length; k++) keep[block.srcStart + k] = true;
-  }
+  const keep = coherentKeepMask(src, cleaned);
   for (let k = 0; k < words.length; k++) if (src[k] === "") keep[k] = true;
 
   const cuts: [number, number][] = [];
