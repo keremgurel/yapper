@@ -19,7 +19,7 @@ export default function StudioHeader() {
   const pathname = usePathname();
 
   return (
-    <div className="bg-background/80 sticky top-14 z-20 flex h-12 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md">
+    <div className="bg-background/80 sticky top-[var(--site-header,3.5rem)] z-20 flex h-12 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md">
       <SidebarTrigger className="-ml-1" />
       <Separator
         orientation="vertical"

@@ -45,4 +45,61 @@ describe("cutsFromCleanedText", () => {
       [0, 2],
     ]);
   });
+
+  // Regression for the "1-Click edit keeps almost all the retakes" bug: a
+  // real DJI recording had the speaker restart the same sentence 4-6 times.
+  // The old right-to-left nearest-neighbor walk would latch onto a stray
+  // shared word (here, "the") from the sentence right before the retake
+  // cluster, then zig-zag across the near-identical takes instead of cutting
+  // them whole — leaving most of each earlier take un-struck. This fixture
+  // reproduces that shape: a lead-in sentence, five near-identical retakes of
+  // one sentence (only the last is clean), and a following sentence.
+  it("cuts a whole cluster of near-identical retakes, keeping only the last", () => {
+    // The lead-in deliberately ends in "course" — a word that also recurs
+    // inside the retakes. That shared word is what let the old right-to-left
+    // walk latch onto a position deep inside an earlier attempt instead of
+    // skipping cleanly past the whole cluster.
+    const lead = "Let's talk about how you can prepare for the course.";
+    const attempts = [
+      "You can take full practice tests and drill some questions or you know go through the modules.",
+      "You can take full practice tests, drill individual, uh, questions, or go through modules.",
+      "You can take full practice tests, drill individual questions, or, um, go through the course.",
+      "You can take full practice tests drill individual questions or go through the the course modules.",
+      "You can take full practice tests, drill individual questions, or go through the course modules directly at the site.",
+    ];
+    const follow = "Now let's talk about pricing options for the course.";
+
+    const sourceText = [lead, ...attempts, follow].join(" ");
+    const cleanedText = [lead, attempts[attempts.length - 1], follow].join(" ");
+
+    const cuts = cutsFromCleanedText(words(sourceText), cleanedText);
+
+    const allWords = words(sourceText);
+    const cutIndexes = new Set<number>();
+    for (const [from, to] of cuts) {
+      for (let i = from; i <= to; i++) cutIndexes.add(i);
+    }
+    const kept = allWords
+      .filter((_, i) => !cutIndexes.has(i))
+      .map((w) => w.text.toLowerCase().replace(/[^a-z0-9' ]/g, ""))
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const expectedKept = cleanedText
+      .toLowerCase()
+      .replace(/[^a-z0-9' ]/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    expect(kept).toBe(expectedKept);
+    // None of the first four (flawed) attempts may survive intact anywhere.
+    for (const attempt of attempts.slice(0, -1)) {
+      const normalizedAttempt = attempt
+        .toLowerCase()
+        .replace(/[^a-z0-9' ]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      expect(kept).not.toContain(normalizedAttempt);
+    }
+  });
 });

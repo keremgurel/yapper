@@ -72,13 +72,20 @@ export default function StudioWorkspace() {
   // The bottom track can drive a <video> clock only when it has clips and isn't
   // a still. Otherwise playback falls back to its synthetic clock.
   const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
-  const { timelineTime, playing, play, pause, seekToTimeline, seekToSource } =
-    useStudioPlayback(videoRef, {
-      clips,
-      total: duration,
-      hasVideo,
-      baseUrl: source?.url ?? "",
-    });
+  const {
+    timelineTime,
+    timelineClock,
+    playing,
+    play,
+    pause,
+    seekToTimeline,
+    seekToSource,
+  } = useStudioPlayback(videoRef, {
+    clips,
+    total: duration,
+    hasVideo,
+    baseUrl: source?.url ?? "",
+  });
   // Two docked widths, because the two layouts dock two different things: the
   // side panel in classic, the picture in cinema. Sharing one would make the
   // preview open at a panel's width the moment you switched.
@@ -116,7 +123,7 @@ export default function StudioWorkspace() {
         // Timeline seconds, not the <video>'s own clock: the playhead is the one
         // position every layer shares, and only the bottom track has a <video>.
         e.preventDefault();
-        splitSelected(timelineTime);
+        splitSelected(timelineClock.get());
       } else if (e.key === "Delete" || e.key === "Backspace") {
         // One delete for everything selected — base clips, overlays, captions,
         // or any mix of them.
@@ -158,7 +165,12 @@ export default function StudioWorkspace() {
         // Transport: arrows step the playhead (a second with Shift), Home/End
         // jump to the ends. A seek during playback keeps playing from the new
         // spot; pause first (Space) to step frame by frame.
-        const target = transportSeek(e.key, timelineTime, duration, e.shiftKey);
+        const target = transportSeek(
+          e.key,
+          timelineClock.get(),
+          duration,
+          e.shiftKey,
+        );
         if (target == null) return;
         e.preventDefault();
         seekToTimeline(target);
@@ -172,7 +184,7 @@ export default function StudioWorkspace() {
     play,
     pause,
     playing,
-    timelineTime,
+    timelineClock,
     duration,
     seekToTimeline,
     splitSelected,
@@ -199,6 +211,7 @@ export default function StudioWorkspace() {
     <div style={{ height }} className={`shrink-0 ${CARD_GUTTER}`}>
       <TimelinePanel
         timelineTime={timelineTime}
+        timelineClock={timelineClock}
         playing={playing}
         onPlay={play}
         onPause={pause}
@@ -216,46 +229,62 @@ export default function StudioWorkspace() {
       currentTimelineTime={timelineTime}
       onSeek={seekToSource}
       onSeekTimeline={seekToTimeline}
+      layout={layout}
     />
   );
 
-  // Cinema: a tall picture down the right, with the panels and the tracks
-  // stacked beside it. Worth it for a 9:16 project, where a wide preview pane
-  // is mostly empty space either side of the frame.
-  if (layout === "cinema") {
-    return (
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col max-lg:order-last">
-          <div className="min-h-0 flex-1 overflow-hidden">{panel}</div>
-          <RowHandle onPointerDown={onResizeDown} />
-          {timeline}
-        </div>
-        <ColHandle onPointerDown={preview.onPointerDown} />
-        <aside
-          style={{ width: preview.width }}
-          className="border-border flex min-h-0 shrink-0 flex-col border-l max-lg:!h-[50vh] max-lg:!w-full max-lg:border-l-0"
-        >
-          {stage}
-        </aside>
-        {assistant}
-      </div>
-    );
-  }
+  // One structure for both layouts. Classic docks the panel on the right with
+  // the preview above the timeline; Cinema docks a tall preview on the right
+  // with the panel and tracks beside it. Only each pane's GRID PLACEMENT changes
+  // when you switch, never its position in the React tree, so the <video> is
+  // never destroyed (which used to break playback and the transcript). Sized for
+  // the desktop window.
+  const stageInAside = layout === "cinema";
+  const asideWidth = stageInAside ? preview.width : side.width;
+  const onAsideResize = stageInAside
+    ? preview.onPointerDown
+    : side.onPointerDown;
+  const stageCell = stageInAside
+    ? { gridColumn: "3", gridRow: "1 / 4" }
+    : { gridColumn: "1", gridRow: "1" };
+  const panelCell = stageInAside
+    ? { gridColumn: "1", gridRow: "1" }
+    : { gridColumn: "3", gridRow: "1 / 4" };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {stage}
-        <RowHandle onPointerDown={onResizeDown} />
-        {timeline}
-      </div>
-      <ColHandle onPointerDown={side.onPointerDown} />
-      <aside
-        style={{ width: side.width }}
-        className="border-border flex min-h-0 shrink-0 flex-col border-t max-lg:!h-[44vh] max-lg:!w-full lg:border-t-0 lg:border-l"
+    <div className="flex min-h-0 flex-1">
+      <div
+        className="grid min-h-0 min-w-0 flex-1"
+        style={{
+          gridTemplateColumns: `minmax(0,1fr) auto ${asideWidth}px`,
+          gridTemplateRows: `minmax(0,1fr) auto ${height}px`,
+        }}
       >
-        {panel}
-      </aside>
+        <div
+          className={`flex min-h-0 min-w-0 overflow-hidden ${stageInAside ? "border-border border-l" : ""}`}
+          style={stageCell}
+        >
+          {stage}
+        </div>
+        <aside
+          className={`flex min-h-0 min-w-0 flex-col overflow-hidden ${stageInAside ? "" : "border-border border-l"}`}
+          style={panelCell}
+        >
+          {panel}
+        </aside>
+        <div style={{ gridColumn: "1", gridRow: "2" }}>
+          <RowHandle onPointerDown={onResizeDown} />
+        </div>
+        <div
+          className="min-h-0 min-w-0 overflow-hidden"
+          style={{ gridColumn: "1", gridRow: "3" }}
+        >
+          {timeline}
+        </div>
+        <div className="flex" style={{ gridColumn: "2", gridRow: "1 / 4" }}>
+          <ColHandle onPointerDown={onAsideResize} />
+        </div>
+      </div>
       {assistant}
     </div>
   );

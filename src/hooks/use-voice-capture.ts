@@ -4,12 +4,15 @@ import { useCallback, useRef, useState } from "react";
 
 type Phase = "idle" | "recording" | "transcribing";
 
-/** Record a short voice note from the mic and transcribe it via /api/transcribe.
- * One responsibility: capture audio → text. Returns the phase plus start/stop;
- * `stop` resolves the transcript (empty string on failure). */
+/**
+ * Record a short voice note from the mic and transcribe it via /api/transcribe.
+ * Exposes the live `stream` while recording so a visualizer can draw the real
+ * waveform, plus `cancel` to throw the take away without transcribing.
+ */
 export function useVoiceCapture() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -17,10 +20,11 @@ export function useVoiceCapture() {
   const start = useCallback(async () => {
     setError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = s;
+      setStream(s);
       chunksRef.current = [];
-      const recorder = new MediaRecorder(stream);
+      const recorder = new MediaRecorder(s);
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
@@ -36,6 +40,7 @@ export function useVoiceCapture() {
   const cleanup = useCallback(() => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
+    setStream(null);
     recorderRef.current = null;
   }, []);
 
@@ -78,5 +83,22 @@ export function useVoiceCapture() {
     }
   }, [cleanup]);
 
-  return { phase, error, start, stop };
+  /** Throw the recording away without transcribing. */
+  const cancel = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.onstop = null;
+      try {
+        recorder.stop();
+      } catch {
+        // already stopped
+      }
+    }
+    chunksRef.current = [];
+    cleanup();
+    setError(null);
+    setPhase("idle");
+  }, [cleanup]);
+
+  return { phase, error, stream, start, stop, cancel };
 }

@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import { isNative, pickVideoPath } from "@/lib/studio/native/bridge";
+import { loadNativeSource } from "@/lib/studio/native/load-native-source";
 import { Chirpy } from "@/components/brand/chirpy";
 
 export default function VideoUploader() {
@@ -20,6 +22,26 @@ export default function VideoUploader() {
     setError("");
     loadVideoSource(file, file.name)
       .then(loadSource)
+      .catch((cause: unknown) => {
+        console.error("[studio] native source import failed", cause);
+        const detail = cause instanceof Error ? cause.message : String(cause);
+        setError(`Could not read that video file: ${detail}`);
+      });
+  };
+
+  // Desktop: pick a real file path so the native ffmpeg pipeline (instant
+  // thumbnails, native decode) handles it instead of an in-browser blob.
+  const openPicker = () => {
+    if (!isNative()) {
+      inputRef.current?.click();
+      return;
+    }
+    setError("");
+    void pickVideoPath()
+      .then((path) => {
+        if (!path) return;
+        return loadNativeSource(path).then(loadSource);
+      })
       .catch(() => setError("Could not read that video file."));
   };
 
@@ -34,9 +56,13 @@ export default function VideoUploader() {
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
+          if (isNative()) {
+            openPicker();
+            return;
+          }
           handleFile(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => inputRef.current?.click()}
+        onClick={openPicker}
         className={`flex cursor-pointer flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-20 text-center transition-colors ${
           dragOver
             ? "border-foreground/40 bg-muted"

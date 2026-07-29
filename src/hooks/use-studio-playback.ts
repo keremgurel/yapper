@@ -8,9 +8,19 @@ import {
   timelineToClip,
   totalDuration,
 } from "@/lib/studio/clips";
+import { createTimelineClock } from "@/lib/studio/timeline-clock";
+import { assetUrl, isNative } from "@/lib/studio/native/bridge";
+import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 import type { Clip } from "@/lib/studio/types";
 
 const EPS = 0.03;
+// How often the COARSE `timelineTime`/`sourceTime` React state updates during
+// continuous playback. This is what re-renders the whole timeline tree (and
+// everything under the workspace root), so it stays far below frame rate —
+// captions and the transcript highlight are word-level (100s of ms), so this
+// is still fluid for them. The playhead line itself doesn't wait on this: it
+// reads the per-frame `timelineClock` store directly (see timeline-clock.ts).
+const COARSE_UI_INTERVAL_MS = 125;
 
 export interface PlaybackInput {
   /** Bottom-track clips. May be empty — overlays and audio still play. */
@@ -40,6 +50,8 @@ export function useStudioPlayback(
   const [timelineTime, setTimelineTime] = useState(0);
   const [sourceTime, setSourceTime] = useState(0);
   const [playing, setPlaying] = useState(false);
+  // Per-frame time, for the playhead line only — see timeline-clock.ts.
+  const [timelineClock] = useState(() => createTimelineClock(0));
   const activeIndexRef = useRef(0);
   const clockRef = useRef(0);
   const lastRef = useRef(0);
@@ -47,11 +59,27 @@ export function useStudioPlayback(
   // Set while we pause the <video> on purpose (a clock handoff or a seek out of
   // the bottom track). Its async 'pause' event must not clear `playing`.
   const silentPauseRef = useRef(false);
+  // `currentTime` changes asynchronously. Keep an explicit generation instead
+  // of trusting `video.seeking`, which WebKit may not flip until the task after
+  // the assignment (allowing an immediate play to leak a stale frame).
+  const seekGenerationRef = useRef(0);
+  const seekPendingRef = useRef(false);
   const baseTotal = totalDuration(clips);
 
+  // The identity url (used for export, snapping, etc.) always stays the
+  // original file. Playback alone swaps in the low-res dense-keyframe proxy
+  // once it's ready — cheap to decode, so scrubbing doesn't hop to the
+  // nearest sparse keyframe on the source HEVC. Falls back to the original
+  // until the proxy lands, or forever if one was never built (the web path).
+  const playbackUrl = useCallback((url: string): string => {
+    if (!isNative()) return url;
+    const proxyPath = nativeMediaForUrl(url)?.proxyPath;
+    return proxyPath ? assetUrl(proxyPath) : url;
+  }, []);
+
   const clipUrl = useCallback(
-    (i: number) => clips[i]?.src?.url ?? baseUrl,
-    [clips, baseUrl],
+    (i: number) => playbackUrl(clips[i]?.src?.url ?? baseUrl),
+    [clips, baseUrl, playbackUrl],
   );
 
   /** Is `t` over the bottom track, so the <video> should be the clock? */
@@ -72,6 +100,91 @@ export function useStudioPlayback(
     v.pause();
   }, [videoRef]);
 
+  // Seeking is async: `currentTime` reads back the TARGET synchronously the
+  // instant it's set, even though the decoded frame lands a beat later
+  // (longer still on a sparse-keyframe source) — so comparing currentTime to
+  // the target cannot tell you whether a seek is still in flight. That's what
+  // made an earlier fix incomplete: it only waited when THIS call was the one
+  // setting currentTime, but a seek from an earlier call (a scrub, say) can
+  // still be unresolved when a separate, later `play()` comes in and finds
+  // currentTime already "correct."
+  //
+  // Waiting for `v.seeking` to clear (checked here, and via the `seeked`
+  // event below) is still not quite enough on its own: `seeking`/`seeked`
+  // reflect the DECODE finishing, not the resulting frame actually being
+  // PAINTED — those can be a beat apart, and playing the instant `seeked`
+  // fires can still show one stale frame before the correct one composites,
+  // which is the residual hop. `requestVideoFrameCallback` fires once a
+  // frame has genuinely been presented, so waiting for ONE more of those
+  // after `seeked` is the real "it's safe to resume now" signal. Every cut
+  // boundary during normal playback of an edited clip runs through this
+  // same path, not just an explicit scrub, so this is what was making a
+  // heavily-cut video feel continuously choppy.
+  const seekThenPlay = useCallback(
+    (v: HTMLVideoElement, generation = seekGenerationRef.current) => {
+      if (!seekPendingRef.current && !v.seeking) {
+        void v.play().catch(() => {});
+        return;
+      }
+      const vfc = v as HTMLVideoElement & {
+        requestVideoFrameCallback?: (cb: () => void) => number;
+      };
+      let settled = false;
+      const resumePlaying = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        v.removeEventListener("seeked", onSeeked);
+        // A newer scrub superseded this one. Its own completion is the only
+        // event allowed to restart playback.
+        if (generation !== seekGenerationRef.current) return;
+        seekPendingRef.current = false;
+        void v.play().catch(() => {});
+      };
+      const onSeeked = () => {
+        if (generation !== seekGenerationRef.current) {
+          resumePlaying();
+          return;
+        }
+        if (typeof vfc.requestVideoFrameCallback === "function") {
+          vfc.requestVideoFrameCallback(resumePlaying);
+        } else {
+          resumePlaying();
+        }
+      };
+      // Broken media can omit `seeked`/rVFC. The timeout is deliberately long
+      // enough for a sparse-keyframe 4K HEVC seek; the previous 400ms fallback
+      // was the source of the visible "boosted frame" hop.
+      const timer = setTimeout(resumePlaying, 2500);
+      v.addEventListener("seeked", onSeeked, { once: true });
+    },
+    [],
+  );
+
+  // A paused scrub may finish before the user presses Play. Remember that
+  // completion so Play can start immediately instead of waiting for an event
+  // that already happened.
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onSeeked = () => {
+      seekPendingRef.current = false;
+    };
+    v.addEventListener("seeked", onSeeked);
+    return () => v.removeEventListener("seeked", onSeeked);
+  }, [videoRef]);
+
+  const beginSeek = useCallback(
+    (v: HTMLVideoElement, srcTime: number, resume: boolean) => {
+      if (resume && !v.paused) pauseVideoSilently();
+      const generation = ++seekGenerationRef.current;
+      seekPendingRef.current = true;
+      v.currentTime = srcTime;
+      if (resume) seekThenPlay(v, generation);
+    },
+    [pauseVideoSilently, seekThenPlay],
+  );
+
   // Point the <video> at clip `index` and seek to `srcTime`, switching the media
   // source first if this clip uses a different one. Resumes play if `resume`.
   const seekVideo = useCallback(
@@ -80,19 +193,29 @@ export function useStudioPlayback(
       if (!v) return;
       const url = clipUrl(index);
       if (v.getAttribute("src") !== url) {
+        if (resume && !v.paused) pauseVideoSilently();
+        const generation = ++seekGenerationRef.current;
+        seekPendingRef.current = true;
         v.setAttribute("src", url);
         v.load();
         const onLoaded = () => {
+          if (generation !== seekGenerationRef.current) return;
           v.currentTime = srcTime;
-          if (resume) void v.play().catch(() => {});
+          if (resume) seekThenPlay(v, generation);
         };
         v.addEventListener("loadeddata", onLoaded, { once: true });
-      } else {
-        v.currentTime = srcTime;
-        if (resume && v.paused) void v.play().catch(() => {});
+        return;
+      }
+      // Re-seeking to (almost) the current spot makes the decoder re-decode
+      // from the previous keyframe, so resuming from a pause visibly replays
+      // the last second. Only seek when we are actually somewhere else.
+      if (Math.abs(v.currentTime - srcTime) > 0.05) {
+        beginSeek(v, srcTime, resume);
+      } else if (resume) {
+        seekThenPlay(v);
       }
     },
-    [videoRef, clipUrl],
+    [videoRef, clipUrl, pauseVideoSilently, beginSeek, seekThenPlay],
   );
 
   /** Run the synthetic clock from `from` to the project end. */
@@ -101,8 +224,10 @@ export function useStudioPlayback(
       stopRaf();
       clockRef.current = from;
       setTimelineTime(from);
+      timelineClock.set(from);
       setPlaying(true);
       lastRef.current = performance.now();
+      let rafLastUi = 0;
       const tick = () => {
         const now = performance.now();
         clockRef.current = Math.min(
@@ -110,9 +235,15 @@ export function useStudioPlayback(
           clockRef.current + (now - lastRef.current) / 1000,
         );
         lastRef.current = now;
-        setTimelineTime(clockRef.current);
-        if (!hasVideo) setSourceTime(clockRef.current);
-        if (clockRef.current >= total - EPS) {
+        // Every frame: the playhead line's own subscription, not React state.
+        timelineClock.set(clockRef.current);
+        const done = clockRef.current >= total - EPS;
+        if (done || now - rafLastUi >= COARSE_UI_INTERVAL_MS) {
+          rafLastUi = now;
+          setTimelineTime(clockRef.current);
+          if (!hasVideo) setSourceTime(clockRef.current);
+        }
+        if (done) {
           setPlaying(false);
           rafRef.current = null;
           return;
@@ -121,7 +252,7 @@ export function useStudioPlayback(
       };
       rafRef.current = requestAnimationFrame(tick);
     },
-    [total, hasVideo, stopRaf],
+    [total, hasVideo, stopRaf, timelineClock],
   );
 
   const applyTimeline = useCallback(
@@ -130,6 +261,7 @@ export function useStudioPlayback(
       const wasPlaying = playing;
       setTimelineTime(clamped);
       clockRef.current = clamped;
+      timelineClock.set(clamped);
       if (overBaseTrack(clamped)) {
         stopRaf();
         const hit = timelineToClip(clips, clamped);
@@ -156,6 +288,7 @@ export function useStudioPlayback(
       startRaf,
       stopRaf,
       pauseVideoSilently,
+      timelineClock,
     ],
   );
 
@@ -187,12 +320,21 @@ export function useStudioPlayback(
         activeIndexRef.current = hit.index;
         setTimelineTime(from);
         clockRef.current = from;
+        timelineClock.set(from);
         seekVideo(hit.index, hit.sourceTime, true);
       }
       return;
     }
     startRaf(from);
-  }, [videoRef, clips, total, overBaseTrack, seekVideo, startRaf]);
+  }, [
+    videoRef,
+    clips,
+    total,
+    overBaseTrack,
+    seekVideo,
+    startRaf,
+    timelineClock,
+  ]);
 
   const pause = useCallback(() => {
     stopRaf();
@@ -246,6 +388,9 @@ export function useStudioPlayback(
     // would look "past clip.end" again and skip that clip.
     let seeking = false;
     let seekTarget = 0;
+    // Throttles the playhead/caption STATE updates (not the video, not the cut
+    // detection) so playback does not re-render the whole timeline 60x/second.
+    let lastUi = 0;
     const onSeeked = () => {
       seeking = false;
     };
@@ -277,6 +422,7 @@ export function useStudioPlayback(
       v!.pause();
       setTimelineTime(total);
       clockRef.current = total;
+      timelineClock.set(total);
     }
 
     function step() {
@@ -305,14 +451,27 @@ export function useStudioPlayback(
           const t = clipTimelineStart(clips, next);
           setTimelineTime(t);
           clockRef.current = t;
+          timelineClock.set(t);
           setSourceTime(clips[next].start);
+          lastUi = performance.now(); // a cut always updates the UI at once
         } else if (v!.currentTime < clip.start - EPS) {
           v!.currentTime = clip.start;
         } else {
           const t = clipTimelineStart(clips, i) + (v!.currentTime - clip.start);
-          setTimelineTime(t);
           clockRef.current = t;
-          setSourceTime(v!.currentTime);
+          // The <video> paints its own frames at full rate. The playhead line
+          // reads this every frame via its own subscription (no re-render);
+          // these two calls only move the caption/transcript highlight and the
+          // time readout, so they stay coarse — at 60fps they'd re-render the
+          // whole timeline tree and starve the audio. Playback and cut
+          // detection read the ref, untouched.
+          timelineClock.set(t);
+          const now = performance.now();
+          if (now - lastUi >= COARSE_UI_INTERVAL_MS) {
+            lastUi = now;
+            setTimelineTime(t);
+            setSourceTime(v!.currentTime);
+          }
         }
       }
       schedule();
@@ -362,10 +521,12 @@ export function useStudioPlayback(
     seekVideo,
     startRaf,
     stopRaf,
+    timelineClock,
   ]);
 
   return {
     timelineTime,
+    timelineClock,
     sourceTime,
     playing,
     play,

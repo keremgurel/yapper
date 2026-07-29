@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Music2 } from "lucide-react";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
 import { visibleSpan } from "@/lib/studio/window";
@@ -21,7 +21,7 @@ interface TrimState {
  * trim the played range in and out of the underlying file. It has no lane to
  * change, so unlike an overlay there is no vertical gesture and nothing to drop.
  */
-export default function AudioClip({
+function AudioClip({
   track,
   pxPerSec,
   visStartSec,
@@ -174,3 +174,8 @@ export default function AudioClip({
     </div>
   );
 }
+
+/** Its props all derive from the audio track, zoom, and scroll window, never
+ * from the playhead — so it must not re-render every scroll-driven re-window
+ * unless something it actually reads changed. */
+export default memo(AudioClip);

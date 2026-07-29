@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Image as ImageIcon, Video } from "lucide-react";
 import ClipFilmstrip from "@/components/studio/clip-filmstrip";
 import WaveformCanvas from "@/components/studio/waveform-canvas";
@@ -26,7 +26,7 @@ interface TrimState {
  * so it reads as a real clip, not a flat bar. Its lane places it vertically;
  * track controls live in the fixed header rail.
  */
-export default function OverlayClip({
+function OverlayClip({
   overlay,
   pxPerSec,
   visStartSec,
@@ -43,6 +43,7 @@ export default function OverlayClip({
   onDragStart,
   onTrim,
   snapTrimDelta,
+  coarseFilmstrip = false,
 }: {
   overlay: Overlay;
   pxPerSec: number;
@@ -83,6 +84,9 @@ export default function OverlayClip({
     deltaSec: number,
     excludeId: string,
   ) => number;
+  /** True while a zoom gesture is actively changing the scale — see
+   * ZOOM_TILE_COARSEN in clip-filmstrip.tsx. */
+  coarseFilmstrip?: boolean;
 }) {
   const o = overlay;
   const [trim, setTrim] = useState<TrimState | null>(null);
@@ -204,6 +208,7 @@ export default function OverlayClip({
           srcStart={span.srcA}
           srcEnd={span.srcB}
           height={48}
+          coarse={coarseFilmstrip}
         />
       )}
       {span && peaks.length > 0 && mediaDuration > 0 && (
@@ -246,3 +251,8 @@ export default function OverlayClip({
     </div>
   );
 }
+
+/** Its props all derive from the overlay, zoom, and scroll window, never from
+ * the playhead — so it must not re-render every scroll-driven re-window
+ * unless something it actually reads changed. */
+export default memo(OverlayClip);

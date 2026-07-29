@@ -127,6 +127,42 @@ export function normalizePeaks(peaks: number[]): number[] {
 }
 
 /**
+ * Bucket a decoded audio buffer's first channel into normalized peak
+ * amplitudes (0–1) spanning `duration` seconds. Shared by every source of
+ * audio bytes (a fetched URL, or bytes pulled straight off disk natively) so
+ * they all draw the same waveform shape.
+ */
+export function peaksFromAudioBuffer(
+  audio: AudioBuffer,
+  duration: number,
+): number[] {
+  // ~120 peaks/sec keeps the waveform precise even at deep zoom.
+  const buckets = Math.min(30000, Math.max(600, Math.round(duration * 120)));
+  const data = audio.getChannelData(0);
+  const block = Math.max(1, Math.floor(data.length / buckets));
+  const out: number[] = [];
+  for (let i = 0; i < buckets; i++) {
+    let max = 0;
+    const s = i * block;
+    const e = Math.min(s + block, data.length);
+    for (let j = s; j < e; j++) {
+      const a = Math.abs(data[j]);
+      if (a > max) max = a;
+    }
+    out.push(max);
+  }
+  return normalizePeaks(out);
+}
+
+function newAudioContext(): AudioContext {
+  const AudioCtx =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext })
+      .webkitAudioContext;
+  return new AudioCtx();
+}
+
+/**
  * Decode a media URL's audio into normalized peak amplitudes (0–1) spanning its
  * full duration, so a timeline can draw a waveform aligned to it. Resolves to []
  * when there is no audio track or the bytes can't be decoded.
@@ -136,32 +172,34 @@ export async function generateWaveform(
   duration: number,
 ): Promise<number[]> {
   if (!url || !Number.isFinite(duration) || duration <= 0) return [];
-  // ~120 peaks/sec keeps the waveform precise even at deep zoom.
-  const buckets = Math.min(30000, Math.max(600, Math.round(duration * 120)));
-  const AudioCtx =
-    window.AudioContext ||
-    (window as unknown as { webkitAudioContext: typeof AudioContext })
-      .webkitAudioContext;
-  const ctx = new AudioCtx();
+  const ctx = newAudioContext();
   try {
     const bytes = await (await fetch(url)).arrayBuffer();
     const audio = await ctx.decodeAudioData(bytes);
-    const data = audio.getChannelData(0);
-    const block = Math.max(1, Math.floor(data.length / buckets));
-    const out: number[] = [];
-    for (let i = 0; i < buckets; i++) {
-      let max = 0;
-      const s = i * block;
-      const e = Math.min(s + block, data.length);
-      for (let j = s; j < e; j++) {
-        const a = Math.abs(data[j]);
-        if (a > max) max = a;
-      }
-      out.push(max);
-    }
-    return normalizePeaks(out);
+    return peaksFromAudioBuffer(audio, duration);
   } catch {
     return []; // no audio track / decode failure
+  } finally {
+    void ctx.close();
+  }
+}
+
+/**
+ * Same peak extraction, but decoding audio bytes already in hand (e.g. pulled
+ * straight off disk natively) instead of fetching a URL — the caller already
+ * did the expensive part, so this is just the decode + bucketing.
+ */
+export async function waveformFromBytes(
+  bytes: ArrayBuffer,
+  duration: number,
+): Promise<number[]> {
+  if (!Number.isFinite(duration) || duration <= 0) return [];
+  const ctx = newAudioContext();
+  try {
+    const audio = await ctx.decodeAudioData(bytes);
+    return peaksFromAudioBuffer(audio, duration);
+  } catch {
+    return [];
   } finally {
     void ctx.close();
   }

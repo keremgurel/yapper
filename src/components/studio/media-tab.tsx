@@ -1,8 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { isNative, pickVideoPath } from "@/lib/studio/native/bridge";
+import { loadNativeSource } from "@/lib/studio/native/load-native-source";
 
 export const MEDIA_DND_TYPE = "application/x-yapper-asset";
 
@@ -13,13 +15,36 @@ export default function MediaTab() {
     overlays,
     mediaAssets,
     addMediaAsset,
+    addMediaSource,
     removeMediaAsset,
     addAssetToTimeline,
     addAssetToMainTrack,
     addOverlayFromAsset,
   } = useStudio();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState("");
   const isEmpty = !source && mediaAssets.length === 0;
+
+  const openPicker = () => {
+    if (!isNative()) {
+      inputRef.current?.click();
+      return;
+    }
+    setImportError("");
+    setImporting(true);
+    void pickVideoPath()
+      .then(async (path) => {
+        if (!path) return;
+        addMediaSource(await loadNativeSource(path));
+      })
+      .catch((error: unknown) => {
+        console.error("[studio] native media import failed", error);
+        const detail = error instanceof Error ? error.message : String(error);
+        setImportError(`Could not read that video file: ${detail}`);
+      })
+      .finally(() => setImporting(false));
+  };
 
   // How many times an asset is placed on the timeline (base + main clips + tracks).
   const usageCount = (url: string) =>
@@ -28,19 +53,25 @@ export default function MediaTab() {
     overlays.filter((o) => o.url === url).length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
       <div className="border-border shrink-0 border-b p-4">
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={openPicker}
+          disabled={importing}
           className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
         >
           <Upload className="h-4 w-4" />
-          Upload media
+          {importing ? "Opening video…" : "Upload media"}
         </button>
         <p className="text-foreground/45 mt-2 text-center text-xs">
           Photos &amp; videos · drag onto the timeline or press Add
         </p>
+        {importError && (
+          <p className="mt-2 text-center text-xs font-bold text-red-500">
+            {importError}
+          </p>
+        )}
         <input
           ref={inputRef}
           type="file"

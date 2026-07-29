@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   captionTimelineRange,
   caseTransform,
@@ -22,7 +22,7 @@ interface CaptionTrim {
  * The caption track row in the timeline: each caption is a clip you can select,
  * trim by its edges, or double-click to break in two at the playhead.
  */
-export default function CaptionTrack({
+function CaptionTrack({
   captions,
   clips,
   pxPerSec,
@@ -131,3 +131,9 @@ export default function CaptionTrack({
     </div>
   );
 }
+
+/** Skips re-rendering on a scroll-driven re-window (zoom, panning) when
+ * nothing it actually reads — captions, clips, or the coarse playhead —
+ * changed. Still re-renders on the coarse playhead tick, which is what
+ * drives its active-caption highlight. */
+export default memo(CaptionTrack);

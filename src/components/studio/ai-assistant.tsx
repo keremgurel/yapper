@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import AiCommandBar from "@/components/studio/ai-command-bar";
 import { useStudio } from "@/components/studio/studio-context";
 import { Chirpy, type ChirpyExpression } from "@/components/brand/chirpy";
@@ -58,7 +59,10 @@ export default function AiAssistant() {
   const toLeft = anchor.x > window.innerWidth / 2;
   const above = anchor.y > window.innerHeight / 2;
 
-  return (
+  // Portal to the body so `fixed` is measured against the viewport, not a
+  // transformed ancestor (a transform on any parent makes `fixed` relative to
+  // it, which was dropping the bird into the middle of the screen).
+  return createPortal(
     <div
       style={{ left: anchor.x, top: anchor.y, width: ORB, height: ORB }}
       className="pointer-events-none fixed z-50"
@@ -129,6 +133,7 @@ export default function AiAssistant() {
           <span className="absolute inset-0 animate-ping rounded-full ring-2 ring-[color:var(--sg-accent)]/60" />
         )}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }

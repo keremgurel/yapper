@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-start-thumbnails"
+description = "Enables the start_thumbnails command without any pre-configured scope."
+commands.allow = ["start_thumbnails"]
+
+[[permission]]
+identifier = "deny-start-thumbnails"
+description = "Denies the start_thumbnails command without any pre-configured scope."
+commands.deny = ["start_thumbnails"]

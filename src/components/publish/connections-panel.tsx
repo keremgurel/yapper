@@ -10,6 +10,26 @@ import { useConnections } from "@/hooks/use-connections";
 import { connectUrl } from "@/lib/publish/client";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
+import { invoke, isNative } from "@/lib/studio/native/bridge";
+
+/**
+ * Start the OAuth flow. On the web this is a real navigation to the connect
+ * route, same as any other link. Natively, a plain link would still let the
+ * MAIN window navigate through that same-origin route before the redirect
+ * chain ever reaches an external host — tearing the whole page (and every
+ * OTHER connection's already-settled state) down and rebuilding it, just to
+ * connect one platform. Invoking the popup directly means the main window's
+ * page is never touched until the flow actually finishes.
+ */
+function beginConnect(platform: PublishPlatform): void {
+  if (!isNative()) {
+    window.location.href = connectUrl(platform);
+    return;
+  }
+  void invoke("open_oauth_flow", {
+    url: `${window.location.origin}${connectUrl(platform)}`,
+  });
+}
 
 // Lucide dropped its brand marks, so these are neutral stand-ins.
 const ICON: Record<PublishPlatform, typeof Video> = {
@@ -41,7 +61,8 @@ function useConnectNotice(): { ok?: PublishPlatform; error?: string } {
  */
 export default function ConnectionsPanel() {
   const { isSignedIn } = useUser();
-  const { connections, available, disconnect } = useConnections(!!isSignedIn);
+  const { connections, available, disconnect, loading } =
+    useConnections(!!isSignedIn);
   const notice = useConnectNotice();
 
   return (
@@ -93,16 +114,20 @@ export default function ConnectionsPanel() {
                     Disconnect
                   </Button>
                 </span>
+              ) : loading ? (
+                // `available` starts empty before the fetch resolves — without
+                // this, every platform reads as unconfigured and flashes
+                // "Coming soon" on every load, configured or not.
+                <span className="bg-muted h-7 w-20 animate-pulse rounded-lg" />
               ) : canConnect ? (
-                // A real navigation (not client routing): it hits the OAuth
-                // redirect route.
-                <a
-                  href={connectUrl(p)}
+                <button
+                  type="button"
+                  onClick={() => beginConnect(p)}
                   style={{ background: "var(--sg-accent-gradient)" }}
-                  className="rounded-lg px-4 py-1.5 text-sm font-black text-white no-underline transition-opacity hover:opacity-90"
+                  className="rounded-lg px-4 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
                 >
                   Connect
-                </a>
+                </button>
               ) : (
                 <span className="text-muted-foreground text-xs font-bold">
                   Coming soon

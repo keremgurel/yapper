@@ -1371,3 +1371,17 @@ select {
     animation: none;
   }
 }
+
+/* ─── Native desktop shell (Tauri) ────────────────────────────────────────
+   All rules are gated on [data-app], which only the desktop app sets. The web
+   experience is byte-for-byte unchanged. This sheds the website chrome so the
+   app reads as an app, not a site in a window. */
+[data-app] {
+  /* The marketing navbar is gone in the app, so reclaim its reserved height. */
+  --site-header: 0rem;
+}
+[data-app] .marketing-chrome,
+/* The marketing navbar must never appear in the app, on ANY route. */
+[data-app] [data-site-nav] {
+  display: none !important;
+}

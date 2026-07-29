@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
+import AiCleanupNotice from "@/components/studio/ai-cleanup-notice";
 import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
 import AutoEditProgress from "@/components/studio/auto-edit-progress";
 import CaptionLayer from "@/components/studio/caption-layer";
@@ -81,6 +82,7 @@ export default function PreviewStage({
       className="relative flex min-h-0 min-w-0 flex-1 items-center justify-center overflow-hidden p-4"
     >
       <AutoEditProgress />
+      <AiCleanupNotice />
       {hasProject ? (
         <>
           {/* Not `overflow-hidden`: an overlay's corner handles sit on its

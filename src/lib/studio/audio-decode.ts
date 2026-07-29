@@ -1,4 +1,7 @@
 import { extractPcm } from "@/lib/studio/audio/extract-pcm";
+import { isNative } from "@/lib/studio/native/bridge";
+import { nativeAudioBlob } from "@/lib/studio/native/media";
+import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 
 // Decoding a full recording to 16 kHz is expensive, and transcribe / trim /
 // 1-Click each need it. Cache the last couple of decodes by URL so the common
@@ -32,6 +35,23 @@ export function forgetDecodedAudio(url: string): void {
 const TARGET_RATE = 16000;
 
 async function decodeFresh(url: string): Promise<Float32Array> {
+  // Desktop: decode the clean ffmpeg-extracted audio, fetched over IPC. This
+  // sidesteps both the cross-origin fetch of an asset:// URL and the multi-track
+  // WebCodecs path that drops retakes on some camera files.
+  if (isNative()) {
+    const native = nativeMediaForUrl(url);
+    if (native) {
+      try {
+        const buf = await (
+          await nativeAudioBlob(native.proxyPath ?? native.path)
+        ).arrayBuffer();
+        return await decodeArrayBufferTo16k(buf);
+      } catch (e) {
+        console.warn("[audio] native decode failed, falling back", e);
+      }
+    }
+  }
+
   // Preferred path: mp4box demux + WebCodecs decode, which is gapless. Web
   // Audio's decodeAudioData drops chunks of audio on multi-track camera files
   // (dropping whole retakes from the transcript), so it's only the fallback for
@@ -84,11 +104,18 @@ async function toMono16k(
 
 /** Legacy fallback: Web Audio decode (used only when WebCodecs can't decode). */
 async function decodeViaWebAudio(url: string): Promise<Float32Array> {
+  const arrayBuffer = await (await fetch(url)).arrayBuffer();
+  return decodeArrayBufferTo16k(arrayBuffer);
+}
+
+/** Web Audio decode of raw bytes → mono 16 kHz (shared by the URL and IPC paths). */
+async function decodeArrayBufferTo16k(
+  arrayBuffer: ArrayBuffer,
+): Promise<Float32Array> {
   const AudioCtx =
     window.AudioContext ||
     (window as unknown as { webkitAudioContext: typeof AudioContext })
       .webkitAudioContext;
-  const arrayBuffer = await (await fetch(url)).arrayBuffer();
   const tmp = new AudioCtx();
   let decoded: AudioBuffer;
   try {
