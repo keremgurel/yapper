@@ -51,7 +51,10 @@ function NavMenu({ items }: { items: StudioNavItem[] }) {
  * fixed rail under the 56px sticky header. */
 export default function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" className="top-14 h-[calc(100svh-3.5rem)]">
+    <Sidebar
+      collapsible="icon"
+      className="top-[var(--site-header,3.5rem)] h-[calc(100svh-var(--site-header,3.5rem))]"
+    >
       <SidebarContent>
         {studioNavGroups.map((group) => (
           <SidebarGroup key={group.label}>

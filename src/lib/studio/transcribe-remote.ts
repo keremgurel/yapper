@@ -6,6 +6,9 @@ import {
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import type { TranscriptionDictionaryEntry } from "@/lib/studio/transcription-dictionary";
 import { dictionaryKeyterms } from "@/lib/studio/transcription-dictionary";
+import { isNative } from "@/lib/studio/native/bridge";
+import { nativeAudioBlob } from "@/lib/studio/native/media";
+import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 
 export interface RawWord {
   text: string;
@@ -25,6 +28,25 @@ export async function transcribeUrl(
   dictionary: TranscriptionDictionaryEntry[] = [],
 ): Promise<RawWord[]> {
   const keyterms = dictionaryKeyterms(dictionary);
+
+  // Desktop: transcribe ONE ffmpeg-extracted audio file in a single request.
+  // This skips the in-browser decode + chunk-and-stitch entirely, and it's the
+  // seam-merging in that stitch that silently dropped repeated takes on some
+  // files. Any failure (extract error, or a body-cap 413 on a long take) falls
+  // through to the browser chunk path below, so this never makes things worse.
+  const native = isNative() ? nativeMediaForUrl(url) : undefined;
+  if (native) {
+    try {
+      const audio = await nativeAudioBlob(native.path);
+      return await transcribeRemote(audio, native.duration, keyterms);
+    } catch (e) {
+      console.warn(
+        "[transcribe] native single-file audio failed, falling back to chunks",
+        e,
+      );
+    }
+  }
+
   let chunks: AsrAudio[];
   try {
     chunks = await buildAsrAudioChunks(url);

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "desktop/dist/**",
+    "desktop/src-tauri/target/**",
     "next-env.d.ts",
   ]),
   // Disable ESLint rules that conflict with Prettier (must stay last).

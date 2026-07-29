@@ -1,0 +1,22 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "remote": {
+    "urls": ["https://ypr.app/*"]
+  },
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "allow-probe-media",
+    "allow-companion-proxy",
+    "allow-start-proxy",
+    "allow-proxy-status",
+    "allow-start-thumbnails",
+    "allow-list-thumbnails",
+    "allow-extract-audio",
+    "allow-extract-audio-bytes",
+    "allow-open-oauth-flow"
+  ]
+}

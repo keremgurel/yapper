@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Video } from "lucide-react";
+import { Scan, Video } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { clipMediaUrl, trimBounds } from "@/lib/studio/clips";
 import { useFilmstrips, useWaveforms } from "@/hooks/use-timeline-media";
@@ -20,11 +20,12 @@ import AudioClip from "@/components/studio/audio-clip";
 import OverlayClip, { type DropHint } from "@/components/studio/overlay-clip";
 import CaptionTrack from "@/components/studio/caption-track";
 import TrackHeaderRail from "@/components/studio/track-header-rail";
+import TimelinePlayhead from "@/components/studio/timeline-playhead";
+import type { TimelineClock } from "@/lib/studio/timeline-clock";
 import { spansOverlap } from "@/lib/studio/marquee";
 import { marqueeSelection } from "@/lib/studio/marquee-select";
 import {
   overlayTrimBounds,
-  overlaysOnTrack,
   trackCount,
   trackOccupied,
 } from "@/lib/studio/tracks";
@@ -42,12 +43,16 @@ import { buildTicks } from "@/lib/studio/ruler";
 import { captionTimelineRange } from "@/lib/studio/captions";
 import { type Clip, type Overlay, type StudioSource } from "@/lib/studio/types";
 
-// Zoom-out floor: how few pixels one second may shrink to. Low enough that a
-// several-minute timeline fits on screen at once for an overview; clips still
+// Zoom-out floor: how few pixels one second may shrink to. Low enough that even
+// a long recording fits on a large screen at once for an overview; clips still
 // render at a 4px minimum, so nothing vanishes. Zoom-in ceiling for frame-level
 // trimming.
-const MIN_PX = 4;
+const MIN_PX = 1;
 const MAX_PX = 800;
+
+// Stable empty-array identity so a track with no overlays never triggers a
+// re-render of its lane just because `?? []` minted a new array reference.
+const EMPTY_OVERLAYS: Overlay[] = [];
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
@@ -57,12 +62,16 @@ export default function StudioTimeline({
   clips,
   source,
   currentTimelineTime,
+  timelineClock,
   onSeek,
 }: {
   clips: Clip[];
   /** The project's recording. Null once it's been removed from the library. */
   source: StudioSource | null;
   currentTimelineTime: number;
+  /** Per-frame playhead time — see TimelinePlayhead, which is the only thing
+   * that reads it directly. */
+  timelineClock: TimelineClock;
   onSeek: (timelineTime: number) => void;
 }) {
   const isImage = source?.kind === "image";
@@ -135,6 +144,12 @@ export default function StudioTimeline({
   const renderedPxRef = useRef(80);
   const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
   const zoomRafRef = useRef(false);
+  // True while a zoom gesture (pinch or ⌘/Ctrl-scroll) is actively in flight,
+  // so filmstrips can draw coarser tiles for the gesture's duration — see
+  // ZOOM_TILE_COARSEN in clip-filmstrip.tsx. Cleared a beat after the last
+  // zoom wheel event, not on every render, so the settle delay is exact.
+  const [zoomBusy, setZoomBusy] = useState(false);
+  const zoomSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // scrollLeft at which the current render window was committed; we only
   // re-window after drifting past ~half a screen, so panning within the buffer
   // is pure native scroll (no re-render).
@@ -194,7 +209,6 @@ export default function StudioTimeline({
   // outlasts it still needs timeline to sit on.
   const total = duration;
   const trackWidth = Math.max(total * pxPerSec, 1);
-  const playheadX = currentTimelineTime * pxPerSec;
 
   // Empty gutter on each side, one full screen wide. Beyond giving room to drag
   // past either end, that exact width is what lets zoom anchor perfectly: to pin
@@ -375,11 +389,15 @@ export default function StudioTimeline({
         e.preventDefault();
         const current = targetPxRef.current;
         const next = clamp(
-          current * Math.exp(-e.deltaY * lineUnit * 0.0025),
+          current * Math.exp(-e.deltaY * lineUnit * 0.0038),
           MIN_PX,
           MAX_PX,
         );
         if (next === current) return;
+        setZoomBusy(true);
+        if (zoomSettleTimerRef.current)
+          clearTimeout(zoomSettleTimerRef.current);
+        zoomSettleTimerRef.current = setTimeout(() => setZoomBusy(false), 180);
         // Anchor against the RENDERED scale, since `scrollLeft` belongs to the
         // layout we can actually measure. Reading it against the accumulated
         // target would mix two scales and slide the timeline under the cursor.
@@ -396,12 +414,23 @@ export default function StudioTimeline({
           offsetX,
         };
         targetPxRef.current = next;
-        // Coalesce rapid pinch events into one render per frame.
+        // Coalesce rapid pinch events into one render per frame, and set the
+        // scale AND the re-anchored view together, so a zoom step is ONE
+        // re-render instead of two (scale, then a re-anchor from a layout
+        // effect). Halves the per-frame work that made zoom feel heavy.
         if (!zoomRafRef.current) {
           zoomRafRef.current = true;
           requestAnimationFrame(() => {
             zoomRafRef.current = false;
-            setPxPerSec(targetPxRef.current);
+            const nextPx = targetPxRef.current;
+            const pend = pendingZoomRef.current;
+            const scroller = scrollRef.current;
+            if (pend && scroller) {
+              const start = pend.time * nextPx + padLeft - pend.offsetX;
+              viewStartRef.current = start;
+              setView({ start, width: scroller.clientWidth });
+            }
+            setPxPerSec(nextPx);
           });
         }
         return;
@@ -411,8 +440,26 @@ export default function StudioTimeline({
       // into a horizontal pan would leave the lower tracks unreachable.
     };
     el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      if (zoomSettleTimerRef.current) clearTimeout(zoomSettleTimerRef.current);
+    };
   }, [padLeft, total]);
+
+  // "Fit to width": zoom so the whole project lines up with the visible
+  // scroller, then park 0:00 back at the left edge. Reuses the same
+  // pendingZoomRef → useLayoutEffect handoff the wheel-zoom path uses (anchor
+  // instant 0 at offset 0), so the scroll position lands correctly the moment
+  // the new scale has actually rendered rather than racing the DOM.
+  const fitToWidth = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el || total <= 0) return;
+    const next = clamp(el.clientWidth / total, MIN_PX, MAX_PX);
+    if (next === targetPxRef.current) return;
+    targetPxRef.current = next;
+    pendingZoomRef.current = { time: 0, offsetX: 0 };
+    setPxPerSec(next);
+  }, [total]);
 
   // Park 0:00 at the left edge, once. This has to wait for the first measurement:
   // until `view.width` is known the gutter is only a placeholder, the content is
@@ -437,9 +484,9 @@ export default function StudioTimeline({
       // always inside [0, maxScrollLeft] and never gets clamped out from under
       // the cursor — that clamping is the other half of the zoom drift.
       el.scrollLeft = pending.time * pxPerSec + padLeft - pending.offsetX;
-      // Re-anchor the render window to the new scale/position.
+      // The view was already re-anchored in the zoom rAF (same render as the
+      // scale), so here we only commit the scroll position to the DOM.
       viewStartRef.current = el.scrollLeft;
-      setView({ start: el.scrollLeft, width: el.clientWidth });
     }
     // Another pinch event landed before this frame committed, so its scale is
     // still pending. Keep the anchor: the same instant must stay under the same
@@ -485,20 +532,41 @@ export default function StudioTimeline({
     ? (view.start - padLeft + view.width * 2) / pxPerSec
     : total;
 
-  const ticks = buildTicks(total, pxPerSec);
+  // Re-window commits on scroll are frequent (every ~half screen of drift),
+  // so anything derived only from `clips`/`overlays`/zoom must be memoized —
+  // otherwise a fast pan repeats this work on every commit for no reason.
+  const ticks = useMemo(() => buildTicks(total, pxPerSec), [total, pxPerSec]);
 
   // Lanes, top to bottom. One past the last used track, so there is always an
   // empty lane to drop a clip onto when it wants a track to itself.
-  const upperTracks = trackCount(overlays);
-  const lanes = Array.from(
-    { length: upperTracks + 1 },
-    (_, i) => upperTracks - i,
-  );
+  const lanes = useMemo(() => {
+    const upperTracks = trackCount(overlays);
+    return Array.from({ length: upperTracks + 1 }, (_, i) => upperTracks - i);
+  }, [overlays]);
 
-  // Cumulative timeline offset (seconds) for each clip, from committed durations.
-  const offsets = clips.map((_, i) =>
-    clips.slice(0, i).reduce((s, c) => s + (c.end - c.start), 0),
-  );
+  // One grouping pass instead of an O(overlays) filter per lane, called twice
+  // over (the empty-lane check and the .map()) on every one of these renders.
+  const overlaysByTrack = useMemo(() => {
+    const map = new Map<number, Overlay[]>();
+    for (const o of overlays) {
+      const list = map.get(o.track);
+      if (list) list.push(o);
+      else map.set(o.track, [o]);
+    }
+    return map;
+  }, [overlays]);
+
+  // Cumulative timeline offset (seconds) for each clip, from committed
+  // durations. A single forward pass, not the previous O(n²) reduce-per-clip.
+  const offsets = useMemo(() => {
+    const out: number[] = [];
+    let acc = 0;
+    for (const c of clips) {
+      out.push(acc);
+      acc += c.end - c.start;
+    }
+    return out;
+  }, [clips]);
 
   return (
     <div
@@ -674,10 +742,11 @@ export default function StudioTimeline({
                   }}
                   className="relative h-12"
                 >
-                  {overlaysOnTrack(overlays, track).length === 0 && (
+                  {(overlaysByTrack.get(track) ?? EMPTY_OVERLAYS).length ===
+                    0 && (
                     <div className="border-foreground/10 absolute inset-y-0 right-0 left-0 rounded-md border border-dashed" />
                   )}
-                  {overlaysOnTrack(overlays, track).map((o) => (
+                  {(overlaysByTrack.get(track) ?? EMPTY_OVERLAYS).map((o) => (
                     <OverlayClip
                       key={o.id}
                       overlay={o}
@@ -702,6 +771,7 @@ export default function StudioTimeline({
                       onDragStart={overlayDrag.begin}
                       onTrim={setOverlayRange}
                       snapTrimDelta={snapTrimDelta}
+                      coarseFilmstrip={zoomBusy}
                     />
                   ))}
                 </div>
@@ -852,6 +922,7 @@ export default function StudioTimeline({
                             srcStart={span.srcA}
                             srcEnd={span.srcB}
                             height={64}
+                            coarse={zoomBusy}
                           />
                         )
                       )}
@@ -987,20 +1058,30 @@ export default function StudioTimeline({
             )}
 
             {/* Playhead */}
-            <div
-              className="pointer-events-none absolute top-0 bottom-0 z-10 w-0.5 bg-red-500"
-              style={{ left: playheadX + padLeft }}
-            >
-              <span className="absolute -top-0.5 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500" />
-            </div>
+            <TimelinePlayhead
+              clock={timelineClock}
+              pxPerSec={pxPerSec}
+              padLeft={padLeft}
+            />
           </div>
         </div>
       </div>
-      <p className="text-foreground/45 mt-1.5 shrink-0 text-xs">
-        {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll across
-        the tracks · shift-scroll to pan · ⌘/pinch-scroll to zoom · drag a clip
-        between tracks · drag its edges to trim
-      </p>
+      <div className="mt-1.5 flex shrink-0 items-center justify-between gap-3">
+        <p className="text-foreground/45 min-w-0 truncate text-xs">
+          {clips.length} {clips.length === 1 ? "clip" : "clips"} · scroll across
+          the tracks · shift-scroll to pan · ⌘/pinch-scroll to zoom · drag a
+          clip between tracks · drag its edges to trim
+        </p>
+        <button
+          type="button"
+          onClick={fitToWidth}
+          title="Fit the whole timeline to the window"
+          className="text-foreground/55 hover:bg-muted hover:text-foreground/85 flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-colors"
+        >
+          <Scan className="h-3.5 w-3.5" />
+          Fit
+        </button>
+      </div>
     </div>
   );
 }

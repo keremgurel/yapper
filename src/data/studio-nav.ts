@@ -23,10 +23,10 @@ export interface StudioNavGroup {
 }
 
 const inspiration: StudioNavItem = {
-  title: "Inspiration",
-  href: "/studio/inspiration",
+  title: "Idea bank",
+  href: "/studio/ideas",
   description:
-    "Save clips from creators you like and turn them into video ideas.",
+    "Drop a link or a voice note. We keep your words and build the idea.",
   icon: "library",
 };
 

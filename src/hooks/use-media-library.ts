@@ -19,6 +19,15 @@ export function useMediaLibrary() {
     if (asset) setMediaAssets((prev) => [...prev, asset]);
   }, []);
 
+  /** Add media that was opened through the desktop's native file picker. */
+  const addMediaSource = useCallback((source: StudioSource) => {
+    setMediaAssets((prev) =>
+      prev.some((m) => m.url === source.url)
+        ? prev
+        : [...prev, assetFromSource(source)],
+    );
+  }, []);
+
   /**
    * Put the recording at the head of the library, once. It is re-addable to any
    * track exactly like an upload; being the thing you recorded buys it nothing.
@@ -42,5 +51,11 @@ export function useMediaLibrary() {
     [mediaAssets],
   );
 
-  return { mediaAssets, addMediaAsset, registerSource, dropAsset };
+  return {
+    mediaAssets,
+    addMediaAsset,
+    addMediaSource,
+    registerSource,
+    dropAsset,
+  };
 }

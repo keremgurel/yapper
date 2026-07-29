@@ -6,6 +6,9 @@ node_modules
 out
 build
 coverage
+desktop/dist
+desktop/src-tauri/gen
+desktop/src-tauri/target
 *.tsbuildinfo
 
 # lockfiles (large, auto-generated)
@@ -16,6 +19,7 @@ next-env.d.ts
 
 # misc
 .vercel
+.claude/settings.local.json
 .DS_Store
 
 # workspace agent docs (leave formatting to authors)

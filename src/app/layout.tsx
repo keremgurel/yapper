@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import Script from "next/script";
 import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
+import AppChrome from "@/components/studio-shell/app-chrome";
+import AppRouteGuard from "@/components/studio-shell/app-route-guard";
 import { Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
@@ -153,6 +155,9 @@ gtag('config', 'G-09JET8C3M0');`}
             <Suspense fallback={null}>
               <AnalyticsProvider />
             </Suspense>
+            {/* Desktop app: flag the shell and keep it locked to Studio (web no-op). */}
+            <AppChrome />
+            <AppRouteGuard />
             {children}
           </ClerkThemeProvider>
         </ThemeProvider>

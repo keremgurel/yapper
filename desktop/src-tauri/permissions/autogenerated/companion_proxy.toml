@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-companion-proxy"
+description = "Enables the companion_proxy command without any pre-configured scope."
+commands.allow = ["companion_proxy"]
+
+[[permission]]
+identifier = "deny-companion-proxy"
+description = "Denies the companion_proxy command without any pre-configured scope."
+commands.deny = ["companion_proxy"]

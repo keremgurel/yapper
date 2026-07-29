@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Captions, Plus } from "lucide-react";
 import TrackControls from "@/components/studio/track-controls";
 import { overlaysOnTrack } from "@/lib/studio/tracks";
@@ -13,7 +14,7 @@ import type { AudioTrack, Overlay } from "@/lib/studio/types";
  * track gets the same three controls; the bottom one is not privileged, it just
  * renders underneath the rest.
  */
-export default function TrackHeaderRail({
+function TrackHeaderRail({
   scrollRef,
   overlays,
   lanes,
@@ -127,3 +128,8 @@ export default function TrackHeaderRail({
     </div>
   );
 }
+
+/** Doesn't depend on zoom or scroll position at all — every one of its props
+ * is track/overlay/audio state — so it has nothing to gain from re-rendering
+ * on a scroll-driven re-window. */
+export default memo(TrackHeaderRail);

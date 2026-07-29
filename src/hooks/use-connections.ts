@@ -18,6 +18,11 @@ export function useConnections(enabled: boolean) {
     null,
   );
   const [available, setAvailable] = useState<PublishPlatform[]>([]);
+  // `available` starts empty before the first fetch resolves, so a caller
+  // that reads "not available yet" as "coming soon" would flash every
+  // platform as unconfigured on every load. Exposed so the panel can render
+  // a neutral loading state instead of that false negative.
+  const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
     try {
@@ -26,6 +31,8 @@ export function useConnections(enabled: boolean) {
       setAvailable(data.available);
     } catch {
       setConnections([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -48,5 +55,5 @@ export function useConnections(enabled: boolean) {
     [refresh],
   );
 
-  return { connections, available, refresh, disconnect };
+  return { connections, available, refresh, disconnect, loading };
 }

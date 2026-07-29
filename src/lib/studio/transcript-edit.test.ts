@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { cutsFromCleanedText } from "@/lib/studio/align-transcript";
 import {
   combineRetakeCuts,
   findEarlierTakeRanges,
-  isRetakeCut,
   pauseRanges,
   refineWordTimings,
   selectionToRanges,
@@ -116,45 +116,29 @@ describe("findEarlierTakeRanges", () => {
   });
 });
 
-describe("isRetakeCut", () => {
-  it("allows a filler but refuses a unique short phrase", () => {
-    expect(isRetakeCut(transcribe("um alpha bravo"), 0, 0)).toBe(true);
-    expect(isRetakeCut(transcribe("alpha bravo charlie delta"), 0, 1)).toBe(
-      false,
-    );
-  });
-
-  it("trusts a cut whose words are restated nearby", () => {
-    const words = transcribeUtterances(
-      "alpha bravo charlie delta.",
-      "alpha bravo charlie delta.",
-    );
-    expect(isRetakeCut(words, 0, 3)).toBe(true);
-  });
-
-  it("refuses to cut unique content that is not restated nearby", () => {
-    const words = transcribe(
-      "alpha bravo charlie delta echo foxtrot golf hotel",
-    );
-    expect(isRetakeCut(words, 0, 3)).toBe(false);
-  });
-});
-
 describe("combineRetakeCuts", () => {
   const words = transcribeUtterances(
     "alpha bravo charlie delta.",
     "alpha bravo charlie delta.",
   );
 
-  it("trusts only the validated AI cuts when the AI returns some", () => {
+  it("trusts the AI cuts directly when the AI returns some", () => {
     expect(combineRetakeCuts(words, [[0, 3]])).toEqual([[0, 4]]);
   });
 
-  it("drops an AI cut that removes unique, un-restated content", () => {
+  // cutsFromCleanedText derives a cut as exactly the source span that's
+  // absent from the AI's cleaned script — that's already proof the span
+  // isn't needed, whether it's a retake (has a duplicate nearby) or a
+  // disposable aside (doesn't). A prior version of this function additionally
+  // required every AI cut to have a near-duplicate elsewhere in the
+  // transcript before trusting it, which silently put non-repeat filler back
+  // into the kept output — a text-similarity check can't tell "unique but
+  // disposable" apart from "unique and important," so it rejected both.
+  it("trusts an AI cut even when the removed content has no duplicate nearby", () => {
     const unique = transcribe(
       "alpha bravo charlie delta echo foxtrot golf hotel",
     );
-    expect(combineRetakeCuts(unique, [[0, 3]])).toEqual([]);
+    expect(combineRetakeCuts(unique, [[0, 3]])).toEqual([[0, 4]]);
   });
 
   it("falls back to the deterministic detector when the AI is unavailable", () => {
@@ -168,16 +152,64 @@ describe("combineRetakeCuts", () => {
     expect(combineRetakeCuts(exact, [])).toEqual([[0, 4]]);
   });
 
-  it("preserves a unique hook inside a broad AI cut but removes its proven retake", () => {
-    const sample = transcribeUtterances(
-      "If you are taking the CELPIP test.",
-      "The course includes realistic practice questions.",
-      "The course includes realistic practice questions and feedback.",
-    );
+  // Regression for "1-Click edit keeps almost all the retakes": a real DJI
+  // recording had the speaker restart the same ~15-word sentence 4-6 times in
+  // a row with NO pause and NO punctuation between attempts (only the final
+  // attempt ends in a period). cutsFromCleanedText's matching-blocks
+  // alignment (see align-transcript.test.ts) resolves this correctly on its
+  // own, and combineRetakeCuts now trusts that result directly instead of
+  // re-validating it — end to end, the whole un-paused cluster is cut and
+  // only the clean final attempt survives.
+  it("cuts a whole rapid-restart retake cluster with no pauses or punctuation between attempts", () => {
+    const attempt =
+      "you can take full practice tests drill individual questions or go through the course modules";
+    const attempts = [attempt, attempt, attempt, attempt, `${attempt}.`];
+    const sourceText = attempts.join(" ");
+    const cleanedText = `${attempt}.`;
 
-    // This mirrors the sample video's failure: the model grouped the unique
-    // opening and an earlier take into one broad deletion. Only the second
-    // utterance has a later semantic counterpart, so the hook must survive.
-    expect(combineRetakeCuts(sample, [[0, 12]])).toEqual([[8, 14]]);
+    const words = transcribe(sourceText);
+    const aiCuts = cutsFromCleanedText(words, cleanedText);
+    const cuts = combineRetakeCuts(words, aiCuts);
+
+    const kept = words
+      .filter((w) => {
+        const mid = (w.start + w.end) / 2;
+        return !cuts.some(([from, to]) => mid >= from && mid <= to);
+      })
+      .map((w) => w.text)
+      .join(" ");
+    expect(kept).toBe(cleanedText);
+  });
+
+  // Regression for a second real-world under-cut: the AI's cleaned script
+  // correctly dropped a disposable aside ("Practice exams are a good
+  // representation. Okay.") sitting between two takes — it isn't a retake of
+  // anything, just a tangent the AI decided to cut, exactly the kind of edit
+  // the old "must be restated nearby" validation rejected because it has no
+  // duplicate anywhere in the transcript.
+  it("cuts a non-repeat aside the AI's cleaned text correctly dropped", () => {
+    const pre =
+      "here's the truth building the app itself was not the hard part.";
+    const goodTake =
+      "the resource intensive part was making sure the questions actually feel like the real exam and that the scoring and feedback are accurate as possible.";
+    const aside = "practice exams are a good representation. okay.";
+    const post =
+      "i collected more than 30 official satip speaking samples with real scores.";
+
+    const sourceText = [pre, aside, goodTake, post].join(" ");
+    const cleanedText = [pre, goodTake, post].join(" ");
+
+    const words = transcribe(sourceText);
+    const aiCuts = cutsFromCleanedText(words, cleanedText);
+    const cuts = combineRetakeCuts(words, aiCuts);
+
+    const kept = words
+      .filter((w) => {
+        const mid = (w.start + w.end) / 2;
+        return !cuts.some(([from, to]) => mid >= from && mid <= to);
+      })
+      .map((w) => w.text)
+      .join(" ");
+    expect(kept).toBe(cleanedText);
   });
 });

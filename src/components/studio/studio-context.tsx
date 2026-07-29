@@ -156,6 +156,12 @@ interface StudioContextValue {
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
+  /** True right after a run where the AI cleanup call failed or was
+   * unavailable, so only the deterministic exact-repeat fallback ran. Cleared
+   * on the next successful run or explicit dismissal — never left silently
+   * unset, so the feature can't look "done" while it barely cut anything. */
+  aiCleanupUnavailable: boolean;
+  dismissAiCleanupNotice: () => void;
   autoEdit: (withCaptions?: boolean) => Promise<void>;
   autoEditing: boolean;
   autoEditStep: number;
@@ -179,6 +185,7 @@ interface StudioContextValue {
   mediaAssets: MediaAsset[];
   overlays: Overlay[];
   addMediaAsset: (file: File) => Promise<void>;
+  addMediaSource: (source: StudioSource) => void;
   removeMediaAsset: (id: string) => void;
   addOverlayFromAsset: (assetId: string, start?: number) => void;
   addAssetToTimeline: (assetId: string, start?: number) => void;
@@ -301,11 +308,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   } = useTranscript(transcriptionDictionary);
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
+  const [aiCleanupUnavailable, setAiCleanupUnavailable] = useState(false);
   const [autoEditing, setAutoEditing] = useState(false);
   const [autoEditStep, setAutoEditStep] = useState(-1); // -1 = not running
   const [autoEditCaptions, setAutoEditCaptions] = useState(true); // does the running pass add captions?
-  const { mediaAssets, addMediaAsset, registerSource, dropAsset } =
-    useMediaLibrary();
+  const {
+    mediaAssets,
+    addMediaAsset,
+    addMediaSource,
+    registerSource,
+    dropAsset,
+  } = useMediaLibrary();
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>(
     DEFAULT_CAPTION_STYLE,
   );
@@ -1314,20 +1327,21 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     return ranges.length;
   }, [words, applyCuts]);
 
-  // Clean up retakes: the AI flags earlier attempts of restarted lines and
-  // stumbles; those cuts are validated (a line that isn't restated later is
-  // never removed) and unioned with a deterministic exact-repeat detector that
-  // catches obvious restarts the AI misses. Works even without an AI key
-  // (deterministic only). Returns the number of ranges marked to cut.
+  // Clean up retakes: the AI returns the cleaned script, and its cuts are
+  // trusted directly (see combineRetakeCuts). Without an AI key, falls back to
+  // a deterministic exact-repeat detector that catches obvious restarts.
+  // Returns the number of ranges marked to cut.
   const aiRemoveMistakes = useCallback(async (): Promise<number> => {
     if (words.length === 0) return 0;
     setAiCleaning(true);
+    setAiCleanupUnavailable(false);
     try {
       let aiCuts: [number, number][] | null = null;
       try {
         aiCuts = await cleanTranscriptRemote(words);
       } catch (e) {
         console.error("[studio] AI retake cleanup failed", e);
+        setAiCleanupUnavailable(true);
       }
       const ranges = combineRetakeCuts(words, aiCuts);
       applyCuts(ranges);
@@ -1337,6 +1351,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [words, applyCuts]);
 
+  const dismissAiCleanupNotice = useCallback(
+    () => setAiCleanupUnavailable(false),
+    [],
+  );
+
   // One-click clean up: transcribe (if needed), then hand the clips to
   // planAutoEdit. The slow, impure half lives here (decode, transcribe, ask the
   // backend which lines are retakes); the edit itself is pure and tested.
@@ -1345,6 +1364,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (!source || source.kind === "image") return;
       setAutoEditCaptions(withCaptions);
       setAutoEditing(true);
+      setAiCleanupUnavailable(false);
       try {
         // Decoding is the slow part for a long or 4K take: the audio has to be
         // pulled out of the video in-browser before anything else can happen.
@@ -1373,9 +1393,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         if (w.length > 0) {
           // The label goes up before the network call, not after it.
           setAutoEditStep(AUTO_EDIT_STEPS.RETAKES);
-          // Without a key this throws; combineRetakeCuts still finds the
-          // obvious restarts on its own.
-          aiCuts = await cleanTranscriptRemote(w).catch(() => null);
+          // A missing key resolves to null (combineRetakeCuts still finds the
+          // obvious restarts on its own). A real failure (bad upstream
+          // response, network error) is surfaced instead of silently
+          // degrading, so the edit never looks "done" while barely cutting.
+          try {
+            aiCuts = await cleanTranscriptRemote(w);
+          } catch (e) {
+            console.error("[studio] AI retake cleanup failed", e);
+            setAiCleanupUnavailable(true);
+          }
         }
 
         const plan = planAutoEdit({
@@ -1518,6 +1545,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
+      aiCleanupUnavailable,
+      dismissAiCleanupNotice,
       autoEdit,
       autoEditing,
       autoEditStep,
@@ -1530,6 +1559,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       mediaAssets,
       overlays,
       addMediaAsset,
+      addMediaSource,
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,
@@ -1621,6 +1651,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
+      aiCleanupUnavailable,
+      dismissAiCleanupNotice,
       autoEdit,
       autoEditing,
       autoEditStep,
@@ -1633,6 +1665,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       mediaAssets,
       overlays,
       addMediaAsset,
+      addMediaSource,
       removeMediaAsset,
       addOverlayFromAsset,
       addAssetToTimeline,

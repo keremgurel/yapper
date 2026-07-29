@@ -1,12 +1,12 @@
 "use client";
 
-import { useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 
 /**
  * Draws a precise, zoom-aware waveform for a clip's source range. Resolution
  * scales with the rendered width, so deeper zoom shows finer detail.
  */
-export default function WaveformCanvas({
+function WaveformCanvas({
   peaks,
   sourceDuration,
   clipStart,
@@ -61,3 +61,10 @@ export default function WaveformCanvas({
 
   return <canvas ref={ref} style={{ width, height }} className="block" />;
 }
+
+/**
+ * Memoized: it only redraws when its own props change (its width, peaks, or
+ * window), so it stays idle during playback (when only the playhead moves) and
+ * re-renders on zoom only, never on every frame of playback.
+ */
+export default memo(WaveformCanvas);

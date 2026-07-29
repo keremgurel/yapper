@@ -9,6 +9,7 @@ import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
 import { MEDIA_DND_TYPE } from "@/components/studio/media-tab";
 import type { LayoutId } from "@/lib/studio/layout";
+import type { TimelineClock } from "@/lib/studio/timeline-clock";
 
 /**
  * The transport, the pickers, and the tracks: everything below the picture.
@@ -16,6 +17,7 @@ import type { LayoutId } from "@/lib/studio/layout";
  */
 export default function TimelinePanel({
   timelineTime,
+  timelineClock,
   playing,
   onPlay,
   onPause,
@@ -24,6 +26,9 @@ export default function TimelinePanel({
   onLayout,
 }: {
   timelineTime: number;
+  /** Per-frame playhead time; the playhead line subscribes to this directly
+   * instead of re-rendering on `timelineTime`. */
+  timelineClock: TimelineClock;
   playing: boolean;
   onPlay: () => void;
   onPause: () => void;
@@ -95,6 +100,7 @@ export default function TimelinePanel({
             clips={clips}
             source={source}
             currentTimelineTime={timelineTime}
+            timelineClock={timelineClock}
             onSeek={onSeek}
           />
         ) : (

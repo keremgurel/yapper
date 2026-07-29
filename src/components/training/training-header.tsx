@@ -11,7 +11,10 @@ import { Button } from "@/components/ui/button";
 
 export default function TrainingHeader() {
   return (
-    <header className="border-border bg-background sticky top-0 z-50 flex h-14 items-center justify-between border-b px-4 sm:px-6">
+    <header
+      data-site-nav
+      className="border-border bg-background sticky top-0 z-50 flex h-14 items-center justify-between border-b px-4 sm:px-6"
+    >
       {/* Left: logo (Chirpy the mascot + wordmark) */}
       <Link href="/" className="group flex items-center gap-2 no-underline">
         <span className="shrink-0 transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-6">
