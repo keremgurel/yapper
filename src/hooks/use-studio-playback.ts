@@ -305,7 +305,22 @@ export function useStudioPlayback(
         setTimelineTime(from);
         clockRef.current = from;
         timelineClock.set(from);
-        seekVideo(hit.index, hit.sourceTime, true);
+        const url = clipUrl(hit.index);
+        if (v.getAttribute("src") === url) {
+          // This is an explicit user Play after a paused scrub. Let the media
+          // element start immediately; WebKit already serializes play behind
+          // any seek still in flight. Waiting for our own seek timeout here
+          // added a 2.5s dead period and allowed the old resume callback to
+          // race the user's transport controls.
+          seekGenerationRef.current += 1;
+          seekPendingRef.current = false;
+          if (Math.abs(v.currentTime - hit.sourceTime) > 0.05) {
+            v.currentTime = hit.sourceTime;
+          }
+          void v.play().catch(() => {});
+        } else {
+          seekVideo(hit.index, hit.sourceTime, true);
+        }
       }
       return;
     }
@@ -315,6 +330,7 @@ export function useStudioPlayback(
     clips,
     total,
     overBaseTrack,
+    clipUrl,
     seekVideo,
     startRaf,
     timelineClock,
