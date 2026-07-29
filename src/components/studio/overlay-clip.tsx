@@ -43,7 +43,6 @@ function OverlayClip({
   onDragStart,
   onTrim,
   snapTrimDelta,
-  coarseFilmstrip = false,
 }: {
   overlay: Overlay;
   pxPerSec: number;
@@ -84,9 +83,6 @@ function OverlayClip({
     deltaSec: number,
     excludeId: string,
   ) => number;
-  /** True while a zoom gesture is actively changing the scale — see
-   * ZOOM_TILE_COARSEN in clip-filmstrip.tsx. */
-  coarseFilmstrip?: boolean;
 }) {
   const o = overlay;
   const [trim, setTrim] = useState<TrimState | null>(null);
@@ -202,13 +198,10 @@ function OverlayClip({
       {span && strip.frames.length > 0 && (
         <ClipFilmstrip
           frames={strip.frames}
-          aspect={strip.aspect}
           leftPx={span.leftPx}
           widthPx={span.widthPx}
           srcStart={span.srcA}
           srcEnd={span.srcB}
-          height={48}
-          coarse={coarseFilmstrip}
         />
       )}
       {span && peaks.length > 0 && mediaDuration > 0 && (

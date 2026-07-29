@@ -10,7 +10,7 @@ import type { TimelineMedia } from "@/lib/studio/timeline-media";
 import { isNative } from "@/lib/studio/native/bridge";
 import {
   nativeThumbnailsStream,
-  nativeWaveform,
+  nativeWaveformStream,
 } from "@/lib/studio/native/media";
 import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 
@@ -132,16 +132,17 @@ export function useWaveforms(media: TimelineMedia[]): Map<string, number[]> {
         const native = isNative() ? nativeMediaForUrl(m.url) : undefined;
         if (native) {
           try {
-            const peaks = await nativeWaveform(
+            await nativeWaveformStream(
               native.proxyPath ?? native.path,
               m.duration,
+              (peaks) => {
+                builtRef.current.set(m.url, peaks);
+                setWaves(new Map(builtRef.current));
+              },
+              () => cancelled,
             );
             if (cancelled) return;
-            if (peaks.length > 0) {
-              builtRef.current.set(m.url, peaks);
-              setWaves(new Map(builtRef.current));
-              continue;
-            }
+            continue;
           } catch {
             // fall back to the browser generator below
           }

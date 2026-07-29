@@ -342,6 +342,15 @@ struct ThumbnailBatch {
     failed: bool,
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WaveformBatch {
+    peaks: Vec<f32>,
+    next_peak: usize,
+    done: bool,
+    failed: bool,
+}
+
 /**
  * Kick off a whole filmstrip extraction in ONE ffmpeg pass, instead of seeking
  * a <video> and drawing to canvas frame-by-frame in JS (the slow "add to
@@ -502,6 +511,130 @@ fn list_thumbnails(dir: String, fps: f64) -> Result<ThumbnailBatch, String> {
     out.sort_by(|a, b| a.time.total_cmp(&b.time));
     Ok(ThumbnailBatch {
         thumbs: out,
+        done,
+        failed,
+    })
+}
+
+/**
+ * Decode audio to a growing raw-float file. Unlike the transcription-oriented
+ * AAC extraction, this output can be read safely while ffmpeg is still writing
+ * it, which lets the timeline reveal its waveform from left to right.
+ */
+#[tauri::command]
+fn start_waveform(path: String) -> Result<String, String> {
+    let path = validate_media_path(&path)?;
+    let stem = file_stem(&path.to_string_lossy());
+    let cache_key = media_cache_key(&path)?;
+    let mut dir = std::env::temp_dir();
+    dir.push(format!("yapper_wave1_{stem}_{cache_key}"));
+    let done_path = dir.join(".done");
+    let error_path = dir.join(".error");
+    let working_path = dir.join(".working");
+    if done_path.exists()
+        || marker_is_recent(&working_path, std::time::Duration::from_secs(15 * 60))
+    {
+        return Ok(dir.to_string_lossy().into_owned());
+    }
+
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).map_err(|e| format!("mkdir waveform dir: {e}"))?;
+    std::fs::write(&working_path, b"working").map_err(|e| format!("mark waveform working: {e}"))?;
+    let output = dir.join("audio.f32");
+    let dir_string = dir.to_string_lossy().into_owned();
+    std::thread::spawn(move || {
+        let succeeded = Command::new(resolve_bin("ffmpeg"))
+            .args([
+                "-y",
+                "-nostdin",
+                "-loglevel",
+                "error",
+                "-protocol_whitelist",
+                "file",
+                "-i",
+            ])
+            .arg(&path)
+            .args([
+                "-map",
+                "0:a:0",
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                "8000",
+                "-c:a",
+                "pcm_f32le",
+                "-f",
+                "f32le",
+                "-flush_packets",
+                "1",
+            ])
+            .arg(&output)
+            .status()
+            .is_ok_and(|status| status.success());
+        let _ = std::fs::remove_file(working_path);
+        let _ = std::fs::write(if succeeded { done_path } else { error_path }, b"ok");
+    });
+    Ok(dir_string)
+}
+
+/**
+ * Return only newly completed waveform buckets. 8 kHz gives ffmpeg frequent
+ * disk flushes; 67 samples per bucket is approximately 120 peaks/second.
+ * Amplitudes use a fixed square-root curve, so already-painted bars never
+ * rescale or shimmer as later/louder audio arrives.
+ */
+#[tauri::command]
+fn list_waveform(dir: String, start_peak: usize) -> Result<WaveformBatch, String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const SAMPLES_PER_PEAK: usize = 67;
+    const BYTES_PER_SAMPLE: usize = 4;
+    const BYTES_PER_PEAK: usize = SAMPLES_PER_PEAK * BYTES_PER_SAMPLE;
+
+    let dir_path = std::fs::canonicalize(&dir).map_err(|e| format!("invalid wave dir: {e}"))?;
+    let temp_dir =
+        std::fs::canonicalize(std::env::temp_dir()).map_err(|e| format!("temp dir: {e}"))?;
+    let valid_name = dir_path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("yapper_wave1_"));
+    if !dir_path.starts_with(temp_dir) || !valid_name {
+        return Err("invalid wave dir".into());
+    }
+
+    let done = dir_path.join(".done").exists();
+    let failed = dir_path.join(".error").exists();
+    let pcm_path = dir_path.join("audio.f32");
+    let available_bytes = pcm_path.metadata().map(|m| m.len() as usize).unwrap_or(0);
+    let available_peaks = available_bytes / BYTES_PER_PEAK;
+    let first_peak = start_peak.min(available_peaks);
+    let peak_count = available_peaks.saturating_sub(first_peak);
+    let mut bytes = vec![0u8; peak_count * BYTES_PER_PEAK];
+    if !bytes.is_empty() {
+        let mut file = std::fs::File::open(&pcm_path).map_err(|e| format!("open waveform: {e}"))?;
+        file.seek(SeekFrom::Start((first_peak * BYTES_PER_PEAK) as u64))
+            .map_err(|e| format!("seek waveform: {e}"))?;
+        file.read_exact(&mut bytes)
+            .map_err(|e| format!("read waveform: {e}"))?;
+    }
+
+    let peaks = bytes
+        .chunks_exact(BYTES_PER_PEAK)
+        .map(|bucket| {
+            bucket
+                .chunks_exact(BYTES_PER_SAMPLE)
+                .map(|sample| {
+                    f32::from_le_bytes([sample[0], sample[1], sample[2], sample[3]]).abs()
+                })
+                .fold(0.0f32, f32::max)
+                .sqrt()
+                .min(1.0)
+        })
+        .collect();
+    Ok(WaveformBatch {
+        peaks,
+        next_peak: available_peaks,
         done,
         failed,
     })
@@ -715,6 +848,8 @@ pub fn run() {
             proxy_status,
             start_thumbnails,
             list_thumbnails,
+            start_waveform,
+            list_waveform,
             extract_audio,
             extract_audio_bytes,
             open_oauth_flow

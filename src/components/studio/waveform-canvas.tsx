@@ -51,9 +51,13 @@ function WaveformCanvas({
       const i0 = Math.floor(startIdx + (x / canvas.width) * span);
       const i1 = Math.floor(startIdx + ((x + step) / canvas.width) * span);
       let max = 0;
+      let available = false;
       for (let i = i0; i <= i1 && i < n; i++) {
+        if (!Number.isFinite(peaks[i])) continue;
+        available = true;
         if (peaks[i] > max) max = peaks[i];
       }
+      if (!available) continue;
       const h = Math.max(dpr, max * canvas.height);
       ctx.fillRect(x, mid - h / 2, barW, h);
     }
