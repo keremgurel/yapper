@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-extract-pcm-chunk"
+description = "Enables the extract_pcm_chunk command without any pre-configured scope."
+commands.allow = ["extract_pcm_chunk"]
+
+[[permission]]
+identifier = "deny-extract-pcm-chunk"
+description = "Denies the extract_pcm_chunk command without any pre-configured scope."
+commands.deny = ["extract_pcm_chunk"]

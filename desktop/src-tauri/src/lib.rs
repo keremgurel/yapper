@@ -694,7 +694,7 @@ async fn extract_audio(path: String) -> Result<String, String> {
 /// them to /api/transcribe directly (no cross-origin asset-URL fetch).
 #[tauri::command]
 async fn extract_audio_bytes(path: String) -> Result<tauri::ipc::Response, String> {
-    let bytes = tauri::async_runtime::spawn_blocking(move || {
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
         let out = run_extract_audio(&path)?;
         std::fs::read(&out).map_err(|e| format!("read audio: {e}"))
     })
@@ -755,17 +755,64 @@ fn run_extract_pcm(path: &str) -> Result<PathBuf, String> {
     Ok(out_path)
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PcmInfo {
+    byte_length: u64,
+}
+
 #[tauri::command]
-async fn extract_pcm_bytes(path: String) -> Result<tauri::ipc::Response, String> {
-    let bytes = tauri::async_runtime::spawn_blocking(move || {
+async fn prepare_pcm(path: String) -> Result<PcmInfo, String> {
+    let byte_length = tauri::async_runtime::spawn_blocking(move || {
         let out = run_extract_pcm(&path)?;
-        std::fs::read(&out).map_err(|e| format!("read PCM: {e}"))
+        out.metadata()
+            .map(|metadata| metadata.len())
+            .map_err(|e| format!("read PCM metadata: {e}"))
     })
     .await
     .map_err(|error| format!("PCM worker failed: {error}"))??;
-    if bytes.len() % std::mem::size_of::<f32>() != 0 {
+    if byte_length == 0 || byte_length % std::mem::size_of::<f32>() as u64 != 0 {
         return Err("invalid PCM byte length".into());
     }
+    Ok(PcmInfo { byte_length })
+}
+
+#[tauri::command]
+async fn extract_pcm_chunk(
+    path: String,
+    offset: u64,
+    length: usize,
+) -> Result<tauri::ipc::Response, String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const MAX_CHUNK: usize = 2 * 1024 * 1024;
+    if offset % std::mem::size_of::<f32>() as u64 != 0
+        || length == 0
+        || length > MAX_CHUNK
+        || length % std::mem::size_of::<f32>() != 0
+    {
+        return Err("invalid PCM chunk range".into());
+    }
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let out = run_extract_pcm(&path)?;
+        let file_len = out
+            .metadata()
+            .map_err(|e| format!("read PCM metadata: {e}"))?
+            .len();
+        if offset >= file_len {
+            return Err("PCM chunk starts past end".into());
+        }
+        let read_len = length.min((file_len - offset) as usize);
+        let mut file = std::fs::File::open(out).map_err(|e| format!("open PCM: {e}"))?;
+        file.seek(SeekFrom::Start(offset))
+            .map_err(|e| format!("seek PCM: {e}"))?;
+        let mut bytes = vec![0u8; read_len];
+        file.read_exact(&mut bytes)
+            .map_err(|e| format!("read PCM chunk: {e}"))?;
+        Ok(bytes)
+    })
+    .await
+    .map_err(|error| format!("PCM chunk worker failed: {error}"))??;
     Ok(tauri::ipc::Response::new(bytes))
 }
 
@@ -918,7 +965,8 @@ pub fn run() {
             list_waveform,
             extract_audio,
             extract_audio_bytes,
-            extract_pcm_bytes,
+            prepare_pcm,
+            extract_pcm_chunk,
             open_oauth_flow
         ])
         .run(tauri::generate_context!())

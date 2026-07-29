@@ -226,11 +226,28 @@ export async function nativeAudioBlob(path: string): Promise<Blob> {
 
 /** Native mono 16 kHz float PCM for VAD and trim analysis. */
 export async function nativePcm16k(path: string): Promise<Float32Array> {
-  const bytes = await invoke<ArrayBuffer>("extract_pcm_bytes", { path });
-  if (bytes.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
+  const { byteLength } = await invoke<{ byteLength: number }>("prepare_pcm", {
+    path,
+  });
+  if (byteLength <= 0 || byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
     throw new Error("invalid native PCM byte length");
   }
-  return new Float32Array(bytes);
+  const output = new Uint8Array(byteLength);
+  const chunkSize = 2 * 1024 * 1024;
+  for (let offset = 0; offset < byteLength; offset += chunkSize) {
+    const length = Math.min(chunkSize, byteLength - offset);
+    const response = await invoke<ArrayBuffer | Uint8Array>(
+      "extract_pcm_chunk",
+      { path, offset, length },
+    );
+    const chunk =
+      response instanceof ArrayBuffer ? new Uint8Array(response) : response;
+    if (!(chunk instanceof Uint8Array) || chunk.byteLength !== length) {
+      throw new Error("invalid native PCM chunk");
+    }
+    output.set(chunk, offset);
+  }
+  return new Float32Array(output.buffer);
 }
 
 /**
