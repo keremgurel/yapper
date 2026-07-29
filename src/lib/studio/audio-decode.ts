@@ -1,6 +1,6 @@
 import { extractPcm } from "@/lib/studio/audio/extract-pcm";
 import { isNative } from "@/lib/studio/native/bridge";
-import { nativeAudioBlob } from "@/lib/studio/native/media";
+import { nativePcm16k } from "@/lib/studio/native/media";
 import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 
 // Decoding a full recording to 16 kHz is expensive, and transcribe / trim /
@@ -42,10 +42,7 @@ async function decodeFresh(url: string): Promise<Float32Array> {
     const native = nativeMediaForUrl(url);
     if (native) {
       try {
-        const buf = await (
-          await nativeAudioBlob(native.proxyPath ?? native.path)
-        ).arrayBuffer();
-        return await decodeArrayBufferTo16k(buf);
+        return await nativePcm16k(native.proxyPath ?? native.path);
       } catch (e) {
         console.warn("[audio] native decode failed, falling back", e);
       }

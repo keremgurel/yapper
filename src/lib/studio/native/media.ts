@@ -224,6 +224,15 @@ export async function nativeAudioBlob(path: string): Promise<Blob> {
   return new Blob([buf], { type: "audio/mp4" });
 }
 
+/** Native mono 16 kHz float PCM for VAD and trim analysis. */
+export async function nativePcm16k(path: string): Promise<Float32Array> {
+  const bytes = await invoke<ArrayBuffer>("extract_pcm_bytes", { path });
+  if (bytes.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
+    throw new Error("invalid native PCM byte length");
+  }
+  return new Float32Array(bytes);
+}
+
 /**
  * Waveform peaks decoded from the same extraction transcription/VAD use —
  * see `extractAudioBytes` — instead of a second full ffmpeg pass over the

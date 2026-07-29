@@ -19,6 +19,7 @@
     "allow-list-waveform",
     "allow-extract-audio",
     "allow-extract-audio-bytes",
+    "allow-extract-pcm-bytes",
     "allow-open-oauth-flow"
   ]
 }

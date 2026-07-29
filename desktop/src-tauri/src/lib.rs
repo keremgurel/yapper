@@ -703,6 +703,72 @@ async fn extract_audio_bytes(path: String) -> Result<tauri::ipc::Response, Strin
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/**
+ * Decode analysis PCM natively instead of asking WKWebView's Web Audio stack
+ * to open camera AAC. WebKit rejects otherwise-valid AAC from some DJI/iPhone
+ * containers, which made transcription fail before an API request was sent.
+ * A done marker distinguishes a complete cache from an interrupted raw file.
+ */
+fn run_extract_pcm(path: &str) -> Result<PathBuf, String> {
+    let path = validate_media_path(path)?;
+    let stem = file_stem(&path.to_string_lossy());
+    let cache_key = media_cache_key(&path)?;
+    let out_path = tmp_out(&stem, &cache_key, "pcm16k", "f32");
+    let done_path = out_path.with_extension("done");
+    if done_path.exists() && out_path.metadata().is_ok_and(|m| m.len() > 0) {
+        return Ok(out_path);
+    }
+    let _ = std::fs::remove_file(&out_path);
+    let _ = std::fs::remove_file(&done_path);
+    let status = Command::new(resolve_bin("ffmpeg"))
+        .args([
+            "-y",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-protocol_whitelist",
+            "file",
+            "-i",
+        ])
+        .arg(&path)
+        .args([
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "pcm_f32le",
+            "-f",
+            "f32le",
+        ])
+        .arg(&out_path)
+        .status()
+        .map_err(|e| format!("spawn ffmpeg PCM decode: {e}"))?;
+    if !status.success() {
+        let _ = std::fs::remove_file(&out_path);
+        return Err("ffmpeg PCM decode failed".into());
+    }
+    std::fs::write(&done_path, b"ok").map_err(|e| format!("mark PCM done: {e}"))?;
+    Ok(out_path)
+}
+
+#[tauri::command]
+async fn extract_pcm_bytes(path: String) -> Result<tauri::ipc::Response, String> {
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        let out = run_extract_pcm(&path)?;
+        std::fs::read(&out).map_err(|e| format!("read PCM: {e}"))
+    })
+    .await
+    .map_err(|error| format!("PCM worker failed: {error}"))??;
+    if bytes.len() % std::mem::size_of::<f32>() != 0 {
+        return Err("invalid PCM byte length".into());
+    }
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /** Is this a URL of our own app (vs a third-party OAuth / sign-in page)? */
 fn is_internal_host(host: Option<&str>) -> bool {
     match host {
@@ -852,6 +918,7 @@ pub fn run() {
             list_waveform,
             extract_audio,
             extract_audio_bytes,
+            extract_pcm_bytes,
             open_oauth_flow
         ])
         .run(tauri::generate_context!())
