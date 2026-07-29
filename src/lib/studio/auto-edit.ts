@@ -16,6 +16,8 @@ export type SourceRange = [number, number];
  * They make playback stutter instead of cut cleanly.
  */
 export const MIN_CLIP_SEC = 0.08;
+/** Padding islands this short contain no spoken word and only add a seek. */
+export const MIN_SPEECHLESS_CLIP_SEC = 0.35;
 
 export interface PauseCutOptions {
   /** A gap between two words counts as a pause once it reaches this. */
@@ -115,6 +117,30 @@ export function dropSlivers(clips: Clip[], minSec = MIN_CLIP_SEC): Clip[] {
 }
 
 /**
+ * Drop short recording islands that contain no transcript word.
+ *
+ * AI ranges and pause padding can overlap in a way that leaves ~150ms of
+ * neither speech nor useful room tone between two cuts. Those islands create
+ * an extra clip boundary (and an audible hiccup) without preserving content.
+ * Short clips containing even one word are kept: duration alone must never
+ * erase a quiet starter such as "so", "and", or "to".
+ */
+export function dropSpeechlessSlivers(
+  clips: Clip[],
+  words: Word[],
+  minSec = MIN_SPEECHLESS_CLIP_SEC,
+): Clip[] {
+  if (words.length === 0) return clips;
+  return clips.filter((clip) => {
+    if (clip.src != null || clip.end - clip.start >= minSec) return true;
+    return words.some((word) => {
+      const midpoint = (word.start + word.end) / 2;
+      return midpoint >= clip.start && midpoint <= clip.end;
+    });
+  });
+}
+
+/**
  * The one-click pass, as the progress UI names its stages. Decoding and
  * transcription are the caller's; the rest is `planAutoEdit`.
  */
@@ -209,6 +235,7 @@ export function planAutoEdit({
   onStep?.(AUTO_EDIT_STEPS.TRIM);
   if (analysis) next = trimClipsToSpeech(next, analysis, words);
   next = dropSlivers(next);
+  next = dropSpeechlessSlivers(next, words);
 
   // Cutting everything means the analysis disagreed with the transcript. Give
   // the take back rather than handing over an empty timeline.

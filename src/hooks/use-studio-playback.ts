@@ -64,6 +64,10 @@ export function useStudioPlayback(
   // the assignment (allowing an immediate play to leak a stale frame).
   const seekGenerationRef = useRef(0);
   const seekPendingRef = useRef(false);
+  // The transport button's intent is distinct from the media element's
+  // momentary paused state: WebKit may pause internally while changing source
+  // or seeking, but that must not turn a playing session into a user pause.
+  const playIntentRef = useRef(false);
   const baseTotal = totalDuration(clips);
 
   // The identity url (used for export, snapping, etc.) always stays the
@@ -210,6 +214,7 @@ export function useStudioPlayback(
       setTimelineTime(from);
       timelineClock.set(from);
       setPlaying(true);
+      playIntentRef.current = true;
       lastRef.current = performance.now();
       let rafLastUi = 0;
       const tick = () => {
@@ -228,6 +233,7 @@ export function useStudioPlayback(
           if (!hasVideo) setSourceTime(clockRef.current);
         }
         if (done) {
+          playIntentRef.current = false;
           setPlaying(false);
           rafRef.current = null;
           return;
@@ -295,6 +301,7 @@ export function useStudioPlayback(
 
   const play = useCallback(() => {
     if (total <= 0) return;
+    playIntentRef.current = true;
     const from = clockRef.current >= total - EPS ? 0 : clockRef.current;
     if (overBaseTrack(from)) {
       const v = videoRef.current;
@@ -342,6 +349,7 @@ export function useStudioPlayback(
     // old seek's timeout, producing a ghost restart / apparent fast-forward.
     seekGenerationRef.current += 1;
     seekPendingRef.current = false;
+    playIntentRef.current = false;
     stopRaf();
     videoRef.current?.pause();
     setPlaying(false);
@@ -364,6 +372,7 @@ export function useStudioPlayback(
     setTimelineTime(next);
     setSourceTime(next);
     setPlaying(false);
+    playIntentRef.current = false;
   }, [total, stopRaf, timelineClock, videoRef]);
 
   // The clock source changed (the bottom track was deleted, added, or swapped
@@ -373,6 +382,7 @@ export function useStudioPlayback(
     stopRaf();
     videoRef.current?.pause();
     setPlaying(false);
+    playIntentRef.current = false;
   }, [hasVideo, stopRaf, videoRef]);
 
   // Keep the video pointed at the clip under the playhead when the edit changes.
@@ -409,12 +419,14 @@ export function useStudioPlayback(
     // value — which, when the next clip is reordered EARLIER in the source,
     // would look "past clip.end" again and skip that clip.
     let seeking = false;
-    let seekTarget = 0;
     // Throttles the playhead/caption STATE updates (not the video, not the cut
     // detection) so playback does not re-render the whole timeline 60x/second.
     let lastUi = 0;
     const onSeeked = () => {
       seeking = false;
+      if (playIntentRef.current && v!.paused) {
+        void v!.play().catch(() => {});
+      }
     };
     v.addEventListener("seeked", onSeeked);
 
@@ -441,6 +453,7 @@ export function useStudioPlayback(
         startRaf(baseTotal);
         return;
       }
+      playIntentRef.current = false;
       v!.pause();
       setTimelineTime(total);
       clockRef.current = total;
@@ -449,13 +462,10 @@ export function useStudioPlayback(
 
     function step() {
       if (seeking) {
-        // Clear on the 'seeked' event OR once currentTime actually reaches the
-        // target (the event won't fire if the target equalled currentTime).
-        if (Math.abs(v!.currentTime - seekTarget) < 0.05) seeking = false;
-        else {
-          schedule();
-          return; // wait for the boundary seek to land before re-evaluating
-        }
+        // `currentTime` reports the target before the decoder has presented it,
+        // so only the `seeked` event may release this guard.
+        schedule();
+        return;
       }
       const i = activeIndexRef.current;
       const clip = clips[i];
@@ -467,9 +477,23 @@ export function useStudioPlayback(
             return; // the rAF clock or the end-of-project stop takes it from here
           }
           seeking = true;
-          seekTarget = clips[next].start;
+          const seekTarget = clips[next].start;
           activeIndexRef.current = next;
-          seekVideo(next, clips[next].start, !v!.paused);
+          const nextUrl = clipUrl(next);
+          if (v!.getAttribute("src") === nextUrl) {
+            // Keep the transport running across cuts from the same recording.
+            // Pausing, seeking, waiting for `seeked`, then playing again made
+            // every edit boundary an audible pause/play cycle. A playing media
+            // element remains playing when currentTime changes; the dense-
+            // keyframe desktop proxy makes this discontinuous seek land fast.
+            seekGenerationRef.current += 1;
+            seekPendingRef.current = true;
+            v!.currentTime = seekTarget;
+          } else {
+            // A genuinely different appended file still has to load before it
+            // can play, so retain the guarded source-switch path for that case.
+            seekVideo(next, seekTarget, !v!.paused);
+          }
           const t = clipTimelineStart(clips, next);
           setTimelineTime(t);
           clockRef.current = t;
@@ -500,6 +524,7 @@ export function useStudioPlayback(
     }
 
     const onPlay = () => {
+      playIntentRef.current = true;
       stopRaf(); // the video is the clock again
       setPlaying(true);
       cancel();
@@ -513,11 +538,16 @@ export function useStudioPlayback(
         silentPauseRef.current = false;
         return;
       }
+      // Explicit pauses already clear this intent in `pause()`. A transient
+      // WebKit pause during an uninterrupted boundary seek should not flip the
+      // transport UI or turn one cut into a pause/play cycle.
+      if (playIntentRef.current) return;
       setPlaying(false);
     };
     const onEnded = () => {
       cancel();
       if (silentPauseRef.current) return;
+      playIntentRef.current = false;
       setPlaying(false);
       setTimelineTime(total);
       clockRef.current = total;
@@ -540,6 +570,7 @@ export function useStudioPlayback(
     total,
     baseTotal,
     hasVideo,
+    clipUrl,
     seekVideo,
     startRaf,
     stopRaf,

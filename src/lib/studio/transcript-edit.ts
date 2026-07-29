@@ -44,7 +44,7 @@ export function refineWordTimings(
   });
 }
 
-const FILLERS = new Set([
+const HESITATION_FILLERS = new Set([
   "um",
   "umm",
   "uh",
@@ -56,7 +56,6 @@ const FILLERS = new Set([
   "ahh",
   "hmm",
   "mhm",
-  "like",
 ]);
 
 function norm(s: string): string {
@@ -113,7 +112,20 @@ export function pauseRanges(words: Word[], minGap = 0.4): [number, number][] {
 }
 
 export function findFillerIds(words: Word[]): string[] {
-  return words.filter((w) => FILLERS.has(norm(w.text))).map((w) => w.id);
+  return words
+    .filter((word) => {
+      const token = norm(word.text);
+      if (HESITATION_FILLERS.has(token)) return true;
+      if (token !== "like") return false;
+
+      // "Like" is often grammatical content ("feel like the real exam",
+      // "looks like rain", "would like to"). Treat it as filler only when the
+      // transcript itself marks it as a parenthetical discourse word. Being
+      // conservative here is intentional: leaving one conversational "like"
+      // is repairable; deleting a comparison changes the speaker's meaning.
+      return /[,;:]$/.test(word.text.trim());
+    })
+    .map((word) => word.id);
 }
 
 function mergeRanges(ranges: [number, number][]): [number, number][] {
