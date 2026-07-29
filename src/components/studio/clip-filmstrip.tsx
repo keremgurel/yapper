@@ -2,79 +2,44 @@
 
 import { memo } from "react";
 import type { Frame } from "@/lib/studio/filmstrip";
+import { filmstripCells } from "@/lib/studio/filmstrip-cells";
 
 /**
- * Nearest frame by time. Frames are time-sorted, so this is a binary search:
- * zooming in adds tiles, and a linear scan per tile made zoom scale badly.
- */
-function nearestFrame(frames: Frame[], t: number): Frame {
-  let lo = 0;
-  let hi = frames.length - 1;
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (frames[mid].time < t) lo = mid + 1;
-    else hi = mid;
-  }
-  const at = frames[lo];
-  const prev = frames[lo - 1];
-  return prev && Math.abs(prev.time - t) <= Math.abs(at.time - t) ? prev : at;
-}
-
-// How much coarser (fewer, wider) tiles get while a zoom gesture is actively
-// in flight. Every wheel step re-renders every visible clip's filmstrip at
-// the new scale — the tile count (and thus <img> count) is the dominant cost
-// of that re-render, so a rapid pinch/scroll draws far fewer, wider tiles and
-// only sharpens back up once the gesture settles (see `coarse` below).
-const ZOOM_TILE_COARSEN = 4;
-
-/**
- * Renders a clip's thumbnails as sharp, fixed-width tiles across only the
- * visible slice of the track. Zooming in widens the slice, so more distinct
- * frames appear instead of a few thumbnails stretching and blurring.
+ * Each frame owns a fixed source-time cell, bounded halfway to its neighbors.
+ * Zoom only scales those same cells: it never changes the tile count, swaps a
+ * frame for a different timestamp, or snaps between coarse/fine layouts.
  */
 function ClipFilmstrip({
   frames,
-  aspect,
   leftPx,
   widthPx,
   srcStart,
   srcEnd,
-  height,
-  coarse = false,
 }: {
   frames: Frame[];
-  aspect: number;
   leftPx: number;
   widthPx: number;
   srcStart: number;
   srcEnd: number;
-  height: number;
-  /** True while a zoom gesture is actively changing the scale. */
-  coarse?: boolean;
 }) {
-  if (frames.length === 0 || widthPx <= 0) return null;
-  const tileW = Math.max(24, Math.round(height * aspect));
-  const effectiveTileW = coarse ? tileW * ZOOM_TILE_COARSEN : tileW;
-  const tiles = Math.max(1, Math.round(widthPx / effectiveTileW));
-  const tileWpx = widthPx / tiles;
+  const cells = filmstripCells(frames, srcStart, srcEnd, widthPx);
+  if (cells.length === 0) return null;
 
   return (
     <span
-      className="pointer-events-none absolute top-0 bottom-0 flex overflow-hidden"
+      className="pointer-events-none absolute top-0 bottom-0 overflow-hidden"
       style={{ left: leftPx, width: widthPx }}
     >
-      {Array.from({ length: tiles }, (_, k) => {
-        const srcT = srcStart + ((k + 0.5) / tiles) * (srcEnd - srcStart);
-        const f = nearestFrame(frames, srcT);
+      {cells.map(({ frame, left, width }) => {
         return (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={k}
-            src={f.src}
+            key={`${frame.time}:${frame.src}`}
+            src={frame.src}
             alt=""
             draggable={false}
-            style={{ width: tileWpx }}
-            className="h-full shrink-0 object-cover"
+            style={{ left, width: Math.max(1, width) }}
+            className="absolute top-0 h-full object-cover"
           />
         );
       })}

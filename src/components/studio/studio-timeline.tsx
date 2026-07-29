@@ -144,12 +144,6 @@ export default function StudioTimeline({
   const renderedPxRef = useRef(80);
   const pendingZoomRef = useRef<{ time: number; offsetX: number } | null>(null);
   const zoomRafRef = useRef(false);
-  // True while a zoom gesture (pinch or ⌘/Ctrl-scroll) is actively in flight,
-  // so filmstrips can draw coarser tiles for the gesture's duration — see
-  // ZOOM_TILE_COARSEN in clip-filmstrip.tsx. Cleared a beat after the last
-  // zoom wheel event, not on every render, so the settle delay is exact.
-  const [zoomBusy, setZoomBusy] = useState(false);
-  const zoomSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // scrollLeft at which the current render window was committed; we only
   // re-window after drifting past ~half a screen, so panning within the buffer
   // is pure native scroll (no re-render).
@@ -394,10 +388,6 @@ export default function StudioTimeline({
           MAX_PX,
         );
         if (next === current) return;
-        setZoomBusy(true);
-        if (zoomSettleTimerRef.current)
-          clearTimeout(zoomSettleTimerRef.current);
-        zoomSettleTimerRef.current = setTimeout(() => setZoomBusy(false), 180);
         // Anchor against the RENDERED scale, since `scrollLeft` belongs to the
         // layout we can actually measure. Reading it against the accumulated
         // target would mix two scales and slide the timeline under the cursor.
@@ -442,7 +432,6 @@ export default function StudioTimeline({
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       el.removeEventListener("wheel", onWheel);
-      if (zoomSettleTimerRef.current) clearTimeout(zoomSettleTimerRef.current);
     };
   }, [padLeft, total]);
 
@@ -771,7 +760,6 @@ export default function StudioTimeline({
                       onDragStart={overlayDrag.begin}
                       onTrim={setOverlayRange}
                       snapTrimDelta={snapTrimDelta}
-                      coarseFilmstrip={zoomBusy}
                     />
                   ))}
                 </div>
@@ -916,13 +904,10 @@ export default function StudioTimeline({
                         strip.frames.length > 0 && (
                           <ClipFilmstrip
                             frames={strip.frames}
-                            aspect={strip.aspect}
                             leftPx={contentX}
                             widthPx={span.widthPx}
                             srcStart={span.srcA}
                             srcEnd={span.srcB}
-                            height={64}
-                            coarse={zoomBusy}
                           />
                         )
                       )}

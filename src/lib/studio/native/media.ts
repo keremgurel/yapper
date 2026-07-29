@@ -81,6 +81,16 @@ interface ThumbnailBatch {
   failed: boolean;
 }
 
+interface WaveformBatch {
+  peaks: number[];
+  nextPeak: number;
+  done: boolean;
+  failed: boolean;
+}
+
+const WAVEFORM_POLL_MS = 120;
+const RAW_WAVEFORM_PEAKS_PER_SECOND = 8000 / 67;
+
 /**
  * A whole filmstrip via ffmpeg, streamed in as frames land instead of
  * blocking on one full pass — mirrors `generateFilmstrip`'s progressive
@@ -124,6 +134,56 @@ export async function nativeThumbnailsStream(
     if (batch.done) return;
     if (batch.failed) throw new Error("thumbnail generation failed");
     await new Promise((r) => setTimeout(r, THUMB_POLL_MS));
+  }
+}
+
+/**
+ * Decode and reveal a desktop waveform while ffmpeg is still walking the
+ * source. Unfilled buckets stay NaN so the canvas leaves the future portion
+ * blank instead of stretching the available prefix across the whole clip.
+ */
+export async function nativeWaveformStream(
+  path: string,
+  duration: number,
+  onProgress: (peaks: number[]) => void,
+  cancelled: () => boolean,
+): Promise<void> {
+  const dir = await invoke<string>("start_waveform", { path });
+  const displayCount = Math.min(
+    30000,
+    Math.max(600, Math.round(duration * 120)),
+  );
+  const rawCount = Math.max(
+    1,
+    Math.ceil(duration * RAW_WAVEFORM_PEAKS_PER_SECOND),
+  );
+  const display = new Array<number>(displayCount).fill(Number.NaN);
+  let cursor = 0;
+
+  while (!cancelled()) {
+    const batch = await invoke<WaveformBatch>("list_waveform", {
+      dir,
+      startPeak: cursor,
+    });
+    if (cancelled()) return;
+    if (batch.peaks.length > 0) {
+      for (let i = 0; i < batch.peaks.length; i++) {
+        const displayIndex = Math.min(
+          displayCount - 1,
+          Math.floor(((cursor + i) / rawCount) * displayCount),
+        );
+        const peak = batch.peaks[i];
+        const previous = display[displayIndex];
+        display[displayIndex] = Number.isFinite(previous)
+          ? Math.max(previous, peak)
+          : peak;
+      }
+      cursor = batch.nextPeak;
+      onProgress([...display]);
+    }
+    if (batch.done) return;
+    if (batch.failed) throw new Error("waveform generation failed");
+    await new Promise((resolve) => setTimeout(resolve, WAVEFORM_POLL_MS));
   }
 }
 

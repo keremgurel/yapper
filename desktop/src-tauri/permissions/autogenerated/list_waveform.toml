@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-waveform"
+description = "Enables the list_waveform command without any pre-configured scope."
+commands.allow = ["list_waveform"]
+
+[[permission]]
+identifier = "deny-list-waveform"
+description = "Denies the list_waveform command without any pre-configured scope."
+commands.deny = ["list_waveform"]
