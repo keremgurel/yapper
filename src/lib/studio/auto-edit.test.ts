@@ -3,6 +3,7 @@ import {
   AUTO_EDIT_STEPS,
   hasUsableAutoEditTranscript,
   dropSlivers,
+  dropSpeechlessSlivers,
   fillerCuts,
   pauseCuts,
   planAutoEdit,
@@ -149,6 +150,28 @@ describe("fillerCuts", () => {
   it("returns nothing when nobody hesitates", () => {
     expect(fillerCuts([word(0, 1, "hello")])).toEqual([]);
   });
+
+  it("keeps grammatical like as part of the sentence", () => {
+    const w = [
+      word(0, 1, "questions"),
+      word(1, 2, "feel"),
+      word(2, 3, "like"),
+      word(3, 4, "the"),
+      word(4, 5, "real"),
+      word(5, 6, "exam"),
+    ];
+    expect(fillerCuts(w)).toEqual([]);
+  });
+
+  it("cuts like only when punctuation marks it as a discourse filler", () => {
+    const w = [
+      word(0, 1, "It"),
+      word(1, 2, "was"),
+      word(2, 3, "like,"),
+      word(3, 4, "amazing"),
+    ];
+    expect(fillerCuts(w)).toEqual([[2, 3]]);
+  });
 });
 
 describe("dropSlivers", () => {
@@ -163,6 +186,29 @@ describe("dropSlivers", () => {
 
   it("judges an appended clip by its own length, like any other", () => {
     expect(dropSlivers([appended(0, 0.01)], 0.08)).toEqual([]);
+  });
+});
+
+describe("dropSpeechlessSlivers", () => {
+  it("drops a short padding island with no spoken word", () => {
+    const speech = [word(1, 1.2, "hello"), word(2, 2.2, "world")];
+    expect(
+      dropSpeechlessSlivers([rec(1, 1.2), rec(1.5, 1.65), rec(2, 2.2)], speech),
+    ).toEqual([rec(1, 1.2), rec(2, 2.2)]);
+  });
+
+  it("keeps a short clip containing a real sentence starter", () => {
+    const starter = word(1, 1.15, "and");
+    expect(dropSpeechlessSlivers([rec(1, 1.2)], [starter])).toEqual([
+      rec(1, 1.2),
+    ]);
+  });
+
+  it("does not judge appended media against the recording transcript", () => {
+    const shortBroll = appended(0, 0.15);
+    expect(dropSpeechlessSlivers([shortBroll], [word(2, 3)])).toEqual([
+      shortBroll,
+    ]);
   });
 });
 
