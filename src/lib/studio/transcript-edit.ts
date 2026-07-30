@@ -193,11 +193,9 @@ export function findEarlierTakeRanges(
 }
 
 /**
- * Retake/mistake ranges to remove. The AI pass (cleaned-text + a global
- * matching-blocks alignment, see align-transcript.ts) is the primary source:
- * cutsFromCleanedText derives a cut as exactly the source span that doesn't
- * appear anywhere in the AI's cleaned script, so whenever it proposes cuts we
- * trust them directly.
+ * Retake/mistake ranges to remove. The AI pass is the primary source. Its word
+ * ranges have already been mapped to validated contiguous source takes by the
+ * backend, so whenever it proposes cuts we trust them directly.
  *
  * This used to re-validate every AI cut against nearby text (multiset/LCS
  * coverage, an "is this restated later" check) and reject any span that
@@ -207,10 +205,9 @@ export function findEarlierTakeRanges(
  * identical to a text-similarity check: neither has a duplicate nearby. In
  * practice it silently put filler back into the "kept" transcript any time
  * the AI correctly cut something that wasn't a repeat, which is exactly the
- * under-cutting this pipeline exists to fix. The alignment is what proves a
- * span isn't needed (it's provably absent from the cleaned script); a second
- * independent guess bolted on top doesn't add real protection, only false
- * rejections.
+ * under-cutting this pipeline exists to fix. The backend's contiguous-take
+ * selection is what proves a span isn't needed; a second independent guess
+ * bolted on top doesn't add real protection, only false rejections.
  *
  * The deterministic exact-repeat detector is intentionally NOT unioned in
  * here — it over-cuts on near-repeats and would delete words the AI

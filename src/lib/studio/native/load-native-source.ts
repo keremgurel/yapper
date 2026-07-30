@@ -7,11 +7,7 @@
 
 import type { StudioSource } from "@/lib/studio/types";
 import { assetUrl } from "@/lib/studio/native/bridge";
-import {
-  nativeCompanionProxy,
-  nativeMakeProxy,
-  nativeProbe,
-} from "@/lib/studio/native/media";
+import { nativeMakeProxy, nativeProbe } from "@/lib/studio/native/media";
 import {
   registerNativePath,
   setNativeProxyPath,
@@ -27,11 +23,6 @@ export async function loadNativeSource(path: string): Promise<StudioSource> {
   const url = assetUrl(path);
   registerNativePath(url, path, probe.aspect, probe.duration);
 
-  const companion = await nativeCompanionProxy(path);
-  if (companion) {
-    setNativeProxyPath(url, companion);
-  }
-
   // Fire-and-forget: a low-res proxy with dense keyframes, far cheaper to
   // decode than the original for scrubbing and thumbnail extraction. Nothing
   // waits on this — the source above is already usable off the original —
@@ -40,15 +31,18 @@ export async function loadNativeSource(path: string): Promise<StudioSource> {
   // a head start before the full proxy transcode begins. Starting two 4K video
   // decoders plus audio extraction at the exact same moment made import feel
   // slower even though every job was technically asynchronous.
-  if (!companion) {
-    window.setTimeout(() => {
-      void nativeMakeProxy(path)
-        .then((proxyPath) => setNativeProxyPath(url, proxyPath))
-        .catch((error) =>
-          console.warn("[studio] preview proxy unavailable", error),
-        );
-    }, 1500);
-  }
+  // Never depend on a camera-vendor sidecar such as DJI's `.LRF`. Those files
+  // are optional, have vendor-specific GOP/layout choices, and do not exist for
+  // iPhone or most other cameras. Every source follows the same deterministic
+  // path: play the original immediately, then switch to our own dense-keyframe
+  // proxy once it is ready (or immediately when it is already cached).
+  window.setTimeout(() => {
+    void nativeMakeProxy(path)
+      .then((proxyPath) => setNativeProxyPath(url, proxyPath))
+      .catch((error) =>
+        console.warn("[studio] preview proxy unavailable", error),
+      );
+  }, 1500);
 
   return {
     url,

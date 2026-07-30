@@ -303,6 +303,44 @@ describe("planAutoEdit", () => {
       expect(clips.map((c) => [c.start, c.end])).toEqual([[2, 4]]);
     });
 
+    it("removes silence around a deleted retake using only surviving words", () => {
+      const words = [
+        word(0, 0.5, "kept"),
+        word(1, 1.5, "bad"),
+        word(2, 2.5, "take"),
+        word(4, 4.5, "final"),
+      ];
+      const { clips } = plan({
+        clips: [rec(0, 5)],
+        sourceDuration: 5,
+        audioDuration: 5,
+        words,
+        aiCuts: [[1, 2]],
+      });
+      expect(clips.map((clip) => [clip.start, clip.end])).toEqual([
+        [0, 0.65],
+        [3.96, 4.65],
+      ]);
+    });
+
+    it("does not preserve a tiny island just because a deleted word occupied it", () => {
+      const words = [
+        word(0, 0.5, "kept"),
+        word(0.7, 0.8, "deleted"),
+        word(1.05, 1.5, "final"),
+      ];
+      const { clips } = plan({
+        clips: [rec(0, 2)],
+        sourceDuration: 2,
+        audioDuration: 2,
+        words,
+        aiCuts: [[1, 1]],
+      });
+      expect(clips.some((clip) => clip.start >= 0.65 && clip.end <= 1.01)).toBe(
+        false,
+      );
+    });
+
     it("does nothing to the clips when there is no transcript", () => {
       expect(plan({ words: [] }).clips).toEqual([rec(0, 10)]);
     });

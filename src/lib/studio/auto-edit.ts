@@ -223,19 +223,34 @@ export function planAutoEdit({
   const cut = (ranges: [number, number][]) => {
     for (const [from, to] of ranges) next = removeSourceRange(next, from, to);
   };
+  let keptWords = words;
 
   if (words.length > 0) {
     onStep?.(AUTO_EDIT_STEPS.RETAKES);
-    cut(combineRetakeCuts(words, aiCuts));
+    const retakeCuts = combineRetakeCuts(words, aiCuts);
+    cut(retakeCuts);
+    // Every later stage must reason about the EDIT, not the raw recording.
+    // Treating words inside a deleted retake as still present leaves padding
+    // around the removed take and protects tiny speechless islands from being
+    // dropped — producing both audible pauses and needless clip boundaries.
+    keptWords = words.filter((word) => {
+      const midpoint = (word.start + word.end) / 2;
+      return !retakeCuts.some(
+        ([from, to]) => midpoint >= from && midpoint <= to,
+      );
+    });
 
     onStep?.(AUTO_EDIT_STEPS.SILENCE);
-    cut([...fillerCuts(words), ...pauseCuts(words, duration, AUTO_EDIT_CUTS)]);
+    cut([
+      ...fillerCuts(keptWords),
+      ...pauseCuts(keptWords, duration, AUTO_EDIT_CUTS),
+    ]);
   }
 
   onStep?.(AUTO_EDIT_STEPS.TRIM);
-  if (analysis) next = trimClipsToSpeech(next, analysis, words);
+  if (analysis) next = trimClipsToSpeech(next, analysis, keptWords);
   next = dropSlivers(next);
-  next = dropSpeechlessSlivers(next, words);
+  next = dropSpeechlessSlivers(next, keptWords);
 
   // Cutting everything means the analysis disagreed with the transcript. Give
   // the take back rather than handing over an empty timeline.

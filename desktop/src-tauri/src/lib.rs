@@ -107,8 +107,10 @@ fn proxy_command(path: &Path, out: &Path, hardware: bool) -> Command {
     }
     command
         .args([
+            // A 250ms GOP at 24fps keeps arbitrary scrubs and edited-cut
+            // handoffs inside the standby decoder's pre-roll window.
             "-g",
-            "15",
+            "6",
             "-c:a",
             "aac",
             "-b:a",
@@ -208,27 +210,6 @@ fn probe_media(path: String, app: tauri::AppHandle) -> Result<serde_json::Value,
     serde_json::from_slice(&out.stdout).map_err(|e| format!("parse ffprobe json: {e}"))
 }
 
-/// DJI and several other cameras write a low-resolution, edit-friendly file
-/// beside the original. Prefer that ready-made proxy immediately instead of
-/// spending nearly a minute transcoding a duplicate of it.
-#[tauri::command]
-fn companion_proxy(path: String, app: tauri::AppHandle) -> Result<Option<String>, String> {
-    use tauri::Manager;
-    let original = validate_media_path(&path)?;
-    for extension in ["LRF", "lrf"] {
-        let candidate = original.with_extension(extension);
-        if !candidate.exists() {
-            continue;
-        }
-        let candidate = validate_media_path(&candidate.to_string_lossy())?;
-        if ffprobe_can_read(&candidate) {
-            let _ = app.asset_protocol_scope().allow_file(&candidate);
-            return Ok(Some(candidate.to_string_lossy().into_owned()));
-        }
-    }
-    Ok(None)
-}
-
 /// Kick off a transcode to a clean H.264 proxy the webview can always play,
 /// regardless of the original codec/container, scaled down for fast preview.
 /// Returns immediately with the output path — call `proxy_status` on it to
@@ -242,7 +223,9 @@ fn start_proxy(path: String, app: tauri::AppHandle) -> Result<String, String> {
     let path = validate_media_path(&path)?;
     let stem = file_stem(&path.to_string_lossy());
     let cache_key = media_cache_key(&path)?;
-    let out_path = tmp_out(&stem, &cache_key, "proxy", "mp4");
+    // Version the cache when proxy encoding changes; otherwise an older sparse
+    // proxy would remain "ready" forever and silently defeat the new handoff.
+    let out_path = tmp_out(&stem, &cache_key, "proxy2", "mp4");
     let out_str = out_path.to_string_lossy().into_owned();
     let done_path = out_path.with_extension("done");
     let error_path = out_path.with_extension("error");
@@ -956,7 +939,6 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             probe_media,
-            companion_proxy,
             start_proxy,
             proxy_status,
             start_thumbnails,

@@ -1,17 +1,21 @@
-import { cutsFromCleanedText } from "@/lib/studio/align-transcript";
+import {
+  alignCleanedToContiguousTakes,
+  cutsOutsideKeptTakes,
+} from "@/lib/studio/contiguous-take-alignment";
+import {
+  CLEAN_TRANSCRIPT_CRITIC_PROMPT,
+  CLEAN_TRANSCRIPT_SYSTEM_PROMPT,
+} from "@/lib/studio/clean-transcript-prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
  * AI "remove mistakes" pass. The model is given the transcript as plain speech
- * and returns the CLEANED speech (final takes only) — not token indices. Asking
- * for cleaned text instead of index ranges is dramatically more reliable:
- * counting token positions is exactly what LLMs are bad at, and a single
- * off-by-one there deletes real words. We then align the cleaned text back onto
- * the original words (right-anchored, so a restated line maps to its LAST
- * attempt) to derive the cut ranges. Responds 501 when no key is set; nothing is
- * auto-applied without the client also validating each cut.
+ * and returns CLEANED speech (final takes only), then a separate audit pass
+ * checks the draft for missing unique ideas and semantic duplicates. The final
+ * text is mapped back sentence-by-sentence to contiguous source takes. This
+ * makes a cross-retake "Frankenstein" sentence structurally impossible.
  */
 export async function POST(req: Request): Promise<Response> {
   const key = process.env.SURPLUS_API_KEY;
@@ -26,40 +30,7 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const rawText = words.map((w) => w.text).join(" ");
-  const system =
-    "You clean a spoken-word transcript for a talking-head video. The speaker " +
-    "often restarts a sentence several times (with slightly different words or " +
-    "numbers) before getting it right, and stutters or repeats words " +
-    "mid-sentence.\n\n" +
-    "Return ONLY the final, clean version of the speech:\n" +
-    "- For each restarted line, keep the LAST complete attempt and drop all " +
-    "earlier ones.\n" +
-    "- Remove mid-sentence stutters, false starts, and duplicated words.\n" +
-    "- Keep the LAST attempt as one coherent take. Do not splice a prefix from " +
-    "an earlier attempt onto the ending of a later one.\n" +
-    '- Keep sentence starters and discourse words such as "so", "and", and ' +
-    '"but" when the speaker says them in the final complete attempt.\n' +
-    "- Judge a retake CLUSTER by meaning and recording position, not only exact " +
-    'word repetition. Variants such as "practice tests" versus "mock exams" ' +
-    "can be competing attempts at the same line; keep only the last complete " +
-    "coherent version.\n" +
-    "- Keep genuinely unique content, but remove a one-off fragment when it is " +
-    "in the middle of an obvious retake cluster and the final attempt clearly " +
-    "supersedes the same idea. Do not mistake that fragment for a new topic.\n" +
-    "- Preserve a meaningful unique setup clause before a restarted clause. " +
-    "Keep the setup as a complete thought, then use the final complete version " +
-    "of the restarted clause; never discard the setup or keep half a clause.\n" +
-    "- When that setup runs into the abandoned clause, drop the abandoned " +
-    'bridge/starter too (for example its trailing "and I" or "so I"), then ' +
-    "keep the starter from the final attempt. Never create a duplicate join " +
-    'such as "and I I can".\n' +
-    "- Never reorder sentences or clauses. The surviving words must stay in " +
-    "their original chronological order in the recording.\n" +
-    "- Do NOT paraphrase, reword, fix grammar, or change numbers. Output the " +
-    "speaker's EXACT words, just with the retakes and stutters removed.\n\n" +
-    "Output plain text only — no quotes, labels, or commentary.";
-
-  try {
+  const complete = async (system: string, user: string): Promise<string> => {
     const res = await fetch(`${base}/chat/completions`, {
       method: "POST",
       headers: {
@@ -71,17 +42,33 @@ export async function POST(req: Request): Promise<Response> {
         temperature: 0,
         messages: [
           { role: "system", content: system },
-          { role: "user", content: rawText },
+          { role: "user", content: user },
         ],
       }),
     });
-    if (!res.ok) {
-      return Response.json({ error: `ai_${res.status}` }, { status: 502 });
-    }
+    if (!res.ok) throw new Error(`ai_${res.status}`);
     const json = await res.json();
-    const cleaned: string = json?.choices?.[0]?.message?.content ?? "";
+    return json?.choices?.[0]?.message?.content ?? "";
+  };
+
+  try {
+    const draft = await complete(CLEAN_TRANSCRIPT_SYSTEM_PROMPT, rawText);
+    if (!draft.trim()) return Response.json({ cuts: [] });
+    const cleaned = await complete(
+      CLEAN_TRANSCRIPT_CRITIC_PROMPT,
+      `ORIGINAL:\n${rawText}\n\nBAD DRAFT:\n${draft}`,
+    );
     if (!cleaned.trim()) return Response.json({ cuts: [] });
-    return Response.json({ cuts: cutsFromCleanedText(words, cleaned) });
+
+    const alignment = alignCleanedToContiguousTakes(words, cleaned);
+    // Fail closed. Applying a partial alignment looks like a successful edit
+    // while silently deleting content the model intended to keep.
+    if (alignment.coverage < 0.92 || alignment.keep.length === 0) {
+      return Response.json({ error: "unsafe_alignment" }, { status: 502 });
+    }
+    return Response.json({
+      cuts: cutsOutsideKeptTakes(words.length, alignment.keep),
+    });
   } catch (e) {
     return Response.json(
       { error: e instanceof Error ? e.message : "ai_failed" },
