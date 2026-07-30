@@ -35,11 +35,6 @@ export async function nativeProbe(path: string): Promise<NativeProbe> {
   return { duration, width, height, aspect };
 }
 
-/** Camera-generated edit proxy beside the source (for example DJI `.LRF`). */
-export function nativeCompanionProxy(path: string): Promise<string | null> {
-  return invoke<string | null>("companion_proxy", { path });
-}
-
 const PROXY_POLL_MS = 500;
 const PROXY_TIMEOUT_MS = 15 * 60 * 1000;
 

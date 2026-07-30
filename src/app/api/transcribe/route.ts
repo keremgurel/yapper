@@ -119,6 +119,11 @@ async function viaDeepgram(
   endpoint.searchParams.set("model", "nova-3");
   endpoint.searchParams.set("smart_format", "true");
   endpoint.searchParams.set("punctuate", "true");
+  // Editing needs a verbatim record, not a polished meeting transcript.
+  // Deepgram otherwise strips "uh"/"um" by default, which makes audible speech
+  // disappear from the transcript and can cause the edit model to cut through
+  // a real hesitation or sentence onset.
+  endpoint.searchParams.set("filler_words", "true");
   for (const term of keyterms) endpoint.searchParams.append("keyterm", term);
   const res = await fetch(endpoint, {
     method: "POST",
