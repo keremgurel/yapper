@@ -298,6 +298,22 @@ fn start_proxy(path: String, app: tauri::AppHandle) -> Result<String, String> {
     Ok(out_str)
 }
 
+/**
+ * Return Yapper's own finished proxy for a source when it already exists.
+ *
+ * The frontend normally remembers this path in memory, but a live-site reload
+ * clears that registry while the React project can remain on screen. Native
+ * edit preview must still recover the fast derivative deterministically from
+ * the original path; otherwise every edit starts decoding the 4K camera file
+ * again and smooth playback arrives far too late.
+ */
+fn ready_proxy_for_source(path: &Path) -> Option<PathBuf> {
+    let stem = file_stem(&path.to_string_lossy());
+    let cache_key = media_cache_key(path).ok()?;
+    let proxy = tmp_out(&stem, &cache_key, "proxy2", "mp4");
+    ffprobe_can_read(&proxy).then_some(proxy)
+}
+
 /// Has a `start_proxy` run finished? `+faststart` remuxes the moov atom to
 /// the front as a separate pass after encoding, so the output file can exist
 /// and even stop growing before it's actually valid — rather than guess at a
@@ -482,7 +498,8 @@ fn start_edit_preview(
         {
             return Err("invalid edit preview clip range".into());
         }
-        let path = validate_media_path(&clip.path)?;
+        let source_path = validate_media_path(&clip.path)?;
+        let path = ready_proxy_for_source(&source_path).unwrap_or(source_path);
         media_cache_key(&path)?.hash(&mut hasher);
         ((clip.start * 1_000_000.0).round() as u64).hash(&mut hasher);
         ((clip.end * 1_000_000.0).round() as u64).hash(&mut hasher);
