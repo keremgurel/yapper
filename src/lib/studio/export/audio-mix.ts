@@ -34,19 +34,67 @@ export async function mixAudio(
   );
 
   const decoded = new Map<string, AudioBuffer | null>();
-  const decode = async (url: string): Promise<AudioBuffer | null> => {
-    if (decoded.has(url)) return decoded.get(url) ?? null;
+  const decode = async (
+    url: string,
+    directNativePath?: string,
+    nativeSlice?: { start: number; duration: number },
+  ): Promise<AudioBuffer | null> => {
+    const key =
+      directNativePath && nativeSlice
+        ? `${url}\0${directNativePath}\0${nativeSlice.start.toFixed(6)}\0${nativeSlice.duration.toFixed(6)}`
+        : url;
+    if (decoded.has(key)) return decoded.get(key) ?? null;
     // Preferred: mp4box demux + WebCodecs, which is gapless. Web Audio's
     // decodeAudioData drops chunks on multi-track camera files, so a plain
     // decode here would ship an export whose audio is missing the same seconds
     // the transcript was. Fall back to decodeAudioData only for formats
     // WebCodecs can't handle (e.g. an added mp3/wav track).
     let buffer: AudioBuffer | null = null;
+    const native = isNative();
+    const nativePath = native
+      ? (directNativePath ?? nativePathForUrl(url))
+      : undefined;
+    if (nativePath) {
+      try {
+        if (!nativeSlice) {
+          throw new Error("missing native audio slice");
+        }
+        const { channels, sampleRate } = await nativeExportPcm(
+          nativePath,
+          nativeSlice.start,
+          nativeSlice.duration,
+        );
+        const length = channels[0]?.length ?? 0;
+        if (length > 0) {
+          buffer = ctx.createBuffer(channels.length, length, sampleRate);
+          for (let c = 0; c < channels.length; c++) {
+            buffer.copyToChannel(new Float32Array(channels[c]), c);
+          }
+        }
+        decoded.set(key, buffer);
+        return buffer;
+      } catch (cause) {
+        const detail = cause instanceof Error ? cause.message : String(cause);
+        throw new Error(`Couldn't decode desktop audio: ${detail}`);
+      }
+    }
+
+    // A desktop asset URL is not fetchable from JavaScript. If its direct path
+    // was lost, fail clearly instead of hiding that problem behind a fake CORS
+    // error and silently producing a video-only export.
+    if (
+      native &&
+      (url.startsWith("asset:") ||
+        url.startsWith("http://asset.localhost") ||
+        url.startsWith("https://asset.localhost"))
+    ) {
+      throw new Error(
+        "Couldn't locate the original desktop media. Re-add the source file and try again.",
+      );
+    }
+
     try {
-      const nativePath = isNative() ? nativePathForUrl(url) : undefined;
-      const { channels, sampleRate } = nativePath
-        ? await nativeExportPcm(nativePath)
-        : await extractPcm(url);
+      const { channels, sampleRate } = await extractPcm(url);
       const length = channels[0]?.length ?? 0;
       if (length > 0) {
         buffer = ctx.createBuffer(channels.length, length, sampleRate);
@@ -54,7 +102,7 @@ export async function mixAudio(
           buffer.copyToChannel(new Float32Array(channels[c]), c);
         }
       }
-      decoded.set(url, buffer);
+      decoded.set(key, buffer);
       return buffer;
     } catch {
       // WebCodecs path unavailable for this URL — fall through to Web Audio.
@@ -80,7 +128,7 @@ export async function mixAudio(
     } catch {
       buffer = null; // Valid file, no decodable audio track — contributes nothing.
     }
-    decoded.set(url, buffer);
+    decoded.set(key, buffer);
     return buffer;
   };
 
@@ -88,14 +136,21 @@ export async function mixAudio(
   // contributes nothing, so an all-undecodable plan still renders to silence.
   let scheduled = 0;
   for (const p of placements) {
-    const buffer = await decode(p.url);
+    const nativePath = isNative()
+      ? (p.nativePath ?? nativePathForUrl(p.url))
+      : undefined;
+    const buffer = await decode(
+      p.url,
+      nativePath,
+      nativePath ? { start: p.offset, duration: p.length } : undefined,
+    );
     if (!buffer) continue;
     const node = ctx.createBufferSource();
     node.buffer = buffer;
     node.connect(ctx.destination);
     node.start(
       p.when,
-      Math.max(0, p.offset),
+      nativePath ? 0 : Math.max(0, p.offset),
       Math.min(p.length, duration - p.when),
     );
     scheduled += 1;

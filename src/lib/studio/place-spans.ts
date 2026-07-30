@@ -43,6 +43,7 @@ export function planSpanOverlays(
     const overlay: Omit<Overlay, "id"> = {
       kind: asset.kind,
       url: asset.url,
+      nativePath: asset.nativePath,
       name: asset.name,
       track: firstFreeTrack(taken, { id: "new", start, duration }),
       start,

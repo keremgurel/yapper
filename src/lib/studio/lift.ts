@@ -23,6 +23,7 @@ export function liftedOverlayFromClip(
   return {
     kind: media.kind ?? "video",
     url: media.url,
+    nativePath: media.nativePath,
     name: media.name,
     start: Math.max(0, timelineStart),
     duration: Math.max(0.1, clip.end - clip.start),

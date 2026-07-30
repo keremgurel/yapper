@@ -330,12 +330,16 @@ export function deinterleavePcmChunk(
  * Full-quality interleaved PCM from native ffmpeg, deinterleaved as chunks
  * arrive so the browser never has to fetch an asset:// URL.
  */
-export async function nativeExportPcm(path: string): Promise<NativeExportPcm> {
+export async function nativeExportPcm(
+  path: string,
+  start: number,
+  duration: number,
+): Promise<NativeExportPcm> {
   const info = await invoke<{
     byteLength: number;
     channels: number;
     sampleRate: number;
-  }>("prepare_export_pcm", { path });
+  }>("prepare_export_pcm", { path, start, duration });
   const frameBytes = info.channels * Float32Array.BYTES_PER_ELEMENT;
   if (
     info.byteLength <= 0 ||
@@ -357,6 +361,8 @@ export async function nativeExportPcm(path: string): Promise<NativeExportPcm> {
     const length = Math.min(chunkSize, info.byteLength - offset);
     const response = await invoke<NativeBytes>("extract_export_pcm_chunk", {
       path,
+      start,
+      duration,
       offset,
       length,
     });

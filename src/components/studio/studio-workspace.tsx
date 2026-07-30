@@ -81,11 +81,7 @@ export default function StudioWorkspace() {
   // The bottom track can drive a <video> clock only when it has clips and isn't
   // a still. Otherwise playback falls back to its synthetic clock.
   const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
-  const continuousPreviewUrl = useNativeEditPreview(
-    clips,
-    source?.url ?? "",
-    aspect,
-  );
+  const continuousPreviewUrl = useNativeEditPreview(clips, source, aspect);
   const {
     timelineTime,
     timelineClock,

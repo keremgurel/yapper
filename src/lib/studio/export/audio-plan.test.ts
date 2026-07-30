@@ -86,6 +86,46 @@ describe("planAudioMix base track", () => {
     expect(out).toEqual([]);
   });
 
+  it("carries the direct desktop path into the export decoder", () => {
+    const out = planAudioMix(
+      {
+        ...base,
+        source: { ...source, nativePath: "/Volumes/Camera/rec.mp4" },
+        clips: [clip("c1", 2, 4)],
+      },
+      100,
+    );
+    expect(out).toEqual([
+      {
+        url: "rec.mp4",
+        nativePath: "/Volumes/Camera/rec.mp4",
+        when: 0,
+        offset: 2,
+        length: 2,
+      },
+    ]);
+  });
+
+  it("does not give an appended browser clip the base source's native path", () => {
+    const appended: MediaRef = {
+      url: "blob:appended",
+      name: "appended",
+      duration: 2,
+      kind: "video",
+    };
+    const out = planAudioMix(
+      {
+        ...base,
+        source: { ...source, nativePath: "/Volumes/Camera/rec.mp4" },
+        clips: [clip("c1", 0, 2, appended)],
+      },
+      100,
+    );
+    expect(out).toEqual([
+      { url: "blob:appended", when: 0, offset: 0, length: 2 },
+    ]);
+  });
+
   it("skips an image clip but still advances the cursor past it", () => {
     // The image contributes no audio, yet the next clip must land after it, not
     // on top of it, or the whole bed would slide earlier.

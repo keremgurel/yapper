@@ -967,7 +967,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const loadSource = useCallback(
     (next: StudioSource) => {
       setSource((prev) => {
-        if (prev) URL.revokeObjectURL(prev.url);
+        if (prev?.url.startsWith("blob:")) URL.revokeObjectURL(prev.url);
         return next;
       });
       // One reset clears every layer and its history: clips, captions, overlays,
@@ -1042,6 +1042,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       if (!source) {
         loadSource({
           url: asset.url,
+          nativePath: asset.nativePath,
           name: asset.name,
           // Images get a default 3s duration; they play on a synthetic clock.
           duration: asset.kind === "image" ? 3 : asset.duration,
@@ -1086,7 +1087,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const clearSource = useCallback(() => {
     setSource((prev) => {
-      if (prev) URL.revokeObjectURL(prev.url);
+      if (prev?.url.startsWith("blob:")) URL.revokeObjectURL(prev.url);
       return null;
     });
     // Empties every layer and drops the undo stack along with them.

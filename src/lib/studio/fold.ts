@@ -34,6 +34,7 @@ export function overlayToBaseClip(
     src: carriesOwnMedia
       ? {
           url: overlay.url,
+          nativePath: overlay.nativePath,
           kind: "video",
           name: overlay.name,
           duration: assetDuration,

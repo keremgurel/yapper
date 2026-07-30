@@ -173,11 +173,15 @@ export function useStudioPlayback(
         return;
       }
       let settled = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const cleanUp = () => {
+        if (timer) clearTimeout(timer);
+        v.removeEventListener("seeked", onSeeked);
+      };
       const resumePlaying = () => {
         if (settled) return;
         settled = true;
-        clearTimeout(timer);
-        v.removeEventListener("seeked", onSeeked);
+        cleanUp();
         // A newer scrub superseded this one. Its own completion is the only
         // event allowed to restart playback.
         if (generation !== seekGenerationRef.current) return;
@@ -187,10 +191,23 @@ export function useStudioPlayback(
       const onSeeked = () => {
         resumePlaying();
       };
-      // Broken media can omit `seeked`/rVFC. The timeout is deliberately long
-      // enough for a sparse-keyframe 4K HEVC seek; the previous 400ms fallback
-      // was the source of the visible "boosted frame" hop.
-      const timer = setTimeout(resumePlaying, 2500);
+      // Some WebKit builds occasionally omit `seeked`. Poll only as a fallback,
+      // and never call play while the decoder still reports an in-flight seek.
+      // This avoids both the old boosted-frame hop and an artificial 2.5s wait.
+      const checkSeek = () => {
+        if (settled) return;
+        if (generation !== seekGenerationRef.current) {
+          settled = true;
+          cleanUp();
+          return;
+        }
+        if (!v.seeking) {
+          resumePlaying();
+          return;
+        }
+        timer = setTimeout(checkSeek, 50);
+      };
+      timer = setTimeout(checkSeek, 150);
       v.addEventListener("seeked", onSeeked, { once: true });
     },
     [],
@@ -501,17 +518,15 @@ export function useStudioPlayback(
         }
         const url = clipUrl(hit.index);
         if (v.getAttribute("src") === url) {
-          // This is an explicit user Play after a paused scrub. Let the media
-          // element start immediately; WebKit already serializes play behind
-          // any seek still in flight. Waiting for our own seek timeout here
-          // added a 2.5s dead period and allowed the old resume callback to
-          // race the user's transport controls.
-          seekGenerationRef.current += 1;
-          seekPendingRef.current = false;
           if (Math.abs(v.currentTime - hit.sourceTime) > 0.05) {
-            v.currentTime = hit.sourceTime;
+            beginSeek(v, hit.sourceTime, true);
+          } else {
+            // A scrub can have assigned currentTime already while its decoded
+            // frame is still pending. `seekThenPlay` starts immediately once a
+            // completed paused seek has cleared the flag, and otherwise waits
+            // for that exact seek to land.
+            seekThenPlay(v);
           }
-          void v.play().catch(() => {});
         } else {
           seekVideo(hit.index, hit.sourceTime, true);
         }
@@ -527,6 +542,8 @@ export function useStudioPlayback(
     continuousPreviewUrl,
     seekContinuousVideo,
     clipUrl,
+    beginSeek,
+    seekThenPlay,
     seekVideo,
     startRaf,
     timelineClock,

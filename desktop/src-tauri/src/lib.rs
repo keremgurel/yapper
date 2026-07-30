@@ -1101,23 +1101,38 @@ async fn extract_pcm_chunk(
  * transcription-quality audio is not release-quality audio. ffmpeg handles
  * every source container, and IPC avoids WKWebView's blocked asset:// fetch.
  */
-fn run_extract_export_pcm(path: &str) -> Result<PathBuf, String> {
+fn run_extract_export_pcm(path: &str, start: f64, duration: f64) -> Result<PathBuf, String> {
+    if !start.is_finite()
+        || !duration.is_finite()
+        || start < 0.0
+        || duration <= 0.0
+        || duration > 24.0 * 60.0 * 60.0
+    {
+        return Err("invalid export PCM range".into());
+    }
     let path = validate_media_path(path)?;
     let stem = file_stem(&path.to_string_lossy());
     let cache_key = media_cache_key(&path)?;
-    let out_path = tmp_out(&stem, &cache_key, "exportpcm48", "f32");
+    let range_key = format!(
+        "exportpcm48_{}_{}",
+        (start * 1_000_000.0).round() as u64,
+        (duration * 1_000_000.0).round() as u64
+    );
+    let out_path = tmp_out(&stem, &cache_key, &range_key, "f32");
     let done_path = out_path.with_extension("done");
     if done_path.exists() && out_path.metadata().is_ok_and(|m| m.len() > 0) {
         return Ok(out_path);
     }
     let _ = std::fs::remove_file(&out_path);
     let _ = std::fs::remove_file(&done_path);
-    let status = Command::new(resolve_bin("ffmpeg"))
+    let output = Command::new(resolve_bin("ffmpeg"))
         .args([
             "-y",
             "-nostdin",
             "-loglevel",
             "error",
+            "-ss",
+            &format!("{start:.6}"),
             "-protocol_whitelist",
             "file",
             "-i",
@@ -1126,6 +1141,8 @@ fn run_extract_export_pcm(path: &str) -> Result<PathBuf, String> {
         .args([
             "-map",
             "0:a:0",
+            "-t",
+            &format!("{duration:.6}"),
             "-vn",
             "-ac",
             "2",
@@ -1137,11 +1154,15 @@ fn run_extract_export_pcm(path: &str) -> Result<PathBuf, String> {
             "f32le",
         ])
         .arg(&out_path)
-        .status()
+        .output()
         .map_err(|e| format!("spawn ffmpeg export PCM decode: {e}"))?;
-    if !status.success() {
+    if !output.status.success() {
         let _ = std::fs::remove_file(&out_path);
-        return Err("ffmpeg export PCM decode failed".into());
+        let detail = String::from_utf8_lossy(&output.stderr);
+        return Err(format!(
+            "ffmpeg export PCM decode failed: {}",
+            detail.trim()
+        ));
     }
     std::fs::write(&done_path, b"ok").map_err(|e| format!("mark export PCM done: {e}"))?;
     Ok(out_path)
@@ -1156,9 +1177,13 @@ struct ExportPcmInfo {
 }
 
 #[tauri::command]
-async fn prepare_export_pcm(path: String) -> Result<ExportPcmInfo, String> {
+async fn prepare_export_pcm(
+    path: String,
+    start: f64,
+    duration: f64,
+) -> Result<ExportPcmInfo, String> {
     let byte_length = tauri::async_runtime::spawn_blocking(move || {
-        let out = run_extract_export_pcm(&path)?;
+        let out = run_extract_export_pcm(&path, start, duration)?;
         out.metadata()
             .map(|metadata| metadata.len())
             .map_err(|e| format!("read export PCM metadata: {e}"))
@@ -1179,6 +1204,8 @@ async fn prepare_export_pcm(path: String) -> Result<ExportPcmInfo, String> {
 #[tauri::command]
 async fn extract_export_pcm_chunk(
     path: String,
+    start: f64,
+    duration: f64,
     offset: u64,
     length: usize,
 ) -> Result<tauri::ipc::Response, String> {
@@ -1194,7 +1221,7 @@ async fn extract_export_pcm_chunk(
         return Err("invalid export PCM chunk range".into());
     }
     let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        let out = run_extract_export_pcm(&path)?;
+        let out = run_extract_export_pcm(&path, start, duration)?;
         let file_len = out
             .metadata()
             .map_err(|e| format!("read export PCM metadata: {e}"))?

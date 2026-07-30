@@ -9,6 +9,8 @@ import type {
 /** One source slice the export plays: `buffer[offset .. offset+length]` at timeline `when`. */
 export interface AudioPlacement {
   url: string;
+  /** Direct local path used by desktop ffmpeg; avoids fetching asset:// URLs. */
+  nativePath?: string;
   /** Timeline seconds at which this slice starts. */
   when: number;
   /** In-point into the source media, seconds. */
@@ -43,9 +45,21 @@ export function planAudioMix(
 ): AudioPlacement[] {
   const { source, clips, overlays, audioTracks, baseMuted } = input;
   const out: AudioPlacement[] = [];
-  const add = (url: string, when: number, offset: number, length: number) => {
+  const add = (
+    url: string,
+    nativePath: string | undefined,
+    when: number,
+    offset: number,
+    length: number,
+  ) => {
     if (length <= 0 || when >= duration) return;
-    out.push({ url, when, offset, length });
+    out.push({
+      url,
+      ...(nativePath ? { nativePath } : {}),
+      when,
+      offset,
+      length,
+    });
   };
 
   // Bottom track: each clip plays its own source range at its timeline position.
@@ -55,9 +69,12 @@ export function planAudioMix(
   if (!baseMuted) {
     for (const clip of clips) {
       const url = clip.src?.url ?? source?.url;
+      const nativePath = clip.src ? clip.src.nativePath : source?.nativePath;
       const kind = clip.src?.kind ?? source?.kind ?? "video";
       const len = clipDuration(clip);
-      if (url && kind !== "image") add(url, cursor, clip.start, len);
+      if (url && kind !== "image") {
+        add(url, nativePath, cursor, clip.start, len);
+      }
       cursor += len;
     }
   }
@@ -68,13 +85,13 @@ export function planAudioMix(
   for (const o of overlays) {
     const muted = o.muted ?? true;
     if (o.hidden || muted || o.kind !== "video") continue;
-    add(o.url, o.start, o.sourceStart, o.duration);
+    add(o.url, o.nativePath, o.start, o.sourceStart, o.duration);
   }
 
   // Extra audio tracks, each from its own (possibly trimmed) in-point.
   for (const t of audioTracks) {
     if (t.muted) continue;
-    add(t.url, t.start, t.sourceStart, t.duration);
+    add(t.url, t.nativePath, t.start, t.sourceStart, t.duration);
   }
 
   return out;

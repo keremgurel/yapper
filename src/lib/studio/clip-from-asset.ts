@@ -15,6 +15,7 @@ export function clipFromAsset(asset: MediaAsset): Clip {
     end: asset.duration,
     src: {
       url: asset.url,
+      nativePath: asset.nativePath,
       kind: "video",
       name: asset.name,
       duration: asset.duration,

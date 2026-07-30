@@ -79,7 +79,15 @@ export function nativePathForUrl(url: string): string | undefined {
     // hierarchical form into a relative path ("Volumes/..."). That loses the
     // native source after a page reload, breaking both export audio and the
     // continuous edit preview.
-    const decoded = decodeURIComponent(parsed.pathname);
+    // WebKit/Tauri combinations have emitted both once- and twice-encoded
+    // paths. Decode at most twice: enough to recover `%252FVolumes...` without
+    // turning arbitrary percent text in a real filename into another path.
+    let decoded = parsed.pathname;
+    for (let pass = 0; pass < 2; pass++) {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    }
     const path = decoded.startsWith("//")
       ? decoded.slice(1)
       : /^\/[A-Za-z]:[\\/]/.test(decoded)

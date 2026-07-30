@@ -32,6 +32,14 @@ describe("nativePathForUrl", () => {
     ).toBe("/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4");
   });
 
+  it("recovers a twice-encoded mounted-drive path", () => {
+    const path = "/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4";
+    const encodedTwice = encodeURIComponent(encodeURIComponent(path));
+    expect(nativePathForUrl(`http://asset.localhost/${encodedTwice}`)).toBe(
+      path,
+    );
+  });
+
   it("rejects ordinary web and relative URLs", () => {
     expect(nativePathForUrl("https://example.com/video.mp4")).toBeUndefined();
     expect(nativePathForUrl("asset://localhost/relative.mp4")).toBeUndefined();

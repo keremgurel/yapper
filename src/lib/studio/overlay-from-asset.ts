@@ -21,6 +21,7 @@ export function overlayFromAsset(
   return {
     kind: asset.kind,
     url: asset.url,
+    nativePath: asset.nativePath,
     name: asset.name,
     track: firstFreeTrack(existing, {
       id: "new",

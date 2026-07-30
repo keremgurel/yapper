@@ -2,6 +2,8 @@
  * track). When a clip has no `src`, it uses the project's base source. */
 export interface MediaRef {
   url: string;
+  /** Absolute local path in the desktop app. Never populated on the web. */
+  nativePath?: string;
   kind: "video" | "image";
   name: string;
   duration: number;
@@ -21,6 +23,8 @@ export interface Clip {
 
 export interface StudioSource {
   url: string;
+  /** Absolute local path in the desktop app. Never populated on the web. */
+  nativePath?: string;
   name: string;
   duration: number;
   width?: number;
@@ -34,6 +38,8 @@ export interface MediaAsset {
   id: string;
   kind: "video" | "image";
   url: string;
+  /** Absolute local path in the desktop app. Never populated on the web. */
+  nativePath?: string;
   name: string;
   duration: number; // seconds (default for images)
   width?: number;
@@ -50,6 +56,8 @@ export interface Overlay {
   id: string;
   kind: "video" | "image";
   url: string;
+  /** Absolute local path in the desktop app. Never populated on the web. */
+  nativePath?: string;
   name: string;
   /** Which upper track it sits on. 0 is the lane just above the base. */
   track: number;
@@ -93,6 +101,8 @@ export interface AudioTrack {
   id: string;
   name: string;
   url: string;
+  /** Absolute local path in the desktop app. Never populated on the web. */
+  nativePath?: string;
   /** How long it plays on the timeline, in seconds. Shrinks when trimmed. */
   duration: number;
   start: number; // edited-timeline seconds
