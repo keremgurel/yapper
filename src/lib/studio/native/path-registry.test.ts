@@ -24,6 +24,14 @@ describe("nativePathForUrl", () => {
     ).toBe(path);
   });
 
+  it("recovers a mounted-drive path from Tauri's hierarchical asset URL", () => {
+    expect(
+      nativePathForUrl(
+        "http://asset.localhost/Volumes/G%20MicroSD/DCIM/DJI_001/clip.mp4",
+      ),
+    ).toBe("/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4");
+  });
+
   it("rejects ordinary web and relative URLs", () => {
     expect(nativePathForUrl("https://example.com/video.mp4")).toBeUndefined();
     expect(nativePathForUrl("asset://localhost/relative.mp4")).toBeUndefined();

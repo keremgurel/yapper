@@ -153,7 +153,23 @@ export function mergeTranscribedChunks(chunks: TranscribedChunk[]): RawWord[] {
         chunks[index - 1].durationSec) /
       2;
     const anchor = findSeamAnchor(left, right, seam);
-    if (anchor) {
+    // An anchor late in the overlap is not necessarily the start of duplicated
+    // speech. A short retake can begin after the geometric seam and then share
+    // its ending with the left chunk. Throwing away every right-hand word
+    // before that late anchor creates a Frankenstein transcript:
+    //
+    //   left:  "you can see"       ... "what's still"
+    //   right:                 "now you can see what's still below..."
+    //
+    // Anchoring on "what's still" used to discard the complete final restart
+    // from the right chunk. If the right chunk owns any word before the anchor,
+    // midpoint ownership is the only lossless choice: keep the left prefix and
+    // the complete right suffix. The later retake-cleanup pass can then choose
+    // between both real attempts instead of receiving a synthetic one.
+    const rightOwnsPrefixBeforeAnchor =
+      anchor != null &&
+      right.slice(0, anchor.right).some((word) => wordMidpoint(word) >= seam);
+    if (anchor && !rightOwnsPrefixBeforeAnchor) {
       // Keep the left copy of the anchor, remove the remainder of that chunk,
       // then continue immediately after the right copy of the same word.
       const trailingLeftWords = left.length - anchor.left - 1;

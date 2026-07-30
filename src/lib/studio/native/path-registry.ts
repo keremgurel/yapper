@@ -59,10 +59,32 @@ export function nativePathForUrl(url: string): string | undefined {
       (parsed.protocol === "asset:" && parsed.hostname === "localhost") ||
       (parsed.protocol === "http:" && parsed.hostname === "asset.localhost");
     if (!isAsset) return undefined;
-    const encoded = parsed.pathname.startsWith("/")
-      ? parsed.pathname.slice(1)
-      : parsed.pathname;
-    const path = decodeURIComponent(encoded);
+    // The custom asset:// form carries an encoded absolute path as one opaque
+    // component. A plain asset://localhost/relative.mp4 URL is not proof of an
+    // absolute local file and must stay rejected.
+    if (
+      parsed.protocol === "asset:" &&
+      !/^\/%2f/i.test(parsed.pathname) &&
+      !/^\/[A-Za-z]%3a/i.test(parsed.pathname)
+    ) {
+      return undefined;
+    }
+    // convertFileSrc has emitted both forms across Tauri/WebKit versions:
+    //
+    //   http://asset.localhost/%2FUsers%2Fme%2Fclip.mp4
+    //   http://asset.localhost/Volumes/Camera/clip.mp4
+    //
+    // Decode before normalising the protocol's separator. Stripping the first
+    // slash before decoding works for the encoded form but turns the
+    // hierarchical form into a relative path ("Volumes/..."). That loses the
+    // native source after a page reload, breaking both export audio and the
+    // continuous edit preview.
+    const decoded = decodeURIComponent(parsed.pathname);
+    const path = decoded.startsWith("//")
+      ? decoded.slice(1)
+      : /^\/[A-Za-z]:[\\/]/.test(decoded)
+        ? decoded.slice(1)
+        : decoded;
     return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path)
       ? path
       : undefined;

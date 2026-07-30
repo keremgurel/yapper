@@ -880,13 +880,7 @@ export default function StudioTimeline({
                             ? "z-30 opacity-90 ring-2 ring-cyan-400"
                             : selected
                               ? "z-10 ring-2 ring-cyan-500"
-                              : // Every clip gets a bold two-tone border (a bright
-                                // inner edge over a dark outer one) so adjacent
-                                // clips show a clear double seam and each clip's
-                                // start/end reads at a glance on both dark gaps and
-                                // bright thumbnails. Inset so the parent's overflow
-                                // can't clip it away.
-                                "shadow-[inset_0_0_0_2px_rgba(255,255,255,0.9),inset_0_0_0_3px_rgba(0,0,0,0.55)] hover:shadow-[inset_0_0_0_2px_rgba(56,189,248,0.95),inset_0_0_0_3px_rgba(0,0,0,0.55)]"
+                              : ""
                       }`}
                       title={`${cStart.toFixed(2)}s to ${cEnd.toFixed(2)}s`}
                     >
@@ -927,6 +921,19 @@ export default function StudioTimeline({
                           />
                         </span>
                       )}
+
+                      {/* A real foreground border, not a box-shadow: inset
+                        shadows paint underneath child images, so thumbnails
+                        hid the old seam and adjacent clips looked continuous.
+                        This top layer stays a stable two-pixel divider at every
+                        zoom level without changing any clip's timed width. */}
+                      <span
+                        className={`pointer-events-none absolute inset-0 z-10 rounded-[inherit] border-2 transition-colors ${
+                          selected
+                            ? "border-cyan-300"
+                            : "border-white/85 group-hover:border-cyan-300"
+                        }`}
+                      />
 
                       {/* Appended media names itself, so a clip that isn't the
                         recording is identifiable at a glance. */}

@@ -40,4 +40,26 @@ describe("nativeEditPreviewPlan", () => {
 
     expect(nativeEditPreviewPlan(clips, "asset://known")).toBeNull();
   });
+
+  it("recovers mounted-drive media after the in-memory registry is lost", () => {
+    const url =
+      "http://asset.localhost/Volumes/G%20MicroSD/DCIM/DJI_001/clip.mp4";
+    const clips: Clip[] = [
+      { id: "a", start: 10, end: 12 },
+      { id: "b", start: 15, end: 18 },
+    ];
+
+    expect(nativeEditPreviewPlan(clips, url)).toEqual([
+      {
+        path: "/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4",
+        start: 10,
+        end: 12,
+      },
+      {
+        path: "/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4",
+        start: 15,
+        end: 18,
+      },
+    ]);
+  });
 });

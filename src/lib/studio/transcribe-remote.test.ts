@@ -132,4 +132,51 @@ describe("transcription chunk transport", () => {
 
     expect(merged.map((word) => word.text)).toEqual(["intro", "seam", "after"]);
   });
+
+  it("keeps a complete restart that begins before a late overlap anchor", () => {
+    const empty = new Blob();
+    const merged = mergeTranscribedChunks([
+      {
+        blob: empty,
+        via: "wav16",
+        offsetSec: 236.237625,
+        durationSec: 31.248625,
+        words: [
+          { text: "You", start: 25.793625, end: 25.953625 },
+          { text: "can", start: 25.953625, end: 26.113625 },
+          { text: "see", start: 26.113625, end: 26.673624 },
+          { text: "what's", start: 30.433624, end: 30.753624 },
+          { text: "still", start: 30.753624, end: 31.553623 },
+        ],
+      },
+      {
+        blob: empty,
+        via: "wav16",
+        offsetSec: 262.48625,
+        durationSec: 31.248625,
+        words: [
+          { text: "Now", start: 3.44, end: 3.76 },
+          { text: "you", start: 3.76, end: 3.92 },
+          { text: "can", start: 3.92, end: 4.08 },
+          { text: "see", start: 4.08, end: 4.24 },
+          { text: "what's", start: 4.24, end: 4.56 },
+          { text: "still", start: 4.56, end: 4.8 },
+          { text: "below", start: 4.8, end: 5.12 },
+        ],
+      },
+    ]);
+
+    expect(merged.map((word) => word.text)).toEqual([
+      "You",
+      "can",
+      "see",
+      "Now",
+      "you",
+      "can",
+      "see",
+      "what's",
+      "still",
+      "below",
+    ]);
+  });
 });
