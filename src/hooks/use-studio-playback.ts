@@ -21,6 +21,12 @@ const EPS = 0.03;
 // is still fluid for them. The playhead line itself doesn't wait on this: it
 // reads the per-frame `timelineClock` store directly (see timeline-clock.ts).
 const COARSE_UI_INTERVAL_MS = 125;
+/** How far ahead the hidden decoder runs before an edited cut. */
+const HANDOFF_PREROLL_SEC = 0.35;
+
+type VideoBankRef = React.RefObject<
+  [HTMLVideoElement | null, HTMLVideoElement | null]
+>;
 
 export interface PlaybackInput {
   /** Bottom-track clips. May be empty — overlays and audio still play. */
@@ -31,6 +37,8 @@ export interface PlaybackInput {
   hasVideo: boolean;
   /** Media for clips that don't carry their own `src`. */
   baseUrl: string;
+  /** Whether the bottom track's own audio is muted. */
+  baseMuted: boolean;
 }
 
 /**
@@ -44,8 +52,8 @@ export interface PlaybackInput {
  * other at the bottom track's end.
  */
 export function useStudioPlayback(
-  videoRef: React.RefObject<HTMLVideoElement | null>,
-  { clips, total, hasVideo, baseUrl }: PlaybackInput,
+  videoRefs: VideoBankRef,
+  { clips, total, hasVideo, baseUrl, baseMuted }: PlaybackInput,
 ) {
   const [timelineTime, setTimelineTime] = useState(0);
   const [sourceTime, setSourceTime] = useState(0);
@@ -68,7 +76,30 @@ export function useStudioPlayback(
   // momentary paused state: WebKit may pause internally while changing source
   // or seeking, but that must not turn a playing session into a user pause.
   const playIntentRef = useRef(false);
+  const activeSlotRef = useRef<0 | 1>(0);
+  const primingIndexRef = useRef<number | null>(null);
+  const primedReadyRef = useRef(false);
+  const primedPlayingRef = useRef(false);
+  const primedStartRef = useRef(0);
+  const primeGenerationRef = useRef(0);
   const baseTotal = totalDuration(clips);
+
+  const activeVideo = useCallback(
+    () => videoRefs.current[activeSlotRef.current],
+    [videoRefs],
+  );
+
+  const standbyVideo = useCallback(
+    () => videoRefs.current[activeSlotRef.current === 0 ? 1 : 0],
+    [videoRefs],
+  );
+
+  useEffect(() => {
+    const active = activeVideo();
+    const standby = standbyVideo();
+    if (active) active.muted = baseMuted;
+    if (standby) standby.muted = true;
+  }, [activeVideo, standbyVideo, baseMuted]);
 
   // The identity url (used for export, snapping, etc.) always stays the
   // original file. Playback alone swaps in the low-res dense-keyframe proxy
@@ -98,11 +129,11 @@ export function useStudioPlayback(
   }, []);
 
   const pauseVideoSilently = useCallback(() => {
-    const v = videoRef.current;
+    const v = activeVideo();
     if (!v || v.paused) return;
     silentPauseRef.current = true;
     v.pause();
-  }, [videoRef]);
+  }, [activeVideo]);
 
   // Seeking is async: `currentTime` reads back the TARGET synchronously the
   // instant it's set, even though the decoded frame lands a beat later
@@ -153,14 +184,16 @@ export function useStudioPlayback(
   // completion so Play can start immediately instead of waiting for an event
   // that already happened.
   useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
+    const videos = videoRefs.current.filter(
+      (video): video is HTMLVideoElement => video != null,
+    );
     const onSeeked = () => {
       seekPendingRef.current = false;
     };
-    v.addEventListener("seeked", onSeeked);
-    return () => v.removeEventListener("seeked", onSeeked);
-  }, [videoRef]);
+    videos.forEach((video) => video.addEventListener("seeked", onSeeked));
+    return () =>
+      videos.forEach((video) => video.removeEventListener("seeked", onSeeked));
+  }, [videoRefs]);
 
   const beginSeek = useCallback(
     (v: HTMLVideoElement, srcTime: number, resume: boolean) => {
@@ -177,7 +210,7 @@ export function useStudioPlayback(
   // source first if this clip uses a different one. Resumes play if `resume`.
   const seekVideo = useCallback(
     (index: number, srcTime: number, resume: boolean) => {
-      const v = videoRef.current;
+      const v = activeVideo();
       if (!v) return;
       const url = clipUrl(index);
       if (v.getAttribute("src") !== url) {
@@ -203,7 +236,96 @@ export function useStudioPlayback(
         seekThenPlay(v);
       }
     },
-    [videoRef, clipUrl, pauseVideoSilently, beginSeek, seekThenPlay],
+    [activeVideo, clipUrl, pauseVideoSilently, beginSeek, seekThenPlay],
+  );
+
+  const clearStandby = useCallback(() => {
+    primeGenerationRef.current += 1;
+    primingIndexRef.current = null;
+    primedReadyRef.current = false;
+    primedPlayingRef.current = false;
+    const standby = standbyVideo();
+    if (!standby) return;
+    standby.pause();
+    standby.muted = true;
+    standby.style.opacity = "0";
+  }, [standbyVideo]);
+
+  /**
+   * Decode the next clip on the hidden media element while the current clip is
+   * still playing. Once seeked, it is ready to pre-roll without presenting or
+   * sounding; the boundary step only swaps visibility/audio ownership.
+   */
+  const prepareStandby = useCallback(
+    (index: number) => {
+      if (primingIndexRef.current === index) return;
+      const standby = standbyVideo();
+      if (!standby || !clips[index]) return;
+
+      const generation = ++primeGenerationRef.current;
+      primingIndexRef.current = index;
+      primedReadyRef.current = false;
+      primedPlayingRef.current = false;
+      standby.pause();
+      standby.muted = true;
+      standby.style.opacity = "0";
+
+      const target = Math.max(0, clips[index].start - HANDOFF_PREROLL_SEC);
+      primedStartRef.current = target;
+      const markReady = () => {
+        if (generation !== primeGenerationRef.current) return;
+        primedReadyRef.current = true;
+      };
+      const seek = () => {
+        if (generation !== primeGenerationRef.current) return;
+        if (Math.abs(standby.currentTime - target) <= 0.02) {
+          markReady();
+          return;
+        }
+        standby.addEventListener("seeked", markReady, { once: true });
+        standby.currentTime = target;
+      };
+
+      const url = clipUrl(index);
+      if (standby.getAttribute("src") === url && standby.readyState >= 1) {
+        seek();
+      } else {
+        standby.setAttribute("src", url);
+        standby.load();
+        standby.addEventListener("loadedmetadata", seek, { once: true });
+      }
+    },
+    [clips, clipUrl, standbyVideo],
+  );
+
+  /** Swap to an already-decoding clip without seeking the visible player. */
+  const commitStandby = useCallback(
+    (nextIndex: number): boolean => {
+      if (primingIndexRef.current !== nextIndex || !primedReadyRef.current) {
+        return false;
+      }
+      const current = activeVideo();
+      const next = standbyVideo();
+      if (!current || !next) return false;
+
+      // If the clip was too short to pre-roll, start its decoded first frame
+      // now. Otherwise it is already running in lockstep, hidden and muted.
+      if (next.paused) void next.play().catch(() => {});
+      current.muted = true;
+      next.muted = baseMuted;
+      next.style.opacity = "1";
+      current.style.opacity = "0";
+
+      // Change ownership before pausing the outgoing decoder. Its asynchronous
+      // pause event must be recognized as belonging to the hidden slot.
+      activeSlotRef.current = activeSlotRef.current === 0 ? 1 : 0;
+      current.pause();
+      primingIndexRef.current = null;
+      primedReadyRef.current = false;
+      primedPlayingRef.current = false;
+      return true;
+    },
+    [activeVideo, standbyVideo, baseMuted],
   );
 
   /** Run the synthetic clock from `from` to the project end. */
@@ -254,8 +376,9 @@ export function useStudioPlayback(
       timelineClock.set(clamped);
       if (overBaseTrack(clamped)) {
         stopRaf();
+        clearStandby();
         const hit = timelineToClip(clips, clamped);
-        if (hit && videoRef.current) {
+        if (hit && activeVideo()) {
           activeIndexRef.current = hit.index;
           seekVideo(hit.index, hit.sourceTime, wasPlaying);
           setSourceTime(hit.sourceTime);
@@ -269,7 +392,7 @@ export function useStudioPlayback(
       else stopRaf();
     },
     [
-      videoRef,
+      activeVideo,
       clips,
       total,
       playing,
@@ -278,6 +401,7 @@ export function useStudioPlayback(
       startRaf,
       stopRaf,
       pauseVideoSilently,
+      clearStandby,
       timelineClock,
     ],
   );
@@ -304,7 +428,7 @@ export function useStudioPlayback(
     playIntentRef.current = true;
     const from = clockRef.current >= total - EPS ? 0 : clockRef.current;
     if (overBaseTrack(from)) {
-      const v = videoRef.current;
+      const v = activeVideo();
       if (!v) return;
       const hit = timelineToClip(clips, from);
       if (hit) {
@@ -333,7 +457,7 @@ export function useStudioPlayback(
     }
     startRaf(from);
   }, [
-    videoRef,
+    activeVideo,
     clips,
     total,
     overBaseTrack,
@@ -351,9 +475,10 @@ export function useStudioPlayback(
     seekPendingRef.current = false;
     playIntentRef.current = false;
     stopRaf();
-    videoRef.current?.pause();
+    videoRefs.current.forEach((video) => video?.pause());
+    clearStandby();
     setPlaying(false);
-  }, [videoRef, stopRaf]);
+  }, [videoRefs, stopRaf, clearStandby]);
 
   useEffect(() => stopRaf, [stopRaf]);
 
@@ -366,29 +491,31 @@ export function useStudioPlayback(
     seekGenerationRef.current += 1;
     seekPendingRef.current = false;
     stopRaf();
-    videoRef.current?.pause();
+    videoRefs.current.forEach((video) => video?.pause());
+    clearStandby();
     clockRef.current = next;
     timelineClock.set(next);
     setTimelineTime(next);
     setSourceTime(next);
     setPlaying(false);
     playIntentRef.current = false;
-  }, [total, stopRaf, timelineClock, videoRef]);
+  }, [total, stopRaf, timelineClock, videoRefs, clearStandby]);
 
   // The clock source changed (the bottom track was deleted, added, or swapped
   // between video and still). Stop, rather than leave `playing` true with the
   // old clock gone and nothing ticking in its place.
   useEffect(() => {
     stopRaf();
-    videoRef.current?.pause();
+    videoRefs.current.forEach((video) => video?.pause());
+    clearStandby();
     setPlaying(false);
     playIntentRef.current = false;
-  }, [hasVideo, stopRaf, videoRef]);
+  }, [hasVideo, stopRaf, videoRefs, clearStandby]);
 
   // Keep the video pointed at the clip under the playhead when the edit changes.
   useEffect(() => {
     if (!hasVideo) return;
-    const v = videoRef.current;
+    const v = activeVideo();
     if (!v) return;
     const hit = timelineToClip(clips, clockRef.current);
     if (hit) {
@@ -405,15 +532,18 @@ export function useStudioPlayback(
   // that to a single frame. rAF is the fallback when rVFC is unavailable.
   useEffect(() => {
     if (!hasVideo) return;
-    const v = videoRef.current;
-    if (!v) return;
+    const videos = videoRefs.current.filter(
+      (video): video is HTMLVideoElement => video != null,
+    );
+    if (videos.length === 0) return;
 
-    const vfc = v as HTMLVideoElement & {
+    type FrameVideo = HTMLVideoElement & {
       requestVideoFrameCallback?: (cb: () => void) => number;
       cancelVideoFrameCallback?: (h: number) => void;
     };
-    const useRvfc = typeof vfc.requestVideoFrameCallback === "function";
     let handle: number | null = null;
+    let handleVideo: FrameVideo | null = null;
+    let handleIsVfc = false;
     // True between initiating a boundary jump and its 'seeked' landing. Guards
     // against re-evaluating the boundary while currentTime is still the old
     // value — which, when the next clip is reordered EARLIER in the source,
@@ -422,129 +552,162 @@ export function useStudioPlayback(
     // Throttles the playhead/caption STATE updates (not the video, not the cut
     // detection) so playback does not re-render the whole timeline 60x/second.
     let lastUi = 0;
-    const onSeeked = () => {
+    const onSeeked = (event: Event) => {
+      if (event.currentTarget !== activeVideo()) return;
       seeking = false;
-      if (playIntentRef.current && v!.paused) {
-        void v!.play().catch(() => {});
+      const active = activeVideo();
+      if (playIntentRef.current && active?.paused) {
+        void active.play().catch(() => {});
       }
     };
-    v.addEventListener("seeked", onSeeked);
+    videos.forEach((video) => video.addEventListener("seeked", onSeeked));
 
     const cancel = () => {
       if (handle == null) return;
-      if (useRvfc) vfc.cancelVideoFrameCallback?.(handle);
+      if (handleIsVfc) handleVideo?.cancelVideoFrameCallback?.(handle);
       else cancelAnimationFrame(handle);
       handle = null;
+      handleVideo = null;
     };
     const schedule = () => {
-      if (v.paused) return;
-      handle = useRvfc
-        ? (vfc.requestVideoFrameCallback?.(step) ?? null)
+      const active = activeVideo() as FrameVideo | null;
+      if (!active || active.paused) return;
+      handleVideo = active;
+      handleIsVfc = typeof active.requestVideoFrameCallback === "function";
+      handle = handleIsVfc
+        ? (active.requestVideoFrameCallback?.(step) ?? null)
         : requestAnimationFrame(step);
+    };
+
+    const startPrimedIfDue = (
+      active: HTMLVideoElement,
+      clip: Clip,
+      nextIndex: number,
+    ) => {
+      prepareStandby(nextIndex);
+      if (
+        primingIndexRef.current !== nextIndex ||
+        !primedReadyRef.current ||
+        primedPlayingRef.current
+      ) {
+        return;
+      }
+      const lead = clips[nextIndex].start - primedStartRef.current;
+      if (active.currentTime < clip.end - lead) return;
+      const standby = standbyVideo();
+      if (!standby) return;
+      standby.muted = true;
+      primedPlayingRef.current = true;
+      void standby.play().catch(() => {
+        primedPlayingRef.current = false;
+      });
     };
 
     /** The bottom track just ran out. Either the project ends here, or the rAF
      * clock carries the overlays and audio that outlast it. */
-    function endOfBaseTrack() {
+    function endOfBaseTrack(active: HTMLVideoElement) {
+      clearStandby();
       setSourceTime(clips[clips.length - 1].end);
       if (total > baseTotal + EPS) {
         silentPauseRef.current = true;
-        v!.pause();
+        active.pause();
         startRaf(baseTotal);
         return;
       }
       playIntentRef.current = false;
-      v!.pause();
+      active.pause();
       setTimelineTime(total);
       clockRef.current = total;
       timelineClock.set(total);
     }
 
     function step() {
+      const active = activeVideo();
+      if (!active) return;
       if (seeking) {
         // `currentTime` reports the target before the decoder has presented it,
-        // so only the `seeked` event may release this guard.
+        // so only the active element's `seeked` event may release this guard.
         schedule();
         return;
       }
       const i = activeIndexRef.current;
       const clip = clips[i];
       if (clip) {
-        if (v!.currentTime >= clip.end) {
-          const next = i + 1;
+        const next = i + 1;
+        if (next < clips.length) startPrimedIfDue(active, clip, next);
+
+        if (active.currentTime >= clip.end) {
           if (next >= clips.length) {
-            endOfBaseTrack();
-            return; // the rAF clock or the end-of-project stop takes it from here
+            endOfBaseTrack(active);
+            return;
           }
-          seeking = true;
-          const seekTarget = clips[next].start;
+
           activeIndexRef.current = next;
-          const nextUrl = clipUrl(next);
-          if (v!.getAttribute("src") === nextUrl) {
-            // Keep the transport running across cuts from the same recording.
-            // Pausing, seeking, waiting for `seeked`, then playing again made
-            // every edit boundary an audible pause/play cycle. A playing media
-            // element remains playing when currentTime changes; the dense-
-            // keyframe desktop proxy makes this discontinuous seek land fast.
-            seekGenerationRef.current += 1;
-            seekPendingRef.current = true;
-            v!.currentTime = seekTarget;
+          if (!commitStandby(next)) {
+            // The bank normally prepares at the start of the current clip. If
+            // an unusually short clip ended before that seek landed, retain a
+            // correct fallback instead of playing removed source seconds.
+            seeking = true;
+            const seekTarget = clips[next].start;
+            const nextUrl = clipUrl(next);
+            if (active.getAttribute("src") === nextUrl) {
+              seekGenerationRef.current += 1;
+              seekPendingRef.current = true;
+              active.currentTime = seekTarget;
+            } else {
+              seekVideo(next, seekTarget, !active.paused);
+            }
           } else {
-            // A genuinely different appended file still has to load before it
-            // can play, so retain the guarded source-switch path for that case.
-            seekVideo(next, seekTarget, !v!.paused);
+            seeking = false;
+            prepareStandby(next + 1);
           }
+
           const t = clipTimelineStart(clips, next);
           setTimelineTime(t);
           clockRef.current = t;
           timelineClock.set(t);
           setSourceTime(clips[next].start);
-          lastUi = performance.now(); // a cut always updates the UI at once
-        } else if (v!.currentTime < clip.start - EPS) {
-          v!.currentTime = clip.start;
+          lastUi = performance.now();
+        } else if (active.currentTime < clip.start - EPS) {
+          active.currentTime = clip.start;
         } else {
-          const t = clipTimelineStart(clips, i) + (v!.currentTime - clip.start);
+          const t =
+            clipTimelineStart(clips, i) + (active.currentTime - clip.start);
           clockRef.current = t;
-          // The <video> paints its own frames at full rate. The playhead line
-          // reads this every frame via its own subscription (no re-render);
-          // these two calls only move the caption/transcript highlight and the
-          // time readout, so they stay coarse — at 60fps they'd re-render the
-          // whole timeline tree and starve the audio. Playback and cut
-          // detection read the ref, untouched.
           timelineClock.set(t);
           const now = performance.now();
           if (now - lastUi >= COARSE_UI_INTERVAL_MS) {
             lastUi = now;
             setTimelineTime(t);
-            setSourceTime(v!.currentTime);
+            setSourceTime(active.currentTime);
           }
         }
       }
       schedule();
     }
 
-    const onPlay = () => {
+    const onPlay = (event: Event) => {
+      // The hidden standby pre-rolls muted; it must not seize clock ownership
+      // or re-run the user-facing Play transition.
+      if (event.currentTarget !== activeVideo()) return;
       playIntentRef.current = true;
-      stopRaf(); // the video is the clock again
+      stopRaf();
       setPlaying(true);
       cancel();
       schedule();
     };
-    const onPause = () => {
+    const onPause = (event: Event) => {
+      if (event.currentTarget !== activeVideo()) return;
       cancel();
-      // A handoff or a seek out of the bottom track paused it deliberately —
-      // the rAF clock is (or is about to be) running, so playback continues.
       if (silentPauseRef.current) {
         silentPauseRef.current = false;
         return;
       }
-      // Explicit pauses already clear this intent in `pause()`. A transient
-      // WebKit pause during an uninterrupted boundary seek should not flip the
-      // transport UI or turn one cut into a pause/play cycle.
       if (playIntentRef.current) return;
       setPlaying(false);
     };
-    const onEnded = () => {
+    const onEnded = (event: Event) => {
+      if (event.currentTarget !== activeVideo()) return;
       cancel();
       if (silentPauseRef.current) return;
       playIntentRef.current = false;
@@ -553,25 +716,35 @@ export function useStudioPlayback(
       clockRef.current = total;
     };
 
-    v.addEventListener("play", onPlay);
-    v.addEventListener("pause", onPause);
-    v.addEventListener("ended", onEnded);
-    if (!v.paused) schedule();
+    videos.forEach((video) => {
+      video.addEventListener("play", onPlay);
+      video.addEventListener("pause", onPause);
+      video.addEventListener("ended", onEnded);
+    });
+    const active = activeVideo();
+    if (active && !active.paused) schedule();
     return () => {
-      v.removeEventListener("play", onPlay);
-      v.removeEventListener("pause", onPause);
-      v.removeEventListener("ended", onEnded);
-      v.removeEventListener("seeked", onSeeked);
+      videos.forEach((video) => {
+        video.removeEventListener("play", onPlay);
+        video.removeEventListener("pause", onPause);
+        video.removeEventListener("ended", onEnded);
+        video.removeEventListener("seeked", onSeeked);
+      });
       cancel();
     };
   }, [
-    videoRef,
+    videoRefs,
     clips,
     total,
     baseTotal,
     hasVideo,
+    activeVideo,
+    standbyVideo,
     clipUrl,
     seekVideo,
+    prepareStandby,
+    commitStandby,
+    clearStandby,
     startRaf,
     stopRaf,
     timelineClock,
