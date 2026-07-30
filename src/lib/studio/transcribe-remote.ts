@@ -7,8 +7,13 @@ import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import type { TranscriptionDictionaryEntry } from "@/lib/studio/transcription-dictionary";
 import { dictionaryKeyterms } from "@/lib/studio/transcription-dictionary";
 import { isNative } from "@/lib/studio/native/bridge";
-import { nativeAudioBlob } from "@/lib/studio/native/media";
 import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
+
+// Short ASR windows retain quiet/unclear restarts that a long request can
+// contextually suppress. Five seconds of overlap gives the anchor merge enough
+// shared speech to remove duplicates without cutting a word at the boundary.
+const NATIVE_ASR_CHUNK_BYTES = 1_000_000;
+const NATIVE_ASR_OVERLAP_SEC = 5;
 
 export interface RawWord {
   text: string;
@@ -29,19 +34,23 @@ export async function transcribeUrl(
 ): Promise<RawWord[]> {
   const keyterms = dictionaryKeyterms(dictionary);
 
-  // Desktop: transcribe ONE ffmpeg-extracted audio file in a single request.
-  // This skips the in-browser decode + chunk-and-stitch entirely, and it's the
-  // seam-merging in that stitch that silently dropped repeated takes on some
-  // files. Any failure (extract error, or a body-cap 413 on a long take) falls
-  // through to the browser chunk path below, so this never makes things worse.
+  // Desktop: ffmpeg has already decoded clean lossless PCM for VAD/waveforms.
+  // Upload bounded overlapping WAV chunks from that same PCM. The previous
+  // single-file shortcut re-encoded the camera track to 48kbps AAC; on the DJI
+  // reference that erased a quiet phrase and the onset of the next take before
+  // ASR ever saw them. Native PCM works for DJI, iPhone, and odd containers
+  // alike, while the anchor merge below keeps chunk seams deterministic.
   const native = isNative() ? nativeMediaForUrl(url) : undefined;
   if (native) {
     try {
-      const audio = await nativeAudioBlob(native.path);
-      return await transcribeRemote(audio, native.duration, keyterms);
+      const pcm = await decodeToMono16k(url);
+      return await transcribeAsrChunks(
+        chunkMono16k(pcm, NATIVE_ASR_CHUNK_BYTES, NATIVE_ASR_OVERLAP_SEC),
+        keyterms,
+      );
     } catch (e) {
       console.warn(
-        "[transcribe] native single-file audio failed, falling back to chunks",
+        "[transcribe] native PCM chunks failed, falling back to media demux",
         e,
       );
     }

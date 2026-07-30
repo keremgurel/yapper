@@ -56,6 +56,7 @@ export default function StudioWorkspace() {
     source,
     clips,
     duration,
+    baseMuted,
     selectedClipIds,
     selectedCaptionIds,
     selectedOverlayIds,
@@ -68,7 +69,13 @@ export default function StudioWorkspace() {
     undo,
     redo,
   } = useStudio();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  // Two persistent decoders let the next edited clip prepare before the
+  // current one ends. A single <video> must flush and seek at every cut, which
+  // is visibly discontinuous even when its `paused` state never changes.
+  const videoRefs = useRef<[HTMLVideoElement | null, HTMLVideoElement | null]>([
+    null,
+    null,
+  ]);
   // The bottom track can drive a <video> clock only when it has clips and isn't
   // a still. Otherwise playback falls back to its synthetic clock.
   const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
@@ -80,11 +87,12 @@ export default function StudioWorkspace() {
     pause,
     seekToTimeline,
     seekToSource,
-  } = useStudioPlayback(videoRef, {
+  } = useStudioPlayback(videoRefs, {
     clips,
     total: duration,
     hasVideo,
     baseUrl: source?.url ?? "",
+    baseMuted,
   });
   // Two docked widths, because the two layouts dock two different things: the
   // side panel in classic, the picture in cinema. Sharing one would make the
@@ -200,7 +208,7 @@ export default function StudioWorkspace() {
 
   const stage = (
     <PreviewStage
-      videoRef={videoRef}
+      videoRefs={videoRefs}
       timelineTime={timelineTime}
       playing={playing}
       onTogglePlay={() => (playing ? pause() : play())}

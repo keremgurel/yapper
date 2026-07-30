@@ -17,27 +17,21 @@ import { totalDuration } from "@/lib/studio/clips";
  * pane above the timeline and a tall one beside it.
  */
 export default function PreviewStage({
-  videoRef,
+  videoRefs,
   timelineTime,
   playing,
   onTogglePlay,
 }: {
   /** The bottom track's element. It is the master clock, so the shell owns it. */
-  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoRefs: React.RefObject<
+    [HTMLVideoElement | null, HTMLVideoElement | null]
+  >;
   timelineTime: number;
   playing: boolean;
   onTogglePlay: () => void;
 }) {
-  const {
-    source,
-    clips,
-    duration,
-    aspect,
-    baseHidden,
-    baseMuted,
-    overlays,
-    audioTracks,
-  } = useStudio();
+  const { source, clips, duration, aspect, baseHidden, overlays, audioTracks } =
+    useStudio();
 
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -104,17 +98,35 @@ export default function PreviewStage({
               />
             )}
             {hasVideo && (
-              // src is managed imperatively by the playback hook so it can
-              // switch between the bottom track's appended sources. Kept
-              // mounted even while hidden — it's the clock.
-              <video
-                ref={videoRef}
-                className="absolute inset-0 h-full w-full rounded-lg object-cover"
-                playsInline
-                muted={baseMuted}
+              // Both decoders stay mounted. Playback prepares the hidden one
+              // at the next clip and swaps their opacity synchronously at the
+              // boundary, instead of making one decoder flush and seek.
+              <div
+                className="absolute inset-0"
                 style={{ visibility: baseVisible ? "visible" : "hidden" }}
-                onClick={onTogglePlay}
-              />
+              >
+                {[0, 1].map((slot) => (
+                  <video
+                    key={slot}
+                    ref={(element) => {
+                      const index = slot as 0 | 1;
+                      const firstMount =
+                        element != null && videoRefs.current[index] !== element;
+                      videoRefs.current[index] = element;
+                      // React must not own this property: coarse playback state
+                      // re-renders the stage several times per second and would
+                      // otherwise reset every imperative decoder swap.
+                      if (firstMount) {
+                        element.style.opacity = index === 0 ? "1" : "0";
+                      }
+                    }}
+                    className="absolute inset-0 h-full w-full rounded-lg object-cover"
+                    playsInline
+                    preload="auto"
+                    onClick={onTogglePlay}
+                  />
+                ))}
+              </div>
             )}
             <OverlayLayer
               overlays={overlays}
