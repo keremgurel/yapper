@@ -60,6 +60,7 @@ export function assetFromSource(source: StudioSource): MediaAsset {
     id: newMediaId(),
     kind: source.kind === "image" ? "image" : "video",
     url: source.url,
+    nativePath: source.nativePath,
     name: source.name,
     duration: source.duration,
     width: source.width,

@@ -46,6 +46,7 @@ export async function loadNativeSource(path: string): Promise<StudioSource> {
 
   return {
     url,
+    nativePath: path,
     name: baseName(path),
     duration: probe.duration,
     width: probe.width,

@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import { isNative, pickVideoPath } from "@/lib/studio/native/bridge";
+import { loadNativeSource } from "@/lib/studio/native/load-native-source";
 
 /**
  * There is no project yet, so there is nothing for the bird to place anything
@@ -28,6 +30,23 @@ export default function AiEmptyPrompt() {
       .catch(() => setError("I could not read that video."));
   };
 
+  const openPicker = () => {
+    if (!isNative()) {
+      inputRef.current?.click();
+      return;
+    }
+    setError("");
+    void pickVideoPath()
+      .then((path) =>
+        path ? loadNativeSource(path).then(loadSource) : undefined,
+      )
+      .catch((cause: unknown) => {
+        console.error("[studio] native assistant import failed", cause);
+        const detail = cause instanceof Error ? cause.message : String(cause);
+        setError(`I could not read that video: ${detail}`);
+      });
+  };
+
   return (
     <div>
       <p className="text-foreground/55 mb-2.5 text-sm">
@@ -44,9 +63,13 @@ export default function AiEmptyPrompt() {
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
+          if (isNative()) {
+            openPicker();
+            return;
+          }
           take(e.dataTransfer.files?.[0]);
         }}
-        onClick={() => inputRef.current?.click()}
+        onClick={openPicker}
         className={`flex cursor-pointer flex-col items-center gap-2.5 rounded-xl border border-dashed px-4 py-6 text-center transition-colors ${
           dragOver
             ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/10"
@@ -61,7 +84,7 @@ export default function AiEmptyPrompt() {
           Choose a video
         </span>
         <span className="text-foreground/50 text-xs">
-          Or drop one here. It never leaves your browser.
+          Or drop one here. It stays on your device.
         </span>
       </div>
 

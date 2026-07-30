@@ -15,7 +15,7 @@ describe("nativeEditPreviewPlan", () => {
       { id: "b", start: 12, end: 18.75 },
     ];
 
-    expect(nativeEditPreviewPlan(clips, "asset://base")).toEqual([
+    expect(nativeEditPreviewPlan(clips, { url: "asset://base" })).toEqual([
       { path: "/cache/base-proxy.mp4", start: 3.25, end: 8.5 },
       { path: "/cache/base-proxy.mp4", start: 12, end: 18.75 },
     ]);
@@ -38,7 +38,12 @@ describe("nativeEditPreviewPlan", () => {
       },
     ];
 
-    expect(nativeEditPreviewPlan(clips, "asset://known")).toBeNull();
+    expect(
+      nativeEditPreviewPlan(clips, {
+        url: "asset://known",
+        nativePath: "/media/known.mov",
+      }),
+    ).toBeNull();
   });
 
   it("recovers mounted-drive media after the in-memory registry is lost", () => {
@@ -49,7 +54,7 @@ describe("nativeEditPreviewPlan", () => {
       { id: "b", start: 15, end: 18 },
     ];
 
-    expect(nativeEditPreviewPlan(clips, url)).toEqual([
+    expect(nativeEditPreviewPlan(clips, { url })).toEqual([
       {
         path: "/Volumes/G MicroSD/DCIM/DJI_001/clip.mp4",
         start: 10,
@@ -60,6 +65,23 @@ describe("nativeEditPreviewPlan", () => {
         start: 15,
         end: 18,
       },
+    ]);
+  });
+
+  it("uses the source's direct desktop path without reverse-parsing its URL", () => {
+    const clips: Clip[] = [
+      { id: "a", start: 1, end: 2 },
+      { id: "b", start: 4, end: 6 },
+    ];
+
+    expect(
+      nativeEditPreviewPlan(clips, {
+        url: "opaque:desktop-media",
+        nativePath: "/Volumes/Camera/source.mp4",
+      }),
+    ).toEqual([
+      { path: "/Volumes/Camera/source.mp4", start: 1, end: 2 },
+      { path: "/Volumes/Camera/source.mp4", start: 4, end: 6 },
     ]);
   });
 });

@@ -10,13 +10,13 @@ import {
   nativeMediaForUrl,
   nativePathForUrl,
 } from "@/lib/studio/native/path-registry";
-import type { Clip } from "@/lib/studio/types";
+import type { Clip, StudioSource } from "@/lib/studio/types";
 
 const EDIT_PREVIEW_DEBOUNCE_MS = 300;
 
 export function nativeEditPreviewPlan(
   clips: Clip[],
-  baseUrl: string,
+  source: Pick<StudioSource, "url" | "nativePath">,
 ): NativeEditPreviewClip[] | null {
   // A single source range has no cut boundary and already scrubs efficiently
   // through its dense-keyframe proxy.
@@ -24,9 +24,10 @@ export function nativeEditPreviewPlan(
   const plan: NativeEditPreviewClip[] = [];
   for (const clip of clips) {
     if (clip.src?.kind === "image") return null;
-    const url = clip.src?.url ?? baseUrl;
+    const url = clip.src?.url ?? source.url;
     const media = nativeMediaForUrl(url);
-    const path = media?.proxyPath ?? nativePathForUrl(url);
+    const directPath = clip.src ? clip.src.nativePath : source.nativePath;
+    const path = media?.proxyPath ?? directPath ?? nativePathForUrl(url);
     if (!path) return null;
     plan.push({
       // Prefer the lightweight proxy when it is ready. This derivative is only
@@ -46,22 +47,22 @@ export function nativeEditPreviewPlan(
  */
 export function useNativeEditPreview(
   clips: Clip[],
-  baseUrl: string,
+  source: StudioSource | null,
   aspect: number,
 ): string | null {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fingerprint = clips
     .map(
       (clip) =>
-        `${clip.src?.url ?? baseUrl}:${clip.start.toFixed(6)}:${clip.end.toFixed(6)}`,
+        `${clip.src?.url ?? source?.url ?? ""}:${clip.start.toFixed(6)}:${clip.end.toFixed(6)}`,
     )
     .join("|");
   const plan = useMemo(
-    () => (isNative() ? nativeEditPreviewPlan(clips, baseUrl) : null),
+    () => (isNative() && source ? nativeEditPreviewPlan(clips, source) : null),
     // The fingerprint captures the range/url fields that matter. Clip object
     // identity can change during unrelated transcript/caption updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fingerprint, baseUrl],
+    [fingerprint, source],
   );
 
   useEffect(() => {
