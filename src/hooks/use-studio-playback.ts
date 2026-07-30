@@ -95,6 +95,10 @@ export function useStudioPlayback(
   const primedStartRef = useRef(0);
   const primeGenerationRef = useRef(0);
   const baseTotal = totalDuration(clips);
+  // WKWebView gives one HTML media element playback ownership at a time.
+  // Starting the hidden pre-roll decoder pauses the visible one, so desktop
+  // must stay single-decoder until its continuous edit preview is ready.
+  const allowStandbyDecoder = !isNative();
 
   const activeVideo = useCallback(
     () => videoRefs.current[activeSlotRef.current],
@@ -305,6 +309,7 @@ export function useStudioPlayback(
    */
   const prepareStandby = useCallback(
     (index: number) => {
+      if (!allowStandbyDecoder) return;
       if (primingIndexRef.current === index) return;
       const standby = standbyVideo();
       if (!standby || !clips[index]) return;
@@ -342,12 +347,13 @@ export function useStudioPlayback(
         standby.addEventListener("loadedmetadata", seek, { once: true });
       }
     },
-    [clips, clipUrl, standbyVideo],
+    [allowStandbyDecoder, clips, clipUrl, standbyVideo],
   );
 
   /** Swap to an already-decoding clip without seeking the visible player. */
   const commitStandby = useCallback(
     (nextIndex: number): boolean => {
+      if (!allowStandbyDecoder) return false;
       if (primingIndexRef.current !== nextIndex || !primedReadyRef.current) {
         return false;
       }
@@ -372,7 +378,7 @@ export function useStudioPlayback(
       primedPlayingRef.current = false;
       return true;
     },
-    [activeVideo, standbyVideo, baseMuted],
+    [activeVideo, allowStandbyDecoder, standbyVideo, baseMuted],
   );
 
   /** Run the synthetic clock from `from` to the project end. */
