@@ -7,6 +7,7 @@ import PreviewStage from "@/components/studio/preview-stage";
 import RightPanel from "@/components/studio/right-panel";
 import TimelinePanel from "@/components/studio/timeline-panel";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
+import { useNativeEditPreview } from "@/hooks/use-native-edit-preview";
 import { transportSeek } from "@/lib/studio/playback-keys";
 import { nudgeDelta } from "@/lib/studio/nudge";
 import { usePanelHeight } from "@/hooks/use-panel-height";
@@ -56,6 +57,7 @@ export default function StudioWorkspace() {
     source,
     clips,
     duration,
+    aspect,
     baseMuted,
     selectedClipIds,
     selectedCaptionIds,
@@ -79,6 +81,11 @@ export default function StudioWorkspace() {
   // The bottom track can drive a <video> clock only when it has clips and isn't
   // a still. Otherwise playback falls back to its synthetic clock.
   const hasVideo = clips.length > 0 && (source?.kind ?? "video") !== "image";
+  const continuousPreviewUrl = useNativeEditPreview(
+    clips,
+    source?.url ?? "",
+    aspect,
+  );
   const {
     timelineTime,
     timelineClock,
@@ -93,6 +100,7 @@ export default function StudioWorkspace() {
     hasVideo,
     baseUrl: source?.url ?? "",
     baseMuted,
+    continuousPreviewUrl,
   });
   // Two docked widths, because the two layouts dock two different things: the
   // side panel in classic, the picture in cinema. Sharing one would make the

@@ -75,6 +75,25 @@ fn ffprobe_can_read(path: &Path) -> bool {
         .is_ok_and(|out| out.status.success() && !out.stdout.is_empty())
 }
 
+fn media_has_audio(path: &Path) -> bool {
+    Command::new(resolve_bin("ffprobe"))
+        .args([
+            "-v",
+            "error",
+            "-protocol_whitelist",
+            "file",
+            "-select_streams",
+            "a:0",
+            "-show_entries",
+            "stream=index",
+            "-of",
+            "csv=p=0",
+        ])
+        .arg(path)
+        .output()
+        .is_ok_and(|out| out.status.success() && !out.stdout.is_empty())
+}
+
 fn marker_is_recent(path: &Path, max_age: std::time::Duration) -> bool {
     path.metadata()
         .and_then(|metadata| metadata.modified())
@@ -307,6 +326,266 @@ fn proxy_status(out_path: String) -> Result<String, String> {
         Ok("failed".into())
     } else {
         Ok("pending".into())
+    }
+}
+
+#[derive(Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EditPreviewClip {
+    path: String,
+    start: f64,
+    end: f64,
+}
+
+#[derive(Clone)]
+struct ValidatedEditPreviewClip {
+    path: PathBuf,
+    start: f64,
+    end: f64,
+    has_audio: bool,
+}
+
+fn even_dimension(value: f64) -> u32 {
+    let rounded = value.round().clamp(2.0, 960.0) as u32;
+    rounded - (rounded % 2)
+}
+
+fn edit_preview_dimensions(aspect: f64) -> Result<(u32, u32), String> {
+    if !aspect.is_finite() || !(0.1..=10.0).contains(&aspect) {
+        return Err("invalid edit preview aspect".into());
+    }
+    if aspect >= 1.0 {
+        Ok((960, even_dimension(960.0 / aspect)))
+    } else {
+        Ok((even_dimension(960.0 * aspect), 960))
+    }
+}
+
+fn edit_preview_command(
+    clips: &[ValidatedEditPreviewClip],
+    out: &Path,
+    width: u32,
+    height: u32,
+    hardware: bool,
+) -> Command {
+    let mut command = Command::new(resolve_bin("ffmpeg"));
+    command.args(["-y", "-nostdin", "-loglevel", "error"]);
+    #[cfg(target_os = "macos")]
+    if hardware {
+        command.args(["-hwaccel", "videotoolbox"]);
+    }
+    for clip in clips {
+        let duration = clip.end - clip.start;
+        command
+            .args([
+                "-ss",
+                &format!("{:.6}", clip.start),
+                "-t",
+                &format!("{:.6}", duration + 0.25),
+                "-protocol_whitelist",
+                "file",
+                "-i",
+            ])
+            .arg(&clip.path);
+    }
+
+    let mut filters = Vec::with_capacity(clips.len() * 2 + 1);
+    let mut concat_inputs = String::new();
+    for (index, clip) in clips.iter().enumerate() {
+        let duration = clip.end - clip.start;
+        filters.push(format!(
+            "[{index}:v:0]trim=duration={duration:.6},setpts=PTS-STARTPTS,\
+             scale={width}:{height}:force_original_aspect_ratio=increase,\
+             crop={width}:{height},setsar=1[v{index}]"
+        ));
+        if clip.has_audio {
+            filters.push(format!(
+                "[{index}:a:0]atrim=duration={duration:.6},asetpts=PTS-STARTPTS,\
+                 aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[a{index}]"
+            ));
+        } else {
+            filters.push(format!(
+                "anullsrc=r=48000:cl=stereo,atrim=duration={duration:.6},\
+                 asetpts=PTS-STARTPTS[a{index}]"
+            ));
+        }
+        concat_inputs.push_str(&format!("[v{index}][a{index}]"));
+    }
+    filters.push(format!(
+        "{concat_inputs}concat=n={}:v=1:a=1[vout][aout]",
+        clips.len()
+    ));
+    command.args([
+        "-filter_complex",
+        &filters.join(";"),
+        "-map",
+        "[vout]",
+        "-map",
+        "[aout]",
+    ]);
+    #[cfg(target_os = "macos")]
+    if hardware {
+        command.args(["-c:v", "h264_videotoolbox", "-b:v", "4M"]);
+    } else {
+        command.args(["-c:v", "libx264", "-preset", "veryfast", "-crf", "24"]);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = hardware;
+        command.args(["-c:v", "libx264", "-preset", "veryfast", "-crf", "24"]);
+    }
+    command
+        .args([
+            "-g",
+            "6",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+        ])
+        .arg(out);
+    command
+}
+
+/**
+ * Build one continuous, dense-keyframe preview of the edited base track. A
+ * single media element can then play straight across cuts: WKWebView no longer
+ * has to seek at every boundary or run two simultaneous video decoders (which
+ * causes one decoder to pause the other on macOS).
+ */
+#[tauri::command]
+fn start_edit_preview(
+    clips: Vec<EditPreviewClip>,
+    aspect: f64,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    use tauri::Manager;
+
+    if clips.is_empty() || clips.len() > 2_000 {
+        return Err("invalid edit preview clip count".into());
+    }
+    let (width, height) = edit_preview_dimensions(aspect)?;
+    let mut validated = Vec::with_capacity(clips.len());
+    let mut hasher = DefaultHasher::new();
+    "edit_preview_v1".hash(&mut hasher);
+    width.hash(&mut hasher);
+    height.hash(&mut hasher);
+    for clip in clips {
+        if !clip.start.is_finite()
+            || !clip.end.is_finite()
+            || clip.start < 0.0
+            || clip.end <= clip.start
+            || clip.end - clip.start > 24.0 * 60.0 * 60.0
+        {
+            return Err("invalid edit preview clip range".into());
+        }
+        let path = validate_media_path(&clip.path)?;
+        media_cache_key(&path)?.hash(&mut hasher);
+        ((clip.start * 1_000_000.0).round() as u64).hash(&mut hasher);
+        ((clip.end * 1_000_000.0).round() as u64).hash(&mut hasher);
+        let has_audio = media_has_audio(&path);
+        validated.push(ValidatedEditPreviewClip {
+            path,
+            start: clip.start,
+            end: clip.end,
+            has_audio,
+        });
+    }
+
+    let mut out_path = std::env::temp_dir();
+    out_path.push(format!("yapper_editpreview1_{:016x}.mp4", hasher.finish()));
+    let out_str = out_path.to_string_lossy().into_owned();
+    let done_path = out_path.with_extension("done");
+    let error_path = out_path.with_extension("error");
+    let working_path = out_path.with_extension("working");
+    if ffprobe_can_read(&out_path) {
+        let _ = app.asset_protocol_scope().allow_file(&out_path);
+        return Ok(out_str);
+    }
+    if marker_is_recent(&working_path, std::time::Duration::from_secs(15 * 60)) {
+        let _ = app.asset_protocol_scope().allow_file(&out_path);
+        return Ok(out_str);
+    }
+
+    let _ = std::fs::remove_file(&out_path);
+    let _ = std::fs::remove_file(&done_path);
+    let _ = std::fs::remove_file(&error_path);
+    std::fs::write(&working_path, b"working").map_err(|e| format!("mark working: {e}"))?;
+    let _ = app.asset_protocol_scope().allow_file(&out_path);
+
+    let use_hardware = cfg!(target_os = "macos");
+    let child = edit_preview_command(&validated, &out_path, width, height, use_hardware).spawn();
+    let mut child = child.map_err(|e| {
+        let _ = std::fs::remove_file(&working_path);
+        format!("spawn ffmpeg edit preview: {e}")
+    })?;
+    let fallback_clips = validated.clone();
+    let fallback_out = out_path.clone();
+    std::thread::spawn(move || {
+        let hardware_ok = child.wait().is_ok_and(|status| status.success());
+        let fallback_ok = if !hardware_ok && use_hardware {
+            let _ = std::fs::remove_file(&fallback_out);
+            edit_preview_command(&fallback_clips, &fallback_out, width, height, false)
+                .status()
+                .is_ok_and(|status| status.success())
+        } else {
+            false
+        };
+        let marker = if hardware_ok || fallback_ok {
+            done_path
+        } else {
+            error_path
+        };
+        let _ = std::fs::remove_file(working_path);
+        let _ = std::fs::write(marker, b"ok");
+    });
+    Ok(out_str)
+}
+
+#[tauri::command]
+fn edit_preview_status(out_path: String) -> Result<String, String> {
+    let path = Path::new(&out_path);
+    let temp_dir =
+        std::fs::canonicalize(std::env::temp_dir()).map_err(|e| format!("temp dir: {e}"))?;
+    let valid_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .is_some_and(|name| name.starts_with("yapper_editpreview1_"));
+    if !path.starts_with(&temp_dir) || !valid_name {
+        return Err("invalid edit preview path".into());
+    }
+    if path.with_extension("error").exists() {
+        return Ok("failed".into());
+    }
+    if !path.exists() {
+        return Ok("pending".into());
+    }
+    if ffprobe_can_read(path) {
+        Ok("ready".into())
+    } else if path.with_extension("done").exists() {
+        Ok("failed".into())
+    } else {
+        Ok("pending".into())
+    }
+}
+
+#[cfg(test)]
+mod edit_preview_tests {
+    use super::edit_preview_dimensions;
+
+    #[test]
+    fn preview_dimensions_are_even_and_bounded() {
+        assert_eq!(edit_preview_dimensions(9.0 / 16.0).unwrap(), (540, 960));
+        assert_eq!(edit_preview_dimensions(16.0 / 9.0).unwrap(), (960, 540));
+    }
+
+    #[test]
+    fn preview_dimensions_reject_invalid_aspects() {
+        assert!(edit_preview_dimensions(0.0).is_err());
+        assert!(edit_preview_dimensions(f64::NAN).is_err());
     }
 }
 
@@ -799,6 +1078,127 @@ async fn extract_pcm_chunk(
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/**
+ * Full-quality PCM for the browser renderer's final audio mix. This is
+ * deliberately separate from the tiny 16 kHz mono analysis cache above:
+ * transcription-quality audio is not release-quality audio. ffmpeg handles
+ * every source container, and IPC avoids WKWebView's blocked asset:// fetch.
+ */
+fn run_extract_export_pcm(path: &str) -> Result<PathBuf, String> {
+    let path = validate_media_path(path)?;
+    let stem = file_stem(&path.to_string_lossy());
+    let cache_key = media_cache_key(&path)?;
+    let out_path = tmp_out(&stem, &cache_key, "exportpcm48", "f32");
+    let done_path = out_path.with_extension("done");
+    if done_path.exists() && out_path.metadata().is_ok_and(|m| m.len() > 0) {
+        return Ok(out_path);
+    }
+    let _ = std::fs::remove_file(&out_path);
+    let _ = std::fs::remove_file(&done_path);
+    let status = Command::new(resolve_bin("ffmpeg"))
+        .args([
+            "-y",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-protocol_whitelist",
+            "file",
+            "-i",
+        ])
+        .arg(&path)
+        .args([
+            "-map",
+            "0:a:0",
+            "-vn",
+            "-ac",
+            "2",
+            "-ar",
+            "48000",
+            "-c:a",
+            "pcm_f32le",
+            "-f",
+            "f32le",
+        ])
+        .arg(&out_path)
+        .status()
+        .map_err(|e| format!("spawn ffmpeg export PCM decode: {e}"))?;
+    if !status.success() {
+        let _ = std::fs::remove_file(&out_path);
+        return Err("ffmpeg export PCM decode failed".into());
+    }
+    std::fs::write(&done_path, b"ok").map_err(|e| format!("mark export PCM done: {e}"))?;
+    Ok(out_path)
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExportPcmInfo {
+    byte_length: u64,
+    channels: u8,
+    sample_rate: u32,
+}
+
+#[tauri::command]
+async fn prepare_export_pcm(path: String) -> Result<ExportPcmInfo, String> {
+    let byte_length = tauri::async_runtime::spawn_blocking(move || {
+        let out = run_extract_export_pcm(&path)?;
+        out.metadata()
+            .map(|metadata| metadata.len())
+            .map_err(|e| format!("read export PCM metadata: {e}"))
+    })
+    .await
+    .map_err(|error| format!("export PCM worker failed: {error}"))??;
+    const FRAME_BYTES: u64 = 2 * std::mem::size_of::<f32>() as u64;
+    if byte_length == 0 || byte_length % FRAME_BYTES != 0 {
+        return Err("invalid export PCM byte length".into());
+    }
+    Ok(ExportPcmInfo {
+        byte_length,
+        channels: 2,
+        sample_rate: 48_000,
+    })
+}
+
+#[tauri::command]
+async fn extract_export_pcm_chunk(
+    path: String,
+    offset: u64,
+    length: usize,
+) -> Result<tauri::ipc::Response, String> {
+    use std::io::{Read, Seek, SeekFrom};
+
+    const FRAME_BYTES: usize = 2 * std::mem::size_of::<f32>();
+    const MAX_CHUNK: usize = 2 * 1024 * 1024;
+    if offset % FRAME_BYTES as u64 != 0
+        || length == 0
+        || length > MAX_CHUNK
+        || length % FRAME_BYTES != 0
+    {
+        return Err("invalid export PCM chunk range".into());
+    }
+    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
+        let out = run_extract_export_pcm(&path)?;
+        let file_len = out
+            .metadata()
+            .map_err(|e| format!("read export PCM metadata: {e}"))?
+            .len();
+        if offset >= file_len {
+            return Err("export PCM chunk starts past end".into());
+        }
+        let read_len = length.min((file_len - offset) as usize);
+        let mut file = std::fs::File::open(out).map_err(|e| format!("open export PCM: {e}"))?;
+        file.seek(SeekFrom::Start(offset))
+            .map_err(|e| format!("seek export PCM: {e}"))?;
+        let mut bytes = vec![0u8; read_len];
+        file.read_exact(&mut bytes)
+            .map_err(|e| format!("read export PCM chunk: {e}"))?;
+        Ok(bytes)
+    })
+    .await
+    .map_err(|error| format!("export PCM chunk worker failed: {error}"))??;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /** Is this a URL of our own app (vs a third-party OAuth / sign-in page)? */
 fn is_internal_host(host: Option<&str>) -> bool {
     match host {
@@ -941,6 +1341,8 @@ pub fn run() {
             probe_media,
             start_proxy,
             proxy_status,
+            start_edit_preview,
+            edit_preview_status,
             start_thumbnails,
             list_thumbnails,
             start_waveform,
@@ -949,6 +1351,8 @@ pub fn run() {
             extract_audio_bytes,
             prepare_pcm,
             extract_pcm_chunk,
+            prepare_export_pcm,
+            extract_export_pcm_chunk,
             open_oauth_flow
         ])
         .run(tauri::generate_context!())
