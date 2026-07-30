@@ -39,6 +39,11 @@ export interface PlaybackInput {
   baseUrl: string;
   /** Whether the bottom track's own audio is muted. */
   baseMuted: boolean;
+  /**
+   * Desktop-only, already-concatenated base-track preview. Its media time is
+   * edited-timeline time, so playback crosses cuts without decoder handoffs.
+   */
+  continuousPreviewUrl?: string | null;
 }
 
 /**
@@ -53,7 +58,14 @@ export interface PlaybackInput {
  */
 export function useStudioPlayback(
   videoRefs: VideoBankRef,
-  { clips, total, hasVideo, baseUrl, baseMuted }: PlaybackInput,
+  {
+    clips,
+    total,
+    hasVideo,
+    baseUrl,
+    baseMuted,
+    continuousPreviewUrl,
+  }: PlaybackInput,
 ) {
   const [timelineTime, setTimelineTime] = useState(0);
   const [sourceTime, setSourceTime] = useState(0);
@@ -239,6 +251,41 @@ export function useStudioPlayback(
     [activeVideo, clipUrl, pauseVideoSilently, beginSeek, seekThenPlay],
   );
 
+  const seekContinuousVideo = useCallback(
+    (timeline: number, resume: boolean) => {
+      const v = activeVideo();
+      if (!v || !continuousPreviewUrl) return;
+      const target = Math.max(0, Math.min(timeline, baseTotal));
+      if (v.getAttribute("src") !== continuousPreviewUrl) {
+        if (resume && !v.paused) pauseVideoSilently();
+        const generation = ++seekGenerationRef.current;
+        seekPendingRef.current = true;
+        v.setAttribute("src", continuousPreviewUrl);
+        v.load();
+        const onLoaded = () => {
+          if (generation !== seekGenerationRef.current) return;
+          v.currentTime = target;
+          if (resume) seekThenPlay(v, generation);
+        };
+        v.addEventListener("loadeddata", onLoaded, { once: true });
+        return;
+      }
+      if (Math.abs(v.currentTime - target) > 0.05) {
+        beginSeek(v, target, resume);
+      } else if (resume) {
+        seekThenPlay(v);
+      }
+    },
+    [
+      activeVideo,
+      baseTotal,
+      beginSeek,
+      continuousPreviewUrl,
+      pauseVideoSilently,
+      seekThenPlay,
+    ],
+  );
+
   const clearStandby = useCallback(() => {
     primeGenerationRef.current += 1;
     primingIndexRef.current = null;
@@ -380,7 +427,11 @@ export function useStudioPlayback(
         const hit = timelineToClip(clips, clamped);
         if (hit && activeVideo()) {
           activeIndexRef.current = hit.index;
-          seekVideo(hit.index, hit.sourceTime, wasPlaying);
+          if (continuousPreviewUrl) {
+            seekContinuousVideo(clamped, wasPlaying);
+          } else {
+            seekVideo(hit.index, hit.sourceTime, wasPlaying);
+          }
           setSourceTime(hit.sourceTime);
         }
         return;
@@ -397,6 +448,8 @@ export function useStudioPlayback(
       total,
       playing,
       overBaseTrack,
+      continuousPreviewUrl,
+      seekContinuousVideo,
       seekVideo,
       startRaf,
       stopRaf,
@@ -436,6 +489,10 @@ export function useStudioPlayback(
         setTimelineTime(from);
         clockRef.current = from;
         timelineClock.set(from);
+        if (continuousPreviewUrl) {
+          seekContinuousVideo(from, true);
+          return;
+        }
         const url = clipUrl(hit.index);
         if (v.getAttribute("src") === url) {
           // This is an explicit user Play after a paused scrub. Let the media
@@ -461,6 +518,8 @@ export function useStudioPlayback(
     clips,
     total,
     overBaseTrack,
+    continuousPreviewUrl,
+    seekContinuousVideo,
     clipUrl,
     seekVideo,
     startRaf,
@@ -512,18 +571,34 @@ export function useStudioPlayback(
     playIntentRef.current = false;
   }, [hasVideo, stopRaf, videoRefs, clearStandby]);
 
-  // Keep the video pointed at the clip under the playhead when the edit changes.
+  // Keep the video pointed at the clip under the playhead when the edit or the
+  // desktop's continuous derivative changes. Continuous playback owns slot 0;
+  // the second decoder stays paused so WKWebView never has two competing media
+  // sessions.
   useEffect(() => {
     if (!hasVideo) return;
+    const shouldResume = playIntentRef.current;
+    if (continuousPreviewUrl && activeSlotRef.current !== 0) {
+      videoRefs.current.forEach((video, index) => {
+        video?.pause();
+        if (video) video.style.opacity = index === 0 ? "1" : "0";
+      });
+      activeSlotRef.current = 0;
+    }
+    clearStandby();
     const v = activeVideo();
     if (!v) return;
     const hit = timelineToClip(clips, clockRef.current);
     if (hit) {
       activeIndexRef.current = hit.index;
-      seekVideo(hit.index, hit.sourceTime, false);
+      if (continuousPreviewUrl) {
+        seekContinuousVideo(clockRef.current, shouldResume);
+      } else {
+        seekVideo(hit.index, hit.sourceTime, shouldResume);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseUrl, hasVideo]);
+  }, [baseUrl, hasVideo, continuousPreviewUrl]);
 
   // Drive the clock and clip-boundary jumps per PRESENTED FRAME
   // (requestVideoFrameCallback), not the ~4Hz `timeupdate` event. At 4Hz the
@@ -627,6 +702,24 @@ export function useStudioPlayback(
       if (seeking) {
         // `currentTime` reports the target before the decoder has presented it,
         // so only the active element's `seeked` event may release this guard.
+        schedule();
+        return;
+      }
+      if (continuousPreviewUrl) {
+        const t = Math.min(active.currentTime, baseTotal);
+        if (t >= baseTotal - EPS) {
+          endOfBaseTrack(active);
+          return;
+        }
+        clockRef.current = t;
+        timelineClock.set(t);
+        const now = performance.now();
+        if (now - lastUi >= COARSE_UI_INTERVAL_MS) {
+          lastUi = now;
+          setTimelineTime(t);
+          const hit = timelineToClip(clips, t);
+          if (hit) setSourceTime(hit.sourceTime);
+        }
         schedule();
         return;
       }
@@ -738,6 +831,7 @@ export function useStudioPlayback(
     total,
     baseTotal,
     hasVideo,
+    continuousPreviewUrl,
     activeVideo,
     standbyVideo,
     clipUrl,

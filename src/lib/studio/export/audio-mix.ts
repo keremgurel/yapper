@@ -1,6 +1,9 @@
 import { projectDuration } from "@/lib/studio/project-duration";
 import { extractPcm } from "@/lib/studio/audio/extract-pcm";
 import { planAudioMix } from "@/lib/studio/export/audio-plan";
+import { isNative } from "@/lib/studio/native/bridge";
+import { nativeExportPcm } from "@/lib/studio/native/media";
+import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
 import type { ExportInput } from "@/lib/studio/export/types";
 
 const SAMPLE_RATE = 48_000;
@@ -40,7 +43,10 @@ export async function mixAudio(
     // WebCodecs can't handle (e.g. an added mp3/wav track).
     let buffer: AudioBuffer | null = null;
     try {
-      const { channels, sampleRate } = await extractPcm(url);
+      const native = isNative() ? nativeMediaForUrl(url) : undefined;
+      const { channels, sampleRate } = native
+        ? await nativeExportPcm(native.path)
+        : await extractPcm(url);
       const length = channels[0]?.length ?? 0;
       if (length > 0) {
         buffer = ctx.createBuffer(channels.length, length, sampleRate);

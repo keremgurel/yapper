@@ -63,6 +63,37 @@ export async function nativeMakeProxy(path: string): Promise<string> {
   }
 }
 
+export interface NativeEditPreviewClip {
+  path: string;
+  start: number;
+  end: number;
+}
+
+/**
+ * Render the edited base track to one continuous preview file. Desktop
+ * playback uses this instead of asking WKWebView to seek or swap decoders at
+ * every cut.
+ */
+export async function nativeMakeEditPreview(
+  clips: NativeEditPreviewClip[],
+  aspect: number,
+): Promise<string> {
+  const outPath = await invoke<string>("start_edit_preview", { clips, aspect });
+  const deadline = Date.now() + PROXY_TIMEOUT_MS;
+  for (;;) {
+    const status = await invoke<"pending" | "ready" | "failed">(
+      "edit_preview_status",
+      { outPath },
+    );
+    if (status === "ready") return outPath;
+    if (status === "failed") throw new Error("edit preview generation failed");
+    if (Date.now() >= deadline) {
+      throw new Error("edit preview generation timed out");
+    }
+    await new Promise((resolve) => setTimeout(resolve, PROXY_POLL_MS));
+  }
+}
+
 interface Thumb {
   time: number;
   path: string;
@@ -266,6 +297,88 @@ export async function nativePcm16k(path: string): Promise<Float32Array> {
     output.set(chunk, offset);
   }
   return new Float32Array(output.buffer);
+}
+
+export interface NativeExportPcm {
+  channels: Float32Array[];
+  sampleRate: number;
+}
+
+export function deinterleavePcmChunk(
+  samples: Float32Array,
+  channelCount: number,
+  output: Float32Array[],
+  outputFrame: number,
+): number {
+  if (
+    channelCount <= 0 ||
+    output.length !== channelCount ||
+    samples.length % channelCount !== 0
+  ) {
+    throw new Error("invalid interleaved PCM chunk");
+  }
+  for (let index = 0; index < samples.length; index += channelCount) {
+    for (let channel = 0; channel < channelCount; channel++) {
+      output[channel][outputFrame] = samples[index + channel];
+    }
+    outputFrame += 1;
+  }
+  return outputFrame;
+}
+
+/**
+ * Full-quality interleaved PCM from native ffmpeg, deinterleaved as chunks
+ * arrive so the browser never has to fetch an asset:// URL.
+ */
+export async function nativeExportPcm(path: string): Promise<NativeExportPcm> {
+  const info = await invoke<{
+    byteLength: number;
+    channels: number;
+    sampleRate: number;
+  }>("prepare_export_pcm", { path });
+  const frameBytes = info.channels * Float32Array.BYTES_PER_ELEMENT;
+  if (
+    info.byteLength <= 0 ||
+    info.channels <= 0 ||
+    info.sampleRate <= 0 ||
+    info.byteLength % frameBytes !== 0
+  ) {
+    throw new Error("invalid native export PCM metadata");
+  }
+
+  const frameCount = info.byteLength / frameBytes;
+  const channels = Array.from(
+    { length: info.channels },
+    () => new Float32Array(frameCount),
+  );
+  const chunkSize = Math.floor((2 * 1024 * 1024) / frameBytes) * frameBytes;
+  let outputFrame = 0;
+  for (let offset = 0; offset < info.byteLength; offset += chunkSize) {
+    const length = Math.min(chunkSize, info.byteLength - offset);
+    const response = await invoke<NativeBytes>("extract_export_pcm_chunk", {
+      path,
+      offset,
+      length,
+    });
+    const bytes = nativeBytes(response, "export PCM chunk");
+    if (bytes.byteLength !== length) {
+      throw new Error(
+        `invalid native export PCM chunk length (${bytes.byteLength}/${length})`,
+      );
+    }
+    const samples = new Float32Array(
+      bytes.buffer,
+      bytes.byteOffset,
+      bytes.byteLength / Float32Array.BYTES_PER_ELEMENT,
+    );
+    outputFrame = deinterleavePcmChunk(
+      samples,
+      info.channels,
+      channels,
+      outputFrame,
+    );
+  }
+  return { channels, sampleRate: info.sampleRate };
 }
 
 /**
