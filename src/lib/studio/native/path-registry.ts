@@ -39,6 +39,38 @@ export function nativeMediaForUrl(url: string): NativeMedia | undefined {
   return byUrl.get(url);
 }
 
+/**
+ * Resolve one of Tauri's own `convertFileSrc` URLs even after a page/app
+ * restart has cleared the in-memory registry. Tauri encodes the entire
+ * absolute path as the single URL path component:
+ *
+ *   asset://localhost/%2FUsers%2F...%2Fclip.mp4
+ *
+ * Rust still canonicalizes and validates the decoded path before ffmpeg sees
+ * it, so this is only a recovery mechanism for URLs the app already carries,
+ * not a way around the native command's filesystem boundary.
+ */
+export function nativePathForUrl(url: string): string | undefined {
+  const registered = byUrl.get(url)?.path;
+  if (registered) return registered;
+  try {
+    const parsed = new URL(url);
+    const isAsset =
+      (parsed.protocol === "asset:" && parsed.hostname === "localhost") ||
+      (parsed.protocol === "http:" && parsed.hostname === "asset.localhost");
+    if (!isAsset) return undefined;
+    const encoded = parsed.pathname.startsWith("/")
+      ? parsed.pathname.slice(1)
+      : parsed.pathname;
+    const path = decodeURIComponent(encoded);
+    return path.startsWith("/") || /^[A-Za-z]:[\\/]/.test(path)
+      ? path
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function setNativeProxyPath(url: string, proxyPath: string): void {
   const media = byUrl.get(url);
   if (media) media.proxyPath = proxyPath;
