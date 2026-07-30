@@ -1,11 +1,46 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, type CSSProperties } from "react";
 import AppSidebar from "@/components/studio-shell/app-sidebar";
 import StudioHeader from "@/components/studio-shell/studio-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { StudioProvider } from "@/components/studio/studio-context";
+import { useStudio } from "@/components/studio/studio-context";
 import StudioWorkspace from "@/components/studio/studio-workspace";
+import { consumePendingVideo } from "@/lib/studio/handoff";
+import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
+import { loadVideoSource } from "@/lib/studio/load-source";
+
+/**
+ * Imports are an Editor-page concern even though the resulting project lives
+ * above the page. This runs whenever the Editor is entered, so Content Library
+ * handoffs still work after visiting another Studio section first.
+ */
+function EditorEntryLoader() {
+  const { loadSource } = useStudio();
+
+  useEffect(() => {
+    const blob = consumePendingVideo();
+    if (blob) {
+      loadVideoSource(blob, "Practice take")
+        .then(loadSource)
+        .catch(() => {});
+      return;
+    }
+
+    const itemId = new URLSearchParams(window.location.search).get("item");
+    if (!itemId) return;
+    loadLinkedRecording(itemId)
+      .then((recording) => {
+        if (!recording) return;
+        return loadVideoSource(recording.blob, recording.name).then(loadSource);
+      })
+      .catch((error) => {
+        console.warn("Could not load the linked recording", error);
+      });
+  }, [loadSource]);
+
+  return null;
+}
 
 /**
  * The editor. Full-height, its own workspace. In the desktop app it wears the
@@ -14,21 +49,20 @@ import StudioWorkspace from "@/components/studio/studio-workspace";
  */
 export default function StudioPage() {
   return (
-    <StudioProvider>
-      <div
-        className="bg-background flex h-[100dvh] flex-col overflow-hidden"
-        style={{ "--site-header": "0rem" } as CSSProperties}
-      >
-        <SidebarProvider defaultOpen={false} className="min-h-0 flex-1">
-          <AppSidebar />
-          <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
-            <StudioHeader />
-            <main className="flex min-h-0 flex-1 flex-col">
-              <StudioWorkspace />
-            </main>
-          </SidebarInset>
-        </SidebarProvider>
-      </div>
-    </StudioProvider>
+    <div
+      className="bg-background flex h-[100dvh] flex-col overflow-hidden"
+      style={{ "--site-header": "0rem" } as CSSProperties}
+    >
+      <EditorEntryLoader />
+      <SidebarProvider defaultOpen={false} className="min-h-0 flex-1">
+        <AppSidebar />
+        <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
+          <StudioHeader />
+          <main className="flex min-h-0 flex-1 flex-col">
+            <StudioWorkspace />
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </div>
   );
 }

@@ -3,10 +3,10 @@ import { buildExpandMessages, parseExpansion } from "@/lib/ideas/expand-prompt";
 import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
 
 /**
- * Turn a raw idea into a full expansion (title, pillar, hooks, outline, key
- * points, script) via the AI provider. Server-only: reads the provider key from
- * the env. The caller preserves the creator's original words separately; this
- * only builds the regenerable plan around them.
+ * Turn a raw idea into an adaptive reference dossier via the AI provider.
+ * Server-only: reads the provider key from the env. The caller preserves the
+ * creator's words and the source transcript separately; this only builds the
+ * regenerable analysis around them.
  *
  * Throws (never returns a half-baked object) so the route can decide whether to
  * store the idea un-expanded and retry later versus surface the error.

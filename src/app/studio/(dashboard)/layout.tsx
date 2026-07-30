@@ -8,11 +8,9 @@ import AppChrome from "@/components/studio-shell/app-chrome";
 
 /**
  * The Studio dashboard shell: a shadcn sidebar app-shell (collapsible icon rail
- * + inset content with a sticky header). Everything "up until the editor" lives
- * here; the editor keeps its own full-screen layout at /studio/editor OUTSIDE
- * this route group. Do not add a src/app/studio/layout.tsx (it would wrap the
- * editor) or a page.tsx inside this group (it would conflict with the /studio
- * redirect).
+ * + inset content with a sticky header). The editor keeps its own full-screen
+ * visual shell outside this route group, while the transparent /studio layout
+ * owns the shared project session across both shells.
  */
 export default function StudioDashboardLayout({
   children,

@@ -49,8 +49,8 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
           Idea bank
         </h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Every idea and inspiration in one place. Pick the ones to shoot and
-          send them to your Content Library.
+          Save the original reference, understand why it works, and adapt it
+          without flattening every idea into the same format.
         </p>
       </header>
 

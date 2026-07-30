@@ -1,7 +1,15 @@
-import type { IdeaExpansion, IdeaInput, IdeaType } from "@/lib/ideas/types";
+import type {
+  IdeaExpansion,
+  IdeaExpansionSection,
+  IdeaInput,
+  IdeaSectionKind,
+  IdeaType,
+} from "@/lib/ideas/types";
 
 /**
- * Build the chat messages that turn a raw idea into a shoot-ready expansion.
+ * Build the chat messages that turn a raw idea into a faithful reference
+ * dossier. The model chooses sections that fit the source instead of forcing
+ * every reference through an educational talking-head template.
  * Kept pure and separate from the network call so the prompt and the parser can
  * both be tested without hitting a provider.
  */
@@ -11,19 +19,40 @@ export function buildExpandMessages(
   pillars: string[],
 ): { system: string; user: string } {
   const system =
-    "You are a short-form content strategist for a talking-head creator. " +
-    "You turn a raw idea into a shoot-ready plan. Return STRICT JSON only, no " +
-    "prose, no code fences:\n" +
-    '{"title":"<=8 words, punchy, no quotes",' +
-    '"pillar":"the single best-fit content pillar",' +
-    '"hooks":["3 scroll-stopping opener lines"],' +
-    '"outline":["3-6 ordered beats the video moves through"],' +
-    '"keyPoints":["3-5 concrete talking points"],' +
-    '"script":"a full first-person teleprompter script, spoken-word, 45-90s"}\n\n' +
+    "You are a sharp short-form creative director. Analyze the reference in " +
+    "its ACTUAL creative form and preserve what makes it work. It may be a " +
+    "sketch, reaction, meme, performance, trend, dialogue, audio-led joke, " +
+    "screen recording, story, montage, or educational monologue. Never force " +
+    "it into a talking-head lesson or invent a 45-90 second script unless that " +
+    "is genuinely the source format. Return STRICT JSON only, no prose or code " +
+    "fences:\n" +
+    '{"title":"<=8 words, specific, no quotes",' +
+    '"pillar":"best-fit pillar or null",' +
+    '"format":"specific creative format, e.g. audio-led reaction sketch",' +
+    '"summary":"2-4 sentences explaining what happens, what carries the idea, and the adaptation angle",' +
+    '"sections":[{"label":"a reference-specific label",' +
+    '"kind":"paragraph|bullets|steps|script",' +
+    '"text":"for paragraph or script",' +
+    '"items":["for bullets or steps"]}]}\n\n' +
     "Rules:\n" +
-    "- Keep the creator's angle and meaning. Do not invent a different topic.\n" +
-    "- The script is what they will read aloud: natural, spoken, no stage " +
-    "directions or headings.\n" +
+    "- First identify what literally happens in the source and which layer " +
+    "carries it: source audio/dialogue, acting, timing, on-screen text, edit, " +
+    "or visual reveal.\n" +
+    "- Keep the creator's angle and meaning. Do not convert the topic into a " +
+    "generic explainer.\n" +
+    "- Choose 2-6 useful sections whose labels fit THIS reference. Examples " +
+    "include Reference breakdown, Joke mechanics, Beat-by-beat, What to keep, " +
+    "CELPIP adaptation, Audio/dialogue, Shot plan, or Draft—but use only what " +
+    "actually helps.\n" +
+    "- For a recreation, separate the source's reusable mechanism from the new " +
+    "topic. Preserve reactions, pauses, escalation, and audio cues when those " +
+    "are the point.\n" +
+    "- If a reference transcript is supplied, treat it as evidence and cover " +
+    "its important beats. If it is absent, never invent exact dialogue from the " +
+    "source; say what is inferred from the title and creator context.\n" +
+    "- A script section may include dialogue or audio cues when appropriate. " +
+    "It does not have to be first-person narration.\n" +
+    "- Omit empty sections and generic marketing filler.\n" +
     (pillars.length
       ? `- Pick pillar from this list when one fits: ${pillars.join(", ")}. ` +
         "Only invent a new pillar if none fit.\n"
@@ -57,6 +86,42 @@ const strArr = (v: unknown, max: number): string[] =>
         .filter(Boolean)
         .slice(0, max)
     : [];
+
+const SECTION_KINDS = new Set<IdeaSectionKind>([
+  "paragraph",
+  "bullets",
+  "steps",
+  "script",
+]);
+
+function sections(v: unknown): IdeaExpansionSection[] {
+  if (!Array.isArray(v)) return [];
+  return v
+    .flatMap((entry): IdeaExpansionSection[] => {
+      if (!entry || typeof entry !== "object") return [];
+      const value = entry as Record<string, unknown>;
+      const label =
+        typeof value.label === "string" ? value.label.trim().slice(0, 80) : "";
+      const kind =
+        typeof value.kind === "string" &&
+        SECTION_KINDS.has(value.kind as IdeaSectionKind)
+          ? (value.kind as IdeaSectionKind)
+          : null;
+      const text =
+        typeof value.text === "string" ? value.text.trim().slice(0, 12000) : "";
+      const items = strArr(value.items, 12);
+      if (!label || !kind || (!text && items.length === 0)) return [];
+      return [
+        {
+          label,
+          kind,
+          text: text || undefined,
+          items: items.length ? items : undefined,
+        },
+      ];
+    })
+    .slice(0, 8);
+}
 
 /** Strip accidental ```json fences the model sometimes adds despite the rule. */
 function unfence(text: string): string {
@@ -92,6 +157,15 @@ export function parseExpansion(raw: string): IdeaExpansion | null {
   return {
     title: title.slice(0, 120),
     pillar,
+    format:
+      typeof obj.format === "string" && obj.format.trim()
+        ? obj.format.trim().slice(0, 120)
+        : undefined,
+    summary:
+      typeof obj.summary === "string" && obj.summary.trim()
+        ? obj.summary.trim().slice(0, 4000)
+        : undefined,
+    sections: sections(obj.sections),
     hooks: strArr(obj.hooks, 5),
     outline: strArr(obj.outline, 8),
     keyPoints: strArr(obj.keyPoints, 6),

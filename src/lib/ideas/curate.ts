@@ -9,13 +9,28 @@ import type { Idea } from "@/lib/ideas/types";
  */
 export function ideaToContentPatch(idea: Idea): ContentPatch {
   const e = idea.expansion;
+  const sections = e?.sections ?? [];
+  const hookSection = sections.find((section) =>
+    /hook|opening/i.test(section.label),
+  );
+  const stepSection = sections.find((section) => section.kind === "steps");
+  const scriptSection = sections.find((section) => section.kind === "script");
+  const adaptivePoints = sections
+    .filter((section) => section.kind === "bullets")
+    .flatMap((section) => section.items ?? [])
+    .slice(0, 8);
+
   return {
     title: e?.title || firstLine(idea.originalTranscript) || "Untitled idea",
-    hooks: e?.hooks ?? [],
-    points: e?.keyPoints ?? [],
-    example: e?.outline?.join("\n") ?? "",
+    hooks: e?.hooks?.length ? e.hooks : (hookSection?.items ?? []),
+    points: e?.keyPoints?.length ? e.keyPoints : adaptivePoints,
+    example:
+      e?.outline?.join("\n") ||
+      stepSection?.items?.join("\n") ||
+      e?.summary ||
+      "",
     cta: "",
-    script: e?.script ?? null,
+    script: e?.script || scriptSection?.text || null,
     status: "drafted",
     pillar: e?.pillar ?? null,
     sourceUrl: idea.source?.url,

@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ChevronDown, Loader2, RefreshCw } from "lucide-react";
-import type { Idea, IdeaType } from "@/lib/ideas/types";
+import {
+  Check,
+  ChevronDown,
+  ExternalLink,
+  FileText,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
+import type { Idea, IdeaExpansionSection, IdeaType } from "@/lib/ideas/types";
 
 const TYPE_LABEL: Record<IdeaType, string> = {
   original: "Original",
@@ -30,6 +37,9 @@ export default function IdeaCard({
     firstLine(idea.originalTranscript) ||
     idea.source?.url ||
     "New idea";
+  const adaptiveSections = e?.sections?.filter(
+    (section) => section.text || section.items?.length,
+  );
 
   return (
     <div
@@ -81,16 +91,78 @@ export default function IdeaCard({
       </div>
 
       {open && (
-        <div className="border-border space-y-4 border-t px-4 py-4 text-sm">
-          <Section label="Your words">
-            <p className="text-foreground/80 whitespace-pre-wrap">
-              {idea.originalTranscript || idea.source?.url || "(none)"}
-            </p>
-          </Section>
+        <div className="border-border space-y-5 border-t px-4 py-5 text-sm">
+          {idea.source && (
+            <div className="border-border/70 bg-background/45 rounded-lg border p-3.5">
+              <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
+                Original reference
+              </p>
+              <a
+                href={idea.source.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-foreground group flex min-w-0 items-center gap-2 font-semibold underline-offset-4 hover:underline"
+              >
+                <ExternalLink className="h-4 w-4 shrink-0 text-[color:var(--sg-accent)]" />
+                <span className="truncate">
+                  {idea.source.title ||
+                    `Open on ${platformName(idea.source.platform)}`}
+                </span>
+              </a>
+              <p className="text-muted-foreground mt-1.5 text-xs break-all">
+                {idea.source.url}
+              </p>
+            </div>
+          )}
+
+          {idea.source && (
+            <Section label="Original transcript">
+              {idea.source.transcript ? (
+                <p className="text-foreground/80 whitespace-pre-wrap">
+                  {idea.source.transcript}
+                </p>
+              ) : (
+                <div className="text-muted-foreground flex items-start gap-2">
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    The source did not expose a transcript yet. Re-analyze to
+                    try the reference again.
+                  </p>
+                </div>
+              )}
+            </Section>
+          )}
+
+          {idea.originalTranscript && (
+            <Section label={idea.source ? "Your direction" : "Your words"}>
+              <p className="text-foreground/80 whitespace-pre-wrap">
+                {idea.originalTranscript}
+              </p>
+            </Section>
+          )}
 
           {e ? (
             <>
-              {e.hooks.length > 0 && (
+              {e.format && (
+                <Section label="Format">
+                  <p className="text-foreground/80">{e.format}</p>
+                </Section>
+              )}
+              {e.summary && (
+                <Section label="Creative read">
+                  <p className="text-foreground/80 whitespace-pre-wrap">
+                    {e.summary}
+                  </p>
+                </Section>
+              )}
+              {adaptiveSections?.map((section, index) => (
+                <AdaptiveSection
+                  key={`${section.label}-${index}`}
+                  section={section}
+                />
+              ))}
+
+              {!adaptiveSections?.length && !!e.hooks?.length && (
                 <Section label="Hooks">
                   <ul className="list-disc space-y-1 pl-4">
                     {e.hooks.map((h, i) => (
@@ -101,7 +173,7 @@ export default function IdeaCard({
                   </ul>
                 </Section>
               )}
-              {e.outline.length > 0 && (
+              {!adaptiveSections?.length && !!e.outline?.length && (
                 <Section label="Outline">
                   <ol className="list-decimal space-y-1 pl-4">
                     {e.outline.map((o, i) => (
@@ -112,7 +184,7 @@ export default function IdeaCard({
                   </ol>
                 </Section>
               )}
-              {e.keyPoints.length > 0 && (
+              {!adaptiveSections?.length && !!e.keyPoints?.length && (
                 <Section label="Key points">
                   <ul className="list-disc space-y-1 pl-4">
                     {e.keyPoints.map((p, i) => (
@@ -123,7 +195,7 @@ export default function IdeaCard({
                   </ul>
                 </Section>
               )}
-              {e.script && (
+              {!adaptiveSections?.length && e.script && (
                 <Section label="Script">
                   <p className="text-foreground/80 whitespace-pre-wrap">
                     {e.script}
@@ -143,9 +215,55 @@ export default function IdeaCard({
               </button>
             )
           )}
+
+          {e && (
+            <button
+              type="button"
+              onClick={onRetry}
+              disabled={expanding}
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-xs font-semibold disabled:opacity-50"
+            >
+              {expanding ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {expanding ? "Re-analyzing reference" : "Re-analyze reference"}
+            </button>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+function AdaptiveSection({ section }: { section: IdeaExpansionSection }) {
+  const ordered = section.kind === "steps";
+  const items = section.items ?? [];
+  return (
+    <Section label={section.label}>
+      {section.text && (
+        <p className="text-foreground/80 whitespace-pre-wrap">{section.text}</p>
+      )}
+      {items.length > 0 &&
+        (ordered ? (
+          <ol className="list-decimal space-y-1.5 pl-5">
+            {items.map((item, index) => (
+              <li key={index} className="text-foreground/80 pl-0.5">
+                {item}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <ul className="list-disc space-y-1.5 pl-5">
+            {items.map((item, index) => (
+              <li key={index} className="text-foreground/80 pl-0.5">
+                {item}
+              </li>
+            ))}
+          </ul>
+        ))}
+    </Section>
   );
 }
 
@@ -164,6 +282,11 @@ function Section({
       {children}
     </div>
   );
+}
+
+function platformName(platform?: string): string {
+  if (!platform || platform === "unknown") return "the source";
+  return platform[0]!.toUpperCase() + platform.slice(1);
 }
 
 function firstLine(s: string): string {
