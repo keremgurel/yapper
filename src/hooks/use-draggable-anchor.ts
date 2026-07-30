@@ -26,16 +26,41 @@ const JITTER = 4;
  */
 const positions = new Map<string, Anchor>();
 const listeners = new Map<string, Set<() => void>>();
+const manuallyPlaced = new Set<string>();
 
 function emit(key: string) {
   listeners.get(key)?.forEach((l) => l());
 }
 
-function clampToViewport(a: Anchor, size: number): Anchor {
+function clampToBounds(
+  a: Anchor,
+  size: number,
+  viewport: { w: number; h: number },
+): Anchor {
+  const maxX = Math.max(EDGE, viewport.w - size - EDGE);
+  const maxY = Math.max(EDGE, viewport.h - size - EDGE);
   return {
-    x: Math.min(window.innerWidth - size - EDGE, Math.max(EDGE, a.x)),
-    y: Math.min(window.innerHeight - size - EDGE, Math.max(EDGE, a.y)),
+    x: Math.min(maxX, Math.max(EDGE, a.x)),
+    y: Math.min(maxY, Math.max(EDGE, a.y)),
   };
+}
+
+function viewportSize() {
+  return { w: window.innerWidth, h: window.innerHeight };
+}
+
+export function anchorAfterResize(
+  current: Anchor,
+  size: number,
+  viewport: { w: number; h: number },
+  wasManuallyPlaced: boolean,
+  initial: (viewport: { w: number; h: number }) => Anchor,
+): Anchor {
+  return clampToBounds(
+    wasManuallyPlaced ? current : initial(viewport),
+    size,
+    viewport,
+  );
 }
 
 function load(key: string): Anchor | null {
@@ -52,7 +77,7 @@ function load(key: string): Anchor | null {
 }
 
 function place(key: string, next: Anchor, size: number) {
-  const clamped = clampToViewport(next, size);
+  const clamped = clampToBounds(next, size, viewportSize());
   const now = positions.get(key);
   if (now && now.x === clamped.x && now.y === clamped.y) return;
   positions.set(key, clamped);
@@ -86,13 +111,11 @@ export function useDraggableAnchor(
   const subscribe = useCallback(
     (onChange: () => void) => {
       if (!positions.has(storageKey)) {
+        const saved = load(storageKey);
+        if (saved) manuallyPlaced.add(storageKey);
         positions.set(
           storageKey,
-          clampToViewport(
-            load(storageKey) ??
-              initial({ w: window.innerWidth, h: window.innerHeight }),
-            size,
-          ),
+          clampToBounds(saved ?? initial(viewportSize()), size, viewportSize()),
         );
       }
       let set = listeners.get(storageKey);
@@ -100,7 +123,18 @@ export function useDraggableAnchor(
       set.add(onChange);
       const onResize = () => {
         const now = positions.get(storageKey);
-        if (now) place(storageKey, now, size);
+        if (!now) return;
+        place(
+          storageKey,
+          anchorAfterResize(
+            now,
+            size,
+            viewportSize(),
+            manuallyPlaced.has(storageKey),
+            initial,
+          ),
+          size,
+        );
       };
       window.addEventListener("resize", onResize);
       return () => {
@@ -138,6 +172,7 @@ export function useDraggableAnchor(
       if (!movedRef.current) {
         if (Math.hypot(e.clientX - grab.x, e.clientY - grab.y) < JITTER) return;
         movedRef.current = true;
+        manuallyPlaced.add(storageKey);
       }
       place(
         storageKey,
