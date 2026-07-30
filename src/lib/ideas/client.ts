@@ -1,6 +1,32 @@
 import { createContent } from "@/lib/content/client";
 import { ideaToContentPatch } from "@/lib/ideas/curate";
-import type { Idea, IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
+import type {
+  Idea,
+  IdeaExpansion,
+  IdeaInput,
+  IdeaSource,
+} from "@/lib/ideas/types";
+import type { ResolvedLink } from "@/lib/inspiration/types";
+
+/** Resolve the reference before analysis so its link, title, platform, and
+ * original transcript are stored on the idea rather than thrown away. */
+export async function resolveIdeaSourceRemote(
+  url: string,
+): Promise<IdeaSource> {
+  const res = await fetch("/api/inspiration/resolve", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) throw new Error(`resolve_${res.status}`);
+  const resolved = (await res.json()) as ResolvedLink;
+  return {
+    url,
+    title: resolved.title,
+    platform: resolved.platform,
+    transcript: resolved.transcript,
+  };
+}
 
 /**
  * Ask the server to expand a raw idea into its full plan. Throws on failure so

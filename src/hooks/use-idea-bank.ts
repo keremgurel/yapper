@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { curateIdea, expandIdeaRemote } from "@/lib/ideas/client";
+import {
+  curateIdea,
+  expandIdeaRemote,
+  resolveIdeaSourceRemote,
+} from "@/lib/ideas/client";
 import { parseCapture } from "@/lib/ideas/parse-capture";
 import {
   addIdea,
@@ -27,15 +31,26 @@ export function useIdeaBank(pillars: string[] = []) {
     setIdeas(loadIdeas());
   }, []);
 
-  const runExpand = useCallback(
+  const resolveAndExpand = useCallback(
     async (idea: Idea) => {
       setExpanding((s) => new Set(s).add(idea.id));
       try {
+        let current = idea;
+        if (idea.source?.url) {
+          try {
+            const source = await resolveIdeaSourceRemote(idea.source.url);
+            current = { ...idea, source };
+            setIdeas(updateIdea(idea.id, { source }));
+          } catch {
+            // Resolution is best-effort. The exact URL is already durable, and
+            // analysis can still use the creator's own context.
+          }
+        }
         const expansion = await expandIdeaRemote(
           {
-            transcript: idea.originalTranscript || undefined,
-            url: idea.source?.url,
-            source: idea.source,
+            transcript: current.originalTranscript || undefined,
+            url: current.source?.url,
+            source: current.source,
           },
           pillars,
         );
@@ -58,18 +73,18 @@ export function useIdeaBank(pillars: string[] = []) {
       const input = parseCapture(text);
       if (!input.transcript && !input.url) return;
       const idea = newIdea(input);
-      setIdeas(addIdea(idea)); // shows up immediately, expansion fills in async
-      void runExpand(idea);
+      setIdeas(addIdea(idea)); // shows up immediately, details fill in async
+      void resolveAndExpand(idea);
     },
-    [runExpand],
+    [resolveAndExpand],
   );
 
   const retry = useCallback(
     (id: string) => {
       const idea = loadIdeas().find((i) => i.id === id);
-      if (idea) void runExpand(idea);
+      if (idea) void resolveAndExpand(idea);
     },
-    [runExpand],
+    [resolveAndExpand],
   );
 
   const remove = useCallback((ids: Set<string>) => {

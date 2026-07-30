@@ -1,10 +1,10 @@
 /**
  * The Idea bank model. An idea is whatever a creator drops in: a spoken note, a
  * link, or a link with their own take on it. Every idea keeps the creator's
- * EXACT original words untouched, and carries an AI expansion (hooks, outline,
- * key points, full script) that can be regenerated without ever losing the
- * original. Ideas start in the bank (an inbox) and get curated into the Content
- * Library when the creator decides to actually shoot them.
+ * EXACT original words untouched, and carries an adaptive AI analysis that can
+ * be regenerated without ever losing the original. Ideas start in the bank (an
+ * inbox) and get curated into the Content Library when the creator decides to
+ * actually shoot them.
  */
 
 /**
@@ -23,24 +23,41 @@ export type IdeaStage = "bank" | "drafted" | "planned" | "scheduled" | "posted";
 export interface IdeaSource {
   url: string;
   title?: string;
-  /** The link's own transcript, when we could pull one (used to expand from). */
+  /** The reference video's complete spoken transcript, never AI-rewritten. */
   transcript?: string;
   platform?: string;
 }
 
-/** The AI-built expansion. Fully regenerable; never overwrites the original. */
+export type IdeaSectionKind = "paragraph" | "bullets" | "steps" | "script";
+
+/**
+ * One reference-specific block. Labels are intentionally free-form: an
+ * audio-led sketch may need "Joke mechanics" and "Audio beats", while an
+ * educational monologue may need "Argument" and "Draft script".
+ */
+export interface IdeaExpansionSection {
+  label: string;
+  kind: IdeaSectionKind;
+  text?: string;
+  items?: string[];
+}
+
+/** The AI-built analysis. Fully regenerable; never overwrites the source. */
 export interface IdeaExpansion {
   title: string;
   /** Content pillar this belongs to (free-form name), or null if unclassified. */
   pillar: string | null;
-  /** Scroll-stopping opener variants. */
-  hooks: string[];
-  /** The content outline: the ordered beats of the video. */
-  outline: string[];
-  /** The key talking points to hit. */
-  keyPoints: string[];
-  /** The full, teleprompter-ready spoken-word script. */
-  script: string;
+  /** The source's actual creative form, not a forced content bucket. */
+  format?: string;
+  /** A concise read on the reference and the creator's intended adaptation. */
+  summary?: string;
+  /** Flexible blocks chosen to fit this specific reference. */
+  sections?: IdeaExpansionSection[];
+  /** Legacy fixed-template fields, retained so old saved ideas still render. */
+  hooks?: string[];
+  outline?: string[];
+  keyPoints?: string[];
+  script?: string;
 }
 
 export interface Idea {

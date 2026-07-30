@@ -52,8 +52,6 @@ import {
 import { decodeToMono16k } from "@/lib/studio/audio-decode";
 import { chunkMonoPcm } from "@/lib/studio/audio/asr-audio";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
-import { consumePendingVideo } from "@/lib/studio/handoff";
-import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
 import { useEditorHistory } from "@/hooks/use-editor-history";
 import { useTranscript, type TranscribeStatus } from "@/hooks/use-transcript";
@@ -1098,32 +1096,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     resetTranscript();
   }, [resetEditor, resetTranscript, sel]);
 
-  // Pick up a recording handed over from the practice flow (Record -> Edit),
-  // or load a Content Library item's saved recording via ?item=<id>.
-  useEffect(() => {
-    const blob = consumePendingVideo();
-    if (blob) {
-      loadVideoSource(blob, "Practice take")
-        .then(loadSource)
-        .catch(() => {});
-      return;
-    }
-    const itemId = new URLSearchParams(window.location.search).get("item");
-    if (!itemId) return;
-    loadLinkedRecording(itemId)
-      .then((rec) => {
-        if (!rec) return; // no recording linked / signed out -> empty editor
-        return loadVideoSource(rec.blob, rec.name).then(loadSource);
-      })
-      .catch((e) => {
-        // Likely missing R2 GET CORS or a deleted object; leave the uploader
-        // visible instead of a broken editor.
-        console.warn("Could not load the linked recording", e);
-      });
-  }, [loadSource]);
-
-  // Warn before leaving/refreshing while there's a video loaded, since edits
-  // are not saved anywhere.
+  // Studio route changes preserve this provider. A real tab close or refresh
+  // still discards browser-backed File objects, so keep the unload warning.
   useEffect(() => {
     if (!source) return;
     const handler = (e: BeforeUnloadEvent) => {

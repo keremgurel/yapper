@@ -7,10 +7,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Expand a raw idea into a full plan (title, pillar, hooks, outline, key points,
- * script). The creator's original words are preserved client-side; this only
- * builds the regenerable plan around them, so it can run again anytime without
- * touching the original.
+ * Expand a raw idea into a reference-specific creative dossier. The creator's
+ * original words and the source transcript are preserved client-side; this only
+ * builds the regenerable analysis around them.
  */
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();

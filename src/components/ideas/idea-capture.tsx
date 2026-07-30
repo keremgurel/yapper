@@ -85,7 +85,7 @@ export default function IdeaCapture({
         onKeyDown={(ev) => {
           if ((ev.metaKey || ev.ctrlKey) && ev.key === "Enter") submit();
         }}
-        placeholder="Drop a link, or type an idea you want to shoot. We keep your exact words and build the hooks, outline, and script."
+        placeholder="Drop a link, or type an idea you want to shoot. We preserve the source and break down what actually makes it work."
         rows={2}
         className="text-foreground placeholder:text-muted-foreground/70 max-h-[320px] w-full resize-none bg-transparent text-[15px] leading-relaxed outline-none"
       />

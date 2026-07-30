@@ -47,6 +47,55 @@ describe("parseExpansion", () => {
     )!;
     expect(e.hooks).toEqual(["ok", "x"]);
   });
+
+  it("parses reference-specific sections without requiring a fixed template", () => {
+    const e = parseExpansion(
+      JSON.stringify({
+        title: "CELPIP Listening Be Like",
+        pillar: "Humor",
+        format: "Audio-led reaction sketch",
+        summary:
+          "The confusing listening audio carries the joke while the performer reacts.",
+        sections: [
+          {
+            label: "Joke mechanics",
+            kind: "bullets",
+            items: [
+              "Begin confident",
+              "Escalate the audio",
+              "Hold on the confused reaction",
+            ],
+          },
+          {
+            label: "CELPIP recreation",
+            kind: "script",
+            text: "[Audio] A deliberately overqualified answer. [Visual] Freeze.",
+          },
+        ],
+      }),
+    )!;
+
+    expect(e.format).toBe("Audio-led reaction sketch");
+    expect(e.sections).toHaveLength(2);
+    expect(e.sections?.[0]?.label).toBe("Joke mechanics");
+    expect(e.hooks).toEqual([]);
+  });
+
+  it("drops malformed or empty adaptive sections", () => {
+    const e = parseExpansion(
+      JSON.stringify({
+        title: "T",
+        sections: [
+          { label: "Empty", kind: "bullets", items: [] },
+          { label: "Wrong", kind: "table", text: "x" },
+          { label: "Useful", kind: "paragraph", text: "Keep this." },
+        ],
+      }),
+    )!;
+    expect(e.sections).toEqual([
+      { label: "Useful", kind: "paragraph", text: "Keep this." },
+    ]);
+  });
 });
 
 describe("buildExpandMessages", () => {
@@ -76,5 +125,23 @@ describe("buildExpandMessages", () => {
       "Mindset",
     ]);
     expect(system).toContain("Speaking, Mindset");
+  });
+
+  it("keeps audio-led comedy in its actual format", () => {
+    const { system, user } = buildExpandMessages(
+      {
+        transcript: "recreate this for CELPIP",
+        source: {
+          url: "https://instagram.com/reel/example",
+          title: "IELTS listening test be like",
+          transcript: "The source audio becomes increasingly confusing.",
+        },
+      },
+      "semi-original",
+      [],
+    );
+    expect(system).toContain("audio-led joke");
+    expect(system).toContain("Never force");
+    expect(user).toContain("increasingly confusing");
   });
 });
