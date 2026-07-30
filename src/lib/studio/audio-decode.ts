@@ -42,7 +42,11 @@ async function decodeFresh(url: string): Promise<Float32Array> {
     const native = nativeMediaForUrl(url);
     if (native) {
       try {
-        return await nativePcm16k(native.proxyPath ?? native.path);
+        // Playback may use a low-resolution companion/proxy, but analysis and
+        // transcription must always decode the original audio track. A proxy
+        // is allowed to lower audio quality or omit tracks, which would make
+        // words disappear before ASR ever receives them.
+        return await nativePcm16k(native.path);
       } catch (e) {
         const detail = e instanceof Error ? e.message : String(e);
         throw new Error(`Desktop audio preparation failed: ${detail}`, {
