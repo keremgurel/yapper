@@ -28,6 +28,51 @@ interface ByteSizedChunk {
   offsetSec: number;
 }
 
+export interface PcmChunkRange {
+  start: number;
+  end: number;
+}
+
+/**
+ * Plan PCM windows without allocating their audio. Keeping this arithmetic
+ * separate makes long-recording coverage testable without creating a
+ * 15-minute Float32Array in the test runner.
+ */
+export function planPcmChunks(
+  sampleCount: number,
+  sampleRate: number,
+  maxBytes: number,
+  overlapSec: number,
+): PcmChunkRange[] {
+  if (
+    !Number.isSafeInteger(sampleCount) ||
+    sampleCount < 0 ||
+    !Number.isFinite(sampleRate) ||
+    sampleRate <= 0 ||
+    !Number.isFinite(maxBytes) ||
+    maxBytes <= 44
+  ) {
+    throw new Error("invalid PCM chunk parameters");
+  }
+  if (sampleCount === 0) return [];
+
+  const maxSamples = Math.max(1, Math.floor((maxBytes - 44) / 2));
+  const requestedOverlap = Math.max(0, overlapSec) * sampleRate;
+  const overlapSamples = Math.min(
+    Math.floor(requestedOverlap),
+    Math.max(0, maxSamples - 1),
+  );
+  const chunks: PcmChunkRange[] = [];
+  let start = 0;
+  while (start < sampleCount) {
+    const end = Math.min(sampleCount, start + maxSamples);
+    chunks.push({ start, end });
+    if (end >= sampleCount) break;
+    start = end - overlapSamples;
+  }
+  return chunks;
+}
+
 /** Split encoded AAC only on real frame boundaries, with context overlap. */
 function chunkAac(
   demuxed: Awaited<ReturnType<typeof demuxAudioTrackCached>>,
@@ -86,25 +131,14 @@ function chunkPcm(
   maxBytes: number,
   overlapSec: number,
 ): AsrAudio[] {
-  const maxSamples = Math.max(1, Math.floor((maxBytes - 44) / 2));
-  const overlapSamples = Math.min(
-    Math.floor(overlapSec * sampleRate),
-    Math.max(0, maxSamples - 1),
-  );
-  const chunks: AsrAudio[] = [];
-  let start = 0;
-  while (start < samples.length) {
-    const end = Math.min(samples.length, start + maxSamples);
-    chunks.push({
+  return planPcmChunks(samples.length, sampleRate, maxBytes, overlapSec).map(
+    ({ start, end }) => ({
       blob: encodeWav(samples.slice(start, end), sampleRate),
       via: sampleRate <= 16000 ? "wav16" : "wav48",
       durationSec: (end - start) / sampleRate,
       offsetSec: start / sampleRate,
-    });
-    if (end >= samples.length) break;
-    start = end - overlapSamples;
-  }
-  return chunks;
+    }),
+  );
 }
 
 /**

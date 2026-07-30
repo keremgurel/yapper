@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chunkMono16k } from "@/lib/studio/audio/asr-audio";
+import { chunkMono16k, planPcmChunks } from "@/lib/studio/audio/asr-audio";
 import { mergeTranscribedChunks } from "@/lib/studio/transcribe-remote";
 
 describe("transcription chunk transport", () => {
@@ -10,6 +10,34 @@ describe("transcription chunk transport", () => {
     expect(chunks.every((chunk) => chunk.blob.size <= 100_000)).toBe(true);
     expect(chunks[1].offsetSec).toBeLessThan(
       chunks[0].offsetSec + chunks[0].durationSec,
+    );
+  });
+
+  it("covers a 15-minute recording with bounded, gapless upload windows", () => {
+    const sampleRate = 16_000;
+    const maxBytes = 1_000_000;
+    const overlapSamples = 5 * sampleRate;
+    const totalSamples = 15 * 60 * sampleRate;
+    const ranges = planPcmChunks(totalSamples, sampleRate, maxBytes, 5);
+
+    expect(ranges).toHaveLength(35);
+    expect(ranges[0]).toEqual({ start: 0, end: 499_978 });
+    expect(ranges.at(-1)?.end).toBe(totalSamples);
+    for (let index = 0; index < ranges.length; index++) {
+      const range = ranges[index];
+      expect(44 + (range.end - range.start) * 2).toBeLessThanOrEqual(maxBytes);
+      if (index > 0) {
+        expect(ranges[index - 1].end - range.start).toBe(overlapSamples);
+      }
+    }
+  });
+
+  it("rejects unsafe chunk plans instead of looping or leaving gaps", () => {
+    expect(() => planPcmChunks(100, 16_000, 44, 5)).toThrow(
+      "invalid PCM chunk parameters",
+    );
+    expect(() => planPcmChunks(-1, 16_000, 1_000_000, 5)).toThrow(
+      "invalid PCM chunk parameters",
     );
   });
 
