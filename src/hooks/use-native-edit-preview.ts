@@ -6,7 +6,10 @@ import {
   nativeMakeEditPreview,
   type NativeEditPreviewClip,
 } from "@/lib/studio/native/media";
-import { nativeMediaForUrl } from "@/lib/studio/native/path-registry";
+import {
+  nativeMediaForUrl,
+  nativePathForUrl,
+} from "@/lib/studio/native/path-registry";
 import type { Clip } from "@/lib/studio/types";
 
 const EDIT_PREVIEW_DEBOUNCE_MS = 300;
@@ -23,11 +26,12 @@ export function nativeEditPreviewPlan(
     if (clip.src?.kind === "image") return null;
     const url = clip.src?.url ?? baseUrl;
     const media = nativeMediaForUrl(url);
-    if (!media) return null;
+    const path = media?.proxyPath ?? nativePathForUrl(url);
+    if (!path) return null;
     plan.push({
       // Prefer the lightweight proxy when it is ready. This derivative is only
       // for interactive preview; final export still reads the original.
-      path: media.proxyPath ?? media.path,
+      path,
       start: clip.start,
       end: clip.end,
     });
