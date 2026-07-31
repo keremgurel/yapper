@@ -16,7 +16,7 @@ export interface FrameContent {
   overlays: Array<
     DrawItem & { x: number; y: number; w: number; h: number; crop: OverlayRect }
   >;
-  caption: CaptionFrame | null;
+  captions: CaptionFrame[];
 }
 
 /**
@@ -61,7 +61,7 @@ export function drawFrame(
     ctx.restore();
   }
 
-  if (content.caption) {
-    drawCaption(ctx, content.caption, width, height);
+  for (const caption of content.captions) {
+    drawCaption(ctx, caption, width, height);
   }
 }

@@ -18,10 +18,13 @@ export default function InstagramCompose({
   item: CrossPostTarget;
   onDone: () => void;
 }) {
-  const [caption, setCaption] = useState("");
+  const [caption, setCaption] = useState(item.initialDescription ?? "");
   const { state, error, result, post } = useCrossPost();
   const busy = state === "posting";
-  const thumb = useThumbnailUpload();
+  const thumb = useThumbnailUpload({
+    key: item.thumbnailKey,
+    previewUrl: item.thumbnailPreviewUrl,
+  });
 
   const onPost = () => {
     if (busy) return;

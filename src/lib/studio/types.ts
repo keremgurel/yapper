@@ -134,6 +134,8 @@ export function newAudioId(): string {
 
 /** Display-only casing for a caption. Lives here so a Caption can override it. */
 export type CaptionCase = "none" | "lower" | "upper";
+export type CaptionKind = "caption" | "hook";
+export type TextHookPreset = "white-card" | "white-text" | "black-card";
 
 /** A transcribed token (word or short phrase) with source timestamps. */
 export interface Word {
@@ -162,6 +164,12 @@ export interface Caption {
   text: string;
   sourceStart: number;
   sourceEnd: number;
+  /** Undefined is the legacy spoken-caption shape. Hooks are timeline-native
+   * so they can sit over any edit without pretending to belong to speech. */
+  kind?: CaptionKind;
+  timelineStart?: number;
+  timelineEnd?: number;
+  hookPreset?: TextHookPreset;
   x?: number;
   y?: number;
   w?: number; // box width override (fraction of stage)

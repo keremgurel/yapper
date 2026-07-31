@@ -47,9 +47,15 @@ export function assetUrl(filePath: string): string {
 
 /** Open the OS file picker and return the chosen video's path (null = cancel). */
 export async function pickVideoPath(): Promise<string | null> {
+  return (await pickVideoPaths(false))[0] ?? null;
+}
+
+/** Open one or many videos. Initial project import uses the multi-select form
+ * so a sequence can be built in one trip to the picker. */
+export async function pickVideoPaths(multiple = true): Promise<string[]> {
   const res = await invoke<string | string[] | null>("plugin:dialog|open", {
     options: {
-      multiple: false,
+      multiple,
       directory: false,
       filters: [
         {
@@ -59,5 +65,6 @@ export async function pickVideoPath(): Promise<string | null> {
       ],
     },
   });
-  return Array.isArray(res) ? (res[0] ?? null) : (res ?? null);
+  if (!res) return [];
+  return Array.isArray(res) ? res : [res];
 }

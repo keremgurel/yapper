@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Scissors, Sparkles, Waves } from "lucide-react";
 import AiAssistant from "@/components/studio/ai-assistant";
 import { useStudio } from "@/components/studio/studio-context";
 import PreviewStage from "@/components/studio/preview-stage";
@@ -13,6 +14,7 @@ import { nudgeDelta } from "@/lib/studio/nudge";
 import { usePanelHeight } from "@/hooks/use-panel-height";
 import { useResizablePanel } from "@/hooks/use-resizable-panel";
 import { useStudioLayout } from "@/hooks/use-studio-layout";
+import VideoUploader from "@/components/studio/video-uploader";
 
 /** The gap between the timeline card and everything around it. */
 const CARD_GUTTER = "px-3 pb-3";
@@ -44,6 +46,61 @@ function ColHandle({
       role="separator"
       aria-orientation="vertical"
     />
+  );
+}
+
+function EmptyStudio() {
+  return (
+    <div className="relative flex min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(circle_at_50%_-20%,color-mix(in_srgb,var(--sg-accent)_16%,transparent),transparent_42%)]">
+      <div className="mx-auto flex w-full max-w-5xl flex-col px-5 py-8 sm:px-8 lg:py-10">
+        <div className="mx-auto mb-7 max-w-2xl text-center">
+          <span className="text-foreground inline-flex items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--sg-accent)_28%,var(--border))] bg-[color:color-mix(in_srgb,var(--sg-accent)_7%,transparent)] px-3 py-1 text-[11px] font-black tracking-wide uppercase">
+            <Sparkles className="h-3.5 w-3.5 text-[color:var(--sg-accent)]" />
+            New edit
+          </span>
+          <h1 className="font-display text-foreground mt-4 text-3xl leading-tight font-black tracking-tight sm:text-4xl">
+            From raw footage to a clean cut.
+          </h1>
+          <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-sm leading-6 sm:text-base">
+            Start with one clip or a whole sequence. The timeline, transcript,
+            captions, and export tools open as one focused workspace.
+          </p>
+        </div>
+
+        <VideoUploader />
+
+        <div className="mx-auto mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+          {[
+            {
+              Icon: Waves,
+              title: "Instant timeline",
+              detail: "Waveform and frames begin filling left to right.",
+            },
+            {
+              Icon: Scissors,
+              title: "Edit by text",
+              detail: "Clean retakes without losing the natural sentence.",
+            },
+            {
+              Icon: Sparkles,
+              title: "Finish the frame",
+              detail: "Add captions, text hooks, overlays, and export.",
+            },
+          ].map(({ Icon, title, detail }) => (
+            <div
+              key={title}
+              className="border-border/70 bg-card/45 rounded-2xl border px-4 py-3.5"
+            >
+              <Icon className="h-4 w-4 text-[color:var(--sg-accent)]" />
+              <p className="text-foreground mt-2 text-xs font-black">{title}</p>
+              <p className="text-muted-foreground mt-1 text-[11px] leading-4">
+                {detail}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -209,6 +266,10 @@ export default function StudioWorkspace() {
     selectedOverlayIds,
     selectedAudioIds,
   ]);
+
+  // One intentional starting point is calmer and clearer than four empty panes
+  // plus a disabled timeline. Once media exists, the full editor opens.
+  if (!source && duration <= 0) return <EmptyStudio />;
 
   const stage = (
     <PreviewStage

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { isNative, pickVideoPath } from "@/lib/studio/native/bridge";
+import { isNative, pickVideoPaths } from "@/lib/studio/native/bridge";
 import { loadNativeSource } from "@/lib/studio/native/load-native-source";
 
 export const MEDIA_DND_TYPE = "application/x-yapper-asset";
@@ -33,10 +33,11 @@ export default function MediaTab() {
     }
     setImportError("");
     setImporting(true);
-    void pickVideoPath()
-      .then(async (path) => {
-        if (!path) return;
-        addMediaSource(await loadNativeSource(path));
+    void pickVideoPaths()
+      .then(async (paths) => {
+        for (const path of paths) {
+          addMediaSource(await loadNativeSource(path));
+        }
       })
       .catch((error: unknown) => {
         console.error("[studio] native media import failed", error);

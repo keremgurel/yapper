@@ -36,11 +36,39 @@ export function drawCaption(
   const lines = wrapLines((s) => ctx.measureText(s).width, text, boxWidth);
   const startY = centerY - ((lines.length - 1) * lineHeight) / 2;
 
+  if (cap.kind === "hook" && cap.hookPreset !== "white-text") {
+    const widest = Math.min(
+      boxWidth,
+      Math.max(...lines.map((line) => ctx.measureText(line).width)),
+    );
+    const padX = fontSize * 0.72;
+    const padY = fontSize * 0.52;
+    const bgW = Math.min(canvasW * 0.96, widest + padX * 2);
+    const bgH = lines.length * lineHeight + padY * 1.55;
+    const left = centerX - bgW / 2;
+    const top = centerY - bgH / 2;
+    const radius = Math.min(fontSize * 0.45, bgH / 3);
+    ctx.beginPath();
+    ctx.roundRect(left, top, bgW, bgH, radius);
+    ctx.fillStyle = cap.hookPreset === "black-card" ? "#090909" : "#ffffff";
+    ctx.shadowColor = "rgba(0,0,0,0.24)";
+    ctx.shadowBlur = Math.max(4, canvasH * 0.014);
+    ctx.shadowOffsetY = Math.max(2, canvasH * 0.004);
+    ctx.fill();
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
   // Pass 1: soft shadow for contrast. Pass 2: crisp white on top.
-  ctx.fillStyle = "#ffffff";
-  ctx.shadowColor = "rgba(0,0,0,0.8)";
-  ctx.shadowBlur = Math.max(2, canvasH * 0.012);
-  ctx.shadowOffsetY = Math.max(1, canvasH * 0.003);
+  const card = cap.kind === "hook" && cap.hookPreset !== "white-text";
+  ctx.fillStyle =
+    cap.kind === "hook" && cap.hookPreset === "white-card"
+      ? "#090909"
+      : "#ffffff";
+  ctx.shadowColor = card ? "transparent" : "rgba(0,0,0,0.8)";
+  ctx.shadowBlur = card ? 0 : Math.max(2, canvasH * 0.012);
+  ctx.shadowOffsetY = card ? 0 : Math.max(1, canvasH * 0.003);
   lines.forEach((line, i) => {
     ctx.fillText(line, centerX, startY + i * lineHeight);
   });

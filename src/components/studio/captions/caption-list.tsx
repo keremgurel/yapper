@@ -92,7 +92,11 @@ export default function CaptionList({
     splitCaptionAtWord(id, before.split(/\s+/).length);
   };
 
-  const canMerge = selectedCaptionIds.length >= 2;
+  const selectedSpoken = captions.filter(
+    (caption) =>
+      caption.kind !== "hook" && selectedCaptionIds.includes(caption.id),
+  );
+  const canMerge = selectedSpoken.length >= 2;
 
   return (
     <div className="space-y-2">
@@ -109,12 +113,12 @@ export default function CaptionList({
         {canMerge && (
           <button
             type="button"
-            onClick={() => mergeCaptions(selectedCaptionIds)}
+            onClick={() => mergeCaptions(selectedSpoken.map((c) => c.id))}
             className="border-border hover:bg-muted/50 text-foreground flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold"
             title="Merge the selected captions into one"
           >
             <Merge className="h-3.5 w-3.5" />
-            Merge {selectedCaptionIds.length}
+            Merge {selectedSpoken.length}
           </button>
         )}
       </div>
@@ -152,7 +156,9 @@ export default function CaptionList({
                   <input
                     value={c.text}
                     onChange={(e) => setCaptionText(c.id, e.target.value)}
-                    onKeyDown={(e) => onEnterSplit(e, c.id)}
+                    onKeyDown={(e) => {
+                      if (c.kind !== "hook") onEnterSplit(e, c.id);
+                    }}
                     onFocus={() => {
                       editStart.current.set(c.id, c.text);
                       if (pendingCorrection?.captionId === c.id) {
@@ -179,6 +185,11 @@ export default function CaptionList({
                     style={{ textTransform: caseTransform(effectiveCase) }}
                     className="text-foreground min-w-0 flex-1 bg-transparent text-[13px] outline-none"
                   />
+                  {c.kind === "hook" && (
+                    <span className="shrink-0 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-[9px] font-black tracking-wide text-fuchsia-400 uppercase">
+                      Hook
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => cycleCaptionCase(c.id)}

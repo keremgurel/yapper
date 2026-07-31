@@ -11,23 +11,26 @@ export default function PlatformPicker({
   onChange,
 }: {
   platforms: PublishPlatform[];
-  active: PublishPlatform;
+  active: PublishPlatform | null;
   onChange: (p: PublishPlatform) => void;
 }) {
   return (
-    <div className="bg-muted/60 flex rounded-lg p-0.5">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
       {platforms.map((p) => (
         <button
           key={p}
           type="button"
           onClick={() => onChange(p)}
-          className={`flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
+          className={`rounded-xl border px-3 py-3 text-left text-xs font-black transition-all ${
             active === p
-              ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-foreground border-[color:var(--sg-accent)] bg-[color:color-mix(in_srgb,var(--sg-accent)_10%,transparent)] shadow-sm"
+              : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground"
           }`}
         >
-          {PLATFORMS[p].label}
+          <span className="block">{PLATFORMS[p].label}</span>
+          <span className="mt-1 block text-[10px] leading-4 font-medium opacity-70">
+            {PLATFORMS[p].postMeaning}
+          </span>
         </button>
       ))}
     </div>

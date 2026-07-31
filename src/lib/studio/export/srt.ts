@@ -36,6 +36,7 @@ export function captionsToSrt(
   globalCase?: CaptionCase,
 ): string {
   const cues = captions
+    .filter((c) => c.kind !== "hook")
     .map((c) => ({
       ...captionTimelineRange(clips, c),
       text: applyCase(c.text.trim(), c.textCase ?? globalCase),

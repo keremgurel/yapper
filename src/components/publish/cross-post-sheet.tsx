@@ -35,7 +35,7 @@ export default function CrossPostSheet({
   onClose: () => void;
 }) {
   const [open, setOpen] = useState(true);
-  const [override, setOverride] = useState<PublishPlatform | null>(null);
+  const [active, setActive] = useState<PublishPlatform | null>(null);
   const { connections } = useConnections(open);
 
   const close = (o: boolean) => {
@@ -43,20 +43,19 @@ export default function CrossPostSheet({
     if (!o) onClose();
   };
 
-  // Canonical order (YouTube, TikTok, Instagram), so the picker and the default
-  // selection are stable rather than following whatever order the API returned.
+  // Canonical order keeps the chooser stable. Crucially, no platform is picked
+  // automatically: publishing is an explicit user decision.
   const connected = connectedInOrder(connections?.map((c) => c.platform) ?? []);
-  // Effective platform derived (not seeded via effect): the override if it's
-  // still connected, else the first connected platform.
-  const active =
-    override && connected.includes(override) ? override : connected[0];
+  const selected = active && connected.includes(active) ? active : null;
 
   return (
     <Sheet open={open} onOpenChange={close}>
       <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Post your video</SheetTitle>
-          <SheetDescription>Choose where to share it.</SheetDescription>
+          <SheetTitle>Publish video</SheetTitle>
+          <SheetDescription>
+            Pick the destination yourself. Yapper never chooses one for you.
+          </SheetDescription>
         </SheetHeader>
 
         <div className="flex flex-col gap-4 p-4">
@@ -65,7 +64,7 @@ export default function CrossPostSheet({
               <Loader2 className="h-4 w-4 animate-spin" /> Loading your
               connections…
             </div>
-          ) : connected.length === 0 || !active ? (
+          ) : connected.length === 0 ? (
             <div className="text-muted-foreground py-6 text-sm">
               <p className="text-foreground font-bold">
                 No platforms connected
@@ -83,28 +82,36 @@ export default function CrossPostSheet({
             </div>
           ) : (
             <>
-              {connected.length > 1 && (
+              <div>
+                <p className="text-foreground/70 mb-2 text-xs font-black tracking-wide uppercase">
+                  Destination
+                </p>
                 <PlatformPicker
                   platforms={connected}
-                  active={active}
-                  onChange={setOverride}
+                  active={selected}
+                  onChange={setActive}
                 />
-              )}
-              {active === "youtube" && (
+                {!selected && (
+                  <p className="text-muted-foreground mt-3 text-xs">
+                    Nothing is selected or published automatically.
+                  </p>
+                )}
+              </div>
+              {selected === "youtube" && (
                 <YouTubeCompose
                   key={item.id}
                   item={item}
                   onDone={() => close(false)}
                 />
               )}
-              {active === "instagram" && (
+              {selected === "instagram" && (
                 <InstagramCompose
                   key={item.id}
                   item={item}
                   onDone={() => close(false)}
                 />
               )}
-              {active === "tiktok" && (
+              {selected === "tiktok" && (
                 <TikTokCompose
                   key={item.id}
                   item={item}

@@ -8,6 +8,11 @@
 export interface CrossPostTarget {
   id: string;
   title: string;
+  /** Optional prepared copy/cover from the Poster workspace. */
+  initialTitle?: string;
+  initialDescription?: string;
+  thumbnailKey?: string;
+  thumbnailPreviewUrl?: string;
   submissionId?: string;
   mediaKey?: string;
   contentItemId?: string;
