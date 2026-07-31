@@ -19,14 +19,17 @@ export default function YouTubeCompose({
   item: CrossPostTarget;
   onDone: () => void;
 }) {
-  const [title, setTitle] = useState(item.title);
-  const [description, setDescription] = useState("");
+  const [title, setTitle] = useState(item.initialTitle ?? item.title);
+  const [description, setDescription] = useState(item.initialDescription ?? "");
   const [matchStyle, setMatchStyle] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
   const { state, error, result, post } = useCrossPost();
   const busy = state === "posting";
-  const thumb = useThumbnailUpload();
+  const thumb = useThumbnailUpload({
+    key: item.thumbnailKey,
+    previewUrl: item.thumbnailPreviewUrl,
+  });
 
   const generate = async () => {
     if (generating) return;

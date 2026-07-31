@@ -14,6 +14,13 @@ export function captionTimelineRange(
   clips: Clip[],
   c: Caption,
 ): { start: number; end: number } {
+  if (
+    c.kind === "hook" &&
+    c.timelineStart !== undefined &&
+    c.timelineEnd !== undefined
+  ) {
+    return { start: c.timelineStart, end: c.timelineEnd };
+  }
   return {
     start: sourceToTimeline(clips, c.sourceStart),
     end: sourceToTimeline(clips, c.sourceEnd),

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CAPTION_STYLE } from "@/lib/studio/captions";
-import { baseAt, captionAt, overlaysAt } from "@/lib/studio/export/frame-plan";
+import {
+  baseAt,
+  captionAt,
+  captionsAt,
+  overlaysAt,
+} from "@/lib/studio/export/frame-plan";
 import type { Caption, Clip, Overlay, StudioSource } from "@/lib/studio/types";
 
 const source: StudioSource = {
@@ -206,5 +211,20 @@ describe("captionAt", () => {
   it("shows no caption when the only one covering t is blank", () => {
     const clips = [rec("a", 0, 10)];
     expect(captionAt(clips, [caption(2, 4, "")], style, 3)).toBeNull();
+  });
+
+  it("exports a text hook and spoken caption together", () => {
+    const clips = [rec("a", 0, 10)];
+    const spoken = caption(1, 3, "spoken");
+    const hook = caption(0, 0, "top hook", {
+      kind: "hook",
+      hookPreset: "white-card",
+      timelineStart: 0,
+      timelineEnd: 4,
+    });
+    expect(captionsAt(clips, [hook, spoken], style, 2)).toMatchObject([
+      { text: "top hook", kind: "hook", hookPreset: "white-card" },
+      { text: "spoken", kind: "caption" },
+    ]);
   });
 });

@@ -32,6 +32,7 @@ function CaptionTrack({
   onSelect,
   onRange,
   onSplit,
+  lane = "caption",
 }: {
   captions: Caption[];
   clips: Clip[];
@@ -42,6 +43,7 @@ function CaptionTrack({
   onSelect: (id: string, additive: boolean) => void;
   onRange: (id: string, start: number, end: number) => void;
   onSplit: (id: string, at: number) => void;
+  lane?: "caption" | "hook";
 }) {
   const [trim, setTrim] = useState<CaptionTrim | null>(null);
 
@@ -70,7 +72,13 @@ function CaptionTrack({
   }, [trim, pxPerSec, onRange]);
 
   return (
-    <div className="relative h-7">
+    <div
+      className="bg-foreground/[0.025] relative h-8 rounded-md"
+      aria-label={lane === "hook" ? "Text hooks track" : "Captions track"}
+    >
+      <span className="bg-background/75 text-muted-foreground pointer-events-none absolute top-1/2 left-2 z-20 -translate-y-1/2 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase opacity-0 backdrop-blur group-hover:opacity-100">
+        {lane === "hook" ? "Hooks" : "Captions"}
+      </span>
       {captions.map((c) => {
         const r = captionTimelineRange(clips, c);
         if (r.end <= r.start) return null; // fully cut
@@ -83,10 +91,24 @@ function CaptionTrack({
             style={{ left, width }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => onSelect(c.id, e.metaKey || e.ctrlKey)}
-            onDoubleClick={() => onSplit(c.id, playhead)}
-            title="Click to select · ⌘/Ctrl-click to multi-select · double-click to break at the playhead"
-            className={`group absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md bg-amber-500/15 px-2 ring-1 ${
-              selected ? "ring-2 ring-amber-400" : "ring-amber-500/35"
+            onDoubleClick={() => {
+              if (lane === "caption") onSplit(c.id, playhead);
+            }}
+            title={
+              lane === "hook"
+                ? "Text hook · drag either edge to set its duration"
+                : "Click to select · ⌘/Ctrl-click to multi-select · double-click to break at the playhead"
+            }
+            className={`group absolute inset-y-0 flex cursor-pointer items-center overflow-hidden rounded-md px-2 ring-1 ${
+              lane === "hook" ? "bg-fuchsia-500/15" : "bg-amber-500/15"
+            } ${
+              selected
+                ? lane === "hook"
+                  ? "ring-2 ring-fuchsia-400"
+                  : "ring-2 ring-amber-400"
+                : lane === "hook"
+                  ? "ring-fuchsia-500/35"
+                  : "ring-amber-500/35"
             }`}
           >
             <span
@@ -108,7 +130,9 @@ function CaptionTrack({
                   origEnd: r.end,
                 });
               }}
-              className="absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize rounded-l bg-amber-300/70 opacity-0 group-hover:opacity-100"
+              className={`absolute inset-y-0 left-0 z-10 w-2 cursor-ew-resize rounded-l opacity-0 group-hover:opacity-100 ${
+                lane === "hook" ? "bg-fuchsia-300/70" : "bg-amber-300/70"
+              }`}
             />
             <span
               onPointerDown={(e) => {
@@ -123,7 +147,9 @@ function CaptionTrack({
                   origEnd: r.end,
                 });
               }}
-              className="absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize rounded-r bg-amber-300/70 opacity-0 group-hover:opacity-100"
+              className={`absolute inset-y-0 right-0 z-10 w-2 cursor-ew-resize rounded-r opacity-0 group-hover:opacity-100 ${
+                lane === "hook" ? "bg-fuchsia-300/70" : "bg-amber-300/70"
+              }`}
             />
           </div>
         );

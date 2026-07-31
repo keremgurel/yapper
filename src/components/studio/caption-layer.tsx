@@ -9,6 +9,7 @@ function clamp(v: number, lo: number, hi: number) {
 }
 
 interface Drag {
+  id: string;
   mode: "move" | "resize";
   startX: number;
   startY: number;
@@ -18,9 +19,8 @@ interface Drag {
 }
 
 /**
- * Renders the caption under the playhead over the video. Tap to select, drag to
- * move, drag the corner to resize. Whether a change applies to every caption or
- * just this one is governed by the Apply-to-all toggle (handled in context).
+ * Renders every caption layer under the playhead. Spoken captions normally
+ * occupy one slot; text hooks can overlap them and are intentionally drawn too.
  */
 export default function CaptionLayer({ masterTime }: { masterTime: number }) {
   const {
@@ -45,50 +45,41 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
     return () => ro.disconnect();
   }, []);
 
-  const active = captions.find((c) => {
+  const active = captions.filter((c) => {
     const r = captionTimelineRange(clips, c);
     return r.end > r.start && masterTime >= r.start && masterTime < r.end;
   });
-  if (!active)
-    return (
-      <div ref={layerRef} className="pointer-events-none absolute inset-0" />
-    );
 
-  const x = active.x ?? captionStyle.x;
-  const y = active.y ?? captionStyle.y;
-  const w = active.w ?? captionStyle.width;
-  const scale = active.scale ?? captionStyle.fontScale;
-  const fontFamily = active.fontFamily ?? captionStyle.fontFamily;
-  const textCase = active.textCase ?? captionStyle.textCase;
-  const selected = selectedCaptionId === active.id;
-  const fontSize = box.h ? scale * box.h : 20;
-  const widthPx = box.w ? w * box.w : undefined;
-
-  const start = (mode: "move" | "resize") => (e: React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    selectCaption(active.id);
-    dragRef.current = {
-      mode,
-      startX: e.clientX,
-      startY: e.clientY,
-      x,
-      y,
-      w,
+  const start =
+    (
+      id: string,
+      mode: "move" | "resize",
+      layout: { x: number; y: number; w: number },
+    ) =>
+    (e: React.PointerEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      selectCaption(id);
+      dragRef.current = {
+        id,
+        mode,
+        startX: e.clientX,
+        startY: e.clientY,
+        ...layout,
+      };
+      (e.currentTarget as Element).setPointerCapture(e.pointerId);
     };
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-  };
   const move = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d || !box.w || !box.h) return;
     if (d.mode === "move") {
-      updateCaptionLayout(active.id, {
+      updateCaptionLayout(d.id, {
         x: clamp(d.x + (e.clientX - d.startX) / box.w, 0.05, 0.95),
         y: clamp(d.y + (e.clientY - d.startY) / box.h, 0.05, 0.95),
       });
     } else {
       // Resize the box width (centered); font size stays put.
-      updateCaptionLayout(active.id, {
+      updateCaptionLayout(d.id, {
         w: clamp(d.w + (2 * (e.clientX - d.startX)) / box.w, 0.2, 1),
       });
     }
@@ -104,34 +95,59 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
 
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0">
-      <div
-        onPointerDown={start("move")}
-        onPointerMove={move}
-        onPointerUp={end}
-        style={{
-          left: `${x * 100}%`,
-          top: `${y * 100}%`,
-          width: widthPx,
-          transform: "translate(-50%, -50%)",
-          fontFamily,
-          fontSize,
-          textTransform: caseTransform(textCase),
-          textShadow: "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
-        }}
-        className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap text-white ${
-          selected ? "rounded ring-2 ring-cyan-400" : ""
-        }`}
-      >
-        {active.text}
-        {selected && (
-          <span
-            onPointerDown={start("resize")}
+      {active.map((caption) => {
+        const hook = caption.kind === "hook";
+        const x = caption.x ?? (hook ? 0.5 : captionStyle.x);
+        const y = caption.y ?? (hook ? 0.16 : captionStyle.y);
+        const w = caption.w ?? (hook ? 0.82 : captionStyle.width);
+        const scale = caption.scale ?? (hook ? 0.056 : captionStyle.fontScale);
+        const fontFamily = caption.fontFamily ?? captionStyle.fontFamily;
+        const textCase = caption.textCase ?? captionStyle.textCase;
+        const selected = selectedCaptionId === caption.id;
+        const fontSize = box.h ? scale * box.h : 20;
+        const widthPx = box.w ? w * box.w : undefined;
+        const card = hook && caption.hookPreset !== "white-text";
+        const whiteCard = hook && caption.hookPreset === "white-card";
+        return (
+          <div
+            key={caption.id}
+            onPointerDown={start(caption.id, "move", { x, y, w })}
             onPointerMove={move}
             onPointerUp={end}
-            className="absolute top-1/2 -right-1.5 h-6 w-3 -translate-y-1/2 cursor-ew-resize rounded-full bg-cyan-400"
-          />
-        )}
-      </div>
+            style={{
+              left: `${x * 100}%`,
+              top: `${y * 100}%`,
+              width: widthPx,
+              transform: "translate(-50%, -50%)",
+              fontFamily,
+              fontSize,
+              textTransform: caseTransform(textCase),
+              textShadow: card
+                ? "none"
+                : "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
+            }}
+            className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap ${
+              card ? "rounded-[0.55em] px-[0.72em] py-[0.5em] shadow-xl" : ""
+            } ${
+              whiteCard
+                ? "bg-white text-black"
+                : card
+                  ? "bg-black text-white ring-1 ring-white/15"
+                  : "text-white"
+            } ${selected ? "ring-2 ring-cyan-400" : ""}`}
+          >
+            {caption.text}
+            {selected && (
+              <span
+                onPointerDown={start(caption.id, "resize", { x, y, w })}
+                onPointerMove={move}
+                onPointerUp={end}
+                className="absolute top-1/2 -right-1.5 h-6 w-3 -translate-y-1/2 cursor-ew-resize rounded-full bg-cyan-400"
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

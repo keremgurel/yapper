@@ -5,10 +5,12 @@ import { paintOrder } from "@/lib/studio/tracks";
 import type {
   Caption,
   CaptionCase,
+  CaptionKind,
   Clip,
   Overlay,
   OverlayRect,
   StudioSource,
+  TextHookPreset,
 } from "@/lib/studio/types";
 
 /** The base-track frame to show at edited-timeline time `t`. */
@@ -42,6 +44,8 @@ export interface CaptionFrame {
   scale: number;
   fontFamily: string;
   textCase: CaptionCase;
+  kind: CaptionKind;
+  hookPreset?: TextHookPreset;
 }
 
 /**
@@ -92,25 +96,38 @@ export function overlaysAt(overlays: Overlay[], t: number): OverlayFrame[] {
 }
 
 /** The caption visible at `t`, merged with the global style, or null. */
+export function captionsAt(
+  clips: Clip[],
+  captions: Caption[],
+  style: CaptionStyle,
+  t: number,
+): CaptionFrame[] {
+  return captions.flatMap((active) => {
+    if (active.text.trim().length === 0) return [];
+    const r = captionTimelineRange(clips, active);
+    if (!(r.end > r.start && t >= r.start && t < r.end)) return [];
+    return [
+      {
+        text: active.text,
+        x: active.x ?? style.x,
+        y: active.y ?? style.y,
+        w: active.w ?? style.width,
+        scale: active.scale ?? style.fontScale,
+        fontFamily: active.fontFamily ?? style.fontFamily,
+        textCase: active.textCase ?? style.textCase,
+        kind: active.kind ?? "caption",
+        hookPreset: active.hookPreset,
+      },
+    ];
+  });
+}
+
+/** Backwards-compatible single-caption helper used by SRT parity tests. */
 export function captionAt(
   clips: Clip[],
   captions: Caption[],
   style: CaptionStyle,
   t: number,
 ): CaptionFrame | null {
-  const active = captions.find((c) => {
-    if (c.text.trim().length === 0) return false; // matches the .srt survival test
-    const r = captionTimelineRange(clips, c);
-    return r.end > r.start && t >= r.start && t < r.end;
-  });
-  if (!active) return null;
-  return {
-    text: active.text,
-    x: active.x ?? style.x,
-    y: active.y ?? style.y,
-    w: active.w ?? style.width,
-    scale: active.scale ?? style.fontScale,
-    fontFamily: active.fontFamily ?? style.fontFamily,
-    textCase: active.textCase ?? style.textCase,
-  };
+  return captionsAt(clips, captions, style, t)[0] ?? null;
 }

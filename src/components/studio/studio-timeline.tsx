@@ -123,6 +123,8 @@ export default function StudioTimeline({
     splitCaption,
     snapping,
   } = useStudio();
+  const textHooks = captions.filter((caption) => caption.kind === "hook");
+  const spokenCaptions = captions.filter((caption) => caption.kind !== "hook");
   const scrollRef = useRef<HTMLDivElement>(null);
   const captionRowRef = useRef<HTMLDivElement>(null);
   const baseRowRef = useRef<HTMLDivElement>(null);
@@ -698,22 +700,45 @@ export default function StudioTimeline({
                 window.addEventListener("pointerup", onUp);
               }}
             >
-              {/* Caption track (top) */}
+              {/* Text hooks and spoken captions are separate lanes. They share
+                  selection/editing machinery, but can overlap in time. */}
               {captions.length > 0 && (
-                <div ref={captionRowRef}>
-                  <CaptionTrack
-                    captions={captions}
-                    clips={clips}
-                    pxPerSec={pxPerSec}
-                    playhead={currentTimelineTime}
-                    selectedIds={selectedCaptionIds}
-                    textCase={captionStyle.textCase}
-                    onSelect={(id, additive) =>
-                      additive ? toggleCaptionSelection(id) : selectCaption(id)
-                    }
-                    onRange={setCaptionRange}
-                    onSplit={splitCaption}
-                  />
+                <div ref={captionRowRef} className="space-y-1">
+                  {textHooks.length > 0 && (
+                    <CaptionTrack
+                      lane="hook"
+                      captions={textHooks}
+                      clips={clips}
+                      pxPerSec={pxPerSec}
+                      playhead={currentTimelineTime}
+                      selectedIds={selectedCaptionIds}
+                      textCase="none"
+                      onSelect={(id, additive) =>
+                        additive
+                          ? toggleCaptionSelection(id)
+                          : selectCaption(id)
+                      }
+                      onRange={setCaptionRange}
+                      onSplit={splitCaption}
+                    />
+                  )}
+                  {spokenCaptions.length > 0 && (
+                    <CaptionTrack
+                      captions={spokenCaptions}
+                      clips={clips}
+                      pxPerSec={pxPerSec}
+                      playhead={currentTimelineTime}
+                      selectedIds={selectedCaptionIds}
+                      textCase={captionStyle.textCase}
+                      onSelect={(id, additive) =>
+                        additive
+                          ? toggleCaptionSelection(id)
+                          : selectCaption(id)
+                      }
+                      onRange={setCaptionRange}
+                      onSplit={splitCaption}
+                    />
+                  )}
                 </div>
               )}
 

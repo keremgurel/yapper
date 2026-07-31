@@ -7,6 +7,7 @@ export interface PostableVideo {
   title: string;
   submissionId: string;
   status: ContentSummary["status"];
+  scheduledFor: string | null;
   updatedAt: string;
 }
 
@@ -29,6 +30,7 @@ export function postableVideos(
       title: it.title.trim() || "Untitled",
       submissionId: it.submissionId,
       status: it.status,
+      scheduledFor: it.scheduledFor,
       updatedAt: it.updatedAt,
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

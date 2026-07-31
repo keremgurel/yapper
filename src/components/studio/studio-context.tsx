@@ -22,6 +22,7 @@ import { splitOverlaysAt } from "@/lib/studio/split-overlay";
 import { planSpanOverlays } from "@/lib/studio/place-spans";
 import { overlayFromAsset } from "@/lib/studio/overlay-from-asset";
 import { clipFromAsset } from "@/lib/studio/clip-from-asset";
+import { assetFromSource } from "@/lib/studio/media-asset";
 import { mergeCaptionsById } from "@/lib/studio/caption-merge";
 import {
   applyLayoutToCaptions,
@@ -89,6 +90,7 @@ import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
   newAudioId,
+  newCaptionId,
   newOverlayId,
   type AudioTrack,
   type Caption,
@@ -97,6 +99,7 @@ import {
   type Overlay,
   type OverlayRect,
   type StudioSource,
+  type TextHookPreset,
   type Word,
 } from "@/lib/studio/types";
 
@@ -133,6 +136,7 @@ interface StudioContextValue {
   transcribeStatus: TranscribeStatus;
   transcribeError: string | null;
   loadSource: (source: StudioSource) => void;
+  loadSources: (sources: StudioSource[]) => void;
   clearSource: () => void;
   selectClip: (id: string | null) => void;
   toggleClipSelection: (id: string) => void;
@@ -234,6 +238,11 @@ interface StudioContextValue {
   rememberCaptionCorrection: (heard: string, term: string) => Promise<void>;
   cycleCaptionCase: (id: string) => void;
   addCaption: (atSource: number) => void;
+  addTextHook: (
+    text: string,
+    preset: TextHookPreset,
+    atTimeline: number,
+  ) => void;
   mergeCaptions: (ids: string[]) => void;
   removeCaption: (id: string) => void;
   clearCaptions: () => void;
@@ -278,6 +287,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     canUndo,
     canRedo,
   } = useEditorHistory();
+  const duration = useMemo(
+    () => projectDuration(clips, overlays, audioTracks),
+    [clips, overlays, audioTracks],
+  );
   const toggleBaseHidden = useCallback(
     () => setBaseHidden((v) => !v),
     [setBaseHidden],
@@ -332,12 +345,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const toggleSnapping = useCallback(() => setSnapping((s) => !s), []);
 
   const generateCaptionsFromTranscript = useCallback(() => {
-    setCaptions(
-      generateCaptions(words, clips, {
-        maxChars: captionLines * 30,
-        maxWords: captionWords || undefined,
-      }),
-    );
+    const generated = generateCaptions(words, clips, {
+      maxChars: captionLines * 30,
+      maxWords: captionWords || undefined,
+    });
+    setCaptions((prev) => [
+      ...prev.filter((caption) => caption.kind === "hook"),
+      ...generated,
+    ]);
   }, [words, clips, captionLines, captionWords, setCaptions]);
 
   const retranscribeCurrentCut = useCallback(async (): Promise<void> => {
@@ -357,12 +372,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         transcriptionDictionary,
       );
       const currentWords = editedWordsToSourceWords(raw, clips);
-      setCaptions(
-        generateCaptions(currentWords, clips, {
-          maxChars: captionLines * 30,
-          maxWords: captionWords || undefined,
-        }),
-      );
+      const generated = generateCaptions(currentWords, clips, {
+        maxChars: captionLines * 30,
+        maxWords: captionWords || undefined,
+      });
+      setCaptions((prev) => [
+        ...prev.filter((caption) => caption.kind === "hook"),
+        ...generated,
+      ]);
     } catch (error) {
       console.error("[studio] current-cut recaption failed", error);
       setRecaptionError(
@@ -386,12 +403,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const autoBreakCaptions = useCallback(
     (lines: number) => {
       setCaptionLines(lines);
-      setCaptions(
-        generateCaptions(words, clips, {
-          maxChars: lines * 30,
-          maxWords: captionWords || undefined,
-        }),
-      );
+      const generated = generateCaptions(words, clips, {
+        maxChars: lines * 30,
+        maxWords: captionWords || undefined,
+      });
+      setCaptions((prev) => [
+        ...prev.filter((caption) => caption.kind === "hook"),
+        ...generated,
+      ]);
     },
     [words, clips, captionWords, setCaptions],
   );
@@ -399,12 +418,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const setCaptionWords = useCallback(
     (n: number) => {
       setCaptionWordsState(n);
-      setCaptions(
-        generateCaptions(words, clips, {
-          maxChars: captionLines * 30,
-          maxWords: n || undefined,
-        }),
-      );
+      const generated = generateCaptions(words, clips, {
+        maxChars: captionLines * 30,
+        maxWords: n || undefined,
+      });
+      setCaptions((prev) => [
+        ...prev.filter((caption) => caption.kind === "hook"),
+        ...generated,
+      ]);
     },
     [words, clips, captionLines, setCaptions],
   );
@@ -474,6 +495,22 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // the caption keeps following the clips.
   const setCaptionRange = useCallback(
     (id: string, start: number, end: number) => {
+      const target = captions.find((caption) => caption.id === id);
+      if (target?.kind === "hook") {
+        if (end - start < 0.05) return;
+        setCaptions((prev) =>
+          prev.map((caption) =>
+            caption.id === id
+              ? {
+                  ...caption,
+                  timelineStart: Math.max(0, start),
+                  timelineEnd: Math.max(start + 0.05, end),
+                }
+              : caption,
+          ),
+        );
+        return;
+      }
       const ss = timelineToSource(clips, start);
       const se = timelineToSource(clips, end);
       if (se - ss < 0.05) return;
@@ -485,7 +522,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ),
       );
     },
-    [clips, setCaptions],
+    [captions, clips, setCaptions],
   );
 
   // Break a caption into two at timeline time `at` (converted to source),
@@ -494,7 +531,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (id: string, at: number) => {
       const atSrc = timelineToSource(clips, at);
       setCaptions((prev) =>
-        prev.flatMap((c) => (c.id === id ? splitCaptionAtTime(c, atSrc) : [c])),
+        prev.flatMap((c) =>
+          c.id === id && c.kind !== "hook" ? splitCaptionAtTime(c, atSrc) : [c],
+        ),
       );
     },
     [clips, setCaptions],
@@ -527,6 +566,32 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       sel.selectCaption(created.id);
     },
     [clips, captions, setCaptions, sel],
+  );
+
+  const addTextHook = useCallback(
+    (text: string, preset: TextHookPreset, timelineTime: number) => {
+      const trimmed = text.trim();
+      if (!trimmed || duration <= 0) return;
+      const start = Math.max(0, Math.min(timelineTime, duration - 0.05));
+      const created: Caption = {
+        id: newCaptionId(),
+        text: trimmed,
+        kind: "hook",
+        hookPreset: preset,
+        sourceStart: 0,
+        sourceEnd: 0,
+        timelineStart: start,
+        timelineEnd: Math.min(duration, start + 4),
+        x: 0.5,
+        y: 0.16,
+        w: 0.82,
+        scale: 0.056,
+        textCase: "none",
+      };
+      setCaptions((prev) => [...prev, created]);
+      sel.selectCaption(created.id);
+    },
+    [duration, setCaptions, sel],
   );
 
   // Merge two or more captions into one spanning their full source range, with
@@ -588,6 +653,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   // to just this caption, per the Apply-to-all toggle.
   const updateCaptionLayout = useCallback(
     (id: string, layout: CaptionLayout) => {
+      const target = captions.find((caption) => caption.id === id);
+      if (target?.kind === "hook") {
+        setCaptions((prev) => applyLayoutToCaptions(prev, false, id, layout));
+        return;
+      }
       if (captionApplyAll) {
         setCaptionStyle((s) => ({
           ...s,
@@ -601,7 +671,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         applyLayoutToCaptions(prev, captionApplyAll, id, layout),
       );
     },
-    [captionApplyAll, setCaptions],
+    [captions, captionApplyAll, setCaptions],
   );
 
   const addOverlayFromAsset = useCallback(
@@ -982,6 +1052,27 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       registerSource(next);
     },
     [resetEditor, resetTranscript, registerSource, sel],
+  );
+
+  /** Start a project from a picked sequence. The first file owns the base
+   * source/transcript timebase; every later video is appended as its own clip. */
+  const loadSources = useCallback(
+    (sources: StudioSource[]) => {
+      const [first, ...rest] = sources;
+      if (!first) return;
+      loadSource(first);
+      if (rest.length === 0) return;
+      setClips((prev) => [
+        ...prev,
+        ...rest.map((next) => clipFromAsset(assetFromSource(next))),
+      ]);
+      for (const next of rest) {
+        addMediaSource(next);
+        if (next.kind !== "image")
+          void decodeToMono16k(next.url).catch(() => {});
+      }
+    },
+    [loadSource, setClips, addMediaSource],
   );
 
   // Removing a library asset removes every placement of it, at any level of the
@@ -1410,12 +1501,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
             fontScale: 0.032,
           }));
           setCaptionWordsState(3);
-          setCaptions(
-            generateCaptions(w, plan.clips, {
-              maxChars: captionLines * 30,
-              maxWords: 3,
-            }),
-          );
+          const generated = generateCaptions(w, plan.clips, {
+            maxChars: captionLines * 30,
+            maxWords: 3,
+          });
+          setCaptions((prev) => [
+            ...prev.filter((caption) => caption.kind === "hook"),
+            ...generated,
+          ]);
         }
       } finally {
         setAutoEditing(false);
@@ -1472,11 +1565,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     sel,
   ]);
 
-  const duration = useMemo(
-    () => projectDuration(clips, overlays, audioTracks),
-    [clips, overlays, audioTracks],
-  );
-
   const value = useMemo<StudioContextValue>(
     () => ({
       source,
@@ -1497,6 +1585,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeStatus,
       transcribeError,
       loadSource,
+      loadSources,
       clearSource,
       selectClip: sel.selectClip,
       selectedClipIds: selectedClipIds,
@@ -1577,6 +1666,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       rememberCaptionCorrection,
       cycleCaptionCase,
       addCaption,
+      addTextHook,
       mergeCaptions,
       removeCaption,
       clearCaptions,
@@ -1615,6 +1705,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       transcribeStatus,
       transcribeError,
       loadSource,
+      loadSources,
       clearSource,
       sel,
       splitSelected,
@@ -1679,6 +1770,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       rememberCaptionCorrection,
       cycleCaptionCase,
       addCaption,
+      addTextHook,
       mergeCaptions,
       removeCaption,
       clearCaptions,

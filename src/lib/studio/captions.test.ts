@@ -119,4 +119,20 @@ describe("captionTimelineRange", () => {
       end: 2,
     });
   });
+
+  it("keeps a text hook on its own edited-timeline track", () => {
+    const hook: Caption = {
+      id: "hook",
+      text: "Watch this",
+      sourceStart: 0,
+      sourceEnd: 0,
+      kind: "hook",
+      timelineStart: 2,
+      timelineEnd: 6,
+    };
+    expect(captionTimelineRange([rec("a", 5, 10)], hook)).toEqual({
+      start: 2,
+      end: 6,
+    });
+  });
 });

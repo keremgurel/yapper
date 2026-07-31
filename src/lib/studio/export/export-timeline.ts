@@ -11,7 +11,7 @@ import {
   encodeAudioBuffer,
 } from "@/lib/studio/export/encode-audio";
 import { createVideoChunkEncoder } from "@/lib/studio/export/encode-video";
-import { baseAt, captionAt, overlaysAt } from "@/lib/studio/export/frame-plan";
+import { baseAt, captionsAt, overlaysAt } from "@/lib/studio/export/frame-plan";
 import { MediaPool } from "@/lib/studio/export/media-pool";
 import type { OverlayRect } from "@/lib/studio/types";
 import {
@@ -196,7 +196,7 @@ export async function exportTimeline(
       drawFrame(ctx, width, height, {
         base: baseItem,
         overlays: overlayItems,
-        caption: captionAt(clips, captions, captionStyle, t),
+        captions: captionsAt(clips, captions, captionStyle, t),
       });
 
       const frame = new VideoFrame(canvas, {

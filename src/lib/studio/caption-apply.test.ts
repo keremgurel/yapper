@@ -44,6 +44,14 @@ describe("applyStyleToCaptions", () => {
       applyStyleToCaptions(captions, false, new Set(), { scale: 0.1 }),
     ).toBe(captions);
   });
+
+  it("does not restyle text hooks when applying spoken-caption settings", () => {
+    const hook = cap({ id: "hook", kind: "hook", textCase: "upper" });
+    const [out] = applyStyleToCaptions([hook], true, new Set(), {
+      textCase: "lower",
+    });
+    expect(out.textCase).toBe("upper");
+  });
 });
 
 describe("applyLayoutToCaptions", () => {
@@ -67,5 +75,11 @@ describe("applyLayoutToCaptions", () => {
     );
     expect(out[0]).toMatchObject({ x: 0.5, scale: 0.08 });
     expect(out[1].x).toBeUndefined();
+  });
+
+  it("keeps hook geometry when spoken captions move together", () => {
+    const hook = cap({ id: "hook", kind: "hook", x: 0.5, y: 0.15 });
+    const [out] = applyLayoutToCaptions([hook], true, "hook", { y: 0.8 });
+    expect(out).toMatchObject({ x: 0.5, y: 0.15 });
   });
 });

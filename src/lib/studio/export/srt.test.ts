@@ -105,6 +105,15 @@ describe("captionsToSrt", () => {
     expect(srt).toBe("");
   });
 
+  it("does not put visual text hooks into the subtitle sidecar", () => {
+    const hook = caption(0, 0, "visual only", {
+      kind: "hook",
+      timelineStart: 0,
+      timelineEnd: 4,
+    });
+    expect(captionsToSrt([hook], whole)).toBe("");
+  });
+
   it("lets a caption's own case override the global one", () => {
     const captions = [
       caption(0, 1, "shouty", { textCase: "upper" }),

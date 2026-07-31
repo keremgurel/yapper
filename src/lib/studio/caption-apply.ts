@@ -25,6 +25,7 @@ export function applyStyleToCaptions(
   if (applyAll) {
     const keys = Object.keys(perCaption) as (keyof Caption)[];
     return captions.map((c) => {
+      if (c.kind === "hook") return c;
       const next = { ...c };
       for (const k of keys) delete next[k];
       return next;
@@ -49,13 +50,17 @@ export function applyLayoutToCaptions(
   layout: CaptionLayout,
 ): Caption[] {
   if (applyAll) {
-    return captions.map((c) => ({
-      ...c,
-      x: layout.x != null ? undefined : c.x,
-      y: layout.y != null ? undefined : c.y,
-      w: layout.w != null ? undefined : c.w,
-      scale: layout.scale != null ? undefined : c.scale,
-    }));
+    return captions.map((c) =>
+      c.kind === "hook"
+        ? c
+        : {
+            ...c,
+            x: layout.x != null ? undefined : c.x,
+            y: layout.y != null ? undefined : c.y,
+            w: layout.w != null ? undefined : c.w,
+            scale: layout.scale != null ? undefined : c.scale,
+          },
+    );
   }
   return captions.map((c) => (c.id === id ? { ...c, ...layout } : c));
 }
