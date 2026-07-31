@@ -8,13 +8,13 @@
 export default function EmptyTimeline() {
   return (
     <div className="flex h-full min-h-0 flex-col select-none">
-      <div className="border-border/70 bg-muted/30 relative flex-1 overflow-hidden rounded-md border border-dashed">
-        <div className="space-y-1 p-1">
-          <div className="border-border/50 h-16 rounded-md border border-dashed" />
-          <div className="border-border/50 h-20 rounded-md border border-dashed" />
+      <div className="border-border/60 bg-background/30 relative flex-1 overflow-hidden border">
+        <div className="space-y-1.5 p-1.5 opacity-50">
+          <div className="border-border/60 h-12 border" />
+          <div className="border-border/60 h-16 border" />
         </div>
-        <div className="text-foreground/40 pointer-events-none absolute inset-0 flex items-center justify-center text-xs font-medium">
-          Upload a video to start editing
+        <div className="text-foreground/30 pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-medium">
+          Import media from the Workbench
         </div>
       </div>
     </div>

@@ -2,55 +2,65 @@
 
 import { useEffect, useRef } from "react";
 import AiAssistant from "@/components/studio/ai-assistant";
+import EditorWorkbench from "@/components/studio/editor-workbench";
 import { useStudio } from "@/components/studio/studio-context";
 import PreviewStage from "@/components/studio/preview-stage";
-import RightPanel from "@/components/studio/right-panel";
 import TimelinePanel from "@/components/studio/timeline-panel";
+import { useEditorWorkspaceLayout } from "@/hooks/use-editor-workspace-layout";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
 import { useNativeEditPreview } from "@/hooks/use-native-edit-preview";
 import { transportSeek } from "@/lib/studio/playback-keys";
 import { nudgeDelta } from "@/lib/studio/nudge";
-import { usePanelHeight } from "@/hooks/use-panel-height";
-import { useResizablePanel } from "@/hooks/use-resizable-panel";
-import { useStudioLayout } from "@/hooks/use-studio-layout";
 
-/** The gap between the timeline card and everything around it. */
-const CARD_GUTTER = "px-3 pb-3";
-
-function RowHandle({
+function ResizeDivider({
+  axis,
+  value,
   onPointerDown,
+  onAdjust,
+  onReset,
 }: {
-  onPointerDown: (e: React.PointerEvent) => void;
+  axis: "horizontal" | "vertical";
+  value: number;
+  onPointerDown: (event: React.PointerEvent) => void;
+  onAdjust: (delta: number) => void;
+  onReset: () => void;
 }) {
+  const vertical = axis === "vertical";
   return (
     <div
-      onPointerDown={onPointerDown}
-      className="group flex h-3 shrink-0 cursor-row-resize items-center justify-center"
-    >
-      <span className="bg-foreground/20 group-hover:bg-foreground/40 h-0.5 w-10 rounded-full transition-colors" />
-    </div>
-  );
-}
-
-function ColHandle({
-  onPointerDown,
-}: {
-  onPointerDown: (e: React.PointerEvent) => void;
-}) {
-  return (
-    <div
-      onPointerDown={onPointerDown}
-      className="bg-border hover:bg-foreground/30 hidden w-1 shrink-0 cursor-col-resize transition-colors lg:block"
       role="separator"
-      aria-orientation="vertical"
-    />
+      tabIndex={0}
+      aria-label={vertical ? "Resize Workbench" : "Resize Timeline"}
+      aria-orientation={axis}
+      aria-valuenow={Math.round(value)}
+      onPointerDown={onPointerDown}
+      onDoubleClick={onReset}
+      onKeyDown={(event) => {
+        const decrease = vertical
+          ? event.key === "ArrowLeft"
+          : event.key === "ArrowDown";
+        const increase = vertical
+          ? event.key === "ArrowRight"
+          : event.key === "ArrowUp";
+        if (!decrease && !increase) return;
+        event.preventDefault();
+        onAdjust((increase ? 1 : -1) * (event.shiftKey ? 40 : 10));
+      }}
+      className={`group relative z-20 h-full w-full shrink-0 touch-none bg-[color:var(--sg-bg-2)] focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-inset ${vertical ? "cursor-col-resize" : "cursor-row-resize"}`}
+      title="Drag to resize · double-click to reset"
+    >
+      <span
+        aria-hidden="true"
+        className={`bg-border absolute transition-colors group-hover:bg-[color:var(--sg-accent)] ${vertical ? "inset-y-0 left-1/2 w-px -translate-x-1/2" : "inset-x-0 top-1/2 h-px -translate-y-1/2"}`}
+      />
+    </div>
   );
 }
 
 /**
  * The editor's shell. It owns the master clock and the keyboard, and arranges
- * three panes: the picture, the tracks, and the side panel. Where those panes
- * go is the layout's business and nothing else's.
+ * three persistent surfaces: Workbench, Preview, and Timeline. Resizing changes
+ * their grid dimensions without remounting the media elements.
  */
 export default function StudioWorkspace() {
   const {
@@ -99,13 +109,7 @@ export default function StudioWorkspace() {
     continuousPreviewUrl: continuousPreview.url,
     continuousPreviewPending: continuousPreview.preparing,
   });
-  // Two docked widths, because the two layouts dock two different things: the
-  // side panel in classic, the picture in cinema. Sharing one would make the
-  // preview open at a panel's width the moment you switched.
-  const side = useResizablePanel();
-  const preview = useResizablePanel(560, 360, 1200);
-  const { height, onResizeDown } = usePanelHeight(380);
-  const { layout, setLayout } = useStudioLayout();
+  const workspace = useEditorWorkspaceLayout();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -222,83 +226,74 @@ export default function StudioWorkspace() {
     />
   );
 
-  const timeline = (
-    <div style={{ height }} className={`shrink-0 ${CARD_GUTTER}`}>
-      <TimelinePanel
-        timelineTime={timelineTime}
-        timelineClock={timelineClock}
-        playing={playing}
-        onPlay={play}
-        onPause={pause}
-        onSeek={seekToTimeline}
-        playbackPreparing={continuousPreview.preparing}
-        layout={layout}
-        onLayout={setLayout}
-      />
-    </div>
-  );
-
   const assistant = <AiAssistant />;
-
-  const panel = (
-    <RightPanel
-      currentTimelineTime={timelineTime}
-      onSeek={seekToSource}
-      onSeekTimeline={seekToTimeline}
-      layout={layout}
-    />
-  );
-
-  // One structure for both layouts. Classic docks the panel on the right with
-  // the preview above the timeline; Cinema docks a tall preview on the right
-  // with the panel and tracks beside it. Only each pane's GRID PLACEMENT changes
-  // when you switch, never its position in the React tree, so the <video> is
-  // never destroyed (which used to break playback and the transcript). Sized for
-  // the desktop window.
-  const stageInAside = layout === "cinema";
-  const asideWidth = stageInAside ? preview.width : side.width;
-  const onAsideResize = stageInAside
-    ? preview.onPointerDown
-    : side.onPointerDown;
-  const stageCell = stageInAside
-    ? { gridColumn: "3", gridRow: "1 / 4" }
-    : { gridColumn: "1", gridRow: "1" };
-  const panelCell = stageInAside
-    ? { gridColumn: "1", gridRow: "1" }
-    : { gridColumn: "3", gridRow: "1 / 4" };
 
   return (
     <div className="flex min-h-0 flex-1">
       <div
         className="grid min-h-0 min-w-0 flex-1"
         style={{
-          gridTemplateColumns: `minmax(0,1fr) auto ${asideWidth}px`,
-          gridTemplateRows: `minmax(0,1fr) auto ${height}px`,
+          gridTemplateColumns: `${workspace.workbenchWidth}px 6px minmax(0, 1fr)`,
+          gridTemplateRows: `minmax(0, 1fr) 6px ${workspace.timelineHeight}px`,
         }}
       >
-        <div
-          className={`flex min-h-0 min-w-0 overflow-hidden ${stageInAside ? "border-border border-l" : ""}`}
-          style={stageCell}
-        >
-          {stage}
-        </div>
         <aside
-          className={`flex min-h-0 min-w-0 flex-col overflow-hidden ${stageInAside ? "" : "border-border border-l"}`}
-          style={panelCell}
+          className="border-border min-h-0 min-w-0 overflow-hidden border-r"
+          style={{ gridColumn: "1", gridRow: "1 / 4" }}
         >
-          {panel}
+          <EditorWorkbench
+            currentTimelineTime={timelineTime}
+            onSeek={seekToSource}
+            onSeekTimeline={seekToTimeline}
+          />
         </aside>
-        <div style={{ gridColumn: "1", gridRow: "2" }}>
-          <RowHandle onPointerDown={onResizeDown} />
+
+        <div style={{ gridColumn: "2", gridRow: "1 / 4" }}>
+          <ResizeDivider
+            axis="vertical"
+            value={workspace.workbenchWidth}
+            onPointerDown={workspace.startWorkbenchResize}
+            onAdjust={workspace.adjustWorkbench}
+            onReset={workspace.resetWorkbench}
+          />
         </div>
+
+        <section
+          aria-label="Preview"
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden"
+          style={{ gridColumn: "3", gridRow: "1" }}
+        >
+          <div className="border-border flex h-10 shrink-0 items-center border-b px-3">
+            <h2 className="text-foreground/70 text-[11px] font-bold">
+              Preview
+            </h2>
+          </div>
+          <div className="flex min-h-0 flex-1">{stage}</div>
+        </section>
+
+        <div style={{ gridColumn: "3", gridRow: "2" }}>
+          <ResizeDivider
+            axis="horizontal"
+            value={workspace.timelineHeight}
+            onPointerDown={workspace.startTimelineResize}
+            onAdjust={workspace.adjustTimeline}
+            onReset={workspace.resetTimeline}
+          />
+        </div>
+
         <div
           className="min-h-0 min-w-0 overflow-hidden"
-          style={{ gridColumn: "1", gridRow: "3" }}
+          style={{ gridColumn: "3", gridRow: "3" }}
         >
-          {timeline}
-        </div>
-        <div className="flex" style={{ gridColumn: "2", gridRow: "1 / 4" }}>
-          <ColHandle onPointerDown={onAsideResize} />
+          <TimelinePanel
+            timelineTime={timelineTime}
+            timelineClock={timelineClock}
+            playing={playing}
+            onPlay={play}
+            onPause={pause}
+            onSeek={seekToTimeline}
+            playbackPreparing={continuousPreview.preparing}
+          />
         </div>
       </div>
       {assistant}

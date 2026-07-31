@@ -180,11 +180,7 @@ export default function PreviewStage({
         <div
           className="border-foreground/10 relative rounded-lg border bg-black shadow-2xl"
           style={{ width: stageW || 0, height: stageH || 0 }}
-        >
-          <span className="text-foreground/25 absolute inset-0 grid place-items-center text-[10px] font-bold tracking-[0.12em] uppercase">
-            Preview
-          </span>
-        </div>
+        />
       )}
     </div>
   );

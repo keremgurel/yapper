@@ -4,11 +4,9 @@ import { useState } from "react";
 import { useStudio } from "@/components/studio/studio-context";
 import AspectPicker from "@/components/studio/aspect-picker";
 import EmptyTimeline from "@/components/studio/empty-timeline";
-import LayoutPicker from "@/components/studio/layout-picker";
 import StudioTimeline from "@/components/studio/studio-timeline";
 import StudioTransport from "@/components/studio/studio-transport";
 import { MEDIA_DND_TYPE } from "@/components/studio/media-tab";
-import type { LayoutId } from "@/lib/studio/layout";
 import type { TimelineClock } from "@/lib/studio/timeline-clock";
 
 /**
@@ -23,8 +21,6 @@ export default function TimelinePanel({
   onPause,
   onSeek,
   playbackPreparing,
-  layout,
-  onLayout,
 }: {
   timelineTime: number;
   /** Per-frame playhead time; the playhead line subscribes to this directly
@@ -35,8 +31,6 @@ export default function TimelinePanel({
   onPause: () => void;
   onSeek: (timelineTime: number) => void;
   playbackPreparing?: boolean;
-  layout: LayoutId;
-  onLayout: (id: LayoutId) => void;
 }) {
   const {
     source,
@@ -56,17 +50,17 @@ export default function TimelinePanel({
     audioTracks.length > 0;
 
   return (
-    <div className="border-border bg-card flex h-full min-h-0 flex-col rounded-xl border px-4 pt-2 pb-3">
-      <div className="mb-2 flex shrink-0 items-center justify-between gap-3">
-        <p className="text-foreground/55 truncate text-xs">
-          {source?.name ?? "No video yet"}
+    <section
+      aria-label="Timeline"
+      className="border-border bg-card flex h-full min-h-0 flex-col border-t"
+    >
+      <div className="border-border flex min-h-11 shrink-0 items-center gap-3 border-b px-3 py-1.5">
+        <p
+          className="text-foreground/45 hidden max-w-40 truncate text-[10px] font-medium xl:block"
+          title={source?.name ?? "Untitled project"}
+        >
+          {source?.name ?? "Untitled project"}
         </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <LayoutPicker layout={layout} onChange={onLayout} />
-          <AspectPicker />
-        </div>
-      </div>
-      <div className="shrink-0">
         <StudioTransport
           playing={playing}
           currentTimelineTime={timelineTime}
@@ -76,9 +70,12 @@ export default function TimelinePanel({
           onSplit={() => splitSelected(timelineTime)}
           playbackPreparing={playbackPreparing}
         />
+        <div className="ml-auto shrink-0">
+          <AspectPicker />
+        </div>
       </div>
       <div
-        className={`mt-3 min-h-0 flex-1 rounded-md transition-shadow ${
+        className={`min-h-0 flex-1 overflow-hidden p-2 transition-shadow ${
           dropActive ? "ring-2 ring-cyan-500/70" : ""
         }`}
         onDragOver={(e) => {
@@ -110,6 +107,6 @@ export default function TimelinePanel({
           <EmptyTimeline />
         )}
       </div>
-    </div>
+    </section>
   );
 }

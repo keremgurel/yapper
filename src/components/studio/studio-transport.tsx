@@ -95,9 +95,10 @@ export default function StudioTransport({
         onClick={undo}
         disabled={!canUndo}
         title="Undo (⌘/Ctrl+Z)"
+        aria-label="Undo"
       >
         <Undo2 className="h-3.5 w-3.5" />
-        Undo
+        <span className="hidden 2xl:inline">Undo</span>
       </Button>
       <Button
         type="button"
@@ -106,9 +107,10 @@ export default function StudioTransport({
         onClick={redo}
         disabled={!canRedo}
         title="Redo (⌘/Ctrl+Shift+Z)"
+        aria-label="Redo"
       >
         <Redo2 className="h-3.5 w-3.5" />
-        Redo
+        <span className="hidden 2xl:inline">Redo</span>
       </Button>
 
       <span className={divider} aria-hidden />
@@ -119,6 +121,7 @@ export default function StudioTransport({
         size="sm"
         onClick={toggleSnapping}
         aria-pressed={snapping}
+        aria-label="Magnet"
         title="Magnet (snap clips to edges)"
         className={
           snapping
@@ -127,12 +130,19 @@ export default function StudioTransport({
         }
       >
         <Magnet className="h-3.5 w-3.5" />
-        Magnet
+        <span className="hidden 2xl:inline">Magnet</span>
       </Button>
 
-      <Button type="button" variant="ghost" size="sm" onClick={onSplit}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onSplit}
+        aria-label="Split"
+        title="Split at the playhead (S)"
+      >
         <Scissors className="h-3.5 w-3.5" />
-        Split
+        <span className="hidden 2xl:inline">Split</span>
       </Button>
       {(() => {
         const count =
@@ -147,13 +157,16 @@ export default function StudioTransport({
             onClick={deleteSelected}
             disabled={count === 0}
             title="Delete the selected clips, overlays, or captions"
+            aria-label={count > 1 ? `Delete ${count}` : "Delete"}
           >
             <Trash2 className="h-3.5 w-3.5" />
-            {count > 1 ? `Delete ${count}` : "Delete"}
+            <span className="hidden 2xl:inline">
+              {count > 1 ? `Delete ${count}` : "Delete"}
+            </span>
           </Button>
         );
       })()}
-      {source?.kind !== "image" && (
+      {source && source.kind !== "image" && (
         <Button
           type="button"
           variant="ghost"
@@ -161,14 +174,24 @@ export default function StudioTransport({
           onClick={() => void trimClipsToSpeech()}
           disabled={detecting}
           title="Trim each clip's start and end down to speech"
+          aria-label={detecting ? "Scanning for silence" : "Trim silence"}
         >
           <Volume2 className="h-3.5 w-3.5" />
-          {detecting ? "Scanning…" : "Trim silence"}
+          <span className="hidden 2xl:inline">
+            {detecting ? "Scanning…" : "Trim silence"}
+          </span>
         </Button>
       )}
-      <Button type="button" variant="ghost" size="sm" onClick={reset}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={reset}
+        aria-label="Reset project"
+        title="Reset project"
+      >
         <RotateCcw className="h-3.5 w-3.5" />
-        Reset
+        <span className="hidden 2xl:inline">Reset</span>
       </Button>
     </div>
   );

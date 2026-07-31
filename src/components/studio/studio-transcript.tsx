@@ -19,9 +19,11 @@ import { Button } from "@/components/ui/button";
 export default function StudioTranscript({
   currentTimelineTime,
   onSeek,
+  embedded = false,
 }: {
   currentTimelineTime: number;
   onSeek: (t: number) => void;
+  embedded?: boolean;
 }) {
   const {
     source,
@@ -39,29 +41,37 @@ export default function StudioTranscript({
 
   return (
     <div className="bg-card flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="border-border flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3">
-        <p className="text-foreground text-sm font-black">Transcript</p>
-        {hasTranscript && (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowDeleted((s) => !s)}
-              className="text-foreground/50 hover:text-foreground inline-flex items-center gap-1.5 text-xs font-bold"
-              title={showDeleted ? "Hide deleted words" : "Show deleted words"}
-            >
-              {showDeleted ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
-              {showDeleted ? "Hide deleted" : "Show deleted"}
-            </button>
-            <span className="text-foreground/45 text-xs">
-              {words.length} words
-            </span>
-          </div>
-        )}
-      </div>
+      {(!embedded || hasTranscript) && (
+        <div className="border-border flex h-9 shrink-0 items-center justify-end gap-3 border-b px-3">
+          {!embedded && (
+            <p className="text-foreground mr-auto text-sm font-black">
+              Transcript
+            </p>
+          )}
+          {hasTranscript && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeleted((s) => !s)}
+                className="text-foreground/50 hover:text-foreground inline-flex items-center gap-1.5 text-xs font-bold"
+                title={
+                  showDeleted ? "Hide deleted words" : "Show deleted words"
+                }
+              >
+                {showDeleted ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {showDeleted ? "Hide deleted" : "Show deleted"}
+              </button>
+              <span className="text-foreground/45 text-xs">
+                {words.length} words
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {hasTranscript ? (
         <div className="min-h-0 flex-1">

@@ -3,23 +3,25 @@
 import { useEffect, useRef } from "react";
 import {
   Captions,
+  ChevronRight,
   FileText,
   Loader2,
   Sparkles,
   Type,
   Wand2,
 } from "lucide-react";
-import StudioTranscript from "@/components/studio/studio-transcript";
 import { useStudio } from "@/components/studio/studio-context";
 
 export default function QuickEditPanel({
   currentTimelineTime,
-  onSeek,
   onOpenText,
+  onOpenTranscript,
+  embedded = false,
 }: {
   currentTimelineTime: number;
-  onSeek: (time: number) => void;
   onOpenText: () => void;
+  onOpenTranscript?: () => void;
+  embedded?: boolean;
 }) {
   const {
     source,
@@ -71,91 +73,98 @@ export default function QuickEditPanel({
     onOpenText();
   };
 
+  const runTranscription = () => {
+    void transcribe().then(() => onOpenTranscript?.());
+  };
   const busy = autoEditing || transcribeStatus === "transcribing";
 
   return (
-    <div className="bg-card flex h-full min-h-0 flex-col">
-      <div className="border-border shrink-0 border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="grid h-7 w-7 place-items-center rounded-lg bg-[color:var(--sg-accent)]/12 text-[color:var(--sg-accent)]">
-            <Sparkles className="h-3.5 w-3.5" />
-          </span>
-          <div>
-            <p className="text-foreground text-sm font-black">Quick edit</p>
-            <p className="text-foreground/40 text-[10px]">
-              The four things you use every time
-            </p>
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto">
+      {!embedded && (
+        <div className="border-border shrink-0 border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Sparkles
+              aria-hidden="true"
+              className="h-4 w-4 text-[color:var(--sg-accent)]"
+            />
+            <p className="text-foreground text-sm font-bold">Quick Edit</p>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="border-border shrink-0 border-b p-3">
-        <div className="grid grid-cols-2 gap-2">
-          <QuickButton
+      <div className="space-y-5 p-4">
+        <div>
+          <p className="text-foreground text-sm font-bold">
+            Start with the cut
+          </p>
+          <p className="text-foreground/45 mt-1 text-xs leading-5">
+            Run the common editing actions without leaving your workspace.
+          </p>
+        </div>
+
+        <div className="border-border overflow-hidden rounded-lg border">
+          <QuickRow
             icon={transcribeStatus === "transcribing" ? Loader2 : FileText}
             spinning={transcribeStatus === "transcribing"}
-            label={words.length > 0 ? "Transcribe again" : "Transcribe"}
-            hint="Editable words"
+            label={words.length > 0 ? "Transcribe Again" : "Transcribe"}
+            hint="Create editable words from the recording"
             disabled={!hasVideo || busy}
-            onClick={() => void transcribe()}
+            onClick={runTranscription}
           />
-          <QuickButton
+          <QuickRow
             icon={autoEditing ? Loader2 : Wand2}
             spinning={autoEditing}
-            label={autoEditing ? "Editing…" : "1 click edit"}
-            hint="Retakes + pauses"
+            label={autoEditing ? "Editing…" : "1-Click Edit"}
+            hint="Remove retakes, false starts, and dead pauses"
             disabled={!hasVideo || busy}
             onClick={() => void autoEdit(false)}
           />
-          <QuickButton
+          <QuickRow
             icon={transcribeStatus === "transcribing" ? Loader2 : Captions}
             spinning={transcribeStatus === "transcribing"}
-            label={spokenCaptionCount > 0 ? "Refresh captions" : "Add captions"}
-            hint={words.length > 0 ? "From transcript" : "Transcribes first"}
+            label={spokenCaptionCount > 0 ? "Refresh Captions" : "Add Captions"}
+            hint={
+              words.length > 0
+                ? "Build captions from the transcript"
+                : "Transcribe, then create timed captions"
+            }
             disabled={!hasVideo || busy}
             onClick={addCaptions}
           />
-          <QuickButton
+          <QuickRow
             icon={Type}
-            label="Add text hook"
-            hint="At the playhead"
+            label="Add Text Hook"
+            hint="Place a styled hook at the playhead"
             disabled={!source}
             onClick={addHook}
+            last
           />
         </div>
-      </div>
 
-      <div className="min-h-0 flex-1">
-        {words.length > 0 ? (
-          <StudioTranscript
-            currentTimelineTime={currentTimelineTime}
-            onSeek={onSeek}
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center p-6 text-center">
-            <span className="border-border bg-muted mb-3 grid h-11 w-11 place-items-center rounded-xl border">
-              <FileText className="text-foreground/40 h-5 w-5" />
+        {words.length > 0 && onOpenTranscript && (
+          <button
+            type="button"
+            onClick={onOpenTranscript}
+            className="text-foreground/60 hover:bg-muted hover:text-foreground flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-bold focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)]"
+          >
+            Open Transcript
+            <span className="text-foreground/35 tabular-nums">
+              {words.length} words
             </span>
-            <p className="text-foreground text-xs font-black">
-              Transcript appears here
-            </p>
-            <p className="text-foreground/45 mt-1 max-w-[26ch] text-[11px] leading-4">
-              Transcribe first, or run 1 click edit. Then edit the video by
-              editing its words.
-            </p>
-          </div>
+          </button>
         )}
       </div>
     </div>
   );
 }
 
-function QuickButton({
+function QuickRow({
   icon: Icon,
   label,
   hint,
   disabled,
   spinning,
+  last = false,
   onClick,
 }: {
   icon: typeof FileText;
@@ -163,6 +172,7 @@ function QuickButton({
   hint: string;
   disabled?: boolean;
   spinning?: boolean;
+  last?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -170,15 +180,24 @@ function QuickButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="border-border bg-muted/25 hover:border-foreground/25 hover:bg-muted group rounded-xl border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-35"
+      className={`group hover:bg-muted flex w-full items-center gap-3 bg-transparent px-3 py-3 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-35 ${last ? "" : "border-border border-b"}`}
     >
-      <Icon
-        className={`mb-3 h-4 w-4 text-[color:var(--sg-accent)] ${spinning ? "animate-spin" : ""}`}
-      />
-      <span className="text-foreground block text-[11px] font-black">
-        {label}
+      <span className="bg-muted text-foreground/60 grid h-8 w-8 shrink-0 place-items-center rounded-md group-hover:text-[color:var(--sg-accent)]">
+        <Icon
+          aria-hidden="true"
+          className={`h-4 w-4 ${spinning ? "animate-spin" : ""}`}
+        />
       </span>
-      <span className="text-foreground/40 mt-0.5 block text-[9px]">{hint}</span>
+      <span className="min-w-0 flex-1">
+        <span className="text-foreground block text-xs font-bold">{label}</span>
+        <span className="text-foreground/40 mt-0.5 block truncate text-[10px]">
+          {hint}
+        </span>
+      </span>
+      <ChevronRight
+        aria-hidden="true"
+        className="text-foreground/20 group-hover:text-foreground/50 h-3.5 w-3.5"
+      />
     </button>
   );
 }
