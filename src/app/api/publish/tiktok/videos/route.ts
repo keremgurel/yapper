@@ -1,34 +1,34 @@
 import { auth } from "@clerk/nextjs/server";
+import { archivedMediaKeysForPosts } from "@/lib/db/publish";
 import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
-import { archivedMediaKeysForPosts } from "@/lib/db/publish";
-import { listYouTubeVideos } from "@/lib/publish/youtube-list";
+import { listTikTokVideos } from "@/lib/publish/tiktok-list";
 
 export const runtime = "nodejs";
 
-/** The connected channel's own uploads (with view counts), for the content hub.
- * Returns `connected: false` rather than erroring when YouTube isn't linked. */
+/** The connected creator's public TikTok posts. Existing connections made
+ * before video.list was added may need a one-time reconnect for this view. */
 export async function GET(): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   let accessToken: string;
   try {
-    accessToken = await getFreshAccessToken(userId, "youtube");
-  } catch (e) {
-    if (e instanceof NoConnectionError) {
+    accessToken = await getFreshAccessToken(userId, "tiktok");
+  } catch (error) {
+    if (error instanceof NoConnectionError) {
       return Response.json({ connected: false, videos: [] });
     }
-    throw e;
+    throw error;
   }
 
   try {
-    const videos = await listYouTubeVideos(accessToken);
+    const videos = await listTikTokVideos(accessToken);
     const archived = await archivedMediaKeysForPosts(
       userId,
-      "youtube",
+      "tiktok",
       videos.map((video) => video.id),
     );
     return Response.json({
@@ -36,14 +36,15 @@ export async function GET(): Promise<Response> {
       videos: videos.map((video) => ({
         ...video,
         mediaKey: archived.get(video.id),
-        sourcePlatform: "youtube",
+        sourcePlatform: "tiktok",
       })),
     });
-  } catch (e) {
-    console.error("[publish] youtube list failed", e);
-    return Response.json(
-      { connected: true, videos: [], error: "list_failed" },
-      { status: 502 },
-    );
+  } catch (error) {
+    console.error("[publish] tiktok list failed", error);
+    return Response.json({
+      connected: true,
+      videos: [],
+      error: "list_failed_or_reconnect_required",
+    });
   }
 }

@@ -11,6 +11,7 @@ import type {
   OverlayRect,
   StudioSource,
   TextHookPreset,
+  TextAlign,
 } from "@/lib/studio/types";
 
 /** The base-track frame to show at edited-timeline time `t`. */
@@ -46,6 +47,13 @@ export interface CaptionFrame {
   textCase: CaptionCase;
   kind: CaptionKind;
   hookPreset?: TextHookPreset;
+  fontWeight?: number;
+  textAlign?: TextAlign;
+  textColor?: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  cornerRadius?: number;
+  shadow?: boolean;
 }
 
 /**
@@ -117,6 +125,13 @@ export function captionsAt(
         textCase: active.textCase ?? style.textCase,
         kind: active.kind ?? "caption",
         hookPreset: active.hookPreset,
+        fontWeight: active.fontWeight,
+        textAlign: active.textAlign,
+        textColor: active.textColor,
+        backgroundColor: active.backgroundColor,
+        backgroundOpacity: active.backgroundOpacity,
+        cornerRadius: active.cornerRadius,
+        shadow: active.shadow,
       },
     ];
   });

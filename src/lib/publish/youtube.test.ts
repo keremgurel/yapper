@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { youtubeSnippetText } from "@/lib/publish/youtube";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { uploadYouTubeVideo, youtubeSnippetText } from "@/lib/publish/youtube";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("youtubeSnippetText", () => {
   it("strips the angle brackets YouTube's API rejects", () => {
@@ -25,5 +29,32 @@ describe("youtubeSnippetText", () => {
 
   it("leaves clean text untouched", () => {
     expect(youtubeSnippetText("My great video", 100)).toBe("My great video");
+  });
+});
+
+describe("uploadYouTubeVideo", () => {
+  it("requests public publishing by default", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 200,
+          headers: { location: "https://upload.example/session" },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ id: "video-1" }, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await uploadYouTubeVideo({
+      accessToken: "token",
+      bytes: new ArrayBuffer(4),
+      title: "Public video",
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const metadata = JSON.parse(String(init.body)) as {
+      status: { privacyStatus: string };
+    };
+    expect(metadata.status.privacyStatus).toBe("public");
   });
 });

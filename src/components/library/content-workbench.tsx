@@ -99,7 +99,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="w-full">
       <Button
         asChild
         variant="ghost"

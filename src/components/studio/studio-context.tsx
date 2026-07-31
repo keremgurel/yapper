@@ -99,6 +99,7 @@ import {
   type Overlay,
   type OverlayRect,
   type StudioSource,
+  type TextAlign,
   type TextHookPreset,
   type Word,
 } from "@/lib/studio/types";
@@ -242,6 +243,25 @@ interface StudioContextValue {
     text: string,
     preset: TextHookPreset,
     atTimeline: number,
+  ) => string | null;
+  updateTextHook: (
+    id: string,
+    patch: Partial<{
+      fontFamily: string;
+      fontWeight: number;
+      textAlign: TextAlign;
+      textCase: CaptionCase;
+      scale: number;
+      w: number;
+      y: number;
+      textColor: string;
+      backgroundColor: string;
+      backgroundOpacity: number;
+      cornerRadius: number;
+      shadow: boolean;
+      timelineEnd: number;
+      hookPreset: TextHookPreset;
+    }>,
   ) => void;
   mergeCaptions: (ids: string[]) => void;
   removeCaption: (id: string) => void;
@@ -571,7 +591,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const addTextHook = useCallback(
     (text: string, preset: TextHookPreset, timelineTime: number) => {
       const trimmed = text.trim();
-      if (!trimmed || duration <= 0) return;
+      if (!trimmed || duration <= 0) return null;
       const start = Math.max(0, Math.min(timelineTime, duration - 0.05));
       const created: Caption = {
         id: newCaptionId(),
@@ -587,11 +607,33 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         w: 0.82,
         scale: 0.056,
         textCase: "none",
+        fontWeight: 900,
+        textAlign: "center",
+        backgroundOpacity: 1,
+        cornerRadius: 0.55,
+        shadow: true,
       };
       setCaptions((prev) => [...prev, created]);
       sel.selectCaption(created.id);
+      return created.id;
     },
     [duration, setCaptions, sel],
+  );
+
+  const updateTextHook = useCallback(
+    (
+      id: string,
+      patch: Parameters<StudioContextValue["updateTextHook"]>[1],
+    ) => {
+      setCaptions((prev) =>
+        prev.map((caption) =>
+          caption.id === id && caption.kind === "hook"
+            ? { ...caption, ...patch }
+            : caption,
+        ),
+      );
+    },
+    [setCaptions],
   );
 
   // Merge two or more captions into one spanning their full source range, with
@@ -1667,6 +1709,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       cycleCaptionCase,
       addCaption,
       addTextHook,
+      updateTextHook,
       mergeCaptions,
       removeCaption,
       clearCaptions,
@@ -1771,6 +1814,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       cycleCaptionCase,
       addCaption,
       addTextHook,
+      updateTextHook,
       mergeCaptions,
       removeCaption,
       clearCaptions,

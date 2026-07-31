@@ -21,6 +21,8 @@ export default function PreviewStage({
   timelineTime,
   playing,
   onTogglePlay,
+  playbackPreparing,
+  playbackFailed,
 }: {
   /** The bottom track's element. It is the master clock, so the shell owns it. */
   videoRefs: React.RefObject<
@@ -29,6 +31,8 @@ export default function PreviewStage({
   timelineTime: number;
   playing: boolean;
   onTogglePlay: () => void;
+  playbackPreparing?: boolean;
+  playbackFailed?: boolean;
 }) {
   const { source, clips, duration, aspect, baseHidden, overlays, audioTracks } =
     useStudio();
@@ -140,6 +144,20 @@ export default function PreviewStage({
             masterTime={timelineTime}
             playing={playing}
           />
+          {playbackPreparing && (
+            <div className="pointer-events-none absolute inset-x-4 bottom-4 z-40 flex justify-center">
+              <span className="border-border/70 bg-background/90 text-foreground rounded-full border px-3 py-1.5 text-xs font-bold shadow-xl backdrop-blur">
+                Preparing seamless playback…
+              </span>
+            </div>
+          )}
+          {playbackFailed && (
+            <div className="pointer-events-none absolute inset-x-4 bottom-4 z-40 flex justify-center">
+              <span className="rounded-full border border-red-500/30 bg-red-950/90 px-3 py-1.5 text-xs font-bold text-red-100 shadow-xl backdrop-blur">
+                Seamless preview unavailable
+              </span>
+            </div>
+          )}
         </>
       ) : (
         <VideoUploader />

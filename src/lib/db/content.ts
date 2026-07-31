@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { contentItems, type ContentStatus } from "./schema";
 
@@ -18,7 +18,10 @@ export interface ContentItemInput {
   submissionId?: string | null;
 }
 
-export async function listContentItems(userId: string) {
+export async function listContentItems(
+  userId: string,
+  options: { includePosterUploads?: boolean } = {},
+) {
   return getDb()
     .select({
       id: contentItems.id,
@@ -31,7 +34,17 @@ export async function listContentItems(userId: string) {
       createdAt: contentItems.createdAt,
     })
     .from(contentItems)
-    .where(eq(contentItems.userId, userId))
+    .where(
+      options.includePosterUploads
+        ? eq(contentItems.userId, userId)
+        : and(
+            eq(contentItems.userId, userId),
+            or(
+              isNull(contentItems.sourceUrl),
+              ne(contentItems.sourceUrl, "yapper://poster-upload"),
+            ),
+          ),
+    )
     .orderBy(desc(contentItems.updatedAt))
     .limit(200);
 }

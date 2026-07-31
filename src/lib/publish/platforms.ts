@@ -57,7 +57,7 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
     id: "tiktok",
     label: "TikTok",
     mode: "draft-inbox",
-    scopes: ["user.info.basic", "video.upload"],
+    scopes: ["user.info.basic", "video.list", "video.upload"],
     needsPublicUrl: false,
     requiresProfessional: false,
     env: {

@@ -177,7 +177,7 @@ export default function DictionaryPanel() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl pb-16">
+    <div className="w-full pb-16">
       <div className="mb-7 flex items-start gap-4">
         <div className="border-border bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm">
           <BookType className="text-foreground h-5 w-5" />

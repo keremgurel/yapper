@@ -23,6 +23,7 @@ import {
 import CrossPostSheet, {
   type CrossPostTarget,
 } from "@/components/publish/cross-post-sheet";
+import PlatformVideos from "@/components/publish/platform-videos";
 import { useAddVideo, type AddVideoError } from "@/hooks/use-add-video";
 import { useContentList } from "@/hooks/use-content-list";
 import { uploadThumbnailFile } from "@/hooks/use-thumbnail-upload";
@@ -381,7 +382,9 @@ function ThumbnailCanvas({
 
 export default function PosterWorkspace() {
   const { isSignedIn } = useUser();
-  const { items, refresh, patchRow } = useContentList(!!isSignedIn);
+  const { items, refresh, patchRow } = useContentList(!!isSignedIn, {
+    includePosterUploads: true,
+  });
   const videos = useMemo(() => postableVideos(items), [items]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -394,7 +397,7 @@ export default function PosterWorkspace() {
   const [scheduled, setScheduled] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [captionError, setCaptionError] = useState("");
-  const [target, setTarget] = useState<CrossPostTarget | null>(null);
+  const [targets, setTargets] = useState<CrossPostTarget[] | null>(null);
   const [preparingPublish, setPreparingPublish] = useState(false);
   const [publishPrepError, setPublishPrepError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -500,29 +503,42 @@ export default function PosterWorkspace() {
     if (!active || !draft || preparingPublish) return;
     setPreparingPublish(true);
     setPublishPrepError("");
-    let thumbnail: { key: string; previewUrl: string } | undefined;
-    try {
-      thumbnail = await uploadThumbnailFile(await renderThumbnail(draft));
-    } catch {
+    const publishVideos = selected.length > 0 ? selected : [active];
+    const prepared = await Promise.all(
+      publishVideos.map(async (video) => {
+        const videoDraft = drafts[video.id] ?? defaultDraft(video);
+        let thumbnail: { key: string; previewUrl: string } | undefined;
+        try {
+          thumbnail = await uploadThumbnailFile(
+            await renderThumbnail(videoDraft),
+          );
+        } catch {
+          // A cover is optional. Keep preparing the remaining videos and show
+          // one non-blocking warning after the batch is ready.
+        }
+        return {
+          id: video.id,
+          title: video.title,
+          initialTitle: videoDraft.headline || video.title,
+          initialDescription: videoDraft.caption,
+          submissionId: video.submissionId,
+          contentItemId: video.id,
+          thumbnailKey: thumbnail?.key,
+          thumbnailPreviewUrl: thumbnail?.previewUrl,
+        } satisfies CrossPostTarget;
+      }),
+    );
+    if (prepared.some((item) => !item.thumbnailKey)) {
       setPublishPrepError(
-        "The cover couldn't upload. You can still publish and add one in the next step.",
+        "One or more covers couldn't upload. The videos are still ready to publish.",
       );
     }
-    setTarget({
-      id: active.id,
-      title: active.title,
-      initialTitle: draft.headline || active.title,
-      initialDescription: draft.caption,
-      submissionId: active.submissionId,
-      contentItemId: active.id,
-      thumbnailKey: thumbnail?.key,
-      thumbnailPreviewUrl: thumbnail?.previewUrl,
-    });
+    setTargets(prepared);
     setPreparingPublish(false);
   };
 
   return (
-    <div className="mx-auto max-w-[1440px]">
+    <div className="w-full">
       <header className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="text-foreground mb-2 inline-flex items-center gap-2 rounded-full border border-[color:color-mix(in_srgb,var(--sg-accent)_28%,var(--border))] bg-[color:color-mix(in_srgb,var(--sg-accent)_8%,transparent)] px-3 py-1 text-[11px] font-black tracking-wide uppercase">
@@ -556,16 +572,21 @@ export default function PosterWorkspace() {
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            {uploadState === "uploading" ? "Uploading…" : "Add video"}
+            {uploadState === "uploading" ? "Uploading…" : "Add videos"}
           </button>
           <input
             ref={fileRef}
             type="file"
             accept="video/*"
+            multiple
             className="hidden"
             onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void add(file);
+              const files = Array.from(event.target.files ?? []);
+              if (files.length > 0) {
+                void (async () => {
+                  for (const file of files) await add(file);
+                })();
+              }
               event.target.value = "";
             }}
           />
@@ -578,83 +599,14 @@ export default function PosterWorkspace() {
         </p>
       )}
 
-      {items !== null && videos.length === 0 ? (
-        <section className="border-border relative overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_82%_18%,color-mix(in_srgb,var(--sg-accent)_16%,transparent),transparent_34%),var(--card)] p-6 sm:p-10">
-          <div className="relative z-10 grid min-h-[420px] items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-            <div className="max-w-xl">
-              <span className="bg-muted text-foreground ring-foreground/10 mb-5 grid h-14 w-14 place-items-center rounded-2xl ring-1">
-                <Upload className="h-6 w-6 text-[color:var(--sg-accent)]" />
-              </span>
-              <h2 className="font-display text-foreground text-3xl font-black tracking-tight">
-                Bring your first finished video.
-              </h2>
-              <p className="text-muted-foreground mt-3 max-w-lg text-sm leading-6">
-                Poster keeps the final mile in one place: write the caption,
-                design the cover, choose a date, and only then pick where it
-                publishes.
-              </p>
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploadState === "uploading"}
-                className="mt-6 inline-flex items-center gap-2 rounded-full bg-[color:var(--sg-accent)] px-5 py-2.5 text-sm font-black text-black shadow-[0_16px_34px_-18px_var(--sg-accent)] transition hover:brightness-105 disabled:opacity-50"
-              >
-                {uploadState === "uploading" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                {uploadState === "uploading"
-                  ? "Adding video…"
-                  : "Add finished video"}
-              </button>
-            </div>
+      <PlatformVideos />
 
-            <div className="grid gap-3">
-              {[
-                {
-                  Icon: PenLine,
-                  step: "01",
-                  title: "Caption it",
-                  detail: "Generate a draft, then make every word yours.",
-                },
-                {
-                  Icon: Palette,
-                  step: "02",
-                  title: "Design the cover",
-                  detail: "Edit a vertical thumbnail and export the real PNG.",
-                },
-                {
-                  Icon: CalendarDays,
-                  step: "03",
-                  title: "Place it on the calendar",
-                  detail: "Schedule one video or a selected batch.",
-                },
-              ].map(({ Icon, step, title, detail }) => (
-                <div
-                  key={step}
-                  className="border-border bg-background/70 flex items-center gap-4 rounded-2xl border p-4 backdrop-blur"
-                >
-                  <span className="text-muted-foreground text-[10px] font-black tracking-wider">
-                    {step}
-                  </span>
-                  <span className="bg-muted text-foreground grid h-10 w-10 shrink-0 place-items-center rounded-xl">
-                    <Icon className="h-4 w-4 text-[color:var(--sg-accent)]" />
-                  </span>
-                  <div>
-                    <p className="text-foreground text-sm font-black">
-                      {title}
-                    </p>
-                    <p className="text-muted-foreground mt-0.5 text-xs leading-5">
-                      {detail}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : (
+      {items === null ? (
+        <div className="text-muted-foreground mt-5 flex items-center gap-2 rounded-2xl border border-dashed px-5 py-8 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading Yapper exports…
+        </div>
+      ) : videos.length > 0 ? (
         <div className="grid min-h-[680px] gap-5 xl:grid-cols-[minmax(0,1fr)_500px]">
           <section className="border-border bg-card/40 rounded-3xl border p-4 sm:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -895,13 +847,13 @@ export default function PosterWorkspace() {
             )}
           </aside>
         </div>
-      )}
+      ) : null}
 
-      {target && (
+      {targets && (
         <CrossPostSheet
-          key={target.id}
-          item={target}
-          onClose={() => setTarget(null)}
+          key={targets.map((target) => target.id).join(",")}
+          items={targets}
+          onClose={() => setTargets(null)}
         />
       )}
     </div>

@@ -5,14 +5,18 @@ import { listContent, type ContentSummary } from "@/lib/content/client";
 
 /** The signed-in user's library rows. One concern: fetch + refresh + local
  * row patching (for optimistic status changes / removals). */
-export function useContentList(enabled: boolean) {
+export function useContentList(
+  enabled: boolean,
+  options: { includePosterUploads?: boolean } = {},
+) {
+  const includePosterUploads = options.includePosterUploads === true;
   const [items, setItems] = useState<ContentSummary[] | null>(null);
 
   const refresh = useCallback(() => {
-    listContent()
+    listContent({ includePosterUploads })
       .then(setItems)
       .catch(() => setItems([]));
-  }, []);
+  }, [includePosterUploads]);
 
   useEffect(() => {
     if (enabled) refresh();

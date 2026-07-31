@@ -12,7 +12,9 @@ import {
 } from "@/lib/studio/native/path-registry";
 import type { Clip, StudioSource } from "@/lib/studio/types";
 
-const EDIT_PREVIEW_DEBOUNCE_MS = 300;
+// Long enough to coalesce one drag gesture, short enough that Play becomes
+// available almost immediately after an edit settles.
+const EDIT_PREVIEW_DEBOUNCE_MS = 100;
 
 export function nativeEditPreviewPlan(
   clips: Clip[],
@@ -49,8 +51,16 @@ export function useNativeEditPreview(
   clips: Clip[],
   source: StudioSource | null,
   aspect: number,
-): string | null {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+): {
+  url: string | null;
+  preparing: boolean;
+  failed: boolean;
+} {
+  const [ready, setReady] = useState<{
+    fingerprint: string;
+    url: string | null;
+    failed: boolean;
+  } | null>(null);
   const fingerprint = clips
     .map(
       (clip) =>
@@ -67,25 +77,39 @@ export function useNativeEditPreview(
 
   useEffect(() => {
     let cancelled = false;
-    setPreviewUrl(null);
     if (!plan || !Number.isFinite(aspect) || aspect <= 0) return;
 
     const timer = window.setTimeout(() => {
       void nativeMakeEditPreview(plan, aspect)
         .then((path) => {
-          if (!cancelled) setPreviewUrl(assetUrl(path));
+          if (!cancelled) {
+            setReady({
+              fingerprint,
+              url: assetUrl(path),
+              failed: false,
+            });
+          }
         })
         .catch((error) => {
           // The ordinary proxy/source playback remains available as a safe
           // fallback. A failed optimization must never take down the editor.
           console.warn("Continuous edit preview unavailable", error);
+          if (!cancelled) {
+            setReady({ fingerprint, url: null, failed: true });
+          }
         });
     }, EDIT_PREVIEW_DEBOUNCE_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [plan, aspect]);
+  }, [plan, aspect, fingerprint]);
 
-  return previewUrl;
+  if (!plan) return { url: null, preparing: false, failed: false };
+  const current = ready?.fingerprint === fingerprint ? ready : null;
+  return {
+    url: current?.url ?? null,
+    preparing: !current,
+    failed: current?.failed ?? false,
+  };
 }

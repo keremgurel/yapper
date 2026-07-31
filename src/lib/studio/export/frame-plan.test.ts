@@ -219,11 +219,29 @@ describe("captionAt", () => {
     const hook = caption(0, 0, "top hook", {
       kind: "hook",
       hookPreset: "white-card",
+      fontWeight: 700,
+      textAlign: "left",
+      textColor: "#112233",
+      backgroundColor: "#fafafa",
+      backgroundOpacity: 0.75,
+      cornerRadius: 0.25,
+      shadow: false,
       timelineStart: 0,
       timelineEnd: 4,
     });
     expect(captionsAt(clips, [hook, spoken], style, 2)).toMatchObject([
-      { text: "top hook", kind: "hook", hookPreset: "white-card" },
+      {
+        text: "top hook",
+        kind: "hook",
+        hookPreset: "white-card",
+        fontWeight: 700,
+        textAlign: "left",
+        textColor: "#112233",
+        backgroundColor: "#fafafa",
+        backgroundOpacity: 0.75,
+        cornerRadius: 0.25,
+        shadow: false,
+      },
       { text: "spoken", kind: "caption" },
     ]);
   });

@@ -43,7 +43,7 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
   const count = selected.size;
 
   return (
-    <div className="mx-auto w-full max-w-3xl pb-24">
+    <div className="w-full pb-24">
       <header className="mb-5">
         <h1 className="font-display text-foreground text-2xl font-black">
           Idea bank

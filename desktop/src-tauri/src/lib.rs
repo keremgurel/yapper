@@ -452,8 +452,11 @@ fn edit_preview_command(
     }
     command
         .args([
+            // The edited preview is short-lived and optimized for interaction,
+            // not delivery. Every frame is a seek point so scrub-then-play
+            // never has to decode forward from an earlier GOP.
             "-g",
-            "6",
+            "1",
             "-c:a",
             "aac",
             "-b:a",
@@ -486,7 +489,7 @@ fn start_edit_preview(
     let (width, height) = edit_preview_dimensions(aspect)?;
     let mut validated = Vec::with_capacity(clips.len());
     let mut hasher = DefaultHasher::new();
-    "edit_preview_v1".hash(&mut hasher);
+    "edit_preview_v2_all_intra".hash(&mut hasher);
     width.hash(&mut hasher);
     height.hash(&mut hasher);
     for clip in clips {
@@ -513,7 +516,7 @@ fn start_edit_preview(
     }
 
     let mut out_path = std::env::temp_dir();
-    out_path.push(format!("yapper_editpreview1_{:016x}.mp4", hasher.finish()));
+    out_path.push(format!("yapper_editpreview2_{:016x}.mp4", hasher.finish()));
     let out_str = out_path.to_string_lossy().into_owned();
     let done_path = out_path.with_extension("done");
     let error_path = out_path.with_extension("error");
@@ -564,14 +567,22 @@ fn start_edit_preview(
 
 #[tauri::command]
 fn edit_preview_status(out_path: String) -> Result<String, String> {
-    let path = Path::new(&out_path);
+    let path = PathBuf::from(&out_path);
     let temp_dir =
         std::fs::canonicalize(std::env::temp_dir()).map_err(|e| format!("temp dir: {e}"))?;
     let valid_name = path
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with("yapper_editpreview1_"));
-    if !path.starts_with(&temp_dir) || !valid_name {
+        .is_some_and(|name| name.starts_with("yapper_editpreview2_"));
+    // macOS reports the temp directory as /var/... but canonicalizes it to
+    // /private/var/.... Compare canonical PARENTS instead of a lexical prefix,
+    // or every legitimate preview is rejected after it finishes rendering.
+    let parent = path
+        .parent()
+        .ok_or_else(|| "invalid edit preview path".to_string())?;
+    let canonical_parent =
+        std::fs::canonicalize(parent).map_err(|_| "invalid edit preview path".to_string())?;
+    if canonical_parent != temp_dir || !valid_name {
         return Err("invalid edit preview path".into());
     }
     if path.with_extension("error").exists() {
@@ -580,7 +591,7 @@ fn edit_preview_status(out_path: String) -> Result<String, String> {
     if !path.exists() {
         return Ok("pending".into());
     }
-    if ffprobe_can_read(path) {
+    if ffprobe_can_read(&path) {
         Ok("ready".into())
     } else if path.with_extension("done").exists() {
         Ok("failed".into())
@@ -591,7 +602,7 @@ fn edit_preview_status(out_path: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod edit_preview_tests {
-    use super::edit_preview_dimensions;
+    use super::{edit_preview_dimensions, edit_preview_status};
 
     #[test]
     fn preview_dimensions_are_even_and_bounded() {
@@ -603,6 +614,34 @@ mod edit_preview_tests {
     fn preview_dimensions_reject_invalid_aspects() {
         assert!(edit_preview_dimensions(0.0).is_err());
         assert!(edit_preview_dimensions(f64::NAN).is_err());
+    }
+
+    #[test]
+    fn preview_status_accepts_the_platform_temp_directory_alias() {
+        let path = std::env::temp_dir().join("yapper_editpreview2_status_test.mp4");
+        assert_eq!(
+            edit_preview_status(path.to_string_lossy().into_owned()).unwrap(),
+            "pending"
+        );
+    }
+}
+
+#[cfg(test)]
+mod desktop_capability_tests {
+    #[test]
+    fn editor_runtime_commands_are_allowed() {
+        let capability = include_str!("../capabilities/default.json");
+        for permission in [
+            "allow-start-edit-preview",
+            "allow-edit-preview-status",
+            "allow-prepare-export-pcm",
+            "allow-extract-export-pcm-chunk",
+        ] {
+            assert!(
+                capability.contains(&format!("\"{permission}\"")),
+                "desktop capability is missing {permission}"
+            );
+        }
     }
 }
 

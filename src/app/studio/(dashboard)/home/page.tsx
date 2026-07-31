@@ -69,7 +69,7 @@ export default function StudioHomePage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full">
       <header className="mb-8">
         <h1 className="sg-display text-foreground text-3xl font-black sm:text-4xl">
           What do you want to make?

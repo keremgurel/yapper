@@ -3,6 +3,7 @@ import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
+import { archivedMediaKeysForPosts } from "@/lib/db/publish";
 import { listInstagramVideos } from "@/lib/publish/instagram-list";
 
 export const runtime = "nodejs";
@@ -25,7 +26,19 @@ export async function GET(): Promise<Response> {
 
   try {
     const videos = await listInstagramVideos(accessToken);
-    return Response.json({ connected: true, videos });
+    const archived = await archivedMediaKeysForPosts(
+      userId,
+      "instagram",
+      videos.map((video) => video.id),
+    );
+    return Response.json({
+      connected: true,
+      videos: videos.map((video) => ({
+        ...video,
+        mediaKey: archived.get(video.id),
+        sourcePlatform: "instagram",
+      })),
+    });
   } catch (e) {
     console.error("[publish] instagram list failed", e);
     return Response.json(

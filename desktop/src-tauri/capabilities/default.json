@@ -13,6 +13,8 @@
     "allow-companion-proxy",
     "allow-start-proxy",
     "allow-proxy-status",
+    "allow-start-edit-preview",
+    "allow-edit-preview-status",
     "allow-start-thumbnails",
     "allow-list-thumbnails",
     "allow-start-waveform",
@@ -21,6 +23,8 @@
     "allow-extract-audio-bytes",
     "allow-prepare-pcm",
     "allow-extract-pcm-chunk",
+    "allow-prepare-export-pcm",
+    "allow-extract-export-pcm-chunk",
     "allow-open-oauth-flow"
   ]
 }

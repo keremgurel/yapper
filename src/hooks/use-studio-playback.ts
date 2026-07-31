@@ -44,6 +44,9 @@ export interface PlaybackInput {
    * edited-timeline time, so playback crosses cuts without decoder handoffs.
    */
   continuousPreviewUrl?: string | null;
+  /** Desktop edited projects wait for the gapless derivative instead of
+   * knowingly falling back to a decoder seek at every cut. */
+  continuousPreviewPending?: boolean;
 }
 
 /**
@@ -65,6 +68,7 @@ export function useStudioPlayback(
     baseUrl,
     baseMuted,
     continuousPreviewUrl,
+    continuousPreviewPending = false,
   }: PlaybackInput,
 ) {
   const [timelineTime, setTimelineTime] = useState(0);
@@ -500,7 +504,7 @@ export function useStudioPlayback(
   );
 
   const play = useCallback(() => {
-    if (total <= 0) return;
+    if (total <= 0 || continuousPreviewPending) return;
     playIntentRef.current = true;
     const from = clockRef.current >= total - EPS ? 0 : clockRef.current;
     if (overBaseTrack(from)) {
@@ -538,6 +542,7 @@ export function useStudioPlayback(
     activeVideo,
     clips,
     total,
+    continuousPreviewPending,
     overBaseTrack,
     continuousPreviewUrl,
     seekContinuousVideo,
@@ -561,6 +566,10 @@ export function useStudioPlayback(
     clearStandby();
     setPlaying(false);
   }, [videoRefs, stopRaf, clearStandby]);
+
+  useEffect(() => {
+    if (continuousPreviewPending && playIntentRef.current) pause();
+  }, [continuousPreviewPending, pause]);
 
   useEffect(() => stopRaf, [stopRaf]);
 

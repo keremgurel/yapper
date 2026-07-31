@@ -72,7 +72,7 @@ export async function POST(req: Request): Promise<Response> {
       title,
       description: body.description,
       tags: body.tags,
-      privacyStatus: body.privacyStatus ?? "private",
+      privacyStatus: body.privacyStatus ?? "public",
     });
     await completePublishJob(jobId, {
       externalPostId: result.videoId,

@@ -103,11 +103,30 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
         const scale = caption.scale ?? (hook ? 0.056 : captionStyle.fontScale);
         const fontFamily = caption.fontFamily ?? captionStyle.fontFamily;
         const textCase = caption.textCase ?? captionStyle.textCase;
+        const fontWeight = caption.fontWeight ?? 900;
+        const textAlign = caption.textAlign ?? "center";
         const selected = selectedCaptionId === caption.id;
         const fontSize = box.h ? scale * box.h : 20;
         const widthPx = box.w ? w * box.w : undefined;
-        const card = hook && caption.hookPreset !== "white-text";
-        const whiteCard = hook && caption.hookPreset === "white-card";
+        const legacyCard = hook && caption.hookPreset !== "white-text";
+        const legacyWhiteCard = hook && caption.hookPreset === "white-card";
+        const backgroundColor =
+          caption.backgroundColor ??
+          (legacyCard
+            ? legacyWhiteCard
+              ? "#ffffff"
+              : "#090909"
+            : "transparent");
+        const card = hook && backgroundColor !== "transparent";
+        const textColor =
+          caption.textColor ??
+          (legacyWhiteCard ? "#090909" : hook ? "#ffffff" : undefined);
+        const background =
+          card && caption.backgroundOpacity != null
+            ? `color-mix(in srgb, ${backgroundColor} ${Math.round(
+                caption.backgroundOpacity * 100,
+              )}%, transparent)`
+            : backgroundColor;
         return (
           <div
             key={caption.id}
@@ -120,20 +139,22 @@ export default function CaptionLayer({ masterTime }: { masterTime: number }) {
               width: widthPx,
               transform: "translate(-50%, -50%)",
               fontFamily,
+              fontWeight,
               fontSize,
+              textAlign,
+              color: textColor,
+              backgroundColor: background,
+              borderRadius: card
+                ? `${caption.cornerRadius ?? 0.55}em`
+                : undefined,
               textTransform: caseTransform(textCase),
-              textShadow: card
-                ? "none"
-                : "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
+              textShadow:
+                card || caption.shadow === false
+                  ? "none"
+                  : "0 2px 10px rgba(0,0,0,0.7), 0 0 2px rgba(0,0,0,0.9)",
             }}
-            className={`pointer-events-auto absolute cursor-move text-center font-black whitespace-pre-wrap ${
-              card ? "rounded-[0.55em] px-[0.72em] py-[0.5em] shadow-xl" : ""
-            } ${
-              whiteCard
-                ? "bg-white text-black"
-                : card
-                  ? "bg-black text-white ring-1 ring-white/15"
-                  : "text-white"
+            className={`pointer-events-auto absolute cursor-move whitespace-pre-wrap ${
+              card ? "px-[0.72em] py-[0.5em] shadow-xl" : ""
             } ${selected ? "ring-2 ring-cyan-400" : ""}`}
           >
             {caption.text}

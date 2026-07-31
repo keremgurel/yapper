@@ -47,6 +47,10 @@ export interface PlatformVideo {
    * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
    * back a file, so those rows are view-only. */
   sourceFileUrl?: string;
+  /** Original source retained by Yapper when this post was published through
+   * the app. Unlike a platform transcode, it can be posted elsewhere intact. */
+  mediaKey?: string;
+  sourcePlatform?: PublishPlatform;
 }
 
 /** A connected platform's own videos. `/api/publish/<platform>/videos` returns
@@ -89,6 +93,7 @@ export interface CrossPostInput {
   contentItemId?: string;
   /** R2 key of a custom thumbnail/cover image, if the user picked one. */
   thumbnailKey?: string;
+  privacyStatus?: "private" | "unlisted" | "public";
 }
 
 export interface InstagramPostInput {

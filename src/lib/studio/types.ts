@@ -136,6 +136,7 @@ export function newAudioId(): string {
 export type CaptionCase = "none" | "lower" | "upper";
 export type CaptionKind = "caption" | "hook";
 export type TextHookPreset = "white-card" | "white-text" | "black-card";
+export type TextAlign = "left" | "center" | "right";
 
 /** A transcribed token (word or short phrase) with source timestamps. */
 export interface Word {
@@ -178,6 +179,14 @@ export interface Caption {
   // style, so a single caption can be recased/refont without touching the rest.
   fontFamily?: string;
   textCase?: CaptionCase;
+  /** Text-hook-only visual overrides. Legacy hooks fall back to hookPreset. */
+  fontWeight?: number;
+  textAlign?: TextAlign;
+  textColor?: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
+  cornerRadius?: number;
+  shadow?: boolean;
 }
 
 export function newCaptionId(): string {

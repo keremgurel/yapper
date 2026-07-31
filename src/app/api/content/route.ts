@@ -7,10 +7,12 @@ import { parseContentInput } from "@/lib/content/input";
 export const runtime = "nodejs";
 
 /** The signed-in user's Content Library (summaries, newest-updated first). */
-export async function GET(): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const items = await listContentItems(userId);
+  const items = await listContentItems(userId, {
+    includePosterUploads: req.nextUrl.searchParams.get("surface") === "poster",
+  });
   return Response.json({ items });
 }
 

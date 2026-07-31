@@ -10,8 +10,8 @@ import ComposeActions from "./compose-actions";
 import ThumbnailPicker from "./thumbnail-picker";
 import type { CrossPostTarget } from "./types";
 
-/** Compose a YouTube post: title + description, with an opt-in AI draft that can
- * match the user's past captions. Uploads private until the API audit clears. */
+/** Compose a public YouTube post: title + description, with an opt-in AI draft
+ * that can match the user's past captions. */
 export default function YouTubeCompose({
   item,
   onDone,
@@ -63,6 +63,7 @@ export default function YouTubeCompose({
         description: description.trim() || undefined,
         contentItemId: item.contentItemId,
         thumbnailKey: thumb.thumbnailKey ?? undefined,
+        privacyStatus: "public",
       }),
     );
   };
@@ -70,8 +71,7 @@ export default function YouTubeCompose({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-xs">
-        Uploads to your channel. It stays private until your YouTube API audit
-        clears.
+        Publishes directly to your channel as a public video.
       </p>
 
       <div className="border-border flex flex-col gap-2 rounded-lg border p-3">
@@ -153,7 +153,6 @@ export default function YouTubeCompose({
         error={error}
         result={result}
         postLabel="Post to YouTube"
-        postedSuffix="(private)"
         onPost={onPost}
         onDone={onDone}
         disabled={!title.trim()}

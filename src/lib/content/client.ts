@@ -45,9 +45,15 @@ async function json<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
-export async function listContent(): Promise<ContentSummary[]> {
+export async function listContent(
+  options: { includePosterUploads?: boolean } = {},
+): Promise<ContentSummary[]> {
   const data = await json<{ items: ContentSummary[] }>(
-    await fetch("/api/content"),
+    await fetch(
+      options.includePosterUploads
+        ? "/api/content?surface=poster"
+        : "/api/content",
+    ),
   );
   return data.items;
 }

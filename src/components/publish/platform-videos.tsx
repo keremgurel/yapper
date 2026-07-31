@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
-import { ChevronDown, Eye, Loader2, Lock, Send } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Check,
+  Eye,
+  ExternalLink,
+  HardDrive,
+  Loader2,
+  Send,
+} from "lucide-react";
 import CrossPostSheet, {
   type CrossPostTarget,
 } from "@/components/publish/cross-post-sheet";
@@ -17,10 +19,10 @@ import { PLATFORMS } from "@/lib/publish/platforms";
 import { importInstagramMedia, type PlatformVideo } from "@/lib/publish/client";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 
-function compactViews(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+function compactViews(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
 }
 
 function when(iso: string): string {
@@ -32,219 +34,274 @@ function when(iso: string): string {
   });
 }
 
-const SORTS: { key: VideoSort; label: string }[] = [
-  { key: "recent", label: "Recent" },
-  { key: "views", label: "Most viewed" },
-];
+function sourceKey(platform: PublishPlatform, video: PlatformVideo): string {
+  return `${platform}:${video.id}`;
+}
 
 /**
- * Your videos on one platform, chosen from a dropdown. YouTube and Instagram
- * list real uploads, sortable by recency or views; TikTok's API will not return
- * a user's posted videos, so it shows a note instead. Instagram rows carry a
- * downloadable file, so they get a Cross-post action that pulls the video into
- * storage and opens the compose sheet for the other platforms.
+ * A source browser for every connected platform. Selection survives platform
+ * switches, so creators can choose several archived originals across YouTube,
+ * TikTok, and Instagram and fan them out in one publish action.
  */
 export default function PlatformVideos() {
+  const { isSignedIn } = useUser();
   const [platform, setPlatform] = useState<PublishPlatform>("youtube");
   const [sort, setSort] = useState<VideoSort>("recent");
-
-  return (
-    <section className="mt-8">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-display text-foreground flex items-center gap-1 text-lg font-black tracking-tight">
-          Your
-          <DropdownMenu>
-            <DropdownMenuTrigger className="hover:text-foreground/80 flex items-center gap-1 text-[color:var(--sg-accent)] outline-none">
-              {PLATFORMS[platform].label}
-              <ChevronDown className="h-4 w-4" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              {publishPlatforms.map((p) => (
-                <DropdownMenuItem
-                  key={p}
-                  onClick={() => setPlatform(p)}
-                  className="font-bold"
-                >
-                  {PLATFORMS[p].label}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          videos
-        </h2>
-        {platform !== "tiktok" && (
-          <div className="bg-muted/60 flex rounded-lg p-0.5">
-            {SORTS.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                onClick={() => setSort(s.key)}
-                className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${
-                  sort === s.key
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {platform === "tiktok" ? (
-        <div className="text-muted-foreground border-border rounded-xl border border-dashed py-12 text-center text-sm">
-          TikTok does not let apps pull your posted videos back out, so they
-          cannot be listed here. TikTok stays a cross-post destination.
-        </div>
-      ) : (
-        <PlatformGrid key={platform} platform={platform} sort={sort} />
-      )}
-    </section>
-  );
-}
-
-function PlatformGrid({
-  platform,
-  sort,
-}: {
-  platform: PublishPlatform;
-  sort: VideoSort;
-}) {
-  const { isSignedIn } = useUser();
+  const [selected, setSelected] = useState<
+    Map<string, { platform: PublishPlatform; video: PlatformVideo }>
+  >(new Map());
+  const [targets, setTargets] = useState<CrossPostTarget[] | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [prepareError, setPrepareError] = useState("");
   const { videos, connected } = usePlatformVideos(platform, !!isSignedIn, sort);
-  const [target, setTarget] = useState<CrossPostTarget | null>(null);
-  const label = PLATFORMS[platform].label;
 
-  if (!connected && videos !== null) {
-    return (
-      <p className="text-muted-foreground py-10 text-sm">
-        Connect {label} above to see your videos here.
-      </p>
-    );
-  }
-  if (videos === null) {
-    return (
-      <div className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading your videos…
-      </div>
-    );
-  }
-  if (videos.length === 0) {
-    return (
-      <p className="text-muted-foreground py-10 text-sm">No videos here yet.</p>
-    );
-  }
-  return (
-    <>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-6">
-        {videos.map((v) => (
-          <VideoCard key={v.id} video={v} onCrossPost={setTarget} />
-        ))}
-      </div>
-      {target && (
-        <CrossPostSheet
-          key={target.id}
-          item={target}
-          onClose={() => setTarget(null)}
-        />
-      )}
-    </>
-  );
-}
+  const toggle = (video: PlatformVideo) => {
+    if (!video.mediaKey && !(platform === "instagram" && video.sourceFileUrl)) {
+      return;
+    }
+    const key = sourceKey(platform, video);
+    setSelected((current) => {
+      const next = new Map(current);
+      if (next.has(key)) next.delete(key);
+      else next.set(key, { platform, video });
+      return next;
+    });
+  };
 
-function VideoCard({
-  video,
-  onCrossPost,
-}: {
-  video: PlatformVideo;
-  onCrossPost: (target: CrossPostTarget) => void;
-}) {
-  const [importing, setImporting] = useState(false);
-  const [failed, setFailed] = useState(false);
-  // Only Instagram rows carry a downloadable file we can re-post from.
-  const canCrossPost = Boolean(video.sourceFileUrl);
-
-  const startCrossPost = async () => {
-    if (importing) return;
-    setImporting(true);
-    setFailed(false);
+  const prepareCrossPost = async () => {
+    if (preparing || selected.size === 0) return;
+    setPreparing(true);
+    setPrepareError("");
     try {
-      const { mediaKey, title } = await importInstagramMedia(video.id);
-      onCrossPost({
-        id: `import-${video.id}`,
-        title: title || video.title,
-        mediaKey,
-      });
+      const prepared: CrossPostTarget[] = [];
+      for (const { platform: sourcePlatform, video } of selected.values()) {
+        let mediaKey = video.mediaKey;
+        let title = video.title;
+        if (
+          !mediaKey &&
+          sourcePlatform === "instagram" &&
+          video.sourceFileUrl
+        ) {
+          const imported = await importInstagramMedia(video.id);
+          mediaKey = imported.mediaKey;
+          title = imported.title || title;
+        }
+        if (!mediaKey) continue;
+        prepared.push({
+          id: `${sourcePlatform}-${video.id}`,
+          title: title || "Untitled",
+          initialTitle: title || "Untitled",
+          mediaKey,
+        });
+      }
+      if (prepared.length === 0) {
+        setPrepareError(
+          "Those posts do not have a reusable original attached yet.",
+        );
+        return;
+      }
+      setTargets(prepared);
     } catch {
-      setFailed(true);
+      setPrepareError(
+        "One of those originals could not be prepared. Your selection is still here.",
+      );
     } finally {
-      setImporting(false);
+      setPreparing(false);
     }
   };
 
   return (
-    <div className="group border-border bg-card relative overflow-hidden rounded-xl border transition-colors hover:border-[color:var(--sg-accent)]/50">
-      <a
-        href={video.url}
-        target="_blank"
-        rel="noreferrer"
-        className="block no-underline"
-      >
-        {/* Cropped square-ish frame, like Instagram's grid, so tall reel covers
-            do not leave big black bars. */}
-        <div className="bg-muted relative aspect-[4/5]">
-          {video.thumbnail && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={video.thumbnail}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          )}
-          {video.privacyStatus !== "public" && (
-            <span className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-black text-white capitalize">
-              <Lock className="h-2.5 w-2.5" />
-              {video.privacyStatus}
-            </span>
-          )}
+    <section className="border-border bg-card/35 rounded-3xl border p-4 sm:p-5">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-black tracking-wide text-[color:var(--sg-accent)] uppercase">
+            Your channels
+          </p>
+          <h2 className="text-foreground mt-1 text-lg font-black">
+            Reuse a video you already posted
+          </h2>
+          <p className="text-muted-foreground mt-1 text-xs leading-5">
+            Select archived originals across platforms, then publish the whole
+            selection to several destinations at once.
+          </p>
         </div>
-      </a>
-
-      {canCrossPost && (
         <button
           type="button"
-          onClick={startCrossPost}
-          disabled={importing}
-          title={failed ? "Import failed, tap to retry" : "Cross-post"}
-          aria-label="Cross-post this video"
-          className={`bg-foreground text-background absolute top-2 right-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full shadow-md transition-opacity hover:opacity-90 disabled:opacity-70 ${
-            failed ? "bg-red-600 text-white" : ""
-          }`}
+          onClick={() => void prepareCrossPost()}
+          disabled={selected.size === 0 || preparing}
+          className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition hover:opacity-90 disabled:opacity-40"
         >
-          {importing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          {preparing ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Send className="h-3.5 w-3.5" />
+            <Send className="h-4 w-4" />
           )}
+          Cross-post {selected.size || ""} selected
         </button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-muted/50 flex rounded-xl p-1">
+          {publishPlatforms.map((candidate) => (
+            <button
+              key={candidate}
+              type="button"
+              onClick={() => setPlatform(candidate)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+                platform === candidate
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {PLATFORMS[candidate].label}
+              {[...selected.values()].filter(
+                (source) => source.platform === candidate,
+              ).length > 0 && (
+                <span className="ml-1.5 text-[color:var(--sg-accent)]">
+                  {
+                    [...selected.values()].filter(
+                      (source) => source.platform === candidate,
+                    ).length
+                  }
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1">
+          {(["recent", "views"] as VideoSort[]).map((candidate) => (
+            <button
+              key={candidate}
+              type="button"
+              onClick={() => setSort(candidate)}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                sort === candidate
+                  ? "text-foreground bg-muted"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {candidate === "recent" ? "Recent" : "Most viewed"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {!connected && videos !== null ? (
+        <div className="border-border text-muted-foreground rounded-2xl border border-dashed px-5 py-9 text-center text-sm">
+          <p>
+            Connect {PLATFORMS[platform].label} to browse videos from this
+            channel.
+          </p>
+          <Link
+            href="/studio/connections"
+            className="mt-2 inline-block font-black text-[color:var(--sg-accent)]"
+          >
+            Open Connections
+          </Link>
+        </div>
+      ) : videos === null ? (
+        <div className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading {PLATFORMS[platform].label}…
+        </div>
+      ) : videos.length === 0 ? (
+        <div className="border-border text-muted-foreground rounded-2xl border border-dashed py-10 text-center text-sm">
+          No videos found. Older TikTok connections may need to reconnect once
+          for video access.
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
+          {videos.map((video) => {
+            const key = sourceKey(platform, video);
+            const active = selected.has(key);
+            const reusable =
+              Boolean(video.mediaKey) ||
+              (platform === "instagram" && Boolean(video.sourceFileUrl));
+            return (
+              <article
+                key={video.id}
+                className={`bg-card group relative overflow-hidden rounded-2xl border transition ${
+                  active
+                    ? "border-[color:var(--sg-accent)] ring-1 ring-[color:var(--sg-accent)]/30"
+                    : "border-border"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggle(video)}
+                  disabled={!reusable}
+                  className="block w-full text-left disabled:cursor-not-allowed"
+                >
+                  <div className="bg-muted relative aspect-[4/5] overflow-hidden">
+                    {video.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={video.thumbnail}
+                        alt=""
+                        className={`h-full w-full object-cover transition duration-300 group-hover:scale-[1.02] ${
+                          reusable ? "" : "opacity-45 grayscale"
+                        }`}
+                      />
+                    ) : null}
+                    <span
+                      className={`absolute top-2 left-2 grid h-7 w-7 place-items-center rounded-full border backdrop-blur ${
+                        active
+                          ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-black"
+                          : "border-white/30 bg-black/45 text-transparent"
+                      }`}
+                    >
+                      <Check className="h-4 w-4" />
+                    </span>
+                    <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[9px] font-black text-white backdrop-blur">
+                      <HardDrive className="h-2.5 w-2.5" />
+                      {reusable ? "Original ready" : "Original unavailable"}
+                    </span>
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-foreground line-clamp-2 min-h-8 text-xs font-black">
+                      {video.title || "Untitled"}
+                    </p>
+                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px]">
+                      <Eye className="h-3 w-3" />
+                      {compactViews(video.viewCount)}
+                      {video.publishedAt ? ` · ${when(video.publishedAt)}` : ""}
+                    </p>
+                  </div>
+                </button>
+                <a
+                  href={video.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`Open ${video.title}`}
+                  className="absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-white backdrop-blur hover:bg-black/75"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
+              </article>
+            );
+          })}
+        </div>
       )}
 
-      <div className="p-2">
-        <p className="text-foreground line-clamp-2 text-xs font-bold">
-          {video.title}
+      {!prepareError && videos?.some((video) => !video.mediaKey) ? (
+        <p className="text-muted-foreground mt-3 text-[11px] leading-5">
+          Platforms expose post metadata, not original files. Yapper can
+          instantly reuse anything it published and can import Instagram
+          originals; older external YouTube and TikTok posts need their original
+          uploaded once.
         </p>
-        <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
-          {video.viewCount > 0 ? (
-            <>
-              <Eye className="h-3 w-3" />
-              {compactViews(video.viewCount)} · {when(video.publishedAt)}
-            </>
-          ) : (
-            when(video.publishedAt)
-          )}
-        </p>
-      </div>
-    </div>
+      ) : null}
+      {prepareError ? (
+        <p className="mt-3 text-xs font-bold text-red-500">{prepareError}</p>
+      ) : null}
+
+      {targets && (
+        <CrossPostSheet
+          key={targets.map((target) => target.id).join(",")}
+          items={targets}
+          onClose={() => setTargets(null)}
+        />
+      )}
+    </section>
   );
 }

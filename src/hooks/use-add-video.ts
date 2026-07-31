@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  createContent,
-  patchContent,
-  type ContentDetail,
-} from "@/lib/content/client";
+import { createContent, type ContentDetail } from "@/lib/content/client";
 
 export type AddVideoState = "idle" | "uploading" | "error";
 export type AddVideoError = "storage_full" | "locked" | "not_video" | "failed";
@@ -30,8 +26,6 @@ export function useAddVideo(onAdded: (item: ContentDetail) => void) {
     setError(null);
     try {
       const title = file.name.replace(/\.[^.]+$/, "") || "Untitled video";
-      const item = await createContent({ title });
-
       const mimeType = file.type || "video/mp4";
       const ext = mimeType.split("/")[1]?.split(";")[0] || "mp4";
       const presign = await fetch("/api/media/upload-url", {
@@ -72,8 +66,13 @@ export function useAddVideo(onAdded: (item: ContentDetail) => void) {
         );
       }
 
-      const linked = await patchContent(item.id, {
+      // Create the visible library row only after the media is safely stored
+      // and registered. A failed upload must never leave a blank orphan idea.
+      const linked = await createContent({
+        title,
         submissionId: regData.submission.id,
+        sourceUrl: "yapper://poster-upload",
+        sourceTitle: "Poster upload",
       });
       setState("idle");
       onAdded(linked);

@@ -2,9 +2,9 @@
  * Upload a video to YouTube via the Data API's resumable protocol: start a
  * session (metadata), then PUT the bytes to the returned session URI.
  *
- * A vertical video under 3 minutes becomes a Short automatically. Note: until
- * the API project passes YouTube's compliance audit, uploads are locked to
- * `private` regardless of what we request — fine for testing the pipeline.
+ * A vertical video under 3 minutes becomes a Short automatically. Yapper asks
+ * YouTube to publish it publicly; YouTube can still force an unverified API
+ * project to private until that project passes its compliance audit.
  */
 export interface YouTubeUploadInput {
   accessToken: string;
@@ -44,7 +44,7 @@ export async function uploadYouTubeVideo(
       categoryId: "22", // People & Blogs
     },
     status: {
-      privacyStatus: input.privacyStatus ?? "private",
+      privacyStatus: input.privacyStatus ?? "public",
       selfDeclaredMadeForKids: false,
     },
   };

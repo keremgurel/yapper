@@ -22,6 +22,7 @@ export default function TimelinePanel({
   onPlay,
   onPause,
   onSeek,
+  playbackPreparing,
   layout,
   onLayout,
 }: {
@@ -33,6 +34,7 @@ export default function TimelinePanel({
   onPlay: () => void;
   onPause: () => void;
   onSeek: (timelineTime: number) => void;
+  playbackPreparing?: boolean;
   layout: LayoutId;
   onLayout: (id: LayoutId) => void;
 }) {
@@ -72,6 +74,7 @@ export default function TimelinePanel({
           onPlay={onPlay}
           onPause={onPause}
           onSplit={() => splitSelected(timelineTime)}
+          playbackPreparing={playbackPreparing}
         />
       </div>
       <div

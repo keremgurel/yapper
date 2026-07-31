@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
 import { getDb } from "./client";
 import {
@@ -171,6 +171,44 @@ export async function failPublishJob(id: string, error: string): Promise<void> {
       updatedAt: new Date(),
     })
     .where(eq(publishJobs.id, id));
+}
+
+/**
+ * Recover the original R2 source for platform posts Yapper published earlier.
+ * Platform list APIs expose metadata and thumbnails, not the uploaded bytes;
+ * keeping this association is what makes an old YouTube, TikTok, or Instagram
+ * post reusable in Poster without downloading a degraded platform transcode.
+ */
+export async function archivedMediaKeysForPosts(
+  userId: string,
+  platform: PublishPlatform,
+  externalPostIds: string[],
+): Promise<Map<string, string>> {
+  if (externalPostIds.length === 0) return new Map();
+  const rows = await getDb()
+    .select({
+      externalPostId: publishJobs.externalPostId,
+      mediaKey: publishJobs.mediaKey,
+    })
+    .from(publishJobs)
+    .where(
+      and(
+        eq(publishJobs.userId, userId),
+        eq(publishJobs.platform, platform),
+        eq(publishJobs.status, "published"),
+        isNotNull(publishJobs.externalPostId),
+        inArray(publishJobs.externalPostId, externalPostIds),
+      ),
+    )
+    .orderBy(desc(publishJobs.updatedAt));
+
+  const result = new Map<string, string>();
+  for (const row of rows) {
+    if (row.externalPostId && !result.has(row.externalPostId)) {
+      result.set(row.externalPostId, row.mediaKey);
+    }
+  }
+  return result;
 }
 
 /** Remove a connection (disconnect). Returns whether a row was deleted. */

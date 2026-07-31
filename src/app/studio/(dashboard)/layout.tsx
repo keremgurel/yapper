@@ -31,7 +31,9 @@ export default function StudioDashboardLayout({
         <SidebarInset className="min-h-[calc(100svh-var(--site-header,3.5rem))]">
           <StudioHeader />
           <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <Show when="signed-in">{children}</Show>
+            <Show when="signed-in">
+              <div className="mx-auto w-full max-w-7xl">{children}</div>
+            </Show>
             <Show when="signed-out">
               <StudioGate />
             </Show>
