@@ -3,7 +3,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { DEFAULT_LAYOUT, isLayoutId, type LayoutId } from "@/lib/studio/layout";
 
-const KEY = "yapper.studio.layout";
+const KEY = "yapper.studio.layout.v2";
 const EVENT = "yapper:layout";
 
 /** The truth when the browser refuses storage, so the picker still works. */

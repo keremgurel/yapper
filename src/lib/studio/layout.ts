@@ -15,7 +15,7 @@ export const LAYOUT_PRESETS: LayoutPreset[] = [
   { id: "cinema", label: "Cinema", hint: "Tall preview beside the panels" },
 ];
 
-export const DEFAULT_LAYOUT: LayoutId = "classic";
+export const DEFAULT_LAYOUT: LayoutId = "cinema";
 
 export function isLayoutId(v: unknown): v is LayoutId {
   return v === "classic" || v === "cinema";

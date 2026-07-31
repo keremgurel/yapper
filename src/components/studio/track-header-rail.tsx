@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Captions, Plus } from "lucide-react";
+import { Captions, Plus, Type } from "lucide-react";
 import TrackControls from "@/components/studio/track-controls";
 import { overlaysOnTrack } from "@/lib/studio/tracks";
 import type { AudioTrack, Overlay } from "@/lib/studio/types";
@@ -22,7 +22,8 @@ function TrackHeaderRail({
   hasBaseTrack,
   baseHidden,
   baseMuted,
-  hasCaptions = false,
+  hasText = false,
+  hasSpokenCaptions = false,
   onToggleTrackHidden,
   onToggleTrackMuted,
   onRemoveTrack,
@@ -41,7 +42,8 @@ function TrackHeaderRail({
   hasBaseTrack: boolean;
   baseHidden: boolean;
   baseMuted: boolean;
-  hasCaptions?: boolean;
+  hasText?: boolean;
+  hasSpokenCaptions?: boolean;
   onToggleTrackHidden: (track: number) => void;
   onToggleTrackMuted: (track: number) => void;
   onRemoveTrack: (track: number) => void;
@@ -59,8 +61,14 @@ function TrackHeaderRail({
       {/* Ruler spacer keeps the first track aligned with the timeline. */}
       <div className="h-5" />
       <div className="space-y-1 py-1">
-        {hasCaptions && (
-          <div className="text-foreground/45 flex h-7 items-center gap-1.5 px-2">
+        {hasText && (
+          <div className="text-foreground/45 flex h-8 items-center gap-1.5 px-2">
+            <Type className="h-3.5 w-3.5 shrink-0" />
+            <span className="text-[10px] font-bold">Text</span>
+          </div>
+        )}
+        {hasSpokenCaptions && (
+          <div className="text-foreground/45 flex h-8 items-center gap-1.5 px-2">
             <Captions className="h-3.5 w-3.5 shrink-0" />
             <span className="text-[10px] font-bold">Captions</span>
           </div>

@@ -7,8 +7,8 @@ import AudioTracksPlayer from "@/components/studio/audio-tracks-player";
 import AutoEditProgress from "@/components/studio/auto-edit-progress";
 import CaptionLayer from "@/components/studio/caption-layer";
 import OverlayLayer from "@/components/studio/overlay-layer";
-import VideoUploader from "@/components/studio/video-uploader";
 import { totalDuration } from "@/lib/studio/clips";
+import { visualFilterCss } from "@/lib/studio/visual-filter";
 
 /**
  * The project stage: the bottom track's picture, the layers over it, and the
@@ -34,8 +34,17 @@ export default function PreviewStage({
   playbackPreparing?: boolean;
   playbackFailed?: boolean;
 }) {
-  const { source, clips, duration, aspect, baseHidden, overlays, audioTracks } =
-    useStudio();
+  const {
+    source,
+    clips,
+    duration,
+    aspect,
+    baseHidden,
+    overlays,
+    audioTracks,
+    visualFilter,
+  } = useStudio();
+  const pictureFilter = visualFilterCss(visualFilter);
 
   const ref = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -97,7 +106,10 @@ export default function PreviewStage({
                 src={source.url}
                 alt=""
                 className="absolute inset-0 h-full w-full rounded-lg object-cover"
-                style={{ visibility: baseVisible ? "visible" : "hidden" }}
+                style={{
+                  visibility: baseVisible ? "visible" : "hidden",
+                  filter: pictureFilter,
+                }}
                 onClick={onTogglePlay}
               />
             )}
@@ -107,7 +119,10 @@ export default function PreviewStage({
               // boundary, instead of making one decoder flush and seek.
               <div
                 className="absolute inset-0"
-                style={{ visibility: baseVisible ? "visible" : "hidden" }}
+                style={{
+                  visibility: baseVisible ? "visible" : "hidden",
+                  filter: pictureFilter,
+                }}
               >
                 {[0, 1].map((slot) => (
                   <video
@@ -132,11 +147,13 @@ export default function PreviewStage({
                 ))}
               </div>
             )}
-            <OverlayLayer
-              overlays={overlays}
-              masterTime={timelineTime}
-              playing={playing}
-            />
+            <div className="absolute inset-0" style={{ filter: pictureFilter }}>
+              <OverlayLayer
+                overlays={overlays}
+                masterTime={timelineTime}
+                playing={playing}
+              />
+            </div>
             <CaptionLayer masterTime={timelineTime} />
           </div>
           <AudioTracksPlayer
@@ -160,7 +177,14 @@ export default function PreviewStage({
           )}
         </>
       ) : (
-        <VideoUploader />
+        <div
+          className="border-foreground/10 relative rounded-lg border bg-black shadow-2xl"
+          style={{ width: stageW || 0, height: stageH || 0 }}
+        >
+          <span className="text-foreground/25 absolute inset-0 grid place-items-center text-[10px] font-bold tracking-[0.12em] uppercase">
+            Preview
+          </span>
+        </div>
       )}
     </div>
   );

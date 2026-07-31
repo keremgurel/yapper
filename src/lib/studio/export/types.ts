@@ -21,6 +21,8 @@ export interface ExportInput {
   baseMuted: boolean;
   /** Project frame width / height. Set by the user, not by any track. */
   aspect: number;
+  /** Canvas-compatible CSS filter applied to picture layers, never captions. */
+  visualFilterCss?: string;
 }
 
 /** Tunables. Defaults aim for visually lossless at the source's native size. */

@@ -197,6 +197,7 @@ export async function exportTimeline(
         base: baseItem,
         overlays: overlayItems,
         captions: captionsAt(clips, captions, captionStyle, t),
+        visualFilterCss: input.visualFilterCss,
       });
 
       const frame = new VideoFrame(canvas, {

@@ -4,7 +4,6 @@ import { Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
 import CaptionSettings from "@/components/studio/captions/caption-settings";
 import CaptionList from "@/components/studio/captions/caption-list";
-import TextHookPopover from "@/components/studio/captions/text-hook-popover";
 
 export default function CaptionsTab({
   onSeek,
@@ -57,9 +56,6 @@ export default function CaptionsTab({
   if (words.length === 0) {
     return (
       <div className="relative flex h-full min-h-0 flex-col">
-        <div className="border-border flex shrink-0 items-center justify-end border-b px-3 py-2">
-          <TextHookPopover currentTimelineTime={currentTimelineTime} />
-        </div>
         <div className="flex flex-col items-start gap-3 p-4">
           <p className="text-foreground/60 text-sm leading-6">
             Spoken captions can be generated from a transcript, or by listening
@@ -73,8 +69,7 @@ export default function CaptionsTab({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className="border-border flex shrink-0 items-center justify-between gap-2 border-b px-3 py-2">
-        <TextHookPopover currentTimelineTime={currentTimelineTime} />
+      <div className="border-border flex shrink-0 items-center justify-end gap-2 border-b px-3 py-2">
         <button
           type="button"
           onClick={generateCaptionsFromTranscript}

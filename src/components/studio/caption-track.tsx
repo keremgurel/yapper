@@ -74,10 +74,10 @@ function CaptionTrack({
   return (
     <div
       className="bg-foreground/[0.025] relative h-8 rounded-md"
-      aria-label={lane === "hook" ? "Text hooks track" : "Captions track"}
+      aria-label={lane === "hook" ? "Text track" : "Captions track"}
     >
       <span className="bg-background/75 text-muted-foreground pointer-events-none absolute top-1/2 left-2 z-20 -translate-y-1/2 rounded px-1.5 py-0.5 text-[8px] font-black tracking-wider uppercase opacity-0 backdrop-blur group-hover:opacity-100">
-        {lane === "hook" ? "Hooks" : "Captions"}
+        {lane === "hook" ? "Text" : "Captions"}
       </span>
       {captions.map((c) => {
         const r = captionTimelineRange(clips, c);

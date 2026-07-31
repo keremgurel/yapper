@@ -578,7 +578,8 @@ export default function StudioTimeline({
           hasBaseTrack={clips.length > 0}
           baseHidden={baseHidden}
           baseMuted={baseMuted}
-          hasCaptions={captions.length > 0}
+          hasText={textHooks.length > 0}
+          hasSpokenCaptions={spokenCaptions.length > 0}
           onToggleTrackHidden={toggleTrackHidden}
           onToggleTrackMuted={toggleTrackMuted}
           onRemoveTrack={removeTrack}
@@ -700,7 +701,7 @@ export default function StudioTimeline({
                 window.addEventListener("pointerup", onUp);
               }}
             >
-              {/* Text hooks and spoken captions are separate lanes. They share
+              {/* Text layers and spoken captions are separate lanes. They share
                   selection/editing machinery, but can overlap in time. */}
               {captions.length > 0 && (
                 <div ref={captionRowRef} className="space-y-1">

@@ -11,7 +11,6 @@ import {
   Trash2,
   Undo2,
   Volume2,
-  Wand2,
 } from "lucide-react";
 import ExportButton from "@/components/studio/export/export-button";
 import { Button } from "@/components/ui/button";
@@ -47,8 +46,6 @@ export default function StudioTransport({
     deleteSelected,
     trimClipsToSpeech,
     detecting,
-    autoEdit,
-    autoEditing,
     snapping,
     toggleSnapping,
     undo,
@@ -57,7 +54,6 @@ export default function StudioTransport({
     canRedo,
     reset,
   } = useStudio();
-  const canAutoEdit = !!source && source.kind !== "image";
   const divider = "bg-border mx-1 h-5 w-px shrink-0";
 
   return (
@@ -91,27 +87,6 @@ export default function StudioTransport({
 
       <ExportButton />
       <span className={divider} aria-hidden />
-
-      {canAutoEdit && (
-        <>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={() => void autoEdit(true)}
-            disabled={autoEditing}
-            title="Transcribe, remove mistakes, cut pauses and silences, and add captions — in one click"
-          >
-            {autoEditing ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="h-3.5 w-3.5" />
-            )}
-            {autoEditing ? "Editing…" : "1-Click + Captions"}
-          </Button>
-          <span className={divider} aria-hidden />
-        </>
-      )}
 
       <Button
         type="button"

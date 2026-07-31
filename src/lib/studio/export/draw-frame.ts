@@ -17,6 +17,7 @@ export interface FrameContent {
     DrawItem & { x: number; y: number; w: number; h: number; crop: OverlayRect }
   >;
   captions: CaptionFrame[];
+  visualFilterCss?: string;
 }
 
 /**
@@ -32,6 +33,9 @@ export function drawFrame(
 ): void {
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.filter = content.visualFilterCss ?? "none";
 
   if (content.base) {
     const { el, naturalW, naturalH } = content.base;
@@ -60,6 +64,8 @@ export function drawFrame(
     ctx.drawImage(ov.el, sx, sy, sw, sh, dx, dy, dw, dh);
     ctx.restore();
   }
+
+  ctx.restore();
 
   for (const caption of content.captions) {
     drawCaption(ctx, caption, width, height);

@@ -8,6 +8,7 @@ import {
   ExportUnsupportedError,
   type ExportProgress,
 } from "@/lib/studio/export/types";
+import { visualFilterCss } from "@/lib/studio/visual-filter";
 
 /** What the export dialog collects before a run starts. */
 export interface ExportRequest {
@@ -50,6 +51,7 @@ export function useTimelineExport() {
     baseHidden,
     baseMuted,
     aspect,
+    visualFilter,
   } = useStudio();
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -80,6 +82,7 @@ export function useTimelineExport() {
             baseHidden,
             baseMuted,
             aspect,
+            visualFilterCss: visualFilterCss(visualFilter),
           },
           {
             options: {
@@ -126,6 +129,7 @@ export function useTimelineExport() {
       baseHidden,
       baseMuted,
       aspect,
+      visualFilter,
       canExport,
       exporting,
     ],

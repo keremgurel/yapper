@@ -89,6 +89,10 @@ import {
 import { duplicatedOverlayPosition } from "@/lib/studio/duplicate";
 import type { AspectId } from "@/lib/studio/aspect";
 import {
+  DEFAULT_VISUAL_FILTER,
+  type VisualFilter,
+} from "@/lib/studio/visual-filter";
+import {
   newAudioId,
   newCaptionId,
   newOverlayId,
@@ -129,6 +133,8 @@ interface StudioContextValue {
   aspectId: AspectId;
   aspect: number;
   setAspectId: (id: AspectId) => void;
+  visualFilter: VisualFilter;
+  setVisualFilter: (filter: VisualFilter) => void;
   selectedClipId: string | null;
   selectedClipIds: string[];
   detecting: boolean;
@@ -170,7 +176,7 @@ interface StudioContextValue {
   autoEditing: boolean;
   autoEditStep: number;
   autoEditCaptions: boolean;
-  addAudio: (file: File) => Promise<void>;
+  addAudio: (file: File, atTimeline?: number) => Promise<void>;
   /** `gesture`: one key per drag, so the whole drag is a single undo step. */
   moveAudio: (id: string, start: number, gesture?: string) => void;
   setAudioRange: (
@@ -320,6 +326,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [setBaseMuted],
   );
   const { aspectId, aspect, setAspectId } = useProjectAspect(source);
+  const [visualFilter, setVisualFilter] = useState(DEFAULT_VISUAL_FILTER);
   const {
     clipIds: selectedClipIds,
     overlayIds: selectedOverlayIds,
@@ -985,7 +992,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, [updateEditor, sel]);
 
   const addAudio = useCallback(
-    async (file: File) => {
+    async (file: File, atTimeline = 0) => {
       if (!file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
         return;
       }
@@ -997,7 +1004,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           name: media.name,
           url: media.url,
           duration: media.duration,
-          start: 0,
+          start: Math.max(0, atTimeline),
           sourceStart: 0,
           mediaDuration: media.duration,
           muted: false,
@@ -1620,6 +1627,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       aspectId,
       aspect,
       setAspectId,
+      visualFilter,
+      setVisualFilter,
       selectedClipId,
       detecting,
       words,
@@ -1741,6 +1750,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       aspectId,
       aspect,
       setAspectId,
+      visualFilter,
       selectedClipId,
       detecting,
       words,
