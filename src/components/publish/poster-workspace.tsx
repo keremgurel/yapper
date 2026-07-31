@@ -578,244 +578,324 @@ export default function PosterWorkspace() {
         </p>
       )}
 
-      <div className="grid min-h-[680px] gap-5 xl:grid-cols-[minmax(0,1fr)_500px]">
-        <section className="border-border bg-card/40 rounded-3xl border p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-foreground text-base font-black">
-                Your finished videos
+      {items !== null && videos.length === 0 ? (
+        <section className="border-border relative overflow-hidden rounded-3xl border bg-[radial-gradient(circle_at_82%_18%,color-mix(in_srgb,var(--sg-accent)_16%,transparent),transparent_34%),var(--card)] p-6 sm:p-10">
+          <div className="relative z-10 grid min-h-[420px] items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="max-w-xl">
+              <span className="bg-muted text-foreground ring-foreground/10 mb-5 grid h-14 w-14 place-items-center rounded-2xl ring-1">
+                <Upload className="h-6 w-6 text-[color:var(--sg-accent)]" />
+              </span>
+              <h2 className="font-display text-foreground text-3xl font-black tracking-tight">
+                Bring your first finished video.
               </h2>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                Select cards to prepare them together.
+              <p className="text-muted-foreground mt-3 max-w-lg text-sm leading-6">
+                Poster keeps the final mile in one place: write the caption,
+                design the cover, choose a date, and only then pick where it
+                publishes.
               </p>
-            </div>
-            {videos.length > 0 && (
               <button
                 type="button"
-                onClick={() =>
-                  setSelectedIds(
-                    selectedIds.size === videos.length
-                      ? new Set()
-                      : new Set(videos.map((video) => video.id)),
-                  )
-                }
-                className="border-border text-foreground hover:bg-muted rounded-full border px-3 py-1.5 text-xs font-black"
+                onClick={() => fileRef.current?.click()}
+                disabled={uploadState === "uploading"}
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-[color:var(--sg-accent)] px-5 py-2.5 text-sm font-black text-black shadow-[0_16px_34px_-18px_var(--sg-accent)] transition hover:brightness-105 disabled:opacity-50"
               >
-                {selectedIds.size === videos.length
-                  ? "Clear selection"
-                  : "Select all"}
+                {uploadState === "uploading" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
+                {uploadState === "uploading"
+                  ? "Adding video…"
+                  : "Add finished video"}
               </button>
-            )}
-          </div>
-
-          {items === null ? (
-            <div className="text-muted-foreground grid min-h-80 place-items-center text-sm">
-              <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-          ) : videos.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              className="border-border hover:bg-muted/40 grid min-h-80 w-full place-items-center rounded-2xl border border-dashed text-center transition"
-            >
-              <span>
-                <span className="bg-muted text-foreground mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl">
-                  <Plus className="h-5 w-5" />
-                </span>
-                <span className="text-foreground block text-sm font-black">
-                  Add your first finished video
-                </span>
-                <span className="text-muted-foreground mt-1 block text-xs">
-                  It will appear here ready to prepare.
-                </span>
-              </span>
-            </button>
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
-              {videos.map((video) => (
-                <VideoCard
-                  key={video.id}
-                  video={video}
-                  selected={selectedIds.has(video.id)}
-                  active={active?.id === video.id}
-                  onToggle={() => toggle(video)}
-                  onOpen={() => setActiveId(video.id)}
-                />
+
+            <div className="grid gap-3">
+              {[
+                {
+                  Icon: PenLine,
+                  step: "01",
+                  title: "Caption it",
+                  detail: "Generate a draft, then make every word yours.",
+                },
+                {
+                  Icon: Palette,
+                  step: "02",
+                  title: "Design the cover",
+                  detail: "Edit a vertical thumbnail and export the real PNG.",
+                },
+                {
+                  Icon: CalendarDays,
+                  step: "03",
+                  title: "Place it on the calendar",
+                  detail: "Schedule one video or a selected batch.",
+                },
+              ].map(({ Icon, step, title, detail }) => (
+                <div
+                  key={step}
+                  className="border-border bg-background/70 flex items-center gap-4 rounded-2xl border p-4 backdrop-blur"
+                >
+                  <span className="text-muted-foreground text-[10px] font-black tracking-wider">
+                    {step}
+                  </span>
+                  <span className="bg-muted text-foreground grid h-10 w-10 shrink-0 place-items-center rounded-xl">
+                    <Icon className="h-4 w-4 text-[color:var(--sg-accent)]" />
+                  </span>
+                  <div>
+                    <p className="text-foreground text-sm font-black">
+                      {title}
+                    </p>
+                    <p className="text-muted-foreground mt-0.5 text-xs leading-5">
+                      {detail}
+                    </p>
+                  </div>
+                </div>
               ))}
             </div>
-          )}
+          </div>
         </section>
-
-        <aside className="border-border bg-card overflow-hidden rounded-3xl border">
-          {active && draft ? (
-            <div className="flex h-full flex-col">
-              <div className="border-border border-b px-5 py-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-black tracking-wide text-[color:var(--sg-accent)] uppercase">
-                      Preparing
-                    </p>
-                    <h2 className="text-foreground mt-1 truncate text-base font-black">
-                      {active.title}
-                    </h2>
-                  </div>
-                  <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold">
-                    {selected.length} selected
-                  </span>
-                </div>
+      ) : (
+        <div className="grid min-h-[680px] gap-5 xl:grid-cols-[minmax(0,1fr)_500px]">
+          <section className="border-border bg-card/40 rounded-3xl border p-4 sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-foreground text-base font-black">
+                  Your finished videos
+                </h2>
+                <p className="text-muted-foreground mt-0.5 text-xs">
+                  Select cards to prepare them together.
+                </p>
               </div>
+              {videos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedIds(
+                      selectedIds.size === videos.length
+                        ? new Set()
+                        : new Set(videos.map((video) => video.id)),
+                    )
+                  }
+                  className="border-border text-foreground hover:bg-muted rounded-full border px-3 py-1.5 text-xs font-black"
+                >
+                  {selectedIds.size === videos.length
+                    ? "Clear selection"
+                    : "Select all"}
+                </button>
+              )}
+            </div>
 
-              <div className="flex-1 space-y-6 overflow-y-auto p-5">
-                <section>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <PenLine className="h-4 w-4 text-[color:var(--sg-accent)]" />
+            {items === null ? (
+              <div className="text-muted-foreground grid min-h-80 place-items-center text-sm">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : videos.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="border-border hover:bg-muted/40 grid min-h-80 w-full place-items-center rounded-2xl border border-dashed text-center transition"
+              >
+                <span>
+                  <span className="bg-muted text-foreground mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl">
+                    <Plus className="h-5 w-5" />
+                  </span>
+                  <span className="text-foreground block text-sm font-black">
+                    Add your first finished video
+                  </span>
+                  <span className="text-muted-foreground mt-1 block text-xs">
+                    It will appear here ready to prepare.
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
+                {videos.map((video) => (
+                  <VideoCard
+                    key={video.id}
+                    video={video}
+                    selected={selectedIds.has(video.id)}
+                    active={active?.id === video.id}
+                    onToggle={() => toggle(video)}
+                    onOpen={() => setActiveId(video.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <aside className="border-border bg-card overflow-hidden rounded-3xl border">
+            {active && draft ? (
+              <div className="flex h-full flex-col">
+                <div className="border-border border-b px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black tracking-wide text-[color:var(--sg-accent)] uppercase">
+                        Preparing
+                      </p>
+                      <h2 className="text-foreground mt-1 truncate text-base font-black">
+                        {active.title}
+                      </h2>
+                    </div>
+                    <span className="bg-muted text-muted-foreground shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold">
+                      {selected.length} selected
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex-1 space-y-6 overflow-y-auto p-5">
+                  <section>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <PenLine className="h-4 w-4 text-[color:var(--sg-accent)]" />
+                        <h3 className="text-foreground text-sm font-black">
+                          Caption
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={selected.length === 0 || generating}
+                        onClick={() => void generateForSelection()}
+                        className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-black transition disabled:opacity-40"
+                      >
+                        {generating ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-3.5 w-3.5" />
+                        )}
+                        Generate for selected
+                      </button>
+                    </div>
+                    <textarea
+                      value={draft.caption}
+                      onChange={(event) =>
+                        setDraft(active.id, {
+                          ...draft,
+                          caption: event.target.value,
+                        })
+                      }
+                      placeholder="Write a caption, or generate one from the video title…"
+                      rows={5}
+                      className="border-border bg-background text-foreground placeholder:text-muted-foreground w-full resize-none rounded-2xl border px-4 py-3 text-sm leading-6 transition outline-none focus:border-[color:var(--sg-accent)]"
+                    />
+                    {captionError && (
+                      <p className="mt-2 text-xs font-bold text-red-500">
+                        {captionError}
+                      </p>
+                    )}
+                  </section>
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Palette className="h-4 w-4 text-[color:var(--sg-accent)]" />
+                      <div>
+                        <h3 className="text-foreground text-sm font-black">
+                          Thumbnail studio
+                        </h3>
+                        <p className="text-muted-foreground text-[11px]">
+                          A focused mini canvas—headline, look, and placement.
+                        </p>
+                      </div>
+                    </div>
+                    <ThumbnailCanvas
+                      draft={draft}
+                      onChange={(next) => setDraft(active.id, next)}
+                      onDownload={() => void downloadThumbnail(draft)}
+                    />
+                  </section>
+
+                  <section className="border-border bg-background/70 rounded-2xl border p-4">
+                    <div className="mb-3 flex items-center gap-2">
+                      <CalendarDays className="h-4 w-4 text-[color:var(--sg-accent)]" />
                       <h3 className="text-foreground text-sm font-black">
-                        Caption
+                        Schedule selected
                       </h3>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_130px]">
+                      <input
+                        type="datetime-local"
+                        value={scheduleValue}
+                        onChange={(event) =>
+                          setScheduleValue(event.target.value)
+                        }
+                        className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none focus:border-[color:var(--sg-accent)]"
+                      />
+                      <select
+                        value={scheduleSpacing}
+                        onChange={(event) =>
+                          setScheduleSpacing(
+                            event.target.value as "same" | "daily",
+                          )
+                        }
+                        className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none"
+                      >
+                        <option value="daily">One per day</option>
+                        <option value="same">Same time</option>
+                      </select>
                     </div>
                     <button
                       type="button"
-                      disabled={selected.length === 0 || generating}
-                      onClick={() => void generateForSelection()}
-                      className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-black transition disabled:opacity-40"
+                      disabled={selected.length === 0 || scheduling}
+                      onClick={() => void scheduleSelection()}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--sg-accent)] px-4 py-2.5 text-sm font-black text-black transition hover:brightness-105 disabled:opacity-40"
                     >
-                      {generating ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      {scheduling ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : scheduled ? (
+                        <CheckCircle2 className="h-4 w-4" />
                       ) : (
-                        <Sparkles className="h-3.5 w-3.5" />
+                        <CalendarDays className="h-4 w-4" />
                       )}
-                      Generate for selected
+                      {scheduling
+                        ? "Scheduling…"
+                        : scheduled
+                          ? "Added to calendar"
+                          : `Schedule ${selected.length || ""} selected`}
                     </button>
-                  </div>
-                  <textarea
-                    value={draft.caption}
-                    onChange={(event) =>
-                      setDraft(active.id, {
-                        ...draft,
-                        caption: event.target.value,
-                      })
-                    }
-                    placeholder="Write a caption, or generate one from the video title…"
-                    rows={5}
-                    className="border-border bg-background text-foreground placeholder:text-muted-foreground w-full resize-none rounded-2xl border px-4 py-3 text-sm leading-6 transition outline-none focus:border-[color:var(--sg-accent)]"
-                  />
-                  {captionError && (
-                    <p className="mt-2 text-xs font-bold text-red-500">
-                      {captionError}
+                  </section>
+                </div>
+
+                <div className="border-border bg-muted/20 border-t p-4">
+                  {publishPrepError && (
+                    <p className="mb-3 text-xs font-bold text-amber-500">
+                      {publishPrepError}
                     </p>
                   )}
-                </section>
-
-                <section>
-                  <div className="mb-3 flex items-center gap-2">
-                    <Palette className="h-4 w-4 text-[color:var(--sg-accent)]" />
-                    <div>
-                      <h3 className="text-foreground text-sm font-black">
-                        Thumbnail studio
-                      </h3>
-                      <p className="text-muted-foreground text-[11px]">
-                        A focused mini canvas—headline, look, and placement.
-                      </p>
-                    </div>
-                  </div>
-                  <ThumbnailCanvas
-                    draft={draft}
-                    onChange={(next) => setDraft(active.id, next)}
-                    onDownload={() => void downloadThumbnail(draft)}
-                  />
-                </section>
-
-                <section className="border-border bg-background/70 rounded-2xl border p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-[color:var(--sg-accent)]" />
-                    <h3 className="text-foreground text-sm font-black">
-                      Schedule selected
-                    </h3>
-                  </div>
-                  <div className="grid gap-2 sm:grid-cols-[1fr_130px]">
-                    <input
-                      type="datetime-local"
-                      value={scheduleValue}
-                      onChange={(event) => setScheduleValue(event.target.value)}
-                      className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none focus:border-[color:var(--sg-accent)]"
-                    />
-                    <select
-                      value={scheduleSpacing}
-                      onChange={(event) =>
-                        setScheduleSpacing(
-                          event.target.value as "same" | "daily",
-                        )
-                      }
-                      className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none"
-                    >
-                      <option value="daily">One per day</option>
-                      <option value="same">Same time</option>
-                    </select>
-                  </div>
                   <button
                     type="button"
-                    disabled={selected.length === 0 || scheduling}
-                    onClick={() => void scheduleSelection()}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--sg-accent)] px-4 py-2.5 text-sm font-black text-black transition hover:brightness-105 disabled:opacity-40"
+                    disabled={preparingPublish}
+                    onClick={() => void preparePublish()}
+                    className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
                   >
-                    {scheduling ? (
+                    {preparingPublish ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : scheduled ? (
-                      <CheckCircle2 className="h-4 w-4" />
                     ) : (
-                      <CalendarDays className="h-4 w-4" />
+                      <Send className="h-4 w-4" />
                     )}
-                    {scheduling
-                      ? "Scheduling…"
-                      : scheduled
-                        ? "Added to calendar"
-                        : `Schedule ${selected.length || ""} selected`}
+                    {preparingPublish
+                      ? "Preparing caption and cover…"
+                      : "Choose destination and publish"}
                   </button>
-                </section>
+                </div>
               </div>
-
-              <div className="border-border bg-muted/20 border-t p-4">
-                {publishPrepError && (
-                  <p className="mb-3 text-xs font-bold text-amber-500">
-                    {publishPrepError}
+            ) : (
+              <div className="grid h-full min-h-[560px] place-items-center p-8 text-center">
+                <div>
+                  <span className="bg-muted text-muted-foreground mx-auto grid h-14 w-14 place-items-center rounded-2xl">
+                    <ImageIcon className="h-6 w-6" />
+                  </span>
+                  <h2 className="text-foreground mt-4 text-base font-black">
+                    Pick a video to prepare
+                  </h2>
+                  <p className="text-muted-foreground mt-1 max-w-xs text-sm leading-6">
+                    Its caption, thumbnail, schedule, and publish controls will
+                    appear here.
                   </p>
-                )}
-                <button
-                  type="button"
-                  disabled={preparingPublish}
-                  onClick={() => void preparePublish()}
-                  className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
-                >
-                  {preparingPublish ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                  {preparingPublish
-                    ? "Preparing caption and cover…"
-                    : "Choose destination and publish"}
-                </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="grid h-full min-h-[560px] place-items-center p-8 text-center">
-              <div>
-                <span className="bg-muted text-muted-foreground mx-auto grid h-14 w-14 place-items-center rounded-2xl">
-                  <ImageIcon className="h-6 w-6" />
-                </span>
-                <h2 className="text-foreground mt-4 text-base font-black">
-                  Pick a video to prepare
-                </h2>
-                <p className="text-muted-foreground mt-1 max-w-xs text-sm leading-6">
-                  Its caption, thumbnail, schedule, and publish controls will
-                  appear here.
-                </p>
-              </div>
-            </div>
-          )}
-        </aside>
-      </div>
+            )}
+          </aside>
+        </div>
+      )}
 
       {target && (
         <CrossPostSheet
