@@ -7,10 +7,9 @@ import HomeJsonLd from "@/app/home-json-ld";
 import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import Waitlist from "@/components/waitlist";
 import StudioWorkflowTour from "@/components/marketing/studio-workflow-tour";
+import FeatureDeck from "@/components/marketing/feature-deck";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
-import { marketingFeatures } from "@/data/marketing-features";
 
 export const metadata: Metadata = {
   title: "Yapper: The Mobile and Desktop Content Studio for Video Creators",
@@ -58,43 +57,7 @@ export default function HomePage() {
 
       <StudioWorkflowTour />
 
-      <section className="mx-auto max-w-[1100px] px-4 py-20 sm:px-6 sm:py-24">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-foreground text-4xl font-black tracking-[-0.04em] sm:text-6xl">
-            Everything stays in one creative loop.
-          </h2>
-          <p className="text-muted-foreground mx-auto mt-5 max-w-2xl leading-relaxed">
-            No copying context between five tools. The captured idea stays
-            connected to its script, takes, transcript, publishing assets,
-            schedule, and performance.
-          </p>
-        </div>
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {marketingFeatures.map((feature) => (
-            <Card
-              key={feature.slug}
-              className="group gap-0 p-6 transition-all hover:-translate-y-0.5 hover:border-[var(--sg-border-strong)] hover:shadow-md"
-            >
-              <Link href={`/features/${feature.slug}`} className="no-underline">
-                <div
-                  className="mb-5 h-1 w-10 rounded-full"
-                  style={{ background: feature.accent }}
-                />
-                <h3 className="text-foreground text-xl font-black">
-                  {feature.shortTitle}
-                </h3>
-                <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                  {feature.description}
-                </p>
-                <span className="text-foreground mt-5 inline-flex items-center gap-2 text-sm font-bold">
-                  Learn more
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </Link>
-            </Card>
-          ))}
-        </div>
-      </section>
+      <FeatureDeck />
 
       <section className="mx-auto max-w-[1100px] px-4 pb-20 sm:px-6 sm:pb-24">
         <div className="sg-panel grid gap-7 p-8 sm:p-12 md:grid-cols-[auto_1fr_auto] md:items-center">
