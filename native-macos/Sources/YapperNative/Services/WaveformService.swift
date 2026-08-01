@@ -6,7 +6,7 @@ actor WaveformService {
 
     func peaks(
         for media: ProjectMedia,
-        targetBins: Int = 1_600,
+        targetBins requestedBins: Int? = nil,
         onProgress: Progress
     ) async throws -> [Float] {
         let asset = AVURLAsset(url: media.url)
@@ -39,6 +39,12 @@ actor WaveformService {
             throw reader.error ?? NativeEditorError.exportFailed("Waveform decoding did not start.")
         }
 
+        // Keep enough detail for the timeline's maximum zoom. A fixed bin count
+        // made long recordings look like a few isolated needles.
+        let targetBins = requestedBins ?? max(
+            2_400,
+            min(120_000, Int(ceil(media.duration * 72)))
+        )
         let expectedSamples = max(1, Int(media.duration * sampleRate))
         let samplesPerBin = max(1, expectedSamples / max(1, targetBins))
         var peaks: [Float] = []
@@ -74,7 +80,7 @@ actor WaveformService {
                 }
             }
 
-            if peaks.count.isMultiple(of: 64), !peaks.isEmpty {
+            if peaks.count.isMultiple(of: 256), !peaks.isEmpty {
                 await onProgress(
                     peaks,
                     min(0.99, Double(peaks.count) / Double(targetBins))

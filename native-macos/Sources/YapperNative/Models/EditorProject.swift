@@ -165,8 +165,8 @@ struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
         duration: Double = 4,
         x: Double = 0.5,
         y: Double = 0.18,
-        width: Double = 0.78,
-        fontScale: Double = 0.055,
+        width: Double = 0.74,
+        fontScale: Double = 0.043,
         style: TextLayerStyle = .whiteCard,
         font: TextLayerFont = .rounded
     ) {

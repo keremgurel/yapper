@@ -4,11 +4,17 @@ import Combine
 import CoreGraphics
 import Foundation
 
+struct EditorInspectorRequest: Equatable, Sendable {
+    let id = UUID()
+    let tool: String
+}
+
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject()
     @Published var selectedClipID: UUID?
     @Published var selectedTextLayerID: UUID?
+    @Published private(set) var inspectorRequest: EditorInspectorRequest?
     @Published private(set) var currentTime = 0.0
     @Published private(set) var isPlaying = false
     @Published private(set) var isBusy = false
@@ -217,9 +223,9 @@ final class EditorSession: ObservableObject {
             text: asHook ? "Your hook" : "Text",
             timelineStart: start,
             duration: min(asHook ? 4 : 5, available),
-            y: asHook ? 0.16 : 0.5,
-            width: asHook ? 0.82 : 0.7,
-            fontScale: asHook ? 0.06 : 0.05,
+            y: asHook ? 0.14 : 0.5,
+            width: asHook ? 0.74 : 0.7,
+            fontScale: asHook ? 0.043 : 0.05,
             style: asHook ? .whiteCard : .plain,
             font: asHook ? .rounded : .modern
         )
@@ -227,12 +233,14 @@ final class EditorSession: ObservableObject {
         layers.append(layer)
         project.textLayers = layers
         selectedTextLayerID = layer.id
+        inspectorRequest = EditorInspectorRequest(tool: "Text")
         project.updatedAt = Date()
         scheduleVisualCommit()
     }
 
     func selectTextLayer(_ id: UUID) {
         selectedTextLayerID = id
+        inspectorRequest = EditorInspectorRequest(tool: "Text")
     }
 
     func updateTextLayer(_ updated: ProjectTextLayer) {

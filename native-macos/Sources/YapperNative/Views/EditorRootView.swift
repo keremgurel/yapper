@@ -43,12 +43,26 @@ struct EditorRootView: View {
                 EditorHeader(session: session)
                 Divider().overlay(Color.studioLine)
             }
-            VSplitView {
-                EditorUpperWorkspace(session: session, layoutMode: layoutMode)
+            if layoutMode == .tallPreview {
+                EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
+                    VSplitView {
+                        WorkbenchPanel(session: session)
+                            .frame(minHeight: 320, idealHeight: 610)
+
+                        TimelinePanel(session: session)
+                            .frame(minHeight: 230, idealHeight: 330)
+                    }
+                }
+            } else {
+                VSplitView {
+                    EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
+                        WorkbenchPanel(session: session)
+                    }
                     .frame(minHeight: 390, idealHeight: 610)
 
-                TimelinePanel(session: session)
-                    .frame(minHeight: 230, idealHeight: 320)
+                    TimelinePanel(session: session)
+                        .frame(minHeight: 230, idealHeight: 320)
+                }
             }
         }
         .background(Color.editorBackground)
@@ -66,9 +80,10 @@ struct EditorRootView: View {
     }
 }
 
-private struct EditorUpperWorkspace: View {
+private struct EditorHorizontalWorkspace<LeftContent: View>: View {
     @ObservedObject var session: EditorSession
     let layoutMode: EditorLayoutMode
+    @ViewBuilder let leftContent: LeftContent
     @AppStorage("editorStandardWorkbenchFraction") private var standardWorkbenchFraction = 0.0
     @AppStorage("editorTallWorkbenchFraction") private var tallWorkbenchFraction = 0.0
     @State private var dragStartFraction: Double?
@@ -81,7 +96,7 @@ private struct EditorUpperWorkspace: View {
             let workbenchWidth = max(0, (proxy.size.width - dividerWidth) * fraction)
 
             HStack(spacing: 0) {
-                WorkbenchPanel(session: session)
+                leftContent
                     .frame(width: workbenchWidth)
                     .frame(maxHeight: .infinity)
 

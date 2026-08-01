@@ -85,6 +85,13 @@ struct WorkbenchPanel: View {
         }
         .coordinateSpace(name: "workbenchDock")
         .onAppear(perform: restoreTabOrder)
+        .onChange(of: session.inspectorRequest) { _, request in
+            guard let request, let tab = WorkbenchTab(rawValue: request.tool) else { return }
+            withAnimation(.easeOut(duration: 0.14)) {
+                selectedTab = tab
+                dockFocus = .primary
+            }
+        }
     }
 
     private var workbenchTabStrip: some View {

@@ -69,4 +69,15 @@ struct EditorProjectTests {
         #expect(layer.isVisible(at: 4.75))
         #expect(!layer.isVisible(at: 4.76))
     }
+
+    @MainActor
+    @Test func selectingTextRequestsItsInspector() {
+        let session = EditorSession()
+        let layerID = UUID()
+
+        session.selectTextLayer(layerID)
+
+        #expect(session.selectedTextLayerID == layerID)
+        #expect(session.inspectorRequest?.tool == "Text")
+    }
 }

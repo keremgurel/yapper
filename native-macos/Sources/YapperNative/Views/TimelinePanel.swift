@@ -67,7 +67,6 @@ private struct TimelineContent: View {
         let overlayRowY = 45.0 + (hasText ? 60.0 : 0)
         let clipRowY = 45.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
         let playheadHeight = 103.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
-        let scrubHeight = 125.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
 
         ZStack(alignment: .topLeading) {
             Color.editorBackground
@@ -82,6 +81,7 @@ private struct TimelineContent: View {
                             media: media,
                             thumbnails: session.thumbnailsByMedia[media.id] ?? [],
                             peaks: session.waveformByMedia[media.id] ?? [],
+                            waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
                             selected: session.selectedClipID == clip.id
                         )
                         .frame(
@@ -103,33 +103,35 @@ private struct TimelineContent: View {
                 ForEach(textLayers) { layer in
                     let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
                     let width = max(18, contentWidth * layer.duration / max(0.001, session.duration))
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
-                        .overlay(alignment: .leading) {
-                            HStack(spacing: 5) {
-                                Image(systemName: "textformat")
-                                Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
+                    Button {
+                        session.selectTextLayer(layer.id)
+                        session.scrub(to: layer.timelineStart)
+                        session.finishScrubbing(at: layer.timelineStart)
+                    } label: {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
+                            .overlay(alignment: .leading) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "textformat")
+                                    Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
+                                }
+                                .font(.studioCaptionStrong)
+                                .padding(.horizontal, 7)
                             }
-                            .font(.studioCaptionStrong)
-                            .padding(.horizontal, 7)
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .stroke(
-                                    session.selectedTextLayerID == layer.id
-                                        ? Color.yapperOrange.opacity(0.92)
-                                        : Color.secondary.opacity(0.42),
-                                    lineWidth: session.selectedTextLayerID == layer.id ? 1.15 : 0.7
-                                )
-                        }
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .stroke(
+                                        session.selectedTextLayerID == layer.id
+                                            ? Color.yapperOrange.opacity(0.92)
+                                            : Color.secondary.opacity(0.42),
+                                        lineWidth: session.selectedTextLayerID == layer.id ? 1.15 : 0.7
+                                    )
+                            }
+                    }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Text layer: \(layer.text)")
                         .frame(width: width, height: 42)
                         .offset(x: startX, y: textRowY)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            session.selectTextLayer(layer.id)
-                            session.scrub(to: layer.timelineStart)
-                            session.finishScrubbing(at: layer.timelineStart)
-                        }
                         .zIndex(3)
                 }
             }
@@ -176,36 +178,49 @@ private struct TimelineContent: View {
                     .zIndex(4)
             }
 
+            // Scrubbing belongs to the ruler and base media track. Keeping the
+            // scrub surface out of text/overlay rows lets those layers receive
+            // their own clicks, drags, and future trim handles.
             Rectangle()
                 .fill(.clear)
                 .contentShape(Rectangle())
-                .frame(width: contentWidth, height: scrubHeight)
+                .frame(width: contentWidth, height: 20)
                 .offset(y: 25)
                 .zIndex(1)
-                .gesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                        .onChanged { value in
-                            let time = TimelineMetrics.time(
-                                for: value.location.x,
-                                duration: session.duration,
-                                width: contentWidth
-                            )
-                            if let hit = session.project.clip(at: time) {
-                                session.select(session.project.clips[hit.index].id)
-                            }
-                            session.scrub(to: time)
-                        }
-                        .onEnded { value in
-                            session.finishScrubbing(
-                                at: TimelineMetrics.time(
-                                    for: value.location.x,
-                                    duration: session.duration,
-                                    width: contentWidth
-                                )
-                            )
-                        }
-                )
+                .gesture(scrubGesture)
+
+            Rectangle()
+                .fill(.clear)
+                .contentShape(Rectangle())
+                .frame(width: contentWidth, height: 88)
+                .offset(y: clipRowY)
+                .zIndex(1)
+                .gesture(scrubGesture)
         }
+    }
+
+    private var scrubGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .onChanged { value in
+                let time = TimelineMetrics.time(
+                    for: value.location.x,
+                    duration: session.duration,
+                    width: contentWidth
+                )
+                if let hit = session.project.clip(at: time) {
+                    session.select(session.project.clips[hit.index].id)
+                }
+                session.scrub(to: time)
+            }
+            .onEnded { value in
+                session.finishScrubbing(
+                    at: TimelineMetrics.time(
+                        for: value.location.x,
+                        duration: session.duration,
+                        width: contentWidth
+                    )
+                )
+            }
     }
 }
 
@@ -250,6 +265,7 @@ private struct TimelineClipCell: View {
     let media: ProjectMedia
     let thumbnails: [CGImage]
     let peaks: [Float]
+    let waveformProgress: Double
     let selected: Bool
 
     var body: some View {
@@ -301,8 +317,11 @@ private struct TimelineClipCell: View {
 
     private func slicedPeaks() -> [Float] {
         guard !peaks.isEmpty, media.duration > 0 else { return [] }
-        let start = min(peaks.count, max(0, Int(clip.sourceStart / media.duration * Double(peaks.count))))
-        let end = min(peaks.count, max(start, Int(clip.sourceEnd / media.duration * Double(peaks.count))))
+        let estimatedTotal = waveformProgress > 0 && waveformProgress < 1
+            ? max(peaks.count, Int(ceil(Double(peaks.count) / waveformProgress)))
+            : peaks.count
+        let start = min(peaks.count, max(0, Int(clip.sourceStart / media.duration * Double(estimatedTotal))))
+        let end = min(peaks.count, max(start, Int(clip.sourceEnd / media.duration * Double(estimatedTotal))))
         return Array(peaks[start ..< end])
     }
 }
@@ -395,7 +414,10 @@ private struct WaveformShape: View {
     var body: some View {
         Canvas { context, size in
             guard !peaks.isEmpty, size.width > 0 else { return }
-            let columns = max(1, min(peaks.count, Int(size.width / 2)))
+            let barWidth: CGFloat = 1.5
+            let barGap: CGFloat = 1
+            let step = barWidth + barGap
+            let columns = max(1, min(peaks.count, Int(ceil(size.width / step))))
             let stride = max(1, peaks.count / columns)
             let middle = size.height / 2
             for column in 0 ..< columns {
@@ -403,12 +425,20 @@ private struct WaveformShape: View {
                 let end = min(peaks.count, start + stride)
                 guard start < end else { continue }
                 let peak = peaks[start ..< end].max() ?? 0
-                let height = max(1, CGFloat(peak) * size.height * 0.92)
-                let x = CGFloat(column) / CGFloat(max(1, columns - 1)) * size.width
-                var path = Path()
-                path.move(to: CGPoint(x: x, y: middle - height / 2))
-                path.addLine(to: CGPoint(x: x, y: middle + height / 2))
-                context.stroke(path, with: .color(color), lineWidth: 1)
+                let emphasized = pow(CGFloat(max(0, peak)), 0.72)
+                let height = max(1.5, emphasized * (size.height - 2))
+                let x = CGFloat(column) * step
+                guard x < size.width else { break }
+                let rect = CGRect(
+                    x: x,
+                    y: middle - height / 2,
+                    width: min(barWidth, size.width - x),
+                    height: height
+                )
+                context.fill(
+                    Path(roundedRect: rect, cornerRadius: 0.75),
+                    with: .color(color)
+                )
             }
         }
     }

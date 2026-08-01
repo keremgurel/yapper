@@ -282,26 +282,7 @@ private struct StudioTopBar: View {
                 .disabled(session.project.clips.isEmpty || session.isExporting)
             }
 
-            Button(action: toggleTheme) {
-                HStack(spacing: 3) {
-                    ForEach(StudioTheme.allCases, id: \.rawValue) { option in
-                        Image(systemName: option == .light ? "sun.max.fill" : "moon.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(theme == option ? Color.yapperOrange : Color.secondary)
-                            .frame(width: 27, height: 27)
-                            .background {
-                                if theme == option {
-                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                                        .fill(Color.studioSelectedFill)
-                                }
-                            }
-                    }
-                }
-                .padding(3)
-            }
-            .buttonStyle(.plain)
-            .studioGlass(radius: 10, tint: Color.yapperOrange.opacity(0.06), interactive: true)
-            .help(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
+            NativeThemeSwitcher(theme: theme, action: toggleTheme)
 
             WorkspaceProfileMenu()
         }
@@ -311,6 +292,89 @@ private struct StudioTopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
         }
+    }
+}
+
+private struct NativeThemeSwitcher: View {
+    let theme: StudioTheme
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .fill(trackGradient)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .stroke(trackStroke, lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(theme == .dark ? 0.34 : 0.12), radius: 7, y: 3)
+
+                HStack {
+                    Image(systemName: "sun.max.fill")
+                        .foregroundStyle(Color.orange.opacity(theme == .light ? 0.32 : 0.82))
+                    Spacer()
+                    Image(systemName: "moon.fill")
+                        .foregroundStyle(Color.indigo.opacity(theme == .dark ? 0.32 : 0.72))
+                }
+                .font(.system(size: 11, weight: .bold))
+                .padding(.horizontal, 10)
+
+                Circle()
+                    .fill(knobGradient)
+                    .overlay {
+                        Circle().stroke(Color.white.opacity(theme == .dark ? 0.18 : 0.9), lineWidth: 1)
+                    }
+                    .shadow(color: .black.opacity(0.34), radius: 4, y: 2)
+                    .overlay {
+                        Image(systemName: theme == .dark ? "moon.fill" : "sun.max.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(theme == .dark ? Color.yellow.opacity(0.9) : Color.orange)
+                    }
+                    .frame(width: 26, height: 26)
+                    .offset(x: theme == .dark ? 17 : -17)
+            }
+            .frame(width: 68, height: 34)
+            .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.32, dampingFraction: 0.78), value: theme)
+        .help(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
+        .accessibilityLabel(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
+    }
+
+    private var trackGradient: LinearGradient {
+        if theme == .dark {
+            return LinearGradient(
+                colors: [Color(red: 0.13, green: 0.17, blue: 0.24), Color(red: 0.035, green: 0.05, blue: 0.09)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [Color.white, Color(red: 0.82, green: 0.86, blue: 0.91)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var knobGradient: LinearGradient {
+        if theme == .dark {
+            return LinearGradient(
+                colors: [Color(red: 0.38, green: 0.44, blue: 0.54), Color(red: 0.14, green: 0.18, blue: 0.25)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+        return LinearGradient(
+            colors: [.white, Color(red: 0.94, green: 0.95, blue: 0.97)],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    private var trackStroke: Color {
+        theme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
     }
 }
 
