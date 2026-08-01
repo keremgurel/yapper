@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Layers, Trash2 } from "lucide-react";
+import { Archive, Layers, Trash2 } from "lucide-react";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
 import IdeaCapture from "@/components/ideas/idea-capture";
 import IdeaCard from "@/components/ideas/idea-card";
+import InstagramImportSheet from "@/components/ideas/instagram-import-sheet";
 
 /**
  * The Idea bank surface: capture at the top, a live list below (a working
@@ -12,10 +13,19 @@ import IdeaCard from "@/components/ideas/idea-card";
  * multi-select bar to send chosen ideas to the Content Library.
  */
 export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
-  const { bank, expanding, capture, retry, remove, curate } =
-    useIdeaBank(pillars);
+  const {
+    bank,
+    sourceUrls,
+    expanding,
+    capture,
+    importInstagramSaves,
+    retry,
+    remove,
+    curate,
+  } = useIdeaBank(pillars);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [curating, setCurating] = useState(false);
+  const [instagramImportOpen, setInstagramImportOpen] = useState(false);
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -44,14 +54,25 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
 
   return (
     <div className="w-full pb-24">
-      <header className="mb-5">
-        <h1 className="font-display text-foreground text-2xl font-black">
-          Idea bank
-        </h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Save the original reference, understand why it works, and adapt it
-          without flattening every idea into the same format.
-        </p>
+      <header className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="font-display text-foreground text-2xl font-black">
+            Idea bank
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Save the original reference, understand why it works, and adapt it
+            without flattening every idea into the same format.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setInstagramImportOpen(true)}
+          className="border-border text-foreground hover:bg-muted flex shrink-0 items-center gap-2 self-start rounded-full border px-3.5 py-2 text-xs font-bold transition-colors sm:self-auto"
+          title="Step-by-step Instagram saved-post import"
+        >
+          <Archive className="h-3.5 w-3.5 text-[color:var(--sg-accent)]" />
+          Import Instagram saves
+        </button>
       </header>
 
       <IdeaCapture onCapture={capture} />
@@ -108,6 +129,13 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
           </div>
         </div>
       )}
+
+      <InstagramImportSheet
+        open={instagramImportOpen}
+        onOpenChange={setInstagramImportOpen}
+        existingUrls={sourceUrls}
+        onImport={importInstagramSaves}
+      />
     </div>
   );
 }

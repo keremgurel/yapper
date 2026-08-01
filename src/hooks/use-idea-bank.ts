@@ -9,6 +9,7 @@ import {
 import { parseCapture } from "@/lib/ideas/parse-capture";
 import {
   addIdea,
+  addIdeas,
   loadIdeas,
   newIdea,
   removeIdeas,
@@ -16,6 +17,8 @@ import {
   updateIdea,
 } from "@/lib/ideas/store";
 import type { Idea } from "@/lib/ideas/types";
+import type { InstagramSavedEntry } from "@/lib/ideas/instagram-saved-import";
+import { normalizeInspoUrl } from "@/lib/inspiration/dedupe";
 
 /**
  * The Idea bank lifecycle: capture a raw idea, auto-expand it in the background
@@ -79,6 +82,38 @@ export function useIdeaBank(pillars: string[] = []) {
     [resolveAndExpand],
   );
 
+  const importInstagramSaves = useCallback(
+    (entries: InstagramSavedEntry[]): number => {
+      const existing = new Set(
+        loadIdeas()
+          .map((idea) => idea.source?.url)
+          .filter((url): url is string => Boolean(url))
+          .map(normalizeInspoUrl),
+      );
+      const imported: Idea[] = [];
+      for (const entry of entries) {
+        const key = normalizeInspoUrl(entry.url);
+        if (existing.has(key)) continue;
+        existing.add(key);
+        imported.push(
+          newIdea({
+            url: entry.url,
+            source: {
+              url: entry.url,
+              title: entry.title,
+              platform: "instagram",
+              collection: entry.collection,
+              savedAt: entry.savedAt,
+            },
+          }),
+        );
+      }
+      if (imported.length) setIdeas(addIdeas(imported));
+      return imported.length;
+    },
+    [],
+  );
+
   const retry = useCallback(
     (id: string) => {
       const idea = loadIdeas().find((i) => i.id === id);
@@ -105,5 +140,16 @@ export function useIdeaBank(pillars: string[] = []) {
   );
 
   const bank = ideas.filter((i) => i.stage === "bank");
-  return { bank, expanding, capture, retry, remove, curate };
+  return {
+    bank,
+    sourceUrls: ideas
+      .map((idea) => idea.source?.url)
+      .filter((url): url is string => Boolean(url)),
+    expanding,
+    capture,
+    importInstagramSaves,
+    retry,
+    remove,
+    curate,
+  };
 }

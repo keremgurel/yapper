@@ -53,6 +53,7 @@ export default function VoiceWaveform({
       const c2d = canvas.getContext("2d");
       if (!c2d) return;
       const BARS = 24;
+      const waveformColor = getComputedStyle(canvas).color || "#ffffff";
 
       const draw = () => {
         if (audio.state === "suspended") void audio.resume().catch(() => {});
@@ -64,7 +65,7 @@ export default function VoiceWaveform({
         if (canvas.width !== w) canvas.width = w;
         if (canvas.height !== h) canvas.height = h;
         c2d.clearRect(0, 0, w, h);
-        c2d.fillStyle = "#ffffff";
+        c2d.fillStyle = waveformColor;
 
         const seg = Math.max(1, Math.floor(n / BARS));
         const barW = Math.max(2, Math.round(dpr * 2.5));

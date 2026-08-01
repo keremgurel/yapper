@@ -1,10 +1,7 @@
 import Link from "next/link";
-import { Show, SignInButton } from "@clerk/nextjs";
 
-import StudioNavDropdown from "@/components/studio-shell/studio-nav-dropdown";
 import ResourcesNavDropdown from "@/components/training/resources-nav-dropdown";
 import MobileNav from "@/components/training/mobile-nav";
-import UserMenu from "@/components/account/user-menu";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import { Button } from "@/components/ui/button";
@@ -25,9 +22,14 @@ export default function TrainingHeader() {
         </span>
       </Link>
 
-      {/* Center: Create is the main app; Resources are the free SEO tools. */}
+      {/* Center: marketing product pages + the free SEO resources. */}
       <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
-        <StudioNavDropdown />
+        <Link
+          href="/features"
+          className="text-foreground/80 hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-[14px] font-semibold no-underline transition-colors"
+        >
+          Features
+        </Link>
         <ResourcesNavDropdown />
         <Link
           href="/blog"
@@ -37,18 +39,16 @@ export default function TrainingHeader() {
         </Link>
       </nav>
 
-      {/* Right: account (signed in) or sign in, then the theme toggle */}
+      {/* Right: waitlist CTA and the original theme switcher. */}
       <div className="flex items-center gap-2">
-        <Show when="signed-out">
-          <SignInButton mode="modal" withSignUp>
-            <Button type="button" size="sm">
-              Sign in
-            </Button>
-          </SignInButton>
-        </Show>
-        <Show when="signed-in">
-          <UserMenu />
-        </Show>
+        <Button
+          asChild
+          type="button"
+          size="sm"
+          className="hidden sm:inline-flex"
+        >
+          <Link href="/#waitlist">Join waitlist</Link>
+        </Button>
 
         {/* The switcher is 104x64; box it at the scaled size so it doesn't
             reserve dead space and throw the spacing off. */}

@@ -1,19 +1,7 @@
-import { getJsonLdFaqEntries } from "@/data/faq";
 import { getSiteUrl, safeJsonLdStringify } from "@/lib/json-ld";
+import { marketingFeatures } from "@/data/marketing-features";
 
 const SITE = getSiteUrl();
-
-const faqEntries = getJsonLdFaqEntries();
-
-const faqJsonLd = {
-  "@type": "FAQPage",
-  "@id": `${SITE}/#faq`,
-  mainEntity: faqEntries.map((e) => ({
-    "@type": "Question",
-    name: e.name,
-    acceptedAnswer: { "@type": "Answer", text: e.text },
-  })),
-};
 
 const graph = [
   {
@@ -22,7 +10,7 @@ const graph = [
     url: SITE,
     name: "Yapper",
     description:
-      "Free random topic generator for impromptu speaking practice, table topics, and speech prompts in your browser.",
+      "The desktop content studio for video creators, plus free creator and speaking resources.",
     publisher: { "@id": `${SITE}/#organization` },
     inLanguage: "en",
   },
@@ -33,22 +21,16 @@ const graph = [
     url: SITE,
   },
   {
-    "@type": "WebApplication",
-    "@id": `${SITE}/#webapp`,
-    name: "Yapper",
+    "@type": "SoftwareApplication",
+    "@id": `${SITE}/#software`,
+    name: "Yapper Studio",
     url: SITE,
-    applicationCategory: "EducationalApplication",
-    operatingSystem: "Web",
-    browserRequirements: "Requires JavaScript. Microphone and camera optional.",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "USD",
-    },
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "macOS, Windows",
     description:
-      "Free impromptu speaking practice with random speech topics, optional timer, and optional camera or mic recording.",
+      "A desktop creator studio for capturing ideas, writing scripts, recording video, editing by transcript, adding captions, and publishing content.",
+    featureList: marketingFeatures.map((feature) => feature.shortTitle),
   },
-  faqJsonLd,
 ];
 
 export default function HomeJsonLd() {

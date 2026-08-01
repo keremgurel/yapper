@@ -10,10 +10,17 @@ const MIN_PREVIEW_WIDTH = 420;
 const MIN_TIMELINE_HEIGHT = 220;
 const MIN_PREVIEW_HEIGHT = 260;
 
+export type EditorViewMode = "classic" | "cinema" | "focus";
+
 type StoredLayout = {
   workbenchWidth: number;
   timelineHeight: number;
+  mode: EditorViewMode;
 };
+
+function isViewMode(value: unknown): value is EditorViewMode {
+  return value === "classic" || value === "cinema" || value === "focus";
+}
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
@@ -26,7 +33,11 @@ function readStoredLayout(): StoredLayout | null {
       typeof parsed?.workbenchWidth === "number" &&
       typeof parsed?.timelineHeight === "number"
     ) {
-      return parsed;
+      return {
+        workbenchWidth: parsed.workbenchWidth,
+        timelineHeight: parsed.timelineHeight,
+        mode: isViewMode(parsed.mode) ? parsed.mode : "classic",
+      };
     }
   } catch {
     // A blocked or corrupt preference should never block the editor.
@@ -50,9 +61,11 @@ function storeLayout(layout: StoredLayout) {
 export function useEditorWorkspaceLayout() {
   const [workbenchWidth, setWorkbenchWidth] = useState(DEFAULT_WORKBENCH_WIDTH);
   const [timelineHeight, setTimelineHeight] = useState(DEFAULT_TIMELINE_HEIGHT);
+  const [mode, setModeState] = useState<EditorViewMode>("classic");
   const dimensions = useRef({
     workbenchWidth: DEFAULT_WORKBENCH_WIDTH,
     timelineHeight: DEFAULT_TIMELINE_HEIGHT,
+    mode: "classic" as EditorViewMode,
   });
   const drag = useRef<
     | { axis: "x"; origin: number; size: number }
@@ -64,6 +77,7 @@ export function useEditorWorkspaceLayout() {
     dimensions.current = next;
     setWorkbenchWidth(next.workbenchWidth);
     setTimelineHeight(next.timelineHeight);
+    setModeState(next.mode);
   }, []);
 
   useEffect(() => {
@@ -193,14 +207,36 @@ export function useEditorWorkspaceLayout() {
     storeLayout(next);
   }, [commit]);
 
+  const setMode = useCallback(
+    (mode: EditorViewMode) => {
+      const next = { ...dimensions.current, mode };
+      commit(next);
+      storeLayout(next);
+    },
+    [commit],
+  );
+
+  const resetLayout = useCallback(() => {
+    const next: StoredLayout = {
+      workbenchWidth: DEFAULT_WORKBENCH_WIDTH,
+      timelineHeight: DEFAULT_TIMELINE_HEIGHT,
+      mode: "classic",
+    };
+    commit(next);
+    storeLayout(next);
+  }, [commit]);
+
   return {
     workbenchWidth,
     timelineHeight,
+    mode,
+    setMode,
     startWorkbenchResize,
     startTimelineResize,
     adjustWorkbench,
     adjustTimeline,
     resetWorkbench,
     resetTimeline,
+    resetLayout,
   };
 }

@@ -6,7 +6,7 @@ import EditorWorkbench from "@/components/studio/editor-workbench";
 import { useStudio } from "@/components/studio/studio-context";
 import PreviewStage from "@/components/studio/preview-stage";
 import TimelinePanel from "@/components/studio/timeline-panel";
-import { useEditorWorkspaceLayout } from "@/hooks/use-editor-workspace-layout";
+import { useEditorLayout } from "@/components/studio/editor-layout-context";
 import { useStudioPlayback } from "@/hooks/use-studio-playback";
 import { useNativeEditPreview } from "@/hooks/use-native-edit-preview";
 import { transportSeek } from "@/lib/studio/playback-keys";
@@ -108,7 +108,7 @@ export default function StudioWorkspace() {
     baseMuted,
     continuousPreviewUrl: continuousPreview.url,
   });
-  const workspace = useEditorWorkspaceLayout();
+  const workspace = useEditorLayout();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -224,6 +224,8 @@ export default function StudioWorkspace() {
   );
 
   const assistant = <AiAssistant />;
+  const cinema = workspace.mode === "cinema";
+  const focus = workspace.mode === "focus";
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -235,8 +237,8 @@ export default function StudioWorkspace() {
         }}
       >
         <aside
-          className="border-border min-h-0 min-w-0 overflow-hidden border-r"
-          style={{ gridColumn: "1", gridRow: "1 / 4" }}
+          className={`border-border min-h-0 min-w-0 overflow-hidden border-r ${focus ? "hidden" : ""}`}
+          style={{ gridColumn: "1", gridRow: cinema ? "1" : "1 / 4" }}
         >
           <EditorWorkbench
             currentTimelineTime={timelineTime}
@@ -245,7 +247,10 @@ export default function StudioWorkspace() {
           />
         </aside>
 
-        <div style={{ gridColumn: "2", gridRow: "1 / 4" }}>
+        <div
+          className={focus ? "hidden" : ""}
+          style={{ gridColumn: "2", gridRow: "1 / 4" }}
+        >
           <ResizeDivider
             axis="vertical"
             value={workspace.workbenchWidth}
@@ -258,17 +263,18 @@ export default function StudioWorkspace() {
         <section
           aria-label="Preview"
           className="flex min-h-0 min-w-0 flex-col overflow-hidden"
-          style={{ gridColumn: "3", gridRow: "1" }}
+          style={{
+            gridColumn: focus ? "1 / 4" : "3",
+            gridRow: cinema || focus ? "1 / 4" : "1",
+          }}
         >
-          <div className="border-border flex h-10 shrink-0 items-center border-b px-3">
-            <h2 className="text-foreground/70 text-[11px] font-bold">
-              Preview
-            </h2>
-          </div>
           <div className="flex min-h-0 flex-1">{stage}</div>
         </section>
 
-        <div style={{ gridColumn: "3", gridRow: "2" }}>
+        <div
+          className={focus ? "hidden" : ""}
+          style={{ gridColumn: cinema ? "1" : "3", gridRow: "2" }}
+        >
           <ResizeDivider
             axis="horizontal"
             value={workspace.timelineHeight}
@@ -279,8 +285,8 @@ export default function StudioWorkspace() {
         </div>
 
         <div
-          className="min-h-0 min-w-0 overflow-hidden"
-          style={{ gridColumn: "3", gridRow: "3" }}
+          className={`min-h-0 min-w-0 overflow-hidden ${focus ? "hidden" : ""}`}
+          style={{ gridColumn: cinema ? "1" : "3", gridRow: "3" }}
         >
           <TimelinePanel
             timelineTime={timelineTime}
@@ -292,7 +298,7 @@ export default function StudioWorkspace() {
           />
         </div>
       </div>
-      {assistant}
+      {!focus && assistant}
     </div>
   );
 }

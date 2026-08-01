@@ -26,9 +26,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | Free Random Topic Generator for Speech Practice";
+const title = "Yapper | The Desktop Content Studio for Video Creators";
 const description =
-  "Free random topic generator for impromptu speaking practice, speech prompts, table topics questions, and public speaking practice online. Practice with a timer and optional camera recording while Yapper builds richer training programs.";
+  "Capture ideas, write scripts, record with a teleprompter, edit video by transcript, add captions, and publish in one desktop creator studio.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -41,26 +41,15 @@ export const metadata: Metadata = {
   authors: [{ name: "Yapper", url: siteUrl }],
   creator: "Yapper",
   keywords: [
-    "random topic generator",
-    "free random topic generator",
-    "impromptu speaking practice",
-    "speech topic generator",
-    "random speech topic generator",
-    "table topics questions",
-    "toastmasters table topics",
-    "impromptu speech topics",
-    "speaking prompts",
-    "speech prompts",
-    "public speaking practice online",
-    "speaking practice app free",
-    "camera speaking practice",
-    "creator speaking practice",
-    "interview speaking practice",
-    "free speaking practice",
-    "impromptu speech prompts",
-    "random speaking topics",
-    "1 minute speech topics",
-    "ESL speaking practice online free",
+    "desktop video editor",
+    "creator studio",
+    "transcript video editor",
+    "teleprompter recorder",
+    "AI script writer for video",
+    "content idea capture",
+    "automatic video captions",
+    "content calendar for creators",
+    "social media publishing tool",
   ],
   robots: {
     index: true,
@@ -70,7 +59,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
-  category: "education",
+  category: "software",
   openGraph: {
     title,
     description,
@@ -83,7 +72,7 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Yapper - Improve your speech and articulation",
+        alt: "Yapper Studio — from idea to posted video",
       },
     ],
   },
@@ -124,6 +113,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       className={`${hanken.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >

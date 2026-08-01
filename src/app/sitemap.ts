@@ -4,6 +4,7 @@ import { programFamilies } from "@/data/training";
 import { tools } from "@/data/tools";
 import { getAllBlogPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/json-ld";
+import { marketingFeatures } from "@/data/marketing-features";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const blogPosts = getAllBlogPosts().map((post) => ({
@@ -42,6 +43,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
     },
+    {
+      url: `${SITE_URL}/features`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.9,
+    },
+    ...marketingFeatures.map((feature) => ({
+      url: `${SITE_URL}/features/${feature.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
     {
       url: `${SITE_URL}/tools`,
       lastModified: new Date(),

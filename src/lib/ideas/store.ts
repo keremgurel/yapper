@@ -64,6 +64,14 @@ export function addIdea(idea: Idea): Idea[] {
   return next;
 }
 
+/** One storage write for archive imports. The caller has already deduplicated
+ * the batch, so its ordering is retained exactly. */
+export function addIdeas(ideas: Idea[]): Idea[] {
+  const next = [...ideas, ...read()];
+  write(next);
+  return next;
+}
+
 export function setExpansion(id: string, expansion: IdeaExpansion): Idea[] {
   const next = read().map((i) =>
     i.id === id ? { ...i, expansion, updatedAt: Date.now() } : i,

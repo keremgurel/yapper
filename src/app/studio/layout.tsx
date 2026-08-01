@@ -1,4 +1,5 @@
 import { StudioProvider } from "@/components/studio/studio-context";
+import StudioRouteBoundary from "@/components/studio-shell/studio-route-boundary";
 
 /**
  * The editor project belongs to Studio, not to the Editor page.
@@ -13,5 +14,9 @@ export default function StudioLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <StudioProvider>{children}</StudioProvider>;
+  return (
+    <StudioRouteBoundary>
+      <StudioProvider>{children}</StudioProvider>
+    </StudioRouteBoundary>
+  );
 }
