@@ -5,9 +5,9 @@ import UniformTypeIdentifiers
 enum ImportPanels {
     static func openMedia(for session: EditorSession) {
         let panel = NSOpenPanel()
-        panel.title = "Import videos"
+        panel.title = "Import media"
         panel.prompt = "Import"
-        panel.allowedContentTypes = [.movie, .mpeg4Movie, .quickTimeMovie]
+        panel.allowedContentTypes = [.movie, .mpeg4Movie, .quickTimeMovie, .image]
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK else { return }

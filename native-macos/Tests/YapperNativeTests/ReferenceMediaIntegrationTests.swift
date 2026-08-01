@@ -1,4 +1,5 @@
 @preconcurrency import AVFoundation
+import AppKit
 import Foundation
 import Testing
 @testable import YapperNative
@@ -70,5 +71,52 @@ struct ReferenceMediaIntegrationTests {
         #expect(audioTracks.count == 1)
         #expect(abs(duration - 6) < 0.15)
         #expect((try FileManager.default.attributesOfItem(atPath: output.path)[.size] as? Int ?? 0) > 0)
+    }
+
+    @Test(
+        "DJI export renders an image overlay without losing audio",
+        .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
+    )
+    func exportsImageOverlay() async throws {
+        let video = try await MediaProbe.inspect(url: djiReferenceURL)
+        let imageURL = FileManager.default.temporaryDirectory.appending(path: "yapper-overlay-check.png")
+        let output = FileManager.default.temporaryDirectory.appending(path: "yapper-overlay-check.mp4")
+        defer {
+            try? FileManager.default.removeItem(at: imageURL)
+            try? FileManager.default.removeItem(at: output)
+        }
+
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 320,
+            pixelsHigh: 180,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        )!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+        NSColor.magenta.setFill()
+        NSBezierPath(rect: CGRect(x: 0, y: 0, width: 320, height: 180)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        try bitmap.representation(using: .png, properties: [:])!.write(to: imageURL)
+
+        let image = try await MediaProbe.inspect(url: imageURL)
+        let project = EditorProject(
+            name: "Overlay export check",
+            media: [video, image],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 20, sourceEnd: 24)],
+            overlays: [ProjectOverlay(mediaID: image.id, timelineStart: 0.5, duration: 2)]
+        )
+        try await ExportService.export(project: project, to: output)
+
+        let rendered = AVURLAsset(url: output)
+        #expect(try await rendered.loadTracks(withMediaType: .video).count == 1)
+        #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
+        #expect(abs(try await rendered.load(.duration).seconds - 4) < 0.15)
     }
 }

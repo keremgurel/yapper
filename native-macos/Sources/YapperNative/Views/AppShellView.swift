@@ -246,38 +246,30 @@ private struct StudioTopBar: View {
                 }
                 .buttonStyle(EditorPrimaryButtonStyle())
                 .disabled(session.project.clips.isEmpty || session.isExporting)
-            } else {
-                Button {
-                    // Account controls will connect to the existing workspace session.
-                } label: {
-                    HStack(spacing: 7) {
-                        Circle()
-                            .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                            .overlay(Text("C").font(.system(size: 11, weight: .bold)).foregroundStyle(.white))
-                            .frame(width: 27, height: 27)
-                        Text("Celpip Speaking Team")
-                            .font(.system(size: 12, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
             }
 
             Button(action: toggleTheme) {
-                ZStack {
-                    Image(systemName: theme == .dark ? "sun.max.fill" : "moon.fill")
-                        .symbolRenderingMode(.hierarchical)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(theme == .dark ? Color.yellow : Color.indigo)
-                        .contentTransition(.symbolEffect(.replace))
+                HStack(spacing: 3) {
+                    ForEach(StudioTheme.allCases, id: \.rawValue) { option in
+                        Image(systemName: option == .light ? "sun.max.fill" : "moon.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(theme == option ? Color.yapperOrange : Color.secondary)
+                            .frame(width: 27, height: 27)
+                            .background {
+                                if theme == option {
+                                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                        .fill(Color.studioSelectedFill)
+                                }
+                            }
+                    }
                 }
-                .frame(width: 34, height: 34)
+                .padding(3)
             }
             .buttonStyle(.plain)
             .studioGlass(radius: 10, tint: Color.yapperOrange.opacity(0.06), interactive: true)
             .help(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
+
+            WorkspaceProfileMenu()
         }
         .padding(.horizontal, 15)
         .frame(height: 56)
@@ -285,6 +277,50 @@ private struct StudioTopBar: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
         }
+    }
+}
+
+private struct WorkspaceProfileMenu: View {
+    var body: some View {
+        Menu {
+            Button("Workspace settings", systemImage: "gearshape") {}
+            Button("Connections", systemImage: "link") {}
+            Divider()
+            Button("Account", systemImage: "person.crop.circle") {}
+        } label: {
+            HStack(spacing: 9) {
+                ZStack {
+                    Circle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.yapperOrange, Color.red.opacity(0.9)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    Text("C")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 29, height: 29)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Celpip Speaking Team")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Creator workspace")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(.secondary)
+                }
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 8)
+            .frame(height: 36)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .studioGlass(radius: 10, interactive: true)
     }
 }
 

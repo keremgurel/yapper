@@ -32,7 +32,7 @@ struct TimelinePanel: View {
                     session.duration * pointsPerSecond
                 )
                 HStack(spacing: 0) {
-                    TrackHeader()
+                    TrackHeader(hasOverlays: session.project.overlays?.isEmpty == false)
                         .frame(width: 70)
                     Rectangle().fill(Color.studioLine).frame(width: 1)
                     ScrollView(.horizontal, showsIndicators: true) {
@@ -40,7 +40,7 @@ struct TimelinePanel: View {
                             session: session,
                             contentWidth: contentWidth
                         )
-                        .frame(width: contentWidth, height: max(170, proxy.size.height - 12))
+                        .frame(width: contentWidth, height: max(230, proxy.size.height - 12))
                         .padding(.horizontal, 10)
                     }
                 }
@@ -86,7 +86,32 @@ private struct TimelineContent: View {
             }
             .fixedSize(horizontal: true, vertical: true)
             .frame(height: 88, alignment: .top)
-            .offset(y: 45)
+            .offset(y: session.project.overlays?.isEmpty == false ? 105 : 45)
+
+            if let overlays = session.project.overlays, !overlays.isEmpty {
+                ForEach(overlays) { overlay in
+                    if let media = session.project.media.first(where: { $0.id == overlay.mediaID }) {
+                        let startX = contentWidth * overlay.timelineStart / max(0.001, session.duration)
+                        let width = max(12, contentWidth * overlay.duration / max(0.001, session.duration))
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .fill(Color.yapperOrange.opacity(0.24))
+                            .overlay(alignment: .leading) {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "photo.on.rectangle")
+                                    Text(media.name).lineLimit(1)
+                                }
+                                .font(.studioCaptionStrong)
+                                .padding(.horizontal, 7)
+                            }
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                    .stroke(Color.yapperOrange.opacity(0.7), lineWidth: 1)
+                            }
+                            .frame(width: width, height: 42)
+                            .offset(x: startX, y: 45)
+                    }
+                }
+            }
 
             if session.duration > 0 {
                 let playheadX = TimelineMetrics.x(
@@ -96,7 +121,7 @@ private struct TimelineContent: View {
                 )
                 Rectangle()
                     .fill(Color.red)
-                    .frame(width: 1.25, height: 133)
+                    .frame(width: 1.25, height: session.project.overlays?.isEmpty == false ? 193 : 133)
                     .overlay(alignment: .top) {
                         Circle().fill(Color.red).frame(width: 8, height: 8)
                     }
@@ -107,7 +132,7 @@ private struct TimelineContent: View {
             Rectangle()
                 .fill(.clear)
                 .contentShape(Rectangle())
-                .frame(width: contentWidth, height: 150)
+                .frame(width: contentWidth, height: session.project.overlays?.isEmpty == false ? 210 : 150)
                 .offset(y: 25)
                 .gesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
@@ -274,9 +299,21 @@ private struct StableThumbnailStrip: View {
 }
 
 private struct TrackHeader: View {
+    let hasOverlays: Bool
+
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 38)
+            if hasOverlays {
+                HStack(spacing: 7) {
+                    Image(systemName: "photo.on.rectangle")
+                    Text("Overlay")
+                }
+                .font(.studioCaptionStrong)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .background(Color.yapperOrange.opacity(0.045))
+            }
             HStack(spacing: 7) {
                 Image(systemName: "eye")
                 Image(systemName: "speaker.wave.2")

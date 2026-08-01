@@ -1,6 +1,8 @@
 import Foundation
 
 struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
+    enum Kind: String, Codable, Sendable { case video, image }
+
     var id: UUID
     var url: URL
     var name: String
@@ -8,6 +10,7 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
     var width: Int
     var height: Int
     var hasAudio: Bool
+    var kind: Kind?
 
     init(
         id: UUID = UUID(),
@@ -16,7 +19,8 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         duration: Double,
         width: Int,
         height: Int,
-        hasAudio: Bool
+        hasAudio: Bool,
+        kind: Kind = .video
     ) {
         self.id = id
         self.url = url
@@ -25,7 +29,10 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         self.width = width
         self.height = height
         self.hasAudio = hasAudio
+        self.kind = kind
     }
+
+    var isImage: Bool { kind == .image }
 }
 
 struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
@@ -49,6 +56,64 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+struct TranscriptWord: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var mediaID: UUID
+    var text: String
+    var start: Double
+    var end: Double
+
+    init(
+        id: UUID = UUID(),
+        mediaID: UUID,
+        text: String,
+        start: Double,
+        end: Double
+    ) {
+        self.id = id
+        self.mediaID = mediaID
+        self.text = text
+        self.start = start
+        self.end = end
+    }
+
+    var midpoint: Double { (start + end) / 2 }
+}
+
+struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var mediaID: UUID
+    var timelineStart: Double
+    var duration: Double
+    var sourceStart: Double
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
+
+    init(
+        id: UUID = UUID(),
+        mediaID: UUID,
+        timelineStart: Double,
+        duration: Double,
+        sourceStart: Double = 0,
+        x: Double = 0.55,
+        y: Double = 0.07,
+        width: Double = 0.38,
+        height: Double = 0.38
+    ) {
+        self.id = id
+        self.mediaID = mediaID
+        self.timelineStart = timelineStart
+        self.duration = duration
+        self.sourceStart = sourceStart
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
 struct EditorProject: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
@@ -56,6 +121,8 @@ struct EditorProject: Codable, Equatable, Sendable {
     var updatedAt: Date
     var media: [ProjectMedia]
     var clips: [TimelineClip]
+    var transcript: [TranscriptWord]?
+    var overlays: [ProjectOverlay]?
 
     init(
         id: UUID = UUID(),
@@ -63,7 +130,9 @@ struct EditorProject: Codable, Equatable, Sendable {
         createdAt: Date = Date(),
         updatedAt: Date = Date(),
         media: [ProjectMedia] = [],
-        clips: [TimelineClip] = []
+        clips: [TimelineClip] = [],
+        transcript: [TranscriptWord]? = nil,
+        overlays: [ProjectOverlay]? = nil
     ) {
         self.id = id
         self.name = name
@@ -71,6 +140,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.updatedAt = updatedAt
         self.media = media
         self.clips = clips
+        self.transcript = transcript
+        self.overlays = overlays
     }
 
     var duration: Double {
@@ -79,6 +150,51 @@ struct EditorProject: Codable, Equatable, Sendable {
 
     func media(for clip: TimelineClip) -> ProjectMedia? {
         media.first { $0.id == clip.mediaID }
+    }
+
+    func isWordKept(_ word: TranscriptWord) -> Bool {
+        clips.contains {
+            $0.mediaID == word.mediaID && word.midpoint >= $0.sourceStart && word.midpoint <= $0.sourceEnd
+        }
+    }
+
+    mutating func removeSourceRanges(_ ranges: [(Double, Double)], for mediaID: UUID) {
+        guard !ranges.isEmpty else { return }
+        let merged = Self.merge(ranges)
+        clips = clips.flatMap { clip in
+            guard clip.mediaID == mediaID else { return [clip] }
+            var kept = [(clip.sourceStart, clip.sourceEnd)]
+            for cut in merged {
+                kept = kept.flatMap { range in
+                    guard cut.1 > range.0, cut.0 < range.1 else { return [range] }
+                    var pieces: [(Double, Double)] = []
+                    if cut.0 > range.0 { pieces.append((range.0, min(cut.0, range.1))) }
+                    if cut.1 < range.1 { pieces.append((max(cut.1, range.0), range.1)) }
+                    return pieces
+                }
+            }
+            return kept.compactMap { start, end in
+                guard end - start >= 0.08 else { return nil }
+                return TimelineClip(mediaID: clip.mediaID, sourceStart: start, sourceEnd: end)
+            }
+        }
+        updatedAt = Date()
+    }
+
+    private static func merge(_ ranges: [(Double, Double)]) -> [(Double, Double)] {
+        let sorted = ranges.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
+        guard var current = sorted.first else { return [] }
+        var result: [(Double, Double)] = []
+        for range in sorted.dropFirst() {
+            if range.0 <= current.1 + 0.06 {
+                current.1 = max(current.1, range.1)
+            } else {
+                result.append(current)
+                current = range
+            }
+        }
+        result.append(current)
+        return result
     }
 
     func timelineStart(of clipID: UUID) -> Double? {

@@ -66,6 +66,8 @@ struct WorkbenchPanel: View {
                     MediaWorkbench(session: session)
                 case .quick:
                     QuickEditWorkbench(session: session)
+                case .transcript:
+                    TranscriptWorkbench(session: session)
                 default:
                     FeatureWorkbench(tab: selectedTab)
                 }
@@ -150,10 +152,19 @@ private struct MediaWorkbench: View {
                                     }
                                 }
                                 Spacer(minLength: 0)
-                                Button("Add") {
-                                    Task { await session.appendMediaToTimeline(media.id) }
+                                HStack(spacing: 6) {
+                                    if !media.isImage {
+                                        Button("Base") {
+                                            Task { await session.appendMediaToTimeline(media.id) }
+                                        }
+                                        .buttonStyle(EditorSecondaryButtonStyle())
+                                    }
+                                    Button("Overlay") {
+                                        Task { await session.addOverlay(media.id) }
+                                    }
+                                    .buttonStyle(EditorSecondaryButtonStyle())
+                                    .disabled(session.project.clips.isEmpty || !media.isImage)
                                 }
-                                .buttonStyle(EditorSecondaryButtonStyle())
                             }
                             .padding(9)
                             .background(Color.raisedBackground)
@@ -180,12 +191,44 @@ private struct QuickEditWorkbench: View {
                 .foregroundStyle(.secondary)
 
             LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
-                QuickAction(title: "Transcribe", detail: "Timed words", icon: "doc.text")
-                QuickAction(title: "1-Click Edit", detail: "Retakes + pauses", icon: "wand.and.stars")
-                QuickAction(title: "Add Captions", detail: "From transcript", icon: "captions.bubble")
-                QuickAction(title: "Text Hook", detail: "New text track", icon: "textformat")
+                QuickAction(
+                    title: (session.project.transcript?.isEmpty == false) ? "Transcribe Again" : "Transcribe",
+                    detail: "Accurate timed words",
+                    icon: "doc.text",
+                    busy: session.isAIEditing
+                ) {
+                    Task { await session.transcribeProject() }
+                }
+                QuickAction(
+                    title: session.isAIEditing ? "Editing…" : "1-Click Edit",
+                    detail: "Retakes + dead pauses",
+                    icon: "wand.and.stars",
+                    busy: session.isAIEditing
+                ) {
+                    Task { await session.runOneClickEdit() }
+                }
+                QuickAction(
+                    title: "Add Captions",
+                    detail: "Not migrated yet",
+                    icon: "captions.bubble",
+                    disabled: true
+                ) {}
+                QuickAction(
+                    title: "Text Hook",
+                    detail: "Not migrated yet",
+                    icon: "textformat",
+                    disabled: true
+                ) {}
             }
             .disabled(session.project.clips.isEmpty)
+
+            if session.isAIEditing {
+                ProgressView(value: session.aiProgress)
+                    .tint(Color.yapperOrange)
+                Text(session.statusMessage)
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+            }
 
             Divider()
             Text("Native timeline tools")
@@ -201,6 +244,10 @@ private struct QuickEditWorkbench: View {
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 .disabled(session.selectedClipID == nil)
+                Button("Reset to source") {
+                    Task { await session.resetTimelineToSource() }
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
             }
             Spacer()
         }
@@ -212,13 +259,20 @@ private struct QuickAction: View {
     let title: String
     let detail: String
     let icon: String
+    var busy = false
+    var disabled = false
+    let action: () -> Void
 
     var body: some View {
-        Button {} label: {
+        Button(action: action) {
             VStack(alignment: .leading, spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.yapperOrange)
+                if busy {
+                    ProgressView().controlSize(.small).tint(Color.yapperOrange)
+                } else {
+                    Image(systemName: icon)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(Color.yapperOrange)
+                }
                 Text(title)
                     .font(.studioBodyStrong)
                 Text(detail)
@@ -235,6 +289,113 @@ private struct QuickAction: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
+        .disabled(disabled || busy)
+        .opacity(disabled ? 0.48 : 1)
+    }
+}
+
+private struct TranscriptWorkbench: View {
+    @ObservedObject var session: EditorSession
+
+    private var words: [TranscriptWord] { session.project.transcript ?? [] }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Transcript").font(.studioSectionTitle)
+                    Text(words.isEmpty ? "Transcribe to edit by words" : "\(words.count) timed words")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(words.isEmpty ? "Transcribe" : "Transcribe Again") {
+                    Task { await session.transcribeProject() }
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+                .disabled(session.isAIEditing || session.project.clips.isEmpty)
+            }
+
+            if session.isAIEditing {
+                ProgressView(value: session.aiProgress).tint(Color.yapperOrange)
+                Text(session.statusMessage).font(.studioCaption).foregroundStyle(.secondary)
+            }
+
+            if words.isEmpty {
+                ContentUnavailableView(
+                    "No transcript yet",
+                    systemImage: "doc.text.magnifyingglass",
+                    description: Text("The native transcriber sends clean PCM chunks to the same accurate service as the web editor.")
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    TranscriptFlowLayout(spacing: 6) {
+                        ForEach(words) { word in
+                            let kept = session.project.isWordKept(word)
+                            Text(word.text)
+                                .font(.system(size: 14, weight: kept ? .medium : .regular))
+                                .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
+                                .strikethrough(!kept, color: Color.secondary)
+                                .padding(.vertical, 3)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .padding(16)
+    }
+}
+
+private struct TranscriptFlowLayout: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        layout(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        let result = layout(
+            proposal: ProposedViewSize(width: bounds.width, height: proposal.height),
+            subviews: subviews
+        )
+        for (index, point) in result.points.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y),
+                anchor: .topLeading,
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func layout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, points: [CGPoint]) {
+        let width = proposal.width ?? 480
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var points: [CGPoint] = []
+        for view in subviews {
+            let size = view.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            points.append(CGPoint(x: x, y: y))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (CGSize(width: width, height: y + rowHeight), points)
     }
 }
 

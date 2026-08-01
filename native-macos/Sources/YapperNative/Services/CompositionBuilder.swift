@@ -1,6 +1,8 @@
 @preconcurrency import AVFoundation
+import AppKit
 import CoreGraphics
 import Foundation
+import QuartzCore
 
 struct BuiltComposition: @unchecked Sendable {
     let asset: AVMutableComposition
@@ -133,11 +135,90 @@ enum CompositionBuilder {
             timescale: CMTimeScale(maximumFrameRate.rounded())
         )
         videoComposition.instructions = instructions
+        applyImageOverlays(
+            project.overlays ?? [],
+            project: project,
+            renderSize: renderSize,
+            duration: cursor.seconds,
+            to: videoComposition
+        )
 
         return BuiltComposition(
             asset: composition,
             videoComposition: videoComposition,
             renderSize: renderSize
+        )
+    }
+
+    private static func applyImageOverlays(
+        _ overlays: [ProjectOverlay],
+        project: EditorProject,
+        renderSize: CGSize,
+        duration: Double,
+        to videoComposition: AVMutableVideoComposition
+    ) {
+        let imageOverlays = overlays.compactMap { overlay -> (ProjectOverlay, ProjectMedia, CGImage)? in
+            guard
+                let media = project.media.first(where: { $0.id == overlay.mediaID }),
+                media.isImage,
+                let image = NSImage(contentsOf: media.url),
+                let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            else { return nil }
+            return (overlay, media, cgImage)
+        }
+        guard !imageOverlays.isEmpty, duration > 0 else { return }
+
+        let videoLayer = CALayer()
+        videoLayer.frame = CGRect(origin: .zero, size: renderSize)
+        let parentLayer = CALayer()
+        parentLayer.frame = videoLayer.frame
+        parentLayer.addSublayer(videoLayer)
+
+        for (overlay, media, image) in imageOverlays {
+            let layer = CALayer()
+            layer.contents = image
+            layer.contentsGravity = .resizeAspect
+            layer.masksToBounds = true
+            layer.cornerRadius = min(renderSize.width, renderSize.height) * 0.018
+            layer.shadowColor = NSColor.black.cgColor
+            layer.shadowOpacity = 0.28
+            layer.shadowRadius = 12
+            layer.shadowOffset = CGSize(width: 0, height: -4)
+
+            let box = CGRect(
+                x: renderSize.width * overlay.x,
+                y: renderSize.height * (1 - overlay.y - overlay.height),
+                width: renderSize.width * overlay.width,
+                height: renderSize.height * overlay.height
+            )
+            let mediaAspect = CGFloat(media.width) / CGFloat(max(1, media.height))
+            let boxAspect = box.width / max(1, box.height)
+            if mediaAspect > boxAspect {
+                let height = box.width / mediaAspect
+                layer.frame = CGRect(x: box.minX, y: box.midY - height / 2, width: box.width, height: height)
+            } else {
+                let width = box.height * mediaAspect
+                layer.frame = CGRect(x: box.midX - width / 2, y: box.minY, width: width, height: box.height)
+            }
+
+            layer.opacity = 0
+            let animation = CAKeyframeAnimation(keyPath: "opacity")
+            let start = max(0, min(1, overlay.timelineStart / duration))
+            let end = max(start, min(1, (overlay.timelineStart + overlay.duration) / duration))
+            let epsilon = min(0.0001, max(0.000001, 1 / max(1, duration * 60)))
+            animation.values = [0, 0, 1, 1, 0]
+            animation.keyTimes = [0, NSNumber(value: max(0, start - epsilon)), NSNumber(value: start), NSNumber(value: end), 1]
+            animation.duration = duration
+            animation.beginTime = AVCoreAnimationBeginTimeAtZero
+            animation.isRemovedOnCompletion = false
+            animation.fillMode = .both
+            layer.add(animation, forKey: "timelineVisibility")
+            parentLayer.addSublayer(layer)
+        }
+
+        videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
+            postProcessingAsVideoLayer: videoLayer,
+            in: parentLayer
         )
     }
 
