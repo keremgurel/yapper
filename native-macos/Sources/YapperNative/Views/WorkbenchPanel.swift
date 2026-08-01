@@ -783,15 +783,11 @@ private struct TextWorkbench: View {
                 range: 0.25 ... 0.95,
                 valueLabel: "\(Int(layer.width * 100))%"
             )
-            SliderControl(
-                title: "Duration",
-                value: binding(for: layer, keyPath: \ProjectTextLayer.duration),
-                range: 0.5 ... max(0.5, session.duration - layer.timelineStart),
-                valueLabel: String(format: "%.1fs", layer.duration)
-            )
-
             HStack {
-                Text("Starts at \(formatTimePrecise(layer.timelineStart))")
+                Label(
+                    "\(formatTimePrecise(layer.timelineStart)) – \(formatTimePrecise(layer.timelineStart + layer.duration)) · trim on timeline",
+                    systemImage: "arrow.left.and.right"
+                )
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
                 Spacer()

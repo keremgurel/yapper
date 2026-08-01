@@ -164,4 +164,64 @@ struct EditorProjectTests {
         #expect(earlier.timelineStart == 1)
         #expect(earlier.duration == 5)
     }
+
+    @Test func timelineVideoEdgesTrimAndRecoverSourceFrames() {
+        let clip = TimelineClip(mediaID: UUID(), sourceStart: 5, sourceEnd: 10)
+        let extended = TimelineClipGeometry.trimmed(
+            clip: clip,
+            edge: .leading,
+            translationX: -100,
+            contentWidth: 1_000,
+            projectDuration: 10,
+            mediaDuration: 30
+        )
+        #expect(extended.sourceStart == 4)
+        #expect(extended.sourceEnd == 10)
+
+        let trimmed = TimelineClipGeometry.trimmed(
+            clip: clip,
+            edge: .trailing,
+            translationX: -100,
+            contentWidth: 1_000,
+            projectDuration: 10,
+            mediaDuration: 30
+        )
+        #expect(trimmed.sourceStart == 5)
+        #expect(trimmed.sourceEnd == 9)
+    }
+
+    @Test func timelineOverlayAndAudioUseTheSameEdgeBehavior() {
+        let overlay = ProjectOverlay(
+            mediaID: UUID(),
+            timelineStart: 2,
+            duration: 3
+        )
+        let overlayExtended = TimelineOverlayGeometry.trimmed(
+            overlay: overlay,
+            edge: .trailing,
+            translationX: 100,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(overlayExtended.duration == 4)
+
+        let audio = ProjectAudioLayer(
+            url: URL(filePath: "/tmp/audio.wav"),
+            name: "Audio",
+            timelineStart: 2,
+            duration: 3,
+            sourceStart: 2,
+            sourceDuration: 10
+        )
+        let audioExtended = TimelineAudioGeometry.trimmed(
+            layer: audio,
+            edge: .leading,
+            translationX: -100,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(audioExtended.timelineStart == 1)
+        #expect(audioExtended.sourceStart == 1)
+        #expect(audioExtended.duration == 4)
+    }
 }

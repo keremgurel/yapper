@@ -100,22 +100,24 @@ private struct TextLayerCanvasItem: View {
     @Binding var alignmentGuides: TextCanvasAlignmentGuides
     @State private var dragOrigin: CGPoint?
     @State private var resizeOrigin: ProjectTextLayer?
+    @State private var interactionLayer: ProjectTextLayer?
 
     var body: some View {
-        Text(layer.text.isEmpty ? "Text" : layer.text)
-            .font(previewFont)
+        let displayed = interactionLayer ?? layer
+        Text(displayed.text.isEmpty ? "Text" : displayed.text)
+            .font(previewFont(for: displayed))
             .fontWeight(.bold)
             .multilineTextAlignment(.center)
-            .foregroundStyle(foregroundColor)
+            .foregroundStyle(foregroundColor(for: displayed))
             .lineLimit(5)
             .minimumScaleFactor(0.45)
-            .padding(.horizontal, layer.style == .plain ? 4 : 14)
-            .padding(.vertical, layer.style == .plain ? 4 : 10)
-            .frame(width: max(60, canvasSize.width * layer.width))
-            .background(background)
+            .padding(.horizontal, displayed.style == .plain ? 4 : 14)
+            .padding(.vertical, displayed.style == .plain ? 4 : 10)
+            .frame(width: max(60, canvasSize.width * displayed.width))
+            .background(background(for: displayed))
             .shadow(
-                color: layer.style == .plain ? .black.opacity(0.72) : .clear,
-                radius: layer.style == .plain ? 2 : 0,
+                color: displayed.style == .plain ? .black.opacity(0.72) : .clear,
+                radius: displayed.style == .plain ? 2 : 0,
                 y: 1
             )
             .overlay {
@@ -138,8 +140,8 @@ private struct TextLayerCanvasItem: View {
                 if selected { resizeHandle(.bottomTrailing) }
             }
             .position(
-                x: canvasSize.width * layer.x,
-                y: canvasSize.height * layer.y
+                x: canvasSize.width * displayed.x,
+                y: canvasSize.height * displayed.y
             )
             .contentShape(Rectangle())
             .onTapGesture { session.selectTextLayer(layer.id) }
@@ -158,9 +160,11 @@ private struct TextLayerCanvasItem: View {
                             canvasSize: canvasSize
                         )
                         alignmentGuides = result.guides
-                        session.updateTextLayer(result.layer)
+                        interactionLayer = result.layer
                     }
                     .onEnded { _ in
+                        if let interactionLayer { session.updateTextLayer(interactionLayer) }
+                        interactionLayer = nil
                         dragOrigin = nil
                         alignmentGuides = TextCanvasAlignmentGuides()
                     }
@@ -191,14 +195,18 @@ private struct TextLayerCanvasItem: View {
                             corner: corner,
                             canvasSize: canvasSize
                         )
-                        session.updateTextLayer(updated)
+                        interactionLayer = updated
                     }
-                    .onEnded { _ in resizeOrigin = nil }
+                    .onEnded { _ in
+                        if let interactionLayer { session.updateTextLayer(interactionLayer) }
+                        interactionLayer = nil
+                        resizeOrigin = nil
+                    }
             )
             .accessibilityLabel("Resize text from \(corner.accessibilityName)")
     }
 
-    private var previewFont: Font {
+    private func previewFont(for layer: ProjectTextLayer) -> Font {
         let size = max(11, canvasSize.height * layer.fontScale)
         switch layer.font {
         case .modern:
@@ -210,12 +218,12 @@ private struct TextLayerCanvasItem: View {
         }
     }
 
-    private var foregroundColor: Color {
+    private func foregroundColor(for layer: ProjectTextLayer) -> Color {
         layer.style == .whiteCard ? .black : .white
     }
 
     @ViewBuilder
-    private var background: some View {
+    private func background(for layer: ProjectTextLayer) -> some View {
         switch layer.style {
         case .plain:
             Color.clear

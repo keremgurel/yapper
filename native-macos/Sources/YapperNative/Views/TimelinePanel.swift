@@ -76,45 +76,21 @@ private struct TimelineContent: View {
             TimelineRuler(duration: session.duration, width: contentWidth)
                 .frame(height: 34)
 
-            HStack(alignment: .top, spacing: 2) {
-                ForEach(session.project.clips) { clip in
-                    if let media = session.project.media(for: clip) {
-                        TimelineClipCell(
-                            clip: clip,
-                            media: media,
-                            thumbnails: session.thumbnailsByMedia[media.id] ?? [],
-                            peaks: session.waveformByMedia[media.id] ?? [],
-                            waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
-                            selected: session.selectedClipID == clip.id
-                        )
-                        .frame(
-                            width: max(
-                                3,
-                                contentWidth * clip.duration / max(0.001, session.duration)
-                            ),
-                            height: 88
-                        )
-                        .onTapGesture { session.select(clip.id) }
-                    }
-                }
-            }
+            TimelineVideoTrack(session: session, contentWidth: contentWidth)
             .fixedSize(horizontal: true, vertical: true)
             .frame(height: 88, alignment: .top)
             .offset(y: clipRowY)
 
             if let textLayers = session.project.textLayers, !textLayers.isEmpty {
                 ForEach(textLayers) { layer in
-                    let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
-                    let width = max(18, contentWidth * layer.duration / max(0.001, session.duration))
                     TimelineTextLayerCell(
                         session: session,
                         layer: layer,
                         contentWidth: contentWidth,
+                        rowY: textRowY,
                         selected: session.selectedTextLayerID == layer.id
                     )
                         .accessibilityLabel("Text layer: \(layer.text)")
-                        .frame(width: width, height: 42)
-                        .offset(x: startX, y: textRowY)
                         .zIndex(3)
                 }
             }
@@ -122,63 +98,28 @@ private struct TimelineContent: View {
             if let overlays = session.project.overlays, !overlays.isEmpty {
                 ForEach(overlays) { overlay in
                     if let media = session.project.media.first(where: { $0.id == overlay.mediaID }) {
-                        let startX = contentWidth * overlay.timelineStart / max(0.001, session.duration)
-                        let width = max(12, contentWidth * overlay.duration / max(0.001, session.duration))
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Color.yapperOrange.opacity(0.24))
-                            .overlay(alignment: .leading) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "photo.on.rectangle")
-                                    Text(media.name).lineLimit(1)
-                                }
-                                .font(.studioCaptionStrong)
-                                .padding(.horizontal, 7)
-                            }
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .stroke(Color.yapperOrange.opacity(0.7), lineWidth: 1)
-                            }
-                            .frame(width: width, height: 42)
-                            .offset(x: startX, y: overlayRowY)
+                        TimelineOverlayItem(
+                            session: session,
+                            overlay: overlay,
+                            media: media,
+                            contentWidth: contentWidth,
+                            rowY: overlayRowY,
+                            selected: session.selectedOverlayID == overlay.id
+                        )
+                        .zIndex(3)
                     }
                 }
             }
 
             if let audioLayers = session.project.audioLayers, !audioLayers.isEmpty {
                 ForEach(audioLayers) { layer in
-                    let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
-                    let width = max(24, contentWidth * layer.duration / max(0.001, session.duration))
-                    Button {
-                        session.selectAudioLayer(layer.id)
-                        session.scrub(to: layer.timelineStart)
-                        session.finishScrubbing(at: layer.timelineStart)
-                    } label: {
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
-                            MiniAudioWave(seed: layer.name.hashValue)
-                                .foregroundStyle(Color.cyan.opacity(0.58))
-                                .padding(.horizontal, 5)
-                            HStack(spacing: 5) {
-                                Image(systemName: "waveform")
-                                Text(layer.name).lineLimit(1)
-                            }
-                            .font(.studioCaptionStrong)
-                            .padding(.horizontal, 7)
-                        }
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                .stroke(
-                                    session.selectedAudioLayerID == layer.id
-                                        ? Color.cyan.opacity(0.9)
-                                        : Color.secondary.opacity(0.34),
-                                    lineWidth: session.selectedAudioLayerID == layer.id ? 1.1 : 0.7
-                                )
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .frame(width: width, height: 46)
-                    .offset(x: startX, y: audioRowY)
+                    TimelineAudioItem(
+                        session: session,
+                        layer: layer,
+                        contentWidth: contentWidth,
+                        rowY: audioRowY,
+                        selected: session.selectedAudioLayerID == layer.id
+                    )
                     .zIndex(3)
                 }
             }
@@ -211,13 +152,6 @@ private struct TimelineContent: View {
                 .zIndex(1)
                 .gesture(scrubGesture)
 
-            Rectangle()
-                .fill(.clear)
-                .contentShape(Rectangle())
-                .frame(width: contentWidth, height: 88)
-                .offset(y: clipRowY)
-                .zIndex(1)
-                .gesture(scrubGesture)
         }
     }
 
@@ -246,25 +180,413 @@ private struct TimelineContent: View {
     }
 }
 
+private struct TimelineVideoTrack: View {
+    @ObservedObject var session: EditorSession
+    let contentWidth: Double
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 2) {
+            ForEach(session.project.clips) { clip in
+                if let media = session.project.media(for: clip) {
+                    TimelineVideoClipItem(
+                        session: session,
+                        clip: clip,
+                        media: media,
+                        thumbnails: session.thumbnailsByMedia[media.id] ?? [],
+                        peaks: session.waveformByMedia[media.id] ?? [],
+                        waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
+                        timelineStart: session.project.timelineStart(of: clip.id) ?? 0,
+                        contentWidth: contentWidth,
+                        selected: session.selectedClipID == clip.id
+                    )
+                }
+            }
+        }
+    }
+}
+
+private struct TimelineVideoClipItem: View {
+    @ObservedObject var session: EditorSession
+    let clip: TimelineClip
+    let media: ProjectMedia
+    let thumbnails: [CGImage]
+    let peaks: [Float]
+    let waveformProgress: Double
+    let timelineStart: Double
+    let contentWidth: Double
+    let selected: Bool
+    @State private var trimOrigin: TimelineClip?
+    @State private var trimDraft: TimelineClip?
+
+    var body: some View {
+        let displayed = trimDraft ?? clip
+        let displayedWidth = max(
+            3,
+            contentWidth * displayed.duration / max(0.001, session.duration)
+        )
+        TimelineClipCell(
+            clip: displayed,
+            media: media,
+            thumbnails: thumbnails,
+            peaks: peaks,
+            waveformProgress: waveformProgress,
+            selected: selected
+        )
+        .frame(width: displayedWidth, height: 88)
+        .contentShape(Rectangle())
+        .onTapGesture { session.select(clip.id) }
+        .gesture(scrubGesture(displayed: displayed, displayedWidth: displayedWidth))
+        .overlay(alignment: .leading) {
+            if selected { trimHandle(edge: .leading) }
+        }
+        .overlay(alignment: .trailing) {
+            if selected { trimHandle(edge: .trailing) }
+        }
+    }
+
+    private func trimHandle(edge: HorizontalEdge) -> some View {
+        TimelineTrimHandle(color: .cyan, height: 70)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if trimOrigin == nil {
+                            trimOrigin = clip
+                            session.select(clip.id)
+                        }
+                        guard let trimOrigin else { return }
+                        trimDraft = TimelineClipGeometry.trimmed(
+                            clip: trimOrigin,
+                            edge: edge,
+                            translationX: value.translation.width,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            mediaDuration: media.duration
+                        )
+                    }
+                    .onEnded { _ in
+                        guard let trimDraft else {
+                            trimOrigin = nil
+                            return
+                        }
+                        Task {
+                            await session.commitClipTrim(trimDraft)
+                            self.trimDraft = nil
+                            trimOrigin = nil
+                        }
+                    }
+            )
+            .help(edge == .leading ? "Extend or trim clip start" : "Extend or trim clip end")
+    }
+
+    private func scrubGesture(displayed: TimelineClip, displayedWidth: Double) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { value in
+                guard trimOrigin == nil else { return }
+                session.select(clip.id)
+                let fraction = min(1, max(0, value.location.x / max(1, displayedWidth)))
+                session.scrub(to: timelineStart + displayed.duration * fraction)
+            }
+            .onEnded { value in
+                guard trimOrigin == nil else { return }
+                let fraction = min(1, max(0, value.location.x / max(1, displayedWidth)))
+                session.finishScrubbing(at: timelineStart + displayed.duration * fraction)
+            }
+    }
+}
+
+enum TimelineClipGeometry {
+    static func trimmed(
+        clip: TimelineClip,
+        edge: HorizontalEdge,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double,
+        mediaDuration: Double
+    ) -> TimelineClip {
+        var updated = clip
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = Double(translationX) / contentWidth * projectDuration
+        let minimumDuration = 1.0 / 30.0
+        switch edge {
+        case .leading:
+            updated.sourceStart = min(
+                clip.sourceEnd - minimumDuration,
+                max(0, clip.sourceStart + delta)
+            )
+        case .trailing:
+            updated.sourceEnd = min(
+                max(clip.sourceStart + minimumDuration, clip.sourceEnd + delta),
+                mediaDuration
+            )
+        }
+        return updated
+    }
+}
+
+private struct TimelineTrimHandle: View {
+    let color: Color
+    let height: CGFloat
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+            .fill(Color.white.opacity(0.96))
+            .overlay {
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .stroke(color, lineWidth: 1.25)
+            }
+            .frame(width: 6, height: height)
+            .padding(.horizontal, 2)
+            .contentShape(Rectangle().inset(by: -6))
+    }
+}
+
+private struct TimelineOverlayItem: View {
+    @ObservedObject var session: EditorSession
+    let overlay: ProjectOverlay
+    let media: ProjectMedia
+    let contentWidth: Double
+    let rowY: Double
+    let selected: Bool
+    @State private var trimOrigin: ProjectOverlay?
+    @State private var trimDraft: ProjectOverlay?
+
+    var body: some View {
+        let displayed = trimDraft ?? overlay
+        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
+        let width = max(12, contentWidth * displayed.duration / max(0.001, session.duration))
+        Button {
+            session.selectOverlay(overlay.id)
+            session.scrub(to: displayed.timelineStart)
+            session.finishScrubbing(at: displayed.timelineStart)
+        } label: {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Color.yapperOrange.opacity(0.24))
+                .overlay(alignment: .leading) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "photo.on.rectangle")
+                        Text(media.name).lineLimit(1)
+                    }
+                    .font(.studioCaptionStrong)
+                    .padding(.horizontal, selected ? 11 : 7)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(selected ? Color.yapperOrange : Color.yapperOrange.opacity(0.55), lineWidth: selected ? 1.1 : 0.7)
+                }
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .leading) {
+            if selected { trimHandle(.leading) }
+        }
+        .overlay(alignment: .trailing) {
+            if selected { trimHandle(.trailing) }
+        }
+        .frame(width: width, height: 42)
+        .offset(x: startX, y: rowY)
+    }
+
+    private func trimHandle(_ edge: HorizontalEdge) -> some View {
+        TimelineTrimHandle(color: .yapperOrange, height: 28)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if trimOrigin == nil {
+                            trimOrigin = overlay
+                            session.selectOverlay(overlay.id)
+                        }
+                        guard let trimOrigin else { return }
+                        trimDraft = TimelineOverlayGeometry.trimmed(
+                            overlay: trimOrigin,
+                            edge: edge,
+                            translationX: value.translation.width,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                    }
+                    .onEnded { _ in
+                        if let trimDraft { session.commitOverlayTrim(trimDraft) }
+                        trimDraft = nil
+                        trimOrigin = nil
+                    }
+            )
+            .help(edge == .leading ? "Trim overlay start" : "Extend or trim overlay end")
+    }
+}
+
+private struct TimelineAudioItem: View {
+    @ObservedObject var session: EditorSession
+    let layer: ProjectAudioLayer
+    let contentWidth: Double
+    let rowY: Double
+    let selected: Bool
+    @State private var trimOrigin: ProjectAudioLayer?
+    @State private var trimDraft: ProjectAudioLayer?
+
+    var body: some View {
+        let displayed = trimDraft ?? layer
+        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
+        let width = max(24, contentWidth * displayed.duration / max(0.001, session.duration))
+        Button {
+            session.selectAudioLayer(layer.id)
+            session.scrub(to: displayed.timelineStart)
+            session.finishScrubbing(at: displayed.timelineStart)
+        } label: {
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
+                MiniAudioWave(seed: layer.name.hashValue)
+                    .foregroundStyle(Color.cyan.opacity(0.58))
+                    .padding(.horizontal, 5)
+                HStack(spacing: 5) {
+                    Image(systemName: "waveform")
+                    Text(layer.name).lineLimit(1)
+                }
+                .font(.studioCaptionStrong)
+                .padding(.horizontal, selected ? 11 : 7)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(selected ? Color.cyan.opacity(0.9) : Color.secondary.opacity(0.34), lineWidth: selected ? 1.1 : 0.7)
+            }
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .leading) {
+            if selected { trimHandle(.leading) }
+        }
+        .overlay(alignment: .trailing) {
+            if selected { trimHandle(.trailing) }
+        }
+        .frame(width: width, height: 46)
+        .offset(x: startX, y: rowY)
+    }
+
+    private func trimHandle(_ edge: HorizontalEdge) -> some View {
+        TimelineTrimHandle(color: .cyan, height: 32)
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if trimOrigin == nil {
+                            trimOrigin = layer
+                            session.selectAudioLayer(layer.id)
+                        }
+                        guard let trimOrigin else { return }
+                        trimDraft = TimelineAudioGeometry.trimmed(
+                            layer: trimOrigin,
+                            edge: edge,
+                            translationX: value.translation.width,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                    }
+                    .onEnded { _ in
+                        guard let trimDraft else {
+                            trimOrigin = nil
+                            return
+                        }
+                        Task {
+                            await session.commitAudioTrim(trimDraft)
+                            self.trimDraft = nil
+                            trimOrigin = nil
+                        }
+                    }
+            )
+            .help(edge == .leading ? "Extend or trim audio start" : "Extend or trim audio end")
+    }
+}
+
+enum TimelineOverlayGeometry {
+    static func trimmed(
+        overlay: ProjectOverlay,
+        edge: HorizontalEdge,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectOverlay {
+        var updated = overlay
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = Double(translationX) / contentWidth * projectDuration
+        let minimumDuration = min(0.2, max(0.02, projectDuration))
+        switch edge {
+        case .leading:
+            let end = overlay.timelineStart + overlay.duration
+            updated.timelineStart = min(end - minimumDuration, max(0, overlay.timelineStart + delta))
+            updated.duration = end - updated.timelineStart
+        case .trailing:
+            updated.duration = min(
+                max(minimumDuration, overlay.duration + delta),
+                max(minimumDuration, projectDuration - overlay.timelineStart)
+            )
+        }
+        return updated
+    }
+}
+
+enum TimelineAudioGeometry {
+    static func trimmed(
+        layer: ProjectAudioLayer,
+        edge: HorizontalEdge,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectAudioLayer {
+        var updated = layer
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = Double(translationX) / contentWidth * projectDuration
+        let minimumDuration = min(0.05, max(0.01, projectDuration))
+        let sourceDuration = max(
+            layer.sourceStart + layer.duration,
+            layer.sourceDuration ?? 0
+        )
+        switch edge {
+        case .leading:
+            let sourceEnd = layer.sourceStart + layer.duration
+            let earliestSourceStart = max(0, layer.sourceStart - layer.timelineStart)
+            let newSourceStart = min(
+                sourceEnd - minimumDuration,
+                max(earliestSourceStart, layer.sourceStart + delta)
+            )
+            let actualDelta = newSourceStart - layer.sourceStart
+            updated.sourceStart = newSourceStart
+            updated.timelineStart = max(0, layer.timelineStart + actualDelta)
+            updated.duration = sourceEnd - newSourceStart
+        case .trailing:
+            let sourceEnd = min(
+                sourceDuration,
+                max(layer.sourceStart + minimumDuration, layer.sourceStart + layer.duration + delta)
+            )
+            updated.duration = min(
+                sourceEnd - layer.sourceStart,
+                max(minimumDuration, projectDuration - layer.timelineStart)
+            )
+        }
+        return updated
+    }
+}
+
 private struct TimelineTextLayerCell: View {
     @ObservedObject var session: EditorSession
     let layer: ProjectTextLayer
     let contentWidth: Double
+    let rowY: Double
     let selected: Bool
     @State private var trimOrigin: ProjectTextLayer?
+    @State private var trimDraft: ProjectTextLayer?
 
     var body: some View {
+        let displayed = trimDraft ?? layer
+        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
+        let width = max(18, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
-            session.selectTextLayer(layer.id)
-            session.scrub(to: layer.timelineStart)
-            session.finishScrubbing(at: layer.timelineStart)
+            session.selectTextLayer(displayed.id)
+            session.scrub(to: displayed.timelineStart)
+            session.finishScrubbing(at: displayed.timelineStart)
         } label: {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
                 .overlay(alignment: .leading) {
                     HStack(spacing: 5) {
                         Image(systemName: "textformat")
-                        Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
+                        Text(displayed.text.isEmpty ? "Text" : displayed.text).lineLimit(1)
                     }
                     .font(.studioCaptionStrong)
                     .padding(.horizontal, selected ? 11 : 7)
@@ -284,6 +606,8 @@ private struct TimelineTextLayerCell: View {
         .overlay(alignment: .trailing) {
             if selected { trimHandle(edge: .trailing) }
         }
+        .frame(width: width, height: 42)
+        .offset(x: startX, y: rowY)
     }
 
     private func trimHandle(edge: HorizontalEdge) -> some View {
@@ -304,17 +628,19 @@ private struct TimelineTextLayerCell: View {
                             session.selectTextLayer(layer.id)
                         }
                         guard let trimOrigin else { return }
-                        session.updateTextLayer(
-                            TimelineTextGeometry.trimmed(
-                                layer: trimOrigin,
-                                edge: edge,
-                                translationX: value.translation.width,
-                                contentWidth: contentWidth,
-                                projectDuration: session.duration
-                            )
+                        trimDraft = TimelineTextGeometry.trimmed(
+                            layer: trimOrigin,
+                            edge: edge,
+                            translationX: value.translation.width,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
                         )
                     }
-                    .onEnded { _ in trimOrigin = nil }
+                    .onEnded { _ in
+                        if let trimDraft { session.updateTextLayer(trimDraft) }
+                        trimDraft = nil
+                        trimOrigin = nil
+                    }
             )
             .help(edge == .leading ? "Trim text start" : "Extend or trim text end")
     }

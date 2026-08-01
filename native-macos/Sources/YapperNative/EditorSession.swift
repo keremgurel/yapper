@@ -15,6 +15,7 @@ final class EditorSession: ObservableObject {
     @Published var selectedClipID: UUID?
     @Published var selectedTextLayerID: UUID?
     @Published var selectedAudioLayerID: UUID?
+    @Published var selectedOverlayID: UUID?
     @Published private(set) var inspectorRequest: EditorInspectorRequest?
     @Published private(set) var currentTime = 0.0
     @Published private(set) var isPlaying = false
@@ -190,6 +191,14 @@ final class EditorSession: ObservableObject {
         selectedClipID = clipID
     }
 
+    func commitClipTrim(_ updated: TimelineClip) async {
+        guard let index = project.clips.firstIndex(where: { $0.id == updated.id }) else { return }
+        project.clips[index] = updated
+        selectedClipID = updated.id
+        currentTime = min(currentTime, project.duration)
+        await commitTimelineEdit()
+    }
+
     func appendMediaToTimeline(_ mediaID: UUID) async {
         guard let media = project.media.first(where: { $0.id == mediaID }), !media.isImage else { return }
         project.clips.append(
@@ -267,6 +276,7 @@ final class EditorSession: ObservableObject {
                 name: effect.name,
                 timelineStart: start,
                 duration: min(effect.duration, max(0.02, duration - start)),
+                sourceDuration: effect.duration,
                 builtInID: effect.id
             )
             var layers = project.audioLayers ?? []
@@ -294,7 +304,8 @@ final class EditorSession: ObservableObject {
                     url: url,
                     name: url.deletingPathExtension().lastPathComponent,
                     timelineStart: insertionTime,
-                    duration: layerDuration
+                    duration: layerDuration,
+                    sourceDuration: sourceDuration
                 )
                 layers.append(layer)
                 selectedAudioLayerID = layer.id
@@ -323,6 +334,25 @@ final class EditorSession: ObservableObject {
         guard let selectedAudioLayerID else { return }
         project.audioLayers?.removeAll { $0.id == selectedAudioLayerID }
         self.selectedAudioLayerID = project.audioLayers?.last?.id
+        await commitTimelineEdit()
+    }
+
+    func selectOverlay(_ id: UUID) {
+        selectedOverlayID = id
+    }
+
+    func commitOverlayTrim(_ updated: ProjectOverlay) {
+        guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
+        project.overlays?[index] = updated
+        selectedOverlayID = updated.id
+        project.updatedAt = Date()
+        scheduleVisualCommit()
+    }
+
+    func commitAudioTrim(_ updated: ProjectAudioLayer) async {
+        guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        project.audioLayers?[index] = updated
+        selectedAudioLayerID = updated.id
         await commitTimelineEdit()
     }
 
@@ -357,6 +387,7 @@ final class EditorSession: ObservableObject {
         selectedClipID = project.clips.first?.id
         selectedTextLayerID = nil
         selectedAudioLayerID = nil
+        selectedOverlayID = nil
         currentTime = 0
         await commitTimelineEdit()
     }
@@ -609,6 +640,7 @@ final class EditorSession: ObservableObject {
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
             selectedAudioLayerID = project.audioLayers?.first?.id
+            selectedOverlayID = project.overlays?.first?.id
             for media in project.media { beginDerivedMedia(for: media) }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)

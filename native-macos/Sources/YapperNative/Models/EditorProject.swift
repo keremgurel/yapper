@@ -194,6 +194,7 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
     var timelineStart: Double
     var duration: Double
     var sourceStart: Double
+    var sourceDuration: Double?
     var volume: Double
     var builtInID: String?
 
@@ -204,6 +205,7 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         timelineStart: Double,
         duration: Double,
         sourceStart: Double = 0,
+        sourceDuration: Double? = nil,
         volume: Double = 1,
         builtInID: String? = nil
     ) {
@@ -213,6 +215,7 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         self.timelineStart = timelineStart
         self.duration = duration
         self.sourceStart = sourceStart
+        self.sourceDuration = sourceDuration
         self.volume = volume
         self.builtInID = builtInID
     }
