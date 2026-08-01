@@ -155,4 +155,40 @@ struct ReferenceMediaIntegrationTests {
         #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
         #expect(abs(try await rendered.load(.duration).seconds - 3) < 0.15)
     }
+
+    @Test(
+        "DJI export mixes a native sound effect with source audio",
+        .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
+    )
+    func exportsSoundEffectMix() async throws {
+        let video = try await MediaProbe.inspect(url: djiReferenceURL)
+        let effect = SoundEffectDescriptor.library.first { $0.id == "pop" }!
+        let effectURL = try await SoundEffectService.shared.fileURL(for: effect)
+        let output = FileManager.default.temporaryDirectory.appending(path: "yapper-sound-effect-check.mp4")
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let project = EditorProject(
+            name: "Sound effect export check",
+            media: [video],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 20, sourceEnd: 23)],
+            audioLayers: [
+                ProjectAudioLayer(
+                    url: effectURL,
+                    name: effect.name,
+                    timelineStart: 0.75,
+                    duration: effect.duration,
+                    builtInID: effect.id
+                ),
+            ]
+        )
+        let built = try await CompositionBuilder.build(project: project)
+        #expect(try await built.asset.loadTracks(withMediaType: .audio).count == 2)
+        #expect(built.audioMix?.inputParameters.count == 1)
+
+        try await ExportService.export(project: project, to: output)
+        let rendered = AVURLAsset(url: output)
+        #expect(try await rendered.loadTracks(withMediaType: .video).count == 1)
+        #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
+        #expect(abs(try await rendered.load(.duration).seconds - 3) < 0.15)
+    }
 }

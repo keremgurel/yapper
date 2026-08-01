@@ -34,7 +34,8 @@ struct TimelinePanel: View {
                 HStack(spacing: 0) {
                     TrackHeader(
                         hasText: session.project.textLayers?.isEmpty == false,
-                        hasOverlays: session.project.overlays?.isEmpty == false
+                        hasOverlays: session.project.overlays?.isEmpty == false,
+                        hasAudio: session.project.audioLayers?.isEmpty == false
                     )
                         .frame(width: 70)
                     Rectangle().fill(Color.studioLine).frame(width: 1)
@@ -63,10 +64,12 @@ private struct TimelineContent: View {
     var body: some View {
         let hasText = session.project.textLayers?.isEmpty == false
         let hasOverlays = session.project.overlays?.isEmpty == false
+        let hasAudio = session.project.audioLayers?.isEmpty == false
         let textRowY = 45.0
         let overlayRowY = 45.0 + (hasText ? 60.0 : 0)
         let clipRowY = 45.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
-        let playheadHeight = 103.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
+        let audioRowY = clipRowY + 94.0
+        let playheadHeight = 103.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0) + (hasAudio ? 58.0 : 0)
 
         ZStack(alignment: .topLeading) {
             Color.editorBackground
@@ -158,6 +161,45 @@ private struct TimelineContent: View {
                             .frame(width: width, height: 42)
                             .offset(x: startX, y: overlayRowY)
                     }
+                }
+            }
+
+            if let audioLayers = session.project.audioLayers, !audioLayers.isEmpty {
+                ForEach(audioLayers) { layer in
+                    let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
+                    let width = max(24, contentWidth * layer.duration / max(0.001, session.duration))
+                    Button {
+                        session.selectAudioLayer(layer.id)
+                        session.scrub(to: layer.timelineStart)
+                        session.finishScrubbing(at: layer.timelineStart)
+                    } label: {
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
+                            MiniAudioWave(seed: layer.name.hashValue)
+                                .foregroundStyle(Color.cyan.opacity(0.58))
+                                .padding(.horizontal, 5)
+                            HStack(spacing: 5) {
+                                Image(systemName: "waveform")
+                                Text(layer.name).lineLimit(1)
+                            }
+                            .font(.studioCaptionStrong)
+                            .padding(.horizontal, 7)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .stroke(
+                                    session.selectedAudioLayerID == layer.id
+                                        ? Color.cyan.opacity(0.9)
+                                        : Color.secondary.opacity(0.34),
+                                    lineWidth: session.selectedAudioLayerID == layer.id ? 1.1 : 0.7
+                                )
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .frame(width: width, height: 46)
+                    .offset(x: startX, y: audioRowY)
+                    .zIndex(3)
                 }
             }
 
@@ -368,6 +410,7 @@ private struct StableThumbnailStrip: View {
 private struct TrackHeader: View {
     let hasText: Bool
     let hasOverlays: Bool
+    let hasAudio: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -401,9 +444,37 @@ private struct TrackHeader: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 88)
             .background(Color.studioFaintFill.opacity(0.55))
+            if hasAudio {
+                HStack(spacing: 7) {
+                    Image(systemName: "waveform")
+                    Text("Audio")
+                }
+                .font(.studioCaptionStrong)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 58)
+                .background(Color.cyan.opacity(0.035))
+            }
             Spacer()
         }
         .background(Color.panelBackground.opacity(0.72))
+    }
+}
+
+private struct MiniAudioWave: Shape {
+    let seed: Int
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let count = max(4, Int(rect.width / 5))
+        let middle = rect.midY
+        for index in 0 ..< count {
+            let mixed = abs((index &* 73 &+ seed) % 97)
+            let amplitude = max(2, CGFloat(mixed) / 96 * rect.height * 0.72)
+            let x = rect.minX + CGFloat(index) / CGFloat(max(1, count - 1)) * rect.width
+            path.move(to: CGPoint(x: x, y: middle - amplitude / 2))
+            path.addLine(to: CGPoint(x: x, y: middle + amplitude / 2))
+        }
+        return path
     }
 }
 

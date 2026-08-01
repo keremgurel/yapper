@@ -14,6 +14,7 @@ final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject()
     @Published var selectedClipID: UUID?
     @Published var selectedTextLayerID: UUID?
+    @Published var selectedAudioLayerID: UUID?
     @Published private(set) var inspectorRequest: EditorInspectorRequest?
     @Published private(set) var currentTime = 0.0
     @Published private(set) var isPlaying = false
@@ -33,6 +34,8 @@ final class EditorSession: ObservableObject {
     private let waveformService = WaveformService()
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
+    private let soundEffectService = SoundEffectService.shared
+    private var soundPreview: NSSound?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
     private var seekGeneration = 0
@@ -59,6 +62,11 @@ final class EditorSession: ObservableObject {
     var selectedTextLayer: ProjectTextLayer? {
         guard let selectedTextLayerID else { return nil }
         return project.textLayers?.first { $0.id == selectedTextLayerID }
+    }
+
+    var selectedAudioLayer: ProjectAudioLayer? {
+        guard let selectedAudioLayerID else { return nil }
+        return project.audioLayers?.first { $0.id == selectedAudioLayerID }
     }
 
     func importMedia(_ urls: [URL]) async {
@@ -238,6 +246,86 @@ final class EditorSession: ObservableObject {
         scheduleVisualCommit()
     }
 
+    func previewSoundEffect(_ effect: SoundEffectDescriptor) async {
+        do {
+            let url = try await soundEffectService.fileURL(for: effect)
+            soundPreview?.stop()
+            soundPreview = NSSound(contentsOf: url, byReference: true)
+            soundPreview?.play()
+        } catch {
+            show(error)
+        }
+    }
+
+    func addSoundEffect(_ effect: SoundEffectDescriptor) async {
+        guard duration > 0 else { return }
+        do {
+            let url = try await soundEffectService.fileURL(for: effect)
+            let start = min(currentTime, max(0, duration - 0.02))
+            let layer = ProjectAudioLayer(
+                url: url,
+                name: effect.name,
+                timelineStart: start,
+                duration: min(effect.duration, max(0.02, duration - start)),
+                builtInID: effect.id
+            )
+            var layers = project.audioLayers ?? []
+            layers.append(layer)
+            project.audioLayers = layers
+            selectedAudioLayerID = layer.id
+            inspectorRequest = EditorInspectorRequest(tool: "Audio")
+            await commitTimelineEdit()
+        } catch {
+            show(error)
+        }
+    }
+
+    func importAudio(_ urls: [URL]) async {
+        guard duration > 0, !urls.isEmpty else { return }
+        do {
+            var insertionTime = min(currentTime, max(0, duration - 0.02))
+            var layers = project.audioLayers ?? []
+            for rawURL in urls {
+                let url = rawURL.resolvingSymlinksInPath()
+                let sourceDuration = try await soundEffectService.duration(of: url)
+                let layerDuration = min(sourceDuration, max(0.02, duration - insertionTime))
+                guard layerDuration > 0 else { continue }
+                let layer = ProjectAudioLayer(
+                    url: url,
+                    name: url.deletingPathExtension().lastPathComponent,
+                    timelineStart: insertionTime,
+                    duration: layerDuration
+                )
+                layers.append(layer)
+                selectedAudioLayerID = layer.id
+                insertionTime = min(duration, insertionTime + layerDuration)
+            }
+            project.audioLayers = layers
+            inspectorRequest = EditorInspectorRequest(tool: "Audio")
+            await commitTimelineEdit()
+        } catch {
+            show(error)
+        }
+    }
+
+    func selectAudioLayer(_ id: UUID) {
+        selectedAudioLayerID = id
+        inspectorRequest = EditorInspectorRequest(tool: "Audio")
+    }
+
+    func updateAudioLayer(_ updated: ProjectAudioLayer) async {
+        guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        project.audioLayers?[index] = updated
+        await commitTimelineEdit()
+    }
+
+    func deleteSelectedAudioLayer() async {
+        guard let selectedAudioLayerID else { return }
+        project.audioLayers?.removeAll { $0.id == selectedAudioLayerID }
+        self.selectedAudioLayerID = project.audioLayers?.last?.id
+        await commitTimelineEdit()
+    }
+
     func selectTextLayer(_ id: UUID) {
         selectedTextLayerID = id
         inspectorRequest = EditorInspectorRequest(tool: "Text")
@@ -265,8 +353,10 @@ final class EditorSession: ObservableObject {
         ]
         project.overlays = []
         project.textLayers = []
+        project.audioLayers = []
         selectedClipID = project.clips.first?.id
         selectedTextLayerID = nil
+        selectedAudioLayerID = nil
         currentTime = 0
         await commitTimelineEdit()
     }
@@ -511,10 +601,14 @@ final class EditorSession: ObservableObject {
                 clips: saved.clips.filter { availableIDs.contains($0.mediaID) },
                 transcript: saved.transcript?.filter { availableIDs.contains($0.mediaID) },
                 overlays: saved.overlays?.filter { availableIDs.contains($0.mediaID) },
-                textLayers: saved.textLayers
+                textLayers: saved.textLayers,
+                audioLayers: saved.audioLayers?.filter {
+                    FileManager.default.fileExists(atPath: $0.url.path)
+                }
             )
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
+            selectedAudioLayerID = project.audioLayers?.first?.id
             for media in project.media { beginDerivedMedia(for: media) }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)

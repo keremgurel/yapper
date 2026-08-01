@@ -44,6 +44,7 @@ enum MediaProbe {
 
 enum NativeEditorError: LocalizedError {
     case noVideoTrack(String)
+    case noAudioTrack(String)
     case missingMedia(UUID)
     case emptyTimeline
     case cannotCreateTrack(String)
@@ -54,6 +55,8 @@ enum NativeEditorError: LocalizedError {
         switch self {
         case let .noVideoTrack(name):
             "No video track was found in \(name)."
+        case let .noAudioTrack(name):
+            "No audio track was found in \(name)."
         case let .missingMedia(id):
             "The project cannot find media \(id)."
         case .emptyTimeline:

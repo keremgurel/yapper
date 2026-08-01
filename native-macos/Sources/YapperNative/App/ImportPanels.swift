@@ -23,4 +23,15 @@ enum ImportPanels {
         guard panel.runModal() == .OK, let url = panel.url else { return }
         Task { await session.export(to: url) }
     }
+
+    static func openAudio(for session: EditorSession) {
+        let panel = NSOpenPanel()
+        panel.title = "Import audio"
+        panel.prompt = "Import"
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK else { return }
+        Task { await session.importAudio(panel.urls) }
+    }
 }

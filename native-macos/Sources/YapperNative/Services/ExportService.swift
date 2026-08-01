@@ -15,6 +15,7 @@ enum ExportService {
             try FileManager.default.removeItem(at: outputURL)
         }
         session.videoComposition = built.videoComposition
+        session.audioMix = built.audioMix
         session.shouldOptimizeForNetworkUse = true
         try await session.export(to: outputURL, as: .mp4)
 

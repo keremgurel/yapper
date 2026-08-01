@@ -222,6 +222,8 @@ struct WorkbenchPanel: View {
             QuickEditWorkbench(session: session)
         case .transcript:
             TranscriptWorkbench(session: session)
+        case .audio:
+            AudioWorkbench(session: session)
         case .text:
             TextWorkbench(session: session)
         default:
@@ -550,7 +552,7 @@ private struct MediaWorkbench: View {
             Spacer(minLength: 0)
         }
         .padding(16)
-        .inspectorPane(maxWidth: 820)
+        .inspectorPane(maxWidth: 720)
     }
 }
 
@@ -627,7 +629,7 @@ private struct QuickEditWorkbench: View {
             Spacer()
         }
         .padding(16)
-        .inspectorPane(maxWidth: 640)
+        .inspectorPane(maxWidth: 620)
     }
 }
 
@@ -713,7 +715,7 @@ private struct TextWorkbench: View {
             .padding(16)
             .frame(maxWidth: 680, alignment: .leading)
         }
-        .inspectorPane(maxWidth: 720)
+        .inspectorPane(maxWidth: 680)
     }
 
     @ViewBuilder
@@ -1002,7 +1004,209 @@ private struct TranscriptWorkbench: View {
             }
         }
         .padding(16)
-        .inspectorPane(maxWidth: 820)
+        .inspectorPane(maxWidth: 760)
+    }
+}
+
+private struct AudioWorkbench: View {
+    @ObservedObject var session: EditorSession
+
+    private let columns = [
+        GridItem(.adaptive(minimum: 218, maximum: 260), spacing: 8, alignment: .top),
+    ]
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Audio")
+                            .font(.studioSectionTitle)
+                        Text("Sound effects and imported audio on their own track")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Button {
+                        ImportPanels.openAudio(for: session)
+                    } label: {
+                        Label("Import audio", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle())
+                    .disabled(session.project.clips.isEmpty)
+                }
+
+                if let selected = session.selectedAudioLayer {
+                    selectedLayerEditor(selected)
+                    Divider()
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("SOUND EFFECTS")
+                        .font(.studioCaptionStrong)
+                        .foregroundStyle(.secondary)
+                    Text("Preview first, then place one at the playhead.")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                }
+
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 8) {
+                    ForEach(SoundEffectDescriptor.library) { effect in
+                        SoundEffectCard(effect: effect, disabled: session.project.clips.isEmpty) {
+                            Task { await session.previewSoundEffect(effect) }
+                        } add: {
+                            Task { await session.addSoundEffect(effect) }
+                        }
+                    }
+                }
+                .frame(maxWidth: 528, alignment: .leading)
+
+                if let layers = session.project.audioLayers, !layers.isEmpty {
+                    Divider()
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("IN THIS PROJECT")
+                            .font(.studioCaptionStrong)
+                            .foregroundStyle(.secondary)
+                        ForEach(layers) { layer in
+                            Button {
+                                session.selectAudioLayer(layer.id)
+                                session.scrub(to: layer.timelineStart)
+                                session.finishScrubbing(at: layer.timelineStart)
+                            } label: {
+                                HStack(spacing: 9) {
+                                    Image(systemName: layer.builtInID == nil ? "waveform" : "sparkles")
+                                        .foregroundStyle(Color.yapperOrange)
+                                        .frame(width: 18)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(layer.name).font(.studioBodyStrong)
+                                        Text("\(formatTimePrecise(layer.timelineStart)) · \(String(format: "%.1fs", layer.duration))")
+                                            .font(.studioCaption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .frame(width: 260, height: 48, alignment: .leading)
+                                .background(session.selectedAudioLayerID == layer.id ? Color.studioSelectedFill : Color.raisedBackground)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 7)
+                                        .stroke(session.selectedAudioLayerID == layer.id ? Color.yapperOrange.opacity(0.75) : Color.studioLine, lineWidth: 1)
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 7))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 620, alignment: .leading)
+        }
+        .inspectorPane(maxWidth: 660)
+    }
+
+    private func selectedLayerEditor(_ layer: ProjectAudioLayer) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "waveform.circle")
+                    .font(.system(size: 19, weight: .medium))
+                    .foregroundStyle(Color.yapperOrange)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(layer.name).font(.studioBodyStrong)
+                    Text("Selected audio · starts at \(formatTimePrecise(layer.timelineStart))")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Button(role: .destructive) {
+                    Task { await session.deleteSelectedAudioLayer() }
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+
+            HStack(spacing: 7) {
+                Text("Volume")
+                    .font(.studioCaptionStrong)
+                    .foregroundStyle(.secondary)
+                ForEach([0.5, 0.75, 1.0, 1.25], id: \.self) { volume in
+                    ChoiceButton(
+                        title: "\(Int(volume * 100))%",
+                        selected: abs(layer.volume - volume) < 0.01
+                    ) {
+                        var updated = layer
+                        updated.volume = volume
+                        Task { await session.updateAudioLayer(updated) }
+                    }
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: 540, alignment: .leading)
+        .background(Color.raisedBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.yapperOrange.opacity(0.35), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct SoundEffectCard: View {
+    let effect: SoundEffectDescriptor
+    let disabled: Bool
+    let preview: () -> Void
+    let add: () -> Void
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: effect.icon)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.yapperOrange)
+                .frame(width: 28, height: 28)
+                .background(Color.yapperOrange.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(effect.name)
+                    .font(.studioBodyStrong)
+                    .lineLimit(1)
+                Text(effect.detail)
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            Button(action: preview) {
+                Image(systemName: "play.fill")
+                    .font(.system(size: 10, weight: .bold))
+                    .frame(width: 27, height: 27)
+            }
+            .buttonStyle(.plain)
+            .background(Color.studioFaintFill)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .help("Preview \(effect.name)")
+
+            Button(action: add) {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .bold))
+                    .frame(width: 27, height: 27)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(disabled ? Color.secondary : Color.white)
+            .background(disabled ? Color.studioFaintFill : Color.yapperOrange)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .disabled(disabled)
+            .help("Add \(effect.name) at playhead")
+        }
+        .padding(.horizontal, 9)
+        .frame(width: 260, height: 54, alignment: .leading)
+        .background(Color.raisedBackground)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.studioLine, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 
@@ -1111,8 +1315,11 @@ private struct FeatureWorkbench: View {
 
 private extension View {
     func inspectorPane(maxWidth: CGFloat) -> some View {
-        frame(maxWidth: maxWidth, maxHeight: .infinity, alignment: .topLeading)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        HStack(spacing: 0) {
+            self.frame(maxWidth: maxWidth, maxHeight: .infinity, alignment: .topLeading)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

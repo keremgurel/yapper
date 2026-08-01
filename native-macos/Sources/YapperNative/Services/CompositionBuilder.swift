@@ -8,6 +8,7 @@ struct BuiltComposition: @unchecked Sendable {
     let asset: AVMutableComposition
     let videoComposition: AVMutableVideoComposition?
     let playbackVideoComposition: AVMutableVideoComposition?
+    let audioMix: AVAudioMix?
     let renderSize: CGSize
 
     @MainActor var playerItem: AVPlayerItem {
@@ -16,6 +17,7 @@ struct BuiltComposition: @unchecked Sendable {
         // them with an Objective-C exception. The SwiftUI canvas renders text
         // and overlays live, while this clean composition handles crop/rotation.
         item.videoComposition = playbackVideoComposition
+        item.audioMix = audioMix
         item.audioTimePitchAlgorithm = .spectral
         item.preferredForwardBufferDuration = 0
         return item
@@ -153,12 +155,74 @@ enum CompositionBuilder {
             to: videoComposition
         )
 
+        let audioMix = try await addAudioLayers(
+            project.audioLayers ?? [],
+            to: composition,
+            compositionDuration: cursor
+        )
+
         return BuiltComposition(
             asset: composition,
             videoComposition: videoComposition,
             playbackVideoComposition: playbackVideoComposition,
+            audioMix: audioMix,
             renderSize: renderSize
         )
+    }
+
+    private static func addAudioLayers(
+        _ layers: [ProjectAudioLayer],
+        to composition: AVMutableComposition,
+        compositionDuration: CMTime
+    ) async throws -> AVAudioMix? {
+        guard !layers.isEmpty, compositionDuration > .zero else { return nil }
+        var parameters: [AVMutableAudioMixInputParameters] = []
+
+        for layer in layers {
+            let destinationStart = CMTime(
+                seconds: max(0, layer.timelineStart),
+                preferredTimescale: timeScale
+            )
+            guard destinationStart < compositionDuration else { continue }
+
+            let asset = AVURLAsset(url: layer.url)
+            guard let sourceTrack = try await asset.loadTracks(withMediaType: .audio).first else {
+                throw NativeEditorError.noAudioTrack(layer.name)
+            }
+            let available = try await sourceTrack.load(.timeRange)
+            let requestedStart = CMTime(
+                seconds: max(0, layer.sourceStart),
+                preferredTimescale: timeScale
+            )
+            let sourceStart = max(available.start, requestedStart)
+            let remainingSource = max(.zero, available.end - sourceStart)
+            let remainingTimeline = max(.zero, compositionDuration - destinationStart)
+            let requestedDuration = CMTime(
+                seconds: max(0, layer.duration),
+                preferredTimescale: timeScale
+            )
+            let duration = min(requestedDuration, min(remainingSource, remainingTimeline))
+            guard duration > .zero else { continue }
+            guard let track = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                throw NativeEditorError.cannotCreateTrack("sound effect")
+            }
+            try track.insertTimeRange(
+                CMTimeRange(start: sourceStart, duration: duration),
+                of: sourceTrack,
+                at: destinationStart
+            )
+            let input = AVMutableAudioMixInputParameters(track: track)
+            input.setVolume(Float(min(2, max(0, layer.volume))), at: destinationStart)
+            parameters.append(input)
+        }
+
+        guard !parameters.isEmpty else { return nil }
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = parameters
+        return mix
     }
 
     private static func applyVisualLayers(

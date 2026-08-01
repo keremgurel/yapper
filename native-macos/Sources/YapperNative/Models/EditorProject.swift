@@ -187,6 +187,37 @@ struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var url: URL
+    var name: String
+    var timelineStart: Double
+    var duration: Double
+    var sourceStart: Double
+    var volume: Double
+    var builtInID: String?
+
+    init(
+        id: UUID = UUID(),
+        url: URL,
+        name: String,
+        timelineStart: Double,
+        duration: Double,
+        sourceStart: Double = 0,
+        volume: Double = 1,
+        builtInID: String? = nil
+    ) {
+        self.id = id
+        self.url = url
+        self.name = name
+        self.timelineStart = timelineStart
+        self.duration = duration
+        self.sourceStart = sourceStart
+        self.volume = volume
+        self.builtInID = builtInID
+    }
+}
+
 struct EditorProject: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
@@ -197,6 +228,7 @@ struct EditorProject: Codable, Equatable, Sendable {
     var transcript: [TranscriptWord]?
     var overlays: [ProjectOverlay]?
     var textLayers: [ProjectTextLayer]?
+    var audioLayers: [ProjectAudioLayer]?
 
     init(
         id: UUID = UUID(),
@@ -207,7 +239,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         clips: [TimelineClip] = [],
         transcript: [TranscriptWord]? = nil,
         overlays: [ProjectOverlay]? = nil,
-        textLayers: [ProjectTextLayer]? = nil
+        textLayers: [ProjectTextLayer]? = nil,
+        audioLayers: [ProjectAudioLayer]? = nil
     ) {
         self.id = id
         self.name = name
@@ -218,6 +251,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.transcript = transcript
         self.overlays = overlays
         self.textLayers = textLayers
+        self.audioLayers = audioLayers
     }
 
     var duration: Double {

@@ -80,4 +80,30 @@ struct EditorProjectTests {
         #expect(session.selectedTextLayerID == layerID)
         #expect(session.inspectorRequest?.tool == "Text")
     }
+
+    @Test func allBuiltInSoundEffectsAreRealNonSilentAudio() {
+        #expect(SoundEffectDescriptor.library.count == 10)
+        #expect(Set(SoundEffectDescriptor.library.map(\.id)).count == 10)
+        for effect in SoundEffectDescriptor.library {
+            let samples = SoundEffectService.render(effect)
+            #expect(samples.count == Int((effect.duration * SoundEffectService.sampleRate).rounded()))
+            #expect((samples.map { abs($0) }.max() ?? 0) > 0.5)
+        }
+        #expect(SoundEffectDescriptor.library.first(where: { $0.id == "mechanical-keyboard" })?.duration == 5)
+    }
+
+    @Test func audioLayersRoundTripWithTheProject() throws {
+        let layer = ProjectAudioLayer(
+            url: URL(filePath: "/tmp/pop.wav"),
+            name: "Pop",
+            timelineStart: 1.2,
+            duration: 0.22,
+            volume: 0.75,
+            builtInID: "pop"
+        )
+        let project = EditorProject(audioLayers: [layer])
+        let data = try JSONEncoder().encode(project)
+        let restored = try JSONDecoder().decode(EditorProject.self, from: data)
+        #expect(restored.audioLayers == [layer])
+    }
 }
