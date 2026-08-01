@@ -1218,17 +1218,17 @@ private struct TranscriptWorkbench: View {
                 }
             }
         } label: {
-            Text("[…\(pause.duration.formatted(.number.precision(.fractionLength(1))))s\(kept ? "" : " removed")]")
+            Text("[…\(pause.duration.formatted(.number.precision(.fractionLength(1))))s]")
                 .font(.system(size: 10, weight: .bold, design: .monospaced))
                 .foregroundStyle(kept ? Color.secondary : Color.secondary.opacity(0.42))
                 .strikethrough(!kept, color: Color.secondary.opacity(0.55))
                 .padding(.horizontal, 5)
                 .padding(.vertical, 3)
-                .background(kept ? Color.primary.opacity(0.07) : Color.green.opacity(0.08))
+                .background(kept ? Color.primary.opacity(0.07) : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(kept ? Color.studioLine : Color.green.opacity(0.22), lineWidth: 1)
+                        .stroke(kept ? Color.studioLine : Color.clear, lineWidth: 1)
                 }
         }
         .buttonStyle(.plain)

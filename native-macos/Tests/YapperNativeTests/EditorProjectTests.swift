@@ -471,6 +471,44 @@ struct EditorProjectTests {
         #expect((offset + 200) / 2_400 == 0.5)
     }
 
+    @Test func waveformFillsEveryVisibleColumnEvenWhenZoomExceedsPeakDensity() {
+        let samples = 0 ..< 72
+        let columns = 240
+        let ranges = (0 ..< columns).map {
+            TimelineWaveformGeometry.sampleRange(
+                column: $0,
+                columnCount: columns,
+                samples: samples
+            )
+        }
+
+        #expect(ranges.allSatisfy { !$0.isEmpty })
+        #expect(ranges.first?.lowerBound == samples.lowerBound)
+        #expect(ranges.last?.upperBound == samples.upperBound)
+    }
+
+    @Test func progressiveWaveformOccupiesOnlyTheDecodedPartOfAClip() {
+        let complete = TimelineWaveformGeometry.window(
+            peakCount: 9_600,
+            progress: 1,
+            sourceStart: 10,
+            sourceEnd: 20,
+            mediaDuration: 100
+        )
+        #expect(complete.fraction == 1)
+        #expect(complete.range == 960 ..< 1_920)
+
+        let partial = TimelineWaveformGeometry.window(
+            peakCount: 1_440,
+            progress: 0.15,
+            sourceStart: 10,
+            sourceEnd: 20,
+            mediaDuration: 100
+        )
+        #expect(abs(partial.fraction - 0.5) < 0.001)
+        #expect(partial.range == 960 ..< 1_440)
+    }
+
     @Test func everyTrimEdgeTracksThePointerExactlyAtEveryZoomLevel() {
         let projectDuration = 40.0
         let pointerDeltas: [CGFloat] = [-137.25, -23.5, 18.75, 164.125]

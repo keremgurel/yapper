@@ -98,6 +98,53 @@ enum TimelineZoomGeometry {
     }
 }
 
+struct TimelineWaveformWindow: Equatable {
+    let range: Range<Int>
+    let fraction: CGFloat
+}
+
+enum TimelineWaveformGeometry {
+    static func window(
+        peakCount: Int,
+        progress: Double,
+        sourceStart: Double,
+        sourceEnd: Double,
+        mediaDuration: Double
+    ) -> TimelineWaveformWindow {
+        guard peakCount > 0, mediaDuration > 0 else {
+            return TimelineWaveformWindow(range: 0 ..< 0, fraction: 0)
+        }
+        let estimatedTotal = progress > 0 && progress < 1
+            ? max(peakCount, Int(ceil(Double(peakCount) / progress)))
+            : peakCount
+        let desiredStart = max(0, Int(sourceStart / mediaDuration * Double(estimatedTotal)))
+        let desiredEnd = max(desiredStart, Int(ceil(sourceEnd / mediaDuration * Double(estimatedTotal))))
+        let availableStart = min(peakCount, desiredStart)
+        let availableEnd = min(peakCount, max(availableStart, desiredEnd))
+        let desiredCount = max(1, desiredEnd - desiredStart)
+        let fraction = min(1, max(0, CGFloat(availableEnd - availableStart) / CGFloat(desiredCount)))
+        return TimelineWaveformWindow(range: availableStart ..< availableEnd, fraction: fraction)
+    }
+
+    static func sampleRange(
+        column: Int,
+        columnCount: Int,
+        samples: Range<Int>
+    ) -> Range<Int> {
+        guard columnCount > 0, !samples.isEmpty else { return samples.lowerBound ..< samples.lowerBound }
+        let sampleCount = samples.count
+        let start = samples.lowerBound + Int(Double(column) / Double(columnCount) * Double(sampleCount))
+        let end = min(
+            samples.upperBound,
+            samples.lowerBound + max(
+                1,
+                Int(ceil(Double(column + 1) / Double(columnCount) * Double(sampleCount)))
+            )
+        )
+        return start ..< max(start, end)
+    }
+}
+
 private final class TimelineZoomMonitorView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
@@ -1062,12 +1109,15 @@ private struct TimelineClipCell: View {
                     endPoint: .bottom
                 )
                 WaveformShape(
-                    peaks: slicedPeaks(),
+                    peaks: peaks,
+                    sampleRange: waveformWindow.range,
                     color: .cyan.opacity(0.95)
                 )
                 .padding(.horizontal, 2)
                 .padding(.bottom, 2)
                 .frame(height: 30)
+                .frame(width: max(0, proxy.size.width * waveformWindow.fraction), alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .frame(maxHeight: .infinity, alignment: .bottom)
 
                 Text(media.name)
@@ -1089,14 +1139,14 @@ private struct TimelineClipCell: View {
         }
     }
 
-    private func slicedPeaks() -> [Float] {
-        guard !peaks.isEmpty, media.duration > 0 else { return [] }
-        let estimatedTotal = waveformProgress > 0 && waveformProgress < 1
-            ? max(peaks.count, Int(ceil(Double(peaks.count) / waveformProgress)))
-            : peaks.count
-        let start = min(peaks.count, max(0, Int(clip.sourceStart / media.duration * Double(estimatedTotal))))
-        let end = min(peaks.count, max(start, Int(clip.sourceEnd / media.duration * Double(estimatedTotal))))
-        return Array(peaks[start ..< end])
+    private var waveformWindow: TimelineWaveformWindow {
+        TimelineWaveformGeometry.window(
+            peakCount: peaks.count,
+            progress: waveformProgress,
+            sourceStart: clip.sourceStart,
+            sourceEnd: clip.sourceEnd,
+            mediaDuration: media.duration
+        )
     }
 }
 
@@ -1212,22 +1262,28 @@ private struct MiniAudioWave: Shape {
 
 private struct WaveformShape: View {
     let peaks: [Float]
+    let sampleRange: Range<Int>
     let color: Color
 
     var body: some View {
         Canvas { context, size in
-            guard !peaks.isEmpty, size.width > 0 else { return }
+            let lowerBound = max(0, min(peaks.count, sampleRange.lowerBound))
+            let upperBound = max(lowerBound, min(peaks.count, sampleRange.upperBound))
+            let sampleCount = upperBound - lowerBound
+            guard sampleCount > 0, size.width > 0 else { return }
             let barWidth: CGFloat = 1.5
             let barGap: CGFloat = 1
             let step = barWidth + barGap
-            let columns = max(1, min(peaks.count, Int(ceil(size.width / step))))
-            let stride = max(1, peaks.count / columns)
+            let columns = max(1, Int(ceil(size.width / step)))
             let middle = size.height / 2
             for column in 0 ..< columns {
-                let start = column * stride
-                let end = min(peaks.count, start + stride)
-                guard start < end else { continue }
-                let peak = peaks[start ..< end].max() ?? 0
+                let samples = TimelineWaveformGeometry.sampleRange(
+                    column: column,
+                    columnCount: columns,
+                    samples: lowerBound ..< upperBound
+                )
+                guard !samples.isEmpty else { continue }
+                let peak = peaks[samples].max() ?? 0
                 let emphasized = pow(CGFloat(max(0, peak)), 0.72)
                 let height = max(1.5, emphasized * (size.height - 2))
                 let x = CGFloat(column) * step
