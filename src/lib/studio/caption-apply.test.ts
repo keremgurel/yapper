@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyLayoutToCaptions,
   applyStyleToCaptions,
+  editCaptionText,
 } from "@/lib/studio/caption-apply";
 import type { Caption } from "@/lib/studio/types";
 
@@ -51,6 +52,39 @@ describe("applyStyleToCaptions", () => {
       textCase: "lower",
     });
     expect(out.textCase).toBe("upper");
+  });
+});
+
+describe("editCaptionText", () => {
+  it("shows a manually edited spoken caption exactly as typed", () => {
+    const captions = [cap({ id: "a" }), cap({ id: "b" })];
+    const out = editCaptionText(captions, "a", "This WORD stays uppercase");
+
+    expect(out[0]).toMatchObject({
+      text: "This WORD stays uppercase",
+      textCase: "none",
+    });
+    expect(out[1]).toBe(captions[1]);
+  });
+
+  it("replaces an inherited case override after a manual edit", () => {
+    const [out] = editCaptionText(
+      [cap({ id: "a", textCase: "lower" })],
+      "a",
+      "Keep CELPIP uppercase",
+    );
+
+    expect(out.textCase).toBe("none");
+  });
+
+  it("preserves a text hook's intentional case styling", () => {
+    const [out] = editCaptionText(
+      [cap({ id: "hook", kind: "hook", textCase: "upper" })],
+      "hook",
+      "Updated hook",
+    );
+
+    expect(out).toMatchObject({ text: "Updated hook", textCase: "upper" });
   });
 });
 

@@ -27,6 +27,7 @@ import { mergeCaptionsById } from "@/lib/studio/caption-merge";
 import {
   applyLayoutToCaptions,
   applyStyleToCaptions,
+  editCaptionText,
   type CaptionLayout,
 } from "@/lib/studio/caption-apply";
 import { deleteSelectedFrom } from "@/lib/studio/delete-selection";
@@ -243,7 +244,6 @@ interface StudioContextValue {
   removeSelectedCaptions: () => void;
   setCaptionText: (id: string, text: string) => void;
   rememberCaptionCorrection: (heard: string, term: string) => Promise<void>;
-  cycleCaptionCase: (id: string) => void;
   addCaption: (atSource: number) => void;
   addTextHook: (
     text: string,
@@ -460,10 +460,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const setCaptionText = useCallback(
     (id: string, text: string) => {
       // Coalesce keystrokes on one caption into a single undo step.
-      setCaptions(
-        (prev) => prev.map((c) => (c.id === id ? { ...c, text } : c)),
-        `text:${id}`,
-      );
+      setCaptions((prev) => editCaptionText(prev, id, text), `text:${id}`);
     },
     [setCaptions],
   );
@@ -473,29 +470,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       await rememberCorrection(heard, term);
     },
     [rememberCorrection],
-  );
-
-  // Per-caption case, cycled Original -> lower -> UPPER, independent of the
-  // global case — so one caption can be recased even when "lower" is applied to
-  // all. Uses the effective case (its own override, else the global) as the
-  // starting point so the first click always visibly changes it.
-  const cycleCaptionCase = useCallback(
-    (id: string) => {
-      setCaptions((prev) =>
-        prev.map((c) => {
-          if (c.id !== id) return c;
-          const current = c.textCase ?? captionStyle.textCase;
-          const next: CaptionCase =
-            current === "none"
-              ? "lower"
-              : current === "lower"
-                ? "upper"
-                : "none";
-          return { ...c, textCase: next };
-        }),
-      );
-    },
-    [setCaptions, captionStyle.textCase],
   );
 
   const removeCaption = useCallback(
@@ -685,8 +659,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [applyCaptionStyle],
   );
 
-  // Casing is a non-destructive display style (rendered via CSS text-transform),
-  // so it's fully revertible — "Original" leaves the transcribed text untouched.
+  // Casing is an action over all captions or the active selection. Manual text
+  // edits create a local `none` override so deliberate capitalization survives.
   const setCaptionCase = useCallback(
     (mode: CaptionCase) =>
       applyCaptionStyle({ textCase: mode }, { textCase: mode }),
@@ -1715,7 +1689,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeSelectedCaptions,
       setCaptionText,
       rememberCaptionCorrection,
-      cycleCaptionCase,
       addCaption,
       addTextHook,
       updateTextHook,
@@ -1821,7 +1794,6 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       removeSelectedCaptions,
       setCaptionText,
       rememberCaptionCorrection,
-      cycleCaptionCase,
       addCaption,
       addTextHook,
       updateTextHook,

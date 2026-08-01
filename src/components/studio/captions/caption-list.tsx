@@ -11,23 +11,11 @@ import {
   X,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import type { CaptionCase } from "@/lib/studio/types";
 import { captionTimelineRange, caseTransform } from "@/lib/studio/captions";
 import {
   findCaptionCorrection,
   type CaptionCorrection,
 } from "@/lib/studio/transcription-dictionary";
-
-const CASE_GLYPH: Record<CaptionCase, string> = {
-  none: "Aa",
-  lower: "aa",
-  upper: "AA",
-};
-const CASE_LABEL: Record<CaptionCase, string> = {
-  none: "Original",
-  lower: "lowercase",
-  upper: "UPPERCASE",
-};
 
 /** The editable list of caption lines. Click a row to select + seek to it. */
 export default function CaptionList({
@@ -45,7 +33,6 @@ export default function CaptionList({
     selectCaption,
     toggleCaptionSelection,
     setCaptionText,
-    cycleCaptionCase,
     addCaption,
     mergeCaptions,
     splitCaptionAtWord,
@@ -190,14 +177,6 @@ export default function CaptionList({
                       Hook
                     </span>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => cycleCaptionCase(c.id)}
-                    title={`Case: ${CASE_LABEL[effectiveCase]} (click to change just this caption)`}
-                    className="text-foreground/45 hover:text-foreground w-6 shrink-0 text-center text-[11px] font-bold"
-                  >
-                    {CASE_GLYPH[effectiveCase]}
-                  </button>
                   <button
                     type="button"
                     onClick={() => removeCaption(c.id)}

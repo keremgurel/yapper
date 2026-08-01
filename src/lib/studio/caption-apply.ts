@@ -1,5 +1,28 @@
 import type { Caption } from "@/lib/studio/types";
 
+/**
+ * Store a manual text edit exactly as the creator typed it. Spoken captions can
+ * inherit a global lowercase/uppercase display transform; the first keystroke
+ * creates a local `none` override so that transform no longer masks deliberate
+ * capitalization in this one caption. Text hooks keep their own explicit case
+ * styling because they are not governed by spoken-caption settings.
+ */
+export function editCaptionText(
+  captions: Caption[],
+  id: string,
+  text: string,
+): Caption[] {
+  return captions.map((caption) =>
+    caption.id === id
+      ? {
+          ...caption,
+          text,
+          textCase: caption.kind === "hook" ? caption.textCase : "none",
+        }
+      : caption,
+  );
+}
+
 /** A caption move/resize, in stage fractions. */
 export interface CaptionLayout {
   x?: number;

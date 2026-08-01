@@ -1,8 +1,8 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { CaseLower, CaseUpper, Check } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { CAPTION_FONTS, type CaptionCase } from "@/lib/studio/captions";
+import { CAPTION_FONTS } from "@/lib/studio/captions";
 import Segmented from "@/components/studio/captions/segmented";
 
 const SIZE_MIN = 12; // 0.012 of stage height — genuinely small
@@ -17,12 +17,6 @@ const WORD_OPTIONS = [
   { value: 5, label: "5" },
   { value: 6, label: "6" },
   { value: 8, label: "8" },
-];
-
-const CASE_OPTIONS: { value: CaptionCase; label: string }[] = [
-  { value: "none", label: "Original" },
-  { value: "lower", label: "lower" },
-  { value: "upper", label: "UPPER" },
 ];
 
 /** All caption styling controls: grouping, font, size, case, apply-to-all. */
@@ -93,13 +87,36 @@ export default function CaptionSettings() {
         />
       </div>
 
-      {/* Casing — non-destructive, revertible to Original */}
-      <Segmented
-        label="Case"
-        value={captionStyle.textCase}
-        options={CASE_OPTIONS}
-        onChange={setCaptionCase}
-      />
+      {/* Case is an action, not a sticky three-state mode. */}
+      <div className="flex items-center gap-3">
+        <span className="text-foreground/50 w-12 shrink-0 text-xs font-bold">
+          Case
+        </span>
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setCaptionCase("lower")}
+            disabled={noSelection}
+            className="border-border bg-muted/35 text-foreground hover:bg-muted flex min-w-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <CaseLower className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {captionApplyAll ? "Make all lowercase" : "Make lowercase"}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCaptionCase("upper")}
+            disabled={noSelection}
+            className="border-border bg-muted/35 text-foreground hover:bg-muted flex min-w-0 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <CaseUpper className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {captionApplyAll ? "Make all UPPERCASE" : "Make UPPERCASE"}
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* Whether font / size / case / move / resize apply to every caption or
           just the selected one(s). */}
