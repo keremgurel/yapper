@@ -1,3 +1,4 @@
+@preconcurrency import AppKit
 import CoreGraphics
 import SwiftUI
 
@@ -16,9 +17,10 @@ struct TimelinePanel: View {
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
                     .foregroundStyle(.secondary)
-                Slider(value: $pointsPerSecond, in: 18 ... 180)
+                Slider(value: $pointsPerSecond, in: TimelineZoomGeometry.scaleRange)
                     .frame(width: 130)
                     .controlSize(.mini)
+                    .help("Pinch or ⌘-scroll over the timeline to zoom")
                 Image(systemName: "plus.magnifyingglass")
                     .foregroundStyle(.secondary)
             }
@@ -46,6 +48,11 @@ struct TimelinePanel: View {
                         )
                         .frame(width: contentWidth, height: max(230, proxy.size.height - 12))
                         .padding(.horizontal, 10)
+                        .background {
+                            TimelineZoomInputView { factor in
+                                applyZoom(factor)
+                            }
+                        }
                     }
                 }
             }
@@ -53,6 +60,148 @@ struct TimelinePanel: View {
         .background(Color.editorBackground)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
+        }
+    }
+
+    private func applyZoom(_ factor: Double) -> Double {
+        let previous = pointsPerSecond
+        let updated = TimelineZoomGeometry.scaled(previous, by: factor)
+        guard abs(updated - previous) > 0.0001 else { return 1 }
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            pointsPerSecond = updated
+        }
+        return updated / previous
+    }
+}
+
+enum TimelineZoomGeometry {
+    static let scaleRange = 18.0 ... 240.0
+
+    static func scaled(_ current: Double, by factor: Double) -> Double {
+        min(scaleRange.upperBound, max(scaleRange.lowerBound, current * factor))
+    }
+
+    static func anchoredOffset(
+        oldOffset: CGFloat,
+        pointerX: CGFloat,
+        oldContentWidth: CGFloat,
+        newContentWidth: CGFloat,
+        viewportWidth: CGFloat
+    ) -> CGFloat {
+        guard oldContentWidth > 0, newContentWidth > 0 else { return 0 }
+        let documentX = oldOffset + pointerX
+        let fraction = min(1, max(0, documentX / oldContentWidth))
+        let proposed = fraction * newContentWidth - pointerX
+        return min(max(0, newContentWidth - viewportWidth), max(0, proposed))
+    }
+}
+
+private final class TimelineZoomMonitorView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+private struct TimelineZoomInputView: NSViewRepresentable {
+    let onZoom: (Double) -> Double
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onZoom: onZoom)
+    }
+
+    func makeNSView(context: Context) -> TimelineZoomMonitorView {
+        let view = TimelineZoomMonitorView()
+        context.coordinator.view = view
+        context.coordinator.install()
+        return view
+    }
+
+    func updateNSView(_ nsView: TimelineZoomMonitorView, context: Context) {
+        context.coordinator.view = nsView
+        context.coordinator.onZoom = onZoom
+    }
+
+    static func dismantleNSView(_ nsView: TimelineZoomMonitorView, coordinator: Coordinator) {
+        coordinator.uninstall()
+    }
+
+    @MainActor
+    final class Coordinator {
+        weak var view: TimelineZoomMonitorView?
+        var onZoom: (Double) -> Double
+        private var monitor: Any?
+
+        init(onZoom: @escaping (Double) -> Double) {
+            self.onZoom = onZoom
+        }
+
+        func install() {
+            guard monitor == nil else { return }
+            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { [weak self] event in
+                self?.handle(event) ?? event
+            }
+        }
+
+        func uninstall() {
+            guard let monitor else { return }
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
+        }
+
+        private func handle(_ event: NSEvent) -> NSEvent? {
+            guard
+                let view,
+                let window = view.window,
+                event.window === window,
+                view.bounds.contains(view.convert(event.locationInWindow, from: nil))
+            else { return event }
+
+            let requestedFactor: Double
+            switch event.type {
+            case .magnify:
+                requestedFactor = min(1.35, max(0.72, 1 + Double(event.magnification)))
+            case .scrollWheel where event.modifierFlags.contains(.command):
+                let sensitivity = event.hasPreciseScrollingDeltas ? 0.012 : 0.075
+                requestedFactor = min(
+                    1.35,
+                    max(0.72, exp(Double(event.scrollingDeltaY) * sensitivity))
+                )
+            default:
+                return event
+            }
+
+            let scrollView = enclosingScrollView(from: view)
+            let clipView = scrollView?.contentView
+            let pointerX = clipView?.convert(event.locationInWindow, from: nil).x ?? 0
+            let oldOffset = clipView?.bounds.minX ?? 0
+            let oldContentWidth = scrollView?.documentView?.bounds.width ?? view.bounds.width
+            let appliedFactor = onZoom(requestedFactor)
+            guard abs(appliedFactor - 1) > 0.0001 else { return nil }
+
+            DispatchQueue.main.async { [weak scrollView] in
+                guard let scrollView else { return }
+                let clipView = scrollView.contentView
+                let newContentWidth = scrollView.documentView?.bounds.width ?? oldContentWidth * appliedFactor
+                let x = TimelineZoomGeometry.anchoredOffset(
+                    oldOffset: oldOffset,
+                    pointerX: pointerX,
+                    oldContentWidth: oldContentWidth,
+                    newContentWidth: newContentWidth,
+                    viewportWidth: clipView.bounds.width
+                )
+                clipView.scroll(to: CGPoint(x: x, y: clipView.bounds.minY))
+                scrollView.reflectScrolledClipView(clipView)
+            }
+            return nil
+        }
+
+        private func enclosingScrollView(from view: NSView) -> NSScrollView? {
+            var candidate = view.superview
+            while let current = candidate {
+                if let scrollView = current as? NSScrollView { return scrollView }
+                candidate = current.superview
+            }
+            return nil
         }
     }
 }

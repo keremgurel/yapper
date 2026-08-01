@@ -224,4 +224,21 @@ struct EditorProjectTests {
         #expect(audioExtended.sourceStart == 1)
         #expect(audioExtended.duration == 4)
     }
+
+    @Test func timelineZoomClampsAndKeepsThePointerAnchored() {
+        #expect(TimelineZoomGeometry.scaled(36, by: 2) == 72)
+        #expect(TimelineZoomGeometry.scaled(230, by: 2) == 240)
+        #expect(TimelineZoomGeometry.scaled(20, by: 0.2) == 18)
+
+        let offset = TimelineZoomGeometry.anchoredOffset(
+            oldOffset: 400,
+            pointerX: 200,
+            oldContentWidth: 1_200,
+            newContentWidth: 2_400,
+            viewportWidth: 600
+        )
+        #expect(offset == 1_000)
+        // The same 50% timeline position remains under x=200 after zooming.
+        #expect((offset + 200) / 2_400 == 0.5)
+    }
 }
