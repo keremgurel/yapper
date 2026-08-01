@@ -242,6 +242,104 @@ struct EditorProjectTests {
         #expect((offset + 200) / 2_400 == 0.5)
     }
 
+    @Test func everyTrimEdgeTracksThePointerExactlyAtEveryZoomLevel() {
+        let projectDuration = 40.0
+        let pointerDeltas: [CGFloat] = [-137.25, -23.5, 18.75, 164.125]
+        let contentWidths = [720.0, 2_400.0, 9_600.0]
+
+        for contentWidth in contentWidths {
+            for pointerDelta in pointerDeltas {
+                let timeDelta = TimelineTrimGeometry.timeDelta(
+                    for: pointerDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                let renderedDelta = TimelineTrimGeometry.x(
+                    for: timeDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                #expect(abs(renderedDelta - pointerDelta) < 0.000_001)
+
+                let clip = TimelineClip(mediaID: UUID(), sourceStart: 10, sourceEnd: 20)
+                let leadingClip = TimelineClipGeometry.trimmed(
+                    clip: clip,
+                    edge: .leading,
+                    translationX: pointerDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration,
+                    mediaDuration: 60
+                )
+                let leadingClipPixels = TimelineTrimGeometry.x(
+                    for: leadingClip.sourceStart - clip.sourceStart,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                #expect(abs(leadingClipPixels - pointerDelta) < 0.000_001)
+
+                let overlay = ProjectOverlay(
+                    mediaID: UUID(),
+                    timelineStart: 12,
+                    duration: 10
+                )
+                let leadingOverlay = TimelineOverlayGeometry.trimmed(
+                    overlay: overlay,
+                    edge: .leading,
+                    translationX: pointerDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                let leadingOverlayPixels = TimelineTrimGeometry.x(
+                    for: leadingOverlay.timelineStart - overlay.timelineStart,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                #expect(abs(leadingOverlayPixels - pointerDelta) < 0.000_001)
+
+                let text = ProjectTextLayer(
+                    text: "Pointer locked",
+                    timelineStart: 12,
+                    duration: 10
+                )
+                let trailingText = TimelineTextGeometry.trimmed(
+                    layer: text,
+                    edge: .trailing,
+                    translationX: pointerDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                let trailingTextPixels = TimelineTrimGeometry.x(
+                    for: trailingText.duration - text.duration,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                #expect(abs(trailingTextPixels - pointerDelta) < 0.000_001)
+
+                let audio = ProjectAudioLayer(
+                    url: URL(filePath: "/tmp/pointer-locked.wav"),
+                    name: "Pointer locked",
+                    timelineStart: 12,
+                    duration: 10,
+                    sourceStart: 12,
+                    sourceDuration: 40
+                )
+                let leadingAudio = TimelineAudioGeometry.trimmed(
+                    layer: audio,
+                    edge: .leading,
+                    translationX: pointerDelta,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                let leadingAudioPixels = TimelineTrimGeometry.x(
+                    for: leadingAudio.timelineStart - audio.timelineStart,
+                    contentWidth: contentWidth,
+                    projectDuration: projectDuration
+                )
+                #expect(abs(leadingAudioPixels - pointerDelta) < 0.000_001)
+            }
+        }
+    }
+
     @Test func emptyTimelineSpaceMapsDirectlyToAClampedTimestamp() {
         #expect(TimelineMetrics.time(for: 250, duration: 10, width: 1_000) == 2.5)
         #expect(TimelineMetrics.time(for: -20, duration: 10, width: 1_000) == 0)

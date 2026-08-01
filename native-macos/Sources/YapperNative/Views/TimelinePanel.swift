@@ -207,6 +207,8 @@ private struct TimelineZoomInputView: NSViewRepresentable {
 }
 
 private struct TimelineContent: View {
+    static let coordinateSpaceName = "yapper.timeline.content"
+
     @ObservedObject var session: EditorSession
     let contentWidth: Double
 
@@ -297,6 +299,7 @@ private struct TimelineContent: View {
             }
 
         }
+        .coordinateSpace(name: Self.coordinateSpaceName)
     }
 
     private var emptySpaceSeekGesture: some Gesture {
@@ -326,7 +329,7 @@ private struct TimelineVideoTrack: View {
     let contentWidth: Double
 
     var body: some View {
-        HStack(alignment: .top, spacing: 2) {
+        HStack(alignment: .top, spacing: 0) {
             ForEach(session.project.clips) { clip in
                 if let media = session.project.media(for: clip) {
                     TimelineVideoClipItem(
@@ -356,60 +359,95 @@ private struct TimelineVideoClipItem: View {
     let selected: Bool
     @State private var trimOrigin: TimelineClip?
     @State private var trimDraft: TimelineClip?
+    @State private var activeTrimEdge: HorizontalEdge?
 
     var body: some View {
         let displayed = trimDraft ?? clip
+        let originalWidth = max(
+            1,
+            contentWidth * clip.duration / max(0.001, session.duration)
+        )
         let displayedWidth = max(
-            3,
+            1,
             contentWidth * displayed.duration / max(0.001, session.duration)
         )
-        TimelineClipCell(
-            clip: displayed,
-            media: media,
-            thumbnails: thumbnails,
-            peaks: peaks,
-            waveformProgress: waveformProgress,
-            selected: selected
-        )
-        .frame(width: displayedWidth, height: 88)
-        .contentShape(Rectangle())
-        .onTapGesture { session.select(clip.id) }
-        .overlay(alignment: .leading) {
-            if selected { trimHandle(edge: .leading) }
+        let leadingPreviewOffset = activeTrimEdge == .leading
+            ? TimelineTrimGeometry.x(
+                for: displayed.sourceStart - clip.sourceStart,
+                contentWidth: contentWidth,
+                projectDuration: session.duration
+            )
+            : 0
+        let layoutWidth = activeTrimEdge == .leading ? originalWidth : displayedWidth
+
+        ZStack(alignment: .leading) {
+            TimelineClipCell(
+                clip: displayed,
+                media: media,
+                thumbnails: thumbnails,
+                peaks: peaks,
+                waveformProgress: waveformProgress,
+                selected: selected
+            )
+            .frame(width: displayedWidth, height: 88)
+            .contentShape(Rectangle())
+            .onTapGesture { session.select(clip.id) }
+            .overlay(alignment: .leading) {
+                trimHandle(edge: .leading)
+            }
+            .overlay(alignment: .trailing) {
+                trimHandle(edge: .trailing)
+            }
+            .offset(x: leadingPreviewOffset)
         }
-        .overlay(alignment: .trailing) {
-            if selected { trimHandle(edge: .trailing) }
+        .frame(width: layoutWidth, height: 88, alignment: .leading)
+        .zIndex(activeTrimEdge == nil ? 0 : 10)
+        .transaction { transaction in
+            transaction.disablesAnimations = true
         }
     }
 
     private func trimHandle(edge: HorizontalEdge) -> some View {
-        TimelineTrimHandle(color: .cyan, height: 70)
+        let displayed = trimDraft ?? clip
+        let edgeTime = edge == .leading ? displayed.sourceStart : displayed.sourceEnd
+        return TimelineTrimHandle(
+            edge: edge,
+            color: .cyan,
+            height: 82,
+            isVisible: selected,
+            isActive: activeTrimEdge == edge,
+            readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
+        )
             .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(
+                    minimumDistance: 0,
+                    coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+                )
                     .onChanged { value in
                         if trimOrigin == nil {
                             trimOrigin = clip
+                            activeTrimEdge = edge
                             session.select(clip.id)
                         }
                         guard let trimOrigin else { return }
                         trimDraft = TimelineClipGeometry.trimmed(
                             clip: trimOrigin,
                             edge: edge,
-                            translationX: value.translation.width,
+                            translationX: value.location.x - value.startLocation.x,
                             contentWidth: contentWidth,
                             projectDuration: session.duration,
                             mediaDuration: media.duration
                         )
                     }
                     .onEnded { _ in
-                        guard let trimDraft else {
-                            trimOrigin = nil
-                            return
-                        }
+                        let committedTrim = trimDraft
+                        trimDraft = nil
+                        trimOrigin = nil
+                        activeTrimEdge = nil
+                        NSCursor.arrow.set()
+                        guard let committedTrim else { return }
                         Task {
-                            await session.commitClipTrim(trimDraft)
-                            self.trimDraft = nil
-                            trimOrigin = nil
+                            await session.commitClipTrim(committedTrim)
                         }
                     }
             )
@@ -428,7 +466,11 @@ enum TimelineClipGeometry {
     ) -> TimelineClip {
         var updated = clip
         guard projectDuration > 0, contentWidth > 0 else { return updated }
-        let delta = Double(translationX) / contentWidth * projectDuration
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
         let minimumDuration = 1.0 / 30.0
         switch edge {
         case .leading:
@@ -447,20 +489,83 @@ enum TimelineClipGeometry {
 }
 
 private struct TimelineTrimHandle: View {
+    let edge: HorizontalEdge
     let color: Color
     let height: CGFloat
+    let isVisible: Bool
+    let isActive: Bool
+    let readout: String?
+    @State private var isHovering = false
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(Color.white.opacity(0.96))
-            .overlay {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .stroke(color, lineWidth: 1.25)
+        ZStack {
+            Color.clear
+            Rectangle()
+                .fill(color.opacity(isActive ? 1 : 0.92))
+                .frame(width: isActive ? 2.5 : 2)
+                .shadow(color: color.opacity(isActive ? 0.55 : 0), radius: 4)
+            VStack(spacing: 0) {
+                Rectangle().fill(color).frame(width: 8, height: 2)
+                Spacer(minLength: 0)
+                Rectangle().fill(color).frame(width: 8, height: 2)
             }
-            .frame(width: 6, height: height)
-            .padding(.horizontal, 2)
-            .contentShape(Rectangle().inset(by: -6))
+            .offset(x: edge == .leading ? 3 : -3)
+        }
+        .frame(width: 18, height: height)
+        .opacity(isVisible || isActive || isHovering ? 1 : 0.001)
+        .contentShape(Rectangle())
+        .overlay(alignment: .top) {
+            if let readout {
+                Text(readout)
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundStyle(Color.white)
+                    .padding(.horizontal, 7)
+                    .frame(height: 22)
+                    .background(Color.black.opacity(0.88))
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 5, style: .continuous)
+                            .stroke(color.opacity(0.62), lineWidth: 0.7)
+                    }
+                    .fixedSize()
+                    .offset(y: -25)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onHover { hovering in
+            isHovering = hovering
+            (hovering ? NSCursor.resizeLeftRight : NSCursor.arrow).set()
+        }
+        .animation(.easeOut(duration: 0.08), value: isHovering)
     }
+}
+
+enum TimelineTrimGeometry {
+    static func timeDelta(
+        for translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> Double {
+        guard contentWidth > 0, projectDuration > 0 else { return 0 }
+        return Double(translationX) * projectDuration / contentWidth
+    }
+
+    static func x(
+        for time: Double,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> CGFloat {
+        guard contentWidth > 0, projectDuration > 0 else { return 0 }
+        return CGFloat(time / projectDuration * contentWidth)
+    }
+}
+
+private func formatTimelineTrimTime(_ seconds: Double) -> String {
+    guard seconds.isFinite else { return "0:00.000" }
+    let safe = max(0, seconds)
+    let minutes = Int(safe) / 60
+    let remainder = safe - Double(minutes * 60)
+    return String(format: "%d:%06.3f", minutes, remainder)
 }
 
 private struct TimelineOverlayItem: View {
@@ -472,11 +577,12 @@ private struct TimelineOverlayItem: View {
     let selected: Bool
     @State private var trimOrigin: ProjectOverlay?
     @State private var trimDraft: ProjectOverlay?
+    @State private var activeTrimEdge: HorizontalEdge?
 
     var body: some View {
         let displayed = trimDraft ?? overlay
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(12, contentWidth * displayed.duration / max(0.001, session.duration))
+        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectOverlay(overlay.id)
         } label: {
@@ -496,30 +602,46 @@ private struct TimelineOverlayItem: View {
                 }
         }
         .buttonStyle(.plain)
+        .frame(width: width, height: 42)
+        .clipped()
         .overlay(alignment: .leading) {
-            if selected { trimHandle(.leading) }
+            trimHandle(.leading)
         }
         .overlay(alignment: .trailing) {
-            if selected { trimHandle(.trailing) }
+            trimHandle(.trailing)
         }
-        .frame(width: width, height: 42)
         .offset(x: startX, y: rowY)
     }
 
     private func trimHandle(_ edge: HorizontalEdge) -> some View {
-        TimelineTrimHandle(color: .yapperOrange, height: 28)
+        let displayed = trimDraft ?? overlay
+        let edgeTime = edge == .leading
+            ? displayed.timelineStart
+            : displayed.timelineStart + displayed.duration
+        return TimelineTrimHandle(
+            edge: edge,
+            color: .yapperOrange,
+            height: 38,
+            isVisible: selected,
+            isActive: activeTrimEdge == edge,
+            readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
+        )
             .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(
+                    minimumDistance: 0,
+                    coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+                )
                     .onChanged { value in
                         if trimOrigin == nil {
                             trimOrigin = overlay
+                            activeTrimEdge = edge
                             session.selectOverlay(overlay.id)
                         }
                         guard let trimOrigin else { return }
                         trimDraft = TimelineOverlayGeometry.trimmed(
                             overlay: trimOrigin,
                             edge: edge,
-                            translationX: value.translation.width,
+                            translationX: value.location.x - value.startLocation.x,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
@@ -528,6 +650,8 @@ private struct TimelineOverlayItem: View {
                         if let trimDraft { session.commitOverlayTrim(trimDraft) }
                         trimDraft = nil
                         trimOrigin = nil
+                        activeTrimEdge = nil
+                        NSCursor.arrow.set()
                     }
             )
             .help(edge == .leading ? "Trim overlay start" : "Extend or trim overlay end")
@@ -542,11 +666,12 @@ private struct TimelineAudioItem: View {
     let selected: Bool
     @State private var trimOrigin: ProjectAudioLayer?
     @State private var trimDraft: ProjectAudioLayer?
+    @State private var activeTrimEdge: HorizontalEdge?
 
     var body: some View {
         let displayed = trimDraft ?? layer
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(24, contentWidth * displayed.duration / max(0.001, session.duration))
+        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectAudioLayer(layer.id)
         } label: {
@@ -569,43 +694,59 @@ private struct TimelineAudioItem: View {
             }
         }
         .buttonStyle(.plain)
+        .frame(width: width, height: 46)
+        .clipped()
         .overlay(alignment: .leading) {
-            if selected { trimHandle(.leading) }
+            trimHandle(.leading)
         }
         .overlay(alignment: .trailing) {
-            if selected { trimHandle(.trailing) }
+            trimHandle(.trailing)
         }
-        .frame(width: width, height: 46)
         .offset(x: startX, y: rowY)
     }
 
     private func trimHandle(_ edge: HorizontalEdge) -> some View {
-        TimelineTrimHandle(color: .cyan, height: 32)
+        let displayed = trimDraft ?? layer
+        let edgeTime = edge == .leading
+            ? displayed.timelineStart
+            : displayed.timelineStart + displayed.duration
+        return TimelineTrimHandle(
+            edge: edge,
+            color: .cyan,
+            height: 42,
+            isVisible: selected,
+            isActive: activeTrimEdge == edge,
+            readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
+        )
             .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(
+                    minimumDistance: 0,
+                    coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+                )
                     .onChanged { value in
                         if trimOrigin == nil {
                             trimOrigin = layer
+                            activeTrimEdge = edge
                             session.selectAudioLayer(layer.id)
                         }
                         guard let trimOrigin else { return }
                         trimDraft = TimelineAudioGeometry.trimmed(
                             layer: trimOrigin,
                             edge: edge,
-                            translationX: value.translation.width,
+                            translationX: value.location.x - value.startLocation.x,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
                     }
                     .onEnded { _ in
-                        guard let trimDraft else {
-                            trimOrigin = nil
-                            return
-                        }
+                        let committedTrim = trimDraft
+                        trimDraft = nil
+                        trimOrigin = nil
+                        activeTrimEdge = nil
+                        NSCursor.arrow.set()
+                        guard let committedTrim else { return }
                         Task {
-                            await session.commitAudioTrim(trimDraft)
-                            self.trimDraft = nil
-                            trimOrigin = nil
+                            await session.commitAudioTrim(committedTrim)
                         }
                     }
             )
@@ -623,7 +764,11 @@ enum TimelineOverlayGeometry {
     ) -> ProjectOverlay {
         var updated = overlay
         guard projectDuration > 0, contentWidth > 0 else { return updated }
-        let delta = Double(translationX) / contentWidth * projectDuration
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
         let minimumDuration = min(0.2, max(0.02, projectDuration))
         switch edge {
         case .leading:
@@ -650,7 +795,11 @@ enum TimelineAudioGeometry {
     ) -> ProjectAudioLayer {
         var updated = layer
         guard projectDuration > 0, contentWidth > 0 else { return updated }
-        let delta = Double(translationX) / contentWidth * projectDuration
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
         let minimumDuration = min(0.05, max(0.01, projectDuration))
         let sourceDuration = max(
             layer.sourceStart + layer.duration,
@@ -690,11 +839,12 @@ private struct TimelineTextLayerCell: View {
     let selected: Bool
     @State private var trimOrigin: ProjectTextLayer?
     @State private var trimDraft: ProjectTextLayer?
+    @State private var activeTrimEdge: HorizontalEdge?
 
     var body: some View {
         let displayed = trimDraft ?? layer
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(18, contentWidth * displayed.duration / max(0.001, session.duration))
+        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectTextLayer(displayed.id)
         } label: {
@@ -717,38 +867,46 @@ private struct TimelineTextLayerCell: View {
                 }
         }
         .buttonStyle(.plain)
+        .frame(width: width, height: 42)
+        .clipped()
         .overlay(alignment: .leading) {
-            if selected { trimHandle(edge: .leading) }
+            trimHandle(edge: .leading)
         }
         .overlay(alignment: .trailing) {
-            if selected { trimHandle(edge: .trailing) }
+            trimHandle(edge: .trailing)
         }
-        .frame(width: width, height: 42)
         .offset(x: startX, y: rowY)
     }
 
     private func trimHandle(edge: HorizontalEdge) -> some View {
-        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-            .fill(Color.white.opacity(0.96))
-            .overlay {
-                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                    .stroke(Color.yapperOrange, lineWidth: 1)
-            }
-            .frame(width: 5, height: 28)
-            .padding(.horizontal, 2)
-            .contentShape(Rectangle().inset(by: -5))
+        let displayed = trimDraft ?? layer
+        let edgeTime = edge == .leading
+            ? displayed.timelineStart
+            : displayed.timelineStart + displayed.duration
+        return TimelineTrimHandle(
+            edge: edge,
+            color: .yapperOrange,
+            height: 38,
+            isVisible: selected,
+            isActive: activeTrimEdge == edge,
+            readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
+        )
             .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
+                DragGesture(
+                    minimumDistance: 0,
+                    coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+                )
                     .onChanged { value in
                         if trimOrigin == nil {
                             trimOrigin = layer
+                            activeTrimEdge = edge
                             session.selectTextLayer(layer.id)
                         }
                         guard let trimOrigin else { return }
                         trimDraft = TimelineTextGeometry.trimmed(
                             layer: trimOrigin,
                             edge: edge,
-                            translationX: value.translation.width,
+                            translationX: value.location.x - value.startLocation.x,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
@@ -757,6 +915,8 @@ private struct TimelineTextLayerCell: View {
                         if let trimDraft { session.updateTextLayer(trimDraft) }
                         trimDraft = nil
                         trimOrigin = nil
+                        activeTrimEdge = nil
+                        NSCursor.arrow.set()
                     }
             )
             .help(edge == .leading ? "Trim text start" : "Extend or trim text end")
@@ -773,7 +933,11 @@ enum TimelineTextGeometry {
     ) -> ProjectTextLayer {
         var updated = layer
         guard projectDuration > 0, contentWidth > 0 else { return updated }
-        let delta = Double(translationX) / contentWidth * projectDuration
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
         let minimumDuration = min(0.2, max(0.02, projectDuration))
         switch edge {
         case .leading:
@@ -802,22 +966,32 @@ private struct TimelineRuler: View {
         Canvas { context, size in
             guard duration > 0 else { return }
             let approximateStep = max(1, duration / max(2, floor(size.width / 100)))
-            let step = niceStep(approximateStep)
+            let majorStep = niceStep(approximateStep)
+            let minorStep = majorStep / 5
             var time = 0.0
+            var tick = 0
             while time <= duration + 0.001 {
                 let x = TimelineMetrics.x(for: time, duration: duration, width: size.width)
+                let isMajor = tick.isMultiple(of: 5)
                 var path = Path()
-                path.move(to: CGPoint(x: x, y: 20))
+                path.move(to: CGPoint(x: x, y: isMajor ? 18 : 25))
                 path.addLine(to: CGPoint(x: x, y: 30))
-                context.stroke(path, with: .color(.white.opacity(0.18)), lineWidth: 1)
-                context.draw(
-                    Text(formatTime(time))
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary),
-                    at: CGPoint(x: x + 3, y: 10),
-                    anchor: .leading
+                context.stroke(
+                    path,
+                    with: .color(.white.opacity(isMajor ? 0.2 : 0.09)),
+                    lineWidth: 1
                 )
-                time += step
+                if isMajor {
+                    context.draw(
+                        Text(formatTime(time))
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.secondary),
+                        at: CGPoint(x: x + 3, y: 9),
+                        anchor: .leading
+                    )
+                }
+                tick += 1
+                time += minorStep
             }
         }
     }
@@ -877,8 +1051,8 @@ private struct TimelineClipCell: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 5)
                     .stroke(
-                        selected ? Color.yapperOrange.opacity(0.9) : Color.secondary.opacity(0.34),
-                        lineWidth: selected ? 1.25 : 0.75
+                        selected ? Color.white.opacity(0.86) : Color.secondary.opacity(0.28),
+                        lineWidth: selected ? 1.15 : 0.55
                     )
             )
             .clipShape(RoundedRectangle(cornerRadius: 5))
