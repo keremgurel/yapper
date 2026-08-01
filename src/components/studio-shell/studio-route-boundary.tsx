@@ -13,24 +13,34 @@ export default function StudioRouteBoundary({
 }: {
   children: ReactNode;
 }) {
-  const isDesktop = useSyncExternalStore(
-    () => () => undefined,
+  const environment = useSyncExternalStore<"pending" | "desktop" | "browser">(
+    (onStoreChange) => {
+      // Hydration starts from the server's conservative `pending` snapshot.
+      // Request one client snapshot immediately after mount; the desktop
+      // identity itself stays stable for the life of this document.
+      queueMicrotask(onStoreChange);
+      return () => undefined;
+    },
     () =>
       process.env.NODE_ENV === "development" ||
+      navigator.userAgent.includes("YapperStudioNative/") ||
       "__TAURI_INTERNALS__" in window ||
-      "__TAURI__" in window,
-    () => process.env.NODE_ENV === "development",
+      "__TAURI__" in window
+        ? "desktop"
+        : "browser",
+    () => "pending",
   );
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isDesktop) {
+    if (environment === "pending") return;
+    if (environment === "browser") {
       router.replace("/");
       return;
     }
     if (pathname === "/studio") router.replace("/studio/home");
-  }, [isDesktop, pathname, router]);
+  }, [environment, pathname, router]);
 
-  return isDesktop ? children : null;
+  return environment === "desktop" ? children : null;
 }

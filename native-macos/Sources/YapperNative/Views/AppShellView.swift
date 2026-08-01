@@ -32,6 +32,7 @@ struct AppShellView: View {
                     sidebarExpanded: sidebarExpanded,
                     session: session,
                     theme: theme,
+                    onNavigate: navigate,
                     toggleSidebar: {
                         withAnimation(.smooth(duration: 0.24)) {
                             sidebarExpanded.toggle()
@@ -53,7 +54,6 @@ struct AppShellView: View {
                     if destination != .editor {
                         StudioPageView(
                             destination: destination,
-                            session: session,
                             onNavigate: navigate
                         )
                         .id(destination)
@@ -203,6 +203,7 @@ private struct StudioTopBar: View {
     let sidebarExpanded: Bool
     @ObservedObject var session: EditorSession
     let theme: StudioTheme
+    let onNavigate: (StudioDestination) -> Void
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
     @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.standard.rawValue
@@ -284,7 +285,7 @@ private struct StudioTopBar: View {
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
 
-            WorkspaceProfileMenu()
+            WorkspaceProfileMenu(onNavigate: onNavigate)
         }
         .padding(.horizontal, 15)
         .frame(height: 56)
@@ -379,12 +380,19 @@ private struct NativeThemeSwitcher: View {
 }
 
 private struct WorkspaceProfileMenu: View {
+    let onNavigate: (StudioDestination) -> Void
+
     var body: some View {
         Menu {
-            Button("Workspace settings", systemImage: "gearshape") {}
-            Button("Connections", systemImage: "link") {}
-            Divider()
-            Button("Account", systemImage: "person.crop.circle") {}
+            Button("Content Library", systemImage: "square.stack.3d.up") {
+                onNavigate(.library)
+            }
+            Button("Dictionary", systemImage: "character.book.closed") {
+                onNavigate(.dictionary)
+            }
+            Button("Connections", systemImage: "link") {
+                onNavigate(.connections)
+            }
         } label: {
             HStack(spacing: 9) {
                 ZStack {
