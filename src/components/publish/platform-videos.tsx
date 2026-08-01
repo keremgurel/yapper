@@ -14,6 +14,8 @@ import {
 import CrossPostSheet, {
   type CrossPostTarget,
 } from "@/components/publish/cross-post-sheet";
+import PlatformIcon from "@/components/publish/platform-icon";
+import { useConnections } from "@/hooks/use-connections";
 import { usePlatformVideos, type VideoSort } from "@/hooks/use-platform-videos";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { importInstagramMedia, type PlatformVideo } from "@/lib/publish/client";
@@ -54,6 +56,12 @@ export default function PlatformVideos() {
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState("");
   const { videos, connected } = usePlatformVideos(platform, !!isSignedIn, sort);
+  const { connections } = useConnections(!!isSignedIn);
+  const connectedPlatforms = new Set(
+    connections
+      ?.filter((item) => item.status === "connected")
+      .map((item) => item.platform) ?? [],
+  );
 
   const toggle = (video: PlatformVideo) => {
     if (!video.mediaKey && !(platform === "instagram" && video.sourceFileUrl)) {
@@ -111,7 +119,7 @@ export default function PlatformVideos() {
   };
 
   return (
-    <section className="border-border bg-card/35 rounded-3xl border p-4 sm:p-5">
+    <section className="border-border bg-card/35 rounded-xl border p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-black tracking-wide text-[color:var(--sg-accent)] uppercase">
@@ -129,7 +137,7 @@ export default function PlatformVideos() {
           type="button"
           onClick={() => void prepareCrossPost()}
           disabled={selected.size === 0 || preparing}
-          className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition hover:opacity-90 disabled:opacity-40"
+          className="bg-foreground text-background inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-black transition hover:opacity-90 disabled:opacity-40"
         >
           {preparing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -141,19 +149,38 @@ export default function PlatformVideos() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="bg-muted/50 flex rounded-xl p-1">
+        <div
+          className="border-border bg-background grid min-w-full grid-cols-3 gap-1 rounded-lg border p-1 sm:min-w-0"
+          aria-label="Source platform"
+          role="tablist"
+        >
           {publishPlatforms.map((candidate) => (
             <button
               key={candidate}
               type="button"
               onClick={() => setPlatform(candidate)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-black transition ${
+              role="tab"
+              aria-selected={platform === candidate}
+              className={`flex min-w-0 items-center justify-center gap-2 rounded-md px-3 py-2 text-xs font-black transition ${
                 platform === candidate
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-muted text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
               }`}
             >
-              {PLATFORMS[candidate].label}
+              <PlatformIcon platform={candidate} branded />
+              <span className="truncate">{PLATFORMS[candidate].label}</span>
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                  connectedPlatforms.has(candidate)
+                    ? "bg-emerald-400"
+                    : "bg-muted-foreground/35"
+                }`}
+                title={
+                  connectedPlatforms.has(candidate)
+                    ? "Connected"
+                    : "Not connected"
+                }
+              />
               {[...selected.values()].filter(
                 (source) => source.platform === candidate,
               ).length > 0 && (
@@ -168,16 +195,17 @@ export default function PlatformVideos() {
             </button>
           ))}
         </div>
-        <div className="flex gap-1">
+        <div className="border-border bg-background flex rounded-lg border p-1">
           {(["recent", "views"] as VideoSort[]).map((candidate) => (
             <button
               key={candidate}
               type="button"
               onClick={() => setSort(candidate)}
-              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+              aria-pressed={sort === candidate}
+              className={`rounded-md px-2.5 py-1.5 text-[11px] font-bold transition ${
                 sort === candidate
                   ? "text-foreground bg-muted"
-                  : "text-muted-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {candidate === "recent" ? "Recent" : "Most viewed"}
@@ -214,9 +242,20 @@ export default function PlatformVideos() {
           {videos.map((video) => {
             const key = sourceKey(platform, video);
             const active = selected.has(key);
-            const reusable =
-              Boolean(video.mediaKey) ||
-              (platform === "instagram" && Boolean(video.sourceFileUrl));
+            const retainedByYapper = Boolean(video.mediaKey);
+            const importable =
+              platform === "instagram" && Boolean(video.sourceFileUrl);
+            const reusable = retainedByYapper || importable;
+            const sourceStatus = retainedByYapper
+              ? "Ready to reuse"
+              : importable
+                ? "Importable"
+                : "Needs source file";
+            const sourceHelp = retainedByYapper
+              ? "Yapper kept the source file when this was published."
+              : importable
+                ? "Instagram lets Yapper import this source when you select it."
+                : `${PLATFORMS[platform].label} does not provide the source video file. Upload it once to cross-post this older post.`;
             return (
               <article
                 key={video.id}
@@ -244,7 +283,7 @@ export default function PlatformVideos() {
                       />
                     ) : null}
                     <span
-                      className={`absolute top-2 left-2 grid h-7 w-7 place-items-center rounded-full border backdrop-blur ${
+                      className={`absolute top-2 left-2 grid h-7 w-7 place-items-center rounded-md border backdrop-blur ${
                         active
                           ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-black"
                           : "border-white/30 bg-black/45 text-transparent"
@@ -252,9 +291,12 @@ export default function PlatformVideos() {
                     >
                       <Check className="h-4 w-4" />
                     </span>
-                    <span className="absolute right-2 bottom-2 flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[9px] font-black text-white backdrop-blur">
+                    <span
+                      className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[9px] font-black text-white backdrop-blur"
+                      title={sourceHelp}
+                    >
                       <HardDrive className="h-2.5 w-2.5" />
-                      {reusable ? "Original ready" : "Original unavailable"}
+                      {sourceStatus}
                     </span>
                   </div>
                   <div className="p-2.5">
@@ -273,7 +315,7 @@ export default function PlatformVideos() {
                   target="_blank"
                   rel="noreferrer"
                   aria-label={`Open ${video.title}`}
-                  className="absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-black/55 text-white backdrop-blur hover:bg-black/75"
+                  className="absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-md bg-black/55 text-white backdrop-blur hover:bg-black/75"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -285,10 +327,10 @@ export default function PlatformVideos() {
 
       {!prepareError && videos?.some((video) => !video.mediaKey) ? (
         <p className="text-muted-foreground mt-3 text-[11px] leading-5">
-          Platforms expose post metadata, not original files. Yapper can
-          instantly reuse anything it published and can import Instagram
-          originals; older external YouTube and TikTok posts need their original
-          uploaded once.
+          “Needs source file” means the platform gave Yapper the post details
+          and thumbnail, but not the downloadable video. Anything published
+          through Yapper is ready immediately; older YouTube and TikTok posts
+          need the source uploaded once.
         </p>
       ) : null}
       {prepareError ? (

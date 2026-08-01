@@ -265,7 +265,7 @@ export default function CrossPostSheet({
                         type="button"
                         onClick={() => togglePlatform(platform)}
                         disabled={posting}
-                        className={`relative rounded-xl border px-3 py-3 text-left transition ${
+                        className={`relative rounded-md border px-3 py-3 text-left transition ${
                           active
                             ? "border-[color:var(--sg-accent)] bg-[color:color-mix(in_srgb,var(--sg-accent)_10%,transparent)]"
                             : "border-border hover:border-foreground/25"
@@ -278,7 +278,7 @@ export default function CrossPostSheet({
                           {PLATFORMS[platform].postMeaning}
                         </span>
                         <span
-                          className={`absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-full border ${
+                          className={`absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-md border ${
                             active
                               ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-black"
                               : "border-border text-transparent"

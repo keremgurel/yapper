@@ -3,6 +3,7 @@ import {
   BookType,
   Layers,
   Library,
+  House,
   Scissors,
   Send,
   Share2,
@@ -12,6 +13,7 @@ import {
 import type { StudioIcon } from "@/data/studio-nav";
 
 const map = {
+  home: House,
   share: Share2,
   calendar: CalendarDays,
   library: Library,

@@ -260,7 +260,7 @@ function VideoCard({
           selected ? `Deselect ${video.title}` : `Select ${video.title}`
         }
         onClick={onToggle}
-        className={`absolute top-3 left-3 grid h-7 w-7 place-items-center rounded-full border shadow-sm backdrop-blur transition-all ${
+        className={`absolute top-3 left-3 grid h-7 w-7 place-items-center rounded-md border shadow-sm backdrop-blur transition-all ${
           selected
             ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-black"
             : "border-white/30 bg-black/45 text-transparent hover:text-white/70"
@@ -272,7 +272,7 @@ function VideoCard({
         type="button"
         onClick={onOpen}
         aria-label={`Open ${video.title}`}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground absolute right-3 bottom-3 grid h-8 w-8 place-items-center rounded-full transition-colors"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground absolute right-3 bottom-3 grid h-8 w-8 place-items-center rounded-md transition-colors"
       >
         <ChevronRight className="h-4 w-4" />
       </button>
@@ -333,7 +333,7 @@ function ThumbnailCanvas({
                 key={preset}
                 type="button"
                 onClick={() => onChange({ ...draft, preset })}
-                className={`rounded-xl border px-2 py-2 text-xs font-black transition ${
+                className={`rounded-md border px-2 py-2 text-xs font-black transition ${
                   draft.preset === preset
                     ? "text-foreground border-[color:var(--sg-accent)] bg-[color:color-mix(in_srgb,var(--sg-accent)_10%,transparent)]"
                     : "border-border text-muted-foreground hover:text-foreground"
@@ -348,14 +348,14 @@ function ThumbnailCanvas({
           <p className="text-foreground/60 mb-2 text-[11px] font-black tracking-wide uppercase">
             Position
           </p>
-          <div className="bg-muted/60 flex rounded-xl p-1">
+          <div className="bg-muted/60 flex rounded-lg p-1">
             {(["top", "center", "bottom"] as ThumbnailPosition[]).map(
               (positionName) => (
                 <button
                   key={positionName}
                   type="button"
                   onClick={() => onChange({ ...draft, position: positionName })}
-                  className={`flex-1 rounded-lg px-2 py-1.5 text-[11px] font-black capitalize ${
+                  className={`flex-1 rounded-md px-2 py-1.5 text-[11px] font-black capitalize ${
                     draft.position === positionName
                       ? "bg-background text-foreground shadow-sm"
                       : "text-muted-foreground"
@@ -370,7 +370,7 @@ function ThumbnailCanvas({
         <button
           type="button"
           onClick={onDownload}
-          className="border-border text-foreground hover:bg-muted flex w-full items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-black transition"
+          className="border-border text-foreground hover:bg-muted flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-black transition"
         >
           <Download className="h-3.5 w-3.5" />
           Download 1080 × 1920 PNG
@@ -556,7 +556,7 @@ export default function PosterWorkspace() {
         <div className="flex gap-2">
           <Link
             href="/studio/calendar"
-            className="border-border text-foreground hover:bg-muted inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-black transition"
+            className="border-border text-foreground hover:bg-muted inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-black transition"
           >
             <CalendarDays className="h-4 w-4" />
             Open calendar
@@ -565,7 +565,7 @@ export default function PosterWorkspace() {
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={uploadState === "uploading"}
-            className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
+            className="bg-foreground text-background inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
           >
             {uploadState === "uploading" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -628,7 +628,7 @@ export default function PosterWorkspace() {
                         : new Set(videos.map((video) => video.id)),
                     )
                   }
-                  className="border-border text-foreground hover:bg-muted rounded-full border px-3 py-1.5 text-xs font-black"
+                  className="border-border text-foreground hover:bg-muted rounded-md border px-3 py-1.5 text-xs font-black"
                 >
                   {selectedIds.size === videos.length
                     ? "Clear selection"
@@ -707,7 +707,7 @@ export default function PosterWorkspace() {
                         type="button"
                         disabled={selected.length === 0 || generating}
                         onClick={() => void generateForSelection()}
-                        className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-black transition disabled:opacity-40"
+                        className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[11px] font-black transition disabled:opacity-40"
                       >
                         {generating ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -769,7 +769,7 @@ export default function PosterWorkspace() {
                         onChange={(event) =>
                           setScheduleValue(event.target.value)
                         }
-                        className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none focus:border-[color:var(--sg-accent)]"
+                        className="border-border bg-card text-foreground rounded-md border px-3 py-2 text-xs font-bold outline-none focus:border-[color:var(--sg-accent)]"
                       />
                       <select
                         value={scheduleSpacing}
@@ -778,7 +778,7 @@ export default function PosterWorkspace() {
                             event.target.value as "same" | "daily",
                           )
                         }
-                        className="border-border bg-card text-foreground rounded-xl border px-3 py-2 text-xs font-bold outline-none"
+                        className="border-border bg-card text-foreground rounded-md border px-3 py-2 text-xs font-bold outline-none"
                       >
                         <option value="daily">One per day</option>
                         <option value="same">Same time</option>
@@ -788,7 +788,7 @@ export default function PosterWorkspace() {
                       type="button"
                       disabled={selected.length === 0 || scheduling}
                       onClick={() => void scheduleSelection()}
-                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[color:var(--sg-accent)] px-4 py-2.5 text-sm font-black text-black transition hover:brightness-105 disabled:opacity-40"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-[color:var(--sg-accent)] px-4 py-2.5 text-sm font-black text-black transition hover:brightness-105 disabled:opacity-40"
                     >
                       {scheduling ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -816,7 +816,7 @@ export default function PosterWorkspace() {
                     type="button"
                     disabled={preparingPublish}
                     onClick={() => void preparePublish()}
-                    className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
+                    className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 text-sm font-black transition hover:opacity-90 disabled:opacity-50"
                   >
                     {preparingPublish ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

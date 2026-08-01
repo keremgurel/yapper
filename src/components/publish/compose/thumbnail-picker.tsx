@@ -38,7 +38,7 @@ export default function ThumbnailPicker({
           <button
             type="button"
             onClick={onClear}
-            className="bg-foreground text-background absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full shadow"
+            className="bg-foreground text-background absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-md shadow"
             aria-label="Remove thumbnail"
           >
             <X className="h-3.5 w-3.5" />

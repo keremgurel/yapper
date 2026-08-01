@@ -63,7 +63,7 @@ export default function PostableTakes() {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={uploading || !isSignedIn}
-          className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-black transition-colors disabled:opacity-50"
+          className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3.5 py-1.5 text-xs font-black transition-colors disabled:opacity-50"
         >
           {uploading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -124,7 +124,7 @@ export default function PostableTakes() {
                     contentItemId: v.id,
                   })
                 }
-                className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-black transition-opacity hover:opacity-90"
+                className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-black transition-opacity hover:opacity-90"
               >
                 <Send className="h-3.5 w-3.5" />
                 Post

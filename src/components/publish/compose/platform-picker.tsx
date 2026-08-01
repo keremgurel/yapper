@@ -21,7 +21,7 @@ export default function PlatformPicker({
           key={p}
           type="button"
           onClick={() => onChange(p)}
-          className={`rounded-xl border px-3 py-3 text-left text-xs font-black transition-all ${
+          className={`rounded-md border px-3 py-3 text-left text-xs font-black transition-all ${
             active === p
               ? "text-foreground border-[color:var(--sg-accent)] bg-[color:color-mix(in_srgb,var(--sg-accent)_10%,transparent)] shadow-sm"
               : "border-border text-muted-foreground hover:border-foreground/25 hover:text-foreground"

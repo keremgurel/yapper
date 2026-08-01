@@ -57,8 +57,10 @@ export default function AppSidebar() {
     >
       <SidebarContent>
         {studioNavGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroup key={group.label || "home"}>
+            {group.label ? (
+              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            ) : null}
             <SidebarGroupContent>
               <NavMenu items={group.items} />
             </SidebarGroupContent>

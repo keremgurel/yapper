@@ -1,4 +1,5 @@
 export type StudioIcon =
+  | "home"
   | "share"
   | "calendar"
   | "library"
@@ -21,6 +22,13 @@ export interface StudioNavGroup {
   label: string;
   items: StudioNavItem[];
 }
+
+const home: StudioNavItem = {
+  title: "Home",
+  href: "/studio/home",
+  description: "Channel performance, top content, and today's ideas.",
+  icon: "home",
+};
 
 const inspiration: StudioNavItem = {
   title: "Idea bank",
@@ -96,6 +104,7 @@ const connections: StudioNavItem = {
  * the flat lists below are derived for the header and homepage.
  */
 export const studioNavGroups: StudioNavGroup[] = [
+  { label: "", items: [home] },
   { label: "Lab", items: [inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
