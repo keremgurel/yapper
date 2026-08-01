@@ -24,38 +24,38 @@ export default function HomePage() {
     <TrainingLayout>
       <HomeJsonLd />
 
-      <section className="mx-auto max-w-[1200px] px-4 pt-8 pb-16 sm:px-6 sm:pt-12 sm:pb-24">
+      <section className="mx-auto max-w-[1200px] px-4 pt-5 pb-16 sm:px-6 sm:pt-8 sm:pb-24">
         <div className="relative overflow-hidden rounded-[var(--sg-radius-2xl)] border border-[var(--sg-border)]">
           <Aurora palette="teal" />
-          <div className="sg-glass relative m-4 flex min-h-[560px] flex-col items-center justify-center gap-8 rounded-[var(--sg-radius-2xl)] px-6 py-14 text-center sm:m-6 sm:px-12 lg:flex-row lg:gap-14 lg:text-left">
-            <BirdMascot concept="chirpy" talking size={150} />
-            <div className="max-w-3xl">
+          <div className="sg-glass relative m-4 flex min-h-[590px] flex-col items-center justify-center rounded-[var(--sg-radius-2xl)] px-6 py-9 text-center sm:m-5 sm:px-12 sm:py-10">
+            <div className="relative">
+              <div className="absolute inset-0 scale-125 rounded-full bg-black/20 blur-3xl" />
+              <BirdMascot concept="chirpy" talking size={76} />
+            </div>
+            <div className="mt-1 flex w-full max-w-4xl flex-col items-center">
               <p className="text-sm font-semibold text-white/70">
                 Yapper Studio is coming to desktop
               </p>
               <h1 className="font-display mt-4 text-[clamp(3rem,7vw,6.5rem)] leading-[0.9] font-black tracking-[-0.055em] text-white">
                 From idea to posted video.
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-relaxed text-white/80 sm:text-xl">
+              <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/80 sm:text-xl">
                 Capture the thought, shape the script, record the take, edit the
                 words, and publish—all in one focused creator studio.
               </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3 lg:justify-start">
-                <Button asChild size="lg" className="h-12 px-6 text-[15px]">
-                  <a href="#waitlist">
-                    Join the waitlist
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="h-12 border-white/30 bg-white/10 px-6 text-white hover:bg-white/20 hover:text-white"
-                >
-                  <Link href="/features">Explore features</Link>
-                </Button>
+              <div id="waitlist" className="mt-6 w-full max-w-2xl">
+                <p className="mb-3 text-sm font-medium text-white/70">
+                  Be first in line when the desktop download is ready.
+                </p>
+                <Waitlist variant="hero" />
               </div>
+              <Link
+                href="/features"
+                className="relative z-10 mt-5 inline-flex items-center gap-2 text-sm font-semibold text-white/70 no-underline transition-colors hover:text-white"
+              >
+                Explore everything inside
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </div>
@@ -118,9 +118,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <div id="waitlist">
-        <Waitlist variant="full" />
-      </div>
       <Footer />
     </TrainingLayout>
   );

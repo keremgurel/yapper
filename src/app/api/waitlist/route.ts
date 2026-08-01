@@ -4,6 +4,10 @@ import { getPostHogClient } from "@/lib/posthog-server";
 
 export const runtime = "nodejs";
 
+const DESKTOP_WAITLIST_SEGMENT_ID =
+  process.env.RESEND_WAITLIST_SEGMENT_ID ??
+  "5cdf81a1-e3ed-45b7-a456-fda91b191fa8";
+
 export async function POST(req: Request) {
   let email: unknown;
   try {
@@ -32,9 +36,8 @@ export async function POST(req: Request) {
   }
 
   const apiKey = process.env.RESEND_API_KEY;
-  const audienceId = process.env.RESEND_AUDIENCE_ID;
-  if (!apiKey || !audienceId) {
-    console.error("Resend env vars missing");
+  if (!apiKey) {
+    console.error("RESEND_API_KEY is missing");
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 },
@@ -45,8 +48,8 @@ export async function POST(req: Request) {
     const resend = new Resend(apiKey);
     const { error } = await resend.contacts.create({
       email: trimmed,
-      audienceId,
       unsubscribed: false,
+      segments: [{ id: DESKTOP_WAITLIST_SEGMENT_ID }],
     });
 
     if (error) {
@@ -61,7 +64,11 @@ export async function POST(req: Request) {
     posthog.capture({
       distinctId: trimmed,
       event: "waitlist_joined",
-      properties: { email: trimmed, source: "api" },
+      properties: {
+        email: trimmed,
+        source: "desktop_marketing_hero",
+        resend_segment_id: DESKTOP_WAITLIST_SEGMENT_ID,
+      },
     });
     posthog.identify({
       distinctId: trimmed,

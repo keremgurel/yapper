@@ -589,8 +589,8 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
 /* ------------------------------------------------------------------ */
 
 interface WaitlistProps {
-  /** full = two-column features + form. minimal = sleek pre-footer strip. */
-  variant?: "full" | "minimal";
+  /** hero = the glowing form only. full = features + form. minimal = footer. */
+  variant?: "hero" | "full" | "minimal";
   className?: string;
 }
 
@@ -601,6 +601,14 @@ export default function Waitlist({
   /* ---- Minimal: cinematic full-bleed section with horizon glow ---- */
   if (variant === "minimal") {
     return <CinematicWaitlist className={className} />;
+  }
+
+  if (variant === "hero") {
+    return (
+      <div className={className}>
+        <WaitlistForm />
+      </div>
+    );
   }
 
   /* ---- Full: two-column "what's coming" + form ---- */
