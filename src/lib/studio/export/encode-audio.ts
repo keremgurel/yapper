@@ -14,10 +14,7 @@ export function audioTrackConfig(buffer: AudioBuffer): AudioTrackConfig {
   };
 }
 
-type OnAudioChunk = (
-  chunk: EncodedAudioChunk,
-  meta: EncodedAudioChunkMetadata | undefined,
-) => void;
+type OnAudioChunk = (chunk: EncodedAudioChunk) => void;
 
 /** Encode a rendered AudioBuffer to AAC, streaming chunks to `onChunk`. */
 export async function encodeAudioBuffer(
@@ -30,7 +27,13 @@ export async function encodeAudioBuffer(
 
   let encodeError: Error | null = null;
   const encoder = new AudioEncoder({
-    output: onChunk,
+    // Safari currently returns an invalid AAC decoderConfig in this callback
+    // on some macOS builds (zero object type/channel config). mp4-muxer already
+    // creates the correct AAC-LC AudioSpecificConfig from the declared sample
+    // rate and channel count. Forwarding Safari's metadata overwrites that good
+    // config and produces an MP4 whose audio packets are present but unusable.
+    // Keep the encoded packets and intentionally discard only that metadata.
+    output: (chunk) => onChunk(chunk),
     error: (e) => {
       encodeError = e instanceof Error ? e : new Error(String(e));
     },

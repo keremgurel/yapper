@@ -146,8 +146,8 @@ export async function exportTimeline(
 
     if (audioBuffer) {
       throwIfAborted();
-      await encodeAudioBuffer(audioBuffer, (chunk, meta) =>
-        muxer.addAudioChunk(chunk, meta),
+      await encodeAudioBuffer(audioBuffer, (chunk) =>
+        muxer.addAudioChunk(chunk),
       );
     }
 
