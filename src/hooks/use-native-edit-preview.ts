@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { assetUrl, isNative } from "@/lib/studio/native/bridge";
 import {
   nativeMakeEditPreview,
@@ -8,7 +8,9 @@ import {
 } from "@/lib/studio/native/media";
 import {
   nativeMediaForUrl,
+  nativeMediaRegistryRevision,
   nativePathForUrl,
+  subscribeNativeMediaRegistry,
 } from "@/lib/studio/native/path-registry";
 import type { Clip, StudioSource } from "@/lib/studio/types";
 
@@ -61,6 +63,14 @@ export function useNativeEditPreview(
     url: string | null;
     failed: boolean;
   } | null>(null);
+  // Proxy generation finishes independently of React. Subscribe to that
+  // external registry so a slow source-based preview is immediately replaced
+  // by the fast stream-copy path as soon as the proxy becomes available.
+  const mediaRevision = useSyncExternalStore(
+    subscribeNativeMediaRegistry,
+    nativeMediaRegistryRevision,
+    nativeMediaRegistryRevision,
+  );
   const fingerprint = clips
     .map(
       (clip) =>
@@ -72,7 +82,7 @@ export function useNativeEditPreview(
     // The fingerprint captures the range/url fields that matter. Clip object
     // identity can change during unrelated transcript/caption updates.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fingerprint, source],
+    [fingerprint, source, mediaRevision],
   );
 
   useEffect(() => {

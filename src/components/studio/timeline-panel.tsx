@@ -20,7 +20,6 @@ export default function TimelinePanel({
   onPlay,
   onPause,
   onSeek,
-  playbackPreparing,
 }: {
   timelineTime: number;
   /** Per-frame playhead time; the playhead line subscribes to this directly
@@ -30,7 +29,6 @@ export default function TimelinePanel({
   onPlay: () => void;
   onPause: () => void;
   onSeek: (timelineTime: number) => void;
-  playbackPreparing?: boolean;
 }) {
   const {
     source,
@@ -68,7 +66,6 @@ export default function TimelinePanel({
           onPlay={onPlay}
           onPause={onPause}
           onSplit={() => splitSelected(timelineTime)}
-          playbackPreparing={playbackPreparing}
         />
         <div className="ml-auto shrink-0">
           <AspectPicker />

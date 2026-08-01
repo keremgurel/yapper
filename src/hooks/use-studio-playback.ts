@@ -44,9 +44,6 @@ export interface PlaybackInput {
    * edited-timeline time, so playback crosses cuts without decoder handoffs.
    */
   continuousPreviewUrl?: string | null;
-  /** Desktop edited projects wait for the gapless derivative instead of
-   * knowingly falling back to a decoder seek at every cut. */
-  continuousPreviewPending?: boolean;
 }
 
 /**
@@ -68,7 +65,6 @@ export function useStudioPlayback(
     baseUrl,
     baseMuted,
     continuousPreviewUrl,
-    continuousPreviewPending = false,
   }: PlaybackInput,
 ) {
   const [timelineTime, setTimelineTime] = useState(0);
@@ -250,18 +246,29 @@ export function useStudioPlayback(
       const v = activeVideo();
       if (!v) return;
       const url = clipUrl(index);
-      if (v.getAttribute("src") !== url) {
+      const sourceChanged = v.getAttribute("src") !== url;
+      if (sourceChanged || v.readyState === 0) {
         if (resume && !v.paused) pauseVideoSilently();
         const generation = ++seekGenerationRef.current;
         seekPendingRef.current = true;
-        v.setAttribute("src", url);
-        v.load();
         const onLoaded = () => {
           if (generation !== seekGenerationRef.current) return;
-          v.currentTime = srcTime;
-          if (resume) seekThenPlay(v, generation);
+          if (Math.abs(v.currentTime - srcTime) > 0.05) {
+            v.currentTime = srcTime;
+            if (resume) seekThenPlay(v, generation);
+          } else {
+            seekPendingRef.current = false;
+            if (resume) void v.play().catch(() => {});
+          }
         };
-        v.addEventListener("loadeddata", onLoaded, { once: true });
+        // `loadedmetadata` is enough to seek and arrives before `loadeddata`.
+        // Register before load so an immediate Play cannot race the event or
+        // assign currentTime while WebKit still has HAVE_NOTHING.
+        v.addEventListener("loadedmetadata", onLoaded, { once: true });
+        if (sourceChanged) {
+          v.setAttribute("src", url);
+          v.load();
+        }
         return;
       }
       // Re-seeking to (almost) the current spot makes the decoder re-decode
@@ -281,18 +288,26 @@ export function useStudioPlayback(
       const v = activeVideo();
       if (!v || !continuousPreviewUrl) return;
       const target = Math.max(0, Math.min(timeline, baseTotal));
-      if (v.getAttribute("src") !== continuousPreviewUrl) {
+      const sourceChanged = v.getAttribute("src") !== continuousPreviewUrl;
+      if (sourceChanged || v.readyState === 0) {
         if (resume && !v.paused) pauseVideoSilently();
         const generation = ++seekGenerationRef.current;
         seekPendingRef.current = true;
-        v.setAttribute("src", continuousPreviewUrl);
-        v.load();
         const onLoaded = () => {
           if (generation !== seekGenerationRef.current) return;
-          v.currentTime = target;
-          if (resume) seekThenPlay(v, generation);
+          if (Math.abs(v.currentTime - target) > 0.05) {
+            v.currentTime = target;
+            if (resume) seekThenPlay(v, generation);
+          } else {
+            seekPendingRef.current = false;
+            if (resume) void v.play().catch(() => {});
+          }
         };
-        v.addEventListener("loadeddata", onLoaded, { once: true });
+        v.addEventListener("loadedmetadata", onLoaded, { once: true });
+        if (sourceChanged) {
+          v.setAttribute("src", continuousPreviewUrl);
+          v.load();
+        }
         return;
       }
       if (Math.abs(v.currentTime - target) > 0.05) {
@@ -504,7 +519,7 @@ export function useStudioPlayback(
   );
 
   const play = useCallback(() => {
-    if (total <= 0 || continuousPreviewPending) return;
+    if (total <= 0) return;
     playIntentRef.current = true;
     const from = clockRef.current >= total - EPS ? 0 : clockRef.current;
     if (overBaseTrack(from)) {
@@ -542,7 +557,6 @@ export function useStudioPlayback(
     activeVideo,
     clips,
     total,
-    continuousPreviewPending,
     overBaseTrack,
     continuousPreviewUrl,
     seekContinuousVideo,
@@ -566,10 +580,6 @@ export function useStudioPlayback(
     clearStandby();
     setPlaying(false);
   }, [videoRefs, stopRaf, clearStandby]);
-
-  useEffect(() => {
-    if (continuousPreviewPending && playIntentRef.current) pause();
-  }, [continuousPreviewPending, pause]);
 
   useEffect(() => stopRaf, [stopRaf]);
 

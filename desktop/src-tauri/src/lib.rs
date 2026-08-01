@@ -126,10 +126,12 @@ fn proxy_command(path: &Path, out: &Path, hardware: bool) -> Command {
     }
     command
         .args([
-            // A 250ms GOP at 24fps keeps arbitrary scrubs and edited-cut
-            // handoffs inside the standby decoder's pre-roll window.
+            // Every proxy frame is independently decodable. Besides making
+            // arbitrary seeks land immediately, this lets edited previews be
+            // assembled with stream-copy instead of re-encoding the complete
+            // timeline after every trim.
             "-g",
-            "6",
+            "1",
             "-c:a",
             "aac",
             "-b:a",
@@ -244,7 +246,7 @@ fn start_proxy(path: String, app: tauri::AppHandle) -> Result<String, String> {
     let cache_key = media_cache_key(&path)?;
     // Version the cache when proxy encoding changes; otherwise an older sparse
     // proxy would remain "ready" forever and silently defeat the new handoff.
-    let out_path = tmp_out(&stem, &cache_key, "proxy2", "mp4");
+    let out_path = tmp_out(&stem, &cache_key, "proxy3", "mp4");
     let out_str = out_path.to_string_lossy().into_owned();
     let done_path = out_path.with_extension("done");
     let error_path = out_path.with_extension("error");
@@ -310,7 +312,7 @@ fn start_proxy(path: String, app: tauri::AppHandle) -> Result<String, String> {
 fn ready_proxy_for_source(path: &Path) -> Option<PathBuf> {
     let stem = file_stem(&path.to_string_lossy());
     let cache_key = media_cache_key(path).ok()?;
-    let proxy = tmp_out(&stem, &cache_key, "proxy2", "mp4");
+    let proxy = tmp_out(&stem, &cache_key, "proxy3", "mp4");
     ffprobe_can_read(&proxy).then_some(proxy)
 }
 
@@ -375,6 +377,126 @@ fn edit_preview_dimensions(aspect: f64) -> Result<(u32, u32), String> {
     } else {
         Ok((even_dimension(960.0 * aspect), 960))
     }
+}
+
+fn media_video_dimensions(path: &Path) -> Option<(u32, u32)> {
+    let output = Command::new(resolve_bin("ffprobe"))
+        .args([
+            "-v",
+            "error",
+            "-protocol_whitelist",
+            "file",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "csv=s=x:p=0",
+        ])
+        .arg(path)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let value = String::from_utf8(output.stdout).ok()?;
+    let (width, height) = value.trim().split_once('x')?;
+    Some((width.parse().ok()?, height.parse().ok()?))
+}
+
+/// Only Yapper's v3 proxy is guaranteed to be all-intra. Restrict the fast
+/// stream-copy path to those generated files in the platform temp directory;
+/// arbitrary user videos still take the frame-accurate render fallback.
+fn is_frame_accurate_proxy(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    if !name.starts_with("yapper_") || !name.ends_with("_proxy3.mp4") {
+        return false;
+    }
+    let Some(parent) = path.parent() else {
+        return false;
+    };
+    let Ok(parent) = std::fs::canonicalize(parent) else {
+        return false;
+    };
+    let Ok(temp) = std::fs::canonicalize(std::env::temp_dir()) else {
+        return false;
+    };
+    parent == temp
+}
+
+fn ffconcat_quote(path: &Path) -> Option<String> {
+    let value = path.to_str()?;
+    if value.contains(['\n', '\r']) {
+        return None;
+    }
+    Some(format!("'{}'", value.replace('\'', "'\\''")))
+}
+
+/// Build an ffconcat list only when packet-copy is exact: every video frame is
+/// a keyframe, every input already has the requested canvas, and audio layout
+/// is consistent. All other projects use `edit_preview_command` below.
+fn fast_edit_preview_manifest(
+    clips: &[ValidatedEditPreviewClip],
+    width: u32,
+    height: u32,
+) -> Option<(String, bool)> {
+    let first_audio = clips.first()?.has_audio;
+    let mut manifest = String::from("ffconcat version 1.0\n");
+    for clip in clips {
+        if !is_frame_accurate_proxy(&clip.path)
+            || media_video_dimensions(&clip.path) != Some((width, height))
+            || clip.has_audio != first_audio
+        {
+            return None;
+        }
+        manifest.push_str("file ");
+        manifest.push_str(&ffconcat_quote(&clip.path)?);
+        manifest.push('\n');
+        manifest.push_str(&format!("inpoint {:.6}\n", clip.start));
+        manifest.push_str(&format!("outpoint {:.6}\n", clip.end));
+    }
+    Some((manifest, first_audio))
+}
+
+fn fast_edit_preview_command(manifest: &Path, out: &Path, has_audio: bool) -> Command {
+    let mut command = Command::new(resolve_bin("ffmpeg"));
+    command
+        .args([
+            "-y",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-protocol_whitelist",
+            "file",
+            "-i",
+        ])
+        .arg(manifest)
+        .args(["-map", "0:v:0", "-c:v", "copy"]);
+    if has_audio {
+        // Audio packets are tiny compared with video. Re-encoding just this
+        // stream removes AAC packet overlap at arbitrary trim boundaries while
+        // keeping the operation effectively instant.
+        command.args(["-map", "0:a:0?", "-c:a", "aac", "-b:a", "128k"]);
+    } else {
+        command.arg("-an");
+    }
+    command
+        .args([
+            "-fflags",
+            "+genpts",
+            "-avoid_negative_ts",
+            "make_zero",
+            "-movflags",
+            "+faststart",
+        ])
+        .arg(out);
+    command
 }
 
 fn edit_preview_command(
@@ -489,7 +611,7 @@ fn start_edit_preview(
     let (width, height) = edit_preview_dimensions(aspect)?;
     let mut validated = Vec::with_capacity(clips.len());
     let mut hasher = DefaultHasher::new();
-    "edit_preview_v2_all_intra".hash(&mut hasher);
+    "edit_preview_v3_proxy_copy".hash(&mut hasher);
     width.hash(&mut hasher);
     height.hash(&mut hasher);
     for clip in clips {
@@ -516,7 +638,7 @@ fn start_edit_preview(
     }
 
     let mut out_path = std::env::temp_dir();
-    out_path.push(format!("yapper_editpreview2_{:016x}.mp4", hasher.finish()));
+    out_path.push(format!("yapper_editpreview3_{:016x}.mp4", hasher.finish()));
     let out_str = out_path.to_string_lossy().into_owned();
     let done_path = out_path.with_extension("done");
     let error_path = out_path.with_extension("error");
@@ -537,16 +659,45 @@ fn start_edit_preview(
     let _ = app.asset_protocol_scope().allow_file(&out_path);
 
     let use_hardware = cfg!(target_os = "macos");
-    let child = edit_preview_command(&validated, &out_path, width, height, use_hardware).spawn();
+    let fast_manifest = fast_edit_preview_manifest(&validated, width, height);
+    let manifest_path = fast_manifest
+        .as_ref()
+        .map(|_| out_path.with_extension("ffconcat"));
+    if let (Some((contents, _)), Some(path)) = (&fast_manifest, &manifest_path) {
+        std::fs::write(path, contents).map_err(|e| {
+            let _ = std::fs::remove_file(&working_path);
+            format!("write edit preview manifest: {e}")
+        })?;
+    }
+    let child = if let (Some((_, has_audio)), Some(path)) = (&fast_manifest, &manifest_path) {
+        fast_edit_preview_command(path, &out_path, *has_audio).spawn()
+    } else {
+        edit_preview_command(&validated, &out_path, width, height, use_hardware).spawn()
+    };
     let mut child = child.map_err(|e| {
         let _ = std::fs::remove_file(&working_path);
+        if let Some(path) = &manifest_path {
+            let _ = std::fs::remove_file(path);
+        }
         format!("spawn ffmpeg edit preview: {e}")
     })?;
     let fallback_clips = validated.clone();
     let fallback_out = out_path.clone();
+    let used_fast_path = fast_manifest.is_some();
     std::thread::spawn(move || {
-        let hardware_ok = child.wait().is_ok_and(|status| status.success());
-        let fallback_ok = if !hardware_ok && use_hardware {
+        let primary_ok = child.wait().is_ok_and(|status| status.success());
+        // If packet-copy ever rejects a particular input, preserve correctness
+        // by falling back to the original full renderer. On macOS that renderer
+        // itself gets one final software retry if VideoToolbox is unavailable.
+        let rendered_ok = if !primary_ok && used_fast_path {
+            let _ = std::fs::remove_file(&fallback_out);
+            edit_preview_command(&fallback_clips, &fallback_out, width, height, use_hardware)
+                .status()
+                .is_ok_and(|status| status.success())
+        } else {
+            false
+        };
+        let software_ok = if !primary_ok && !rendered_ok && use_hardware {
             let _ = std::fs::remove_file(&fallback_out);
             edit_preview_command(&fallback_clips, &fallback_out, width, height, false)
                 .status()
@@ -554,11 +705,14 @@ fn start_edit_preview(
         } else {
             false
         };
-        let marker = if hardware_ok || fallback_ok {
+        let marker = if primary_ok || rendered_ok || software_ok {
             done_path
         } else {
             error_path
         };
+        if let Some(path) = manifest_path {
+            let _ = std::fs::remove_file(path);
+        }
         let _ = std::fs::remove_file(working_path);
         let _ = std::fs::write(marker, b"ok");
     });
@@ -573,7 +727,7 @@ fn edit_preview_status(out_path: String) -> Result<String, String> {
     let valid_name = path
         .file_name()
         .and_then(|name| name.to_str())
-        .is_some_and(|name| name.starts_with("yapper_editpreview2_"));
+        .is_some_and(|name| name.starts_with("yapper_editpreview3_"));
     // macOS reports the temp directory as /var/... but canonicalizes it to
     // /private/var/.... Compare canonical PARENTS instead of a lexical prefix,
     // or every legitimate preview is rejected after it finishes rendering.
@@ -602,7 +756,12 @@ fn edit_preview_status(out_path: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod edit_preview_tests {
-    use super::{edit_preview_dimensions, edit_preview_status};
+    use super::{
+        edit_preview_dimensions, edit_preview_status, fast_edit_preview_command,
+        fast_edit_preview_manifest, ffprobe_can_read, resolve_bin, ValidatedEditPreviewClip,
+    };
+    use std::path::Path;
+    use std::process::Command;
 
     #[test]
     fn preview_dimensions_are_even_and_bounded() {
@@ -618,11 +777,101 @@ mod edit_preview_tests {
 
     #[test]
     fn preview_status_accepts_the_platform_temp_directory_alias() {
-        let path = std::env::temp_dir().join("yapper_editpreview2_status_test.mp4");
+        let path = std::env::temp_dir().join("yapper_editpreview3_status_test.mp4");
         assert_eq!(
             edit_preview_status(path.to_string_lossy().into_owned()).unwrap(),
             "pending"
         );
+    }
+
+    #[test]
+    fn all_intra_proxy_cuts_are_assembled_without_video_reencoding() {
+        if Command::new(resolve_bin("ffmpeg"))
+            .arg("-version")
+            .output()
+            .is_err()
+        {
+            return;
+        }
+        let id = std::process::id();
+        let temp = std::env::temp_dir();
+        let proxy = temp.join(format!("yapper_test_{id}_proxy3.mp4"));
+        let manifest_path = temp.join(format!("yapper_editpreview3_test_{id}.ffconcat"));
+        let output = temp.join(format!("yapper_editpreview3_test_{id}.mp4"));
+        let generated = Command::new(resolve_bin("ffmpeg"))
+            .args([
+                "-y",
+                "-nostdin",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=320x240:rate=30:duration=2",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=440:duration=2",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-g",
+                "1",
+                "-c:a",
+                "aac",
+                "-shortest",
+            ])
+            .arg(&proxy)
+            .status()
+            .is_ok_and(|status| status.success());
+        if !generated {
+            let _ = std::fs::remove_file(&proxy);
+            return;
+        }
+        let clips = vec![
+            ValidatedEditPreviewClip {
+                path: proxy.clone(),
+                start: 0.10,
+                end: 0.60,
+                has_audio: true,
+            },
+            ValidatedEditPreviewClip {
+                path: proxy.clone(),
+                start: 1.00,
+                end: 1.50,
+                has_audio: true,
+            },
+        ];
+        let (manifest, has_audio) =
+            fast_edit_preview_manifest(&clips, 320, 240).expect("eligible proxy");
+        std::fs::write(&manifest_path, manifest).unwrap();
+        let assembled = fast_edit_preview_command(&manifest_path, &output, has_audio)
+            .status()
+            .is_ok_and(|status| status.success());
+
+        assert!(assembled);
+        assert!(ffprobe_can_read(Path::new(&output)));
+        let duration = Command::new(resolve_bin("ffprobe"))
+            .args([
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "csv=p=0",
+            ])
+            .arg(&output)
+            .output()
+            .ok()
+            .and_then(|value| String::from_utf8(value.stdout).ok())
+            .and_then(|value| value.trim().parse::<f64>().ok())
+            .expect("preview duration");
+        assert!((0.95..=1.10).contains(&duration), "duration was {duration}");
+
+        let _ = std::fs::remove_file(proxy);
+        let _ = std::fs::remove_file(manifest_path);
+        let _ = std::fs::remove_file(output);
     }
 }
 

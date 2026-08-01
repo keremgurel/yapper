@@ -107,7 +107,6 @@ export default function StudioWorkspace() {
     baseUrl: source?.url ?? "",
     baseMuted,
     continuousPreviewUrl: continuousPreview.url,
-    continuousPreviewPending: continuousPreview.preparing,
   });
   const workspace = useEditorWorkspaceLayout();
 
@@ -221,8 +220,6 @@ export default function StudioWorkspace() {
       timelineTime={timelineTime}
       playing={playing}
       onTogglePlay={() => (playing ? pause() : play())}
-      playbackPreparing={continuousPreview.preparing}
-      playbackFailed={continuousPreview.failed}
     />
   );
 
@@ -292,7 +289,6 @@ export default function StudioWorkspace() {
             onPlay={play}
             onPause={pause}
             onSeek={seekToTimeline}
-            playbackPreparing={continuousPreview.preparing}
           />
         </div>
       </div>

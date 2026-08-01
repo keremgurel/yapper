@@ -25,6 +25,23 @@ interface NativeMedia {
 }
 
 const byUrl = new Map<string, NativeMedia>();
+let revision = 0;
+const listeners = new Set<() => void>();
+
+function notifyRegistryChange(): void {
+  revision += 1;
+  listeners.forEach((listener) => listener());
+}
+
+/** React-facing signal for asynchronous proxy availability. */
+export function subscribeNativeMediaRegistry(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function nativeMediaRegistryRevision(): number {
+  return revision;
+}
 
 export function registerNativePath(
   url: string,
@@ -33,6 +50,7 @@ export function registerNativePath(
   duration: number,
 ): void {
   byUrl.set(url, { path, aspect, duration });
+  notifyRegistryChange();
 }
 
 export function nativeMediaForUrl(url: string): NativeMedia | undefined {
@@ -103,5 +121,8 @@ export function nativePathForUrl(url: string): string | undefined {
 
 export function setNativeProxyPath(url: string, proxyPath: string): void {
   const media = byUrl.get(url);
-  if (media) media.proxyPath = proxyPath;
+  if (media && media.proxyPath !== proxyPath) {
+    media.proxyPath = proxyPath;
+    notifyRegistryChange();
+  }
 }

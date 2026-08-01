@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Loader2,
   Magnet,
   Pause,
   Play,
@@ -28,7 +27,6 @@ export default function StudioTransport({
   onPlay,
   onPause,
   onSplit,
-  playbackPreparing = false,
 }: {
   playing: boolean;
   currentTimelineTime: number;
@@ -36,7 +34,6 @@ export default function StudioTransport({
   onPlay: () => void;
   onPause: () => void;
   onSplit: () => void;
-  playbackPreparing?: boolean;
 }) {
   const {
     source,
@@ -63,19 +60,10 @@ export default function StudioTransport({
         variant="secondary"
         size="icon-sm"
         onClick={playing ? onPause : onPlay}
-        disabled={playbackPreparing}
         aria-label={playing ? "Pause" : "Play"}
-        title={
-          playbackPreparing
-            ? "Preparing seamless playback"
-            : playing
-              ? "Pause"
-              : "Play"
-        }
+        title={playing ? "Pause" : "Play"}
       >
-        {playbackPreparing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : playing ? (
+        {playing ? (
           <Pause className="h-4 w-4" />
         ) : (
           <Play className="h-4 w-4 translate-x-px" />
