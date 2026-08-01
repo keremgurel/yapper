@@ -54,6 +54,30 @@ describe("alignCleanedToContiguousTakes", () => {
     ]);
   });
 
+  it("uses a later corrected sentence tail instead of the first occurrence", () => {
+    const source = words(
+      "To kick off the launch, the first members get access forever, " +
+        "plus eight free credits to try AI feedback. " +
+        "Plus eight free credits to try the AI feedback. So comment founder.",
+    );
+    const result = alignCleanedToContiguousTakes(
+      source,
+      "To kick off the launch, the first members get access forever, " +
+        "plus eight free credits to try AI feedback. So comment founder.",
+    );
+    const kept = result.keep.flatMap(([start, end]) =>
+      source.slice(start, end + 1).map(({ text }) => text),
+    );
+
+    expect(kept).toEqual(
+      words(
+        "To kick off the launch, the first members get access forever, " +
+          "Plus eight free credits to try the AI feedback. So comment founder.",
+      ).map(({ text }) => text),
+    );
+    expect(result.coverage).toBe(1);
+  });
+
   it("turns kept spans into the complement cut ranges", () => {
     expect(
       cutsOutsideKeptTakes(12, [

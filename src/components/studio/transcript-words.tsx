@@ -29,11 +29,13 @@ export default function TranscriptWords({
   showDeleted: boolean;
 }) {
   const {
+    source,
     words,
     clips,
     deleteWords,
     restoreWords,
     cutRange,
+    restoreRange,
     removePauses,
     aiRemoveMistakes,
     aiCleaning,
@@ -73,6 +75,20 @@ export default function TranscriptWords({
     () => activeWordId(words, clips, currentTimelineTime),
     [words, clips, currentTimelineTime],
   );
+  const firstWord = words[0];
+  const lastWord = words[words.length - 1];
+  const headGap =
+    firstWord && !isWordCut(clips, firstWord) ? firstWord.start : 0;
+  const tailGap =
+    source && lastWord && !isWordCut(clips, lastWord)
+      ? Math.max(0, source.duration - lastWord.end)
+      : 0;
+  const headGapIsCut =
+    headGap >= MIN_GAP && isRangeCut(clips, 0, firstWord.start);
+  const tailGapIsCut =
+    tailGap >= MIN_GAP &&
+    source != null &&
+    isRangeCut(clips, lastWord.end, source.duration);
 
   const clearSelection = () => {
     setSelected(new Set());
@@ -179,6 +195,28 @@ export default function TranscriptWords({
       <div className="relative min-h-0 flex-1">
         <div className="h-full overflow-y-auto p-4">
           <p className="text-sm leading-8">
+            {headGap >= MIN_GAP && (!headGapIsCut || showDeleted) && (
+              <button
+                type="button"
+                onClick={() =>
+                  headGapIsCut
+                    ? restoreRange(0, firstWord.start)
+                    : cutRange(0, firstWord.start)
+                }
+                title={
+                  headGapIsCut
+                    ? "Restore this removed opening silence"
+                    : "Delete this opening silence"
+                }
+                className={
+                  headGapIsCut
+                    ? "text-foreground/25 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold line-through transition-colors hover:bg-emerald-500/15 hover:text-emerald-400"
+                    : "text-foreground/40 bg-foreground/8 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold hover:bg-red-500/20 hover:text-red-400"
+                }
+              >
+                […{headGap.toFixed(1)}s{headGapIsCut ? " removed" : ""}]
+              </button>
+            )}
             {words.map((w, i) => {
               const cut = isWordCut(clips, w);
               const active = !cut && w.id === activeId;
@@ -188,8 +226,10 @@ export default function TranscriptWords({
                 !cut && next && !isWordCut(clips, next)
                   ? next.start - w.end
                   : 0;
-              const showGap =
-                gap >= MIN_GAP && !isRangeCut(clips, w.end, next.start);
+              const gapIsCut =
+                gap >= MIN_GAP && isRangeCut(clips, w.end, next.start);
+              const showGap = gap >= MIN_GAP && !gapIsCut;
+              const showDeletedGap = showDeleted && gapIsCut;
               if (cut && !showDeleted) return null;
               return (
                 <Fragment key={w.id}>
@@ -230,14 +270,46 @@ export default function TranscriptWords({
                       […{gap.toFixed(1)}s]
                     </button>
                   )}
+                  {showDeletedGap && (
+                    <button
+                      type="button"
+                      onClick={() => restoreRange(w.end, next.start)}
+                      title="Restore this removed pause"
+                      className="text-foreground/25 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold line-through transition-colors hover:bg-emerald-500/15 hover:text-emerald-400"
+                    >
+                      […{gap.toFixed(1)}s removed]
+                    </button>
+                  )}
                 </Fragment>
               );
             })}
+            {tailGap >= MIN_GAP && (!tailGapIsCut || showDeleted) && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!source || !lastWord) return;
+                  if (tailGapIsCut) restoreRange(lastWord.end, source.duration);
+                  else cutRange(lastWord.end, source.duration);
+                }}
+                title={
+                  tailGapIsCut
+                    ? "Restore this removed ending silence"
+                    : "Delete this ending silence"
+                }
+                className={
+                  tailGapIsCut
+                    ? "text-foreground/25 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold line-through transition-colors hover:bg-emerald-500/15 hover:text-emerald-400"
+                    : "text-foreground/40 bg-foreground/8 mr-1 rounded px-1 py-0.5 align-middle font-mono text-[10px] font-bold hover:bg-red-500/20 hover:text-red-400"
+                }
+              >
+                […{tailGap.toFixed(1)}s{tailGapIsCut ? " removed" : ""}]
+              </button>
+            )}
           </p>
           <p className="text-foreground/40 mt-4 text-xs">
             Click to select &amp; seek · Shift-click a range · ⌘/Ctrl-click to
             multi-select · select struck-through words to restore them · tap a
-            […] pause to remove it
+            […] pause to remove it · show deleted to restore removed pauses
           </p>
         </div>
 

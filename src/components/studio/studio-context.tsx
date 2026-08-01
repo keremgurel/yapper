@@ -164,6 +164,7 @@ interface StudioContextValue {
   deleteWords: (ids: string[]) => void;
   restoreWords: (ids: string[]) => void;
   cutRange: (from: number, to: number) => void;
+  restoreRange: (from: number, to: number) => void;
   removeEarlierTakes: () => number;
   aiRemoveMistakes: () => Promise<number>;
   aiCleaning: boolean;
@@ -1565,6 +1566,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     [words, setClips],
   );
 
+  const restoreRange = useCallback(
+    (from: number, to: number) => {
+      if (to <= from) return;
+      setClips((prev) => restoreSourceRange(prev, from, to));
+    },
+    [setClips],
+  );
+
   // Reset the bottom track's cuts. The layers stacked on it, and the captions,
   // are the user's work and survive.
   const reset = useCallback(() => {
@@ -1634,6 +1643,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       restoreWords,
       cutRange,
+      restoreRange,
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
@@ -1744,6 +1754,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       deleteWords,
       restoreWords,
       cutRange,
+      restoreRange,
       removeEarlierTakes,
       aiRemoveMistakes,
       aiCleaning,
