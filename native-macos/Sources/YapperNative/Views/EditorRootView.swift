@@ -1,8 +1,41 @@
 import SwiftUI
 
+enum EditorLayoutMode: String, CaseIterable, Identifiable {
+    case standard
+    case tallPreview
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .standard: "Standard layout"
+        case .tallPreview: "Tall preview"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .standard: "rectangle.split.2x1"
+        case .tallPreview: "rectangle.portrait.on.rectangle.portrait"
+        }
+    }
+
+    var previewAspectRatio: CGFloat {
+        switch self {
+        case .standard: 16 / 9
+        case .tallPreview: 9 / 16
+        }
+    }
+}
+
 struct EditorRootView: View {
     @ObservedObject var session: EditorSession
     var embedded = false
+    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.standard.rawValue
+
+    private var layoutMode: EditorLayoutMode {
+        EditorLayoutMode(rawValue: layoutModeRaw) ?? .standard
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -10,15 +43,12 @@ struct EditorRootView: View {
                 EditorHeader(session: session)
                 Divider().overlay(Color.studioLine)
             }
-            HSplitView {
-                WorkbenchPanel(session: session)
-                    .frame(minWidth: 330, idealWidth: 430, maxWidth: 720)
-                VSplitView {
-                    PlayerPanel(session: session)
-                        .frame(minHeight: 360, idealHeight: 600)
-                    TimelinePanel(session: session)
-                        .frame(minHeight: 230, idealHeight: 330)
-                }
+            VSplitView {
+                EditorUpperWorkspace(session: session, layoutMode: layoutMode)
+                    .frame(minHeight: 390, idealHeight: 610)
+
+                TimelinePanel(session: session)
+                    .frame(minHeight: 230, idealHeight: 320)
             }
         }
         .background(Color.editorBackground)
@@ -33,6 +63,114 @@ struct EditorRootView: View {
         } message: {
             Text(session.errorMessage ?? "Unknown error")
         }
+    }
+}
+
+private struct EditorUpperWorkspace: View {
+    @ObservedObject var session: EditorSession
+    let layoutMode: EditorLayoutMode
+    @AppStorage("editorStandardWorkbenchFraction") private var standardWorkbenchFraction = 0.0
+    @AppStorage("editorTallWorkbenchFraction") private var tallWorkbenchFraction = 0.0
+    @State private var dragStartFraction: Double?
+
+    private let dividerWidth: CGFloat = 7
+
+    var body: some View {
+        GeometryReader { proxy in
+            let fraction = resolvedWorkbenchFraction(in: proxy.size)
+            let workbenchWidth = max(0, (proxy.size.width - dividerWidth) * fraction)
+
+            HStack(spacing: 0) {
+                WorkbenchPanel(session: session)
+                    .frame(width: workbenchWidth)
+                    .frame(maxHeight: .infinity)
+
+                EditorPanelDivider(
+                    onDrag: { translation in
+                        if dragStartFraction == nil {
+                            dragStartFraction = fraction
+                        }
+                        let availableWidth = max(1, proxy.size.width - dividerWidth)
+                        let next = (dragStartFraction ?? fraction) + translation / availableWidth
+                        setWorkbenchFraction(clamp(next, in: proxy.size))
+                    },
+                    onEnd: {
+                        dragStartFraction = nil
+                    },
+                    onReset: {
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            setWorkbenchFraction(0)
+                        }
+                    }
+                )
+                .frame(width: dividerWidth)
+
+                PlayerPanel(session: session, layoutMode: layoutMode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .animation(.easeInOut(duration: 0.22), value: layoutMode)
+        }
+    }
+
+    private func resolvedWorkbenchFraction(in size: CGSize) -> Double {
+        let stored = layoutMode == .standard
+            ? standardWorkbenchFraction
+            : tallWorkbenchFraction
+        if stored > 0 {
+            return clamp(stored, in: size)
+        }
+
+        let previewChrome: CGFloat = 50
+        let desiredPreviewWidth = max(
+            layoutMode == .standard ? 480 : 330,
+            (size.height - previewChrome) * layoutMode.previewAspectRatio
+        )
+        let automatic = (size.width - dividerWidth - desiredPreviewWidth)
+            / max(1, size.width - dividerWidth)
+        return clamp(automatic, in: size)
+    }
+
+    private func clamp(_ value: Double, in size: CGSize) -> Double {
+        let availableWidth = max(1, size.width - dividerWidth)
+        let minimumWorkbench = min(390, availableWidth * 0.46)
+        let minimumPreview = min(layoutMode == .standard ? 440 : 310, availableWidth * 0.46)
+        let lower = minimumWorkbench / availableWidth
+        let upper = max(lower, 1 - minimumPreview / availableWidth)
+        return min(upper, max(lower, value))
+    }
+
+    private func setWorkbenchFraction(_ value: Double) {
+        if layoutMode == .standard {
+            standardWorkbenchFraction = value
+        } else {
+            tallWorkbenchFraction = value
+        }
+    }
+}
+
+private struct EditorPanelDivider: View {
+    let onDrag: (CGFloat) -> Void
+    let onEnd: () -> Void
+    let onReset: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        ZStack {
+            Color.panelBackground
+            RoundedRectangle(cornerRadius: 1.5)
+                .fill(hovering ? Color.yapperOrange.opacity(0.72) : Color.studioLine)
+                .frame(width: hovering ? 3 : 1)
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { onDrag($0.translation.width) }
+                .onEnded { _ in onEnd() }
+        )
+        .onTapGesture(count: 2, perform: onReset)
+        .animation(.easeOut(duration: 0.1), value: hovering)
+        .help("Drag to resize · double-click to fit preview")
     }
 }
 

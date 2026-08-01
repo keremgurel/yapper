@@ -205,6 +205,11 @@ private struct StudioTopBar: View {
     let theme: StudioTheme
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
+    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.standard.rawValue
+
+    private var layoutMode: EditorLayoutMode {
+        EditorLayoutMode(rawValue: layoutModeRaw) ?? .standard
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -226,6 +231,35 @@ private struct StudioTopBar: View {
             Spacer()
 
             if destination == .editor {
+                Menu {
+                    ForEach(EditorLayoutMode.allCases) { mode in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.22)) {
+                                layoutModeRaw = mode.rawValue
+                            }
+                        } label: {
+                            Label(mode.title, systemImage: mode.icon)
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 7) {
+                        Image(systemName: layoutMode.icon)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(layoutMode.title)
+                            .font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 34)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .studioGlass(radius: 8, interactive: true)
+                .help("Change editor layout")
+
                 if session.isBusy || session.isExporting {
                     ProgressView().controlSize(.small)
                 }

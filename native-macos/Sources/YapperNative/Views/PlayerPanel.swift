@@ -2,32 +2,62 @@ import SwiftUI
 
 struct PlayerPanel: View {
     @ObservedObject var session: EditorSession
+    let layoutMode: EditorLayoutMode
 
     var body: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Color.black
-                if session.project.clips.isEmpty {
-                    VStack(spacing: 10) {
-                        Image(systemName: "play.rectangle")
-                            .font(.system(size: 34, weight: .light))
-                            .foregroundStyle(.secondary)
-                        Text("Native preview")
-                            .font(.system(size: 14, weight: .bold))
-                        Text("Import one or several videos. The editor opens directly here.")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
+            GeometryReader { proxy in
+                let stageSize = fittedStageSize(in: proxy.size)
+                ZStack {
+                    Color.editorBackground
+                    ZStack {
+                        Color.black
+                        if session.project.clips.isEmpty {
+                            VStack(spacing: 10) {
+                                Image(systemName: "play.rectangle")
+                                    .font(.system(size: 34, weight: .light))
+                                    .foregroundStyle(.secondary)
+                                Text("Native preview")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Import one or several videos. The editor opens directly here.")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 24)
+                            }
+                        } else {
+                            NativePlayerView(player: session.player)
+                                .id(ObjectIdentifier(session.player))
+                        }
                     }
-                } else {
-                    NativePlayerView(player: session.player)
-                        .id(ObjectIdentifier(session.player))
+                    .frame(width: stageSize.width, height: stageSize.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(Color.studioLine, lineWidth: 1)
+                    )
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(layoutMode == .standard ? 18 : 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             TransportBar(session: session)
         }
         .background(Color.editorBackground)
+    }
+
+    private func fittedStageSize(in container: CGSize) -> CGSize {
+        let inset: CGFloat = layoutMode == .standard ? 36 : 20
+        let available = CGSize(
+            width: max(1, container.width - inset),
+            height: max(1, container.height - inset)
+        )
+        let aspect = layoutMode.previewAspectRatio
+        if available.width / available.height > aspect {
+            return CGSize(width: available.height * aspect, height: available.height)
+        }
+        return CGSize(width: available.width, height: available.width / aspect)
     }
 }
 

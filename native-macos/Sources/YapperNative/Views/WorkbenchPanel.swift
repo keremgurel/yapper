@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 private enum WorkbenchTab: String, CaseIterable, Identifiable {
     case media = "Media"
@@ -23,17 +24,83 @@ private enum WorkbenchTab: String, CaseIterable, Identifiable {
     }
 }
 
+private enum WorkbenchDockFocus {
+    case primary
+    case secondary
+}
+
 struct WorkbenchPanel: View {
     @ObservedObject var session: EditorSession
     @State private var selectedTab: WorkbenchTab = .media
+    @State private var secondaryTab: WorkbenchTab?
+    @State private var dockFocus: WorkbenchDockFocus = .primary
+    @State private var tabOrder = WorkbenchTab.allCases
+    @State private var panelDropTargeted = false
+    @State private var draggingTab: WorkbenchTab?
+    @State private var workbenchWidth: CGFloat = 0
+    @AppStorage("workbenchTabOrder") private var tabOrderRaw = ""
 
     var body: some View {
         VStack(spacing: 0) {
+            workbenchTabStrip
+
+            Rectangle()
+                .fill(Color.yapperOrange)
+                .frame(height: 2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .opacity(0.75)
+
+            GeometryReader { proxy in
+                ZStack {
+                    workbenchDock(width: proxy.size.width)
+
+                    if panelDropTargeted {
+                        WorkbenchDropGuide()
+                            .transition(.opacity.combined(with: .scale(scale: 0.985)))
+                            .allowsHitTesting(false)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onDrop(
+                    of: [UTType.utf8PlainText.identifier],
+                    delegate: WorkbenchDropDelegate(
+                        isTargeted: $panelDropTargeted,
+                        onDrop: { raw, location in
+                            handlePanelDrop(raw, at: location, width: proxy.size.width)
+                        }
+                    )
+                )
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .background(Color.panelBackground)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { workbenchWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, width in
+                        workbenchWidth = width
+                    }
+            }
+        }
+        .coordinateSpace(name: "workbenchDock")
+        .onAppear(perform: restoreTabOrder)
+    }
+
+    private var workbenchTabStrip: some View {
+        ScrollViewReader { scrollProxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 2) {
-                    ForEach(WorkbenchTab.allCases) { tab in
+                    ForEach(tabOrder) { tab in
                         Button {
-                            selectedTab = tab
+                            withAnimation(.easeOut(duration: 0.14)) {
+                                if secondaryTab == tab {
+                                    dockFocus = .secondary
+                                } else {
+                                    selectedTab = tab
+                                    dockFocus = .primary
+                                }
+                            }
                         } label: {
                             VStack(spacing: 5) {
                                 Image(systemName: tab.icon)
@@ -42,39 +109,324 @@ struct WorkbenchPanel: View {
                                     .font(.system(size: 11, weight: .semibold))
                             }
                             .foregroundStyle(
-                                selectedTab == tab ? Color.yapperOrange : Color.secondary
+                                isTabActive(tab) ? Color.yapperOrange : Color.secondary
                             )
-                            .frame(width: tab == .quick ? 72 : 58, height: 52)
+                            .frame(width: tab == .quick ? 78 : 64, height: 52)
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .opacity(draggingTab == tab ? 0.58 : 1)
+                        .id(tab.id)
+                        .highPriorityGesture(tabDragGesture(for: tab))
+                        .onDrag {
+                            let provider = NSItemProvider(object: tab.rawValue as NSString)
+                            provider.suggestedName = tab.rawValue
+                            return provider
+                        } preview: {
+                            Label(tab.rawValue, systemImage: tab.icon)
+                                .font(.studioBodyStrong)
+                                .padding(.horizontal, 12)
+                                .frame(height: 38)
+                                .background(.regularMaterial)
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        }
+                        .onDrop(
+                            of: [UTType.utf8PlainText.identifier],
+                            delegate: WorkbenchDropDelegate(
+                                onDrop: { raw, _ in
+                                    _ = reorderTab(raw, before: tab)
+                                }
+                            )
+                        )
                     }
                 }
                 .padding(.horizontal, 8)
             }
             .background(Color.panelBackground)
-
-            Rectangle()
-                .fill(Color.yapperOrange)
-                .frame(height: 2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(0.75)
-
-            Group {
-                switch selectedTab {
-                case .media:
-                    MediaWorkbench(session: session)
-                case .quick:
-                    QuickEditWorkbench(session: session)
-                case .transcript:
-                    TranscriptWorkbench(session: session)
-                default:
-                    FeatureWorkbench(tab: selectedTab)
+            .onChange(of: selectedTab) { _, tab in
+                withAnimation(.easeOut(duration: 0.18)) {
+                    scrollProxy.scrollTo(tab.id, anchor: .center)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onChange(of: secondaryTab) { _, tab in
+                guard let tab else { return }
+                withAnimation(.easeOut(duration: 0.18)) {
+                    scrollProxy.scrollTo(tab.id, anchor: .center)
+                }
+            }
         }
-        .background(Color.panelBackground)
+    }
+
+    @ViewBuilder
+    private func workbenchDock(width: CGFloat) -> some View {
+        if let secondaryTab, width >= 720 {
+            HSplitView {
+                WorkbenchDockPane(
+                    tab: selectedTab,
+                    focused: dockFocus == .primary,
+                    closeAction: nil
+                ) {
+                    workbenchContent(for: selectedTab)
+                }
+                .frame(minWidth: 300, idealWidth: width * 0.5)
+                .onTapGesture { dockFocus = .primary }
+
+                WorkbenchDockPane(
+                    tab: secondaryTab,
+                    focused: dockFocus == .secondary,
+                    closeAction: closeSecondaryPane
+                ) {
+                    workbenchContent(for: secondaryTab)
+                }
+                .frame(minWidth: 300, idealWidth: width * 0.5)
+                .onTapGesture { dockFocus = .secondary }
+            }
+        } else if let secondaryTab {
+            VStack(spacing: 0) {
+                HStack(spacing: 5) {
+                    compactDockButton(selectedTab, focus: .primary)
+                    compactDockButton(secondaryTab, focus: .secondary)
+                    Spacer(minLength: 0)
+                    Button(action: closeSecondaryPane) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .frame(width: 27, height: 27)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Close secondary pane")
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 38)
+                .background(Color.raisedBackground)
+
+                workbenchContent(for: dockFocus == .secondary ? secondaryTab : selectedTab)
+            }
+        } else {
+            workbenchContent(for: selectedTab)
+        }
+    }
+
+    @ViewBuilder
+    private func workbenchContent(for tab: WorkbenchTab) -> some View {
+        switch tab {
+        case .media:
+            MediaWorkbench(session: session)
+        case .quick:
+            QuickEditWorkbench(session: session)
+        case .transcript:
+            TranscriptWorkbench(session: session)
+        default:
+            FeatureWorkbench(tab: tab)
+        }
+    }
+
+    private func compactDockButton(_ tab: WorkbenchTab, focus: WorkbenchDockFocus) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.14)) { dockFocus = focus }
+        } label: {
+            Label(tab.rawValue, systemImage: tab.icon)
+                .font(.studioCaptionStrong)
+                .foregroundStyle(dockFocus == focus ? Color.yapperOrange : Color.secondary)
+                .padding(.horizontal, 9)
+                .frame(height: 28)
+                .background(dockFocus == focus ? Color.studioSelectedFill : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func isTabActive(_ tab: WorkbenchTab) -> Bool {
+        tab == selectedTab || tab == secondaryTab
+    }
+
+    private func tabDragGesture(for tab: WorkbenchTab) -> some Gesture {
+        DragGesture(minimumDistance: 5, coordinateSpace: .named("workbenchDock"))
+            .onChanged { value in
+                draggingTab = tab
+                withAnimation(.easeOut(duration: 0.1)) {
+                    panelDropTargeted = value.location.y > 54
+                }
+            }
+            .onEnded { value in
+                defer {
+                    draggingTab = nil
+                    withAnimation(.easeOut(duration: 0.1)) {
+                        panelDropTargeted = false
+                    }
+                }
+
+                if value.location.y > 54 {
+                    handlePanelDrop(
+                        tab.rawValue,
+                        at: value.location,
+                        width: max(1, workbenchWidth)
+                    )
+                } else if let target = tabTarget(at: value.location.x) {
+                    _ = reorderTab(tab.rawValue, before: target)
+                }
+            }
+    }
+
+    private func tabTarget(at x: CGFloat) -> WorkbenchTab? {
+        var cursor: CGFloat = 8
+        for tab in tabOrder {
+            let width: CGFloat = tab == .quick ? 78 : 64
+            if x < cursor + width { return tab }
+            cursor += width + 2
+        }
+        return tabOrder.last
+    }
+
+    private func closeSecondaryPane() {
+        withAnimation(.easeOut(duration: 0.16)) {
+            secondaryTab = nil
+            dockFocus = .primary
+        }
+    }
+
+    private func handlePanelDrop(_ raw: String, at location: CGPoint, width: CGFloat) {
+        guard let tab = WorkbenchTab(rawValue: raw) else { return }
+        withAnimation(.easeOut(duration: 0.18)) {
+            if location.x > width * 0.52 {
+                if tab != selectedTab {
+                    secondaryTab = tab
+                    dockFocus = .secondary
+                }
+            } else {
+                selectedTab = tab
+                if secondaryTab == tab { secondaryTab = nil }
+                dockFocus = .primary
+            }
+        }
+    }
+
+    private func reorderTab(_ raw: String, before target: WorkbenchTab) -> Bool {
+        guard let moving = WorkbenchTab(rawValue: raw), moving != target,
+              let sourceIndex = tabOrder.firstIndex(of: moving),
+              let targetIndex = tabOrder.firstIndex(of: target)
+        else { return false }
+        withAnimation(.easeOut(duration: 0.16)) {
+            tabOrder.remove(at: sourceIndex)
+            let insertionIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+            tabOrder.insert(moving, at: insertionIndex)
+            tabOrderRaw = tabOrder.map(\.rawValue).joined(separator: "|")
+        }
+        return true
+    }
+
+    private func restoreTabOrder() {
+        let restored = tabOrderRaw
+            .split(separator: "|")
+            .compactMap { WorkbenchTab(rawValue: String($0)) }
+        let unique = restored.reduce(into: [WorkbenchTab]()) { result, tab in
+            if !result.contains(tab) { result.append(tab) }
+        }
+        tabOrder = unique + WorkbenchTab.allCases.filter { !unique.contains($0) }
+    }
+}
+
+private struct WorkbenchDropDelegate: DropDelegate {
+    var isTargeted: Binding<Bool>?
+    let onDrop: (String, CGPoint) -> Void
+
+    init(
+        isTargeted: Binding<Bool>? = nil,
+        onDrop: @escaping (String, CGPoint) -> Void
+    ) {
+        self.isTargeted = isTargeted
+        self.onDrop = onDrop
+    }
+
+    func validateDrop(info: DropInfo) -> Bool {
+        info.hasItemsConforming(to: [UTType.utf8PlainText])
+    }
+
+    func dropEntered(info: DropInfo) {
+        isTargeted?.wrappedValue = true
+    }
+
+    func dropExited(info: DropInfo) {
+        isTargeted?.wrappedValue = false
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        defer { isTargeted?.wrappedValue = false }
+        guard let provider = info.itemProviders(for: [UTType.utf8PlainText]).first,
+              let raw = provider.suggestedName
+        else { return false }
+        onDrop(raw, info.location)
+        return true
+    }
+}
+
+private struct WorkbenchDockPane<Content: View>: View {
+    let tab: WorkbenchTab
+    let focused: Bool
+    let closeAction: (() -> Void)?
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: tab.icon)
+                    .foregroundStyle(focused ? Color.yapperOrange : Color.secondary)
+                Text(tab.rawValue)
+                    .font(.studioCaptionStrong)
+                Spacer()
+                if let closeAction {
+                    Button(action: closeAction) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .frame(width: 26, height: 26)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Close secondary pane")
+                }
+            }
+            .padding(.horizontal, 11)
+            .frame(height: 36)
+            .background(Color.raisedBackground)
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(focused ? Color.yapperOrange.opacity(0.78) : Color.studioLine)
+                    .frame(height: focused ? 2 : 1)
+            }
+
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+}
+
+private struct WorkbenchDropGuide: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            dropZone("Open here", icon: "rectangle")
+            dropZone("Open beside", icon: "rectangle.split.2x1")
+        }
+        .padding(12)
+        .background(Color.panelBackground.opacity(0.82))
+    }
+
+    private func dropZone(_ title: String, icon: String) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .medium))
+            Text(title)
+                .font(.studioBodyStrong)
+        }
+        .foregroundStyle(Color.yapperOrange)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.yapperOrange.opacity(0.08))
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.yapperOrange.opacity(0.65), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
