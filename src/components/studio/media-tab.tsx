@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
-import { isNative, pickVideoPaths } from "@/lib/studio/native/bridge";
-import { loadNativeSource } from "@/lib/studio/native/load-native-source";
+import { isNative, pickMediaPaths } from "@/lib/studio/native/bridge";
+import { loadNativeMediaSource } from "@/lib/studio/native/load-native-source";
 
 export const MEDIA_DND_TYPE = "application/x-yapper-asset";
 
@@ -33,16 +33,32 @@ export default function MediaTab() {
     }
     setImportError("");
     setImporting(true);
-    void pickVideoPaths()
+    void pickMediaPaths()
       .then(async (paths) => {
-        for (const path of paths) {
-          addMediaSource(await loadNativeSource(path));
+        const imports = await Promise.allSettled(
+          paths.map((path) => loadNativeMediaSource(path)),
+        );
+        const loaded = imports.flatMap((result) =>
+          result.status === "fulfilled" ? [result.value] : [],
+        );
+        loaded.forEach(addMediaSource);
+
+        const failures = imports.filter(
+          (result) => result.status === "rejected",
+        );
+        if (failures.length > 0) {
+          console.error("[studio] some native media imports failed", failures);
+          setImportError(
+            loaded.length > 0
+              ? `${failures.length} selected file${failures.length === 1 ? "" : "s"} could not be read.`
+              : "The selected media could not be read.",
+          );
         }
       })
       .catch((error: unknown) => {
         console.error("[studio] native media import failed", error);
         const detail = error instanceof Error ? error.message : String(error);
-        setImportError(`Could not read that video file: ${detail}`);
+        setImportError(`Could not open media: ${detail}`);
       })
       .finally(() => setImporting(false));
   };
@@ -63,7 +79,7 @@ export default function MediaTab() {
           className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
         >
           <Upload className="h-4 w-4" />
-          {importing ? "Opening video…" : "Upload media"}
+          {importing ? "Opening media…" : "Upload media"}
         </button>
         <p className="text-foreground/45 mt-2 text-center text-xs">
           Photos &amp; videos · drag onto the timeline or press Add

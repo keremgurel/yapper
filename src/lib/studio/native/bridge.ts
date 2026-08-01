@@ -45,6 +45,39 @@ export function assetUrl(filePath: string): string {
   return c ? c.convertFileSrc(filePath) : filePath;
 }
 
+const VIDEO_EXTENSIONS = ["mp4", "mov", "m4v", "webm", "mkv", "avi", "hevc"];
+
+const IMAGE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "jfif",
+  "png",
+  "webp",
+  "gif",
+  "bmp",
+  "tif",
+  "tiff",
+  "avif",
+  "heic",
+  "heif",
+];
+
+async function pickPaths(
+  name: string,
+  extensions: string[],
+  multiple: boolean,
+): Promise<string[]> {
+  const res = await invoke<string | string[] | null>("plugin:dialog|open", {
+    options: {
+      multiple,
+      directory: false,
+      filters: [{ name, extensions }],
+    },
+  });
+  if (!res) return [];
+  return Array.isArray(res) ? res : [res];
+}
+
 /** Open the OS file picker and return the chosen video's path (null = cancel). */
 export async function pickVideoPath(): Promise<string | null> {
   return (await pickVideoPaths(false))[0] ?? null;
@@ -53,18 +86,14 @@ export async function pickVideoPath(): Promise<string | null> {
 /** Open one or many videos. Initial project import uses the multi-select form
  * so a sequence can be built in one trip to the picker. */
 export async function pickVideoPaths(multiple = true): Promise<string[]> {
-  const res = await invoke<string | string[] | null>("plugin:dialog|open", {
-    options: {
-      multiple,
-      directory: false,
-      filters: [
-        {
-          name: "Video",
-          extensions: ["mp4", "mov", "m4v", "webm", "mkv", "avi", "hevc"],
-        },
-      ],
-    },
-  });
-  if (!res) return [];
-  return Array.isArray(res) ? res : [res];
+  return pickPaths("Video", VIDEO_EXTENSIONS, multiple);
+}
+
+/** Open one or many photos/videos for the editor's reusable media library. */
+export async function pickMediaPaths(multiple = true): Promise<string[]> {
+  return pickPaths(
+    "Photos and videos",
+    [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS],
+    multiple,
+  );
 }
