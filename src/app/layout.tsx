@@ -26,9 +26,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | The Desktop Content Studio for Video Creators";
+const title = "Yapper | The Mobile and Desktop Content Studio for Creators";
 const description =
-  "Capture ideas, write scripts, record with a teleprompter, edit video by transcript, add captions, and publish in one desktop creator studio.";
+  "Capture ideas, develop scripts, record with a teleprompter, edit video by transcript, and publish in one mobile and desktop creator studio.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
         url: "/og.png",
         width: 1200,
         height: 630,
-        alt: "Yapper Studio — from idea to posted video",
+        alt: "Yapper Studio: from idea to posted video",
       },
     ],
   },

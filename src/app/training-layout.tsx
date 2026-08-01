@@ -7,7 +7,7 @@ export default function TrainingLayout({
 }) {
   return (
     <main
-      className="min-h-screen overflow-hidden"
+      className="min-h-screen overflow-x-clip"
       style={{ background: "var(--sg-bg)", color: "var(--sg-text)" }}
     >
       <TrainingHeader />

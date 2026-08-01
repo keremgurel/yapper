@@ -10,7 +10,7 @@ const graph = [
     url: SITE,
     name: "Yapper",
     description:
-      "The desktop content studio for video creators, plus free creator and speaking resources.",
+      "The mobile and desktop content studio for video creators, plus free creator and speaking resources.",
     publisher: { "@id": `${SITE}/#organization` },
     inLanguage: "en",
   },
@@ -26,9 +26,9 @@ const graph = [
     name: "Yapper Studio",
     url: SITE,
     applicationCategory: "MultimediaApplication",
-    operatingSystem: "macOS, Windows",
+    operatingSystem: "iOS, Android, macOS, Windows",
     description:
-      "A desktop creator studio for capturing ideas, writing scripts, recording video, editing by transcript, adding captions, and publishing content.",
+      "A mobile and desktop creator studio for capturing ideas, writing scripts, recording video, editing by transcript, adding captions, and publishing content.",
     featureList: marketingFeatures.map((feature) => feature.shortTitle),
   },
 ];

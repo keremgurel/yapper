@@ -50,7 +50,7 @@ const FEATURES = [
   {
     icon: AudioWaveform,
     title: "Record and edit in one place",
-    desc: "A teleprompter recorder and transcript-based video editor in one focused desktop app.",
+    desc: "A teleprompter recorder and transcript-based video editor in one focused app.",
   },
   {
     icon: Gauge,
@@ -285,7 +285,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
             letterSpacing: "-3px",
           }}
         >
-          Yapper Studio is coming to desktop
+          Yapper is coming to mobile and desktop
         </h2>
         <p
           className="mx-auto mt-6 max-w-[420px] leading-[1.5]"
@@ -621,7 +621,7 @@ export default function Waitlist({
             Coming soon
           </p>
           <h2 className="waitlist-heading font-display mb-3 text-[26px] leading-[1.2] font-semibold tracking-[-0.02em] sm:text-[32px]">
-            The whole creator workflow, on desktop
+            The whole creator workflow, on mobile and desktop
           </h2>
           <p className="waitlist-subtext mb-8 text-[14px] leading-[1.7] sm:text-[15px]">
             Yapper Studio brings ideas, scripts, recording, transcript editing,
