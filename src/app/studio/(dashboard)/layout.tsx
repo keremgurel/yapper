@@ -5,6 +5,7 @@ import AppSidebar from "@/components/studio-shell/app-sidebar";
 import StudioHeader from "@/components/studio-shell/studio-header";
 import StudioGate from "@/components/studio-shell/studio-gate";
 import AppChrome from "@/components/studio-shell/app-chrome";
+import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
 
 /**
  * The Studio dashboard shell: a shadcn sidebar app-shell (collapsible icon rail
@@ -32,7 +33,7 @@ export default function StudioDashboardLayout({
           <StudioHeader />
           <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <Show when="signed-in">
-              <div className="mx-auto w-full max-w-7xl">{children}</div>
+              <StudioContentFrame>{children}</StudioContentFrame>
             </Show>
             <Show when="signed-out">
               <StudioGate />
