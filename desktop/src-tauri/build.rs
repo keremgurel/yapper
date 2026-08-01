@@ -18,6 +18,7 @@ fn main() {
             "prepare_export_pcm",
             "extract_export_pcm_chunk",
             "open_oauth_flow",
+            "open_microphone_settings",
         ]),
     ))
     .expect("failed to build Tauri application");

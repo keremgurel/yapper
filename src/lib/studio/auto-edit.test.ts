@@ -42,8 +42,8 @@ const appended = (start: number, end: number): Clip => ({
 describe("trimClipsToSpeech", () => {
   it("pulls a clip's edges in to the speech, with a little padding", () => {
     const [out] = trimClipsToSpeech([rec(0, 10)], analysis);
-    expect(out.start).toBeCloseTo(1.95, 5); // 2.0 minus the lead pad
-    expect(out.end).toBeCloseTo(5.08, 5); // 5.0 plus the tail pad
+    expect(out.start).toBeCloseTo(1.96, 5); // 2.0 minus the lead pad
+    expect(out.end).toBeCloseTo(5.05, 5); // 5.0 plus the tail pad
   });
 
   it("never widens a clip past the edges it already has", () => {
@@ -57,7 +57,7 @@ describe("trimClipsToSpeech", () => {
   });
 
   it("returns an already-tight clip by identity, so callers can count changes", () => {
-    const clip = rec(1.95, 5.08);
+    const clip = rec(1.96, 5.05);
     expect(trimClipsToSpeech([clip], analysis)[0]).toBe(clip);
   });
 
@@ -78,9 +78,9 @@ describe("trimClipsToSpeech", () => {
   it("trims the recording's clips while leaving appended ones between them", () => {
     const broll = appended(0, 4);
     const out = trimClipsToSpeech([rec(0, 10), broll, rec(0, 10)], analysis);
-    expect(out[0].start).toBeCloseTo(1.95, 5);
+    expect(out[0].start).toBeCloseTo(1.96, 5);
     expect(out[1]).toBe(broll);
-    expect(out[2].start).toBeCloseTo(1.95, 5);
+    expect(out[2].start).toBeCloseTo(1.96, 5);
   });
 
   it("keeps the clips in order and returns one output per input", () => {
@@ -210,6 +210,23 @@ describe("dropSpeechlessSlivers", () => {
       shortBroll,
     ]);
   });
+
+  it("drops a long recording island when both transcript and VAD say it is empty", () => {
+    expect(
+      dropSpeechlessSlivers(
+        [rec(2, 4), rec(6, 9)],
+        [word(2, 3, "kept")],
+        undefined,
+        analysis,
+      ),
+    ).toEqual([rec(2, 4)]);
+  });
+
+  it("keeps speech that VAD heard even when transcription missed the words", () => {
+    expect(dropSpeechlessSlivers([rec(2, 4)], [], undefined, analysis)).toEqual(
+      [rec(2, 4)],
+    );
+  });
 });
 
 describe("planAutoEdit", () => {
@@ -267,7 +284,7 @@ describe("planAutoEdit", () => {
       // The "um" second is gone, and so is the dead air after the last word.
       expect(clips.map((c) => [c.start, c.end])).toEqual([
         [0, 1],
-        [2, 3.15],
+        [2, 3.06],
       ]);
     });
 
@@ -280,8 +297,8 @@ describe("planAutoEdit", () => {
       });
       // The pause is gone, and the tail silence after the last word with it.
       expect(clips.map((c) => [c.start, c.end])).toEqual([
-        [0, 1.15],
-        [2.96, 4.15],
+        [0, 1.06],
+        [2.96, 4.06],
       ]);
     });
 
@@ -318,8 +335,8 @@ describe("planAutoEdit", () => {
         aiCuts: [[1, 2]],
       });
       expect(clips.map((clip) => [clip.start, clip.end])).toEqual([
-        [0, 0.65],
-        [3.96, 4.65],
+        [0, 0.56],
+        [3.96, 4.56],
       ]);
     });
 
@@ -349,8 +366,8 @@ describe("planAutoEdit", () => {
   describe("trimming", () => {
     it("trims clips to speech when the waveform was analysed", () => {
       const { clips } = plan({ analysis });
-      expect(clips[0].start).toBeCloseTo(1.95, 5);
-      expect(clips[0].end).toBeCloseTo(5.08, 5);
+      expect(clips[0].start).toBeCloseTo(1.96, 5);
+      expect(clips[0].end).toBeCloseTo(5.05, 5);
     });
 
     it("leaves clips untrimmed when the waveform could not be analysed", () => {

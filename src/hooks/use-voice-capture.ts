@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { invoke, isNative } from "@/lib/studio/native/bridge";
 
 type Phase = "idle" | "recording" | "transcribing";
+type ErrorKind = "permission" | "unavailable" | "recording" | null;
 
 /**
  * Record a short voice note from the mic and transcribe it via /api/transcribe.
@@ -12,15 +14,32 @@ type Phase = "idle" | "recording" | "transcribing";
 export function useVoiceCapture() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [errorKind, setErrorKind] = useState<ErrorKind>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const cleanup = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setStream(null);
+    recorderRef.current = null;
+  }, []);
+
   const start = useCallback(async () => {
     setError(null);
+    setErrorKind(null);
+    let requestedStream: MediaStream | null = null;
     try {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        setError("Voice recording isn't available on this device.");
+        setErrorKind("unavailable");
+        setPhase("idle");
+        return;
+      }
       const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      requestedStream = s;
       streamRef.current = s;
       setStream(s);
       chunksRef.current = [];
@@ -31,17 +50,36 @@ export function useVoiceCapture() {
       recorder.start();
       recorderRef.current = recorder;
       setPhase("recording");
-    } catch {
-      setError("Mic access denied");
+    } catch (cause) {
+      requestedStream?.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+      setStream(null);
+      const name = cause instanceof DOMException ? cause.name : "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        setError("Microphone access is off.");
+        setErrorKind("permission");
+      } else if (name === "NotFoundError") {
+        setError("No microphone was found.");
+        setErrorKind("unavailable");
+      } else {
+        setError("Couldn't start the microphone.");
+        setErrorKind("recording");
+      }
       setPhase("idle");
     }
   }, []);
 
-  const cleanup = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    setStream(null);
-    recorderRef.current = null;
+  const openMicrophoneSettings = useCallback(async (): Promise<boolean> => {
+    if (!isNative()) return false;
+    try {
+      await invoke("open_microphone_settings");
+      return true;
+    } catch {
+      setError(
+        "Open System Settings, then allow Yapper Studio to use the microphone.",
+      );
+      return false;
+    }
   }, []);
 
   /** Stop recording and resolve the transcribed text. */
@@ -100,5 +138,15 @@ export function useVoiceCapture() {
     setPhase("idle");
   }, [cleanup]);
 
-  return { phase, error, stream, start, stop, cancel };
+  return {
+    phase,
+    error,
+    stream,
+    start,
+    stop,
+    cancel,
+    permissionBlocked: errorKind === "permission",
+    canOpenMicrophoneSettings: isNative(),
+    openMicrophoneSettings,
+  };
 }

@@ -10,11 +10,23 @@ export default function VoiceNoteButton({
 }: {
   onText: (text: string) => void;
 }) {
-  const { phase, error, start, stop } = useVoiceCapture();
+  const {
+    phase,
+    error,
+    start,
+    stop,
+    permissionBlocked,
+    canOpenMicrophoneSettings,
+    openMicrophoneSettings,
+  } = useVoiceCapture();
 
   const toggle = async () => {
     if (phase === "idle") {
-      await start();
+      if (permissionBlocked && canOpenMicrophoneSettings) {
+        await openMicrophoneSettings();
+      } else {
+        await start();
+      }
     } else if (phase === "recording") {
       const text = await stop();
       if (text) onText(text);

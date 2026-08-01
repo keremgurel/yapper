@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
 import {
+  ChevronDown,
   Columns2,
   Expand,
   LayoutPanelTop,
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
+import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { studioNav } from "@/data/studio-nav";
@@ -48,6 +50,12 @@ export default function StudioHeader() {
     () => false,
   );
   const dark = mounted && resolvedTheme === "dark";
+  const layoutLabel =
+    editorLayout?.mode === "focus"
+      ? "Preview only"
+      : editorLayout?.mode === "cinema"
+        ? "Tall preview"
+        : "Standard layout";
 
   return (
     <div className="bg-background/80 sticky top-[var(--site-header,3.5rem)] z-20 flex h-12 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md">
@@ -63,11 +71,13 @@ export default function StudioHeader() {
         {editorLayout && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 aria-label="Editor layout"
-                title="Editor layout"
-                className="text-muted-foreground hover:bg-muted hover:text-foreground grid h-8 w-8 place-items-center rounded-md transition-colors"
+                title={`Editor layout: ${layoutLabel}`}
+                className="text-muted-foreground hover:text-foreground h-8 gap-1.5 px-2.5"
               >
                 {editorLayout.mode === "focus" ? (
                   <Expand className="h-4 w-4" />
@@ -76,7 +86,11 @@ export default function StudioHeader() {
                 ) : (
                   <LayoutPanelTop className="h-4 w-4" />
                 )}
-              </button>
+                <span className="hidden text-xs font-semibold lg:inline">
+                  {layoutLabel}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Workspace</DropdownMenuLabel>
@@ -87,13 +101,13 @@ export default function StudioHeader() {
                 }
               >
                 <DropdownMenuRadioItem value="classic">
-                  <LayoutPanelTop /> Classic
+                  <LayoutPanelTop /> Standard · preview above timeline
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="cinema">
-                  <Columns2 /> Cinema · full-height video
+                  <Columns2 /> Tall preview · full height
                 </DropdownMenuRadioItem>
                 <DropdownMenuRadioItem value="focus">
-                  <Expand /> Video focus
+                  <Expand /> Preview only
                 </DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />

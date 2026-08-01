@@ -25,6 +25,7 @@
     "allow-extract-pcm-chunk",
     "allow-prepare-export-pcm",
     "allow-extract-export-pcm-chunk",
-    "allow-open-oauth-flow"
+    "allow-open-oauth-flow",
+    "allow-open-microphone-settings"
   ]
 }

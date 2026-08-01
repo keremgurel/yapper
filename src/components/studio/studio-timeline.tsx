@@ -899,13 +899,13 @@ export default function StudioTimeline({
                         e.stopPropagation();
                         if (!(e.metaKey || e.ctrlKey)) selectClip(clip.id);
                       }}
-                      className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md active:cursor-grabbing ${
+                      className={`group absolute top-0 bottom-0 cursor-grab overflow-hidden rounded-md ring-1 ring-white/20 ring-inset active:cursor-grabbing ${
                         isLifting
-                          ? "z-30 opacity-90 ring-2 ring-fuchsia-400"
+                          ? "z-30 opacity-90 ring-fuchsia-400/80"
                           : isGhost
-                            ? "z-30 opacity-90 ring-2 ring-cyan-400"
+                            ? "z-30 opacity-90 ring-cyan-400/80"
                             : selected
-                              ? "z-10 ring-2 ring-cyan-500"
+                              ? "z-10 ring-cyan-400/75"
                               : ""
                       }`}
                       title={`${cStart.toFixed(2)}s to ${cEnd.toFixed(2)}s`}

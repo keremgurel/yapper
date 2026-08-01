@@ -9,6 +9,9 @@ const MIN_WORKBENCH_WIDTH = 300;
 const MIN_PREVIEW_WIDTH = 420;
 const MIN_TIMELINE_HEIGHT = 220;
 const MIN_PREVIEW_HEIGHT = 260;
+const EDITOR_RAIL_WIDTH = 48;
+const EDITOR_HEADER_HEIGHT = 48;
+const DIVIDER_SIZE = 6;
 
 export type EditorViewMode = "classic" | "cinema" | "focus";
 
@@ -24,6 +27,25 @@ function isViewMode(value: unknown): value is EditorViewMode {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max));
+}
+
+function fitToViewport(layout: StoredLayout): StoredLayout {
+  return {
+    ...layout,
+    workbenchWidth: clamp(
+      layout.workbenchWidth,
+      MIN_WORKBENCH_WIDTH,
+      window.innerWidth - EDITOR_RAIL_WIDTH - DIVIDER_SIZE - MIN_PREVIEW_WIDTH,
+    ),
+    timelineHeight: clamp(
+      layout.timelineHeight,
+      MIN_TIMELINE_HEIGHT,
+      window.innerHeight -
+        EDITOR_HEADER_HEIGHT -
+        DIVIDER_SIZE -
+        MIN_PREVIEW_HEIGHT,
+    ),
+  };
 }
 
 function readStoredLayout(): StoredLayout | null {
@@ -84,7 +106,23 @@ export function useEditorWorkspaceLayout() {
     const stored = readStoredLayout();
     if (!stored) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time browser preference hydration
-    commit(stored);
+    commit(fitToViewport(stored));
+  }, [commit]);
+
+  useEffect(() => {
+    const onResize = () => {
+      const next = fitToViewport(dimensions.current);
+      if (
+        next.workbenchWidth === dimensions.current.workbenchWidth &&
+        next.timelineHeight === dimensions.current.timelineHeight
+      ) {
+        return;
+      }
+      commit(next);
+      storeLayout(next);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, [commit]);
 
   useEffect(() => {
@@ -96,7 +134,10 @@ export function useEditorWorkspaceLayout() {
         const nextWidth = clamp(
           active.size + event.clientX - active.origin,
           MIN_WORKBENCH_WIDTH,
-          window.innerWidth - MIN_PREVIEW_WIDTH,
+          window.innerWidth -
+            EDITOR_RAIL_WIDTH -
+            DIVIDER_SIZE -
+            MIN_PREVIEW_WIDTH,
         );
         const next = {
           ...dimensions.current,
@@ -110,7 +151,10 @@ export function useEditorWorkspaceLayout() {
       const nextHeight = clamp(
         active.size + active.origin - event.clientY,
         MIN_TIMELINE_HEIGHT,
-        window.innerHeight - MIN_PREVIEW_HEIGHT,
+        window.innerHeight -
+          EDITOR_HEADER_HEIGHT -
+          DIVIDER_SIZE -
+          MIN_PREVIEW_HEIGHT,
       );
       const next = { ...dimensions.current, timelineHeight: nextHeight };
       dimensions.current = next;
@@ -164,7 +208,10 @@ export function useEditorWorkspaceLayout() {
         workbenchWidth: clamp(
           dimensions.current.workbenchWidth + delta,
           MIN_WORKBENCH_WIDTH,
-          window.innerWidth - MIN_PREVIEW_WIDTH,
+          window.innerWidth -
+            EDITOR_RAIL_WIDTH -
+            DIVIDER_SIZE -
+            MIN_PREVIEW_WIDTH,
         ),
       };
       commit(next);
@@ -180,7 +227,10 @@ export function useEditorWorkspaceLayout() {
         timelineHeight: clamp(
           dimensions.current.timelineHeight + delta,
           MIN_TIMELINE_HEIGHT,
-          window.innerHeight - MIN_PREVIEW_HEIGHT,
+          window.innerHeight -
+            EDITOR_HEADER_HEIGHT -
+            DIVIDER_SIZE -
+            MIN_PREVIEW_HEIGHT,
         ),
       };
       commit(next);

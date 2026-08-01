@@ -40,6 +40,7 @@ function bestContiguousCandidate(
 ): Candidate | null {
   if (target.length === 0 || source.length === 0) return null;
   let best: Candidate | null = null;
+  let minimumErrors = Number.POSITIVE_INFINITY;
   const lengthSlack = Math.max(2, Math.min(5, Math.ceil(target.length * 0.12)));
   for (let start = 0; start < source.length; start++) {
     for (
@@ -48,12 +49,23 @@ function bestContiguousCandidate(
       length++
     ) {
       const errors = editDistance(source.slice(start, start + length), target);
-      // On an exact-score tie, choose the later occurrence: retakes resolve to
-      // the speaker's final attempt.
+      minimumErrors = Math.min(minimumErrors, errors);
+      const laterNearMatch =
+        best != null &&
+        target.length >= 6 &&
+        start > best.start &&
+        errors <= minimumErrors + 1 &&
+        errors / target.length <= 0.16;
+      // Retakes resolve to the speaker's final attempt. The final correction
+      // can legitimately add or remove one small word ("the", "a", "to"), so
+      // a later near-identical clause outranks an earlier verbatim one. Without
+      // this, text similarity kept the middle of three spoken attempts merely
+      // because the model's cleaned sentence omitted the final article.
       if (
         !best ||
         errors < best.errors ||
-        (errors === best.errors && start > best.start)
+        (errors === best.errors && start > best.start) ||
+        laterNearMatch
       ) {
         best = {
           start,
@@ -67,19 +79,38 @@ function bestContiguousCandidate(
   return best;
 }
 
-function sentenceTokens(cleaned: string): string[][] {
+/**
+ * Split the clean script into independently placeable spoken clauses.
+ *
+ * A speaker often corrects only the tail of a sentence:
+ *
+ *   "Members get access forever, plus eight free credits ..."
+ *                                      "Plus eight free credits ..."
+ *
+ * Treating that entire sentence as one target forces the mapper to keep the
+ * first suffix because only it is contiguous with the prefix. Commas are real
+ * restart boundaries in spoken scripts, so a substantial comma-delimited
+ * clause is mapped on its own and the existing right-biased tie breaker can
+ * select the later correction. Very short comma fragments stay attached to
+ * their neighbors to avoid matching generic one- or two-word phrases.
+ */
+function thoughtTokens(cleaned: string): string[][] {
   const tokens = cleaned.trim().split(/\s+/).filter(Boolean);
-  const sentences: string[][] = [];
+  const thoughts: string[][] = [];
   let current: string[] = [];
   for (const token of tokens) {
     current.push(token);
-    if (/[.!?]["')\]]*$/.test(token)) {
-      sentences.push(current);
+    const terminal = /[.!?]["')\]]*$/.test(token);
+    const substantialCommaClause =
+      /[,;:]["')\]]*$/.test(token) &&
+      current.map(norm).filter(Boolean).length >= 4;
+    if (terminal || substantialCommaClause) {
+      thoughts.push(current);
       current = [];
     }
   }
-  if (current.length > 0) sentences.push(current);
-  return sentences;
+  if (current.length > 0) thoughts.push(current);
+  return thoughts;
 }
 
 function clauseBreaks(tokens: string[]): number[] {
@@ -136,7 +167,7 @@ export function alignCleanedToContiguousTakes(
   cleaned: string,
 ): ContiguousTakeAlignment {
   const source = words.map(({ text }) => norm(text));
-  const thoughts = sentenceTokens(cleaned);
+  const thoughts = thoughtTokens(cleaned);
   const candidates = thoughts.flatMap((tokens) =>
     mapOneCleanThought(source, tokens),
   );

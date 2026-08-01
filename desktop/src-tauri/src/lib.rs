@@ -1601,6 +1601,39 @@ fn open_oauth_flow(url: String, app: tauri::AppHandle) {
     open_oauth_popup(&app, url);
 }
 
+/// Open the operating system's microphone privacy page after access has been
+/// denied. macOS remembers a denial and intentionally will not present the
+/// first-run prompt again, so retrying getUserMedia alone cannot recover it.
+#[tauri::command]
+fn open_microphone_settings() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let status = std::process::Command::new("open")
+            .arg("x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone")
+            .status()
+            .map_err(|error| format!("open microphone settings: {error}"))?;
+        if status.success() {
+            return Ok(());
+        }
+        return Err(format!("open microphone settings exited with {status}"));
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "start", "", "ms-settings:privacy-microphone"])
+            .status()
+            .map_err(|error| format!("open microphone settings: {error}"))?;
+        if status.success() {
+            return Ok(());
+        }
+        return Err(format!("open microphone settings exited with {status}"));
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    Err("Open your system privacy settings and allow microphone access for Yapper Studio.".into())
+}
+
 fn open_oauth_popup(handle: &tauri::AppHandle, url_str: String) {
     use tauri::webview::PageLoadEvent;
     use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
@@ -1685,7 +1718,8 @@ pub fn run() {
             extract_pcm_chunk,
             prepare_export_pcm,
             extract_export_pcm_chunk,
-            open_oauth_flow
+            open_oauth_flow,
+            open_microphone_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

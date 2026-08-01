@@ -9,12 +9,16 @@ import { cn } from "@/lib/utils";
  */
 export default function StudioContentFrame({
   className,
+  fluid = false,
   ...props
-}: ComponentPropsWithoutRef<"div">) {
+}: ComponentPropsWithoutRef<"div"> & { fluid?: boolean }) {
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-[var(--studio-content-max-width)]",
+        "w-full",
+        fluid
+          ? "max-w-none"
+          : "mx-auto max-w-[var(--studio-content-max-width)]",
         className,
       )}
       {...props}

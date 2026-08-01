@@ -101,7 +101,17 @@ export default function IdeaCapture({
   const [link, setLink] = useState<string | null>(null);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const ref = useRef<HTMLTextAreaElement>(null);
-  const { phase, error, stream, start, stop, cancel } = useVoiceCapture();
+  const {
+    phase,
+    error,
+    stream,
+    start,
+    stop,
+    cancel,
+    permissionBlocked,
+    canOpenMicrophoneSettings,
+    openMicrophoneSettings,
+  } = useVoiceCapture();
 
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
@@ -191,7 +201,9 @@ export default function IdeaCapture({
   };
 
   const toggleVoice = async () => {
-    if (phase === "idle") await start();
+    if (phase === "idle" && permissionBlocked && canOpenMicrophoneSettings) {
+      await openMicrophoneSettings();
+    } else if (phase === "idle") await start();
     else if (recording) await finishRecording();
   };
 
@@ -294,10 +306,32 @@ export default function IdeaCapture({
               </span>
             </div>
           ) : (
-            <p className="text-muted-foreground truncate pb-2 text-xs">
-              {error ??
-                (transcribing ? "Transcribing your thought…" : "⌘D to dictate")}
-            </p>
+            <div
+              aria-live="polite"
+              className="flex min-h-10 min-w-0 items-center justify-end gap-2"
+            >
+              <p className="text-muted-foreground min-w-0 truncate text-xs">
+                {error ??
+                  (transcribing
+                    ? "Transcribing your thought…"
+                    : "⌘D to dictate")}
+              </p>
+              {error && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void (permissionBlocked && canOpenMicrophoneSettings
+                      ? openMicrophoneSettings()
+                      : start())
+                  }
+                  className="border-border bg-background/60 text-foreground hover:bg-background shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors"
+                >
+                  {permissionBlocked && canOpenMicrophoneSettings
+                    ? "Open settings"
+                    : "Try again"}
+                </button>
+              )}
+            </div>
           )}
         </div>
 

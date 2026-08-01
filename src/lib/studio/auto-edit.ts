@@ -31,8 +31,8 @@ export interface PauseCutOptions {
 }
 
 /** Keep a breath of room around the speech so words aren't clipped short. */
-const LEAD_PAD = 0.05;
-const TAIL_PAD = 0.08;
+const LEAD_PAD = 0.04;
+const TAIL_PAD = 0.05;
 
 /** A trim that would leave less than this isn't a trim, it's a deletion. */
 const MIN_TRIMMED_SEC = 0.1;
@@ -129,14 +129,28 @@ export function dropSpeechlessSlivers(
   clips: Clip[],
   words: Word[],
   minSec = MIN_SPEECHLESS_CLIP_SEC,
+  analysis: TrimAnalysis | null = null,
 ): Clip[] {
-  if (words.length === 0) return clips;
   return clips.filter((clip) => {
-    if (clip.src != null || clip.end - clip.start >= minSec) return true;
-    return words.some((word) => {
+    if (clip.src != null) return true;
+    const hasTranscriptWord = words.some((word) => {
       const midpoint = (word.start + word.end) / 2;
       return midpoint >= clip.start && midpoint <= clip.end;
     });
+    if (hasTranscriptWord) return true;
+
+    // With waveform analysis available, length is irrelevant: a recording
+    // island that has neither a kept word nor detected speech is dead air. It
+    // used to survive whenever it happened to be longer than 350ms, leaving a
+    // black/quiet "zombie" clip and an unnecessary playback boundary.
+    if (analysis) {
+      return speechBoundsInRange(analysis, clip.start, clip.end) !== null;
+    }
+
+    // If VAD failed, stay conservative. Only remove the tiny padding islands
+    // the old deterministic rule can prove are useless.
+    if (words.length === 0) return true;
+    return clip.end - clip.start >= minSec;
   });
 }
 
@@ -165,7 +179,7 @@ const AUTO_EDIT_CUTS: PauseCutOptions = {
   minGap: 0.25,
   minSilence: 0.4,
   headPad: 0.04,
-  tailPad: 0.15,
+  tailPad: 0.06,
 };
 
 export interface AutoEditInput {
@@ -250,7 +264,7 @@ export function planAutoEdit({
   onStep?.(AUTO_EDIT_STEPS.TRIM);
   if (analysis) next = trimClipsToSpeech(next, analysis, keptWords);
   next = dropSlivers(next);
-  next = dropSpeechlessSlivers(next, keptWords);
+  next = dropSpeechlessSlivers(next, keptWords, undefined, analysis);
 
   // Cutting everything means the analysis disagreed with the transcript. Give
   // the take back rather than handing over an empty timeline.

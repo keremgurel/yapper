@@ -15,8 +15,11 @@ export default function StudioRouteBoundary({
 }) {
   const isDesktop = useSyncExternalStore(
     () => () => undefined,
-    () => "__TAURI_INTERNALS__" in window || "__TAURI__" in window,
-    () => false,
+    () =>
+      process.env.NODE_ENV === "development" ||
+      "__TAURI_INTERNALS__" in window ||
+      "__TAURI__" in window,
+    () => process.env.NODE_ENV === "development",
   );
   const pathname = usePathname();
   const router = useRouter();

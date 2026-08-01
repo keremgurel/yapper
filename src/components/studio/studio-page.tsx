@@ -62,7 +62,10 @@ export default function StudioPage() {
           <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
             <StudioHeader />
             <main className="flex min-h-0 flex-1 flex-col">
-              <StudioContentFrame className="flex min-h-0 flex-1 flex-col">
+              <StudioContentFrame
+                fluid
+                className="flex min-h-0 min-w-0 flex-1 flex-col"
+              >
                 <StudioWorkspace />
               </StudioContentFrame>
             </main>
