@@ -37,9 +37,9 @@ struct WorkbenchPanel: View {
                         } label: {
                             VStack(spacing: 5) {
                                 Image(systemName: tab.icon)
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(size: 14, weight: .semibold))
                                 Text(tab.rawValue)
-                                    .font(.system(size: 10, weight: .semibold))
+                                    .font(.system(size: 11, weight: .semibold))
                             }
                             .foregroundStyle(
                                 selectedTab == tab ? Color.yapperOrange : Color.secondary
@@ -86,7 +86,7 @@ private struct MediaWorkbench: View {
                     Text("Media")
                         .font(.system(size: 15, weight: .bold))
                     Text("Video stays local on this Mac")
-                        .font(.system(size: 11))
+                        .font(.studioBody)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -102,14 +102,14 @@ private struct MediaWorkbench: View {
                         Text("Import one or several videos")
                             .font(.system(size: 13, weight: .semibold))
                         Text("They are appended directly to the native timeline.")
-                            .font(.system(size: 11))
+                            .font(.studioCaption)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, minHeight: 180)
                     .background(Color.raisedBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: 9)
-                            .stroke(Color.white.opacity(0.1), style: StrokeStyle(dash: [5]))
+                            .stroke(Color.studioLine, style: StrokeStyle(dash: [5]))
                     )
                     .clipShape(RoundedRectangle(cornerRadius: 9))
                 }
@@ -135,17 +135,17 @@ private struct MediaWorkbench: View {
 
                                 VStack(alignment: .leading, spacing: 5) {
                                     Text(media.name)
-                                        .font(.system(size: 11, weight: .semibold))
+                                        .font(.studioBodyStrong)
                                         .lineLimit(2)
                                     Text("\(media.width)×\(media.height) · \(formatTime(media.duration))")
-                                        .font(.system(size: 10))
+                                        .font(.studioCaption)
                                         .foregroundStyle(.secondary)
                                     if let progress = session.waveformProgressByMedia[media.id], progress < 1 {
                                         ProgressView(value: progress)
                                             .tint(.cyan)
                                     } else {
                                         Label("Waveform ready", systemImage: "waveform")
-                                            .font(.system(size: 9, weight: .medium))
+                                            .font(.studioCaption)
                                             .foregroundStyle(.cyan)
                                     }
                                 }
@@ -176,7 +176,7 @@ private struct QuickEditWorkbench: View {
             Text("Quick Edit")
                 .font(.system(size: 15, weight: .bold))
             Text("AI edits will operate on this native timeline without rebuilding the player between clips.")
-                .font(.system(size: 11))
+                .font(.studioCaption)
                 .foregroundStyle(.secondary)
 
             LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
@@ -189,7 +189,7 @@ private struct QuickEditWorkbench: View {
 
             Divider()
             Text("Native timeline tools")
-                .font(.system(size: 11, weight: .bold))
+                .font(.studioCaptionStrong)
                 .foregroundStyle(.secondary)
             HStack {
                 Button("Split at playhead") {
@@ -220,9 +220,9 @@ private struct QuickAction: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundStyle(Color.yapperOrange)
                 Text(title)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.studioBodyStrong)
                 Text(detail)
-                    .font(.system(size: 10))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
@@ -230,7 +230,7 @@ private struct QuickAction: View {
             .background(Color.raisedBackground)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    .stroke(Color.studioLine, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
@@ -249,7 +249,7 @@ private struct FeatureWorkbench: View {
             Text(tab.rawValue)
                 .font(.system(size: 15, weight: .bold))
             Text("This tool will attach directly to native timeline tracks.")
-                .font(.system(size: 11))
+                .font(.studioCaption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

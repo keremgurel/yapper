@@ -4,10 +4,15 @@ struct AppShellView: View {
     @ObservedObject var session: EditorSession
     @AppStorage("studioSidebarExpanded") private var sidebarExpanded = true
     @AppStorage("studioDestination") private var destinationRaw = StudioDestination.home.rawValue
+    @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
     @Namespace private var sidebarSelection
 
     private var destination: StudioDestination {
         StudioDestination(rawValue: destinationRaw) ?? .home
+    }
+
+    private var theme: StudioTheme {
+        StudioTheme(rawValue: themeRaw) ?? .dark
     }
 
     var body: some View {
@@ -18,7 +23,7 @@ struct AppShellView: View {
                 selectionNamespace: sidebarSelection,
                 onNavigate: navigate
             )
-            .frame(width: sidebarExpanded ? 214 : 58)
+            .frame(width: sidebarExpanded ? 238 : 66)
             .animation(.smooth(duration: 0.24), value: sidebarExpanded)
 
             VStack(spacing: 0) {
@@ -26,9 +31,15 @@ struct AppShellView: View {
                     destination: destination,
                     sidebarExpanded: sidebarExpanded,
                     session: session,
+                    theme: theme,
                     toggleSidebar: {
                         withAnimation(.smooth(duration: 0.24)) {
                             sidebarExpanded.toggle()
+                        }
+                    },
+                    toggleTheme: {
+                        withAnimation(.smooth(duration: 0.2)) {
+                            themeRaw = theme.next.rawValue
                         }
                     }
                 )
@@ -78,68 +89,63 @@ private struct StudioSidebar: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(Color.yapperOrange)
-                    Image(systemName: "waveform.path.ecg")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(.black)
-                }
-                .frame(width: 28, height: 28)
+            HStack(spacing: 11) {
+                YapperMark(size: 31)
                 if expanded {
                     Text("Yapper Studio")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .lineLimit(1)
                         .transition(.opacity.combined(with: .offset(x: -4)))
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, expanded ? 14 : 15)
-            .frame(height: 52)
+            .padding(.horizontal, expanded ? 15 : 17)
+            .frame(height: 58)
 
-            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Color.studioLine).frame(height: 1)
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 4) {
                     ForEach(StudioDestination.groups, id: \.0) { group, items in
                         if !group.isEmpty, expanded {
                             Text(group.uppercased())
-                                .font(.system(size: 9, weight: .bold))
+                                .font(.system(size: 10, weight: .bold))
                                 .tracking(1.15)
-                                .foregroundStyle(Color.white.opacity(0.34))
-                                .padding(.top, 12)
-                                .padding(.horizontal, 11)
+                                .foregroundStyle(Color.secondary.opacity(0.72))
+                                .padding(.top, 14)
+                                .padding(.horizontal, 12)
                                 .transition(.opacity)
                         } else if !group.isEmpty {
-                            Spacer().frame(height: 8)
+                            Spacer().frame(height: 10)
                         }
 
                         ForEach(items) { item in
                             Button {
                                 onNavigate(item)
                             } label: {
-                                HStack(spacing: 11) {
-                                    Image(systemName: item.systemImage)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .frame(width: 20)
+                                HStack(spacing: 10) {
+                                    StudioIcon(
+                                        symbol: item.systemImage,
+                                        selected: destination == item,
+                                        size: 28
+                                    )
                                     if expanded {
                                         Text(item.title)
-                                            .font(.system(size: 12, weight: .semibold))
+                                            .font(.system(size: 13, weight: .semibold))
                                             .lineLimit(1)
                                     }
                                     Spacer(minLength: 0)
                                 }
                                 .foregroundStyle(
-                                    destination == item ? Color.white : Color.white.opacity(0.62)
+                                    destination == item ? Color.primary : Color.secondary
                                 )
-                                .padding(.horizontal, expanded ? 10 : 9)
-                                .frame(height: 34)
+                                .padding(.horizontal, expanded ? 8 : 10)
+                                .frame(height: 40)
                                 .contentShape(Rectangle())
                                 .background {
                                     if destination == item {
-                                        RoundedRectangle(cornerRadius: 7)
-                                            .fill(Color.white.opacity(0.075))
+                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                            .fill(Color.studioSelectedFill)
                                             .matchedGeometryEffect(
                                                 id: "sidebar-selection",
                                                 in: selectionNamespace
@@ -163,30 +169,30 @@ private struct StudioSidebar: View {
             }
 
             Spacer(minLength: 0)
-            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Color.studioLine).frame(height: 1)
             HStack(spacing: 10) {
                 Circle()
                     .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                    .overlay(Text("C").font(.system(size: 11, weight: .bold)))
-                    .frame(width: 27, height: 27)
+                    .overlay(Text("C").font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
+                    .frame(width: 30, height: 30)
                 if expanded {
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Celpip Speaking Team")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                             .lineLimit(1)
                         Text("Workspace")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 0)
                 }
             }
-            .padding(.horizontal, expanded ? 12 : 15)
-            .frame(height: 50)
+            .padding(.horizontal, expanded ? 14 : 18)
+            .frame(height: 58)
         }
-        .background(Color(red: 0.045, green: 0.047, blue: 0.052))
+        .background(Color.sidebarBackground)
         .overlay(alignment: .trailing) {
-            Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1)
+            Rectangle().fill(Color.studioLine).frame(width: 1)
         }
         .clipped()
     }
@@ -196,24 +202,25 @@ private struct StudioTopBar: View {
     let destination: StudioDestination
     let sidebarExpanded: Bool
     @ObservedObject var session: EditorSession
+    let theme: StudioTheme
     let toggleSidebar: () -> Void
+    let toggleTheme: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Button(action: toggleSidebar) {
                 Image(systemName: sidebarExpanded ? "sidebar.left" : "sidebar.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 28, height: 28)
+                    .font(.system(size: 14, weight: .semibold))
+                    .frame(width: 32, height: 32)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
-            .background(Color.white.opacity(0.045))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .studioGlass(radius: 8, interactive: true)
             .help(sidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
 
-            Rectangle().fill(Color.white.opacity(0.09)).frame(width: 1, height: 18)
+            Rectangle().fill(Color.studioLine).frame(width: 1, height: 22)
             Text(destination.title)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.system(size: 15, weight: .bold, design: .rounded))
                 .contentTransition(.interpolate)
 
             Spacer()
@@ -223,7 +230,7 @@ private struct StudioTopBar: View {
                     ProgressView().controlSize(.small)
                 }
                 Text(session.statusMessage)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 Button {
@@ -246,23 +253,37 @@ private struct StudioTopBar: View {
                     HStack(spacing: 7) {
                         Circle()
                             .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                            .overlay(Text("C").font(.system(size: 10, weight: .bold)))
-                            .frame(width: 24, height: 24)
+                            .overlay(Text("C").font(.system(size: 11, weight: .bold)).foregroundStyle(.white))
+                            .frame(width: 27, height: 27)
                         Text("Celpip Speaking Team")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                             .foregroundStyle(.secondary)
                     }
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
             }
+
+            Button(action: toggleTheme) {
+                ZStack {
+                    Image(systemName: theme == .dark ? "sun.max.fill" : "moon.fill")
+                        .symbolRenderingMode(.hierarchical)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(theme == .dark ? Color.yellow : Color.indigo)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .frame(width: 34, height: 34)
+            }
+            .buttonStyle(.plain)
+            .studioGlass(radius: 10, tint: Color.yapperOrange.opacity(0.06), interactive: true)
+            .help(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
         }
-        .padding(.horizontal, 12)
-        .frame(height: 48)
-        .background(Color.panelBackground.opacity(0.96))
+        .padding(.horizontal, 15)
+        .frame(height: 56)
+        .background(.regularMaterial)
         .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Color.studioLine).frame(height: 1)
         }
     }
 }

@@ -9,9 +9,9 @@ struct TimelinePanel: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Text("Timeline")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.studioBodyStrong)
                 Text("\(session.project.clips.count) clips")
-                    .font(.system(size: 10))
+                    .font(.studioCaption)
                     .foregroundStyle(.secondary)
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
@@ -34,7 +34,7 @@ struct TimelinePanel: View {
                 HStack(spacing: 0) {
                     TrackHeader()
                         .frame(width: 70)
-                    Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1)
+                    Rectangle().fill(Color.studioLine).frame(width: 1)
                     ScrollView(.horizontal, showsIndicators: true) {
                         TimelineContent(
                             session: session,
@@ -48,7 +48,7 @@ struct TimelinePanel: View {
         }
         .background(Color.editorBackground)
         .overlay(alignment: .top) {
-            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 1)
+            Rectangle().fill(Color.studioLine).frame(height: 1)
         }
     }
 }
@@ -154,7 +154,7 @@ private struct TimelineRuler: View {
                 context.stroke(path, with: .color(.white.opacity(0.18)), lineWidth: 1)
                 context.draw(
                     Text(formatTime(time))
-                        .font(.system(size: 9, design: .monospaced))
+                        .font(.system(size: 10, design: .monospaced))
                         .foregroundStyle(.secondary),
                     at: CGPoint(x: x + 3, y: 10),
                     anchor: .leading
@@ -208,7 +208,7 @@ private struct TimelineClipCell: View {
                 .frame(maxHeight: .infinity, alignment: .bottom)
 
                 Text(media.name)
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .lineLimit(1)
                     .padding(5)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -218,7 +218,7 @@ private struct TimelineClipCell: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 5)
                     .stroke(
-                        selected ? Color.yapperOrange.opacity(0.9) : Color.white.opacity(0.24),
+                        selected ? Color.yapperOrange.opacity(0.9) : Color.secondary.opacity(0.34),
                         lineWidth: selected ? 1.25 : 0.75
                     )
             )
@@ -282,10 +282,10 @@ private struct TrackHeader: View {
                 Image(systemName: "speaker.wave.2")
                 Image(systemName: "lock.open")
             }
-            .font(.system(size: 9, weight: .semibold))
+            .font(.studioCaptionStrong)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, minHeight: 88)
-            .background(Color.white.opacity(0.025))
+            .background(Color.studioFaintFill.opacity(0.55))
             Spacer()
         }
         .background(Color.panelBackground.opacity(0.72))

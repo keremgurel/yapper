@@ -44,7 +44,7 @@ private struct TransportBar: View {
                     .frame(width: 30, height: 30)
             }
             .buttonStyle(.plain)
-            .background(Color.white.opacity(0.07))
+            .background(Color.studioFaintFill)
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .disabled(session.project.clips.isEmpty)
 
@@ -74,7 +74,7 @@ private struct TransportBar: View {
         .frame(height: 48)
         .background(Color.panelBackground)
         .overlay(alignment: .top) {
-            Rectangle().fill(Color.white.opacity(0.07)).frame(height: 1)
+            Rectangle().fill(Color.studioLine).frame(height: 1)
         }
     }
 }

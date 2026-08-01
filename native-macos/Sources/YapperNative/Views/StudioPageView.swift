@@ -31,9 +31,9 @@ struct StudioPageView: View {
                     EmptyView()
                 }
             }
-            .frame(maxWidth: 1_160)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 28)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 32)
+            .padding(.vertical, 30)
             .frame(maxWidth: .infinity)
         }
         .background(Color.editorBackground)
@@ -91,18 +91,18 @@ private struct HomePage: View {
                     HStack(spacing: 10) {
                         ForEach(1 ... 3, id: \.self) { rank in
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(Color.white.opacity(0.035))
+                                .fill(Color.studioFaintFill)
                                 .aspectRatio(0.9, contentMode: .fit)
                                 .overlay {
                                     VStack(spacing: 8) {
                                         Text("#\(rank)")
-                                            .font(.system(size: 10, weight: .black, design: .monospaced))
+                                            .font(.system(size: 11, weight: .black, design: .monospaced))
                                             .foregroundStyle(Color.yapperOrange)
                                         Image(systemName: "chart.bar")
-                                            .font(.system(size: 21, weight: .light))
+                                            .font(.system(size: 24, weight: .light))
                                             .foregroundStyle(.secondary)
                                         Text("Connect channels to rank content")
-                                            .font(.system(size: 9, weight: .medium))
+                                            .font(.system(size: 11, weight: .medium))
                                             .multilineTextAlignment(.center)
                                             .foregroundStyle(.secondary)
                                             .padding(.horizontal, 8)
@@ -119,21 +119,21 @@ private struct HomePage: View {
                             Button { onNavigate(.ideas) } label: {
                                 HStack(alignment: .top, spacing: 10) {
                                     Text(String(format: "%02d", index + 1))
-                                        .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
                                         .foregroundStyle(Color.yapperOrange)
                                     Text(idea)
-                                        .font(.system(size: 10, weight: .medium))
+                                        .font(.system(size: 12, weight: .medium))
                                         .lineLimit(2)
                                     Spacer()
                                     Image(systemName: "arrow.right")
-                                        .font(.system(size: 9, weight: .bold))
+                                        .font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(.secondary)
                                 }
                                 .padding(.vertical, 8)
                             }
                             .buttonStyle(.plain)
                             if index < dailyIdeas.count - 1 {
-                                Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1)
+                                Rectangle().fill(Color.studioLine).frame(height: 1)
                             }
                         }
                     }
@@ -172,16 +172,16 @@ private struct IdeaBankPage: View {
             StudioCard(title: "Capture something", detail: "Your source stays attached when the idea expands.") {
                 VStack(alignment: .leading, spacing: 12) {
                     TextEditor(text: $draft)
-                        .font(.system(size: 12))
+                        .font(.studioBody)
                         .scrollContentBackground(.hidden)
                         .padding(10)
                         .frame(minHeight: 96)
-                        .background(Color.black.opacity(0.22))
+                        .background(Color.studioInputBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .overlay(StudioBorder(radius: 8))
                     HStack {
                         Label("Link, note, or both", systemImage: "link")
-                            .font(.system(size: 10))
+                            .font(.studioCaption)
                             .foregroundStyle(.secondary)
                         Spacer()
                         Button("Voice") {}
@@ -291,7 +291,7 @@ private struct RecorderPage: View {
                     Text("Your script appears here at a comfortable reading width. Recording controls stay visible without covering your words.")
                         .font(.system(size: 15, weight: .medium))
                         .lineSpacing(7)
-                        .foregroundStyle(Color.white.opacity(0.8))
+                        .foregroundStyle(Color.primary.opacity(0.82))
                         .padding(.vertical, 10)
                     Spacer(minLength: 60)
                     HStack {
@@ -334,7 +334,7 @@ private struct PosterPage: View {
                             VStack(spacing: 8) {
                                 Image(systemName: session.project.clips.isEmpty ? "plus" : "film")
                                 Text(session.project.clips.isEmpty ? "Choose a video" : session.project.name)
-                                    .font(.system(size: 9, weight: .semibold))
+                                    .font(.studioCaptionStrong)
                                     .lineLimit(2)
                                     .multilineTextAlignment(.center)
                             }
@@ -343,9 +343,9 @@ private struct PosterPage: View {
                         }
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Post copy")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.studioBodyStrong)
                         Text("Generate a caption for each platform, then adjust any one without changing the others.")
-                            .font(.system(size: 11))
+                            .font(.studioBody)
                             .foregroundStyle(.secondary)
                         HStack(spacing: 7) {
                             PlatformToggle(title: "YouTube", symbol: "play.rectangle")
@@ -378,7 +378,7 @@ private struct CalendarPage: View {
                     ForEach(Array(["Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"].enumerated()), id: \.offset) { index, day in
                         VStack(alignment: .leading, spacing: 9) {
                             Text(day.uppercased())
-                                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                                .font(.system(size: 11, weight: .bold, design: .monospaced))
                                 .foregroundStyle(.secondary)
                             Text("\(index + 1)")
                                 .font(.system(size: 17, weight: .bold))
@@ -388,7 +388,7 @@ private struct CalendarPage: View {
                                     .frame(height: 48)
                                     .overlay(alignment: .leading) {
                                         Text(index == 2 ? "Practice tip" : "Mock exam")
-                                            .font(.system(size: 9, weight: .semibold))
+                                            .font(.system(size: 11, weight: .semibold))
                                             .padding(7)
                                     }
                             }
@@ -396,7 +396,7 @@ private struct CalendarPage: View {
                         }
                         .padding(9)
                         .frame(minHeight: 150, alignment: .topLeading)
-                        .background(Color.black.opacity(0.15))
+                        .background(Color.studioFaintFill.opacity(0.7))
                         .clipShape(RoundedRectangle(cornerRadius: 7))
                         .overlay(StudioBorder(radius: 7))
                     }
@@ -448,7 +448,7 @@ private struct DictionaryPage: View {
                         .textFieldStyle(.plain)
                         .padding(.horizontal, 11)
                         .frame(height: 34)
-                        .background(Color.black.opacity(0.22))
+                        .background(Color.studioInputBackground)
                         .clipShape(RoundedRectangle(cornerRadius: 7))
                         .overlay(StudioBorder(radius: 7))
                     Button("Add term") {}
@@ -507,17 +507,17 @@ private struct PageHeader<Actions: View>: View {
         HStack(alignment: .bottom, spacing: 18) {
             VStack(alignment: .leading, spacing: 7) {
                 Text(eyebrow.uppercased())
-                    .font(.system(size: 9, weight: .black, design: .monospaced))
+                    .font(.studioEyebrow)
                     .tracking(1.25)
                     .foregroundStyle(Color.yapperOrange)
                 Text(title)
-                    .font(.system(size: 29, weight: .black, design: .rounded))
+                    .font(.studioTitle)
                     .tracking(-0.7)
                 Text(detail)
-                    .font(.system(size: 12))
+                    .font(.studioBody)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
-                    .frame(maxWidth: 650, alignment: .leading)
+                    .frame(maxWidth: 780, alignment: .leading)
             }
             Spacer()
             HStack(spacing: 8) { actions }
@@ -539,12 +539,12 @@ private struct StudioCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 13, weight: .bold))
-                Text(detail).font(.system(size: 10)).foregroundStyle(.secondary)
+                Text(title).font(.studioSectionTitle)
+                Text(detail).font(.studioCaption).foregroundStyle(.secondary)
             }
             content
         }
-        .padding(16)
+        .padding(19)
         .background(Color.raisedBackground.opacity(0.58))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(StudioBorder(radius: 10))
@@ -555,7 +555,7 @@ private struct StudioBorder: View {
     let radius: CGFloat
     var body: some View {
         RoundedRectangle(cornerRadius: radius)
-            .stroke(Color.white.opacity(0.085), lineWidth: 1)
+            .stroke(Color.studioLine, lineWidth: 1)
     }
 }
 
@@ -566,16 +566,16 @@ private struct MetricCell: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(label.uppercased())
-                .font(.system(size: 9, weight: .bold, design: .monospaced))
+                .font(.studioEyebrow)
                 .tracking(0.7)
                 .foregroundStyle(.secondary)
-            Text(value).font(.system(size: 22, weight: .black, design: .rounded))
-            Text(detail).font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(1)
+            Text(value).font(.system(size: 26, weight: .black, design: .rounded))
+            Text(detail).font(.studioCaption).foregroundStyle(.secondary).lineLimit(1)
         }
-        .padding(15)
+        .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .trailing) {
-            Rectangle().fill(Color.white.opacity(0.065)).frame(width: 1)
+            Rectangle().fill(Color.studioLine).frame(width: 1)
         }
     }
 }
@@ -587,18 +587,18 @@ private struct ChannelSummary: View {
     var body: some View {
         HStack(spacing: 10) {
             RoundedRectangle(cornerRadius: 7)
-                .fill(Color.black.opacity(0.22))
+                .fill(Color.studioInputBackground)
                 .overlay(Image(systemName: symbol).foregroundStyle(color))
                 .frame(width: 38, height: 38)
             VStack(alignment: .leading, spacing: 2) {
-                Text(name).font(.system(size: 11, weight: .bold))
-                Text("Connect account").font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(name).font(.studioBodyStrong)
+                Text("Connect account").font(.studioCaption).foregroundStyle(.secondary)
             }
             Spacer()
-            Circle().fill(Color.white.opacity(0.15)).frame(width: 6, height: 6)
+            Circle().fill(Color.secondary.opacity(0.3)).frame(width: 7, height: 7)
         }
         .padding(11)
-        .background(Color.black.opacity(0.14))
+        .background(Color.studioFaintFill.opacity(0.7))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(StudioBorder(radius: 8))
     }
@@ -616,14 +616,14 @@ private struct IdeaRow: View {
                 .background(Color.yapperOrange.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 7))
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 11, weight: .bold))
-                Text("\(kind) · \(source)").font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(title).font(.studioBodyStrong)
+                Text("\(kind) · \(source)").font(.studioCaption).foregroundStyle(.secondary)
             }
             Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+            Image(systemName: "chevron.right").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
         }
         .padding(11)
-        .background(Color.black.opacity(0.13))
+        .background(Color.studioFaintFill.opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(StudioBorder(radius: 8))
     }
@@ -638,11 +638,11 @@ private struct FilterPill: View {
             Text(title)
             Text("\(count)").foregroundStyle(.secondary)
         }
-        .font(.system(size: 10, weight: .semibold))
+        .font(.studioCaptionStrong)
         .padding(.horizontal, 10)
         .frame(height: 30)
-        .background(selected ? Color.yapperOrange.opacity(0.16) : Color.white.opacity(0.04))
-        .foregroundStyle(selected ? Color.yapperOrange : Color.white.opacity(0.7))
+        .background(selected ? Color.yapperOrange.opacity(0.16) : Color.studioFaintFill)
+        .foregroundStyle(selected ? Color.yapperOrange : Color.primary.opacity(0.72))
         .clipShape(RoundedRectangle(cornerRadius: 7))
         .overlay(StudioBorder(radius: 7))
     }
@@ -660,14 +660,14 @@ private struct LibraryRow: View {
                 .overlay(Image(systemName: "doc.richtext").foregroundStyle(.secondary))
                 .frame(width: 52, height: 42)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 11, weight: .bold))
-                Text(state).font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.yapperOrange)
+                Text(title).font(.studioBodyStrong)
+                Text(state).font(.studioCaptionStrong).foregroundStyle(Color.yapperOrange)
             }
             Spacer()
             Button(action, action: onAction).buttonStyle(EditorSecondaryButtonStyle())
         }
         .padding(10)
-        .background(Color.black.opacity(0.13))
+        .background(Color.studioFaintFill.opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(StudioBorder(radius: 8))
     }
@@ -683,11 +683,11 @@ private struct PlatformToggle: View {
                 Image(systemName: symbol)
                 Text(title)
             }
-            .font(.system(size: 10, weight: .semibold))
+            .font(.studioCaptionStrong)
             .padding(.horizontal, 9)
             .frame(height: 30)
-            .background(selected ? Color.yapperOrange.opacity(0.15) : Color.white.opacity(0.045))
-            .foregroundStyle(selected ? Color.yapperOrange : Color.white.opacity(0.68))
+            .background(selected ? Color.yapperOrange.opacity(0.15) : Color.studioFaintFill)
+            .foregroundStyle(selected ? Color.yapperOrange : Color.primary.opacity(0.7))
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .overlay(StudioBorder(radius: 7))
         }
@@ -707,14 +707,14 @@ private struct AutomationRow: View {
                 .background(Color.yapperOrange.opacity(0.09))
                 .clipShape(RoundedRectangle(cornerRadius: 7))
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.system(size: 11, weight: .bold))
-                Text(detail).font(.system(size: 9)).foregroundStyle(.secondary)
+                Text(title).font(.studioBodyStrong)
+                Text(detail).font(.studioCaption).foregroundStyle(.secondary)
             }
             Spacer()
             Toggle("", isOn: $enabled).labelsHidden().toggleStyle(.switch).controlSize(.small)
         }
         .padding(11)
-        .background(Color.black.opacity(0.13))
+        .background(Color.studioFaintFill.opacity(0.65))
         .clipShape(RoundedRectangle(cornerRadius: 8))
         .overlay(StudioBorder(radius: 8))
     }
@@ -725,13 +725,13 @@ private struct DictionaryRow: View {
     let aliases: String
     var body: some View {
         HStack {
-            Text(term).font(.system(size: 11, weight: .bold)).frame(width: 140, alignment: .leading)
-            Text(aliases).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(term).font(.studioBodyStrong).frame(width: 160, alignment: .leading)
+            Text(aliases).font(.studioCaption).foregroundStyle(.secondary)
             Spacer()
-            Button("Edit") {}.buttonStyle(.plain).font(.system(size: 9, weight: .semibold)).foregroundStyle(Color.yapperOrange)
+            Button("Edit") {}.buttonStyle(.plain).font(.studioCaptionStrong).foregroundStyle(Color.yapperOrange)
         }
         .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.white.opacity(0.06)).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(Color.studioLine).frame(height: 1) }
     }
 }
 
@@ -748,12 +748,12 @@ private struct ConnectionCard: View {
                     .frame(width: 42, height: 42)
                 Spacer()
                 Text("Not connected")
-                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .font(.studioEyebrow)
                     .foregroundStyle(.secondary)
             }
             Text(name).font(.system(size: 14, weight: .bold))
             Text("Connect once to publish, schedule, and load analytics.")
-                .font(.system(size: 10)).foregroundStyle(.secondary).lineSpacing(2)
+                .font(.studioCaption).foregroundStyle(.secondary).lineSpacing(3)
             Button("Connect") {}.buttonStyle(EditorSecondaryButtonStyle())
         }
         .padding(16)

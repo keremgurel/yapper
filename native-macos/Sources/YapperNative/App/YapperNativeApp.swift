@@ -3,12 +3,17 @@ import SwiftUI
 @main
 struct YapperNativeApp: App {
     @StateObject private var session = EditorSession()
+    @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
+
+    private var theme: StudioTheme {
+        StudioTheme(rawValue: themeRaw) ?? .dark
+    }
 
     var body: some Scene {
         WindowGroup("Yapper Studio Native") {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(theme.colorScheme)
         }
         .defaultSize(width: 1_500, height: 950)
         .windowStyle(.hiddenTitleBar)

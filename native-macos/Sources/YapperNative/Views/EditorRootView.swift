@@ -8,7 +8,7 @@ struct EditorRootView: View {
         VStack(spacing: 0) {
             if !embedded {
                 EditorHeader(session: session)
-                Divider().overlay(Color.white.opacity(0.08))
+                Divider().overlay(Color.studioLine)
             }
             HSplitView {
                 WorkbenchPanel(session: session)
@@ -90,22 +90,15 @@ private struct EditorHeader: View {
     }
 }
 
-extension Color {
-    static let editorBackground = Color(red: 0.035, green: 0.037, blue: 0.041)
-    static let panelBackground = Color(red: 0.055, green: 0.058, blue: 0.064)
-    static let raisedBackground = Color(red: 0.075, green: 0.078, blue: 0.086)
-    static let yapperOrange = Color(red: 1, green: 0.48, blue: 0.13)
-}
-
 struct EditorPrimaryButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12, weight: .bold))
+            .font(.system(size: 13, weight: .bold))
             .foregroundStyle(.black)
             .padding(.horizontal, 14)
-            .frame(height: 32)
+            .frame(height: 36)
             .background(
                 Color.yapperOrange.opacity(
                     isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.38
@@ -121,14 +114,14 @@ struct EditorSecondaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 12, weight: .semibold))
+            .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.primary)
             .padding(.horizontal, 12)
-            .frame(height: 32)
-            .background(Color.white.opacity(configuration.isPressed ? 0.1 : 0.055))
+            .frame(height: 36)
+            .background(Color.studioFaintFill.opacity(configuration.isPressed ? 1.6 : 1))
             .overlay(
                 RoundedRectangle(cornerRadius: 7)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(Color.studioLine, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .opacity(isEnabled ? 1 : 0.42)
