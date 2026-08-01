@@ -449,28 +449,41 @@ private struct MediaWorkbench: View {
             }
 
             if session.project.media.isEmpty {
-                Button { ImportPanels.openMedia(for: session) } label: {
-                    VStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "plus.rectangle.on.rectangle")
-                            .font(.system(size: 28, weight: .light))
-                        Text("Import one or several videos")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("They are appended directly to the native timeline.")
-                            .font(.studioCaption)
-                            .foregroundStyle(.secondary)
+                            .font(.system(size: 23, weight: .light))
+                            .foregroundStyle(Color.yapperOrange)
+                            .frame(width: 30)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("No media yet")
+                                .font(.studioBodyStrong)
+                            Text("Import one or several videos, images, or B-roll files. They stay local on this Mac.")
+                                .font(.studioCaption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
-                    .frame(maxWidth: .infinity, minHeight: 180)
-                    .background(Color.raisedBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(Color.studioLine, style: StrokeStyle(dash: [5]))
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 9))
+
+                    Button {
+                        ImportPanels.openMedia(for: session)
+                    } label: {
+                        Label("Import media", systemImage: "square.and.arrow.down")
+                    }
+                    .buttonStyle(EditorPrimaryButtonStyle())
                 }
-                .buttonStyle(.plain)
+                .padding(16)
+                .frame(maxWidth: 440, alignment: .leading)
+                .background(Color.raisedBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 9)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 9))
+                .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 10) {
+                    LazyVStack(alignment: .leading, spacing: 10) {
                         ForEach(session.project.media) { media in
                             HStack(spacing: 10) {
                                 Group {
@@ -528,6 +541,7 @@ private struct MediaWorkbench: View {
             Spacer(minLength: 0)
         }
         .padding(16)
+        .inspectorPane(maxWidth: 820)
     }
 }
 
@@ -604,6 +618,7 @@ private struct QuickEditWorkbench: View {
             Spacer()
         }
         .padding(16)
+        .inspectorPane(maxWidth: 640)
     }
 }
 
@@ -631,7 +646,7 @@ private struct QuickAction: View {
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 78, alignment: .leading)
+            .frame(maxWidth: 290, minHeight: 78, alignment: .leading)
             .padding(12)
             .background(Color.raisedBackground)
             .overlay(
@@ -697,6 +712,7 @@ private struct TranscriptWorkbench: View {
             }
         }
         .padding(16)
+        .inspectorPane(maxWidth: 820)
     }
 }
 
@@ -755,17 +771,58 @@ private struct FeatureWorkbench: View {
     let tab: WorkbenchTab
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: tab.icon)
-                .font(.system(size: 28, weight: .light))
-                .foregroundStyle(Color.yapperOrange)
-            Text(tab.rawValue)
-                .font(.system(size: 15, weight: .bold))
-            Text("This tool will attach directly to native timeline tracks.")
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(Color.yapperOrange)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(tab.rawValue)
+                        .font(.studioSectionTitle)
+                    Text(featureDescription)
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Text("Controls will appear here when this tool is selected. They remain attached to the native timeline and never replace your edit.")
                 .font(.studioCaption)
                 .foregroundStyle(.secondary)
+                .padding(14)
+                .frame(maxWidth: 440, alignment: .leading)
+                .background(Color.raisedBackground)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 8))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(16)
+        .inspectorPane(maxWidth: 560)
+    }
+
+    private var featureDescription: String {
+        switch tab {
+        case .audio:
+            "Upload audio, add sound effects, and adjust track volume."
+        case .text:
+            "Add freely positioned text layers and text hooks."
+        case .captions:
+            "Generate and style spoken captions without blocking the preview."
+        case .filters:
+            "Apply visual adjustments to selected clips or the full timeline."
+        default:
+            "Edit this part of the project from a focused properties pane."
+        }
+    }
+}
+
+private extension View {
+    func inspectorPane(maxWidth: CGFloat) -> some View {
+        frame(maxWidth: maxWidth, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
