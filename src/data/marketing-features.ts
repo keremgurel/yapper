@@ -55,7 +55,7 @@ export const marketingFeatures: MarketingFeature[] = [
     title: "Turn rough thoughts into scripts that sound like you",
     shortTitle: "AI script writer",
     description:
-      "Build hooks, outlines, talking points, and full scripts from your own ideas and references—not a blank prompt box.",
+      "Build hooks, outlines, talking points, and full scripts from your own ideas and references, not a blank prompt box.",
     promise: "Structure when you need it. Your voice when it matters.",
     accent: "#f5b91a",
     number: "02",

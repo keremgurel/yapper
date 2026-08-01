@@ -36,9 +36,9 @@ const WORKFLOW: WorkflowStep[] = [
   {
     number: "01",
     eyebrow: "Collect",
-    title: "Capture what makes you want to create",
+    title: "Catch the spark before it disappears",
     description:
-      "Type a thought, dictate it, paste a reference, or import the Instagram posts you already saved for inspiration.",
+      "Drop a voice note, share a link, or type a thought. Add context only when it helps. Yapper keeps capture fast and turns raw inspiration into a developed content idea.",
     href: "/features/idea-capture",
     accent: "#ff8a2b",
     backdrop:
@@ -47,10 +47,10 @@ const WORKFLOW: WorkflowStep[] = [
   },
   {
     number: "02",
-    eyebrow: "Discover",
-    title: "Ask Chirpy what is worth posting next",
+    eyebrow: "Develop",
+    title: "Turn raw inspiration into ideas worth making",
     description:
-      "Chirpy reads your Idea Bank, past content, profile, and editable learnings to suggest angles grounded in your actual voice.",
+      "Chirpy expands each capture with angles, key points, and connections to your Idea Bank, past content, profile, and editable learnings.",
     href: "/features/idea-capture",
     accent: "#f5b91a",
     backdrop:
@@ -60,9 +60,9 @@ const WORKFLOW: WorkflowStep[] = [
   {
     number: "03",
     eyebrow: "Write",
-    title: "Shape the angle into a script that sounds like you",
+    title: "Choose an idea and build the whole script",
     description:
-      "Compare hooks, arrange your points, and move between a loose outline and a teleprompter-ready draft without losing the source idea.",
+      "Generate hook alternatives, key points, proven content formats, or a complete script. Keep it loose or refine every line in your own voice.",
     href: "/features/ai-script-writer",
     accent: "#f5b91a",
     backdrop:
@@ -72,9 +72,9 @@ const WORKFLOW: WorkflowStep[] = [
   {
     number: "04",
     eyebrow: "Record",
-    title: "Read, frame, and record in one focused view",
+    title: "Record with the level of prompting you want",
     description:
-      "Open the script in the built-in teleprompter, choose your camera and mic, set your pace, and keep every take with the project.",
+      "Use no teleprompter, speaker notes, or the full script. Set your pace, choose your camera and microphone, and keep every take attached to the idea.",
     href: "/features/teleprompter-recorder",
     accent: "#ff5d5d",
     backdrop:
@@ -84,9 +84,9 @@ const WORKFLOW: WorkflowStep[] = [
   {
     number: "05",
     eyebrow: "Edit",
-    title: "Delete the words. Yapper cuts the video.",
+    title: "Clean the whole take in one click",
     description:
-      "Remove mistakes, retakes, filler words, and dead air from the transcript. Drag editor tabs into a second pane when you need tools side by side.",
+      "Remove mistakes, retakes, filler words, and long silences automatically. Fine-tune the cut by editing the transcript, then add word-synced captions with one click.",
     href: "/features/transcript-video-editor",
     accent: "#22d3ee",
     backdrop:
@@ -95,10 +95,10 @@ const WORKFLOW: WorkflowStep[] = [
   },
   {
     number: "06",
-    eyebrow: "Polish",
-    title: "Caption the cut and learn from the take",
+    eyebrow: "Package",
+    title: "Build everything the post needs",
     description:
-      "Create word-synced captions, teach Yapper your vocabulary, and review pacing, clarity, fillers, and on-camera delivery before publishing.",
+      "Create platform-ready titles and captions, generate thumbnail options, and prepare the finished video for every destination without rebuilding the post.",
     href: "/features/creator-feedback",
     accent: "#34d399",
     backdrop:
@@ -108,9 +108,9 @@ const WORKFLOW: WorkflowStep[] = [
   {
     number: "07",
     eyebrow: "Publish",
-    title: "Plan the post, send it out, and improve the next one",
+    title: "Schedule once and publish everywhere",
     description:
-      "Prepare each platform, schedule the finished video, keep it in your content library, and turn its performance into editable learnings for future ideas.",
+      "Schedule or cross-post to every connected social account with one click. Keep every post in your library and turn performance into learnings you can review and edit.",
     href: "/features/social-publishing",
     accent: "#60a5fa",
     backdrop:
@@ -338,9 +338,9 @@ function PolishVisual() {
         </div>
         <div className="grid content-center gap-2">
           {[
-            ["Pacing", "Strong", "88%"],
-            ["Clarity", "Clear", "94%"],
-            ["Fillers", "2 removed", "—"],
+            ["Title", "3 options", "Ready"],
+            ["Caption", "Platform-ready", "Ready"],
+            ["Thumbnail", "4 concepts", "Ready"],
           ].map(([label, value, score]) => (
             <div
               key={label}
@@ -421,34 +421,37 @@ export default function StudioWorkflowTour() {
   return (
     <section className="border-y border-white/10 bg-[#08090a] px-4 py-20 text-white sm:px-6 sm:py-28">
       <div className="mx-auto grid max-w-[1180px] items-start gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
-        <div className="lg:sticky lg:top-28">
-          <p className="flex items-center gap-2 text-xs font-black tracking-[.18em] text-orange-300 uppercase">
-            <Sparkles className="h-4 w-4" /> The complete workflow
-          </p>
-          <h2 className="font-display mt-4 max-w-md text-[clamp(2.6rem,5vw,4.8rem)] leading-[.94] font-black tracking-[-.055em]">
-            One idea.
-            <br />
-            One connected path.
-          </h2>
-          <p className="mt-6 max-w-sm text-[15px] leading-7 text-white/50">
-            Yapper remembers where the thought came from and keeps every script,
-            take, edit, post, and learning attached to it.
-          </p>
-          <a
-            href="#waitlist"
-            className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black no-underline transition-transform hover:scale-[1.02]"
-          >
-            Join the desktop waitlist
-            <ArrowRight className="h-4 w-4" />
-          </a>
+        <div className="lg:sticky lg:top-0 lg:flex lg:h-svh lg:items-center lg:self-start">
+          <div>
+            <p className="flex items-center gap-2 text-xs font-black tracking-[.18em] text-orange-300 uppercase">
+              <Sparkles className="h-4 w-4" /> The complete workflow
+            </p>
+            <h2 className="font-display mt-4 max-w-md text-[clamp(2.25rem,3.5vw,3.75rem)] leading-[.98] font-black tracking-[-.05em]">
+              One idea.
+              <br />
+              One connected path.
+            </h2>
+            <p className="mt-6 max-w-sm text-[15px] leading-7 text-white/50">
+              One captured spark stays connected to every developed idea,
+              script, take, edit, publishing asset, post, and learning that
+              follows.
+            </p>
+            <a
+              href="#waitlist"
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black no-underline transition-transform hover:scale-[1.02]"
+            >
+              Join the mobile and desktop waitlist
+              <ArrowRight className="h-4 w-4" />
+            </a>
+          </div>
         </div>
 
         <div className="relative flex flex-col">
           {WORKFLOW.map((step, index) => (
             <article
               key={step.number}
-              className="relative flex gap-4 [content-visibility:auto] sm:gap-6"
-              style={{ containIntrinsicSize: "0 520px" }}
+              className="relative flex gap-4 [content-visibility:auto] sm:gap-6 lg:min-h-[78svh]"
+              style={{ containIntrinsicSize: "0 640px" }}
             >
               <div className="flex w-8 shrink-0 flex-col items-center">
                 <span className="relative z-10 grid h-8 w-8 place-items-center rounded-full bg-white text-[10px] font-black text-black shadow-[0_0_0_6px_#08090a]">
