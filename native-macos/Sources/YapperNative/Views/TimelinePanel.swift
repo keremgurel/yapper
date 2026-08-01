@@ -393,10 +393,10 @@ private struct TimelineVideoClipItem: View {
             .contentShape(Rectangle())
             .onTapGesture { session.select(clip.id) }
             .overlay(alignment: .leading) {
-                trimHandle(edge: .leading)
+                if selected { trimHandle(edge: .leading) }
             }
             .overlay(alignment: .trailing) {
-                trimHandle(edge: .trailing)
+                if selected { trimHandle(edge: .trailing) }
             }
             .offset(x: leadingPreviewOffset)
         }
@@ -412,9 +412,7 @@ private struct TimelineVideoClipItem: View {
         let edgeTime = edge == .leading ? displayed.sourceStart : displayed.sourceEnd
         return TimelineTrimHandle(
             edge: edge,
-            color: .cyan,
             height: 82,
-            isVisible: selected,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
@@ -490,29 +488,23 @@ enum TimelineClipGeometry {
 
 private struct TimelineTrimHandle: View {
     let edge: HorizontalEdge
-    let color: Color
     let height: CGFloat
-    let isVisible: Bool
     let isActive: Bool
     let readout: String?
     @State private var isHovering = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: edge == .leading ? .leading : .trailing) {
             Color.clear
-            Rectangle()
-                .fill(color.opacity(isActive ? 1 : 0.92))
-                .frame(width: isActive ? 2.5 : 2)
-                .shadow(color: color.opacity(isActive ? 0.55 : 0), radius: 4)
-            VStack(spacing: 0) {
-                Rectangle().fill(color).frame(width: 8, height: 2)
-                Spacer(minLength: 0)
-                Rectangle().fill(color).frame(width: 8, height: 2)
-            }
-            .offset(x: edge == .leading ? 3 : -3)
+            Capsule(style: .continuous)
+                .fill(Color.white.opacity(isActive ? 1 : 0.94))
+                .frame(width: isActive ? 3 : 2.5, height: min(30, height * 0.58))
+                .overlay {
+                    Capsule(style: .continuous)
+                        .stroke(Color.black.opacity(0.38), lineWidth: 0.55)
+                }
         }
         .frame(width: 18, height: height)
-        .opacity(isVisible || isActive || isHovering ? 1 : 0.001)
         .contentShape(Rectangle())
         .overlay(alignment: .top) {
             if let readout {
@@ -525,7 +517,7 @@ private struct TimelineTrimHandle: View {
                     .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                     .overlay {
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .stroke(color.opacity(0.62), lineWidth: 0.7)
+                            .stroke(Color.white.opacity(0.34), lineWidth: 0.7)
                     }
                     .fixedSize()
                     .offset(y: -25)
@@ -605,10 +597,10 @@ private struct TimelineOverlayItem: View {
         .frame(width: width, height: 42)
         .clipped()
         .overlay(alignment: .leading) {
-            trimHandle(.leading)
+            if selected { trimHandle(.leading) }
         }
         .overlay(alignment: .trailing) {
-            trimHandle(.trailing)
+            if selected { trimHandle(.trailing) }
         }
         .offset(x: startX, y: rowY)
     }
@@ -620,9 +612,7 @@ private struct TimelineOverlayItem: View {
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
-            color: .yapperOrange,
             height: 38,
-            isVisible: selected,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
@@ -697,10 +687,10 @@ private struct TimelineAudioItem: View {
         .frame(width: width, height: 46)
         .clipped()
         .overlay(alignment: .leading) {
-            trimHandle(.leading)
+            if selected { trimHandle(.leading) }
         }
         .overlay(alignment: .trailing) {
-            trimHandle(.trailing)
+            if selected { trimHandle(.trailing) }
         }
         .offset(x: startX, y: rowY)
     }
@@ -712,9 +702,7 @@ private struct TimelineAudioItem: View {
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
-            color: .cyan,
             height: 42,
-            isVisible: selected,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
@@ -870,10 +858,10 @@ private struct TimelineTextLayerCell: View {
         .frame(width: width, height: 42)
         .clipped()
         .overlay(alignment: .leading) {
-            trimHandle(edge: .leading)
+            if selected { trimHandle(edge: .leading) }
         }
         .overlay(alignment: .trailing) {
-            trimHandle(edge: .trailing)
+            if selected { trimHandle(edge: .trailing) }
         }
         .offset(x: startX, y: rowY)
     }
@@ -885,9 +873,7 @@ private struct TimelineTextLayerCell: View {
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
-            color: .yapperOrange,
             height: 38,
-            isVisible: selected,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )

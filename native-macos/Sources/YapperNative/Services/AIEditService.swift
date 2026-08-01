@@ -71,7 +71,7 @@ actor AIEditService {
             throw NativeEditorError.aiFailed("The AI service returned no response.")
         }
         if http.statusCode == 501 {
-            return deterministicRetakeCuts(words)
+            return RetakeCutBoundaryRepair.repaired(words: words, cuts: deterministicRetakeCuts(words))
         }
         guard (200 ..< 300).contains(http.statusCode) else {
             let detail = (try? JSONDecoder().decode(CleanResponse.self, from: data).error) ?? "HTTP \(http.statusCode)"
@@ -84,7 +84,10 @@ actor AIEditService {
             }
             return (pair[0], pair[1])
         }
-        return cuts.isEmpty ? deterministicRetakeCuts(words) : cuts
+        return RetakeCutBoundaryRepair.repaired(
+            words: words,
+            cuts: cuts.isEmpty ? deterministicRetakeCuts(words) : cuts
+        )
     }
 
     func autoEditRanges(
@@ -322,5 +325,103 @@ actor AIEditService {
         append(UInt32(pcm.count))
         data.append(pcm)
         return data
+    }
+}
+
+enum RetakeCutBoundaryRepair {
+    private static let discourseStarters = Set([
+        "and", "but", "so", "now", "then", "because", "plus", "also", "finally",
+    ])
+    private static let phraseStarters = discourseStarters.union([
+        "i", "i'm", "i've", "i'll", "we", "we're", "we've", "you", "you're", "you've",
+        "he", "she", "they", "it", "this", "that", "these", "those", "the", "a", "an",
+    ])
+    private static let determiners = Set(["the", "a", "an", "this", "that", "these", "those"])
+    private static let pronouns = Set(["i", "i'm", "i've", "i'll", "we", "you", "he", "she", "they", "it"])
+    private static let fillers = Set(["um", "umm", "uh", "uhh", "uhm", "er", "err", "ah", "ahh", "hmm", "mhm"])
+
+    /// The semantic cleaner chooses whole takes, but an exact-text alignment can
+    /// still leave a short spoken lead-in on the cut side of the boundary. Keep
+    /// only tightly connected, non-duplicated starters; never join arbitrary
+    /// words from two attempts.
+    static func repaired(words: [TranscriptWord], cuts: [(Int, Int)]) -> [(Int, Int)] {
+        guard !words.isEmpty, !cuts.isEmpty else { return cuts }
+        var removed = Array(repeating: false, count: words.count)
+        for cut in cuts {
+            let lower = max(0, min(cut.0, cut.1))
+            let upper = min(words.count - 1, max(cut.0, cut.1))
+            guard lower <= upper else { continue }
+            for index in lower ... upper { removed[index] = true }
+        }
+
+        if let firstKept = removed.firstIndex(of: false), (1 ... 3).contains(firstKept) {
+            let prefix = Array(words[0 ..< firstKept])
+            let continuous = zip(prefix, words[1 ... firstKept]).allSatisfy {
+                $1.start - $0.end <= 0.32
+            }
+            let tokens = prefix.map { normalize($0.text) }
+            let safePrefix = continuous &&
+                words[firstKept - 1].end - words[0].start <= 1.4 &&
+                tokens.allSatisfy { !fillers.contains($0) } &&
+                !tokens.contains(normalize(words[firstKept].text))
+            if safePrefix {
+                for index in 0 ..< firstKept { removed[index] = false }
+            }
+        }
+
+        for keptStart in words.indices where !removed[keptStart] && keptStart > 0 && removed[keptStart - 1] {
+            var removedRunStart = keptStart - 1
+            while removedRunStart > 0, removed[removedRunStart - 1] {
+                removedRunStart -= 1
+            }
+            var candidateStart = max(removedRunStart, keptStart - 4)
+            if candidateStart < keptStart - 1 {
+                for index in candidateStart ..< keptStart - 1 where isSentenceEnd(words[index].text) {
+                    candidateStart = index + 1
+                }
+            }
+            let suffix = Array(words[candidateStart ..< keptStart])
+            let connected = zip(suffix, words[(candidateStart + 1) ... keptStart]).allSatisfy {
+                preceding, following in following.start - preceding.end <= 0.32
+            }
+            guard !suffix.isEmpty,
+                  connected,
+                  suffix.last!.end - suffix.first!.start <= 1.4
+            else { continue }
+
+            let suffixTokens = suffix.map { normalize($0.text) }
+            let nextToken = normalize(words[keptStart].text)
+            let startsAsLeadIn = phraseStarters.contains(suffixTokens[0])
+            let endsAsIntro = suffix.last!.text.range(of: "[,;:]$", options: .regularExpression) != nil
+            let duplicatesJoin = suffixTokens.last == nextToken
+            let invalidDeterminerJoin = determiners.contains(suffixTokens.last ?? "") && pronouns.contains(nextToken)
+            let containsFiller = suffixTokens.contains { fillers.contains($0) }
+            guard (startsAsLeadIn || endsAsIntro),
+                  !duplicatesJoin,
+                  !invalidDeterminerJoin,
+                  !containsFiller
+            else { continue }
+            for index in candidateStart ..< keptStart { removed[index] = false }
+        }
+
+        var repaired: [(Int, Int)] = []
+        var start: Int?
+        for index in words.indices {
+            if removed[index], start == nil { start = index }
+            if !removed[index], let runStart = start {
+                repaired.append((runStart, index - 1))
+                start = nil
+            }
+        }
+        if let start { repaired.append((start, words.count - 1)) }
+        return repaired
+    }
+
+    private static func normalize(_ text: String) -> String {
+        text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
+    }
+
+    private static func isSentenceEnd(_ text: String) -> Bool {
+        text.range(of: "[.!?][\\\"')\\]]*$", options: .regularExpression) != nil
     }
 }

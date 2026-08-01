@@ -271,6 +271,49 @@ struct EditorProject: Codable, Equatable, Sendable {
         }
     }
 
+    func timelineTime(for word: TranscriptWord) -> Double? {
+        var cursor = 0.0
+        for clip in clips {
+            if clip.mediaID == word.mediaID,
+               word.midpoint >= clip.sourceStart,
+               word.midpoint <= clip.sourceEnd
+            {
+                return cursor + min(clip.duration, max(0, word.start - clip.sourceStart))
+            }
+            cursor += clip.duration
+        }
+        return nil
+    }
+
+    func nearestTimelineTime(for word: TranscriptWord) -> Double {
+        if let exact = timelineTime(for: word) { return exact }
+        var cursor = 0.0
+        var previousSameMediaEnd: (source: Double, timeline: Double)?
+        var nextSameMediaStart: (source: Double, timeline: Double)?
+        for clip in clips {
+            if clip.mediaID == word.mediaID {
+                if clip.sourceEnd <= word.midpoint {
+                    previousSameMediaEnd = (clip.sourceEnd, cursor + clip.duration)
+                } else if clip.sourceStart >= word.midpoint, nextSameMediaStart == nil {
+                    nextSameMediaStart = (clip.sourceStart, cursor)
+                }
+            }
+            cursor += clip.duration
+        }
+        switch (previousSameMediaEnd, nextSameMediaStart) {
+        case let (previous?, next?):
+            return word.midpoint - previous.source <= next.source - word.midpoint
+                ? previous.timeline
+                : next.timeline
+        case let (previous?, nil):
+            return previous.timeline
+        case let (nil, next?):
+            return next.timeline
+        default:
+            return 0
+        }
+    }
+
     mutating func removeSourceRanges(_ ranges: [(Double, Double)], for mediaID: UUID) {
         guard !ranges.isEmpty else { return }
         let merged = Self.merge(ranges)
@@ -292,6 +335,43 @@ struct EditorProject: Codable, Equatable, Sendable {
             }
         }
         updatedAt = Date()
+    }
+
+    mutating func restoreSourceRange(_ range: (Double, Double), for mediaID: UUID) {
+        guard range.1 - range.0 >= 0.02 else { return }
+        let restored = TimelineClip(mediaID: mediaID, sourceStart: range.0, sourceEnd: range.1)
+        let insertionIndex: Int
+        if let next = clips.firstIndex(where: {
+            $0.mediaID == mediaID && $0.sourceStart >= range.0
+        }) {
+            insertionIndex = next
+        } else if let previous = clips.lastIndex(where: { $0.mediaID == mediaID }) {
+            insertionIndex = clips.index(after: previous)
+        } else {
+            insertionIndex = clips.endIndex
+        }
+        clips.insert(restored, at: insertionIndex)
+        clips = Self.coalescingAdjacentClips(clips)
+        updatedAt = Date()
+    }
+
+    private static func coalescingAdjacentClips(_ clips: [TimelineClip]) -> [TimelineClip] {
+        var result: [TimelineClip] = []
+        for clip in clips where clip.duration >= 0.02 {
+            guard var previous = result.last,
+                  previous.mediaID == clip.mediaID,
+                  clip.sourceStart <= previous.sourceEnd + 0.06,
+                  clip.sourceEnd >= previous.sourceStart
+            else {
+                result.append(clip)
+                continue
+            }
+            result.removeLast()
+            previous.sourceStart = min(previous.sourceStart, clip.sourceStart)
+            previous.sourceEnd = max(previous.sourceEnd, clip.sourceEnd)
+            result.append(previous)
+        }
+        return result
     }
 
     private static func merge(_ ranges: [(Double, Double)]) -> [(Double, Double)] {

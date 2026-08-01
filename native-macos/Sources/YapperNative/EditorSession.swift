@@ -147,6 +147,37 @@ final class EditorSession: ObservableObject {
         seek(to: time, exact: true, playAfter: false)
     }
 
+    func seekToTranscriptWord(_ word: TranscriptWord) {
+        pausePlayback()
+        seek(to: project.nearestTimelineTime(for: word), exact: true, playAfter: false)
+    }
+
+    func deleteTranscriptWord(_ word: TranscriptWord) async {
+        guard project.isWordKept(word) else { return }
+        let padding = 0.025
+        project.removeSourceRanges(
+            [(max(0, word.start - padding), word.end + padding)],
+            for: word.mediaID
+        )
+        selectedClipID = project.clip(at: min(currentTime, project.duration))
+            .map { project.clips[$0.index].id }
+        currentTime = min(currentTime, project.duration)
+        await commitTimelineEdit()
+    }
+
+    func restoreTranscriptWord(_ word: TranscriptWord) async {
+        guard !project.isWordKept(word) else { return }
+        let padding = 0.025
+        project.restoreSourceRange(
+            (max(0, word.start - padding), word.end + padding),
+            for: word.mediaID
+        )
+        currentTime = project.nearestTimelineTime(for: word)
+        selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
+        await commitTimelineEdit()
+        seek(to: currentTime, exact: true, playAfter: false)
+    }
+
     func splitAtPlayhead() async {
         let clipID: UUID
         if let selectedClipID {

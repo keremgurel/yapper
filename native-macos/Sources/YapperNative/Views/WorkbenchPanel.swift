@@ -1,3 +1,4 @@
+import Foundation
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -951,8 +952,13 @@ private struct QuickAction: View {
 
 private struct TranscriptWorkbench: View {
     @ObservedObject var session: EditorSession
+    @State private var selectedWordID: UUID?
 
     private var words: [TranscriptWord] { session.project.transcript ?? [] }
+    private var selectedWord: TranscriptWord? {
+        guard let selectedWordID else { return nil }
+        return words.first { $0.id == selectedWordID }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -969,6 +975,43 @@ private struct TranscriptWorkbench: View {
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 .disabled(session.isAIEditing || session.project.clips.isEmpty)
+            }
+
+            if let selectedWord {
+                let kept = session.project.isWordKept(selectedWord)
+                HStack(spacing: 10) {
+                    Text("\u{201c}\(selectedWord.text)\u{201d}")
+                        .font(.studioCaptionStrong)
+                        .lineLimit(1)
+                    Text(formatTranscriptTime(selectedWord.start))
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Button {
+                        Task {
+                            if kept {
+                                await session.deleteTranscriptWord(selectedWord)
+                            } else {
+                                await session.restoreTranscriptWord(selectedWord)
+                            }
+                        }
+                    } label: {
+                        Label(kept ? "Delete word" : "Restore word", systemImage: kept ? "trash" : "arrow.uturn.backward")
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle())
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.045))
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                }
+            } else if !words.isEmpty {
+                Text("Click any word to seek. Select it to delete or restore its original audio.")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
             }
 
             if session.isAIEditing {
@@ -988,11 +1031,25 @@ private struct TranscriptWorkbench: View {
                     TranscriptFlowLayout(spacing: 6) {
                         ForEach(words) { word in
                             let kept = session.project.isWordKept(word)
-                            Text(word.text)
-                                .font(.system(size: 14, weight: kept ? .medium : .regular))
-                                .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
-                                .strikethrough(!kept, color: Color.secondary)
-                                .padding(.vertical, 3)
+                            Button {
+                                selectedWordID = word.id
+                                session.seekToTranscriptWord(word)
+                            } label: {
+                                Text(word.text)
+                                    .font(.system(size: 14, weight: kept ? .medium : .regular))
+                                    .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
+                                    .strikethrough(!kept, color: Color.secondary)
+                                    .padding(.horizontal, 3)
+                                    .padding(.vertical, 3)
+                                    .background(
+                                        selectedWordID == word.id
+                                            ? Color.yapperOrange.opacity(0.18)
+                                            : Color.clear
+                                    )
+                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .help(kept ? "Seek to \(word.text)" : "Select deleted word to restore")
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1002,6 +1059,11 @@ private struct TranscriptWorkbench: View {
         .padding(16)
         .inspectorPane(maxWidth: 760)
     }
+}
+
+private func formatTranscriptTime(_ seconds: Double) -> String {
+    let safe = max(0, seconds)
+    return String(format: "%d:%05.2f", Int(safe) / 60, safe.truncatingRemainder(dividingBy: 60))
 }
 
 private struct AudioWorkbench: View {

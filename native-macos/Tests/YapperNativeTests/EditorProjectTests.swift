@@ -34,6 +34,72 @@ struct EditorProjectTests {
         #expect(project.duration == 6)
     }
 
+    @Test func transcriptWordsMapToTheirExactEditedTimelinePosition() {
+        let mediaID = UUID()
+        let project = EditorProject(clips: [
+            TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 2),
+            TimelineClip(mediaID: mediaID, sourceStart: 8, sourceEnd: 12),
+        ])
+        let kept = TranscriptWord(mediaID: mediaID, text: "exact", start: 9, end: 9.4)
+        let deleted = TranscriptWord(mediaID: mediaID, text: "removed", start: 5, end: 5.4)
+
+        #expect(project.timelineTime(for: kept) == 3)
+        #expect(project.timelineTime(for: deleted) == nil)
+        #expect(project.nearestTimelineTime(for: deleted) == 2)
+    }
+
+    @Test func deletedTranscriptAudioCanBeRestoredAndCoalescesCleanly() {
+        let mediaID = UUID()
+        var project = EditorProject(clips: [
+            TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1),
+            TimelineClip(mediaID: mediaID, sourceStart: 2, sourceEnd: 4),
+        ])
+        let word = TranscriptWord(mediaID: mediaID, text: "restored", start: 1, end: 2)
+
+        #expect(!project.isWordKept(word))
+        project.restoreSourceRange((1, 2), for: mediaID)
+
+        #expect(project.clips.count == 1)
+        #expect(project.clips[0].sourceStart == 0)
+        #expect(project.clips[0].sourceEnd == 4)
+        #expect(project.isWordKept(word))
+    }
+
+    @Test func retakeRepairKeepsShortPhraseBeginningsWithoutCreatingDuplicateJoins() {
+        let mediaID = UUID()
+        func words(_ values: [String]) -> [TranscriptWord] {
+            values.enumerated().map { index, text in
+                TranscriptWord(
+                    mediaID: mediaID,
+                    text: text,
+                    start: Double(index) * 0.24,
+                    end: Double(index) * 0.24 + 0.2
+                )
+            }
+        }
+
+        let opening = words(["Three", "months", "ago,", "I", "started"])
+        #expect(RetakeCutBoundaryRepair.repaired(words: opening, cuts: [(0, 0)]).isEmpty)
+
+        let intro = words(["discarded", "and", "this", "week,", "I", "finally", "launched"])
+        let repairedIntro = RetakeCutBoundaryRepair.repaired(words: intro, cuts: [(0, 4)])
+        #expect(repairedIntro.count == 1)
+        #expect(repairedIntro.first?.0 == 0)
+        #expect(repairedIntro.first?.1 == 0)
+
+        let pronoun = words(["discarded", "one", "of", "them.", "I've", "also", "continued"])
+        let repairedPronoun = RetakeCutBoundaryRepair.repaired(words: pronoun, cuts: [(0, 4)])
+        #expect(repairedPronoun.count == 1)
+        #expect(repairedPronoun.first?.0 == 0)
+        #expect(repairedPronoun.first?.1 == 3)
+
+        let duplicate = words(["discarded", "and", "I", "I", "can", "continue"])
+        let repairedDuplicate = RetakeCutBoundaryRepair.repaired(words: duplicate, cuts: [(0, 2)])
+        #expect(repairedDuplicate.count == 1)
+        #expect(repairedDuplicate.first?.0 == 0)
+        #expect(repairedDuplicate.first?.1 == 2)
+    }
+
     @Test func deletingAClipCollapsesTheTimeline() {
         let mediaID = UUID()
         let first = TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 2)
