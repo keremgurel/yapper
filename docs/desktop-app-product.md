@@ -131,3 +131,22 @@ perfect underlying UX**, not the tour.
 4. **Website slim-down** — strip functionality from the web, CapCut-style landing + download
    CTA, keep SEO tools.
 5. Package: signed/notarized DMG + auto-update; then Windows.
+
+## 5. Future capture: Yapper Collector (locked follow-up)
+
+The Instagram export importer handles the existing backlog. It does not solve
+ongoing capture. Build **Yapper Collector** after the Inspiration Inbox and
+Creative Memory foundations are in place:
+
+- A Chrome/Safari extension that adds **Save to Yapper** while browsing
+  Instagram, TikTok, YouTube, Reddit, and other reference sources.
+- A collection import mode on Instagram's Saved pages, initiated explicitly by
+  the user and handed directly to their signed-in Yapper desktop app.
+- A native mobile share target later: **Share → Yapper**, with no central bot
+  inbox and no Instagram credential collection.
+- Every capture lands in the Inspiration Inbox first. The creator chooses
+  whether it becomes an Idea Bank entry or an active Creative Memory reference.
+
+Treat the extension as a maintained capture surface, not a hidden scraper:
+local/session-bound operation, explicit user action, deduplication, clear
+provenance, and a platform-policy review before release.

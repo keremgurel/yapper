@@ -10,6 +10,7 @@ import {
   BriefcaseBusiness,
   HeartHandshake,
   Library,
+  Layers3,
   Menu,
   Shuffle,
   Users,
@@ -18,8 +19,7 @@ import {
 } from "lucide-react";
 
 import { resourcesNavItems } from "@/data/training";
-import { studioNav } from "@/data/studio-nav";
-import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
+import { marketingFeatures } from "@/data/marketing-features";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -145,13 +145,13 @@ export default function MobileNav() {
               animate="show"
               className="no-scrollbar max-h-[72vh] space-y-0.5 overflow-y-auto p-3"
             >
-              <SectionLabel>Studio</SectionLabel>
-              {studioNav.map((item) => (
+              <SectionLabel>Features</SectionLabel>
+              {marketingFeatures.map((item) => (
                 <Row
-                  key={`c-${item.href}`}
-                  href={item.href}
-                  title={item.title}
-                  icon={<StudioNavIcon icon={item.icon} className="h-4 w-4" />}
+                  key={`f-${item.slug}`}
+                  href={`/features/${item.slug}`}
+                  title={item.shortTitle}
+                  icon={<Layers3 className="h-4 w-4" />}
                   onNavigate={close}
                 />
               ))}

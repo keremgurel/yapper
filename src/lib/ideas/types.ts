@@ -26,6 +26,10 @@ export interface IdeaSource {
   /** The reference video's complete spoken transcript, never AI-rewritten. */
   transcript?: string;
   platform?: string;
+  /** Folder name preserved from an imported inspiration archive. */
+  collection?: string;
+  /** When the source was saved, when the exporting service provided it. */
+  savedAt?: number;
 }
 
 export type IdeaSectionKind = "paragraph" | "bullets" | "steps" | "script";

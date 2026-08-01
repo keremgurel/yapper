@@ -6,6 +6,7 @@ import StudioHeader from "@/components/studio-shell/studio-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useStudio } from "@/components/studio/studio-context";
 import StudioWorkspace from "@/components/studio/studio-workspace";
+import { EditorLayoutProvider } from "@/components/studio/editor-layout-context";
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
@@ -54,15 +55,17 @@ export default function StudioPage() {
       style={{ "--site-header": "0rem" } as CSSProperties}
     >
       <EditorEntryLoader />
-      <SidebarProvider defaultOpen={false} className="min-h-0 flex-1">
-        <AppSidebar />
-        <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
-          <StudioHeader />
-          <main className="flex min-h-0 flex-1 flex-col">
-            <StudioWorkspace />
-          </main>
-        </SidebarInset>
-      </SidebarProvider>
+      <EditorLayoutProvider>
+        <SidebarProvider defaultOpen={false} className="min-h-0 flex-1">
+          <AppSidebar />
+          <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
+            <StudioHeader />
+            <main className="flex min-h-0 flex-1 flex-col">
+              <StudioWorkspace />
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
+      </EditorLayoutProvider>
     </div>
   );
 }

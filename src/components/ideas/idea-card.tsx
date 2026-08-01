@@ -35,6 +35,7 @@ export default function IdeaCard({
   const title =
     e?.title ||
     firstLine(idea.originalTranscript) ||
+    idea.source?.title ||
     idea.source?.url ||
     "New idea";
   const adaptiveSections = e?.sections?.filter(
@@ -94,9 +95,16 @@ export default function IdeaCard({
         <div className="border-border space-y-5 border-t px-4 py-5 text-sm">
           {idea.source && (
             <div className="border-border/70 bg-background/45 rounded-lg border p-3.5">
-              <p className="text-muted-foreground mb-2 text-[11px] font-semibold tracking-[0.08em] uppercase">
-                Original reference
-              </p>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
+                  Original reference
+                </p>
+                {idea.source.collection && (
+                  <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-bold">
+                    {idea.source.collection}
+                  </span>
+                )}
+              </div>
               <a
                 href={idea.source.url}
                 target="_blank"

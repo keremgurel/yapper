@@ -4,13 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioLines,
   Captions,
-  Columns2,
   FileText,
   Film,
   SlidersHorizontal,
   Sparkles,
   Type,
-  X,
 } from "lucide-react";
 import AudioTab from "@/components/studio/audio-tab";
 import CaptionsTab from "@/components/studio/captions-tab";
@@ -47,7 +45,10 @@ const TOOLS: Tool[] = [
 
 const DEFAULT_ORDER = TOOLS.map((tool) => tool.id);
 const STORAGE_KEY = "yapper.editor.workbench.v1";
-const MIN_PANE_WIDTH = 290;
+// Keep the drop gesture available at the editor's default width. Individual
+// tools already handle compact layouts, and users can widen the workbench when
+// they want two roomier panes.
+const MIN_PANE_WIDTH = 200;
 
 function isToolId(value: unknown): value is ToolId {
   return TOOLS.some((tool) => tool.id === value);
@@ -73,6 +74,8 @@ export default function EditorWorkbench({
   const [panes, setPanes] = useState<ToolId[]>(["media"]);
   const [focusedPane, setFocusedPane] = useState(0);
   const [hydrated, setHydrated] = useState(false);
+  const [draggingTab, setDraggingTab] = useState<ToolId | null>(null);
+  const [dropPane, setDropPane] = useState<number | "split" | null>(null);
 
   useEffect(() => {
     const node = rootRef.current;
@@ -91,7 +94,7 @@ export default function EditorWorkbench({
         ? stored.order.filter(isToolId)
         : [];
       const storedPanes = Array.isArray(stored?.panes)
-        ? stored.panes.filter(isToolId).slice(0, 3)
+        ? stored.panes.filter(isToolId).slice(0, 2)
         : [];
       if (storedOrder.length === TOOLS.length) {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time browser preference hydration
@@ -120,12 +123,11 @@ export default function EditorWorkbench({
 
   const maxVisiblePanes = Math.max(
     1,
-    Math.min(3, Math.floor((width || MIN_PANE_WIDTH) / MIN_PANE_WIDTH)),
+    Math.min(2, Math.floor((width || MIN_PANE_WIDTH) / MIN_PANE_WIDTH)),
   );
   const visiblePanes = panes.slice(0, maxVisiblePanes);
   const safeFocusedPane = Math.min(focusedPane, visiblePanes.length - 1);
   const visibleSet = useMemo(() => new Set(visiblePanes), [visiblePanes]);
-  const nextTool = order.find((id) => !visibleSet.has(id)) ?? order[0];
 
   const openTool = (tool: ToolId) => {
     const existing = visiblePanes.indexOf(tool);
@@ -144,17 +146,9 @@ export default function EditorWorkbench({
       setFocusedPane(existing);
       return;
     }
-    if (visiblePanes.length >= maxVisiblePanes || panes.length >= 3) return;
+    if (visiblePanes.length >= maxVisiblePanes || panes.length >= 2) return;
     setPanes((current) => [...current, tool]);
     setFocusedPane(panes.length);
-  };
-
-  const closePane = (index: number) => {
-    if (panes.length === 1) return;
-    setPanes((current) => current.filter((_, pane) => pane !== index));
-    setFocusedPane((current) =>
-      Math.max(0, Math.min(current, panes.length - 2)),
-    );
   };
 
   const moveTab = (target: ToolId) => {
@@ -166,6 +160,36 @@ export default function EditorWorkbench({
       next.splice(next.indexOf(target), 0, source);
       return next;
     });
+  };
+
+  const endDrag = () => {
+    draggedTab.current = null;
+    setDraggingTab(null);
+    setDropPane(null);
+  };
+
+  const dropBeside = () => {
+    const source = draggedTab.current;
+    if (source) openBeside(source);
+    endDrag();
+  };
+
+  const dropIntoPane = (index: number) => {
+    const source = draggedTab.current;
+    if (!source) return endDrag();
+    const sourcePane = visiblePanes.indexOf(source);
+    if (sourcePane >= 0 && sourcePane !== index) {
+      // Dragging an already-open pane back onto its neighbour merges the split,
+      // matching desktop window managers.
+      setPanes([source]);
+      setFocusedPane(0);
+    } else {
+      setPanes((current) =>
+        current.map((item, pane) => (pane === index ? source : item)),
+      );
+      setFocusedPane(index);
+    }
+    endDrag();
   };
 
   return (
@@ -188,9 +212,13 @@ export default function EditorWorkbench({
               <div
                 key={id}
                 draggable
-                onDragStart={() => {
+                onDragStart={(event) => {
                   draggedTab.current = id;
+                  setDraggingTab(id);
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", id);
                 }}
+                onDragEnd={endDrag}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={() => moveTab(id)}
                 className={`group/tab relative flex shrink-0 items-stretch border-r ${focused ? "bg-background" : "bg-card"}`}
@@ -199,10 +227,8 @@ export default function EditorWorkbench({
                   type="button"
                   role="tab"
                   aria-selected={focused}
-                  title={`${label}${open ? " — open" : ""}. Shift-click to open beside.`}
-                  onClick={(event) =>
-                    event.shiftKey ? openBeside(id) : openTool(id)
-                  }
+                  title={`${label}${open ? " — open" : ""}. Drag into the workspace to split.`}
+                  onClick={() => openTool(id)}
                   className={`flex h-full items-center gap-1.5 px-3 text-[11px] font-bold whitespace-nowrap transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-inset ${focused ? "text-foreground" : open ? "text-foreground/70" : "text-foreground/45 hover:bg-muted/60 hover:text-foreground"}`}
                 >
                   <Icon
@@ -210,20 +236,6 @@ export default function EditorWorkbench({
                     className={`h-3.5 w-3.5 ${focused ? "text-[color:var(--sg-accent)]" : ""}`}
                   />
                   {label}
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Open ${label} beside`}
-                  title={`Open ${label} beside`}
-                  disabled={
-                    visibleSet.has(id) ||
-                    visiblePanes.length >= maxVisiblePanes ||
-                    panes.length >= 3
-                  }
-                  onClick={() => openBeside(id)}
-                  className="text-foreground/30 hover:bg-muted hover:text-foreground mr-1 hidden w-6 items-center justify-center self-center rounded group-hover/tab:flex focus-visible:flex focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] disabled:hidden"
-                >
-                  <Columns2 aria-hidden="true" className="h-3 w-3" />
                 </button>
                 {open && (
                   <span
@@ -235,57 +247,24 @@ export default function EditorWorkbench({
             );
           })}
         </div>
-        <div className="border-border flex shrink-0 items-center border-l px-1.5">
-          <button
-            type="button"
-            onClick={() => openBeside(nextTool)}
-            disabled={
-              visiblePanes.length >= maxVisiblePanes || panes.length >= 3
-            }
-            aria-label="Split Workbench"
-            title="Open another tool beside this one"
-            className="text-foreground/40 hover:bg-muted hover:text-foreground grid h-7 w-7 place-items-center rounded focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] disabled:cursor-not-allowed disabled:opacity-20"
-          >
-            <Columns2 aria-hidden="true" className="h-3.5 w-3.5" />
-          </button>
-        </div>
       </div>
 
       <div
-        className="grid min-h-0 flex-1"
+        className="relative grid min-h-0 flex-1"
         style={{
           gridTemplateColumns: `repeat(${visiblePanes.length}, minmax(0, 1fr))`,
         }}
       >
         {visiblePanes.map((id, index) => {
-          const { label, Icon } = titleFor(id);
+          const { label } = titleFor(id);
           const focused = index === safeFocusedPane;
           return (
             <section
               key={`${id}-${index}`}
               aria-label={label}
               onPointerDown={() => setFocusedPane(index)}
-              className={`flex min-h-0 min-w-0 flex-col overflow-hidden ${index > 0 ? "border-border border-l" : ""} ${focused ? "bg-background/20" : "bg-card"}`}
+              className={`relative flex min-h-0 min-w-0 flex-col overflow-hidden ${index > 0 ? "border-border border-l" : ""} ${focused ? "bg-background/20" : "bg-card"}`}
             >
-              <div className="border-border flex h-9 shrink-0 items-center gap-2 border-b px-3">
-                <Icon
-                  aria-hidden="true"
-                  className={`h-3.5 w-3.5 ${focused ? "text-[color:var(--sg-accent)]" : "text-foreground/35"}`}
-                />
-                <h2 className="text-foreground/80 min-w-0 flex-1 truncate text-[11px] font-bold">
-                  {label}
-                </h2>
-                {panes.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => closePane(index)}
-                    aria-label={`Close ${label} pane`}
-                    className="text-foreground/30 hover:bg-muted hover:text-foreground grid h-6 w-6 place-items-center rounded focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)]"
-                  >
-                    <X aria-hidden="true" className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
               <div className="min-h-0 flex-1 overflow-hidden">
                 <ToolContent
                   id={id}
@@ -296,9 +275,61 @@ export default function EditorWorkbench({
                   openTranscript={() => openTool("transcript")}
                 />
               </div>
+              {draggingTab && visiblePanes.length > 1 && (
+                <div
+                  onDragEnter={() => setDropPane(index)}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    setDropPane(index);
+                  }}
+                  onDragLeave={() =>
+                    setDropPane((current) =>
+                      current === index ? null : current,
+                    )
+                  }
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    dropIntoPane(index);
+                  }}
+                  className={`absolute inset-2 z-30 grid place-items-center rounded-xl border-2 border-dashed transition-colors duration-150 ${dropPane === index ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/16" : "border-foreground/20 bg-background/75"}`}
+                >
+                  <span className="bg-background/90 text-foreground rounded-full px-3 py-1.5 text-xs font-black shadow-sm">
+                    {visibleSet.has(draggingTab)
+                      ? "Merge here"
+                      : `Open ${titleFor(draggingTab).label} here`}
+                  </span>
+                </div>
+              )}
             </section>
           );
         })}
+
+        {draggingTab &&
+          visiblePanes.length === 1 &&
+          maxVisiblePanes > 1 &&
+          !visibleSet.has(draggingTab) && (
+            <div
+              onDragEnter={() => setDropPane("split")}
+              onDragOver={(event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setDropPane("split");
+              }}
+              onDragLeave={() =>
+                setDropPane((current) => (current === "split" ? null : current))
+              }
+              onDrop={(event) => {
+                event.preventDefault();
+                dropBeside();
+              }}
+              className={`absolute inset-y-2 right-2 z-30 grid w-[calc(50%_-_0.75rem)] place-items-center rounded-xl border-2 border-dashed transition-all duration-150 ${dropPane === "split" ? "translate-x-0 border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/16" : "border-foreground/20 bg-background/75 translate-x-1"}`}
+            >
+              <span className="bg-background/90 text-foreground rounded-full px-3 py-1.5 text-xs font-black shadow-sm">
+                Open {titleFor(draggingTab).label} beside
+              </span>
+            </div>
+          )}
       </div>
     </section>
   );
