@@ -119,4 +119,40 @@ struct ReferenceMediaIntegrationTests {
         #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
         #expect(abs(try await rendered.load(.duration).seconds - 4) < 0.15)
     }
+
+    @Test(
+        "DJI export renders native text layers without losing audio",
+        .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
+    )
+    func exportsTextLayer() async throws {
+        let video = try await MediaProbe.inspect(url: djiReferenceURL)
+        let output = FileManager.default.temporaryDirectory.appending(path: "yapper-text-layer-check.mp4")
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let project = EditorProject(
+            name: "Text export check",
+            media: [video],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 20, sourceEnd: 23)],
+            textLayers: [
+                ProjectTextLayer(
+                    text: "Native text stays in the export",
+                    timelineStart: 0.25,
+                    duration: 2.25,
+                    y: 0.16,
+                    style: .whiteCard,
+                    font: .rounded
+                ),
+            ]
+        )
+
+        let built = try await CompositionBuilder.build(project: project)
+        #expect(built.videoComposition?.animationTool != nil)
+        #expect(built.playbackVideoComposition?.animationTool == nil)
+        try await ExportService.export(project: project, to: output)
+
+        let rendered = AVURLAsset(url: output)
+        #expect(try await rendered.loadTracks(withMediaType: .video).count == 1)
+        #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
+        #expect(abs(try await rendered.load(.duration).seconds - 3) < 0.15)
+    }
 }

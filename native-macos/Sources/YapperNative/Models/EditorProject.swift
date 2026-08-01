@@ -114,6 +114,79 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+enum TextLayerStyle: String, Codable, CaseIterable, Identifiable, Sendable {
+    case plain
+    case whiteCard
+    case blackCard
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .plain: "White text"
+        case .whiteCard: "White card"
+        case .blackCard: "Black card"
+        }
+    }
+}
+
+enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
+    case modern
+    case rounded
+    case editorial
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .modern: "Modern"
+        case .rounded: "Rounded"
+        case .editorial: "Editorial"
+        }
+    }
+}
+
+struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
+    var id: UUID
+    var text: String
+    var timelineStart: Double
+    var duration: Double
+    var x: Double
+    var y: Double
+    var width: Double
+    var fontScale: Double
+    var style: TextLayerStyle
+    var font: TextLayerFont
+
+    init(
+        id: UUID = UUID(),
+        text: String,
+        timelineStart: Double,
+        duration: Double = 4,
+        x: Double = 0.5,
+        y: Double = 0.18,
+        width: Double = 0.78,
+        fontScale: Double = 0.055,
+        style: TextLayerStyle = .whiteCard,
+        font: TextLayerFont = .rounded
+    ) {
+        self.id = id
+        self.text = text
+        self.timelineStart = timelineStart
+        self.duration = duration
+        self.x = x
+        self.y = y
+        self.width = width
+        self.fontScale = fontScale
+        self.style = style
+        self.font = font
+    }
+
+    func isVisible(at time: Double) -> Bool {
+        time >= timelineStart && time <= timelineStart + duration
+    }
+}
+
 struct EditorProject: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
@@ -123,6 +196,7 @@ struct EditorProject: Codable, Equatable, Sendable {
     var clips: [TimelineClip]
     var transcript: [TranscriptWord]?
     var overlays: [ProjectOverlay]?
+    var textLayers: [ProjectTextLayer]?
 
     init(
         id: UUID = UUID(),
@@ -132,7 +206,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         media: [ProjectMedia] = [],
         clips: [TimelineClip] = [],
         transcript: [TranscriptWord]? = nil,
-        overlays: [ProjectOverlay]? = nil
+        overlays: [ProjectOverlay]? = nil,
+        textLayers: [ProjectTextLayer]? = nil
     ) {
         self.id = id
         self.name = name
@@ -142,6 +217,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.clips = clips
         self.transcript = transcript
         self.overlays = overlays
+        self.textLayers = textLayers
     }
 
     var duration: Double {

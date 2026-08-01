@@ -215,6 +215,8 @@ struct WorkbenchPanel: View {
             QuickEditWorkbench(session: session)
         case .transcript:
             TranscriptWorkbench(session: session)
+        case .text:
+            TextWorkbench(session: session)
         default:
             FeatureWorkbench(tab: tab)
         }
@@ -581,10 +583,10 @@ private struct QuickEditWorkbench: View {
                 ) {}
                 QuickAction(
                     title: "Text Hook",
-                    detail: "Not migrated yet",
+                    detail: "Add at the playhead",
                     icon: "textformat",
-                    disabled: true
-                ) {}
+                    disabled: session.project.clips.isEmpty
+                ) { session.addTextLayer(asHook: true) }
             }
             .disabled(session.project.clips.isEmpty)
 
@@ -619,6 +621,287 @@ private struct QuickEditWorkbench: View {
         }
         .padding(16)
         .inspectorPane(maxWidth: 640)
+    }
+}
+
+private struct TextWorkbench: View {
+    @ObservedObject var session: EditorSession
+
+    private var layers: [ProjectTextLayer] { session.project.textLayers ?? [] }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Text")
+                            .font(.studioSectionTitle)
+                        Text("Positioned layers that stay attached to the timeline")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 12)
+                    HStack(spacing: 8) {
+                        Button {
+                            session.addTextLayer()
+                        } label: {
+                            Label("Text", systemImage: "plus")
+                        }
+                        .buttonStyle(EditorSecondaryButtonStyle())
+
+                        Button {
+                            session.addTextLayer(asHook: true)
+                        } label: {
+                            Label("Hook", systemImage: "wand.and.stars")
+                        }
+                        .buttonStyle(EditorPrimaryButtonStyle())
+                    }
+                    .disabled(session.project.clips.isEmpty)
+                }
+
+                if layers.isEmpty {
+                    VStack(alignment: .leading, spacing: 9) {
+                        Label("No text layers", systemImage: "textformat")
+                            .font(.studioBodyStrong)
+                        Text("Add regular text anywhere on the canvas, or start with a top-line hook built for short-form video.")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(14)
+                    .frame(maxWidth: 480, alignment: .leading)
+                    .background(Color.raisedBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.studioLine, lineWidth: 1)
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                } else {
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text("LAYERS")
+                            .font(.studioCaptionStrong)
+                            .foregroundStyle(.secondary)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 7) {
+                                ForEach(layers) { layer in
+                                    TextLayerChip(
+                                        layer: layer,
+                                        selected: session.selectedTextLayerID == layer.id
+                                    ) {
+                                        session.selectTextLayer(layer.id)
+                                        session.scrub(to: layer.timelineStart)
+                                        session.finishScrubbing(at: layer.timelineStart)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if let layer = session.selectedTextLayer {
+                        Divider()
+                        selectedLayerEditor(layer)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 680, alignment: .leading)
+        }
+        .inspectorPane(maxWidth: 720)
+    }
+
+    @ViewBuilder
+    private func selectedLayerEditor(_ layer: ProjectTextLayer) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            InspectorLabel("COPY")
+            TextEditor(text: binding(for: layer, keyPath: \ProjectTextLayer.text))
+                .font(.system(size: 15, weight: .semibold))
+                .scrollContentBackground(.hidden)
+                .padding(8)
+                .frame(minHeight: 76, maxHeight: 116)
+                .background(Color.studioInputBackground)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+
+            InspectorLabel("STYLE")
+            HStack(spacing: 7) {
+                ForEach(TextLayerStyle.allCases) { style in
+                    ChoiceButton(
+                        title: style.title,
+                        selected: layer.style == style
+                    ) {
+                        var updated = layer
+                        updated.style = style
+                        session.updateTextLayer(updated)
+                    }
+                }
+            }
+
+            HStack(alignment: .top, spacing: 20) {
+                VStack(alignment: .leading, spacing: 8) {
+                    InspectorLabel("FONT")
+                    Picker("Font", selection: binding(for: layer, keyPath: \ProjectTextLayer.font)) {
+                        ForEach(TextLayerFont.allCases) { font in
+                            Text(font.title).tag(font)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(maxWidth: 310)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    InspectorLabel("POSITION")
+                    HStack(spacing: 6) {
+                        positionButton("Top", y: 0.16, layer: layer)
+                        positionButton("Center", y: 0.5, layer: layer)
+                        positionButton("Bottom", y: 0.82, layer: layer)
+                    }
+                }
+            }
+
+            SliderControl(
+                title: "Size",
+                value: binding(for: layer, keyPath: \ProjectTextLayer.fontScale),
+                range: 0.025 ... 0.12,
+                valueLabel: "\(Int(layer.fontScale * 1_000))"
+            )
+            SliderControl(
+                title: "Width",
+                value: binding(for: layer, keyPath: \ProjectTextLayer.width),
+                range: 0.25 ... 0.95,
+                valueLabel: "\(Int(layer.width * 100))%"
+            )
+            SliderControl(
+                title: "Duration",
+                value: binding(for: layer, keyPath: \ProjectTextLayer.duration),
+                range: 0.5 ... max(0.5, session.duration - layer.timelineStart),
+                valueLabel: String(format: "%.1fs", layer.duration)
+            )
+
+            HStack {
+                Text("Starts at \(formatTimePrecise(layer.timelineStart))")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button(role: .destructive) {
+                    session.deleteSelectedTextLayer()
+                } label: {
+                    Label("Delete layer", systemImage: "trash")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+            }
+        }
+    }
+
+    private func positionButton(_ title: String, y: Double, layer: ProjectTextLayer) -> some View {
+        ChoiceButton(title: title, selected: abs(layer.y - y) < 0.06) {
+            var updated = layer
+            updated.y = y
+            session.updateTextLayer(updated)
+        }
+    }
+
+    private func binding<Value>(
+        for layer: ProjectTextLayer,
+        keyPath: WritableKeyPath<ProjectTextLayer, Value>
+    ) -> Binding<Value> {
+        Binding(
+            get: {
+                session.project.textLayers?.first(where: { $0.id == layer.id })?[keyPath: keyPath]
+                    ?? layer[keyPath: keyPath]
+            },
+            set: { value in
+                guard var updated = session.project.textLayers?.first(where: { $0.id == layer.id }) else { return }
+                updated[keyPath: keyPath] = value
+                session.updateTextLayer(updated)
+            }
+        )
+    }
+}
+
+private struct TextLayerChip: View {
+    let layer: ProjectTextLayer
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(layer.text.isEmpty ? "Empty text" : layer.text)
+                    .font(.studioBodyStrong)
+                    .lineLimit(1)
+                Text("\(formatTime(layer.timelineStart)) · \(String(format: "%.1fs", layer.duration))")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .frame(width: 150, height: 48, alignment: .leading)
+            .background(selected ? Color.studioSelectedFill : Color.raisedBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(selected ? Color.yapperOrange.opacity(0.8) : Color.studioLine, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 7))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct InspectorLabel: View {
+    let title: String
+
+    init(_ title: String) { self.title = title }
+
+    var body: some View {
+        Text(title)
+            .font(.studioCaptionStrong)
+            .foregroundStyle(.secondary)
+    }
+}
+
+private struct ChoiceButton: View {
+    let title: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.studioCaptionStrong)
+                .padding(.horizontal, 10)
+                .frame(height: 31)
+                .background(selected ? Color.studioSelectedFill : Color.studioFaintFill)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(selected ? Color.yapperOrange.opacity(0.78) : Color.studioLine, lineWidth: 1)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct SliderControl: View {
+    let title: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let valueLabel: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.studioBodyStrong)
+                .frame(width: 66, alignment: .leading)
+            Slider(value: $value, in: range)
+                .frame(maxWidth: 330)
+            Text(valueLabel)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .frame(width: 48, alignment: .trailing)
+        }
     }
 }
 

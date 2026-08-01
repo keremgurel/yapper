@@ -45,4 +45,28 @@ struct EditorProjectTests {
         #expect(project.duration == 4)
         #expect(project.clips == [second])
     }
+
+    @Test func textLayersRoundTripAndRespectTheirTimelineWindow() throws {
+        let layer = ProjectTextLayer(
+            text: "A precise hook",
+            timelineStart: 1.25,
+            duration: 3.5,
+            x: 0.4,
+            y: 0.2,
+            width: 0.72,
+            fontScale: 0.065,
+            style: .blackCard,
+            font: .editorial
+        )
+        let project = EditorProject(textLayers: [layer])
+
+        let encoded = try JSONEncoder().encode(project)
+        let restored = try JSONDecoder().decode(EditorProject.self, from: encoded)
+
+        #expect(restored.textLayers == [layer])
+        #expect(!layer.isVisible(at: 1.24))
+        #expect(layer.isVisible(at: 1.25))
+        #expect(layer.isVisible(at: 4.75))
+        #expect(!layer.isVisible(at: 4.76))
+    }
 }

@@ -32,7 +32,10 @@ struct TimelinePanel: View {
                     session.duration * pointsPerSecond
                 )
                 HStack(spacing: 0) {
-                    TrackHeader(hasOverlays: session.project.overlays?.isEmpty == false)
+                    TrackHeader(
+                        hasText: session.project.textLayers?.isEmpty == false,
+                        hasOverlays: session.project.overlays?.isEmpty == false
+                    )
                         .frame(width: 70)
                     Rectangle().fill(Color.studioLine).frame(width: 1)
                     ScrollView(.horizontal, showsIndicators: true) {
@@ -58,6 +61,14 @@ private struct TimelineContent: View {
     let contentWidth: Double
 
     var body: some View {
+        let hasText = session.project.textLayers?.isEmpty == false
+        let hasOverlays = session.project.overlays?.isEmpty == false
+        let textRowY = 45.0
+        let overlayRowY = 45.0 + (hasText ? 60.0 : 0)
+        let clipRowY = 45.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
+        let playheadHeight = 103.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
+        let scrubHeight = 125.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
+
         ZStack(alignment: .topLeading) {
             Color.editorBackground
             TimelineRuler(duration: session.duration, width: contentWidth)
@@ -86,7 +97,42 @@ private struct TimelineContent: View {
             }
             .fixedSize(horizontal: true, vertical: true)
             .frame(height: 88, alignment: .top)
-            .offset(y: session.project.overlays?.isEmpty == false ? 105 : 45)
+            .offset(y: clipRowY)
+
+            if let textLayers = session.project.textLayers, !textLayers.isEmpty {
+                ForEach(textLayers) { layer in
+                    let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
+                    let width = max(18, contentWidth * layer.duration / max(0.001, session.duration))
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
+                        .overlay(alignment: .leading) {
+                            HStack(spacing: 5) {
+                                Image(systemName: "textformat")
+                                Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
+                            }
+                            .font(.studioCaptionStrong)
+                            .padding(.horizontal, 7)
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                                .stroke(
+                                    session.selectedTextLayerID == layer.id
+                                        ? Color.yapperOrange.opacity(0.92)
+                                        : Color.secondary.opacity(0.42),
+                                    lineWidth: session.selectedTextLayerID == layer.id ? 1.15 : 0.7
+                                )
+                        }
+                        .frame(width: width, height: 42)
+                        .offset(x: startX, y: textRowY)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            session.selectTextLayer(layer.id)
+                            session.scrub(to: layer.timelineStart)
+                            session.finishScrubbing(at: layer.timelineStart)
+                        }
+                        .zIndex(3)
+                }
+            }
 
             if let overlays = session.project.overlays, !overlays.isEmpty {
                 ForEach(overlays) { overlay in
@@ -108,7 +154,7 @@ private struct TimelineContent: View {
                                     .stroke(Color.yapperOrange.opacity(0.7), lineWidth: 1)
                             }
                             .frame(width: width, height: 42)
-                            .offset(x: startX, y: 45)
+                            .offset(x: startX, y: overlayRowY)
                     }
                 }
             }
@@ -121,19 +167,21 @@ private struct TimelineContent: View {
                 )
                 Rectangle()
                     .fill(Color.red)
-                    .frame(width: 1.25, height: session.project.overlays?.isEmpty == false ? 193 : 133)
+                    .frame(width: 1.25, height: playheadHeight)
                     .overlay(alignment: .top) {
                         Circle().fill(Color.red).frame(width: 8, height: 8)
                     }
                     .offset(x: playheadX - 0.75, y: 30)
                     .allowsHitTesting(false)
+                    .zIndex(4)
             }
 
             Rectangle()
                 .fill(.clear)
                 .contentShape(Rectangle())
-                .frame(width: contentWidth, height: session.project.overlays?.isEmpty == false ? 210 : 150)
+                .frame(width: contentWidth, height: scrubHeight)
                 .offset(y: 25)
+                .zIndex(1)
                 .gesture(
                     DragGesture(minimumDistance: 0, coordinateSpace: .local)
                         .onChanged { value in
@@ -299,11 +347,22 @@ private struct StableThumbnailStrip: View {
 }
 
 private struct TrackHeader: View {
+    let hasText: Bool
     let hasOverlays: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: 38)
+            if hasText {
+                HStack(spacing: 7) {
+                    Image(systemName: "textformat")
+                    Text("Text")
+                }
+                .font(.studioCaptionStrong)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 60)
+                .background(Color.yapperOrange.opacity(0.035))
+            }
             if hasOverlays {
                 HStack(spacing: 7) {
                     Image(systemName: "photo.on.rectangle")
@@ -311,7 +370,7 @@ private struct TrackHeader: View {
                 }
                 .font(.studioCaptionStrong)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 56)
+                .frame(maxWidth: .infinity, minHeight: 60)
                 .background(Color.yapperOrange.opacity(0.045))
             }
             HStack(spacing: 7) {

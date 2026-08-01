@@ -8,6 +8,7 @@ import Foundation
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject()
     @Published var selectedClipID: UUID?
+    @Published var selectedTextLayerID: UUID?
     @Published private(set) var currentTime = 0.0
     @Published private(set) var isPlaying = false
     @Published private(set) var isBusy = false
@@ -32,6 +33,7 @@ final class EditorSession: ObservableObject {
     private var playWhenSeekFinishes = false
     private var rebuilding = false
     private var restorationTask: Task<Void, Never>?
+    private var visualCommitTask: Task<Void, Never>?
 
     init() {
         player.automaticallyWaitsToMinimizeStalling = false
@@ -46,6 +48,11 @@ final class EditorSession: ObservableObject {
     var selectedClip: TimelineClip? {
         guard let selectedClipID else { return nil }
         return project.clips.first { $0.id == selectedClipID }
+    }
+
+    var selectedTextLayer: ProjectTextLayer? {
+        guard let selectedTextLayerID else { return nil }
+        return project.textLayers?.first { $0.id == selectedTextLayerID }
     }
 
     func importMedia(_ urls: [URL]) async {
@@ -202,13 +209,56 @@ final class EditorSession: ObservableObject {
         await commitTimelineEdit()
     }
 
+    func addTextLayer(asHook: Bool = false) {
+        guard duration > 0 else { return }
+        let start = min(currentTime, max(0, duration - 0.1))
+        let available = max(0.1, duration - start)
+        let layer = ProjectTextLayer(
+            text: asHook ? "Your hook" : "Text",
+            timelineStart: start,
+            duration: min(asHook ? 4 : 5, available),
+            y: asHook ? 0.16 : 0.5,
+            width: asHook ? 0.82 : 0.7,
+            fontScale: asHook ? 0.06 : 0.05,
+            style: asHook ? .whiteCard : .plain,
+            font: asHook ? .rounded : .modern
+        )
+        var layers = project.textLayers ?? []
+        layers.append(layer)
+        project.textLayers = layers
+        selectedTextLayerID = layer.id
+        project.updatedAt = Date()
+        scheduleVisualCommit()
+    }
+
+    func selectTextLayer(_ id: UUID) {
+        selectedTextLayerID = id
+    }
+
+    func updateTextLayer(_ updated: ProjectTextLayer) {
+        guard let index = project.textLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        project.textLayers?[index] = updated
+        project.updatedAt = Date()
+        scheduleVisualCommit()
+    }
+
+    func deleteSelectedTextLayer() {
+        guard let selectedTextLayerID else { return }
+        project.textLayers?.removeAll { $0.id == selectedTextLayerID }
+        self.selectedTextLayerID = project.textLayers?.last?.id
+        project.updatedAt = Date()
+        scheduleVisualCommit()
+    }
+
     func resetTimelineToSource() async {
         guard let media = project.media.first(where: { !$0.isImage }) else { return }
         project.clips = [
             TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: media.duration),
         ]
         project.overlays = []
+        project.textLayers = []
         selectedClipID = project.clips.first?.id
+        selectedTextLayerID = nil
         currentTime = 0
         await commitTimelineEdit()
     }
@@ -311,6 +361,24 @@ final class EditorSession: ObservableObject {
             statusMessage = "Ready"
         } catch {
             show(error)
+        }
+    }
+
+    private func scheduleVisualCommit() {
+        visualCommitTask?.cancel()
+        visualCommitTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(140))
+                guard !Task.isCancelled, let self else { return }
+                // Text is rendered directly over the native player. Persisting
+                // must never swap the player item or interrupt active playback.
+                await self.persist()
+                self.statusMessage = "Ready"
+            } catch is CancellationError {
+                return
+            } catch {
+                self?.show(error)
+            }
         }
     }
 
@@ -434,9 +502,11 @@ final class EditorSession: ObservableObject {
                 media: availableMedia,
                 clips: saved.clips.filter { availableIDs.contains($0.mediaID) },
                 transcript: saved.transcript?.filter { availableIDs.contains($0.mediaID) },
-                overlays: saved.overlays?.filter { availableIDs.contains($0.mediaID) }
+                overlays: saved.overlays?.filter { availableIDs.contains($0.mediaID) },
+                textLayers: saved.textLayers
             )
             selectedClipID = project.clips.first?.id
+            selectedTextLayerID = project.textLayers?.first?.id
             for media in project.media { beginDerivedMedia(for: media) }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)

@@ -7,11 +7,15 @@ import QuartzCore
 struct BuiltComposition: @unchecked Sendable {
     let asset: AVMutableComposition
     let videoComposition: AVMutableVideoComposition?
+    let playbackVideoComposition: AVMutableVideoComposition?
     let renderSize: CGSize
 
     @MainActor var playerItem: AVPlayerItem {
         let item = AVPlayerItem(asset: asset)
-        item.videoComposition = videoComposition
+        // Core Animation tools are valid for export, but AVPlayerItem rejects
+        // them with an Objective-C exception. The SwiftUI canvas renders text
+        // and overlays live, while this clean composition handles crop/rotation.
+        item.videoComposition = playbackVideoComposition
         item.audioTimePitchAlgorithm = .spectral
         item.preferredForwardBufferDuration = 0
         return item
@@ -135,8 +139,14 @@ enum CompositionBuilder {
             timescale: CMTimeScale(maximumFrameRate.rounded())
         )
         videoComposition.instructions = instructions
-        applyImageOverlays(
+
+        let playbackVideoComposition = AVMutableVideoComposition()
+        playbackVideoComposition.renderSize = videoComposition.renderSize
+        playbackVideoComposition.frameDuration = videoComposition.frameDuration
+        playbackVideoComposition.instructions = instructions
+        applyVisualLayers(
             project.overlays ?? [],
+            textLayers: project.textLayers ?? [],
             project: project,
             renderSize: renderSize,
             duration: cursor.seconds,
@@ -146,12 +156,14 @@ enum CompositionBuilder {
         return BuiltComposition(
             asset: composition,
             videoComposition: videoComposition,
+            playbackVideoComposition: playbackVideoComposition,
             renderSize: renderSize
         )
     }
 
-    private static func applyImageOverlays(
+    private static func applyVisualLayers(
         _ overlays: [ProjectOverlay],
+        textLayers: [ProjectTextLayer],
         project: EditorProject,
         renderSize: CGSize,
         duration: Double,
@@ -166,7 +178,7 @@ enum CompositionBuilder {
             else { return nil }
             return (overlay, media, cgImage)
         }
-        guard !imageOverlays.isEmpty, duration > 0 else { return }
+        guard (!imageOverlays.isEmpty || !textLayers.isEmpty), duration > 0 else { return }
 
         let videoLayer = CALayer()
         videoLayer.frame = CGRect(origin: .zero, size: renderSize)
@@ -201,25 +213,137 @@ enum CompositionBuilder {
                 layer.frame = CGRect(x: box.midX - width / 2, y: box.minY, width: width, height: box.height)
             }
 
-            layer.opacity = 0
-            let animation = CAKeyframeAnimation(keyPath: "opacity")
-            let start = max(0, min(1, overlay.timelineStart / duration))
-            let end = max(start, min(1, (overlay.timelineStart + overlay.duration) / duration))
-            let epsilon = min(0.0001, max(0.000001, 1 / max(1, duration * 60)))
-            animation.values = [0, 0, 1, 1, 0]
-            animation.keyTimes = [0, NSNumber(value: max(0, start - epsilon)), NSNumber(value: start), NSNumber(value: end), 1]
-            animation.duration = duration
-            animation.beginTime = AVCoreAnimationBeginTimeAtZero
-            animation.isRemovedOnCompletion = false
-            animation.fillMode = .both
-            layer.add(animation, forKey: "timelineVisibility")
+            applyVisibility(
+                to: layer,
+                start: overlay.timelineStart,
+                layerDuration: overlay.duration,
+                compositionDuration: duration
+            )
             parentLayer.addSublayer(layer)
+        }
+
+        for text in textLayers where !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let fontSize = max(18, renderSize.height * text.fontScale)
+            let font = textFont(for: text.font, size: fontSize)
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.lineBreakMode = .byWordWrapping
+            let foreground: NSColor = text.style == .whiteCard ? .black : .white
+            let attributed = NSAttributedString(
+                string: text.text,
+                attributes: [
+                    .font: font,
+                    .foregroundColor: foreground,
+                    .paragraphStyle: paragraph,
+                ]
+            )
+            let maximumTextWidth = max(fontSize * 3, renderSize.width * text.width)
+            let measured = attributed.boundingRect(
+                with: CGSize(width: maximumTextWidth, height: renderSize.height * 0.5),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            )
+            let horizontalPadding = text.style == .plain ? fontSize * 0.08 : fontSize * 0.48
+            let verticalPadding = text.style == .plain ? fontSize * 0.08 : fontSize * 0.32
+            let boxSize = CGSize(
+                width: min(renderSize.width * 0.94, max(fontSize * 2, ceil(measured.width) + horizontalPadding * 2)),
+                height: min(renderSize.height * 0.46, max(fontSize * 1.2, ceil(measured.height) + verticalPadding * 2))
+            )
+
+            let container = CALayer()
+            container.frame = CGRect(
+                x: renderSize.width * text.x - boxSize.width / 2,
+                y: renderSize.height * (1 - text.y) - boxSize.height / 2,
+                width: boxSize.width,
+                height: boxSize.height
+            )
+            container.cornerRadius = fontSize * 0.32
+            switch text.style {
+            case .plain:
+                container.backgroundColor = NSColor.clear.cgColor
+            case .whiteCard:
+                container.backgroundColor = NSColor.white.withAlphaComponent(0.96).cgColor
+            case .blackCard:
+                container.backgroundColor = NSColor.black.withAlphaComponent(0.88).cgColor
+            }
+
+            let textLayer = CATextLayer()
+            textLayer.contentsScale = 2
+            textLayer.isWrapped = true
+            textLayer.alignmentMode = .center
+            textLayer.string = attributed
+            textLayer.frame = CGRect(
+                x: horizontalPadding,
+                y: verticalPadding,
+                width: boxSize.width - horizontalPadding * 2,
+                height: boxSize.height - verticalPadding * 2
+            )
+            if text.style == .plain {
+                textLayer.shadowColor = NSColor.black.cgColor
+                textLayer.shadowOpacity = 0.82
+                textLayer.shadowRadius = max(3, fontSize * 0.08)
+                textLayer.shadowOffset = CGSize(width: 0, height: -2)
+            }
+            container.addSublayer(textLayer)
+            applyVisibility(
+                to: container,
+                start: text.timelineStart,
+                layerDuration: text.duration,
+                compositionDuration: duration
+            )
+            parentLayer.addSublayer(container)
         }
 
         videoComposition.animationTool = AVVideoCompositionCoreAnimationTool(
             postProcessingAsVideoLayer: videoLayer,
             in: parentLayer
         )
+    }
+
+    private static func applyVisibility(
+        to layer: CALayer,
+        start: Double,
+        layerDuration: Double,
+        compositionDuration: Double
+    ) {
+        layer.opacity = 0
+        let animation = CAKeyframeAnimation(keyPath: "opacity")
+        let normalizedStart = max(0, min(1, start / compositionDuration))
+        let normalizedEnd = max(
+            normalizedStart,
+            min(1, (start + layerDuration) / compositionDuration)
+        )
+        let epsilon = min(0.0001, max(0.000001, 1 / max(1, compositionDuration * 60)))
+        animation.values = [0, 0, 1, 1, 0]
+        animation.keyTimes = [
+            0,
+            NSNumber(value: max(0, normalizedStart - epsilon)),
+            NSNumber(value: normalizedStart),
+            NSNumber(value: normalizedEnd),
+            1,
+        ]
+        animation.duration = compositionDuration
+        animation.beginTime = AVCoreAnimationBeginTimeAtZero
+        animation.isRemovedOnCompletion = false
+        animation.fillMode = .both
+        layer.add(animation, forKey: "timelineVisibility")
+    }
+
+    private static func textFont(for family: TextLayerFont, size: CGFloat) -> NSFont {
+        switch family {
+        case .modern:
+            return NSFont.systemFont(ofSize: size, weight: .bold)
+        case .rounded:
+            let base = NSFont.systemFont(ofSize: size, weight: .heavy)
+            if let descriptor = base.fontDescriptor.withDesign(.rounded),
+               let rounded = NSFont(descriptor: descriptor, size: size)
+            {
+                return rounded
+            }
+            return base
+        case .editorial:
+            return NSFont(name: "New York", size: size)
+                ?? NSFont.systemFont(ofSize: size, weight: .semibold)
+        }
     }
 
     private static func media(
