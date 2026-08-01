@@ -153,12 +153,25 @@ final class EditorSession: ObservableObject {
     }
 
     func deleteTranscriptWord(_ word: TranscriptWord) async {
-        guard project.isWordKept(word) else { return }
-        let padding = 0.025
-        project.removeSourceRanges(
-            [(max(0, word.start - padding), word.end + padding)],
-            for: word.mediaID
+        await deleteTranscriptWords([word])
+    }
+
+    func deleteTranscriptWords(_ words: [TranscriptWord]) async {
+        let keptIDs = Set(words.filter { project.isWordKept($0) }.map(\.id))
+        guard !keptIDs.isEmpty else { return }
+        let ranges = TranscriptWordSelection.sourceRanges(
+            for: keptIDs,
+            in: project.transcript ?? []
         )
+        for mediaID in Set(ranges.map(\.mediaID)) {
+            let duration = project.media.first(where: { $0.id == mediaID })?.duration ?? .greatestFiniteMagnitude
+            project.removeSourceRanges(
+                ranges
+                    .filter { $0.mediaID == mediaID }
+                    .map { ($0.start, min(duration, $0.end)) },
+                for: mediaID
+            )
+        }
         selectedClipID = project.clip(at: min(currentTime, project.duration))
             .map { project.clips[$0.index].id }
         currentTime = min(currentTime, project.duration)
@@ -166,13 +179,25 @@ final class EditorSession: ObservableObject {
     }
 
     func restoreTranscriptWord(_ word: TranscriptWord) async {
-        guard !project.isWordKept(word) else { return }
-        let padding = 0.025
-        project.restoreSourceRange(
-            (max(0, word.start - padding), word.end + padding),
-            for: word.mediaID
+        await restoreTranscriptWords([word])
+    }
+
+    func restoreTranscriptWords(_ words: [TranscriptWord]) async {
+        let deletedWords = words.filter { !project.isWordKept($0) }
+        let deletedIDs = Set(deletedWords.map(\.id))
+        guard let firstWord = deletedWords.first, !deletedIDs.isEmpty else { return }
+        let ranges = TranscriptWordSelection.sourceRanges(
+            for: deletedIDs,
+            in: project.transcript ?? []
         )
-        currentTime = project.nearestTimelineTime(for: word)
+        for range in ranges {
+            let duration = project.media.first(where: { $0.id == range.mediaID })?.duration ?? .greatestFiniteMagnitude
+            project.restoreSourceRange(
+                (range.start, min(duration, range.end)),
+                for: range.mediaID
+            )
+        }
+        currentTime = project.nearestTimelineTime(for: firstWord)
         selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
         await commitTimelineEdit()
         seek(to: currentTime, exact: true, playAfter: false)

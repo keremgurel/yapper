@@ -80,6 +80,97 @@ struct TranscriptWord: Codable, Equatable, Identifiable, Sendable {
     var midpoint: Double { (start + end) / 2 }
 }
 
+struct TranscriptSourceRange: Equatable, Sendable {
+    var mediaID: UUID
+    var start: Double
+    var end: Double
+}
+
+struct TranscriptWordSelection: Equatable, Sendable {
+    var wordIDs: Set<UUID> = []
+    var anchorID: UUID?
+
+    mutating func select(
+        _ wordID: UUID,
+        orderedWordIDs: [UUID],
+        extendingRange: Bool,
+        toggling: Bool
+    ) {
+        if extendingRange,
+           let anchorID,
+           let anchorIndex = orderedWordIDs.firstIndex(of: anchorID),
+           let clickedIndex = orderedWordIDs.firstIndex(of: wordID) {
+            let bounds = min(anchorIndex, clickedIndex)...max(anchorIndex, clickedIndex)
+            wordIDs = Set(orderedWordIDs[bounds])
+            return
+        }
+
+        if toggling {
+            if wordIDs.contains(wordID) {
+                wordIDs.remove(wordID)
+            } else {
+                wordIDs.insert(wordID)
+            }
+            anchorID = wordID
+            return
+        }
+
+        wordIDs = [wordID]
+        anchorID = wordID
+    }
+
+    mutating func clear() {
+        wordIDs.removeAll()
+        anchorID = nil
+    }
+
+    static func sourceRanges(
+        for selectedWordIDs: Set<UUID>,
+        in orderedWords: [TranscriptWord],
+        padding: Double = 0.025
+    ) -> [TranscriptSourceRange] {
+        var ranges: [TranscriptSourceRange] = []
+        var activeRange: TranscriptSourceRange?
+
+        func padded(_ range: TranscriptSourceRange) -> TranscriptSourceRange {
+            TranscriptSourceRange(
+                mediaID: range.mediaID,
+                start: max(0, range.start - padding),
+                end: range.end + padding
+            )
+        }
+
+        for word in orderedWords {
+            guard selectedWordIDs.contains(word.id) else {
+                if let activeRange {
+                    ranges.append(padded(activeRange))
+                }
+                activeRange = nil
+                continue
+            }
+
+            if var current = activeRange, current.mediaID == word.mediaID {
+                current.end = max(current.end, word.end)
+                activeRange = current
+            } else {
+                if let activeRange {
+                    ranges.append(padded(activeRange))
+                }
+                activeRange = TranscriptSourceRange(
+                    mediaID: word.mediaID,
+                    start: word.start,
+                    end: word.end
+                )
+            }
+        }
+
+        if let activeRange {
+            ranges.append(padded(activeRange))
+        }
+        return ranges
+    }
+}
+
 struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     var id: UUID
     var mediaID: UUID

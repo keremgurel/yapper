@@ -952,13 +952,19 @@ private struct QuickAction: View {
 
 private struct TranscriptWorkbench: View {
     @ObservedObject var session: EditorSession
-    @State private var selectedWordID: UUID?
+    @State private var selection = TranscriptWordSelection()
     @State private var lastAutoScrollIndex: Int?
+    @State private var isApplyingSelection = false
 
     private var words: [TranscriptWord] { session.project.transcript ?? [] }
-    private var selectedWord: TranscriptWord? {
-        guard let selectedWordID else { return nil }
-        return words.first { $0.id == selectedWordID }
+    private var selectedWords: [TranscriptWord] {
+        words.filter { selection.wordIDs.contains($0.id) }
+    }
+    private var selectedKeptWords: [TranscriptWord] {
+        selectedWords.filter { session.project.isWordKept($0) }
+    }
+    private var selectedDeletedWords: [TranscriptWord] {
+        selectedWords.filter { !session.project.isWordKept($0) }
     }
 
     var body: some View {
@@ -979,39 +985,8 @@ private struct TranscriptWorkbench: View {
                 .disabled(session.isAIEditing || session.project.clips.isEmpty)
             }
 
-            if let selectedWord {
-                let kept = session.project.isWordKept(selectedWord)
-                HStack(spacing: 10) {
-                    Text("\u{201c}\(selectedWord.text)\u{201d}")
-                        .font(.studioCaptionStrong)
-                        .lineLimit(1)
-                    Text(formatTranscriptTime(selectedWord.start))
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 8)
-                    Button {
-                        Task {
-                            if kept {
-                                await session.deleteTranscriptWord(selectedWord)
-                            } else {
-                                await session.restoreTranscriptWord(selectedWord)
-                            }
-                        }
-                    } label: {
-                        Label(kept ? "Delete word" : "Restore word", systemImage: kept ? "trash" : "arrow.uturn.backward")
-                    }
-                    .buttonStyle(EditorSecondaryButtonStyle())
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.045))
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .stroke(Color.studioLine, lineWidth: 1)
-                }
-            } else if !words.isEmpty {
-                Text("Click any word to seek. Select it to delete or restore its original audio.")
+            if !words.isEmpty {
+                Text("Click to select & seek  ·  Shift-click a range  ·  ⌘-click to add or remove  ·  select crossed-out words to restore")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
@@ -1030,30 +1005,37 @@ private struct TranscriptWorkbench: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollViewReader { proxy in
-                    ScrollView {
-                        TranscriptFlowLayout(spacing: 6) {
-                            ForEach(words) { word in
-                                let kept = session.project.isWordKept(word)
-                                let active = playbackWordID == word.id
-                                Button {
-                                    selectedWordID = word.id
-                                    session.seekToTranscriptWord(word)
-                                } label: {
-                                    Text(word.text)
-                                        .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
-                                        .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
-                                        .strikethrough(!kept, color: Color.secondary)
-                                        .padding(.horizontal, 3)
-                                        .padding(.vertical, 3)
-                                        .background(wordBackground(wordID: word.id, active: active))
-                                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    ZStack(alignment: .bottom) {
+                        ScrollView {
+                            TranscriptFlowLayout(spacing: 6) {
+                                ForEach(words) { word in
+                                    let kept = session.project.isWordKept(word)
+                                    let active = playbackWordID == word.id
+                                    Button {
+                                        select(word, kept: kept)
+                                    } label: {
+                                        Text(word.text)
+                                            .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
+                                            .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
+                                            .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
+                                            .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
+                                            .padding(.horizontal, 3)
+                                            .padding(.vertical, 3)
+                                            .background(wordBackground(wordID: word.id, kept: kept, active: active))
+                                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(kept ? "Select and seek to \(word.text)" : "Select deleted word to restore")
+                                    .id(word.id)
                                 }
-                                .buttonStyle(.plain)
-                                .help(kept ? "Seek to \(word.text)" : "Select deleted word to restore")
-                                .id(word.id)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.bottom, selection.wordIDs.isEmpty ? 0 : 58)
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if !selection.wordIDs.isEmpty {
+                            selectionBar
+                        }
                     }
                     .onChange(of: playbackWordID) { _, wordID in
                         guard session.isPlaying,
@@ -1071,10 +1053,108 @@ private struct TranscriptWorkbench: View {
         .inspectorPane(maxWidth: 760)
     }
 
-    private func wordBackground(wordID: UUID, active: Bool) -> Color {
-        if active { return Color.cyan.opacity(0.24) }
-        if selectedWordID == wordID { return Color.yapperOrange.opacity(0.18) }
+    private var selectionBar: some View {
+        HStack(spacing: 6) {
+            Text("\(selection.wordIDs.count) selected")
+                .font(.studioCaptionStrong)
+                .padding(.horizontal, 6)
+
+            if !selectedDeletedWords.isEmpty {
+                Button {
+                    applyRestore()
+                } label: {
+                    Label("Restore \(selectedDeletedWords.count)", systemImage: "arrow.uturn.backward")
+                }
+                .buttonStyle(TranscriptActionButtonStyle(tint: .green))
+            }
+
+            if !selectedKeptWords.isEmpty {
+                Button {
+                    applyDelete()
+                } label: {
+                    Label("Delete \(selectedKeptWords.count)", systemImage: "trash")
+                }
+                .buttonStyle(TranscriptActionButtonStyle(tint: .red))
+            }
+
+            Button("Clear") {
+                selection.clear()
+            }
+            .buttonStyle(TranscriptActionButtonStyle(tint: .secondary))
+        }
+        .disabled(isApplyingSelection)
+        .padding(6)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .stroke(Color.studioLine, lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.24), radius: 12, y: 4)
+        .padding(.bottom, 10)
+    }
+
+    private func select(_ word: TranscriptWord, kept: Bool) {
+        let modifiers = NSApp.currentEvent?.modifierFlags ?? []
+        selection.select(
+            word.id,
+            orderedWordIDs: words.map(\.id),
+            extendingRange: modifiers.contains(.shift),
+            toggling: modifiers.contains(.command) || modifiers.contains(.control)
+        )
+        if kept && !modifiers.contains(.shift) && !modifiers.contains(.command) && !modifiers.contains(.control) {
+            session.seekToTranscriptWord(word)
+        }
+    }
+
+    private func applyDelete() {
+        let words = selectedKeptWords
+        guard !words.isEmpty else { return }
+        isApplyingSelection = true
+        Task {
+            await session.deleteTranscriptWords(words)
+            selection.clear()
+            isApplyingSelection = false
+        }
+    }
+
+    private func applyRestore() {
+        let words = selectedDeletedWords
+        guard !words.isEmpty else { return }
+        isApplyingSelection = true
+        Task {
+            await session.restoreTranscriptWords(words)
+            selection.clear()
+            isApplyingSelection = false
+        }
+    }
+
+    private func wordForeground(wordID: UUID, kept: Bool) -> Color {
+        if selection.wordIDs.contains(wordID) { return .white }
+        return kept ? .primary : .secondary.opacity(0.58)
+    }
+
+    private func wordBackground(wordID: UUID, kept: Bool, active: Bool) -> Color {
+        if selection.wordIDs.contains(wordID) {
+            return kept ? Color.red.opacity(0.72) : Color.green.opacity(0.68)
+        }
+        if active { return Color.cyan.opacity(0.20) }
         return Color.clear
+    }
+}
+
+private struct TranscriptActionButtonStyle: ButtonStyle {
+    let tint: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.studioCaptionStrong)
+            .foregroundStyle(tint == .secondary ? Color.primary : Color.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(tint.opacity(tint == .secondary ? 0.12 : configuration.isPressed ? 0.66 : 0.82))
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .contentShape(Rectangle())
     }
 }
 

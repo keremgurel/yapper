@@ -66,6 +66,77 @@ struct EditorProjectTests {
         #expect(project.transcriptWord(at: 4)?.id != deleted.id)
     }
 
+    @Test func transcriptSelectionMatchesWebRangeAndAdditiveGestures() {
+        let ids = (0..<6).map { _ in UUID() }
+        var selection = TranscriptWordSelection()
+
+        selection.select(ids[1], orderedWordIDs: ids, extendingRange: false, toggling: false)
+        #expect(selection.wordIDs == [ids[1]])
+        #expect(selection.anchorID == ids[1])
+
+        selection.select(ids[4], orderedWordIDs: ids, extendingRange: true, toggling: false)
+        #expect(selection.wordIDs == Set(ids[1...4]))
+        #expect(selection.anchorID == ids[1])
+
+        selection.select(ids[0], orderedWordIDs: ids, extendingRange: false, toggling: true)
+        #expect(selection.wordIDs == Set([ids[0], ids[1], ids[2], ids[3], ids[4]]))
+        #expect(selection.anchorID == ids[0])
+
+        selection.select(ids[2], orderedWordIDs: ids, extendingRange: false, toggling: true)
+        #expect(!selection.wordIDs.contains(ids[2]))
+        #expect(selection.anchorID == ids[2])
+
+        selection.clear()
+        #expect(selection.wordIDs.isEmpty)
+        #expect(selection.anchorID == nil)
+    }
+
+    @Test func transcriptSelectionBuildsContiguousPaddedSourceRanges() {
+        let firstMediaID = UUID()
+        let secondMediaID = UUID()
+        let words = [
+            TranscriptWord(mediaID: firstMediaID, text: "one", start: 0.2, end: 0.5),
+            TranscriptWord(mediaID: firstMediaID, text: "two", start: 0.6, end: 0.9),
+            TranscriptWord(mediaID: firstMediaID, text: "three", start: 1.0, end: 1.3),
+            TranscriptWord(mediaID: secondMediaID, text: "four", start: 0, end: 0.3),
+        ]
+        let selected = Set([words[0].id, words[1].id, words[3].id])
+
+        let ranges = TranscriptWordSelection.sourceRanges(
+            for: selected,
+            in: words,
+            padding: 0.025
+        )
+
+        #expect(ranges.count == 2)
+        #expect(ranges[0].mediaID == firstMediaID)
+        #expect(abs(ranges[0].start - 0.175) < 0.000_001)
+        #expect(abs(ranges[0].end - 0.925) < 0.000_001)
+        #expect(ranges[1].mediaID == secondMediaID)
+        #expect(abs(ranges[1].start) < 0.000_001)
+        #expect(abs(ranges[1].end - 0.325) < 0.000_001)
+    }
+
+    @Test func nonAdjacentTranscriptSelectionsRemainSeparateCuts() {
+        let mediaID = UUID()
+        let words = [
+            TranscriptWord(mediaID: mediaID, text: "one", start: 0, end: 0.2),
+            TranscriptWord(mediaID: mediaID, text: "two", start: 0.3, end: 0.5),
+            TranscriptWord(mediaID: mediaID, text: "three", start: 0.6, end: 0.8),
+        ]
+
+        let ranges = TranscriptWordSelection.sourceRanges(
+            for: Set([words[0].id, words[2].id]),
+            in: words,
+            padding: 0
+        )
+
+        #expect(ranges == [
+            TranscriptSourceRange(mediaID: mediaID, start: 0, end: 0.2),
+            TranscriptSourceRange(mediaID: mediaID, start: 0.6, end: 0.8),
+        ])
+    }
+
     @Test func deletedTranscriptAudioCanBeRestoredAndCoalescesCleanly() {
         let mediaID = UUID()
         var project = EditorProject(clips: [
