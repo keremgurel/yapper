@@ -16,7 +16,7 @@ final class EditorSession: ObservableObject {
     @Published private(set) var errorMessage: String?
     @Published private(set) var waveformByMedia: [UUID: [Float]] = [:]
     @Published private(set) var waveformProgressByMedia: [UUID: Double] = [:]
-    @Published private(set) var thumbnailByMedia: [UUID: CGImage] = [:]
+    @Published private(set) var thumbnailsByMedia: [UUID: [CGImage]] = [:]
 
     let player = AVPlayer()
 
@@ -104,6 +104,12 @@ final class EditorSession: ObservableObject {
             playWhenSeekFinishes = true
             seek(to: currentTime, exact: false, playAfter: true)
         }
+    }
+
+    func pausePlayback() {
+        player.pause()
+        isPlaying = false
+        playWhenSeekFinishes = false
     }
 
     func scrub(to time: Double) {
@@ -262,8 +268,9 @@ final class EditorSession: ObservableObject {
     private func beginDerivedMedia(for media: ProjectMedia) {
         Task {
             do {
-                let image = try await thumbnailService.thumbnail(for: media)
-                thumbnailByMedia[media.id] = image
+                _ = try await thumbnailService.thumbnails(for: media) { [weak self] images in
+                    self?.thumbnailsByMedia[media.id] = images
+                }
             } catch {
                 // The editor is usable without a thumbnail.
             }

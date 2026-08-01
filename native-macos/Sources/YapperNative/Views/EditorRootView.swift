@@ -2,11 +2,14 @@ import SwiftUI
 
 struct EditorRootView: View {
     @ObservedObject var session: EditorSession
+    var embedded = false
 
     var body: some View {
         VStack(spacing: 0) {
-            EditorHeader(session: session)
-            Divider().overlay(Color.white.opacity(0.08))
+            if !embedded {
+                EditorHeader(session: session)
+                Divider().overlay(Color.white.opacity(0.08))
+            }
             HSplitView {
                 WorkbenchPanel(session: session)
                     .frame(minWidth: 330, idealWidth: 430, maxWidth: 720)

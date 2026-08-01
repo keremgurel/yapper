@@ -6,7 +6,7 @@ struct YapperNativeApp: App {
 
     var body: some Scene {
         WindowGroup("Yapper Studio Native") {
-            EditorRootView(session: session)
+            AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(.dark)
         }

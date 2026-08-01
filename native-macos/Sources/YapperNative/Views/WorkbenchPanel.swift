@@ -120,7 +120,7 @@ private struct MediaWorkbench: View {
                         ForEach(session.project.media) { media in
                             HStack(spacing: 10) {
                                 Group {
-                                    if let image = session.thumbnailByMedia[media.id] {
+                                    if let image = session.thumbnailsByMedia[media.id]?.first {
                                         Image(decorative: image, scale: 1)
                                             .resizable()
                                             .scaledToFill()

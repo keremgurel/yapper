@@ -28,16 +28,21 @@ struct TimelinePanel: View {
 
             GeometryReader { proxy in
                 let contentWidth = max(
-                    proxy.size.width - 28,
+                    proxy.size.width - 86,
                     session.duration * pointsPerSecond
                 )
-                ScrollView(.horizontal, showsIndicators: true) {
-                    TimelineContent(
-                        session: session,
-                        contentWidth: contentWidth
-                    )
-                    .frame(width: contentWidth, height: max(170, proxy.size.height - 12))
-                    .padding(.horizontal, 14)
+                HStack(spacing: 0) {
+                    TrackHeader()
+                        .frame(width: 70)
+                    Rectangle().fill(Color.white.opacity(0.07)).frame(width: 1)
+                    ScrollView(.horizontal, showsIndicators: true) {
+                        TimelineContent(
+                            session: session,
+                            contentWidth: contentWidth
+                        )
+                        .frame(width: contentWidth, height: max(170, proxy.size.height - 12))
+                        .padding(.horizontal, 10)
+                    }
                 }
             }
         }
@@ -64,7 +69,7 @@ private struct TimelineContent: View {
                         TimelineClipCell(
                             clip: clip,
                             media: media,
-                            thumbnail: session.thumbnailByMedia[media.id],
+                            thumbnails: session.thumbnailsByMedia[media.id] ?? [],
                             peaks: session.waveformByMedia[media.id] ?? [],
                             selected: session.selectedClipID == clip.id
                         )
@@ -73,14 +78,14 @@ private struct TimelineContent: View {
                                 3,
                                 contentWidth * clip.duration / max(0.001, session.duration)
                             ),
-                            height: 100
+                            height: 88
                         )
                         .onTapGesture { session.select(clip.id) }
                     }
                 }
             }
             .fixedSize(horizontal: true, vertical: true)
-            .frame(height: 100, alignment: .top)
+            .frame(height: 88, alignment: .top)
             .offset(y: 45)
 
             if session.duration > 0 {
@@ -91,7 +96,7 @@ private struct TimelineContent: View {
                 )
                 Rectangle()
                     .fill(Color.red)
-                    .frame(width: 1.5, height: 145)
+                    .frame(width: 1.25, height: 133)
                     .overlay(alignment: .top) {
                         Circle().fill(Color.red).frame(width: 8, height: 8)
                     }
@@ -170,7 +175,7 @@ private struct TimelineRuler: View {
 private struct TimelineClipCell: View {
     let clip: TimelineClip
     let media: ProjectMedia
-    let thumbnail: CGImage?
+    let thumbnails: [CGImage]
     let peaks: [Float]
     let selected: Bool
 
@@ -178,10 +183,13 @@ private struct TimelineClipCell: View {
         GeometryReader { proxy in
             ZStack {
                 Color(red: 0.12, green: 0.15, blue: 0.16)
-                if let thumbnail {
+                if !thumbnails.isEmpty {
                     StableThumbnailStrip(
-                        thumbnail: thumbnail,
-                        width: proxy.size.width
+                        thumbnails: thumbnails,
+                        width: proxy.size.width,
+                        sourceStart: clip.sourceStart,
+                        sourceEnd: clip.sourceEnd,
+                        mediaDuration: media.duration
                     )
                     .opacity(0.72)
                 }
@@ -194,7 +202,9 @@ private struct TimelineClipCell: View {
                     peaks: slicedPeaks(),
                     color: .cyan.opacity(0.95)
                 )
-                .frame(height: 36)
+                .padding(.horizontal, 2)
+                .padding(.bottom, 2)
+                .frame(height: 30)
                 .frame(maxHeight: .infinity, alignment: .bottom)
 
                 Text(media.name)
@@ -225,22 +235,26 @@ private struct TimelineClipCell: View {
 }
 
 private struct StableThumbnailStrip: View {
-    let thumbnail: CGImage
+    let thumbnails: [CGImage]
     let width: CGFloat
+    let sourceStart: Double
+    let sourceEnd: Double
+    let mediaDuration: Double
 
     private let tileWidth: CGFloat = 74
 
     var body: some View {
         HStack(spacing: 1) {
-            ForEach(0 ..< tileCount, id: \.self) { _ in
-                Image(decorative: thumbnail, scale: 1)
+            ForEach(0 ..< tileCount, id: \.self) { tile in
+                let index = thumbnailIndex(for: tile)
+                Image(decorative: thumbnails[index], scale: 1)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: tileWidth, height: 100)
+                    .frame(width: tileWidth, height: 88)
                     .clipped()
             }
         }
-        .frame(width: width, height: 100, alignment: .leading)
+        .frame(width: width, height: 88, alignment: .leading)
         .clipped()
     }
 
@@ -248,6 +262,33 @@ private struct StableThumbnailStrip: View {
         // Keep thumbnails a constant visual size while zooming. This avoids the
         // stretched/cropped strip that made clips appear to resize at each zoom.
         max(1, min(1_200, Int(ceil(width / (tileWidth + 1)))))
+    }
+
+    private func thumbnailIndex(for tile: Int) -> Int {
+        guard thumbnails.count > 1, mediaDuration > 0 else { return 0 }
+        let tileFraction = (Double(tile) + 0.5) / Double(tileCount)
+        let sourceTime = sourceStart + max(0, sourceEnd - sourceStart) * tileFraction
+        let mediaFraction = min(0.999, max(0, sourceTime / mediaDuration))
+        return min(thumbnails.count - 1, Int(mediaFraction * Double(thumbnails.count)))
+    }
+}
+
+private struct TrackHeader: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: 38)
+            HStack(spacing: 7) {
+                Image(systemName: "eye")
+                Image(systemName: "speaker.wave.2")
+                Image(systemName: "lock.open")
+            }
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, minHeight: 88)
+            .background(Color.white.opacity(0.025))
+            Spacer()
+        }
+        .background(Color.panelBackground.opacity(0.72))
     }
 }
 
