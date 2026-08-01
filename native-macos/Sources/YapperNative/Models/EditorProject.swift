@@ -314,6 +314,26 @@ struct EditorProject: Codable, Equatable, Sendable {
         }
     }
 
+    func transcriptWord(at timelineTime: Double) -> TranscriptWord? {
+        guard let hit = clip(at: timelineTime), clips.indices.contains(hit.index) else { return nil }
+        let clip = clips[hit.index]
+        let sourceTime = hit.sourceTime
+        var nearest: TranscriptWord?
+        var nearestDistance = Double.greatestFiniteMagnitude
+        for word in transcript ?? [] where word.mediaID == clip.mediaID {
+            guard word.midpoint >= clip.sourceStart, word.midpoint <= clip.sourceEnd else { continue }
+            if sourceTime >= word.start - 0.025, sourceTime <= word.end + 0.025 {
+                return word
+            }
+            let distance = abs(word.midpoint - sourceTime)
+            if distance < nearestDistance {
+                nearest = word
+                nearestDistance = distance
+            }
+        }
+        return nearestDistance <= 0.16 ? nearest : nil
+    }
+
     mutating func removeSourceRanges(_ ranges: [(Double, Double)], for mediaID: UUID) {
         guard !ranges.isEmpty else { return }
         let merged = Self.merge(ranges)

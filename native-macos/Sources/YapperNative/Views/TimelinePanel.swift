@@ -827,43 +827,67 @@ private struct TimelineTextLayerCell: View {
     let selected: Bool
     @State private var trimOrigin: ProjectTextLayer?
     @State private var trimDraft: ProjectTextLayer?
+    @State private var moveOrigin: ProjectTextLayer?
+    @State private var moveDraft: ProjectTextLayer?
     @State private var activeTrimEdge: HorizontalEdge?
 
     var body: some View {
-        let displayed = trimDraft ?? layer
+        let displayed = trimDraft ?? moveDraft ?? layer
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
         let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
-        Button {
-            session.selectTextLayer(displayed.id)
-        } label: {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
-                .overlay(alignment: .leading) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "textformat")
-                        Text(displayed.text.isEmpty ? "Text" : displayed.text).lineLimit(1)
-                    }
-                    .font(.studioCaptionStrong)
-                    .padding(.horizontal, selected ? 11 : 7)
+        RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
+            .overlay(alignment: .leading) {
+                HStack(spacing: 5) {
+                    Image(systemName: "textformat")
+                    Text(displayed.text.isEmpty ? "Text" : displayed.text).lineLimit(1)
                 }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(
-                            selected ? Color.yapperOrange.opacity(0.92) : Color.secondary.opacity(0.42),
-                            lineWidth: selected ? 1.15 : 0.7
+                .font(.studioCaptionStrong)
+                .padding(.horizontal, selected ? 11 : 7)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(
+                        selected ? Color.yapperOrange.opacity(0.92) : Color.secondary.opacity(0.42),
+                        lineWidth: selected ? 1.15 : 0.7
+                    )
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { session.selectTextLayer(displayed.id) }
+            .frame(width: width, height: 42)
+            .clipped()
+            .gesture(
+                DragGesture(
+                    minimumDistance: 2,
+                    coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+                )
+                    .onChanged { value in
+                        guard activeTrimEdge == nil else { return }
+                        if moveOrigin == nil {
+                            moveOrigin = layer
+                            session.selectTextLayer(layer.id)
+                        }
+                        guard let moveOrigin else { return }
+                        moveDraft = TimelineTextGeometry.moved(
+                            layer: moveOrigin,
+                            translationX: value.location.x - value.startLocation.x,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
                         )
-                }
-        }
-        .buttonStyle(.plain)
-        .frame(width: width, height: 42)
-        .clipped()
-        .overlay(alignment: .leading) {
-            if selected { trimHandle(edge: .leading) }
-        }
-        .overlay(alignment: .trailing) {
-            if selected { trimHandle(edge: .trailing) }
-        }
-        .offset(x: startX, y: rowY)
+                    }
+                    .onEnded { _ in
+                        if let moveDraft { session.updateTextLayer(moveDraft) }
+                        moveDraft = nil
+                        moveOrigin = nil
+                    }
+            )
+            .overlay(alignment: .leading) {
+                if selected { trimHandle(edge: .leading) }
+            }
+            .overlay(alignment: .trailing) {
+                if selected { trimHandle(edge: .trailing) }
+            }
+            .offset(x: startX, y: rowY)
     }
 
     private func trimHandle(edge: HorizontalEdge) -> some View {
@@ -910,6 +934,26 @@ private struct TimelineTextLayerCell: View {
 }
 
 enum TimelineTextGeometry {
+    static func moved(
+        layer: ProjectTextLayer,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectTextLayer {
+        var updated = layer
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
+        updated.timelineStart = min(
+            max(0, projectDuration - layer.duration),
+            max(0, layer.timelineStart + delta)
+        )
+        return updated
+    }
+
     static func trimmed(
         layer: ProjectTextLayer,
         edge: HorizontalEdge,

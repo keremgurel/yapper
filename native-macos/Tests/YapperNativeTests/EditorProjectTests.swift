@@ -48,6 +48,24 @@ struct EditorProjectTests {
         #expect(project.nearestTimelineTime(for: deleted) == 2)
     }
 
+    @Test func activeTranscriptWordFollowsEditedTimelineAcrossCuts() {
+        let mediaID = UUID()
+        let first = TranscriptWord(mediaID: mediaID, text: "first", start: 0.8, end: 1.2)
+        let deleted = TranscriptWord(mediaID: mediaID, text: "deleted", start: 4, end: 4.4)
+        let second = TranscriptWord(mediaID: mediaID, text: "second", start: 8.1, end: 8.5)
+        let project = EditorProject(
+            clips: [
+                TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 2),
+                TimelineClip(mediaID: mediaID, sourceStart: 8, sourceEnd: 12),
+            ],
+            transcript: [first, deleted, second]
+        )
+
+        #expect(project.transcriptWord(at: 1)?.id == first.id)
+        #expect(project.transcriptWord(at: 2.3)?.id == second.id)
+        #expect(project.transcriptWord(at: 4)?.id != deleted.id)
+    }
+
     @Test func deletedTranscriptAudioCanBeRestoredAndCoalescesCleanly() {
         let mediaID = UUID()
         var project = EditorProject(clips: [
@@ -229,6 +247,26 @@ struct EditorProjectTests {
         )
         #expect(earlier.timelineStart == 1)
         #expect(earlier.duration == 5)
+    }
+
+    @Test func timelineTextBodyTracksPointerExactlyAndClampsToTheProject() {
+        let layer = ProjectTextLayer(text: "Move me", timelineStart: 2, duration: 3)
+        let moved = TimelineTextGeometry.moved(
+            layer: layer,
+            translationX: 150,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(moved.timelineStart == 3.5)
+        #expect(moved.duration == layer.duration)
+
+        let clamped = TimelineTextGeometry.moved(
+            layer: layer,
+            translationX: 2_000,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(clamped.timelineStart == 7)
     }
 
     @Test func timelineVideoEdgesTrimAndRecoverSourceFrames() {

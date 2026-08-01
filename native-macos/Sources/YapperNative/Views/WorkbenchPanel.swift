@@ -953,6 +953,7 @@ private struct QuickAction: View {
 private struct TranscriptWorkbench: View {
     @ObservedObject var session: EditorSession
     @State private var selectedWordID: UUID?
+    @State private var lastAutoScrollIndex: Int?
 
     private var words: [TranscriptWord] { session.project.transcript ?? [] }
     private var selectedWord: TranscriptWord? {
@@ -961,6 +962,7 @@ private struct TranscriptWorkbench: View {
     }
 
     var body: some View {
+        let playbackWordID = session.project.transcriptWord(at: session.currentTime)?.id
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
@@ -1027,37 +1029,52 @@ private struct TranscriptWorkbench: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    TranscriptFlowLayout(spacing: 6) {
-                        ForEach(words) { word in
-                            let kept = session.project.isWordKept(word)
-                            Button {
-                                selectedWordID = word.id
-                                session.seekToTranscriptWord(word)
-                            } label: {
-                                Text(word.text)
-                                    .font(.system(size: 14, weight: kept ? .medium : .regular))
-                                    .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
-                                    .strikethrough(!kept, color: Color.secondary)
-                                    .padding(.horizontal, 3)
-                                    .padding(.vertical, 3)
-                                    .background(
-                                        selectedWordID == word.id
-                                            ? Color.yapperOrange.opacity(0.18)
-                                            : Color.clear
-                                    )
-                                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        TranscriptFlowLayout(spacing: 6) {
+                            ForEach(words) { word in
+                                let kept = session.project.isWordKept(word)
+                                let active = playbackWordID == word.id
+                                Button {
+                                    selectedWordID = word.id
+                                    session.seekToTranscriptWord(word)
+                                } label: {
+                                    Text(word.text)
+                                        .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
+                                        .foregroundStyle(kept ? Color.primary : Color.secondary.opacity(0.58))
+                                        .strikethrough(!kept, color: Color.secondary)
+                                        .padding(.horizontal, 3)
+                                        .padding(.vertical, 3)
+                                        .background(wordBackground(wordID: word.id, active: active))
+                                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .help(kept ? "Seek to \(word.text)" : "Select deleted word to restore")
+                                .id(word.id)
                             }
-                            .buttonStyle(.plain)
-                            .help(kept ? "Seek to \(word.text)" : "Select deleted word to restore")
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onChange(of: playbackWordID) { _, wordID in
+                        guard session.isPlaying,
+                              let wordID,
+                              let index = words.firstIndex(where: { $0.id == wordID })
+                        else { return }
+                        if let lastAutoScrollIndex, abs(index - lastAutoScrollIndex) < 10 { return }
+                        lastAutoScrollIndex = index
+                        proxy.scrollTo(wordID, anchor: .center)
+                    }
                 }
             }
         }
         .padding(16)
         .inspectorPane(maxWidth: 760)
+    }
+
+    private func wordBackground(wordID: UUID, active: Bool) -> Color {
+        if active { return Color.cyan.opacity(0.24) }
+        if selectedWordID == wordID { return Color.yapperOrange.opacity(0.18) }
+        return Color.clear
     }
 }
 
