@@ -60,7 +60,11 @@ export async function fetchPlatformVideos(platform: PublishPlatform): Promise<{
   videos: PlatformVideo[];
 }> {
   try {
-    const res = await fetch(`/api/publish/${platform}/videos`);
+    // Channel libraries are live provider data. Never let the browser reuse a
+    // response after the creator has published something in another app.
+    const res = await fetch(`/api/publish/${platform}/videos`, {
+      cache: "no-store",
+    });
     if (!res.ok) return { connected: false, videos: [] };
     return (await res.json()) as {
       connected: boolean;

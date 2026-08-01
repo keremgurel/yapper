@@ -81,7 +81,10 @@ export async function listInstagramVideos(
   const url = `${GRAPH}/me/media?fields=${fields}&limit=${max}&access_token=${encodeURIComponent(
     accessToken,
   )}`;
-  const res = await fetch(url);
+  // This list changes outside Yapper whenever the creator posts in Instagram.
+  // Always ask Graph for the current first page instead of reusing a cached
+  // provider response.
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`instagram_media_${res.status}`);
   const json = (await res.json()) as { data?: InstagramMedia[] };
   const videos = mapInstagramMedia(json.data ?? []);
@@ -105,7 +108,7 @@ async function fetchViewCount(
     const url = `${GRAPH}/${mediaId}/insights?metric=views&access_token=${encodeURIComponent(
       accessToken,
     )}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) return 0;
     const json = (await res.json()) as {
       data?: { values?: { value?: number }[] }[];

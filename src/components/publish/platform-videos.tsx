@@ -9,6 +9,7 @@ import {
   ExternalLink,
   HardDrive,
   Loader2,
+  RefreshCw,
   Send,
 } from "lucide-react";
 import CrossPostSheet, {
@@ -55,7 +56,11 @@ export default function PlatformVideos() {
   const [targets, setTargets] = useState<CrossPostTarget[] | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [prepareError, setPrepareError] = useState("");
-  const { videos, connected } = usePlatformVideos(platform, !!isSignedIn, sort);
+  const { videos, connected, refreshing, refresh } = usePlatformVideos(
+    platform,
+    !!isSignedIn,
+    sort,
+  );
   const { connections } = useConnections(!!isSignedIn);
   const connectedPlatforms = new Set(
     connections
@@ -195,22 +200,37 @@ export default function PlatformVideos() {
             </button>
           ))}
         </div>
-        <div className="border-border bg-background flex rounded-lg border p-1">
-          {(["recent", "views"] as VideoSort[]).map((candidate) => (
-            <button
-              key={candidate}
-              type="button"
-              onClick={() => setSort(candidate)}
-              aria-pressed={sort === candidate}
-              className={`rounded-md px-2.5 py-1.5 text-[11px] font-bold transition ${
-                sort === candidate
-                  ? "text-foreground bg-muted"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {candidate === "recent" ? "Recent" : "Most viewed"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="border-border bg-background flex rounded-lg border p-1">
+            {(["recent", "views"] as VideoSort[]).map((candidate) => (
+              <button
+                key={candidate}
+                type="button"
+                onClick={() => setSort(candidate)}
+                aria-pressed={sort === candidate}
+                className={`rounded-md px-2.5 py-1.5 text-[11px] font-bold transition ${
+                  sort === candidate
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {candidate === "recent" ? "Recent" : "Most viewed"}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            disabled={!isSignedIn || refreshing}
+            className="border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground inline-flex items-center gap-1.5 rounded-md border px-2.5 py-2 text-[11px] font-black transition disabled:opacity-50"
+            aria-label={`Refresh ${PLATFORMS[platform].label} videos`}
+            title={`Refresh ${PLATFORMS[platform].label} videos`}
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
         </div>
       </div>
 
