@@ -10,6 +10,7 @@ import { EditorLayoutProvider } from "@/components/studio/editor-layout-context"
 import { consumePendingVideo } from "@/lib/studio/handoff";
 import { loadLinkedRecording } from "@/lib/studio/load-linked-recording";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
 
 /**
  * Imports are an Editor-page concern even though the resulting project lives
@@ -61,7 +62,9 @@ export default function StudioPage() {
           <SidebarInset className="flex min-h-0 flex-col overflow-hidden">
             <StudioHeader />
             <main className="flex min-h-0 flex-1 flex-col">
-              <StudioWorkspace />
+              <StudioContentFrame className="flex min-h-0 flex-1 flex-col">
+                <StudioWorkspace />
+              </StudioContentFrame>
             </main>
           </SidebarInset>
         </SidebarProvider>

@@ -208,6 +208,10 @@
   --sg-display-tracking: var(--sg-tracking-tight);
   --sg-accent-glow: 0 6px 20px rgba(249, 115, 22, 0.28);
 
+  /* One workspace width across every Studio route. Dashboard pages and the
+   * full-height editor both consume this token through StudioContentFrame. */
+  --studio-content-max-width: 90rem;
+
   /* legacy var mapping (existing components inherit the new palette) */
   --background: var(--sg-bg);
   --foreground: var(--sg-text);
@@ -702,6 +706,12 @@
  * dividers) renders as the text color — harsh, inverted borders. Point the
  * default at the brand border token; explicit `border-*` utilities still win. */
 @layer base {
+  html {
+    /* Keep centered app frames from moving when a route gains or loses enough
+     * content to need a vertical scrollbar. Overlay scrollbars ignore this. */
+    scrollbar-gutter: stable;
+  }
+
   *,
   ::after,
   ::before,
