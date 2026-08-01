@@ -106,32 +106,12 @@ private struct TimelineContent: View {
                 ForEach(textLayers) { layer in
                     let startX = contentWidth * layer.timelineStart / max(0.001, session.duration)
                     let width = max(18, contentWidth * layer.duration / max(0.001, session.duration))
-                    Button {
-                        session.selectTextLayer(layer.id)
-                        session.scrub(to: layer.timelineStart)
-                        session.finishScrubbing(at: layer.timelineStart)
-                    } label: {
-                        RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
-                            .overlay(alignment: .leading) {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "textformat")
-                                    Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
-                                }
-                                .font(.studioCaptionStrong)
-                                .padding(.horizontal, 7)
-                            }
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .stroke(
-                                        session.selectedTextLayerID == layer.id
-                                            ? Color.yapperOrange.opacity(0.92)
-                                            : Color.secondary.opacity(0.42),
-                                        lineWidth: session.selectedTextLayerID == layer.id ? 1.15 : 0.7
-                                    )
-                            }
-                    }
-                        .buttonStyle(.plain)
+                    TimelineTextLayerCell(
+                        session: session,
+                        layer: layer,
+                        contentWidth: contentWidth,
+                        selected: session.selectedTextLayerID == layer.id
+                    )
                         .accessibilityLabel("Text layer: \(layer.text)")
                         .frame(width: width, height: 42)
                         .offset(x: startX, y: textRowY)
@@ -263,6 +243,111 @@ private struct TimelineContent: View {
                     )
                 )
             }
+    }
+}
+
+private struct TimelineTextLayerCell: View {
+    @ObservedObject var session: EditorSession
+    let layer: ProjectTextLayer
+    let contentWidth: Double
+    let selected: Bool
+    @State private var trimOrigin: ProjectTextLayer?
+
+    var body: some View {
+        Button {
+            session.selectTextLayer(layer.id)
+            session.scrub(to: layer.timelineStart)
+            session.finishScrubbing(at: layer.timelineStart)
+        } label: {
+            RoundedRectangle(cornerRadius: 5, style: .continuous)
+                .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
+                .overlay(alignment: .leading) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "textformat")
+                        Text(layer.text.isEmpty ? "Text" : layer.text).lineLimit(1)
+                    }
+                    .font(.studioCaptionStrong)
+                    .padding(.horizontal, selected ? 11 : 7)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .stroke(
+                            selected ? Color.yapperOrange.opacity(0.92) : Color.secondary.opacity(0.42),
+                            lineWidth: selected ? 1.15 : 0.7
+                        )
+                }
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .leading) {
+            if selected { trimHandle(edge: .leading) }
+        }
+        .overlay(alignment: .trailing) {
+            if selected { trimHandle(edge: .trailing) }
+        }
+    }
+
+    private func trimHandle(edge: HorizontalEdge) -> some View {
+        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+            .fill(Color.white.opacity(0.96))
+            .overlay {
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .stroke(Color.yapperOrange, lineWidth: 1)
+            }
+            .frame(width: 5, height: 28)
+            .padding(.horizontal, 2)
+            .contentShape(Rectangle().inset(by: -5))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if trimOrigin == nil {
+                            trimOrigin = layer
+                            session.selectTextLayer(layer.id)
+                        }
+                        guard let trimOrigin else { return }
+                        session.updateTextLayer(
+                            TimelineTextGeometry.trimmed(
+                                layer: trimOrigin,
+                                edge: edge,
+                                translationX: value.translation.width,
+                                contentWidth: contentWidth,
+                                projectDuration: session.duration
+                            )
+                        )
+                    }
+                    .onEnded { _ in trimOrigin = nil }
+            )
+            .help(edge == .leading ? "Trim text start" : "Extend or trim text end")
+    }
+}
+
+enum TimelineTextGeometry {
+    static func trimmed(
+        layer: ProjectTextLayer,
+        edge: HorizontalEdge,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectTextLayer {
+        var updated = layer
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = Double(translationX) / contentWidth * projectDuration
+        let minimumDuration = min(0.2, max(0.02, projectDuration))
+        switch edge {
+        case .leading:
+            let originalEnd = layer.timelineStart + layer.duration
+            let start = min(
+                originalEnd - minimumDuration,
+                max(0, layer.timelineStart + delta)
+            )
+            updated.timelineStart = start
+            updated.duration = originalEnd - start
+        case .trailing:
+            updated.duration = min(
+                max(minimumDuration, layer.duration + delta),
+                max(minimumDuration, projectDuration - layer.timelineStart)
+            )
+        }
+        return updated
     }
 }
 

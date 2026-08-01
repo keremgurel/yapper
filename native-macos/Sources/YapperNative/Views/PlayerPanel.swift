@@ -65,16 +65,24 @@ struct PlayerPanel: View {
 
 private struct TextLayerCanvasOverlay: View {
     @ObservedObject var session: EditorSession
+    @State private var alignmentGuides = TextCanvasAlignmentGuides()
 
     var body: some View {
         GeometryReader { proxy in
-            ForEach(visibleLayers) { layer in
-                TextLayerCanvasItem(
-                    session: session,
-                    layer: layer,
-                    canvasSize: proxy.size,
-                    selected: session.selectedTextLayerID == layer.id
-                )
+            ZStack {
+                ForEach(visibleLayers) { layer in
+                    TextLayerCanvasItem(
+                        session: session,
+                        layer: layer,
+                        canvasSize: proxy.size,
+                        selected: session.selectedTextLayerID == layer.id,
+                        alignmentGuides: $alignmentGuides
+                    )
+                }
+
+                TextCanvasGuideOverlay(guides: alignmentGuides)
+                    .allowsHitTesting(false)
+                    .zIndex(20)
             }
         }
     }
@@ -89,7 +97,9 @@ private struct TextLayerCanvasItem: View {
     let layer: ProjectTextLayer
     let canvasSize: CGSize
     let selected: Bool
+    @Binding var alignmentGuides: TextCanvasAlignmentGuides
     @State private var dragOrigin: CGPoint?
+    @State private var resizeOrigin: ProjectTextLayer?
 
     var body: some View {
         Text(layer.text.isEmpty ? "Text" : layer.text)
@@ -115,6 +125,18 @@ private struct TextLayerCanvasItem: View {
                         .padding(-4)
                 }
             }
+            .overlay(alignment: .topLeading) {
+                if selected { resizeHandle(.topLeading) }
+            }
+            .overlay(alignment: .topTrailing) {
+                if selected { resizeHandle(.topTrailing) }
+            }
+            .overlay(alignment: .bottomLeading) {
+                if selected { resizeHandle(.bottomLeading) }
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if selected { resizeHandle(.bottomTrailing) }
+            }
             .position(
                 x: canvasSize.width * layer.x,
                 y: canvasSize.height * layer.y
@@ -129,13 +151,51 @@ private struct TextLayerCanvasItem: View {
                             session.selectTextLayer(layer.id)
                         }
                         guard let dragOrigin else { return }
-                        var updated = layer
-                        updated.x = min(0.96, max(0.04, dragOrigin.x + value.translation.width / max(1, canvasSize.width)))
-                        updated.y = min(0.94, max(0.06, dragOrigin.y + value.translation.height / max(1, canvasSize.height)))
+                        let result = TextCanvasGeometry.moved(
+                            layer: layer,
+                            origin: dragOrigin,
+                            translation: value.translation,
+                            canvasSize: canvasSize
+                        )
+                        alignmentGuides = result.guides
+                        session.updateTextLayer(result.layer)
+                    }
+                    .onEnded { _ in
+                        dragOrigin = nil
+                        alignmentGuides = TextCanvasAlignmentGuides()
+                    }
+            )
+    }
+
+    private func resizeHandle(_ corner: TextResizeCorner) -> some View {
+        RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+            .fill(Color.white)
+            .overlay {
+                RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                    .stroke(Color.yapperOrange, lineWidth: 1.5)
+            }
+            .frame(width: 9, height: 9)
+            .offset(x: corner.xOffset, y: corner.yOffset)
+            .contentShape(Rectangle().inset(by: -7))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if resizeOrigin == nil {
+                            resizeOrigin = layer
+                            session.selectTextLayer(layer.id)
+                        }
+                        guard let resizeOrigin else { return }
+                        let updated = TextCanvasGeometry.resized(
+                            layer: resizeOrigin,
+                            translation: value.translation,
+                            corner: corner,
+                            canvasSize: canvasSize
+                        )
                         session.updateTextLayer(updated)
                     }
-                    .onEnded { _ in dragOrigin = nil }
+                    .onEnded { _ in resizeOrigin = nil }
             )
+            .accessibilityLabel("Resize text from \(corner.accessibilityName)")
     }
 
     private var previewFont: Font {
@@ -166,6 +226,145 @@ private struct TextLayerCanvasItem: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(Color.black.opacity(0.9))
         }
+    }
+}
+
+struct TextCanvasAlignmentGuides: Equatable {
+    var verticalCenter = false
+    var horizontalCenter = false
+}
+
+enum TextResizeCorner: Sendable {
+    case topLeading
+    case topTrailing
+    case bottomLeading
+    case bottomTrailing
+
+    var xSign: Double {
+        switch self {
+        case .topLeading, .bottomLeading: -1
+        case .topTrailing, .bottomTrailing: 1
+        }
+    }
+
+    var ySign: Double {
+        switch self {
+        case .topLeading, .topTrailing: -1
+        case .bottomLeading, .bottomTrailing: 1
+        }
+    }
+
+    var xOffset: CGFloat { CGFloat(xSign) * 7 }
+    var yOffset: CGFloat { CGFloat(ySign) * 7 }
+
+    var accessibilityName: String {
+        switch self {
+        case .topLeading: "top left"
+        case .topTrailing: "top right"
+        case .bottomLeading: "bottom left"
+        case .bottomTrailing: "bottom right"
+        }
+    }
+}
+
+enum TextCanvasGeometry {
+    static let snapThreshold: CGFloat = 8
+
+    static func moved(
+        layer: ProjectTextLayer,
+        origin: CGPoint,
+        translation: CGSize,
+        canvasSize: CGSize
+    ) -> (layer: ProjectTextLayer, guides: TextCanvasAlignmentGuides) {
+        var updated = layer
+        let width = max(1, canvasSize.width)
+        let height = max(1, canvasSize.height)
+        var x = min(0.96, max(0.04, origin.x + translation.width / width))
+        var y = min(0.94, max(0.06, origin.y + translation.height / height))
+        let verticalCenter = abs(x - 0.5) * width <= snapThreshold
+        let horizontalCenter = abs(y - 0.5) * height <= snapThreshold
+        if verticalCenter { x = 0.5 }
+        if horizontalCenter { y = 0.5 }
+        updated.x = x
+        updated.y = y
+        return (
+            updated,
+            TextCanvasAlignmentGuides(
+                verticalCenter: verticalCenter,
+                horizontalCenter: horizontalCenter
+            )
+        )
+    }
+
+    static func resized(
+        layer: ProjectTextLayer,
+        translation: CGSize,
+        corner: TextResizeCorner,
+        canvasSize: CGSize
+    ) -> ProjectTextLayer {
+        var updated = layer
+        let projected = (
+            Double(translation.width) * corner.xSign
+                + Double(translation.height) * corner.ySign
+        ) / 2
+        let referenceWidth = max(72, Double(canvasSize.width) * layer.width)
+        let scale = min(3.2, max(0.35, 1 + projected / referenceWidth))
+        let newWidth = min(0.95, max(0.16, layer.width * scale))
+        let newFontScale = min(0.16, max(0.018, layer.fontScale * scale))
+
+        // Keep the opposite corner visually anchored while the dragged corner moves.
+        updated.x = min(0.96, max(0.04, layer.x + (newWidth - layer.width) * corner.xSign / 2))
+        updated.y = min(
+            0.94,
+            max(0.06, layer.y + (newFontScale - layer.fontScale) * corner.ySign * 0.7)
+        )
+        updated.width = newWidth
+        updated.fontScale = newFontScale
+        return updated
+    }
+}
+
+private struct TextCanvasGuideOverlay: View {
+    let guides: TextCanvasAlignmentGuides
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack {
+                if guides.verticalCenter {
+                    DashedGuideLine(vertical: true)
+                        .frame(width: 1, height: proxy.size.height)
+                        .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                }
+                if guides.horizontalCenter {
+                    DashedGuideLine(vertical: false)
+                        .frame(width: proxy.size.width, height: 1)
+                        .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
+                }
+            }
+        }
+    }
+}
+
+private struct DashedGuideLine: View {
+    let vertical: Bool
+
+    var body: some View {
+        Canvas { context, size in
+            var path = Path()
+            if vertical {
+                path.move(to: CGPoint(x: size.width / 2, y: 0))
+                path.addLine(to: CGPoint(x: size.width / 2, y: size.height))
+            } else {
+                path.move(to: CGPoint(x: 0, y: size.height / 2))
+                path.addLine(to: CGPoint(x: size.width, y: size.height / 2))
+            }
+            context.stroke(
+                path,
+                with: .color(Color.cyan.opacity(0.92)),
+                style: StrokeStyle(lineWidth: 1, dash: [5, 4])
+            )
+        }
+        .shadow(color: .black.opacity(0.55), radius: 1)
     }
 }
 

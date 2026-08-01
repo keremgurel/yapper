@@ -106,4 +106,62 @@ struct EditorProjectTests {
         let restored = try JSONDecoder().decode(EditorProject.self, from: data)
         #expect(restored.audioLayers == [layer])
     }
+
+    @Test func canvasMoveSnapsTextToBothCenterGuides() {
+        let layer = ProjectTextLayer(text: "Centered", timelineStart: 0)
+        let result = TextCanvasGeometry.moved(
+            layer: layer,
+            origin: CGPoint(x: 0.3, y: 0.3),
+            translation: CGSize(width: 197, height: 97),
+            canvasSize: CGSize(width: 1_000, height: 500)
+        )
+        #expect(result.layer.x == 0.5)
+        #expect(result.layer.y == 0.5)
+        #expect(result.guides.verticalCenter)
+        #expect(result.guides.horizontalCenter)
+    }
+
+    @Test func cornerResizeChangesWidthAndFontScaleTogether() {
+        let layer = ProjectTextLayer(
+            text: "Resizable",
+            timelineStart: 0,
+            x: 0.5,
+            y: 0.5,
+            width: 0.5,
+            fontScale: 0.05
+        )
+        let enlarged = TextCanvasGeometry.resized(
+            layer: layer,
+            translation: CGSize(width: 120, height: 80),
+            corner: .bottomTrailing,
+            canvasSize: CGSize(width: 1_000, height: 600)
+        )
+        #expect(enlarged.width > layer.width)
+        #expect(enlarged.fontScale > layer.fontScale)
+        #expect(enlarged.x > layer.x)
+        #expect(enlarged.y > layer.y)
+    }
+
+    @Test func timelineTextEdgesTrimAndExtendDuration() {
+        let layer = ProjectTextLayer(text: "Hook", timelineStart: 2, duration: 4)
+        let extended = TimelineTextGeometry.trimmed(
+            layer: layer,
+            edge: .trailing,
+            translationX: 100,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(extended.timelineStart == 2)
+        #expect(extended.duration == 5)
+
+        let earlier = TimelineTextGeometry.trimmed(
+            layer: layer,
+            edge: .leading,
+            translationX: -100,
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+        #expect(earlier.timelineStart == 1)
+        #expect(earlier.duration == 5)
+    }
 }
