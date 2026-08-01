@@ -222,13 +222,19 @@ private struct TimelineContent: View {
 
         ZStack(alignment: .topLeading) {
             Color.editorBackground
+                .contentShape(Rectangle())
+                .gesture(emptySpaceSeekGesture)
+                .zIndex(0)
             TimelineRuler(duration: session.duration, width: contentWidth)
                 .frame(height: 34)
+                .allowsHitTesting(false)
+                .zIndex(1)
 
             TimelineVideoTrack(session: session, contentWidth: contentWidth)
             .fixedSize(horizontal: true, vertical: true)
             .frame(height: 88, alignment: .top)
             .offset(y: clipRowY)
+            .zIndex(2)
 
             if let textLayers = session.project.textLayers, !textLayers.isEmpty {
                 ForEach(textLayers) { layer in
@@ -290,21 +296,10 @@ private struct TimelineContent: View {
                     .zIndex(4)
             }
 
-            // Scrubbing belongs to the ruler and base media track. Keeping the
-            // scrub surface out of text/overlay rows lets those layers receive
-            // their own clicks, drags, and future trim handles.
-            Rectangle()
-                .fill(.clear)
-                .contentShape(Rectangle())
-                .frame(width: contentWidth, height: 20)
-                .offset(y: 25)
-                .zIndex(1)
-                .gesture(scrubGesture)
-
         }
     }
 
-    private var scrubGesture: some Gesture {
+    private var emptySpaceSeekGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
             .onChanged { value in
                 let time = TimelineMetrics.time(
@@ -312,9 +307,6 @@ private struct TimelineContent: View {
                     duration: session.duration,
                     width: contentWidth
                 )
-                if let hit = session.project.clip(at: time) {
-                    session.select(session.project.clips[hit.index].id)
-                }
                 session.scrub(to: time)
             }
             .onEnded { value in
@@ -344,7 +336,6 @@ private struct TimelineVideoTrack: View {
                         thumbnails: session.thumbnailsByMedia[media.id] ?? [],
                         peaks: session.waveformByMedia[media.id] ?? [],
                         waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
-                        timelineStart: session.project.timelineStart(of: clip.id) ?? 0,
                         contentWidth: contentWidth,
                         selected: session.selectedClipID == clip.id
                     )
@@ -361,7 +352,6 @@ private struct TimelineVideoClipItem: View {
     let thumbnails: [CGImage]
     let peaks: [Float]
     let waveformProgress: Double
-    let timelineStart: Double
     let contentWidth: Double
     let selected: Bool
     @State private var trimOrigin: TimelineClip?
@@ -384,7 +374,6 @@ private struct TimelineVideoClipItem: View {
         .frame(width: displayedWidth, height: 88)
         .contentShape(Rectangle())
         .onTapGesture { session.select(clip.id) }
-        .gesture(scrubGesture(displayed: displayed, displayedWidth: displayedWidth))
         .overlay(alignment: .leading) {
             if selected { trimHandle(edge: .leading) }
         }
@@ -425,21 +414,6 @@ private struct TimelineVideoClipItem: View {
                     }
             )
             .help(edge == .leading ? "Extend or trim clip start" : "Extend or trim clip end")
-    }
-
-    private func scrubGesture(displayed: TimelineClip, displayedWidth: Double) -> some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                guard trimOrigin == nil else { return }
-                session.select(clip.id)
-                let fraction = min(1, max(0, value.location.x / max(1, displayedWidth)))
-                session.scrub(to: timelineStart + displayed.duration * fraction)
-            }
-            .onEnded { value in
-                guard trimOrigin == nil else { return }
-                let fraction = min(1, max(0, value.location.x / max(1, displayedWidth)))
-                session.finishScrubbing(at: timelineStart + displayed.duration * fraction)
-            }
     }
 }
 
@@ -505,8 +479,6 @@ private struct TimelineOverlayItem: View {
         let width = max(12, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectOverlay(overlay.id)
-            session.scrub(to: displayed.timelineStart)
-            session.finishScrubbing(at: displayed.timelineStart)
         } label: {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(Color.yapperOrange.opacity(0.24))
@@ -577,8 +549,6 @@ private struct TimelineAudioItem: View {
         let width = max(24, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectAudioLayer(layer.id)
-            session.scrub(to: displayed.timelineStart)
-            session.finishScrubbing(at: displayed.timelineStart)
         } label: {
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -727,8 +697,6 @@ private struct TimelineTextLayerCell: View {
         let width = max(18, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
             session.selectTextLayer(displayed.id)
-            session.scrub(to: displayed.timelineStart)
-            session.finishScrubbing(at: displayed.timelineStart)
         } label: {
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))

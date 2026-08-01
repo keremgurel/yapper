@@ -241,4 +241,10 @@ struct EditorProjectTests {
         // The same 50% timeline position remains under x=200 after zooming.
         #expect((offset + 200) / 2_400 == 0.5)
     }
+
+    @Test func emptyTimelineSpaceMapsDirectlyToAClampedTimestamp() {
+        #expect(TimelineMetrics.time(for: 250, duration: 10, width: 1_000) == 2.5)
+        #expect(TimelineMetrics.time(for: -20, duration: 10, width: 1_000) == 0)
+        #expect(TimelineMetrics.time(for: 1_200, duration: 10, width: 1_000) == 10)
+    }
 }
