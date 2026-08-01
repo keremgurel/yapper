@@ -950,11 +950,39 @@ private struct QuickAction: View {
     }
 }
 
+private struct TranscriptPause: Identifiable {
+    let mediaID: UUID
+    let start: Double
+    let end: Double
+
+    var id: String { "pause-\(mediaID)-\(start)-\(end)" }
+    var duration: Double { max(0, end - start) }
+}
+
+private enum TranscriptFlowToken: Identifiable {
+    case word(TranscriptWord)
+    case pause(TranscriptPause)
+
+    var id: String {
+        switch self {
+        case let .word(word): "word-\(word.id)"
+        case let .pause(pause): pause.id
+        }
+    }
+}
+
 private struct TranscriptWorkbench: View {
+    private static let selectionCoordinateSpace = "transcriptSelectionCanvas"
+
     @ObservedObject var session: EditorSession
     @State private var selection = TranscriptWordSelection()
     @State private var lastAutoScrollIndex: Int?
     @State private var isApplyingSelection = false
+    @State private var wordFrames: [UUID: CGRect] = [:]
+    @State private var marqueeStart: CGPoint?
+    @State private var marqueeCurrent: CGPoint?
+    @State private var marqueeBaseWordIDs: Set<UUID> = []
+    @State private var marqueeMode: TranscriptWordSelection.MarqueeMode = .replace
 
     private var words: [TranscriptWord] { session.project.transcript ?? [] }
     private var selectedWords: [TranscriptWord] {
@@ -965,6 +993,36 @@ private struct TranscriptWorkbench: View {
     }
     private var selectedDeletedWords: [TranscriptWord] {
         selectedWords.filter { !session.project.isWordKept($0) }
+    }
+    private var flowTokens: [TranscriptFlowToken] {
+        let minimumPause = 0.4
+        var tokens: [TranscriptFlowToken] = []
+        var visitedMediaIDs: Set<UUID> = []
+        let mediaOrder = session.project.media.map(\.id) + words.map(\.mediaID)
+
+        for mediaID in mediaOrder where visitedMediaIDs.insert(mediaID).inserted {
+            let mediaWords = words
+                .filter { $0.mediaID == mediaID }
+                .sorted { $0.start < $1.start }
+            guard let firstWord = mediaWords.first, let lastWord = mediaWords.last else { continue }
+
+            if firstWord.start >= minimumPause {
+                tokens.append(.pause(TranscriptPause(mediaID: mediaID, start: 0, end: firstWord.start)))
+            }
+            for (index, word) in mediaWords.enumerated() {
+                tokens.append(.word(word))
+                guard index + 1 < mediaWords.count else { continue }
+                let nextWord = mediaWords[index + 1]
+                if nextWord.start - word.end >= minimumPause {
+                    tokens.append(.pause(TranscriptPause(mediaID: mediaID, start: word.end, end: nextWord.start)))
+                }
+            }
+            if let duration = session.project.media.first(where: { $0.id == mediaID })?.duration,
+               duration - lastWord.end >= minimumPause {
+                tokens.append(.pause(TranscriptPause(mediaID: mediaID, start: lastWord.end, end: duration)))
+            }
+        }
+        return tokens
     }
 
     var body: some View {
@@ -986,7 +1044,7 @@ private struct TranscriptWorkbench: View {
             }
 
             if !words.isEmpty {
-                Text("Click to select & seek  ·  Shift-click a range  ·  ⌘-click to add or remove  ·  select crossed-out words to restore")
+                Text("Click to seek  ·  drag a box to multi-select  ·  Shift/⌘ adds  ·  click a […] pause to remove or restore it")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
@@ -1008,35 +1066,40 @@ private struct TranscriptWorkbench: View {
                     ZStack(alignment: .bottom) {
                         ScrollView {
                             TranscriptFlowLayout(spacing: 6) {
-                                ForEach(words) { word in
-                                    let kept = session.project.isWordKept(word)
-                                    let active = playbackWordID == word.id
-                                    Button {
-                                        select(word, kept: kept)
-                                    } label: {
-                                        Text(word.text)
-                                            .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
-                                            .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
-                                            .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
-                                            .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
-                                            .padding(.horizontal, 3)
-                                            .padding(.vertical, 3)
-                                            .background(wordBackground(wordID: word.id, kept: kept, active: active))
-                                            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                                ForEach(flowTokens) { token in
+                                    switch token {
+                                    case let .word(word):
+                                        transcriptWordButton(word, playbackWordID: playbackWordID)
+                                    case let .pause(pause):
+                                        transcriptPauseButton(pause)
                                     }
-                                    .buttonStyle(.plain)
-                                    .help(kept ? "Select and seek to \(word.text)" : "Select deleted word to restore")
-                                    .id(word.id)
                                 }
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.bottom, selection.wordIDs.isEmpty ? 0 : 58)
                         }
 
+                        if let marqueeRectangle {
+                            Rectangle()
+                                .fill(Color.cyan.opacity(0.12))
+                                .overlay {
+                                    Rectangle()
+                                        .stroke(Color.cyan.opacity(0.9), lineWidth: 1)
+                                }
+                                .frame(width: marqueeRectangle.width, height: marqueeRectangle.height)
+                                .position(x: marqueeRectangle.midX, y: marqueeRectangle.midY)
+                                .allowsHitTesting(false)
+                        }
+
                         if !selection.wordIDs.isEmpty {
                             selectionBar
                         }
                     }
+                    .coordinateSpace(name: Self.selectionCoordinateSpace)
+                    .onPreferenceChange(TranscriptWordFramePreferenceKey.self) { frames in
+                        wordFrames = frames
+                    }
+                    .highPriorityGesture(marqueeGesture)
                     .onChange(of: playbackWordID) { _, wordID in
                         guard session.isPlaying,
                               let wordID,
@@ -1094,6 +1157,126 @@ private struct TranscriptWorkbench: View {
         .padding(.bottom, 10)
     }
 
+    private var marqueeRectangle: CGRect? {
+        guard let marqueeStart, let marqueeCurrent else { return nil }
+        return Self.rectangle(from: marqueeStart, to: marqueeCurrent)
+    }
+
+    private func transcriptWordButton(_ word: TranscriptWord, playbackWordID: UUID?) -> some View {
+        let kept = session.project.isWordKept(word)
+        let active = playbackWordID == word.id
+        return Button {
+            select(word, kept: kept)
+        } label: {
+            Text(word.text)
+                .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
+                .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
+                .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
+                .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 3)
+                .background(wordBackground(wordID: word.id, kept: kept, active: active))
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: TranscriptWordFramePreferenceKey.self,
+                            value: [
+                                word.id: geometry.frame(in: .named(Self.selectionCoordinateSpace)),
+                            ]
+                        )
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .highPriorityGesture(marqueeGesture)
+        .help(kept ? "Select and seek to \(word.text)" : "Select deleted word to restore")
+        .id(word.id)
+    }
+
+    private func transcriptPauseButton(_ pause: TranscriptPause) -> some View {
+        let kept = session.project.isSourceRangeKept(
+            mediaID: pause.mediaID,
+            start: pause.start,
+            end: pause.end
+        )
+        return Button {
+            selection.clear()
+            Task {
+                if kept {
+                    await session.deleteTranscriptPause(
+                        mediaID: pause.mediaID,
+                        start: pause.start,
+                        end: pause.end
+                    )
+                } else {
+                    await session.restoreTranscriptPause(
+                        mediaID: pause.mediaID,
+                        start: pause.start,
+                        end: pause.end
+                    )
+                }
+            }
+        } label: {
+            Text("[…\(pause.duration.formatted(.number.precision(.fractionLength(1))))s\(kept ? "" : " removed")]")
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundStyle(kept ? Color.secondary : Color.secondary.opacity(0.42))
+                .strikethrough(!kept, color: Color.secondary.opacity(0.55))
+                .padding(.horizontal, 5)
+                .padding(.vertical, 3)
+                .background(kept ? Color.primary.opacity(0.07) : Color.green.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .stroke(kept ? Color.studioLine : Color.green.opacity(0.22), lineWidth: 1)
+                }
+        }
+        .buttonStyle(.plain)
+        .help(kept ? "Delete this \(pause.duration.formatted(.number.precision(.fractionLength(1)))) second pause" : "Restore this removed pause")
+    }
+
+    private var marqueeGesture: some Gesture {
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(Self.selectionCoordinateSpace))
+            .onChanged { value in
+                if marqueeStart == nil {
+                    marqueeStart = value.startLocation
+                    marqueeBaseWordIDs = selection.wordIDs
+                    let modifiers = NSApp.currentEvent?.modifierFlags ?? []
+                    if modifiers.contains(.command) || modifiers.contains(.control) {
+                        marqueeMode = .toggle
+                    } else if modifiers.contains(.shift) {
+                        marqueeMode = .add
+                    } else {
+                        marqueeMode = .replace
+                    }
+                }
+                marqueeCurrent = value.location
+                guard let marqueeRectangle else { return }
+                selection.selectMarquee(
+                    marqueeRectangle,
+                    wordFrames: wordFrames,
+                    orderedWordIDs: words.map(\.id),
+                    baseWordIDs: marqueeBaseWordIDs,
+                    mode: marqueeMode
+                )
+            }
+            .onEnded { _ in
+                marqueeStart = nil
+                marqueeCurrent = nil
+                marqueeBaseWordIDs.removeAll()
+                marqueeMode = .replace
+            }
+    }
+
+    private static func rectangle(from start: CGPoint, to end: CGPoint) -> CGRect {
+        CGRect(
+            x: min(start.x, end.x),
+            y: min(start.y, end.y),
+            width: abs(end.x - start.x),
+            height: abs(end.y - start.y)
+        )
+    }
+
     private func select(_ word: TranscriptWord, kept: Bool) {
         let modifiers = NSApp.currentEvent?.modifierFlags ?? []
         selection.select(
@@ -1140,6 +1323,14 @@ private struct TranscriptWorkbench: View {
         }
         if active { return Color.cyan.opacity(0.20) }
         return Color.clear
+    }
+}
+
+private struct TranscriptWordFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
     }
 }
 

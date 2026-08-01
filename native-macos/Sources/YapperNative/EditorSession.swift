@@ -203,6 +203,28 @@ final class EditorSession: ObservableObject {
         seek(to: currentTime, exact: true, playAfter: false)
     }
 
+    func deleteTranscriptPause(mediaID: UUID, start: Double, end: Double) async {
+        guard end - start >= 0.02,
+              project.isSourceRangeKept(mediaID: mediaID, start: start, end: end)
+        else { return }
+        project.removeSourceRanges([(start, end)], for: mediaID)
+        currentTime = min(currentTime, project.duration)
+        selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
+        await commitTimelineEdit()
+    }
+
+    func restoreTranscriptPause(mediaID: UUID, start: Double, end: Double) async {
+        guard end - start >= 0.02,
+              !project.isSourceRangeKept(mediaID: mediaID, start: start, end: end)
+        else { return }
+        project.restoreSourceRange((start, end), for: mediaID)
+        let marker = TranscriptWord(mediaID: mediaID, text: "", start: start, end: end)
+        currentTime = project.nearestTimelineTime(for: marker)
+        selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
+        await commitTimelineEdit()
+        seek(to: currentTime, exact: true, playAfter: false)
+    }
+
     func splitAtPlayhead() async {
         let clipID: UUID
         if let selectedClipID {

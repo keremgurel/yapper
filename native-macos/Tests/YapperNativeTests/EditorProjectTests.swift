@@ -117,6 +117,47 @@ struct EditorProjectTests {
         #expect(abs(ranges[1].end - 0.325) < 0.000_001)
     }
 
+    @Test func transcriptMarqueeSelectionReplacesAddsAndTogglesIntersectingWords() {
+        let ids = (0..<4).map { _ in UUID() }
+        let frames = [
+            ids[0]: CGRect(x: 0, y: 0, width: 30, height: 20),
+            ids[1]: CGRect(x: 36, y: 0, width: 30, height: 20),
+            ids[2]: CGRect(x: 72, y: 0, width: 30, height: 20),
+            ids[3]: CGRect(x: 0, y: 28, width: 30, height: 20),
+        ]
+        let box = CGRect(x: 34, y: -2, width: 72, height: 24)
+        var selection = TranscriptWordSelection(wordIDs: [ids[0]], anchorID: ids[0])
+
+        selection.selectMarquee(
+            box,
+            wordFrames: frames,
+            orderedWordIDs: ids,
+            baseWordIDs: [ids[0]],
+            mode: .replace
+        )
+        #expect(selection.wordIDs == Set([ids[1], ids[2]]))
+        #expect(selection.anchorID == ids[2])
+
+        selection.selectMarquee(
+            box,
+            wordFrames: frames,
+            orderedWordIDs: ids,
+            baseWordIDs: [ids[0]],
+            mode: .add
+        )
+        #expect(selection.wordIDs == Set([ids[0], ids[1], ids[2]]))
+
+        selection.selectMarquee(
+            box,
+            wordFrames: frames,
+            orderedWordIDs: ids,
+            baseWordIDs: [ids[0], ids[1]],
+            mode: .toggle
+        )
+        #expect(selection.wordIDs == Set([ids[0], ids[2]]))
+        #expect(selection.anchorID == ids[2])
+    }
+
     @Test func nonAdjacentTranscriptSelectionsRemainSeparateCuts() {
         let mediaID = UUID()
         let words = [
@@ -152,6 +193,19 @@ struct EditorProjectTests {
         #expect(project.clips[0].sourceStart == 0)
         #expect(project.clips[0].sourceEnd == 4)
         #expect(project.isWordKept(word))
+    }
+
+    @Test func transcriptPauseStateTracksCutAndRestoredSourceRanges() {
+        let mediaID = UUID()
+        var project = EditorProject(clips: [
+            TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 5),
+        ])
+
+        #expect(project.isSourceRangeKept(mediaID: mediaID, start: 1, end: 2))
+        project.removeSourceRanges([(1, 2)], for: mediaID)
+        #expect(!project.isSourceRangeKept(mediaID: mediaID, start: 1, end: 2))
+        project.restoreSourceRange((1, 2), for: mediaID)
+        #expect(project.isSourceRangeKept(mediaID: mediaID, start: 1, end: 2))
     }
 
     @Test func retakeRepairKeepsShortPhraseBeginningsWithoutCreatingDuplicateJoins() {

@@ -87,6 +87,12 @@ struct TranscriptSourceRange: Equatable, Sendable {
 }
 
 struct TranscriptWordSelection: Equatable, Sendable {
+    enum MarqueeMode: Equatable, Sendable {
+        case replace
+        case add
+        case toggle
+    }
+
     var wordIDs: Set<UUID> = []
     var anchorID: UUID?
 
@@ -122,6 +128,27 @@ struct TranscriptWordSelection: Equatable, Sendable {
     mutating func clear() {
         wordIDs.removeAll()
         anchorID = nil
+    }
+
+    mutating func selectMarquee(
+        _ marquee: CGRect,
+        wordFrames: [UUID: CGRect],
+        orderedWordIDs: [UUID],
+        baseWordIDs: Set<UUID>,
+        mode: MarqueeMode
+    ) {
+        let intersecting = Set(wordFrames.compactMap { wordID, frame in
+            marquee.intersects(frame) ? wordID : nil
+        })
+        switch mode {
+        case .replace:
+            wordIDs = intersecting
+        case .add:
+            wordIDs = baseWordIDs.union(intersecting)
+        case .toggle:
+            wordIDs = baseWordIDs.symmetricDifference(intersecting)
+        }
+        anchorID = orderedWordIDs.last(where: { wordIDs.contains($0) })
     }
 
     static func sourceRanges(
@@ -359,6 +386,13 @@ struct EditorProject: Codable, Equatable, Sendable {
     func isWordKept(_ word: TranscriptWord) -> Bool {
         clips.contains {
             $0.mediaID == word.mediaID && word.midpoint >= $0.sourceStart && word.midpoint <= $0.sourceEnd
+        }
+    }
+
+    func isSourceRangeKept(mediaID: UUID, start: Double, end: Double) -> Bool {
+        let midpoint = (start + end) / 2
+        return clips.contains {
+            $0.mediaID == mediaID && midpoint >= $0.sourceStart && midpoint <= $0.sourceEnd
         }
     }
 
