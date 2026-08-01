@@ -51,9 +51,9 @@ export const marketingFeatures: MarketingFeature[] = [
   },
   {
     slug: "ai-script-writer",
-    eyebrow: "Write",
+    eyebrow: "Script",
     title: "Turn rough thoughts into scripts that sound like you",
-    shortTitle: "AI script writer",
+    shortTitle: "Script writer",
     description:
       "Build hooks, outlines, talking points, and full scripts from your own ideas and references, not a blank prompt box.",
     promise: "Structure when you need it. Your voice when it matters.",
@@ -79,9 +79,9 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Edit freely before sending the script to the recorder.",
       },
     ],
-    seoTitle: "AI Script Writer for Short-Form Video",
+    seoTitle: "Video Script Generator for Short-Form Content",
     seoDescription:
-      "Write short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
+      "Generate short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
   },
   {
     slug: "teleprompter-recorder",

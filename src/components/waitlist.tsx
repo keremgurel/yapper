@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { SparklesCore } from "@/components/sparkles";
+import { Button } from "@/components/ui/button";
 
 /* ------------------------------------------------------------------ */
 /*  Shared submit helper                                               */
@@ -131,10 +132,11 @@ function WaitlistForm() {
                 }
                 className="waitlist-input min-w-0 flex-1 rounded-xl px-4 py-3.5 text-[15px] outline-hidden transition-shadow"
               />
-              <button
+              <Button
                 type="submit"
+                size="lg"
                 disabled={!email.trim() || loading}
-                className="waitlist-btn shrink-0 cursor-pointer rounded-xl px-6 py-3.5 text-[14px] font-semibold whitespace-nowrap transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full shrink-0 sm:w-auto"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -163,7 +165,7 @@ function WaitlistForm() {
                 ) : (
                   "Join Waitlist"
                 )}
-              </button>
+              </Button>
             </div>
             {message && !isSuccess && (
               <p className="mt-2 px-1 text-[13px] text-red-400" role="alert">

@@ -74,7 +74,7 @@ export default async function FeatureDetailPage({
         dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(jsonLd) }}
       />
 
-      <section className="relative mx-auto max-w-5xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14 sm:pb-24">
+      <section className="marketing-container relative pt-10 pb-16 sm:pt-14 sm:pb-24">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[500px] opacity-60"
@@ -94,10 +94,8 @@ export default async function FeatureDetailPage({
             className="mb-7 h-1.5 w-14 rounded-full"
             style={{ background: feature.accent }}
           />
-          <h1 className="font-display text-foreground text-5xl leading-[0.98] font-black tracking-[-0.05em] sm:text-7xl">
-            {feature.title}
-          </h1>
-          <p className="text-muted-foreground mt-7 max-w-2xl text-base leading-relaxed sm:text-xl">
+          <h1 className="type-h1">{feature.title}</h1>
+          <p className="type-description mt-7 max-w-2xl sm:text-xl">
             {feature.description}
           </p>
           <Button asChild size="lg" className="mt-8">
@@ -110,17 +108,13 @@ export default async function FeatureDetailPage({
       </section>
 
       <section className="border-y bg-[var(--sg-surface-sunken)]">
-        <div className="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-20">
-          <p className="font-display text-foreground max-w-4xl text-3xl leading-tight font-semibold tracking-[-0.035em] sm:text-5xl">
-            {feature.promise}
-          </p>
+        <div className="marketing-container py-14 sm:py-20">
+          <p className="type-h2 max-w-4xl">{feature.promise}</p>
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-5xl gap-12 px-4 py-20 sm:px-6 sm:py-24 md:grid-cols-[0.8fr_1.2fr]">
-        <h2 className="font-display text-foreground text-3xl font-black tracking-[-0.035em] sm:text-4xl">
-          Built for momentum, not busywork.
-        </h2>
+      <section className="marketing-container grid gap-12 py-20 sm:py-24 md:grid-cols-[0.8fr_1.2fr]">
+        <h2 className="type-h2">Built for momentum, not busywork.</h2>
         <ul className="m-0 list-none p-0">
           {feature.highlights.map((highlight) => (
             <li
@@ -138,10 +132,8 @@ export default async function FeatureDetailPage({
       </section>
 
       <section className="bg-[var(--sg-surface-sunken)] py-20 sm:py-24">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6">
-          <h2 className="font-display text-foreground text-3xl font-black tracking-[-0.035em] sm:text-4xl">
-            How it fits into your workflow
-          </h2>
+        <div className="marketing-container">
+          <h2 className="type-h2">How it fits into your workflow</h2>
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             {feature.steps.map((step) => (
               <Card key={step.title} className="gap-0 p-6">
