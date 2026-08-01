@@ -7,6 +7,7 @@ import HomeJsonLd from "@/app/home-json-ld";
 import { Aurora } from "@/app/style-guide/aurora/aurora-bg";
 import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import Waitlist from "@/components/waitlist";
+import StudioWorkflowTour from "@/components/marketing/studio-workflow-tour";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
@@ -60,6 +61,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <StudioWorkflowTour />
 
       <section className="mx-auto max-w-[1100px] px-4 py-20 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-3xl text-center">

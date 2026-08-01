@@ -1,8 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { Show, SignInButton } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
 import { GlassyButton } from "@/components/ui/glassy-button";
 
 interface HomeHeroProps {
@@ -35,26 +32,9 @@ export default function HomeHero({ onJumpToPractice }: HomeHeroProps) {
         coaching before you publish. Free practice tools included, no sign-up.
       </p>
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <Show when="signed-out">
-          <SignInButton mode="modal" withSignUp>
-            <Button type="button" size="lg" className="h-12 px-6 text-[15px]">
-              Get started free
-            </Button>
-          </SignInButton>
-        </Show>
-        <Show when="signed-in">
-          <Button asChild size="lg" className="h-12 px-6 text-[15px]">
-            <Link href="/studio/library" className="no-underline">
-              Open your studio
-            </Link>
-          </Button>
-        </Show>
-
-        <GlassyButton onClick={onJumpToPractice} height={48}>
-          Train
-        </GlassyButton>
-      </div>
+      <GlassyButton onClick={onJumpToPractice} height={48}>
+        Jump to practice
+      </GlassyButton>
     </div>
   );
 }
