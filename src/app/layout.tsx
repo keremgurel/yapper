@@ -26,9 +26,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | The Mobile and Desktop Content Studio for Creators";
+const title = "Yapper | Content Creation App for Social Media Video";
 const description =
-  "Capture ideas, develop scripts, record with a teleprompter, edit video by transcript, and publish in one mobile and desktop creator studio.";
+  "Create social media videos from idea to published post. Capture ideas, generate scripts, record with a teleprompter, edit by transcript, add captions, schedule, and publish.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -41,8 +41,10 @@ export const metadata: Metadata = {
   authors: [{ name: "Yapper", url: siteUrl }],
   creator: "Yapper",
   keywords: [
-    "desktop video editor",
-    "creator studio",
+    "content creation app",
+    "content creator tools",
+    "social media content creation",
+    "short form video editor",
     "transcript video editor",
     "teleprompter recorder",
     "AI script writer for video",

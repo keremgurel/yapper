@@ -211,6 +211,7 @@
   /* One workspace width across every Studio route. Dashboard pages and the
    * full-height editor both consume this token through StudioContentFrame. */
   --studio-content-max-width: 90rem;
+  --marketing-content-max-width: 75rem;
 
   /* legacy var mapping (existing components inherit the new palette) */
   --background: var(--sg-bg);
@@ -246,6 +247,63 @@
   --sidebar-accent-foreground: var(--sg-text);
   --sidebar-border: var(--sg-border);
   --sidebar-ring: var(--sg-accent);
+}
+
+/* Canonical layout and typography primitives. Marketing and product pages use
+ * these instead of inventing route-specific widths and type scales. */
+.marketing-container {
+  width: 100%;
+  max-width: var(--marketing-content-max-width);
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.type-display,
+.type-h1,
+.type-h2,
+.type-h3 {
+  color: var(--sg-text);
+  font-family: var(--sg-font-display);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.type-display,
+.type-h1 {
+  font-size: clamp(3.25rem, 7vw, 6.5rem);
+  line-height: 0.92;
+}
+
+.type-h2 {
+  font-size: clamp(2.125rem, 4vw, 3.5rem);
+  line-height: 0.98;
+}
+
+.type-h3 {
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.type-description {
+  color: var(--sg-text-muted);
+  font-family: var(--sg-font-body);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.type-label {
+  color: var(--sg-text-muted);
+  font-family: var(--sg-font-body);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+@media (min-width: 640px) {
+  .marketing-container {
+    padding-inline: 1.5rem;
+  }
 }
 
 .dark {

@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 export const metadata: Metadata = {
-  title: "Yapper: The Mobile and Desktop Content Studio for Video Creators",
+  title: "Yapper: Content Creation App for Social Media Video",
   description:
-    "Capture ideas, develop scripts, record with a teleprompter, edit video by transcript, package each post, and publish from one mobile and desktop creator studio.",
+    "A content creation app for video creators. Capture ideas, generate scripts, record with a teleprompter, edit video by transcript, add captions, schedule, and publish.",
   alternates: { canonical: "https://ypr.app" },
 };
 
@@ -23,20 +23,21 @@ export default function HomePage() {
     <TrainingLayout>
       <HomeJsonLd />
 
-      <section className="mx-auto max-w-[1200px] px-4 pt-16 pb-24 sm:px-6 sm:pt-24 sm:pb-32">
+      <section className="marketing-container pt-16 pb-24 sm:pt-24 sm:pb-32">
         <div className="flex min-h-[560px] flex-col items-center justify-center text-center">
           <BirdMascot concept="chirpy" talking size={76} />
           <div className="mt-3 flex w-full max-w-5xl flex-col items-center">
             <p className="text-muted-foreground text-sm font-semibold">
               Yapper is coming to mobile and desktop
             </p>
-            <h1 className="font-display text-foreground mt-4 text-[clamp(3.25rem,7vw,6.5rem)] leading-[0.9] font-black tracking-[-0.055em]">
+            <h1 className="type-display mt-4">
               Turn every spark into a video worth posting.
             </h1>
-            <p className="text-muted-foreground mt-6 max-w-3xl text-base leading-relaxed sm:text-xl">
-              Capture ideas before they disappear. Develop them into scripts,
-              record with a teleprompter, edit by transcript, then package,
-              schedule, and publish everywhere from one studio.
+            <p className="type-description mt-6 max-w-3xl sm:text-xl">
+              Yapper is a content creation app for people who talk to camera.
+              Capture ideas, turn them into video scripts, record with a
+              teleprompter, edit by transcript, add captions, schedule, and
+              publish from one connected studio.
             </p>
             <div id="waitlist" className="mt-8 w-full max-w-2xl">
               <p className="text-muted-foreground mb-3 text-sm font-medium">
@@ -59,16 +60,14 @@ export default function HomePage() {
 
       <FeatureDeck />
 
-      <section className="mx-auto max-w-[1100px] px-4 pb-20 sm:px-6 sm:pb-24">
+      <section className="marketing-container pb-20 sm:pb-24">
         <div className="sg-panel grid gap-7 p-8 sm:p-12 md:grid-cols-[auto_1fr_auto] md:items-center">
           <span className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl border">
             <Download className="h-6 w-6 text-[var(--sg-accent)]" />
           </span>
           <div>
-            <h2 className="text-foreground text-2xl font-black sm:text-3xl">
-              Made for mobile and desktop.
-            </h2>
-            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+            <h2 className="type-h3">Made for mobile and desktop.</h2>
+            <p className="type-description mt-2 text-sm">
               Capture on your phone. Develop, record, edit, schedule, and
               publish from whichever screen fits the moment.
             </p>

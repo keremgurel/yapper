@@ -13,6 +13,7 @@ import {
   Sparkles,
   WandSparkles,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type WorkflowStep = {
   number: string;
@@ -419,30 +420,29 @@ function WorkflowVisual({ kind }: { kind: WorkflowStep["visual"] }) {
 
 export default function StudioWorkflowTour() {
   return (
-    <section className="border-y border-white/10 bg-[#08090a] px-4 py-20 text-white sm:px-6 sm:py-28">
-      <div className="mx-auto grid max-w-[1180px] items-start gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
+    <section className="border-border bg-background text-foreground border-y px-4 py-20 sm:px-6 sm:py-28">
+      <div className="marketing-container grid items-start gap-12 lg:grid-cols-[.72fr_1.28fr] lg:gap-20">
         <div className="lg:sticky lg:top-0 lg:flex lg:h-svh lg:items-center lg:self-start">
           <div>
-            <p className="flex items-center gap-2 text-xs font-black tracking-[.18em] text-orange-300 uppercase">
+            <p className="type-label flex items-center gap-2 text-[var(--sg-accent-strong)]">
               <Sparkles className="h-4 w-4" /> The complete workflow
             </p>
-            <h2 className="font-display mt-4 max-w-md text-[clamp(2.25rem,3.5vw,3.75rem)] leading-[.98] font-black tracking-[-.05em]">
+            <h2 className="type-h2 mt-4 max-w-md">
               One idea.
               <br />
               One connected path.
             </h2>
-            <p className="mt-6 max-w-sm text-[15px] leading-7 text-white/50">
+            <p className="type-description mt-6 max-w-sm">
               One captured spark stays connected to every developed idea,
               script, take, edit, publishing asset, post, and learning that
               follows.
             </p>
-            <a
-              href="#waitlist"
-              className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-black no-underline transition-transform hover:scale-[1.02]"
-            >
-              Join the mobile and desktop waitlist
-              <ArrowRight className="h-4 w-4" />
-            </a>
+            <Button asChild className="mt-7">
+              <a href="#waitlist">
+                Join the waitlist
+                <ArrowRight />
+              </a>
+            </Button>
           </div>
         </div>
 
@@ -454,11 +454,11 @@ export default function StudioWorkflowTour() {
               style={{ containIntrinsicSize: "0 640px" }}
             >
               <div className="flex w-8 shrink-0 flex-col items-center">
-                <span className="relative z-10 grid h-8 w-8 place-items-center rounded-full bg-white text-[10px] font-black text-black shadow-[0_0_0_6px_#08090a]">
+                <span className="bg-foreground text-background relative z-10 grid h-8 w-8 place-items-center rounded-full text-[10px] font-black shadow-[0_0_0_6px_var(--background)]">
                   {index + 1}
                 </span>
                 {index < WORKFLOW.length - 1 ? (
-                  <span className="h-full w-px border-l border-dashed border-white/25" />
+                  <span className="border-border h-full w-px border-l border-dashed" />
                 ) : null}
               </div>
 
@@ -471,20 +471,18 @@ export default function StudioWorkflowTour() {
                 </div>
                 <div className="mx-auto mt-6 max-w-xl text-center">
                   <p
-                    className="text-[10px] font-black tracking-[.18em] uppercase"
+                    className="text-sm font-semibold"
                     style={{ color: step.accent }}
                   >
-                    {step.number} · {step.eyebrow}
+                    {step.eyebrow}
                   </p>
-                  <h3 className="font-display mt-2 text-2xl leading-tight font-black tracking-[-.025em] sm:text-3xl">
-                    {step.title}
-                  </h3>
-                  <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/48">
+                  <h3 className="type-h3 mt-2">{step.title}</h3>
+                  <p className="type-description mx-auto mt-3 max-w-lg text-sm">
                     {step.description}
                   </p>
                   <Link
                     href={step.href}
-                    className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-white/75 no-underline hover:text-white"
+                    className="text-foreground/75 hover:text-foreground mt-4 inline-flex items-center gap-1.5 text-sm font-semibold no-underline"
                   >
                     See the feature
                     <ArrowRight className="h-3.5 w-3.5" />
