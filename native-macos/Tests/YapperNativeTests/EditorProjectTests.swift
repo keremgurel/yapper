@@ -3,6 +3,57 @@ import Testing
 @testable import YapperNative
 
 struct EditorProjectTests {
+    @Test func editorHistorySupportsUndoRedoAndClearsRedoAfterANewEdit() {
+        let mediaID = UUID()
+        let original = EditorProject(clips: [
+            TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 10),
+        ])
+        var split = original
+        let didSplit = split.split(clipID: split.clips[0].id, atTimelineTime: 4)
+        #expect(didSplit)
+        var deleted = split
+        let didDelete = deleted.delete(clipID: deleted.clips[0].id)
+        #expect(didDelete)
+
+        var history = EditorHistory()
+        history.record(before: original, after: split)
+        history.record(before: split, after: deleted)
+
+        #expect(history.canUndo)
+        #expect(!history.canRedo)
+        #expect(history.undo(current: deleted) == split)
+        #expect(history.undo(current: split) == original)
+        #expect(history.redo(current: original) == split)
+
+        var replacement = split
+        replacement.textLayers = [ProjectTextLayer(text: "New branch", timelineStart: 0, duration: 2)]
+        history.record(before: split, after: replacement)
+        #expect(!history.canRedo)
+    }
+
+    @Test func editorHistoryCoalescesDuplicateSnapshotsAndHonorsItsLimit() {
+        let mediaID = UUID()
+        let base = EditorProject(clips: [
+            TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 10),
+        ])
+        var first = base
+        first.name = "First"
+        var second = first
+        second.name = "Second"
+        var third = second
+        third.name = "Third"
+
+        var history = EditorHistory(limit: 2)
+        history.record(before: base, after: first)
+        history.record(before: base, after: first)
+        history.record(before: first, after: second)
+        history.record(before: second, after: third)
+
+        #expect(history.undo(current: third)?.name == "Second")
+        #expect(history.undo(current: second)?.name == "First")
+        #expect(history.undo(current: first) == nil)
+    }
+
     @Test func transcriptionDownmixPreservesHeadroomWithoutStereoClipping() {
         #expect(TranscriptionPCM.monoSample(sum: 2, channelCount: 2) == 16_384)
         #expect(TranscriptionPCM.monoSample(sum: 0, channelCount: 2) == 0)

@@ -42,6 +42,8 @@ final class EditorSession: ObservableObject {
     @Published private(set) var isBusy = false
     @Published private(set) var isExporting = false
     @Published private(set) var isAIEditing = false
+    @Published private(set) var canUndo = false
+    @Published private(set) var canRedo = false
     @Published private(set) var aiProgress = 0.0
     @Published private(set) var oneClickEditStage: OneClickEditStage?
     @Published private(set) var statusMessage = "Import video to begin"
@@ -71,6 +73,8 @@ final class EditorSession: ObservableObject {
     private var rebuilding = false
     private var restorationTask: Task<Void, Never>?
     private var visualCommitTask: Task<Void, Never>?
+    private var history = EditorHistory()
+    private var pendingVisualUndoSnapshot: EditorProject?
     private var snapGuideClearTask: Task<Void, Never>?
     private var transientCache: [UUID: (peakCount: Int, times: [Double])] = [:]
 
@@ -165,6 +169,7 @@ final class EditorSession: ObservableObject {
         let delta = timelineSelectionDragDelta
         timelineSelectionDragDelta = 0
         guard abs(delta) > 0.000_001, !timelineSelection.isEmpty else { return }
+        let undoSnapshot = prepareUndoSnapshot()
 
         let selectedClipIDs = Set(timelineSelection.compactMap { item -> UUID? in
             if case let .clip(id) = item { return id }
@@ -222,7 +227,7 @@ final class EditorSession: ObservableObject {
             }
             project.audioLayers = layers
         }
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     private func timelineSpan(for item: TimelineSelectionItem) -> (start: Double, end: Double)? {
@@ -353,6 +358,7 @@ final class EditorSession: ObservableObject {
     func importMedia(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
         await restorationTask?.value
+        let undoSnapshot = prepareUndoSnapshot()
         isBusy = true
         errorMessage = nil
         statusMessage = "Reading media…"
@@ -386,6 +392,7 @@ final class EditorSession: ObservableObject {
             project.updatedAt = Date()
             try await rebuildComposition(preserveTime: false)
             await persist()
+            recordHistory(before: undoSnapshot)
             statusMessage = "Ready"
         } catch {
             show(error)
@@ -453,6 +460,7 @@ final class EditorSession: ObservableObject {
     func deleteTranscriptWords(_ words: [TranscriptWord]) async {
         let keptIDs = Set(words.filter { project.isWordKept($0) }.map(\.id))
         guard !keptIDs.isEmpty else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let ranges = TranscriptWordSelection.sourceRanges(
             for: keptIDs,
             in: project.transcript ?? []
@@ -469,7 +477,7 @@ final class EditorSession: ObservableObject {
         selectedClipID = project.clip(at: min(currentTime, project.duration))
             .map { project.clips[$0.index].id }
         currentTime = min(currentTime, project.duration)
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func restoreTranscriptWord(_ word: TranscriptWord) async {
@@ -480,6 +488,7 @@ final class EditorSession: ObservableObject {
         let deletedWords = words.filter { !project.isWordKept($0) }
         let deletedIDs = Set(deletedWords.map(\.id))
         guard let firstWord = deletedWords.first, !deletedIDs.isEmpty else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let ranges = TranscriptWordSelection.sourceRanges(
             for: deletedIDs,
             in: project.transcript ?? []
@@ -493,7 +502,7 @@ final class EditorSession: ObservableObject {
         }
         currentTime = project.nearestTimelineTime(for: firstWord)
         selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
         seek(to: currentTime, exact: true, playAfter: false)
     }
 
@@ -501,25 +510,28 @@ final class EditorSession: ObservableObject {
         guard end - start >= 0.02,
               project.isSourceRangeKept(mediaID: mediaID, start: start, end: end)
         else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.removeSourceRanges([(start, end)], for: mediaID)
         currentTime = min(currentTime, project.duration)
         selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func restoreTranscriptPause(mediaID: UUID, start: Double, end: Double) async {
         guard end - start >= 0.02,
               !project.isSourceRangeKept(mediaID: mediaID, start: start, end: end)
         else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.restoreSourceRange((start, end), for: mediaID)
         let marker = TranscriptWord(mediaID: mediaID, text: "", start: start, end: end)
         currentTime = project.nearestTimelineTime(for: marker)
         selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
         seek(to: currentTime, exact: true, playAfter: false)
     }
 
     func splitAtPlayhead() async {
+        let undoSnapshot = prepareUndoSnapshot()
         let selection = commandTimelineSelection()
         var didSplit = false
         var resultingSelection: Set<TimelineSelectionItem> = []
@@ -600,7 +612,7 @@ final class EditorSession: ObservableObject {
         }
         guard didSplit else { return }
         setTimelineSelection(resultingSelection)
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func deleteSelected() async {
@@ -610,6 +622,7 @@ final class EditorSession: ObservableObject {
     func deleteTimelineSelection() async {
         let selection = commandTimelineSelection()
         guard !selection.isEmpty else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let clipIDs = Set(selection.compactMap { if case let .clip(id) = $0 { id } else { nil } })
         let textIDs = Set(selection.compactMap { if case let .text(id) = $0 { id } else { nil } })
         let overlayIDs = Set(selection.compactMap { if case let .overlay(id) = $0 { id } else { nil } })
@@ -620,12 +633,13 @@ final class EditorSession: ObservableObject {
         project.audioLayers?.removeAll { audioIDs.contains($0.id) }
         setTimelineSelection([])
         currentTime = min(currentTime, project.duration)
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func trimTimelineSelection(toPlayhead edge: TimelineEditEdge) async {
         let selection = commandTimelineSelection()
         guard !selection.isEmpty else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let originalClipStarts = Dictionary(uniqueKeysWithValues: project.clips.compactMap { clip in
             project.timelineStart(for: clip.id).map { (clip.id, $0) }
         })
@@ -700,7 +714,7 @@ final class EditorSession: ObservableObject {
         guard changed else { return }
         if edge == .leading, let leadingClipBoundary { currentTime = leadingClipBoundary }
         currentTime = min(currentTime, project.duration)
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     private func commandTimelineSelection() -> Set<TimelineSelectionItem> {
@@ -733,15 +747,17 @@ final class EditorSession: ObservableObject {
 
     func commitClipTrim(_ updated: TimelineClip) async {
         guard let index = project.clips.firstIndex(where: { $0.id == updated.id }) else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.clips[index] = updated
         selectedClipID = updated.id
         timelineSelection = [.clip(updated.id)]
         currentTime = min(currentTime, project.duration)
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func appendMediaToTimeline(_ mediaID: UUID) async {
         guard let media = project.media.first(where: { $0.id == mediaID }), !media.isImage else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.clips.append(
             TimelineClip(
                 mediaID: media.id,
@@ -750,7 +766,7 @@ final class EditorSession: ObservableObject {
             )
         )
         selectedClipID = project.clips.last?.id
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func addOverlay(_ mediaID: UUID) async {
@@ -758,6 +774,7 @@ final class EditorSession: ObservableObject {
             duration > 0,
             let media = project.media.first(where: { $0.id == mediaID })
         else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let start = min(currentTime, max(0, duration - 0.1))
         let available = max(0.1, duration - start)
         let overlayDuration = min(available, media.isImage ? 4 : media.duration)
@@ -770,17 +787,19 @@ final class EditorSession: ObservableObject {
             )
         )
         project.overlays = overlays
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func promoteClipToOverlay(_ clipID: UUID) async {
+        let undoSnapshot = prepareUndoSnapshot()
         guard let overlay = project.promoteClipToOverlay(clipID) else { return }
         selectTimelineItem(.overlay(overlay.id))
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func addTextLayer(asHook: Bool = false) {
         guard duration > 0 else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         let start = min(currentTime, max(0, duration - 0.1))
         let available = max(0.1, duration - start)
         let layer = ProjectTextLayer(
@@ -800,7 +819,7 @@ final class EditorSession: ObservableObject {
         timelineSelection = [.text(layer.id)]
         inspectorRequest = EditorInspectorRequest(tool: "Text")
         project.updatedAt = Date()
-        scheduleVisualCommit()
+        scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
     func previewSoundEffect(_ effect: SoundEffectDescriptor) async {
@@ -817,6 +836,7 @@ final class EditorSession: ObservableObject {
     func addSoundEffect(_ effect: SoundEffectDescriptor) async {
         guard duration > 0 else { return }
         do {
+            let undoSnapshot = prepareUndoSnapshot()
             let url = try await soundEffectService.fileURL(for: effect)
             let start = min(currentTime, max(0, duration - 0.02))
             let layer = ProjectAudioLayer(
@@ -833,7 +853,7 @@ final class EditorSession: ObservableObject {
             selectedAudioLayerID = layer.id
             timelineSelection = [.audio(layer.id)]
             inspectorRequest = EditorInspectorRequest(tool: "Audio")
-            await commitTimelineEdit()
+            await commitTimelineEdit(undoSnapshot: undoSnapshot)
         } catch {
             show(error)
         }
@@ -842,6 +862,7 @@ final class EditorSession: ObservableObject {
     func importAudio(_ urls: [URL]) async {
         guard duration > 0, !urls.isEmpty else { return }
         do {
+            let undoSnapshot = prepareUndoSnapshot()
             var insertionTime = min(currentTime, max(0, duration - 0.02))
             var layers = project.audioLayers ?? []
             for rawURL in urls {
@@ -862,7 +883,7 @@ final class EditorSession: ObservableObject {
             }
             project.audioLayers = layers
             inspectorRequest = EditorInspectorRequest(tool: "Audio")
-            await commitTimelineEdit()
+            await commitTimelineEdit(undoSnapshot: undoSnapshot)
         } catch {
             show(error)
         }
@@ -874,15 +895,17 @@ final class EditorSession: ObservableObject {
 
     func updateAudioLayer(_ updated: ProjectAudioLayer) async {
         guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.audioLayers?[index] = updated
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func deleteSelectedAudioLayer() async {
         guard let selectedAudioLayerID else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.audioLayers?.removeAll { $0.id == selectedAudioLayerID }
         self.selectedAudioLayerID = project.audioLayers?.last?.id
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func selectOverlay(_ id: UUID) {
@@ -891,17 +914,19 @@ final class EditorSession: ObservableObject {
 
     func commitOverlayTrim(_ updated: ProjectOverlay) {
         guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
+        let undoSnapshot = project
         project.overlays?[index] = updated
         selectedOverlayID = updated.id
         project.updatedAt = Date()
-        scheduleVisualCommit()
+        scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
     func commitAudioTrim(_ updated: ProjectAudioLayer) async {
         guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.audioLayers?[index] = updated
         selectedAudioLayerID = updated.id
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func selectTextLayer(_ id: UUID) {
@@ -910,21 +935,24 @@ final class EditorSession: ObservableObject {
 
     func updateTextLayer(_ updated: ProjectTextLayer) {
         guard let index = project.textLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
+        let undoSnapshot = project
         project.textLayers?[index] = updated
         project.updatedAt = Date()
-        scheduleVisualCommit()
+        scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
     func deleteSelectedTextLayer() {
         guard let selectedTextLayerID else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.textLayers?.removeAll { $0.id == selectedTextLayerID }
         self.selectedTextLayerID = project.textLayers?.last?.id
         project.updatedAt = Date()
-        scheduleVisualCommit()
+        scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
     func resetTimelineToSource() async {
         guard let media = project.media.first(where: { !$0.isImage }) else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         project.clips = [
             TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: media.duration),
         ]
@@ -937,11 +965,12 @@ final class EditorSession: ObservableObject {
         selectedOverlayID = nil
         timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
         currentTime = 0
-        await commitTimelineEdit()
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func transcribeProject() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
+        let undoSnapshot = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
         aiProgress = 0
@@ -964,6 +993,7 @@ final class EditorSession: ObservableObject {
             }
             project.updatedAt = Date()
             await persist()
+            recordHistory(before: undoSnapshot)
             statusMessage = "Transcript ready · \(project.timelineTranscript.count) words"
         } catch {
             show(error)
@@ -972,7 +1002,7 @@ final class EditorSession: ObservableObject {
 
     func runOneClickEdit() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
-        let original = project
+        let original = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
         aiProgress = 0
@@ -1021,6 +1051,7 @@ final class EditorSession: ObservableObject {
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
             await persist()
+            recordHistory(before: original)
             statusMessage = "1-Click Edit complete · \(project.clips.count) clips"
         } catch {
             project = original
@@ -1030,7 +1061,7 @@ final class EditorSession: ObservableObject {
 
     func autoTrimSilences() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
-        let original = project
+        let original = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
         aiProgress = 0
@@ -1070,6 +1101,7 @@ final class EditorSession: ObservableObject {
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
             await persist()
+            recordHistory(before: original)
             statusMessage = "Auto-trim complete · \(project.clips.count) clips"
         } catch {
             project = original
@@ -1081,11 +1113,63 @@ final class EditorSession: ObservableObject {
         errorMessage = nil
     }
 
-    private func commitTimelineEdit() async {
+    func undo() async {
+        await restoreHistorySnapshot(direction: .undo)
+    }
+
+    func redo() async {
+        await restoreHistorySnapshot(direction: .redo)
+    }
+
+    private enum HistoryDirection {
+        case undo
+        case redo
+    }
+
+    private func restoreHistorySnapshot(direction: HistoryDirection) async {
+        guard !isBusy, !isExporting else { return }
+        finalizePendingVisualHistory()
+        let current = project
+        let target: EditorProject?
+        switch direction {
+        case .undo:
+            target = history.undo(current: current)
+        case .redo:
+            target = history.redo(current: current)
+        }
+        guard let target else {
+            syncHistoryAvailability()
+            return
+        }
+
+        pausePlayback()
+        project = target
+        reconcileSelectionAfterProjectChange()
+        currentTime = min(currentTime, project.duration)
+        do {
+            try await rebuildComposition(preserveTime: true)
+            await persist()
+            statusMessage = direction == .undo ? "Undo" : "Redo"
+        } catch {
+            project = current
+            switch direction {
+            case .undo:
+                _ = history.redo(current: target)
+            case .redo:
+                _ = history.undo(current: target)
+            }
+            reconcileSelectionAfterProjectChange()
+            show(error)
+        }
+        syncHistoryAvailability()
+    }
+
+    private func commitTimelineEdit(undoSnapshot: EditorProject? = nil) async {
         project.updatedAt = Date()
         do {
             try await rebuildComposition(preserveTime: true)
             await persist()
+            if let undoSnapshot { recordHistory(before: undoSnapshot) }
             statusMessage = "Ready"
         } catch {
             show(error)
@@ -1098,7 +1182,10 @@ final class EditorSession: ObservableObject {
         statusMessage = stage.title
     }
 
-    private func scheduleVisualCommit() {
+    private func scheduleVisualCommit(undoSnapshot: EditorProject) {
+        if pendingVisualUndoSnapshot == nil {
+            pendingVisualUndoSnapshot = undoSnapshot
+        }
         visualCommitTask?.cancel()
         visualCommitTask = Task { [weak self] in
             do {
@@ -1107,12 +1194,61 @@ final class EditorSession: ObservableObject {
                 // Text is rendered directly over the native player. Persisting
                 // must never swap the player item or interrupt active playback.
                 await self.persist()
+                self.finalizePendingVisualHistory(cancelTask: false)
                 self.statusMessage = "Ready"
             } catch is CancellationError {
                 return
             } catch {
                 self?.show(error)
             }
+        }
+    }
+
+    private func prepareUndoSnapshot() -> EditorProject {
+        finalizePendingVisualHistory()
+        return project
+    }
+
+    private func finalizePendingVisualHistory(cancelTask: Bool = true) {
+        if cancelTask { visualCommitTask?.cancel() }
+        visualCommitTask = nil
+        guard let snapshot = pendingVisualUndoSnapshot else { return }
+        pendingVisualUndoSnapshot = nil
+        recordHistory(before: snapshot)
+    }
+
+    private func recordHistory(before snapshot: EditorProject) {
+        history.record(before: snapshot, after: project)
+        syncHistoryAvailability()
+    }
+
+    private func syncHistoryAvailability() {
+        canUndo = history.canUndo
+        canRedo = history.canRedo
+    }
+
+    private func reconcileSelectionAfterProjectChange() {
+        let clipIDs = Set(project.clips.map(\.id))
+        let textIDs = Set((project.textLayers ?? []).map(\.id))
+        let overlayIDs = Set((project.overlays ?? []).map(\.id))
+        let audioIDs = Set((project.audioLayers ?? []).map(\.id))
+        timelineSelection = timelineSelection.filter { item in
+            switch item {
+            case let .clip(id): clipIDs.contains(id)
+            case let .text(id): textIDs.contains(id)
+            case let .overlay(id): overlayIDs.contains(id)
+            case let .audio(id): audioIDs.contains(id)
+            }
+        }
+        if let selectedClipID, !clipIDs.contains(selectedClipID) { self.selectedClipID = nil }
+        if let selectedTextLayerID, !textIDs.contains(selectedTextLayerID) { self.selectedTextLayerID = nil }
+        if let selectedOverlayID, !overlayIDs.contains(selectedOverlayID) { self.selectedOverlayID = nil }
+        if let selectedAudioLayerID, !audioIDs.contains(selectedAudioLayerID) { self.selectedAudioLayerID = nil }
+        if timelineSelection.isEmpty,
+           let hit = project.clip(at: min(currentTime, project.duration)) {
+            let id = project.clips[hit.index].id
+            selectedClipID = id
+            timelineSelection = [.clip(id)]
         }
     }
 
@@ -1224,6 +1360,9 @@ final class EditorSession: ObservableObject {
     private func restoreProject() async {
         do {
             guard let saved = try await store.load() else { return }
+            history.clear()
+            pendingVisualUndoSnapshot = nil
+            syncHistoryAvailability()
             let availableMedia = saved.media.filter {
                 FileManager.default.fileExists(atPath: $0.url.path)
             }

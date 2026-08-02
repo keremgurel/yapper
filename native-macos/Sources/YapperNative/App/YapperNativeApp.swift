@@ -18,6 +18,19 @@ struct YapperNativeApp: App {
         .defaultSize(width: 1_500, height: 950)
         .windowStyle(.hiddenTitleBar)
         .commands {
+            CommandGroup(replacing: .undoRedo) {
+                Button("Undo") {
+                    Task { await session.undo() }
+                }
+                .keyboardShortcut("z", modifiers: [.command])
+                .disabled(!session.canUndo || session.isBusy || session.isExporting)
+
+                Button("Redo") {
+                    Task { await session.redo() }
+                }
+                .keyboardShortcut("z", modifiers: [.command, .shift])
+                .disabled(!session.canRedo || session.isBusy || session.isExporting)
+            }
             CommandGroup(after: .newItem) {
                 Button("Import Media…") { ImportPanels.openMedia(for: session) }
                     .keyboardShortcut("i")
