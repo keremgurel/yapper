@@ -73,7 +73,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.13"
+        configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.14"
         configuration.preferences.isElementFullscreenEnabled = true
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
@@ -88,7 +88,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             )
         )
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) YapperStudioNative/0.9.13"
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) YapperStudioNative/0.9.14"
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsMagnification = false
@@ -434,10 +434,10 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
             let configuration = WKWebViewConfiguration()
             configuration.websiteDataStore = .default()
-            configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.13"
+            configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.14"
             configuration.defaultWebpagePreferences.allowsContentJavaScript = true
             let oauthWebView = WKWebView(frame: .zero, configuration: configuration)
-            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 YapperStudioNative/0.9.13"
+            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 YapperStudioNative/0.9.14"
             oauthWebView.navigationDelegate = self
             oauthWebView.uiDelegate = self
 

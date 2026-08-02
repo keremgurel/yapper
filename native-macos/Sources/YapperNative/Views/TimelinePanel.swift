@@ -815,6 +815,40 @@ private struct TimelineVideoClipItem: View {
         .transaction { transaction in
             transaction.disablesAnimations = true
         }
+        .contextMenu {
+            Button {
+                session.select(clip.id)
+                Task { await session.splitAtPlayhead() }
+            } label: {
+                Label("Split at playhead", systemImage: "scissors")
+            }
+
+            Button {
+                Task { await session.resetMediaToSource(media.id) }
+            } label: {
+                Label("Reset this media to source", systemImage: "arrow.counterclockwise")
+            }
+
+            Button {
+                NSWorkspace.shared.activateFileViewerSelecting([media.url])
+            } label: {
+                Label("Reveal source in Finder", systemImage: "folder")
+            }
+
+            Divider()
+            Button(role: .destructive) {
+                session.select(clip.id)
+                Task { await session.deleteSelected() }
+            } label: {
+                Label("Remove clip from timeline", systemImage: "trash")
+            }
+
+            Button(role: .destructive) {
+                Task { await session.deleteImportedMedia(media.id) }
+            } label: {
+                Label("Remove media from project", systemImage: "trash.slash")
+            }
+        }
     }
 
     private var selectionMoveGesture: some Gesture {
