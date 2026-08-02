@@ -691,6 +691,32 @@ struct EditorProjectTests {
         #expect((insetOffset + 200 - 84) / 2_400 == 0.5)
     }
 
+    @Test func repeatedTimelineZoomNeverDriftsFromThePointer() {
+        let leadingInset = 84.0
+        let trailingInset = 160.0
+        let viewportWidth = 920.0
+        let pointerX = 613.0
+        var timelineWidth = 4_800.0
+        var scrollOffset = 1_347.0
+        let anchoredFraction = (scrollOffset + pointerX - leadingInset) / timelineWidth
+
+        for factor in [1.08, 1.06, 0.93, 1.11, 0.89, 1.04, 0.96, 1.09] {
+            let nextWidth = timelineWidth * factor
+            scrollOffset = TimelineZoomGeometry.anchoredOffset(
+                oldOffset: scrollOffset,
+                pointerX: pointerX,
+                oldContentWidth: timelineWidth,
+                newContentWidth: nextWidth,
+                viewportWidth: viewportWidth,
+                leadingInset: leadingInset,
+                trailingInset: trailingInset
+            )
+            timelineWidth = nextWidth
+            let fractionUnderPointer = (scrollOffset + pointerX - leadingInset) / timelineWidth
+            #expect(abs(fractionUnderPointer - anchoredFraction) < 0.000_000_001)
+        }
+    }
+
     @Test func projectAspectRatioControlsExportFrame() {
         #expect(
             CompositionBuilder.renderSize(
