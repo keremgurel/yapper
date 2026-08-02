@@ -7,9 +7,47 @@ import Testing
 private let djiReferenceURL = URL(
     filePath: "/Volumes/G Micro Pro/DCIM/DJI_001/DJI_20260719173505_0045_D.MP4"
 )
+private let latestOneClickReferenceURL = URL(
+    filePath: "/Volumes/G MicroSD/DCIM/DJI_001/DJI_20260801210742_0340_D.MP4"
+)
 
 @Suite(.serialized)
 struct ReferenceMediaIntegrationTests {
+    @Test(
+        "Latest one-click regression keeps a complete outro and no stale transcript",
+        .enabled(if: ProcessInfo.processInfo.environment["YAPPER_RUN_LATEST_ONE_CLICK_INTEGRATION"] == "1")
+    )
+    func latestOneClickEditKeepsCompleteOutro() async throws {
+        let media = try await MediaProbe.inspect(url: latestOneClickReferenceURL)
+        let service = AIEditService()
+        let words = try await service.transcribe(media: media)
+        let cuts = try await service.cleanCuts(words: words)
+        let ranges = await service.autoEditRanges(
+            words: words,
+            duration: media.duration,
+            aiCuts: cuts
+        )
+        var project = EditorProject(
+            media: [media],
+            clips: [TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: media.duration)],
+            transcript: words
+        )
+        project.removeSourceRanges(ranges, for: media.id)
+        let keptTokens = words.compactMap { word in
+            project.isWordKept(word)
+                ? word.text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
+                : nil
+        }
+
+        #expect(words.count >= 400)
+        #expect(contains(keptTokens, sequence: ["one", "of", "these", "real", "celpip", "examples"]))
+        #expect(contains(keptTokens, sequence: ["follow", "for", "more", "celpip", "practice"]))
+        #expect(
+            keptTokens.last != "practice"
+                || Array(keptTokens.suffix(5)) == ["follow", "for", "more", "celpip", "practice"]
+        )
+    }
+
     @Test(
         "DJI transcription and AI edit preserve complete final takes",
         .enabled(if: ProcessInfo.processInfo.environment["YAPPER_RUN_TRANSCRIPTION_INTEGRATION"] == "1")

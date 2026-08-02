@@ -9,6 +9,24 @@ struct EditorInspectorRequest: Equatable, Sendable {
     let tool: String
 }
 
+enum OneClickEditStage: Int, CaseIterable, Sendable {
+    case preparing
+    case transcribing
+    case removingRetakes
+    case cuttingPauses
+    case trimmingSilence
+
+    var title: String {
+        switch self {
+        case .preparing: "Preparing your video"
+        case .transcribing: "Transcribing your audio"
+        case .removingRetakes: "Removing mistakes & retakes"
+        case .cuttingPauses: "Cutting pauses"
+        case .trimmingSilence: "Trimming silence"
+        }
+    }
+}
+
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject()
@@ -25,6 +43,7 @@ final class EditorSession: ObservableObject {
     @Published private(set) var isExporting = false
     @Published private(set) var isAIEditing = false
     @Published private(set) var aiProgress = 0.0
+    @Published private(set) var oneClickEditStage: OneClickEditStage?
     @Published private(set) var statusMessage = "Import video to begin"
     @Published private(set) var errorMessage: String?
     @Published private(set) var waveformByMedia: [UUID: [Float]] = [:]
@@ -257,18 +276,20 @@ final class EditorSession: ObservableObject {
     }
 
     func setActiveTimelineSnap(_ match: TimelineSnapMatch?) {
-        snapGuideClearTask?.cancel()
         let targetChanged = activeTimelineSnap?.time != match?.time
             || activeTimelineSnap?.kind != match?.kind
-        if activeTimelineSnap != match {
-            if targetChanged, match != nil {
-                NSHapticFeedbackManager.defaultPerformer.perform(
-                    .alignment,
-                    performanceTime: .now
-                )
-            }
-            activeTimelineSnap = match
+        // Distance changes on every pointer event but the visible guide does
+        // not use it. Publishing those changes invalidated every clip view and
+        // made precision trimming feel sticky. Only publish a target change.
+        guard targetChanged else { return }
+        snapGuideClearTask?.cancel()
+        if match != nil {
+            NSHapticFeedbackManager.defaultPerformer.perform(
+                .alignment,
+                performanceTime: .now
+            )
         }
+        activeTimelineSnap = match
         guard match != nil else { return }
         snapGuideClearTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(4))
@@ -943,7 +964,7 @@ final class EditorSession: ObservableObject {
             }
             project.updatedAt = Date()
             await persist()
-            statusMessage = "Transcript ready · \(project.transcript?.count ?? 0) words"
+            statusMessage = "Transcript ready · \(project.timelineTranscript.count) words"
         } catch {
             show(error)
         }
@@ -955,8 +976,10 @@ final class EditorSession: ObservableObject {
         isAIEditing = true
         isBusy = true
         aiProgress = 0
+        oneClickEditStage = .preparing
         errorMessage = nil
         defer {
+            oneClickEditStage = nil
             isAIEditing = false
             isBusy = false
         }
@@ -967,7 +990,7 @@ final class EditorSession: ObservableObject {
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
-                    statusMessage = "Transcribing \(media.name)…"
+                    setOneClickEditStage(.transcribing)
                     words = try await aiEditService.transcribe(media: media)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
@@ -978,16 +1001,16 @@ final class EditorSession: ObservableObject {
                     throw NativeEditorError.aiFailed("No spoken words were found in \(media.name).")
                 }
 
-                aiProgress = (Double(index) + 0.45) / Double(max(1, mediaIDs.count))
-                statusMessage = "Choosing the clean final takes…"
+                setOneClickEditStage(.removingRetakes)
                 let cuts = try await aiEditService.cleanCuts(words: words)
-                statusMessage = "Removing retakes and dead pauses…"
+                setOneClickEditStage(.cuttingPauses)
                 let ranges = await aiEditService.autoEditRanges(
                     words: words,
                     duration: media.duration,
                     aiCuts: cuts
                 )
                 project.removeSourceRanges(ranges, for: mediaID)
+                setOneClickEditStage(.trimmingSilence)
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
             }
             guard !project.clips.isEmpty else {
@@ -1067,6 +1090,12 @@ final class EditorSession: ObservableObject {
         } catch {
             show(error)
         }
+    }
+
+    private func setOneClickEditStage(_ stage: OneClickEditStage) {
+        oneClickEditStage = stage
+        aiProgress = Double(stage.rawValue) / Double(max(1, OneClickEditStage.allCases.count - 1))
+        statusMessage = stage.title
     }
 
     private func scheduleVisualCommit() {

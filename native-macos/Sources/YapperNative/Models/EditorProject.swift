@@ -379,6 +379,15 @@ struct EditorProject: Codable, Equatable, Sendable {
         clips.reduce(0) { $0 + $1.duration }
     }
 
+    /// Transcript content belonging to media that is currently present on the
+    /// main timeline. Media can remain in the bin after its last clip is
+    /// deleted so it can be reused instantly, but its old words must not leak
+    /// into the active edit.
+    var timelineTranscript: [TranscriptWord] {
+        let activeMediaIDs = Set(clips.map(\.mediaID))
+        return (transcript ?? []).filter { activeMediaIDs.contains($0.mediaID) }
+    }
+
     func media(for clip: TimelineClip) -> ProjectMedia? {
         media.first { $0.id == clip.mediaID }
     }

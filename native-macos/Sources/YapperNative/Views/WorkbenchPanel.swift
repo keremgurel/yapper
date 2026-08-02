@@ -87,6 +87,13 @@ struct WorkbenchPanel: View {
                 dockFocus = .primary
             }
         }
+        .overlay {
+            if let stage = session.oneClickEditStage {
+                OneClickEditProgressOverlay(stage: stage)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeOut(duration: 0.16), value: session.oneClickEditStage)
     }
 
     private var workbenchTabStrip: some View {
@@ -551,6 +558,105 @@ private struct MediaWorkbench: View {
     }
 }
 
+private struct OneClickEditProgressOverlay: View {
+    let stage: OneClickEditStage
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.48)
+                .ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 10) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.yapperOrange)
+                        .frame(width: 32, height: 32)
+                        .background(Color.yapperOrange.opacity(0.14))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Editing your video")
+                            .font(.studioBodyStrong)
+                        Text("Building a clean, continuous native timeline")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 13) {
+                    ForEach(OneClickEditStage.allCases, id: \.rawValue) { item in
+                        HStack(spacing: 10) {
+                            Group {
+                                if item.rawValue < stage.rawValue {
+                                    Image(systemName: "checkmark")
+                                        .foregroundStyle(Color.yapperOrange)
+                                } else if item == stage {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                        .tint(Color.yapperOrange)
+                                } else {
+                                    Circle()
+                                        .fill(Color.secondary.opacity(0.32))
+                                        .frame(width: 5, height: 5)
+                                }
+                            }
+                            .font(.system(size: 11, weight: .bold))
+                            .frame(width: 18, height: 18)
+
+                            if item == stage {
+                                ShimmeringStatusText(text: item.title)
+                            } else {
+                                Text(item.title)
+                                    .font(.studioCaptionStrong)
+                                    .foregroundStyle(
+                                        item.rawValue < stage.rawValue
+                                            ? Color.primary.opacity(0.72)
+                                            : Color.secondary.opacity(0.52)
+                                    )
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(22)
+            .frame(maxWidth: 380, alignment: .leading)
+            .background(.ultraThinMaterial)
+            .background(Color.panelBackground.opacity(0.86))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.studioLine, lineWidth: 1)
+            }
+            .shadow(color: .black.opacity(0.34), radius: 28, y: 12)
+            .padding(20)
+        }
+    }
+}
+
+private struct ShimmeringStatusText: View {
+    let text: String
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            let elapsed = context.date.timeIntervalSinceReferenceDate
+            let phase = elapsed.truncatingRemainder(dividingBy: 1.5) / 1.5
+            Text(text)
+                .font(.studioCaptionStrong)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color.secondary.opacity(0.72),
+                            Color.cyan,
+                            Color.secondary.opacity(0.72),
+                        ],
+                        startPoint: UnitPoint(x: phase * 2 - 1, y: 0.5),
+                        endPoint: UnitPoint(x: phase * 2, y: 0.5)
+                    )
+                )
+        }
+    }
+}
+
 private struct QuickEditWorkbench: View {
     @ObservedObject var session: EditorSession
 
@@ -564,7 +670,7 @@ private struct QuickEditWorkbench: View {
 
             LazyVGrid(columns: [.init(.flexible()), .init(.flexible())], spacing: 10) {
                 QuickAction(
-                    title: (session.project.transcript?.isEmpty == false) ? "Transcribe Again" : "Transcribe",
+                    title: session.project.timelineTranscript.isEmpty ? "Transcribe" : "Transcribe Again",
                     detail: "Accurate timed words",
                     icon: "doc.text",
                     busy: session.isAIEditing
@@ -978,7 +1084,7 @@ private struct TranscriptWorkbench: View {
     @State private var marqueeBaseWordIDs: Set<UUID> = []
     @State private var marqueeMode: TranscriptWordSelection.MarqueeMode = .replace
 
-    private var words: [TranscriptWord] { session.project.transcript ?? [] }
+    private var words: [TranscriptWord] { session.project.timelineTranscript }
     private var selectedWords: [TranscriptWord] {
         words.filter { selection.wordIDs.contains($0.id) }
     }

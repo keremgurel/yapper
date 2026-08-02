@@ -263,6 +263,43 @@ struct EditorProjectTests {
         #expect(repairedBoundaries[1].0 == 9 && repairedBoundaries[1].1 == 10)
     }
 
+    @Test func retakeRepairReplacesDetachedFinalWordWithCompleteMatchingTake() {
+        let mediaID = UUID()
+        let values = [
+            "Keep", "this", "main", "sentence.",
+            "Follow", "for", "more", "CELPIP", "practice.",
+            "practice.",
+        ]
+        let words = values.enumerated().map { index, text in
+            let start = index == values.count - 1 ? 8.0 : Double(index) * 0.28
+            return TranscriptWord(
+                mediaID: mediaID,
+                text: text,
+                start: start,
+                end: start + 0.22
+            )
+        }
+
+        let repaired = RetakeCutBoundaryRepair.repaired(words: words, cuts: [(4, 8)])
+        #expect(repaired.count == 1)
+        #expect(repaired.first?.0 == 9)
+        #expect(repaired.first?.1 == 9)
+    }
+
+    @Test func activeTimelineTranscriptExcludesWordsFromMediaLeftOnlyInTheBin() {
+        let oldMediaID = UUID()
+        let activeMediaID = UUID()
+        let project = EditorProject(
+            clips: [TimelineClip(mediaID: activeMediaID, sourceStart: 0, sourceEnd: 2)],
+            transcript: [
+                TranscriptWord(mediaID: oldMediaID, text: "old", start: 0, end: 0.2),
+                TranscriptWord(mediaID: activeMediaID, text: "new", start: 0, end: 0.2),
+            ]
+        )
+
+        #expect(project.timelineTranscript.map(\.text) == ["new"])
+    }
+
     @Test func deletingAClipCollapsesTheTimeline() {
         let mediaID = UUID()
         let first = TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 2)

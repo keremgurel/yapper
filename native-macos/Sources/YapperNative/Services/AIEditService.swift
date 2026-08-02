@@ -48,6 +48,7 @@ actor AIEditService {
     // path could smear quiet sentence onsets before ASR heard them.
     private let chunkBytes = 3_000_000
     private let overlapSeconds = 5.0
+    private let maximumConcurrentChunks = 4
     private let defaultBaseURL = URL(string: "https://ypr.app")!
 
     func transcribe(media: ProjectMedia) async throws -> [TranscriptWord] {
@@ -68,7 +69,10 @@ actor AIEditService {
                     return (index, words)
                 }
             }
-            while next < min(2, chunks.count) { enqueue(next); next += 1 }
+            while next < min(maximumConcurrentChunks, chunks.count) {
+                enqueue(next)
+                next += 1
+            }
             while let (index, words) = try await group.next() {
                 completed[index] = words
                 if next < chunks.count { enqueue(next); next += 1 }
@@ -513,6 +517,8 @@ enum RetakeCutBoundaryRepair {
             removed[candidate] = false
         }
 
+        repairOrphanedKeptFragments(words: words, removed: &removed)
+
         var repaired: [(Int, Int)] = []
         var start: Int?
         for index in words.indices {
@@ -524,6 +530,72 @@ enum RetakeCutBoundaryRepair {
         }
         if let start { repaired.append((start, words.count - 1)) }
         return repaired
+    }
+
+    /// A semantic response can occasionally end its final cut one token too
+    /// early, leaving only the last word of a repeated take (for example the
+    /// isolated "practice." observed in the DJI regression clip). Such an
+    /// island produces a visible and audible zombie clip. Prefer the nearest
+    /// complete matching sentence inside the removed retake; if there is no
+    /// complete candidate, remove the fragment instead of splicing it into the
+    /// final video.
+    private static func repairOrphanedKeptFragments(
+        words: [TranscriptWord],
+        removed: inout [Bool]
+    ) {
+        guard words.count == removed.count, words.count >= 4 else { return }
+
+        var keptRuns: [ClosedRange<Int>] = []
+        var runStart: Int?
+        for index in words.indices {
+            if !removed[index], runStart == nil { runStart = index }
+            if removed[index], let start = runStart {
+                keptRuns.append(start ... index - 1)
+                runStart = nil
+            }
+        }
+        if let runStart { keptRuns.append(runStart ... words.count - 1) }
+
+        for run in keptRuns {
+            let isTail = run.upperBound == words.count - 1
+            let surrounded = run.lowerBound > 0 && run.upperBound < words.count - 1
+            let tokenCount = run.count
+            let boundaryGap = run.lowerBound > 0
+                ? words[run.lowerBound].start - words[run.lowerBound - 1].end
+                : 0
+            let isDetachedFragment = (isTail && tokenCount <= 2 && boundaryGap >= 0.5)
+                || (surrounded && tokenCount == 1 && boundaryGap >= 0.5)
+            guard isDetachedFragment else { continue }
+
+            let otherKeptCount = removed.indices.filter {
+                !removed[$0] && !run.contains($0)
+            }.count
+            guard otherKeptCount >= 3 else { continue }
+
+            let finalToken = normalize(words[run.upperBound].text)
+            var removedRunStart = run.lowerBound - 1
+            while removedRunStart > 0, removed[removedRunStart - 1] {
+                removedRunStart -= 1
+            }
+            let candidateEnd = (removedRunStart ..< run.lowerBound).reversed().first {
+                normalize(words[$0].text) == finalToken && isSentenceEnd(words[$0].text)
+            }
+
+            for index in run { removed[index] = true }
+            guard let candidateEnd else { continue }
+
+            var candidateStart = candidateEnd
+            while candidateStart > removedRunStart,
+                  candidateEnd - candidateStart < 19,
+                  !isSentenceEnd(words[candidateStart - 1].text)
+            {
+                candidateStart -= 1
+            }
+            let candidateCount = candidateEnd - candidateStart + 1
+            let candidateDuration = words[candidateEnd].end - words[candidateStart].start
+            guard candidateCount >= 3, candidateDuration <= 10 else { continue }
+            for index in candidateStart ... candidateEnd { removed[index] = false }
+        }
     }
 
     private static func normalize(_ text: String) -> String {
