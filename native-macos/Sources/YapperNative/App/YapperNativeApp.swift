@@ -14,6 +14,9 @@ struct YapperNativeApp: App {
             AppShellView(session: session)
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
+                .onOpenURL { url in
+                    NativeAuthHandoff.shared.receive(url)
+                }
         }
         .defaultSize(width: 1_500, height: 950)
         .windowStyle(.hiddenTitleBar)

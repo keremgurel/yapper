@@ -717,6 +717,14 @@ struct EditorProjectTests {
         }
     }
 
+    @Test func timelineCommandScrollUsesAStableBoundedCurve() {
+        #expect(TimelineZoomGeometry.scrollFactor(delta: 0, hasPreciseDeltas: true) == 1)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: 10, hasPreciseDeltas: true) > 1)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: -10, hasPreciseDeltas: true) < 1)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: 10_000, hasPreciseDeltas: true) == 1.08)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: -10_000, hasPreciseDeltas: true) == 0.925)
+    }
+
     @Test func projectAspectRatioControlsExportFrame() {
         #expect(
             CompositionBuilder.renderSize(

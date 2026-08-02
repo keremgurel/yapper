@@ -1,48 +1,14 @@
-"use client";
-
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import type { ReactNode } from "react";
 
 /**
- * Studio is the installed desktop product, not a public web app. The deployed
- * route remains available to the Tauri webview, while normal browsers return
- * to the marketing site before any product UI is shown.
+ * Studio's account-backed surfaces are shared by the browser and desktop app.
+ * Only the performance-critical editor is native; its web route renders the
+ * desktop handoff inside the same shell instead of hiding all of Studio.
  */
 export default function StudioRouteBoundary({
   children,
 }: {
   children: ReactNode;
 }) {
-  const environment = useSyncExternalStore<"pending" | "desktop" | "browser">(
-    (onStoreChange) => {
-      // Hydration starts from the server's conservative `pending` snapshot.
-      // Request one client snapshot immediately after mount; the desktop
-      // identity itself stays stable for the life of this document.
-      queueMicrotask(onStoreChange);
-      return () => undefined;
-    },
-    () =>
-      process.env.NODE_ENV === "development" ||
-      navigator.userAgent.includes("YapperStudioNative/") ||
-      "__TAURI_INTERNALS__" in window ||
-      "__TAURI__" in window
-        ? "desktop"
-        : "browser",
-    () => "pending",
-  );
-  const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (environment === "pending") return;
-    const isNativeAuthHandoff = pathname.startsWith("/studio/native-auth");
-    if (environment === "browser" && !isNativeAuthHandoff) {
-      router.replace("/");
-      return;
-    }
-    if (pathname === "/studio") router.replace("/studio/home");
-  }, [environment, pathname, router]);
-
-  const isNativeAuthHandoff = pathname.startsWith("/studio/native-auth");
-  return environment === "desktop" || isNativeAuthHandoff ? children : null;
+  return children;
 }

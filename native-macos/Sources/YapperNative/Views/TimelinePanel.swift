@@ -286,6 +286,14 @@ private func timelineSelectionMove(
 enum TimelineZoomGeometry {
     static let scaleRange = 1.25 ... 320.0
 
+    static func scrollFactor(delta: CGFloat, hasPreciseDeltas: Bool) -> Double {
+        // Trackpads emit many small deltas. Keeping the curve shallow makes the
+        // timeline stay visually pinned beneath the pointer instead of pulsing
+        // several frames in and out for one physical gesture.
+        let sensitivity = hasPreciseDeltas ? 0.002 : 0.024
+        return min(1.08, max(0.925, exp(Double(delta) * sensitivity)))
+    }
+
     static func scaled(_ current: Double, by factor: Double) -> Double {
         min(scaleRange.upperBound, max(scaleRange.lowerBound, current * factor))
     }
@@ -388,6 +396,7 @@ private struct TimelineZoomInputView: NSViewRepresentable {
         context.coordinator.trailingInset = trailingInset
         context.coordinator.timelineWidth = timelineWidth
         context.coordinator.onZoom = onZoom
+        context.coordinator.synchronizeZoomLayout()
     }
 
     static func dismantleNSView(_ nsView: TimelineZoomMonitorView, coordinator: Coordinator) {
@@ -406,6 +415,8 @@ private struct TimelineZoomInputView: NSViewRepresentable {
         private var pendingZoomGeneration: Int?
         private var virtualTimelineWidth: CGFloat?
         private var virtualScrollOffset: CGFloat?
+        private var pendingTargetX: CGFloat?
+        private var pendingDocumentWidth: CGFloat?
 
         init(
             leadingInset: CGFloat,
@@ -436,9 +447,12 @@ private struct TimelineZoomInputView: NSViewRepresentable {
             guard
                 let view,
                 let window = view.window,
-                event.window === window,
-                view.bounds.contains(view.convert(event.locationInWindow, from: nil))
+                event.window === window
             else { return event }
+
+            guard let scrollView = enclosingScrollView(from: view) else { return event }
+            let interactiveFrame = scrollView.convert(scrollView.bounds, to: nil)
+            guard interactiveFrame.contains(event.locationInWindow) else { return event }
 
             let requestedFactor: Double
             switch event.type {
@@ -448,18 +462,15 @@ private struct TimelineZoomInputView: NSViewRepresentable {
                 let dominantDelta = abs(event.scrollingDeltaY) >= abs(event.scrollingDeltaX)
                     ? event.scrollingDeltaY
                     : event.scrollingDeltaX
-                let sensitivity = event.hasPreciseScrollingDeltas ? 0.0045 : 0.035
-                requestedFactor = min(
-                    1.14,
-                    max(0.87, exp(Double(dominantDelta) * sensitivity))
+                requestedFactor = TimelineZoomGeometry.scrollFactor(
+                    delta: dominantDelta,
+                    hasPreciseDeltas: event.hasPreciseScrollingDeltas
                 )
             default:
                 return event
             }
 
-            let scrollView = enclosingScrollView(from: view)
-            let clipView = scrollView?.contentView
-            guard let scrollView, let clipView else { return nil }
+            let clipView = scrollView.contentView
             let actualOffset = clipView.bounds.minX
             if pendingZoomGeneration == nil {
                 virtualTimelineWidth = timelineWidth
@@ -487,51 +498,39 @@ private struct TimelineZoomInputView: NSViewRepresentable {
             )
             virtualScrollOffset = targetX
             pendingZoomGeneration = generation
-            applyZoomOffset(
-                targetX,
-                expectedDocumentWidth: leadingInset + newTimelineWidth + trailingInset,
-                generation: generation,
-                scrollView: scrollView,
-                attempt: 0
-            )
+            pendingTargetX = targetX
+            pendingDocumentWidth = leadingInset + newTimelineWidth + trailingInset
+            // updateNSView applies this during the same SwiftUI layout pass as
+            // the new content width. This prevents a visible frame where the
+            // clips resize around the left edge before the scroll anchor moves.
+            DispatchQueue.main.async { [weak self] in
+                self?.synchronizeZoomLayout()
+            }
             return nil
         }
 
-        private func applyZoomOffset(
-            _ targetX: CGFloat,
-            expectedDocumentWidth: CGFloat,
-            generation: Int,
-            scrollView: NSScrollView,
-            attempt: Int
-        ) {
-            DispatchQueue.main.async { [weak self, weak scrollView] in
-                guard
-                    let self,
-                    self.zoomGeneration == generation,
-                    let scrollView
-                else { return }
+        func synchronizeZoomLayout() {
+            guard
+                pendingZoomGeneration != nil,
+                let view,
+                let scrollView = enclosingScrollView(from: view),
+                let targetX = pendingTargetX,
+                let expectedDocumentWidth = pendingDocumentWidth
+            else { return }
 
-                scrollView.documentView?.layoutSubtreeIfNeeded()
-                let actualDocumentWidth = scrollView.documentView?.bounds.width ?? 0
-                if abs(actualDocumentWidth - expectedDocumentWidth) > 1.5, attempt < 3 {
-                    self.applyZoomOffset(
-                        targetX,
-                        expectedDocumentWidth: expectedDocumentWidth,
-                        generation: generation,
-                        scrollView: scrollView,
-                        attempt: attempt + 1
-                    )
-                    return
-                }
+            scrollView.documentView?.layoutSubtreeIfNeeded()
+            let actualDocumentWidth = scrollView.documentView?.bounds.width ?? 0
+            guard abs(actualDocumentWidth - expectedDocumentWidth) <= 1.5 else { return }
 
-                let clipView = scrollView.contentView
-                let maximumOffset = max(0, actualDocumentWidth - clipView.bounds.width)
-                let resolvedOffset = min(maximumOffset, max(0, targetX))
-                clipView.scroll(to: CGPoint(x: resolvedOffset, y: clipView.bounds.minY))
-                scrollView.reflectScrolledClipView(clipView)
-                self.virtualScrollOffset = resolvedOffset
-                self.pendingZoomGeneration = nil
-            }
+            let clipView = scrollView.contentView
+            let maximumOffset = max(0, actualDocumentWidth - clipView.bounds.width)
+            let resolvedOffset = min(maximumOffset, max(0, targetX))
+            clipView.scroll(to: CGPoint(x: resolvedOffset, y: clipView.bounds.minY))
+            scrollView.reflectScrolledClipView(clipView)
+            virtualScrollOffset = resolvedOffset
+            pendingZoomGeneration = nil
+            pendingTargetX = nil
+            pendingDocumentWidth = nil
         }
 
         private func enclosingScrollView(from view: NSView) -> NSScrollView? {
@@ -1952,7 +1951,9 @@ private struct TimelineRuler: View {
                         Text(formatTime(time))
                             .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
                             .foregroundStyle(Color.primary.opacity(0.84)),
-                        at: CGPoint(x: x + 3, y: 9),
+                        // Keep the ascenders inside the Canvas at every display
+                        // scale; the old baseline could clip the time labels.
+                        at: CGPoint(x: x + 3, y: 13),
                         anchor: .leading
                     )
                 }

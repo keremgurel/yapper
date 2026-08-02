@@ -1,5 +1,4 @@
 @preconcurrency import AppKit
-@preconcurrency import AuthenticationServices
 import SwiftUI
 @preconcurrency import WebKit
 
@@ -62,6 +61,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
     @Binding var errorMessage: String?
     let onNavigate: (StudioDestination) -> Void
 
+    private static var nativeUserAgentToken: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+            ?? "development"
+        return "YapperStudioNative/\(version)"
+    }
+
     func makeCoordinator() -> Coordinator {
         Coordinator(
             isLoading: $isLoading,
@@ -73,7 +78,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.14"
+        configuration.applicationNameForUserAgent = Self.nativeUserAgentToken
         configuration.preferences.isElementFullscreenEnabled = true
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
@@ -88,12 +93,13 @@ private struct CloudStudioWebView: NSViewRepresentable {
             )
         )
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) YapperStudioNative/0.9.14"
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) \(Self.nativeUserAgentToken)"
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsMagnification = false
         webView.setValue(false, forKey: "drawsBackground")
         context.coordinator.webView = webView
+        context.coordinator.startObservingAuthenticationCallbacks()
         context.coordinator.lastReloadGeneration = reloadGeneration
         load(destination, in: webView, coordinator: context.coordinator)
         return webView
@@ -126,7 +132,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
-        coordinator.cancelAuthentication()
+        coordinator.stopObservingAuthenticationCallbacks()
         webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "yapperNative")
         webView.navigationDelegate = nil
@@ -201,14 +207,13 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler,
-        ASWebAuthenticationPresentationContextProviding
-    {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+        private static let authenticationStateKey = "yapperNativeAuthenticationState"
         weak var webView: WKWebView?
         private var oauthWindow: NSWindow?
         private weak var oauthWebView: WKWebView?
-        private var authenticationSession: ASWebAuthenticationSession?
         private var authenticationState: String?
+        private var authenticationObserverID: UUID?
         var isLoading: Binding<Bool>
         var errorMessage: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
@@ -304,8 +309,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 ) else { return }
                 NSWorkspace.shared.open(url)
             case "native_auth_complete":
-                authenticationSession = nil
-                authenticationState = nil
+                clearAuthenticationState()
                 errorMessage.wrappedValue = nil
                 self.webView?.reload()
             case "native_auth_error":
@@ -318,7 +322,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         }
 
         private func openBrowserAuthentication(_ baseURL: URL) {
-            cancelAuthentication()
+            clearAuthenticationState()
             let state = UUID().uuidString.lowercased()
             guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else { return }
             var queryItems = components.queryItems ?? []
@@ -328,47 +332,33 @@ private struct CloudStudioWebView: NSViewRepresentable {
             guard let url = components.url else { return }
 
             authenticationState = state
-            let session = ASWebAuthenticationSession(
-                url: url,
-                callbackURLScheme: "yapper-studio"
-            ) { [weak self] callbackURL, error in
-                Task { @MainActor in
-                    self?.finishBrowserAuthentication(callbackURL: callbackURL, error: error)
-                }
-            }
-            session.presentationContextProvider = self
-            session.prefersEphemeralWebBrowserSession = false
-            authenticationSession = session
-            guard session.start() else {
-                authenticationSession = nil
-                authenticationState = nil
+            UserDefaults.standard.set(state, forKey: Self.authenticationStateKey)
+
+            // NSWorkspace uses the person's configured default browser and its
+            // normal cookie jar. ASWebAuthenticationSession presents a separate
+            // auth sheet, which was the source of the inconsistent sign-in UX.
+            guard NSWorkspace.shared.open(url) else {
+                clearAuthenticationState()
                 errorMessage.wrappedValue = "Couldn’t open your browser for sign-in"
                 return
             }
         }
 
-        private func finishBrowserAuthentication(callbackURL: URL?, error: Error?) {
-            if let error = error as? ASWebAuthenticationSessionError,
-               error.code == .canceledLogin {
-                authenticationSession = nil
-                authenticationState = nil
-                return
-            }
+        private func finishBrowserAuthentication(callbackURL: URL) {
+            let expectedState = authenticationState
+                ?? UserDefaults.standard.string(forKey: Self.authenticationStateKey)
             guard
-                error == nil,
-                let callbackURL,
                 callbackURL.scheme == "yapper-studio",
                 callbackURL.host == "auth",
                 callbackURL.path == "/callback",
                 let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
                 let ticket = components.queryItems?.first(where: { $0.name == "ticket" })?.value,
                 let returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value,
-                returnedState == authenticationState,
+                returnedState == expectedState,
                 !ticket.isEmpty
             else {
-                authenticationSession = nil
-                authenticationState = nil
-                errorMessage.wrappedValue = error?.localizedDescription ?? "Browser sign-in could not be verified"
+                clearAuthenticationState()
+                errorMessage.wrappedValue = "Browser sign-in could not be verified"
                 return
             }
 
@@ -379,8 +369,13 @@ private struct CloudStudioWebView: NSViewRepresentable {
             let script = """
             (async () => {
               try {
-                const clerk = window.Clerk;
+                let clerk = window.Clerk;
+                for (let attempt = 0; !clerk && attempt < 100; attempt += 1) {
+                  await new Promise(resolve => setTimeout(resolve, 50));
+                  clerk = window.Clerk;
+                }
                 if (!clerk) throw new Error('Clerk is not ready');
+                await clerk.load();
                 const signIn = await clerk.client.signIn.create({
                   strategy: 'ticket',
                   ticket: \(ticketLiteral)
@@ -408,14 +403,21 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
         }
 
-        func cancelAuthentication() {
-            authenticationSession?.cancel()
-            authenticationSession = nil
-            authenticationState = nil
+        func startObservingAuthenticationCallbacks() {
+            guard authenticationObserverID == nil else { return }
+            authenticationObserverID = NativeAuthHandoff.shared.observe { [weak self] url in
+                self?.finishBrowserAuthentication(callbackURL: url)
+            }
         }
 
-        func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-            webView?.window ?? NSApp.keyWindow ?? NSWindow()
+        func stopObservingAuthenticationCallbacks() {
+            NativeAuthHandoff.shared.removeObserver(authenticationObserverID)
+            authenticationObserverID = nil
+        }
+
+        private func clearAuthenticationState() {
+            authenticationState = nil
+            UserDefaults.standard.removeObject(forKey: Self.authenticationStateKey)
         }
 
         private static func javascriptLiteral(_ value: String) -> String? {
@@ -434,10 +436,10 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
             let configuration = WKWebViewConfiguration()
             configuration.websiteDataStore = .default()
-            configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.14"
+            configuration.applicationNameForUserAgent = CloudStudioWebView.nativeUserAgentToken
             configuration.defaultWebpagePreferences.allowsContentJavaScript = true
             let oauthWebView = WKWebView(frame: .zero, configuration: configuration)
-            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 YapperStudioNative/0.9.14"
+            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 \(CloudStudioWebView.nativeUserAgentToken)"
             oauthWebView.navigationDelegate = self
             oauthWebView.uiDelegate = self
 
