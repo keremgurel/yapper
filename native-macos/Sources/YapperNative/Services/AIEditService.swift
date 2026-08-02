@@ -119,6 +119,26 @@ actor AIEditService {
         return merge(ranges)
     }
 
+    func silenceRanges(
+        words: [TranscriptWord],
+        duration: Double,
+        minimumPause: Double = 0.30
+    ) -> [(Double, Double)] {
+        let ordered = words.sorted { $0.start < $1.start }
+        guard let first = ordered.first, let last = ordered.last else { return [] }
+        var ranges: [(Double, Double)] = []
+        for index in ordered.indices.dropLast() {
+            let next = ordered.index(after: index)
+            guard ordered[next].start - ordered[index].end >= minimumPause else { continue }
+            let start = ordered[index].end + 0.06
+            let end = ordered[next].start - 0.04
+            if end > start { ranges.append((start, end)) }
+        }
+        if first.start >= 0.4 { ranges.append((0, max(0, first.start - 0.04))) }
+        if duration - last.end >= 0.4 { ranges.append((last.end + 0.06, duration)) }
+        return merge(ranges)
+    }
+
     private func decodeMonoPCM16(url: URL) async throws -> Data {
         let asset = AVURLAsset(url: url)
         guard let track = try await asset.loadTracks(withMediaType: .audio).first else {

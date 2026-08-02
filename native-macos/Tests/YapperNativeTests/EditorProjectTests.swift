@@ -706,4 +706,68 @@ struct EditorProjectTests {
         #expect(project.timelineStart(for: second.id) == 3)
         #expect(project.timelineStart(for: UUID()) == nil)
     }
+
+    @Test func timelineMarqueeSelectsMixedItemsInEitherDragDirection() {
+        let clip = TimelineSelectionItem.clip(UUID())
+        let text = TimelineSelectionItem.text(UUID())
+        let audio = TimelineSelectionItem.audio(UUID())
+        let frames = [
+            TimelineItemFrame(item: clip, frame: CGRect(x: 20, y: 100, width: 120, height: 60)),
+            TimelineItemFrame(item: text, frame: CGRect(x: 80, y: 20, width: 90, height: 40)),
+            TimelineItemFrame(item: audio, frame: CGRect(x: 240, y: 180, width: 90, height: 40)),
+        ]
+
+        let marquee = TimelineMarqueeGeometry.rect(
+            from: CGPoint(x: 190, y: 175),
+            to: CGPoint(x: 10, y: 10)
+        )
+        let selection = TimelineMarqueeGeometry.selection(
+            intersecting: marquee,
+            itemFrames: frames
+        )
+
+        #expect(selection == Set([clip, text]))
+    }
+
+    @Test func timelineMarqueeSupportsAdditiveAndToggleSelection() {
+        let clip = TimelineSelectionItem.clip(UUID())
+        let text = TimelineSelectionItem.text(UUID())
+        let overlay = TimelineSelectionItem.overlay(UUID())
+        let frames = [
+            TimelineItemFrame(item: text, frame: CGRect(x: 10, y: 10, width: 30, height: 30)),
+            TimelineItemFrame(item: overlay, frame: CGRect(x: 45, y: 10, width: 30, height: 30)),
+        ]
+        let marquee = CGRect(x: 0, y: 0, width: 80, height: 50)
+
+        #expect(TimelineMarqueeGeometry.selection(
+            intersecting: marquee,
+            itemFrames: frames,
+            base: [clip],
+            additive: true
+        ) == Set([clip, text, overlay]))
+        #expect(TimelineMarqueeGeometry.selection(
+            intersecting: marquee,
+            itemFrames: frames,
+            base: [clip, text],
+            toggling: true
+        ) == Set([clip, overlay]))
+    }
+
+    @Test func silenceDetectionLeavesTightSpeechHandles() async {
+        let mediaID = UUID()
+        let words = [
+            TranscriptWord(mediaID: mediaID, text: "First", start: 0.5, end: 0.8),
+            TranscriptWord(mediaID: mediaID, text: "Second", start: 1.6, end: 2.0),
+        ]
+
+        let ranges = await AIEditService().silenceRanges(words: words, duration: 3)
+
+        #expect(ranges.count == 3)
+        #expect(abs(ranges[0].0 - 0) < 0.000_001)
+        #expect(abs(ranges[0].1 - 0.46) < 0.000_001)
+        #expect(abs(ranges[1].0 - 0.86) < 0.000_001)
+        #expect(abs(ranges[1].1 - 1.56) < 0.000_001)
+        #expect(abs(ranges[2].0 - 2.06) < 0.000_001)
+        #expect(abs(ranges[2].1 - 3) < 0.000_001)
+    }
 }

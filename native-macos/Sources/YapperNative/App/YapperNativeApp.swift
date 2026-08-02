@@ -24,15 +24,25 @@ struct YapperNativeApp: App {
                 Button("Export…") { ImportPanels.saveExport(for: session) }
                     .keyboardShortcut("e")
             }
-            CommandMenu("Edit") {
+            CommandMenu("Timeline") {
                 Button("Split at Playhead") {
                     Task { await session.splitAtPlayhead() }
                 }
-                .keyboardShortcut("b")
-                Button("Delete Selected Clip") {
-                    Task { await session.deleteSelected() }
+                Button("Delete Selected Items") {
+                    Task { await session.deleteTimelineSelection() }
                 }
-                .keyboardShortcut(.delete, modifiers: [])
+                Divider()
+                Button("Trim Left Edge to Playhead") {
+                    Task { await session.trimTimelineSelection(toPlayhead: .leading) }
+                }
+                Button("Trim Right Edge to Playhead") {
+                    Task { await session.trimTimelineSelection(toPlayhead: .trailing) }
+                }
+                Divider()
+                Button("Auto-trim Silent Gaps") {
+                    Task { await session.autoTrimSilences() }
+                }
+                .keyboardShortcut("t", modifiers: [.command, .shift])
             }
             CommandMenu("Playback") {
                 Button(session.isPlaying ? "Pause" : "Play") {

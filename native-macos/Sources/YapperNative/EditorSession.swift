@@ -16,6 +16,8 @@ final class EditorSession: ObservableObject {
     @Published var selectedTextLayerID: UUID?
     @Published var selectedAudioLayerID: UUID?
     @Published var selectedOverlayID: UUID?
+    @Published private(set) var timelineSelection: Set<TimelineSelectionItem> = []
+    @Published private(set) var timelineSelectionDragDelta = 0.0
     @Published private(set) var inspectorRequest: EditorInspectorRequest?
     @Published private(set) var currentTime = 0.0
     @Published private(set) var isPlaying = false
@@ -75,6 +77,176 @@ final class EditorSession: ObservableObject {
     var selectedAudioLayer: ProjectAudioLayer? {
         guard let selectedAudioLayerID else { return nil }
         return project.audioLayers?.first { $0.id == selectedAudioLayerID }
+    }
+
+    var hasTimelineSelection: Bool { !timelineSelection.isEmpty }
+
+    func isTimelineSelected(_ item: TimelineSelectionItem) -> Bool {
+        timelineSelection.contains(item)
+    }
+
+    func selectTimelineItem(
+        _ item: TimelineSelectionItem,
+        additive: Bool = false,
+        toggling: Bool = false
+    ) {
+        if toggling {
+            if timelineSelection.contains(item) {
+                timelineSelection.remove(item)
+            } else {
+                timelineSelection.insert(item)
+            }
+        } else if additive {
+            timelineSelection.insert(item)
+        } else {
+            timelineSelection = [item]
+        }
+        syncInspectorSelection(preferred: timelineSelection.contains(item) ? item : nil)
+    }
+
+    func setTimelineSelection(_ selection: Set<TimelineSelectionItem>) {
+        timelineSelection = selection
+        if let preferred = selection.sorted(by: timelineSelectionOrder).last {
+            syncInspectorSelection(preferred: preferred)
+        } else {
+            syncInspectorSelection(preferred: nil)
+        }
+    }
+
+    func ensureTimelineItemSelected(_ item: TimelineSelectionItem) {
+        if !timelineSelection.contains(item) { selectTimelineItem(item) }
+    }
+
+    func timelineSelectionBounds() -> (start: Double, end: Double)? {
+        let spans = timelineSelection.compactMap(timelineSpan(for:))
+        guard let start = spans.map(\.start).min(), let end = spans.map(\.end).max() else {
+            return nil
+        }
+        return (start, end)
+    }
+
+    func previewTimelineSelectionMove(delta: Double) {
+        guard let bounds = timelineSelectionBounds() else {
+            timelineSelectionDragDelta = 0
+            return
+        }
+        timelineSelectionDragDelta = min(
+            duration - bounds.end,
+            max(-bounds.start, delta)
+        )
+    }
+
+    func cancelTimelineSelectionMove() {
+        timelineSelectionDragDelta = 0
+    }
+
+    func commitTimelineSelectionMove() async {
+        let delta = timelineSelectionDragDelta
+        timelineSelectionDragDelta = 0
+        guard abs(delta) > 0.000_001, !timelineSelection.isEmpty else { return }
+
+        let selectedClipIDs = Set(timelineSelection.compactMap { item -> UUID? in
+            if case let .clip(id) = item { return id }
+            return nil
+        })
+        if !selectedClipIDs.isEmpty {
+            let block = project.clips.filter { selectedClipIDs.contains($0.id) }
+            if !block.isEmpty {
+                let firstStart = block.compactMap { project.timelineStart(for: $0.id) }.min() ?? 0
+                let blockDuration = block.reduce(0) { $0 + $1.duration }
+                let remaining = project.clips.filter { !selectedClipIDs.contains($0.id) }
+                let target = min(
+                    max(0, project.duration - blockDuration),
+                    max(0, firstStart + delta)
+                )
+                var cursor = 0.0
+                var insertionIndex = remaining.count
+                for (index, clip) in remaining.enumerated() {
+                    if target < cursor + clip.duration / 2 {
+                        insertionIndex = index
+                        break
+                    }
+                    cursor += clip.duration
+                }
+                var reordered = remaining
+                reordered.insert(contentsOf: block, at: insertionIndex)
+                project.clips = reordered
+            }
+        }
+
+        if var layers = project.textLayers {
+            for index in layers.indices where timelineSelection.contains(.text(layers[index].id)) {
+                layers[index].timelineStart = min(
+                    max(0, duration - layers[index].duration),
+                    max(0, layers[index].timelineStart + delta)
+                )
+            }
+            project.textLayers = layers
+        }
+        if var overlays = project.overlays {
+            for index in overlays.indices where timelineSelection.contains(.overlay(overlays[index].id)) {
+                overlays[index].timelineStart = min(
+                    max(0, duration - overlays[index].duration),
+                    max(0, overlays[index].timelineStart + delta)
+                )
+            }
+            project.overlays = overlays
+        }
+        if var layers = project.audioLayers {
+            for index in layers.indices where timelineSelection.contains(.audio(layers[index].id)) {
+                layers[index].timelineStart = min(
+                    max(0, duration - layers[index].duration),
+                    max(0, layers[index].timelineStart + delta)
+                )
+            }
+            project.audioLayers = layers
+        }
+        await commitTimelineEdit()
+    }
+
+    private func timelineSpan(for item: TimelineSelectionItem) -> (start: Double, end: Double)? {
+        switch item {
+        case let .clip(id):
+            guard let clip = project.clips.first(where: { $0.id == id }),
+                  let start = project.timelineStart(for: id) else { return nil }
+            return (start, start + clip.duration)
+        case let .text(id):
+            guard let layer = project.textLayers?.first(where: { $0.id == id }) else { return nil }
+            return (layer.timelineStart, layer.timelineStart + layer.duration)
+        case let .overlay(id):
+            guard let overlay = project.overlays?.first(where: { $0.id == id }) else { return nil }
+            return (overlay.timelineStart, overlay.timelineStart + overlay.duration)
+        case let .audio(id):
+            guard let layer = project.audioLayers?.first(where: { $0.id == id }) else { return nil }
+            return (layer.timelineStart, layer.timelineStart + layer.duration)
+        }
+    }
+
+    private func timelineSelectionOrder(_ lhs: TimelineSelectionItem, _ rhs: TimelineSelectionItem) -> Bool {
+        (timelineSpan(for: lhs)?.start ?? 0) < (timelineSpan(for: rhs)?.start ?? 0)
+    }
+
+    private func applyInspectorSelection(_ item: TimelineSelectionItem) {
+        switch item {
+        case let .clip(id):
+            selectedClipID = id
+        case let .text(id):
+            selectedTextLayerID = id
+            inspectorRequest = EditorInspectorRequest(tool: "Text")
+        case let .overlay(id):
+            selectedOverlayID = id
+        case let .audio(id):
+            selectedAudioLayerID = id
+            inspectorRequest = EditorInspectorRequest(tool: "Audio")
+        }
+    }
+
+    private func syncInspectorSelection(preferred item: TimelineSelectionItem?) {
+        selectedClipID = nil
+        selectedTextLayerID = nil
+        selectedAudioLayerID = nil
+        selectedOverlayID = nil
+        if let item { applyInspectorSelection(item) }
     }
 
     func toggleTimelineSnapping() {
@@ -311,28 +483,196 @@ final class EditorSession: ObservableObject {
     }
 
     func splitAtPlayhead() async {
-        let clipID: UUID
-        if let selectedClipID {
-            clipID = selectedClipID
-        } else if let hit = project.clip(at: currentTime) {
-            clipID = project.clips[hit.index].id
-            selectedClipID = clipID
-        } else {
-            return
+        let selection = commandTimelineSelection()
+        var didSplit = false
+        var resultingSelection: Set<TimelineSelectionItem> = []
+
+        for item in selection {
+            switch item {
+            case let .clip(id):
+                if project.split(clipID: id, atTimelineTime: currentTime) {
+                    didSplit = true
+                    if let hit = project.clip(at: min(project.duration, currentTime + 0.000_1)) {
+                        resultingSelection.insert(.clip(project.clips[hit.index].id))
+                    }
+                }
+            case let .text(id):
+                guard let index = project.textLayers?.firstIndex(where: { $0.id == id }),
+                      let layer = project.textLayers?[index],
+                      currentTime > layer.timelineStart + 0.02,
+                      currentTime < layer.timelineStart + layer.duration - 0.02 else { continue }
+                var left = layer
+                left.duration = currentTime - layer.timelineStart
+                let right = ProjectTextLayer(
+                    text: layer.text,
+                    timelineStart: currentTime,
+                    duration: layer.duration - left.duration,
+                    x: layer.x,
+                    y: layer.y,
+                    width: layer.width,
+                    fontScale: layer.fontScale,
+                    style: layer.style,
+                    font: layer.font
+                )
+                project.textLayers?.replaceSubrange(index ... index, with: [left, right])
+                resultingSelection.insert(.text(right.id))
+                didSplit = true
+            case let .overlay(id):
+                guard let index = project.overlays?.firstIndex(where: { $0.id == id }),
+                      let overlay = project.overlays?[index],
+                      currentTime > overlay.timelineStart + 0.02,
+                      currentTime < overlay.timelineStart + overlay.duration - 0.02 else { continue }
+                let elapsed = currentTime - overlay.timelineStart
+                var left = overlay
+                left.duration = elapsed
+                let right = ProjectOverlay(
+                    mediaID: overlay.mediaID,
+                    timelineStart: currentTime,
+                    duration: overlay.duration - elapsed,
+                    sourceStart: overlay.sourceStart + elapsed,
+                    x: overlay.x,
+                    y: overlay.y,
+                    width: overlay.width,
+                    height: overlay.height
+                )
+                project.overlays?.replaceSubrange(index ... index, with: [left, right])
+                resultingSelection.insert(.overlay(right.id))
+                didSplit = true
+            case let .audio(id):
+                guard let index = project.audioLayers?.firstIndex(where: { $0.id == id }),
+                      let layer = project.audioLayers?[index],
+                      currentTime > layer.timelineStart + 0.02,
+                      currentTime < layer.timelineStart + layer.duration - 0.02 else { continue }
+                let elapsed = currentTime - layer.timelineStart
+                var left = layer
+                left.duration = elapsed
+                let right = ProjectAudioLayer(
+                    url: layer.url,
+                    name: layer.name,
+                    timelineStart: currentTime,
+                    duration: layer.duration - elapsed,
+                    sourceStart: layer.sourceStart + elapsed,
+                    sourceDuration: layer.sourceDuration,
+                    volume: layer.volume,
+                    builtInID: layer.builtInID
+                )
+                project.audioLayers?.replaceSubrange(index ... index, with: [left, right])
+                resultingSelection.insert(.audio(right.id))
+                didSplit = true
+            }
         }
-        guard project.split(clipID: clipID, atTimelineTime: currentTime) else { return }
-        if let hit = project.clip(at: currentTime) {
-            selectedClipID = project.clips[hit.index].id
-        }
+        guard didSplit else { return }
+        setTimelineSelection(resultingSelection)
         await commitTimelineEdit()
     }
 
     func deleteSelected() async {
-        guard let selectedClipID, project.delete(clipID: selectedClipID) else { return }
-        self.selectedClipID = project.clip(at: min(currentTime, project.duration))
-            .map { project.clips[$0.index].id }
+        await deleteTimelineSelection()
+    }
+
+    func deleteTimelineSelection() async {
+        let selection = commandTimelineSelection()
+        guard !selection.isEmpty else { return }
+        let clipIDs = Set(selection.compactMap { if case let .clip(id) = $0 { id } else { nil } })
+        let textIDs = Set(selection.compactMap { if case let .text(id) = $0 { id } else { nil } })
+        let overlayIDs = Set(selection.compactMap { if case let .overlay(id) = $0 { id } else { nil } })
+        let audioIDs = Set(selection.compactMap { if case let .audio(id) = $0 { id } else { nil } })
+        project.clips.removeAll { clipIDs.contains($0.id) }
+        project.textLayers?.removeAll { textIDs.contains($0.id) }
+        project.overlays?.removeAll { overlayIDs.contains($0.id) }
+        project.audioLayers?.removeAll { audioIDs.contains($0.id) }
+        setTimelineSelection([])
         currentTime = min(currentTime, project.duration)
         await commitTimelineEdit()
+    }
+
+    func trimTimelineSelection(toPlayhead edge: TimelineEditEdge) async {
+        let selection = commandTimelineSelection()
+        guard !selection.isEmpty else { return }
+        let originalClipStarts = Dictionary(uniqueKeysWithValues: project.clips.compactMap { clip in
+            project.timelineStart(for: clip.id).map { (clip.id, $0) }
+        })
+        var changed = false
+        var leadingClipBoundary: Double?
+
+        for item in selection {
+            switch item {
+            case let .clip(id):
+                guard let index = project.clips.firstIndex(where: { $0.id == id }),
+                      let start = originalClipStarts[id] else { continue }
+                var clip = project.clips[index]
+                let elapsed = currentTime - start
+                guard elapsed > 1.0 / 30.0, elapsed < clip.duration - 1.0 / 30.0 else { continue }
+                let sourceTime = clip.sourceStart + elapsed
+                if edge == .leading {
+                    clip.sourceStart = sourceTime
+                    leadingClipBoundary = min(leadingClipBoundary ?? start, start)
+                } else {
+                    clip.sourceEnd = sourceTime
+                }
+                project.clips[index] = clip
+                changed = true
+            case let .text(id):
+                guard let index = project.textLayers?.firstIndex(where: { $0.id == id }),
+                      var layer = project.textLayers?[index],
+                      currentTime > layer.timelineStart + 0.02,
+                      currentTime < layer.timelineStart + layer.duration - 0.02 else { continue }
+                let end = layer.timelineStart + layer.duration
+                if edge == .leading {
+                    layer.timelineStart = currentTime
+                    layer.duration = end - currentTime
+                } else {
+                    layer.duration = currentTime - layer.timelineStart
+                }
+                project.textLayers?[index] = layer
+                changed = true
+            case let .overlay(id):
+                guard let index = project.overlays?.firstIndex(where: { $0.id == id }),
+                      var overlay = project.overlays?[index],
+                      currentTime > overlay.timelineStart + 0.02,
+                      currentTime < overlay.timelineStart + overlay.duration - 0.02 else { continue }
+                let end = overlay.timelineStart + overlay.duration
+                if edge == .leading {
+                    let elapsed = currentTime - overlay.timelineStart
+                    overlay.timelineStart = currentTime
+                    overlay.sourceStart += elapsed
+                    overlay.duration = end - currentTime
+                } else {
+                    overlay.duration = currentTime - overlay.timelineStart
+                }
+                project.overlays?[index] = overlay
+                changed = true
+            case let .audio(id):
+                guard let index = project.audioLayers?.firstIndex(where: { $0.id == id }),
+                      var layer = project.audioLayers?[index],
+                      currentTime > layer.timelineStart + 0.02,
+                      currentTime < layer.timelineStart + layer.duration - 0.02 else { continue }
+                let end = layer.timelineStart + layer.duration
+                if edge == .leading {
+                    let elapsed = currentTime - layer.timelineStart
+                    layer.timelineStart = currentTime
+                    layer.sourceStart += elapsed
+                    layer.duration = end - currentTime
+                } else {
+                    layer.duration = currentTime - layer.timelineStart
+                }
+                project.audioLayers?[index] = layer
+                changed = true
+            }
+        }
+        guard changed else { return }
+        if edge == .leading, let leadingClipBoundary { currentTime = leadingClipBoundary }
+        currentTime = min(currentTime, project.duration)
+        await commitTimelineEdit()
+    }
+
+    private func commandTimelineSelection() -> Set<TimelineSelectionItem> {
+        if !timelineSelection.isEmpty { return timelineSelection }
+        if let hit = project.clip(at: currentTime) {
+            return [.clip(project.clips[hit.index].id)]
+        }
+        if let selectedClipID { return [.clip(selectedClipID)] }
+        return []
     }
 
     func export(to url: URL) async {
@@ -351,13 +691,14 @@ final class EditorSession: ObservableObject {
     }
 
     func select(_ clipID: UUID) {
-        selectedClipID = clipID
+        selectTimelineItem(.clip(clipID))
     }
 
     func commitClipTrim(_ updated: TimelineClip) async {
         guard let index = project.clips.firstIndex(where: { $0.id == updated.id }) else { return }
         project.clips[index] = updated
         selectedClipID = updated.id
+        timelineSelection = [.clip(updated.id)]
         currentTime = min(currentTime, project.duration)
         await commitTimelineEdit()
     }
@@ -413,6 +754,7 @@ final class EditorSession: ObservableObject {
         layers.append(layer)
         project.textLayers = layers
         selectedTextLayerID = layer.id
+        timelineSelection = [.text(layer.id)]
         inspectorRequest = EditorInspectorRequest(tool: "Text")
         project.updatedAt = Date()
         scheduleVisualCommit()
@@ -446,6 +788,7 @@ final class EditorSession: ObservableObject {
             layers.append(layer)
             project.audioLayers = layers
             selectedAudioLayerID = layer.id
+            timelineSelection = [.audio(layer.id)]
             inspectorRequest = EditorInspectorRequest(tool: "Audio")
             await commitTimelineEdit()
         } catch {
@@ -483,8 +826,7 @@ final class EditorSession: ObservableObject {
     }
 
     func selectAudioLayer(_ id: UUID) {
-        selectedAudioLayerID = id
-        inspectorRequest = EditorInspectorRequest(tool: "Audio")
+        selectTimelineItem(.audio(id))
     }
 
     func updateAudioLayer(_ updated: ProjectAudioLayer) async {
@@ -501,7 +843,7 @@ final class EditorSession: ObservableObject {
     }
 
     func selectOverlay(_ id: UUID) {
-        selectedOverlayID = id
+        selectTimelineItem(.overlay(id))
     }
 
     func commitOverlayTrim(_ updated: ProjectOverlay) {
@@ -520,8 +862,7 @@ final class EditorSession: ObservableObject {
     }
 
     func selectTextLayer(_ id: UUID) {
-        selectedTextLayerID = id
-        inspectorRequest = EditorInspectorRequest(tool: "Text")
+        selectTimelineItem(.text(id))
     }
 
     func updateTextLayer(_ updated: ProjectTextLayer) {
@@ -551,6 +892,7 @@ final class EditorSession: ObservableObject {
         selectedTextLayerID = nil
         selectedAudioLayerID = nil
         selectedOverlayID = nil
+        timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
         currentTime = 0
         await commitTimelineEdit()
     }
@@ -635,6 +977,55 @@ final class EditorSession: ObservableObject {
             try await rebuildComposition(preserveTime: false)
             await persist()
             statusMessage = "1-Click Edit complete · \(project.clips.count) clips"
+        } catch {
+            project = original
+            show(error)
+        }
+    }
+
+    func autoTrimSilences() async {
+        guard !project.clips.isEmpty, !isAIEditing else { return }
+        let original = project
+        isAIEditing = true
+        isBusy = true
+        aiProgress = 0
+        errorMessage = nil
+        defer {
+            isAIEditing = false
+            isBusy = false
+        }
+        do {
+            let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
+            for (index, mediaID) in mediaIDs.enumerated() {
+                guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
+                var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
+                if words.isEmpty {
+                    statusMessage = "Transcribing before auto-trim…"
+                    words = try await aiEditService.transcribe(media: media)
+                    var transcript = project.transcript ?? []
+                    transcript.removeAll { $0.mediaID == mediaID }
+                    transcript.append(contentsOf: words)
+                    project.transcript = transcript
+                }
+                guard !words.isEmpty else { continue }
+                statusMessage = "Trimming silent gaps…"
+                let ranges = await aiEditService.silenceRanges(
+                    words: words,
+                    duration: media.duration
+                )
+                project.removeSourceRanges(ranges, for: mediaID)
+                aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
+            }
+            guard !project.clips.isEmpty else {
+                project = original
+                throw NativeEditorError.aiFailed("Auto-trim found no usable video, so the original was restored.")
+            }
+            selectedClipID = project.clips.first?.id
+            timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
+            currentTime = 0
+            try await rebuildComposition(preserveTime: false)
+            await persist()
+            statusMessage = "Auto-trim complete · \(project.clips.count) clips"
         } catch {
             project = original
             show(error)
@@ -804,6 +1195,7 @@ final class EditorSession: ObservableObject {
             selectedTextLayerID = project.textLayers?.first?.id
             selectedAudioLayerID = project.audioLayers?.first?.id
             selectedOverlayID = project.overlays?.first?.id
+            timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
             for media in project.media { beginDerivedMedia(for: media) }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)
