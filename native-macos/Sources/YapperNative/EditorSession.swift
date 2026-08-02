@@ -28,6 +28,10 @@ final class EditorSession: ObservableObject {
     @Published private(set) var waveformByMedia: [UUID: [Float]] = [:]
     @Published private(set) var waveformProgressByMedia: [UUID: Double] = [:]
     @Published private(set) var thumbnailsByMedia: [UUID: [CGImage]] = [:]
+    @Published var isTimelineSnappingEnabled: Bool {
+        didSet { UserDefaults.standard.set(isTimelineSnappingEnabled, forKey: "timelineSnappingEnabled") }
+    }
+    @Published private(set) var activeTimelineSnap: TimelineSnapMatch?
 
     let player = AVPlayer()
 
@@ -44,8 +48,11 @@ final class EditorSession: ObservableObject {
     private var rebuilding = false
     private var restorationTask: Task<Void, Never>?
     private var visualCommitTask: Task<Void, Never>?
+    private var snapGuideClearTask: Task<Void, Never>?
+    private var transientCache: [UUID: (peakCount: Int, times: [Double])] = [:]
 
     init() {
+        isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         player.automaticallyWaitsToMinimizeStalling = false
         installObservers()
         restorationTask = Task { [weak self] in
@@ -68,6 +75,84 @@ final class EditorSession: ObservableObject {
     var selectedAudioLayer: ProjectAudioLayer? {
         guard let selectedAudioLayerID else { return nil }
         return project.audioLayers?.first { $0.id == selectedAudioLayerID }
+    }
+
+    func toggleTimelineSnapping() {
+        isTimelineSnappingEnabled.toggle()
+        if !isTimelineSnappingEnabled { setActiveTimelineSnap(nil) }
+    }
+
+    func setActiveTimelineSnap(_ match: TimelineSnapMatch?) {
+        snapGuideClearTask?.cancel()
+        let targetChanged = activeTimelineSnap?.time != match?.time
+            || activeTimelineSnap?.kind != match?.kind
+        if activeTimelineSnap != match {
+            if targetChanged, match != nil {
+                NSHapticFeedbackManager.defaultPerformer.perform(
+                    .alignment,
+                    performanceTime: .now
+                )
+            }
+            activeTimelineSnap = match
+        }
+        guard match != nil else { return }
+        snapGuideClearTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            self?.activeTimelineSnap = nil
+        }
+    }
+
+    func timelineSnapAnchors() -> [TimelineSnapAnchor] {
+        guard duration > 0 else { return [] }
+        var anchors: [TimelineSnapAnchor] = [
+            TimelineSnapAnchor(time: 0, kind: .boundary),
+            TimelineSnapAnchor(time: duration, kind: .boundary),
+            TimelineSnapAnchor(time: currentTime, kind: .playhead),
+        ]
+        var cursor = 0.0
+        for clip in project.clips {
+            anchors.append(TimelineSnapAnchor(time: cursor, kind: .boundary))
+            if let media = project.media(for: clip),
+               let peaks = waveformByMedia[media.id], !peaks.isEmpty {
+                let sourceTimes: [Double]
+                if let cached = transientCache[media.id], cached.peakCount == peaks.count {
+                    sourceTimes = cached.times
+                } else {
+                    sourceTimes = TimelineAudioTransientGeometry.sourceTimes(
+                        peaks: peaks,
+                        duration: media.duration
+                    )
+                    transientCache[media.id] = (peaks.count, sourceTimes)
+                }
+                for sourceTime in sourceTimes where sourceTime >= clip.sourceStart && sourceTime <= clip.sourceEnd {
+                    anchors.append(
+                        TimelineSnapAnchor(
+                            time: cursor + sourceTime - clip.sourceStart,
+                            kind: .audio
+                        )
+                    )
+                }
+            }
+            cursor += clip.duration
+            anchors.append(TimelineSnapAnchor(time: cursor, kind: .boundary))
+        }
+        for layer in project.textLayers ?? [] {
+            anchors.append(TimelineSnapAnchor(time: layer.timelineStart, kind: .boundary))
+            anchors.append(TimelineSnapAnchor(time: layer.timelineStart + layer.duration, kind: .boundary))
+        }
+        for overlay in project.overlays ?? [] {
+            anchors.append(TimelineSnapAnchor(time: overlay.timelineStart, kind: .boundary))
+            anchors.append(TimelineSnapAnchor(time: overlay.timelineStart + overlay.duration, kind: .boundary))
+        }
+        for layer in project.audioLayers ?? [] {
+            anchors.append(TimelineSnapAnchor(time: layer.timelineStart, kind: .audio))
+            anchors.append(TimelineSnapAnchor(time: layer.timelineStart + layer.duration, kind: .audio))
+        }
+        for second in 0 ... Int(ceil(duration)) {
+            anchors.append(TimelineSnapAnchor(time: min(duration, Double(second)), kind: .second))
+        }
+        return anchors
     }
 
     func importMedia(_ urls: [URL]) async {

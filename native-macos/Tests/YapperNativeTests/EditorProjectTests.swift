@@ -612,4 +612,98 @@ struct EditorProjectTests {
         #expect(TimelineMetrics.time(for: -20, duration: 10, width: 1_000) == 0)
         #expect(TimelineMetrics.time(for: 1_200, duration: 10, width: 1_000) == 10)
     }
+
+    @Test func timelineSnapPrefersThePlayheadOverNearbyLowerPriorityTargets() {
+        let match = TimelineSnapEngine.match(
+            proposedTime: 10.04,
+            anchors: [
+                TimelineSnapAnchor(time: 9.99, kind: .boundary),
+                TimelineSnapAnchor(time: 10, kind: .playhead),
+                TimelineSnapAnchor(time: 10.02, kind: .second),
+            ],
+            contentWidth: 2_000,
+            projectDuration: 20
+        )
+
+        #expect(match?.time == 10)
+        #expect(match?.kind == .playhead)
+    }
+
+    @Test func timelineSnapThresholdStaysConstantInScreenPixelsAtEveryZoom() {
+        for contentWidth in [800.0, 2_400.0, 9_600.0] {
+            let eightPixelDelta = 8 / contentWidth * 40
+            let tenPixelDelta = 10 / contentWidth * 40
+            let anchor = TimelineSnapAnchor(time: 12, kind: .boundary)
+
+            #expect(TimelineSnapEngine.match(
+                proposedTime: 12 + eightPixelDelta,
+                anchors: [anchor],
+                contentWidth: contentWidth,
+                projectDuration: 40
+            )?.time == 12)
+            #expect(TimelineSnapEngine.match(
+                proposedTime: 12 + tenPixelDelta,
+                anchors: [anchor],
+                contentWidth: contentWidth,
+                projectDuration: 40
+            ) == nil)
+        }
+    }
+
+    @Test func movingTimelineItemsCanSnapEitherTheirStartOrEnd() {
+        let result = TimelineSnapEngine.movingMatch(
+            start: 4.08,
+            duration: 2,
+            anchors: [TimelineSnapAnchor(time: 6, kind: .boundary)],
+            contentWidth: 1_000,
+            projectDuration: 10
+        )
+
+        #expect(result?.start == 4)
+        #expect(result?.match.time == 6)
+    }
+
+    @Test func secondMarksArePreciseWithoutMakingTheWholeTimelineSticky() {
+        let second = TimelineSnapAnchor(time: 5, kind: .second)
+        let boundary = TimelineSnapAnchor(time: 5, kind: .boundary)
+        let fivePixelOffset = 5 / 1_000.0 * 10
+        let eightPixelOffset = 8 / 1_000.0 * 10
+
+        #expect(TimelineSnapEngine.match(
+            proposedTime: 5 + fivePixelOffset,
+            anchors: [second],
+            contentWidth: 1_000,
+            projectDuration: 10
+        ) == nil)
+        #expect(TimelineSnapEngine.match(
+            proposedTime: 5 + eightPixelOffset,
+            anchors: [boundary],
+            contentWidth: 1_000,
+            projectDuration: 10
+        )?.time == 5)
+    }
+
+    @Test func audioTransientSnapPointsFindSpacedOnsetsWithoutNoiseChatter() {
+        var peaks = [Float](repeating: 0.01, count: 100)
+        peaks[10] = 0.85
+        peaks[12] = 0.9
+        peaks[50] = 0.75
+
+        let times = TimelineAudioTransientGeometry.sourceTimes(peaks: peaks, duration: 10)
+
+        #expect(times.count == 2)
+        #expect(abs((times.first ?? 0) - 1) < 0.000_001)
+        #expect(abs((times.last ?? 0) - 5) < 0.000_001)
+    }
+
+    @Test func clipTimelineStartProvidesAnExactSnapCoordinateAcrossCuts() {
+        let mediaID = UUID()
+        let first = TimelineClip(mediaID: mediaID, sourceStart: 4, sourceEnd: 7)
+        let second = TimelineClip(mediaID: mediaID, sourceStart: 12, sourceEnd: 18)
+        let project = EditorProject(clips: [first, second])
+
+        #expect(project.timelineStart(for: first.id) == 0)
+        #expect(project.timelineStart(for: second.id) == 3)
+        #expect(project.timelineStart(for: UUID()) == nil)
+    }
 }

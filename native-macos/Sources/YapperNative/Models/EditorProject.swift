@@ -383,6 +383,15 @@ struct EditorProject: Codable, Equatable, Sendable {
         media.first { $0.id == clip.mediaID }
     }
 
+    func timelineStart(for clipID: UUID) -> Double? {
+        var cursor = 0.0
+        for clip in clips {
+            if clip.id == clipID { return cursor }
+            cursor += clip.duration
+        }
+        return nil
+    }
+
     func isWordKept(_ word: TranscriptWord) -> Bool {
         clips.contains {
             $0.mediaID == word.mediaID && word.midpoint >= $0.sourceStart && word.midpoint <= $0.sourceEnd

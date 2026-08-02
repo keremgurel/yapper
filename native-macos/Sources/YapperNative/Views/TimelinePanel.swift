@@ -14,6 +14,23 @@ struct TimelinePanel: View {
                 Text("\(session.project.clips.count) clips")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
+                Button {
+                    session.toggleTimelineSnapping()
+                } label: {
+                    Label("Magnet", systemImage: "magnet")
+                        .font(.studioCaptionStrong)
+                        .foregroundStyle(session.isTimelineSnappingEnabled ? Color.yapperOrange : Color.secondary)
+                        .padding(.horizontal, 8)
+                        .frame(height: 26)
+                        .background(session.isTimelineSnappingEnabled ? Color.yapperOrange.opacity(0.12) : Color.clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .stroke(session.isTimelineSnappingEnabled ? Color.yapperOrange.opacity(0.32) : Color.studioLine, lineWidth: 1)
+                        }
+                }
+                .buttonStyle(.plain)
+                .help("Snap to the playhead, edges, seconds, and audio transients · hold Option to bypass")
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
                     .foregroundStyle(.secondary)
@@ -74,6 +91,10 @@ struct TimelinePanel: View {
         }
         return updated / previous
     }
+}
+
+private var isTimelineSnapTemporarilyBypassed: Bool {
+    NSEvent.modifierFlags.contains(.option)
 }
 
 enum TimelineZoomGeometry {
@@ -345,6 +366,34 @@ private struct TimelineContent: View {
                     .zIndex(4)
             }
 
+            if let snap = session.activeTimelineSnap, session.duration > 0 {
+                let snapX = TimelineMetrics.x(
+                    for: snap.time,
+                    duration: session.duration,
+                    width: contentWidth
+                )
+                Rectangle()
+                    .fill(Color.yapperOrange.opacity(0.92))
+                    .frame(width: 1, height: playheadHeight)
+                    .overlay(alignment: .topLeading) {
+                        HStack(spacing: 4) {
+                            Image(systemName: snap.kind == .audio ? "waveform" : "arrow.left.and.right")
+                            Text("\(snap.kind.title)  \(formatTimelineTrimTime(snap.time))")
+                        }
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 6)
+                        .frame(height: 20)
+                        .background(Color.yapperOrange.opacity(0.96))
+                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        .fixedSize()
+                        .offset(x: 4, y: -1)
+                    }
+                    .offset(x: snapX - 0.5, y: 30)
+                    .allowsHitTesting(false)
+                    .zIndex(5)
+            }
+
         }
         .coordinateSpace(name: Self.coordinateSpaceName)
     }
@@ -407,6 +456,7 @@ private struct TimelineVideoClipItem: View {
     @State private var trimOrigin: TimelineClip?
     @State private var trimDraft: TimelineClip?
     @State private var activeTrimEdge: HorizontalEdge?
+    @State private var snapAnchors: [TimelineSnapAnchor] = []
 
     var body: some View {
         let displayed = trimDraft ?? clip
@@ -472,23 +522,52 @@ private struct TimelineVideoClipItem: View {
                         if trimOrigin == nil {
                             trimOrigin = clip
                             activeTrimEdge = edge
+                            snapAnchors = session.timelineSnapAnchors()
                             session.select(clip.id)
                         }
                         guard let trimOrigin else { return }
-                        trimDraft = TimelineClipGeometry.trimmed(
+                        let rawTranslation = value.location.x - value.startLocation.x
+                        let rawDraft = TimelineClipGeometry.trimmed(
                             clip: trimOrigin,
                             edge: edge,
-                            translationX: value.location.x - value.startLocation.x,
+                            translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: session.duration,
                             mediaDuration: media.duration
                         )
+                        let timelineStart = session.project.timelineStart(for: clip.id) ?? 0
+                        let originalEdgeTime = edge == .leading
+                            ? timelineStart
+                            : timelineStart + trimOrigin.duration
+                        let proposedEdgeTime = edge == .leading
+                            ? timelineStart + rawDraft.sourceStart - trimOrigin.sourceStart
+                            : timelineStart + rawDraft.duration
+                        let adjusted = TimelineSnapDragGeometry.trimTranslation(
+                            originalEdgeTime: originalEdgeTime,
+                            proposedEdgeTime: proposedEdgeTime,
+                            rawTranslationX: rawTranslation,
+                            anchors: snapAnchors,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                        )
+                        trimDraft = TimelineClipGeometry.trimmed(
+                            clip: trimOrigin,
+                            edge: edge,
+                            translationX: adjusted.translationX,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            mediaDuration: media.duration
+                        )
+                        session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
                         let committedTrim = trimDraft
                         trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
+                        snapAnchors = []
+                        session.setActiveTimelineSnap(nil)
                         NSCursor.arrow.set()
                         guard let committedTrim else { return }
                         Task {
@@ -579,26 +658,6 @@ private struct TimelineTrimHandle: View {
     }
 }
 
-enum TimelineTrimGeometry {
-    static func timeDelta(
-        for translationX: CGFloat,
-        contentWidth: Double,
-        projectDuration: Double
-    ) -> Double {
-        guard contentWidth > 0, projectDuration > 0 else { return 0 }
-        return Double(translationX) * projectDuration / contentWidth
-    }
-
-    static func x(
-        for time: Double,
-        contentWidth: Double,
-        projectDuration: Double
-    ) -> CGFloat {
-        guard contentWidth > 0, projectDuration > 0 else { return 0 }
-        return CGFloat(time / projectDuration * contentWidth)
-    }
-}
-
 private func formatTimelineTrimTime(_ seconds: Double) -> String {
     guard seconds.isFinite else { return "0:00.000" }
     let safe = max(0, seconds)
@@ -616,10 +675,13 @@ private struct TimelineOverlayItem: View {
     let selected: Bool
     @State private var trimOrigin: ProjectOverlay?
     @State private var trimDraft: ProjectOverlay?
+    @State private var moveOrigin: ProjectOverlay?
+    @State private var moveDraft: ProjectOverlay?
     @State private var activeTrimEdge: HorizontalEdge?
+    @State private var snapAnchors: [TimelineSnapAnchor] = []
 
     var body: some View {
-        let displayed = trimDraft ?? overlay
+        let displayed = trimDraft ?? moveDraft ?? overlay
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
         let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
@@ -643,6 +705,52 @@ private struct TimelineOverlayItem: View {
         .buttonStyle(.plain)
         .frame(width: width, height: 42)
         .clipped()
+        .gesture(
+            DragGesture(
+                minimumDistance: 2,
+                coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+            )
+                .onChanged { value in
+                    guard activeTrimEdge == nil else { return }
+                    if moveOrigin == nil {
+                        moveOrigin = overlay
+                        snapAnchors = session.timelineSnapAnchors()
+                        session.selectOverlay(overlay.id)
+                    }
+                    guard let moveOrigin else { return }
+                    let rawTranslation = value.location.x - value.startLocation.x
+                    let rawDraft = TimelineOverlayGeometry.moved(
+                        overlay: moveOrigin,
+                        translationX: rawTranslation,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration
+                    )
+                    let adjusted = TimelineSnapDragGeometry.moveTranslation(
+                        originalStart: moveOrigin.timelineStart,
+                        proposedStart: rawDraft.timelineStart,
+                        duration: rawDraft.duration,
+                        rawTranslationX: rawTranslation,
+                        anchors: snapAnchors,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration,
+                        enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                    )
+                    moveDraft = TimelineOverlayGeometry.moved(
+                        overlay: moveOrigin,
+                        translationX: adjusted.translationX,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration
+                    )
+                    session.setActiveTimelineSnap(adjusted.match)
+                }
+                .onEnded { _ in
+                    if let moveDraft { session.commitOverlayTrim(moveDraft) }
+                    moveDraft = nil
+                    moveOrigin = nil
+                    snapAnchors = []
+                    session.setActiveTimelineSnap(nil)
+                }
+        )
         .overlay(alignment: .leading) {
             if selected { trimHandle(.leading) }
         }
@@ -672,22 +780,49 @@ private struct TimelineOverlayItem: View {
                         if trimOrigin == nil {
                             trimOrigin = overlay
                             activeTrimEdge = edge
+                            snapAnchors = session.timelineSnapAnchors()
                             session.selectOverlay(overlay.id)
                         }
                         guard let trimOrigin else { return }
-                        trimDraft = TimelineOverlayGeometry.trimmed(
+                        let rawTranslation = value.location.x - value.startLocation.x
+                        let rawDraft = TimelineOverlayGeometry.trimmed(
                             overlay: trimOrigin,
                             edge: edge,
-                            translationX: value.location.x - value.startLocation.x,
+                            translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
+                        let originalEdgeTime = edge == .leading
+                            ? trimOrigin.timelineStart
+                            : trimOrigin.timelineStart + trimOrigin.duration
+                        let proposedEdgeTime = edge == .leading
+                            ? rawDraft.timelineStart
+                            : rawDraft.timelineStart + rawDraft.duration
+                        let adjusted = TimelineSnapDragGeometry.trimTranslation(
+                            originalEdgeTime: originalEdgeTime,
+                            proposedEdgeTime: proposedEdgeTime,
+                            rawTranslationX: rawTranslation,
+                            anchors: snapAnchors,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                        )
+                        trimDraft = TimelineOverlayGeometry.trimmed(
+                            overlay: trimOrigin,
+                            edge: edge,
+                            translationX: adjusted.translationX,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                        session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
                         if let trimDraft { session.commitOverlayTrim(trimDraft) }
                         trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
+                        snapAnchors = []
+                        session.setActiveTimelineSnap(nil)
                         NSCursor.arrow.set()
                     }
             )
@@ -703,10 +838,13 @@ private struct TimelineAudioItem: View {
     let selected: Bool
     @State private var trimOrigin: ProjectAudioLayer?
     @State private var trimDraft: ProjectAudioLayer?
+    @State private var moveOrigin: ProjectAudioLayer?
+    @State private var moveDraft: ProjectAudioLayer?
     @State private var activeTrimEdge: HorizontalEdge?
+    @State private var snapAnchors: [TimelineSnapAnchor] = []
 
     var body: some View {
-        let displayed = trimDraft ?? layer
+        let displayed = trimDraft ?? moveDraft ?? layer
         let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
         let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
         Button {
@@ -733,6 +871,54 @@ private struct TimelineAudioItem: View {
         .buttonStyle(.plain)
         .frame(width: width, height: 46)
         .clipped()
+        .gesture(
+            DragGesture(
+                minimumDistance: 2,
+                coordinateSpace: .named(TimelineContent.coordinateSpaceName)
+            )
+                .onChanged { value in
+                    guard activeTrimEdge == nil else { return }
+                    if moveOrigin == nil {
+                        moveOrigin = layer
+                        snapAnchors = session.timelineSnapAnchors()
+                        session.selectAudioLayer(layer.id)
+                    }
+                    guard let moveOrigin else { return }
+                    let rawTranslation = value.location.x - value.startLocation.x
+                    let rawDraft = TimelineAudioGeometry.moved(
+                        layer: moveOrigin,
+                        translationX: rawTranslation,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration
+                    )
+                    let adjusted = TimelineSnapDragGeometry.moveTranslation(
+                        originalStart: moveOrigin.timelineStart,
+                        proposedStart: rawDraft.timelineStart,
+                        duration: rawDraft.duration,
+                        rawTranslationX: rawTranslation,
+                        anchors: snapAnchors,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration,
+                        enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                    )
+                    moveDraft = TimelineAudioGeometry.moved(
+                        layer: moveOrigin,
+                        translationX: adjusted.translationX,
+                        contentWidth: contentWidth,
+                        projectDuration: session.duration
+                    )
+                    session.setActiveTimelineSnap(adjusted.match)
+                }
+                .onEnded { _ in
+                    let committedMove = moveDraft
+                    moveDraft = nil
+                    moveOrigin = nil
+                    snapAnchors = []
+                    session.setActiveTimelineSnap(nil)
+                    guard let committedMove else { return }
+                    Task { await session.commitAudioTrim(committedMove) }
+                }
+        )
         .overlay(alignment: .leading) {
             if selected { trimHandle(.leading) }
         }
@@ -762,22 +948,49 @@ private struct TimelineAudioItem: View {
                         if trimOrigin == nil {
                             trimOrigin = layer
                             activeTrimEdge = edge
+                            snapAnchors = session.timelineSnapAnchors()
                             session.selectAudioLayer(layer.id)
                         }
                         guard let trimOrigin else { return }
-                        trimDraft = TimelineAudioGeometry.trimmed(
+                        let rawTranslation = value.location.x - value.startLocation.x
+                        let rawDraft = TimelineAudioGeometry.trimmed(
                             layer: trimOrigin,
                             edge: edge,
-                            translationX: value.location.x - value.startLocation.x,
+                            translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
+                        let originalEdgeTime = edge == .leading
+                            ? trimOrigin.timelineStart
+                            : trimOrigin.timelineStart + trimOrigin.duration
+                        let proposedEdgeTime = edge == .leading
+                            ? rawDraft.timelineStart
+                            : rawDraft.timelineStart + rawDraft.duration
+                        let adjusted = TimelineSnapDragGeometry.trimTranslation(
+                            originalEdgeTime: originalEdgeTime,
+                            proposedEdgeTime: proposedEdgeTime,
+                            rawTranslationX: rawTranslation,
+                            anchors: snapAnchors,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                        )
+                        trimDraft = TimelineAudioGeometry.trimmed(
+                            layer: trimOrigin,
+                            edge: edge,
+                            translationX: adjusted.translationX,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                        session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
                         let committedTrim = trimDraft
                         trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
+                        snapAnchors = []
+                        session.setActiveTimelineSnap(nil)
                         NSCursor.arrow.set()
                         guard let committedTrim else { return }
                         Task {
@@ -790,6 +1003,26 @@ private struct TimelineAudioItem: View {
 }
 
 enum TimelineOverlayGeometry {
+    static func moved(
+        overlay: ProjectOverlay,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectOverlay {
+        var updated = overlay
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
+        updated.timelineStart = min(
+            max(0, projectDuration - overlay.duration),
+            max(0, overlay.timelineStart + delta)
+        )
+        return updated
+    }
+
     static func trimmed(
         overlay: ProjectOverlay,
         edge: HorizontalEdge,
@@ -821,6 +1054,26 @@ enum TimelineOverlayGeometry {
 }
 
 enum TimelineAudioGeometry {
+    static func moved(
+        layer: ProjectAudioLayer,
+        translationX: CGFloat,
+        contentWidth: Double,
+        projectDuration: Double
+    ) -> ProjectAudioLayer {
+        var updated = layer
+        guard projectDuration > 0, contentWidth > 0 else { return updated }
+        let delta = TimelineTrimGeometry.timeDelta(
+            for: translationX,
+            contentWidth: contentWidth,
+            projectDuration: projectDuration
+        )
+        updated.timelineStart = min(
+            max(0, projectDuration - layer.duration),
+            max(0, layer.timelineStart + delta)
+        )
+        return updated
+    }
+
     static func trimmed(
         layer: ProjectAudioLayer,
         edge: HorizontalEdge,
@@ -877,6 +1130,7 @@ private struct TimelineTextLayerCell: View {
     @State private var moveOrigin: ProjectTextLayer?
     @State private var moveDraft: ProjectTextLayer?
     @State private var activeTrimEdge: HorizontalEdge?
+    @State private var snapAnchors: [TimelineSnapAnchor] = []
 
     var body: some View {
         let displayed = trimDraft ?? moveDraft ?? layer
@@ -912,20 +1166,41 @@ private struct TimelineTextLayerCell: View {
                         guard activeTrimEdge == nil else { return }
                         if moveOrigin == nil {
                             moveOrigin = layer
+                            snapAnchors = session.timelineSnapAnchors()
                             session.selectTextLayer(layer.id)
                         }
                         guard let moveOrigin else { return }
-                        moveDraft = TimelineTextGeometry.moved(
+                        let rawTranslation = value.location.x - value.startLocation.x
+                        let rawDraft = TimelineTextGeometry.moved(
                             layer: moveOrigin,
-                            translationX: value.location.x - value.startLocation.x,
+                            translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
+                        let adjusted = TimelineSnapDragGeometry.moveTranslation(
+                            originalStart: moveOrigin.timelineStart,
+                            proposedStart: rawDraft.timelineStart,
+                            duration: rawDraft.duration,
+                            rawTranslationX: rawTranslation,
+                            anchors: snapAnchors,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                        )
+                        moveDraft = TimelineTextGeometry.moved(
+                            layer: moveOrigin,
+                            translationX: adjusted.translationX,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                        session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
                         if let moveDraft { session.updateTextLayer(moveDraft) }
                         moveDraft = nil
                         moveOrigin = nil
+                        snapAnchors = []
+                        session.setActiveTimelineSnap(nil)
                     }
             )
             .overlay(alignment: .leading) {
@@ -957,22 +1232,49 @@ private struct TimelineTextLayerCell: View {
                         if trimOrigin == nil {
                             trimOrigin = layer
                             activeTrimEdge = edge
+                            snapAnchors = session.timelineSnapAnchors()
                             session.selectTextLayer(layer.id)
                         }
                         guard let trimOrigin else { return }
-                        trimDraft = TimelineTextGeometry.trimmed(
+                        let rawTranslation = value.location.x - value.startLocation.x
+                        let rawDraft = TimelineTextGeometry.trimmed(
                             layer: trimOrigin,
                             edge: edge,
-                            translationX: value.location.x - value.startLocation.x,
+                            translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: session.duration
                         )
+                        let originalEdgeTime = edge == .leading
+                            ? trimOrigin.timelineStart
+                            : trimOrigin.timelineStart + trimOrigin.duration
+                        let proposedEdgeTime = edge == .leading
+                            ? rawDraft.timelineStart
+                            : rawDraft.timelineStart + rawDraft.duration
+                        let adjusted = TimelineSnapDragGeometry.trimTranslation(
+                            originalEdgeTime: originalEdgeTime,
+                            proposedEdgeTime: proposedEdgeTime,
+                            rawTranslationX: rawTranslation,
+                            anchors: snapAnchors,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration,
+                            enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
+                        )
+                        trimDraft = TimelineTextGeometry.trimmed(
+                            layer: trimOrigin,
+                            edge: edge,
+                            translationX: adjusted.translationX,
+                            contentWidth: contentWidth,
+                            projectDuration: session.duration
+                        )
+                        session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
                         if let trimDraft { session.updateTextLayer(trimDraft) }
                         trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
+                        snapAnchors = []
+                        session.setActiveTimelineSnap(nil)
                         NSCursor.arrow.set()
                     }
             )
