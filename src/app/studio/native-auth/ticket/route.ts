@@ -13,13 +13,18 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: "invalid_state" }, { status: 400 });
   }
   if (!userId) {
-    return Response.redirect(
-      new URL(
-        `/studio/native-auth?state=${encodeURIComponent(state)}`,
-        request.url,
-      ),
-      302,
-    );
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: new URL(
+          `/studio/native-auth?state=${encodeURIComponent(state)}`,
+          request.url,
+        ).toString(),
+        "Cache-Control": "no-store, private",
+        "Referrer-Policy": "no-referrer",
+        Pragma: "no-cache",
+      },
+    });
   }
 
   const client = await clerkClient();
