@@ -9,7 +9,7 @@ struct PlayerPanel: View {
             GeometryReader { proxy in
                 let stageSize = fittedStageSize(in: proxy.size)
                 ZStack {
-                    Color.black
+                    Color.previewWorkspaceBackground
                     ZStack {
                         Color.black
                         if session.project.clips.isEmpty {
@@ -33,10 +33,11 @@ struct PlayerPanel: View {
                         TextLayerCanvasOverlay(session: session)
                     }
                     .frame(width: stageSize.width, height: stageSize.height)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .shadow(color: .black.opacity(0.52), radius: 16, y: 6)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .stroke(Color.studioLine, lineWidth: 1)
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(Color.previewCanvasBorder, lineWidth: 1)
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -46,7 +47,7 @@ struct PlayerPanel: View {
 
             TransportBar(session: session)
         }
-        .background(Color.black)
+        .background(Color.previewWorkspaceBackground)
     }
 
     private func fittedStageSize(in container: CGSize) -> CGSize {

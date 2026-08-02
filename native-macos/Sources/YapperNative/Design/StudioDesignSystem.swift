@@ -57,6 +57,16 @@ extension Color {
         light: NSColor.white.withAlphaComponent(0.76),
         dark: NSColor.white.withAlphaComponent(0.08)
     )
+    /// The pasteboard around the export canvas. Keep this visibly separate
+    /// from the canvas's true black background in both app themes.
+    static let previewWorkspaceBackground = adaptive(
+        light: NSColor(red: 0.19, green: 0.20, blue: 0.22, alpha: 1),
+        dark: NSColor(red: 0.095, green: 0.10, blue: 0.11, alpha: 1)
+    )
+    static let previewCanvasBorder = adaptive(
+        light: NSColor.white.withAlphaComponent(0.30),
+        dark: NSColor.white.withAlphaComponent(0.17)
+    )
     static let yapperOrange = Color(red: 1, green: 0.48, blue: 0.13)
 
     private static func adaptive(light: NSColor, dark: NSColor) -> Color {
@@ -86,4 +96,3 @@ extension View {
         }
     }
 }
-
