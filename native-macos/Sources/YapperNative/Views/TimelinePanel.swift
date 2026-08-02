@@ -5,6 +5,8 @@ import SwiftUI
 struct TimelinePanel: View {
     @ObservedObject var session: EditorSession
     @State private var pointsPerSecond = 36.0
+    private let leadingTimelineInset = 84.0
+    private let trailingTimelineInset = 160.0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -78,11 +80,13 @@ struct TimelinePanel: View {
             .background(Color.panelBackground)
 
             GeometryReader { proxy in
-                let contentWidth = max(
-                    proxy.size.width - 86,
-                    session.duration * pointsPerSecond
+                let timelineViewportWidth = max(1, proxy.size.width - 71)
+                let minimumTimelineWidth = max(
+                    280,
+                    min(520, timelineViewportWidth * 0.52)
                 )
-                let contentHeight = max(370, proxy.size.height - 12)
+                let contentWidth = max(minimumTimelineWidth, session.duration * pointsPerSecond)
+                let contentHeight = max(540, proxy.size.height + 168)
                 ScrollView(.vertical, showsIndicators: true) {
                     HStack(spacing: 0) {
                         TrackHeader(hasText: true, hasOverlays: true, hasAudio: true)
@@ -94,10 +98,18 @@ struct TimelinePanel: View {
                                 contentWidth: contentWidth
                             )
                             .frame(width: contentWidth, height: contentHeight)
-                            .padding(.horizontal, 10)
+                            .padding(.leading, leadingTimelineInset)
+                            .padding(.trailing, trailingTimelineInset)
                             .background {
-                                TimelineZoomInputView { factor in
-                                    applyZoom(factor)
+                                TimelineZoomInputView(
+                                    leadingInset: leadingTimelineInset,
+                                    trailingInset: trailingTimelineInset,
+                                    timelineWidth: contentWidth
+                                ) { factor in
+                                    applyZoom(
+                                        factor,
+                                        minimumTimelineWidth: minimumTimelineWidth
+                                    )
                                 }
                             }
                         }
@@ -119,16 +131,17 @@ struct TimelinePanel: View {
         }
     }
 
-    private func applyZoom(_ factor: Double) -> Double {
+    private func applyZoom(_ factor: Double, minimumTimelineWidth: Double) -> Double {
         let previous = pointsPerSecond
         let updated = TimelineZoomGeometry.scaled(previous, by: factor)
-        guard abs(updated - previous) > 0.0001 else { return 1 }
+        let previousWidth = max(minimumTimelineWidth, session.duration * previous)
+        guard abs(updated - previous) > 0.0001 else { return previousWidth }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
             pointsPerSecond = updated
         }
-        return updated / previous
+        return max(minimumTimelineWidth, session.duration * updated)
     }
 
     private func performKeyboardCommand(_ command: TimelineKeyboardCommand) {
@@ -271,7 +284,7 @@ private func timelineSelectionMove(
 }
 
 enum TimelineZoomGeometry {
-    static let scaleRange = 8.0 ... 240.0
+    static let scaleRange = 1.25 ... 320.0
 
     static func scaled(_ current: Double, by factor: Double) -> Double {
         min(scaleRange.upperBound, max(scaleRange.lowerBound, current * factor))
@@ -282,13 +295,17 @@ enum TimelineZoomGeometry {
         pointerX: CGFloat,
         oldContentWidth: CGFloat,
         newContentWidth: CGFloat,
-        viewportWidth: CGFloat
+        viewportWidth: CGFloat,
+        leadingInset: CGFloat = 0,
+        trailingInset: CGFloat = 0
     ) -> CGFloat {
         guard oldContentWidth > 0, newContentWidth > 0 else { return 0 }
         let documentX = oldOffset + pointerX
-        let fraction = min(1, max(0, documentX / oldContentWidth))
-        let proposed = fraction * newContentWidth - pointerX
-        return min(max(0, newContentWidth - viewportWidth), max(0, proposed))
+        let timelineX = documentX - leadingInset
+        let fraction = min(1, max(0, timelineX / oldContentWidth))
+        let proposed = leadingInset + fraction * newContentWidth - pointerX
+        let documentWidth = leadingInset + newContentWidth + trailingInset
+        return min(max(0, documentWidth - viewportWidth), max(0, proposed))
     }
 }
 
@@ -344,10 +361,18 @@ private final class TimelineZoomMonitorView: NSView {
 }
 
 private struct TimelineZoomInputView: NSViewRepresentable {
+    let leadingInset: CGFloat
+    let trailingInset: CGFloat
+    let timelineWidth: CGFloat
     let onZoom: (Double) -> Double
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onZoom: onZoom)
+        Coordinator(
+            leadingInset: leadingInset,
+            trailingInset: trailingInset,
+            timelineWidth: timelineWidth,
+            onZoom: onZoom
+        )
     }
 
     func makeNSView(context: Context) -> TimelineZoomMonitorView {
@@ -359,6 +384,9 @@ private struct TimelineZoomInputView: NSViewRepresentable {
 
     func updateNSView(_ nsView: TimelineZoomMonitorView, context: Context) {
         context.coordinator.view = nsView
+        context.coordinator.leadingInset = leadingInset
+        context.coordinator.trailingInset = trailingInset
+        context.coordinator.timelineWidth = timelineWidth
         context.coordinator.onZoom = onZoom
     }
 
@@ -369,10 +397,22 @@ private struct TimelineZoomInputView: NSViewRepresentable {
     @MainActor
     final class Coordinator {
         weak var view: TimelineZoomMonitorView?
+        var leadingInset: CGFloat
+        var trailingInset: CGFloat
+        var timelineWidth: CGFloat
         var onZoom: (Double) -> Double
         private var monitor: Any?
+        private var zoomGeneration = 0
 
-        init(onZoom: @escaping (Double) -> Double) {
+        init(
+            leadingInset: CGFloat,
+            trailingInset: CGFloat,
+            timelineWidth: CGFloat,
+            onZoom: @escaping (Double) -> Double
+        ) {
+            self.leadingInset = leadingInset
+            self.trailingInset = trailingInset
+            self.timelineWidth = timelineWidth
             self.onZoom = onZoom
         }
 
@@ -413,24 +453,31 @@ private struct TimelineZoomInputView: NSViewRepresentable {
 
             let scrollView = enclosingScrollView(from: view)
             let clipView = scrollView?.contentView
-            let pointerX = clipView?.convert(event.locationInWindow, from: nil).x ?? 0
+            let pointerDocumentX = view.convert(event.locationInWindow, from: nil).x
             let oldOffset = clipView?.bounds.minX ?? 0
-            let oldContentWidth = scrollView?.documentView?.bounds.width ?? view.bounds.width
-            let appliedFactor = onZoom(requestedFactor)
-            guard abs(appliedFactor - 1) > 0.0001 else { return nil }
+            let pointerX = pointerDocumentX - oldOffset
+            let oldTimelineWidth = timelineWidth
+            let newTimelineWidth = onZoom(requestedFactor)
+            guard abs(newTimelineWidth - oldTimelineWidth) > 0.0001 else { return nil }
+            timelineWidth = newTimelineWidth
+            zoomGeneration += 1
+            let generation = zoomGeneration
 
-            DispatchQueue.main.async { [weak scrollView] in
-                guard let scrollView else { return }
+            let targetX = TimelineZoomGeometry.anchoredOffset(
+                oldOffset: oldOffset,
+                pointerX: pointerX,
+                oldContentWidth: oldTimelineWidth,
+                newContentWidth: newTimelineWidth,
+                viewportWidth: clipView?.bounds.width ?? 0,
+                leadingInset: leadingInset,
+                trailingInset: trailingInset
+            )
+
+            DispatchQueue.main.async { [weak self, weak scrollView] in
+                guard let self, self.zoomGeneration == generation, let scrollView else { return }
                 let clipView = scrollView.contentView
-                let newContentWidth = scrollView.documentView?.bounds.width ?? oldContentWidth * appliedFactor
-                let x = TimelineZoomGeometry.anchoredOffset(
-                    oldOffset: oldOffset,
-                    pointerX: pointerX,
-                    oldContentWidth: oldContentWidth,
-                    newContentWidth: newContentWidth,
-                    viewportWidth: clipView.bounds.width
-                )
-                clipView.scroll(to: CGPoint(x: x, y: clipView.bounds.minY))
+                scrollView.documentView?.layoutSubtreeIfNeeded()
+                clipView.scroll(to: CGPoint(x: targetX, y: clipView.bounds.minY))
                 scrollView.reflectScrolledClipView(clipView)
             }
             return nil
@@ -482,7 +529,7 @@ private struct TimelineContent: View {
                 .zIndex(0)
             TimelineRuler(duration: session.duration, width: contentWidth)
                 .frame(height: 34)
-                .background(Color.editorBackground)
+                .background(Color.panelBackground)
                 .contentShape(Rectangle())
                 .gesture(timelineRulerSeekGesture)
                 .zIndex(1)
@@ -1846,14 +1893,14 @@ private struct TimelineRuler: View {
                 path.addLine(to: CGPoint(x: x, y: 30))
                 context.stroke(
                     path,
-                    with: .color(.white.opacity(isMajor ? 0.2 : 0.09)),
+                    with: .color(Color.primary.opacity(isMajor ? 0.32 : 0.14)),
                     lineWidth: 1
                 )
                 if isMajor {
                     context.draw(
                         Text(formatTime(time))
-                            .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.secondary),
+                            .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Color.primary.opacity(0.84)),
                         at: CGPoint(x: x + 3, y: 9),
                         anchor: .leading
                     )

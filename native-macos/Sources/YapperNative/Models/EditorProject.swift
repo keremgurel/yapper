@@ -339,6 +339,43 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+enum ProjectAspectRatio: String, Codable, CaseIterable, Identifiable, Sendable {
+    case source
+    case portrait = "9:16"
+    case feedPortrait = "4:5"
+    case square = "1:1"
+    case landscape = "16:9"
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .source: "Original"
+        default: rawValue
+        }
+    }
+
+    var hint: String {
+        switch self {
+        case .source: "Match the recording"
+        case .portrait: "Reels, Shorts, TikTok"
+        case .feedPortrait: "Instagram feed"
+        case .square: "Square"
+        case .landscape: "YouTube, landscape"
+        }
+    }
+
+    var ratio: Double? {
+        switch self {
+        case .source: nil
+        case .portrait: 9 / 16
+        case .feedPortrait: 4 / 5
+        case .square: 1
+        case .landscape: 16 / 9
+        }
+    }
+}
+
 struct EditorProject: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
@@ -350,6 +387,7 @@ struct EditorProject: Codable, Equatable, Sendable {
     var overlays: [ProjectOverlay]?
     var textLayers: [ProjectTextLayer]?
     var audioLayers: [ProjectAudioLayer]?
+    var aspectRatio: ProjectAspectRatio?
 
     init(
         id: UUID = UUID(),
@@ -361,7 +399,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         transcript: [TranscriptWord]? = nil,
         overlays: [ProjectOverlay]? = nil,
         textLayers: [ProjectTextLayer]? = nil,
-        audioLayers: [ProjectAudioLayer]? = nil
+        audioLayers: [ProjectAudioLayer]? = nil,
+        aspectRatio: ProjectAspectRatio? = .source
     ) {
         self.id = id
         self.name = name
@@ -373,10 +412,27 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.overlays = overlays
         self.textLayers = textLayers
         self.audioLayers = audioLayers
+        self.aspectRatio = aspectRatio
     }
 
     var duration: Double {
         clips.reduce(0) { $0 + $1.duration }
+    }
+
+    var selectedAspectRatio: ProjectAspectRatio {
+        aspectRatio ?? .source
+    }
+
+    var resolvedAspectRatio: Double {
+        if let ratio = selectedAspectRatio.ratio { return ratio }
+        if let firstClip = clips.first,
+           let source = media(for: firstClip),
+           source.width > 0,
+           source.height > 0
+        {
+            return Double(source.width) / Double(source.height)
+        }
+        return 9 / 16
     }
 
     /// Transcript content belonging to media that is currently present on the

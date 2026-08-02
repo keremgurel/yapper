@@ -14,6 +14,25 @@ private let latestOneClickReferenceURL = URL(
 @Suite(.serialized)
 struct ReferenceMediaIntegrationTests {
     @Test(
+        "Explicit project ratio builds a matching native frame",
+        .enabled(if: FileManager.default.fileExists(atPath: latestOneClickReferenceURL.path))
+    )
+    func buildsExplicitProjectAspectRatio() async throws {
+        let media = try await MediaProbe.inspect(url: latestOneClickReferenceURL)
+        let project = EditorProject(
+            name: "Aspect ratio check",
+            media: [media],
+            clips: [TimelineClip(mediaID: media.id, sourceStart: 8, sourceEnd: 10)],
+            aspectRatio: .landscape
+        )
+
+        let built = try await CompositionBuilder.build(project: project)
+        #expect(built.renderSize == CGSize(width: 3_072, height: 1_728))
+        #expect(try await built.asset.loadTracks(withMediaType: .video).count == 1)
+        #expect(try await built.asset.loadTracks(withMediaType: .audio).count == 1)
+    }
+
+    @Test(
         "Latest one-click regression keeps a complete outro and no stale transcript",
         .enabled(if: ProcessInfo.processInfo.environment["YAPPER_RUN_LATEST_ONE_CLICK_INTEGRATION"] == "1")
     )

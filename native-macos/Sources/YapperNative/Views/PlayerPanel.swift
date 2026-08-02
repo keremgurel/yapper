@@ -9,7 +9,7 @@ struct PlayerPanel: View {
             GeometryReader { proxy in
                 let stageSize = fittedStageSize(in: proxy.size)
                 ZStack {
-                    Color.editorBackground
+                    Color.black
                     ZStack {
                         Color.black
                         if session.project.clips.isEmpty {
@@ -46,7 +46,7 @@ struct PlayerPanel: View {
 
             TransportBar(session: session)
         }
-        .background(Color.editorBackground)
+        .background(Color.black)
     }
 
     private func fittedStageSize(in container: CGSize) -> CGSize {
@@ -55,7 +55,7 @@ struct PlayerPanel: View {
             width: max(1, container.width - inset),
             height: max(1, container.height - inset)
         )
-        let aspect = layoutMode.previewAspectRatio
+        let aspect = CGFloat(session.project.resolvedAspectRatio)
         if available.width / available.height > aspect {
             return CGSize(width: available.height * aspect, height: available.height)
         }
@@ -399,27 +399,58 @@ private struct TransportBar: View {
 
             Spacer()
 
-            Button {
-                Task { await session.splitAtPlayhead() }
+            Menu {
+                ForEach(ProjectAspectRatio.allCases) { aspectRatio in
+                    Button {
+                        Task { await session.setAspectRatio(aspectRatio) }
+                    } label: {
+                        HStack {
+                            Label(aspectRatio.title, systemImage: aspectSymbol(aspectRatio))
+                            Spacer()
+                            if session.project.selectedAspectRatio == aspectRatio {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
             } label: {
-                Label("Split", systemImage: "scissors")
+                HStack(spacing: 6) {
+                    Image(systemName: "aspectratio")
+                    Text(session.project.selectedAspectRatio.title)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .font(.system(size: 11, weight: .semibold))
+                .padding(.horizontal, 9)
+                .frame(height: 28)
+                .background(Color.studioFaintFill)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                }
             }
-            .buttonStyle(EditorSecondaryButtonStyle())
-            .disabled(session.project.clips.isEmpty)
-
-            Button {
-                Task { await session.deleteSelected() }
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-            .disabled(session.selectedClipID == nil)
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help("Frame ratio for preview and export")
         }
         .padding(.horizontal, 14)
-        .frame(height: 48)
+        .frame(height: 40)
         .background(Color.panelBackground)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
+        }
+    }
+
+    private func aspectSymbol(_ aspectRatio: ProjectAspectRatio) -> String {
+        switch aspectRatio {
+        case .source: "rectangle.dashed"
+        case .portrait: "rectangle.portrait"
+        case .feedPortrait: "rectangle.portrait.inset.filled"
+        case .square: "square"
+        case .landscape: "rectangle"
         }
     }
 }

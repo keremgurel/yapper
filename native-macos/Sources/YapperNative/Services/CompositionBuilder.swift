@@ -54,7 +54,11 @@ enum CompositionBuilder {
         )
 
         let firstMedia = try media(for: project.clips[0], in: project)
-        let renderSize = evenSize(width: firstMedia.width, height: firstMedia.height)
+        let renderSize = renderSize(
+            sourceWidth: firstMedia.width,
+            sourceHeight: firstMedia.height,
+            aspectRatio: project.selectedAspectRatio
+        )
         var cursor = CMTime.zero
         var instructions: [AVMutableVideoCompositionInstruction] = []
         var maximumFrameRate: Float = 30
@@ -424,6 +428,27 @@ enum CompositionBuilder {
         CGSize(
             width: max(2, width - width % 2),
             height: max(2, height - height % 2)
+        )
+    }
+
+    static func renderSize(
+        sourceWidth: Int,
+        sourceHeight: Int,
+        aspectRatio: ProjectAspectRatio
+    ) -> CGSize {
+        guard let ratio = aspectRatio.ratio else {
+            return evenSize(width: sourceWidth, height: sourceHeight)
+        }
+        let longEdge = max(2, max(sourceWidth, sourceHeight))
+        if ratio <= 1 {
+            return evenSize(
+                width: Int((Double(longEdge) * ratio).rounded()),
+                height: longEdge
+            )
+        }
+        return evenSize(
+            width: longEdge,
+            height: Int((Double(longEdge) / ratio).rounded())
         )
     }
 

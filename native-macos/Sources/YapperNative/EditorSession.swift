@@ -280,6 +280,14 @@ final class EditorSession: ObservableObject {
         if !isTimelineSnappingEnabled { setActiveTimelineSnap(nil) }
     }
 
+    func setAspectRatio(_ aspectRatio: ProjectAspectRatio) async {
+        guard project.selectedAspectRatio != aspectRatio else { return }
+        let undoSnapshot = prepareUndoSnapshot()
+        project.aspectRatio = aspectRatio
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
+        statusMessage = "Frame set to \(aspectRatio.title)"
+    }
+
     func setActiveTimelineSnap(_ match: TimelineSnapMatch?) {
         let targetChanged = activeTimelineSnap?.time != match?.time
             || activeTimelineSnap?.kind != match?.kind
@@ -1388,7 +1396,8 @@ final class EditorSession: ObservableObject {
                 textLayers: saved.textLayers,
                 audioLayers: saved.audioLayers?.filter {
                     FileManager.default.fileExists(atPath: $0.url.path)
-                }
+                },
+                aspectRatio: saved.aspectRatio
             )
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id

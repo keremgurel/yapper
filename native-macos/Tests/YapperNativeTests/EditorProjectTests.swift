@@ -664,8 +664,8 @@ struct EditorProjectTests {
 
     @Test func timelineZoomClampsAndKeepsThePointerAnchored() {
         #expect(TimelineZoomGeometry.scaled(36, by: 2) == 72)
-        #expect(TimelineZoomGeometry.scaled(230, by: 2) == 240)
-        #expect(TimelineZoomGeometry.scaled(20, by: 0.2) == 8)
+        #expect(TimelineZoomGeometry.scaled(230, by: 2) == 320)
+        #expect(TimelineZoomGeometry.scaled(5, by: 0.2) == 1.25)
 
         let offset = TimelineZoomGeometry.anchoredOffset(
             oldOffset: 400,
@@ -677,6 +677,42 @@ struct EditorProjectTests {
         #expect(offset == 1_000)
         // The same 50% timeline position remains under x=200 after zooming.
         #expect((offset + 200) / 2_400 == 0.5)
+
+        let insetOffset = TimelineZoomGeometry.anchoredOffset(
+            oldOffset: 484,
+            pointerX: 200,
+            oldContentWidth: 1_200,
+            newContentWidth: 2_400,
+            viewportWidth: 600,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        #expect(insetOffset == 1_084)
+        #expect((insetOffset + 200 - 84) / 2_400 == 0.5)
+    }
+
+    @Test func projectAspectRatioControlsExportFrame() {
+        #expect(
+            CompositionBuilder.renderSize(
+                sourceWidth: 1_728,
+                sourceHeight: 3_072,
+                aspectRatio: .source
+            ) == CGSize(width: 1_728, height: 3_072)
+        )
+        #expect(
+            CompositionBuilder.renderSize(
+                sourceWidth: 1_920,
+                sourceHeight: 1_080,
+                aspectRatio: .portrait
+            ) == CGSize(width: 1_080, height: 1_920)
+        )
+        #expect(
+            CompositionBuilder.renderSize(
+                sourceWidth: 1_728,
+                sourceHeight: 3_072,
+                aspectRatio: .landscape
+            ) == CGSize(width: 3_072, height: 1_728)
+        )
     }
 
     @Test func waveformFillsEveryVisibleColumnEvenWhenZoomExceedsPeakDensity() {

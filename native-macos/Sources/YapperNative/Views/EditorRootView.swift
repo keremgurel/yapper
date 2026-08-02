@@ -20,12 +20,6 @@ enum EditorLayoutMode: String, CaseIterable, Identifiable {
         }
     }
 
-    var previewAspectRatio: CGFloat {
-        switch self {
-        case .standard: 16 / 9
-        case .tallPreview: 9 / 16
-        }
-    }
 }
 
 struct EditorRootView: View {
@@ -87,12 +81,13 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
     @AppStorage("editorStandardWorkbenchFraction") private var standardWorkbenchFraction = 0.0
     @AppStorage("editorTallWorkbenchFraction") private var tallWorkbenchFraction = 0.0
     @State private var dragStartFraction: Double?
+    @State private var liveWorkbenchFraction: Double?
 
     private let dividerWidth: CGFloat = 7
 
     var body: some View {
         GeometryReader { proxy in
-            let fraction = resolvedWorkbenchFraction(in: proxy.size)
+            let fraction = liveWorkbenchFraction ?? resolvedWorkbenchFraction(in: proxy.size)
             let workbenchWidth = max(0, (proxy.size.width - dividerWidth) * fraction)
 
             HStack(spacing: 0) {
@@ -107,12 +102,22 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
                         }
                         let availableWidth = max(1, proxy.size.width - dividerWidth)
                         let next = (dragStartFraction ?? fraction) + translation / availableWidth
-                        setWorkbenchFraction(clamp(next, in: proxy.size))
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            liveWorkbenchFraction = clamp(next, in: proxy.size)
+                        }
                     },
                     onEnd: {
+                        if let liveWorkbenchFraction {
+                            setWorkbenchFraction(liveWorkbenchFraction)
+                        }
                         dragStartFraction = nil
+                        liveWorkbenchFraction = nil
                     },
                     onReset: {
+                        dragStartFraction = nil
+                        liveWorkbenchFraction = nil
                         withAnimation(.easeInOut(duration: 0.22)) {
                             setWorkbenchFraction(0)
                         }
@@ -123,7 +128,6 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
                 PlayerPanel(session: session, layoutMode: layoutMode)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .animation(.easeInOut(duration: 0.22), value: layoutMode)
         }
     }
 
@@ -135,12 +139,12 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
             return clamp(stored, in: size)
         }
 
-        let transportHeight: CGFloat = 48
+        let transportHeight: CGFloat = 40
         let previewPadding: CGFloat = layoutMode == .standard ? 36 : 20
         let availableStageHeight = max(1, size.height - transportHeight - previewPadding)
         let desiredPreviewWidth = max(
             layoutMode == .standard ? 480 : 330,
-            availableStageHeight * layoutMode.previewAspectRatio + previewPadding
+            availableStageHeight * CGFloat(session.project.resolvedAspectRatio) + previewPadding
         )
         let automatic = (size.width - dividerWidth - desiredPreviewWidth)
             / max(1, size.width - dividerWidth)

@@ -99,7 +99,7 @@ private struct StudioSidebar: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 11) {
-                YapperMark(size: 31)
+                YapperMark(size: 27)
                 if expanded {
                     Text("Yapper Studio")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
@@ -109,7 +109,7 @@ private struct StudioSidebar: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, expanded ? 15 : 17)
-            .frame(height: 58)
+            .frame(height: 46)
 
             Rectangle().fill(Color.studioLine).frame(height: 1)
 
@@ -222,11 +222,11 @@ private struct StudioTopBar: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button(action: toggleSidebar) {
                 Image(systemName: sidebarExpanded ? "sidebar.left" : "sidebar.right")
                     .font(.system(size: 14, weight: .semibold))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 28, height: 28)
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
@@ -241,34 +241,31 @@ private struct StudioTopBar: View {
             Spacer()
 
             if destination == .editor {
-                Menu {
+                HStack(spacing: 2) {
                     ForEach(EditorLayoutMode.allCases) { mode in
                         Button {
                             withAnimation(.easeInOut(duration: 0.22)) {
                                 layoutModeRaw = mode.rawValue
                             }
                         } label: {
-                            Label(mode.title, systemImage: mode.icon)
+                            Image(systemName: mode.icon)
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(layoutMode == mode ? Color.yapperOrange : Color.secondary)
+                                .frame(width: 27, height: 25)
+                                .background(layoutMode == mode ? Color.yapperOrange.opacity(0.12) : Color.clear)
+                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                         }
+                        .buttonStyle(.plain)
+                        .help(mode.title)
                     }
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: layoutMode.icon)
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(layoutMode.title)
-                            .font(.system(size: 11, weight: .semibold))
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.horizontal, 10)
-                    .frame(height: 34)
                 }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .studioGlass(radius: 8, interactive: true)
-                .help("Change editor layout")
+                .padding(2)
+                .background(Color.studioFaintFill)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .stroke(Color.studioLine, lineWidth: 1)
+                }
 
                 if session.isBusy || session.isExporting {
                     ProgressView().controlSize(.small)
@@ -277,18 +274,19 @@ private struct StudioTopBar: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .frame(maxWidth: 150, alignment: .trailing)
                 Button {
                     ImportPanels.openMedia(for: session)
                 } label: {
                     Label("Import", systemImage: "plus")
                 }
-                .buttonStyle(EditorSecondaryButtonStyle())
+                .buttonStyle(StudioTopBarSecondaryButtonStyle())
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(EditorPrimaryButtonStyle())
+                .buttonStyle(StudioTopBarPrimaryButtonStyle())
                 .disabled(session.project.clips.isEmpty || session.isExporting)
             }
 
@@ -296,8 +294,8 @@ private struct StudioTopBar: View {
 
             WorkspaceProfileMenu(onNavigate: onNavigate)
         }
-        .padding(.horizontal, 15)
-        .frame(height: 56)
+        .padding(.horizontal, 10)
+        .frame(height: 46)
         .background(.regularMaterial)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
@@ -341,11 +339,11 @@ private struct NativeThemeSwitcher: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(theme == .dark ? Color.yellow.opacity(0.9) : Color.orange)
                     }
-                    .frame(width: 26, height: 26)
-                    .offset(x: theme == .dark ? 17 : -17)
+                    .frame(width: 22, height: 22)
+                    .offset(x: theme == .dark ? 14 : -14)
             }
-            .frame(width: 68, height: 34)
-            .contentShape(RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .frame(width: 58, height: 28)
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: theme)
@@ -417,25 +415,56 @@ private struct WorkspaceProfileMenu: View {
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
                 }
-                .frame(width: 29, height: 29)
+                .frame(width: 25, height: 25)
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Celpip Speaking Team")
                         .font(.system(size: 12, weight: .semibold))
-                    Text("Creator workspace")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundStyle(.secondary)
                 }
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 8)
-            .frame(height: 36)
+            .frame(height: 30)
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
         .studioGlass(radius: 10, interactive: true)
+    }
+}
+
+private struct StudioTopBarPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(.black)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(
+                Color.yapperOrange.opacity(
+                    isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.35
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.66)
+    }
+}
+
+private struct StudioTopBarSecondaryButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11, weight: .semibold))
+            .padding(.horizontal, 9)
+            .frame(height: 30)
+            .background(Color.studioFaintFill.opacity(configuration.isPressed ? 1.5 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.studioLine, lineWidth: 1)
+            }
     }
 }
 
