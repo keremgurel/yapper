@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="100" y1="80" x2="920" y2="950" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#24201e"/>
+      <stop offset="1" stop-color="#100e0d"/>
+    </linearGradient>
+    <linearGradient id="chirpy" x1="260" y1="230" x2="770" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6a1a"/>
+      <stop offset="0.55" stop-color="#fb8b2e"/>
+      <stop offset="1" stop-color="#f9a825"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="170%">
+      <feDropShadow dx="0" dy="34" stdDeviation="38" flood-color="#000" flood-opacity="0.42"/>
+    </filter>
+  </defs>
+  <rect x="72" y="72" width="880" height="880" rx="208" fill="url(#background)"/>
+  <g filter="url(#shadow)">
+    <path d="M450 282 Q486 182 530 263" fill="none" stroke="url(#chirpy)" stroke-width="58" stroke-linecap="round"/>
+    <circle cx="512" cy="550" r="300" fill="url(#chirpy)"/>
+    <circle cx="412" cy="492" r="88" fill="#fff"/>
+    <circle cx="612" cy="492" r="88" fill="#fff"/>
+    <circle cx="436" cy="508" r="38" fill="#2a1a0e"/>
+    <circle cx="588" cy="508" r="38" fill="#2a1a0e"/>
+    <path d="M342 406 L438 448" fill="none" stroke="#2a1a0e" stroke-width="34" stroke-linecap="round"/>
+    <path d="M682 406 L586 448" fill="none" stroke="#2a1a0e" stroke-width="34" stroke-linecap="round"/>
+    <path d="M452 588 L572 588 L512 672 Z" fill="#f7b32b"/>
+  </g>
+</svg>

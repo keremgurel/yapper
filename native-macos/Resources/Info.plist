@@ -10,6 +10,8 @@
     <string>YapperNative</string>
     <key>CFBundleIdentifier</key>
     <string>com.yapper.studio.native</string>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -17,9 +19,20 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.9.12</string>
+    <string>0.9.13</string>
     <key>CFBundleVersion</key>
-    <string>26</string>
+    <string>27</string>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.yapper.studio.native.auth</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>yapper-studio</string>
+            </array>
+        </dict>
+    </array>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
     <key>NSCameraUsageDescription</key>

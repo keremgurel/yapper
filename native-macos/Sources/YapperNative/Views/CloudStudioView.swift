@@ -1,4 +1,5 @@
 @preconcurrency import AppKit
+@preconcurrency import AuthenticationServices
 import SwiftUI
 @preconcurrency import WebKit
 
@@ -72,7 +73,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .default()
-        configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.10"
+        configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.13"
         configuration.preferences.isElementFullscreenEnabled = true
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
 
@@ -87,7 +88,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             )
         )
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) YapperStudioNative/0.9.10"
+        webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) YapperStudioNative/0.9.13"
         webView.navigationDelegate = context.coordinator
         webView.uiDelegate = context.coordinator
         webView.allowsMagnification = false
@@ -125,6 +126,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.cancelAuthentication()
         webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "yapperNative")
         webView.navigationDelegate = nil
@@ -163,7 +165,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
           core: {
             convertFileSrc: (path) => path,
             invoke: async (command, args = {}) => {
-              if (command === 'open_oauth_flow' || command === 'open_microphone_settings') {
+              if (command === 'open_auth_flow' || command === 'open_oauth_flow' || command === 'open_microphone_settings') {
                 window.webkit.messageHandlers.yapperNative.postMessage({ command, args });
                 return null;
               }
@@ -199,10 +201,14 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler,
+        ASWebAuthenticationPresentationContextProviding
+    {
         weak var webView: WKWebView?
         private var oauthWindow: NSWindow?
         private weak var oauthWebView: WKWebView?
+        private var authenticationSession: ASWebAuthenticationSession?
+        private var authenticationState: String?
         var isLoading: Binding<Bool>
         var errorMessage: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
@@ -275,6 +281,15 @@ private struct CloudStudioWebView: NSViewRepresentable {
             else { return }
 
             switch command {
+            case "open_auth_flow":
+                guard
+                    let arguments = payload["args"] as? [String: Any],
+                    let rawURL = arguments["url"] as? String,
+                    let url = URL(string: rawURL),
+                    Self.isYapperHost(url.host),
+                    url.path == "/studio/native-auth"
+                else { return }
+                openBrowserAuthentication(url)
             case "open_oauth_flow":
                 guard
                     let arguments = payload["args"] as? [String: Any],
@@ -288,9 +303,126 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone"
                 ) else { return }
                 NSWorkspace.shared.open(url)
+            case "native_auth_complete":
+                authenticationSession = nil
+                authenticationState = nil
+                errorMessage.wrappedValue = nil
+                self.webView?.reload()
+            case "native_auth_error":
+                let arguments = payload["args"] as? [String: Any]
+                let message = arguments?["message"] as? String
+                errorMessage.wrappedValue = message ?? "Couldn’t finish browser sign-in"
             default:
                 break
             }
+        }
+
+        private func openBrowserAuthentication(_ baseURL: URL) {
+            cancelAuthentication()
+            let state = UUID().uuidString.lowercased()
+            guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else { return }
+            var queryItems = components.queryItems ?? []
+            queryItems.removeAll { $0.name == "state" }
+            queryItems.append(URLQueryItem(name: "state", value: state))
+            components.queryItems = queryItems
+            guard let url = components.url else { return }
+
+            authenticationState = state
+            let session = ASWebAuthenticationSession(
+                url: url,
+                callbackURLScheme: "yapper-studio"
+            ) { [weak self] callbackURL, error in
+                Task { @MainActor in
+                    self?.finishBrowserAuthentication(callbackURL: callbackURL, error: error)
+                }
+            }
+            session.presentationContextProvider = self
+            session.prefersEphemeralWebBrowserSession = false
+            authenticationSession = session
+            guard session.start() else {
+                authenticationSession = nil
+                authenticationState = nil
+                errorMessage.wrappedValue = "Couldn’t open your browser for sign-in"
+                return
+            }
+        }
+
+        private func finishBrowserAuthentication(callbackURL: URL?, error: Error?) {
+            if let error = error as? ASWebAuthenticationSessionError,
+               error.code == .canceledLogin {
+                authenticationSession = nil
+                authenticationState = nil
+                return
+            }
+            guard
+                error == nil,
+                let callbackURL,
+                callbackURL.scheme == "yapper-studio",
+                callbackURL.host == "auth",
+                callbackURL.path == "/callback",
+                let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
+                let ticket = components.queryItems?.first(where: { $0.name == "ticket" })?.value,
+                let returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value,
+                returnedState == authenticationState,
+                !ticket.isEmpty
+            else {
+                authenticationSession = nil
+                authenticationState = nil
+                errorMessage.wrappedValue = error?.localizedDescription ?? "Browser sign-in could not be verified"
+                return
+            }
+
+            guard let ticketLiteral = Self.javascriptLiteral(ticket) else {
+                errorMessage.wrappedValue = "Browser sign-in returned an invalid ticket"
+                return
+            }
+            let script = """
+            (async () => {
+              try {
+                const clerk = window.Clerk;
+                if (!clerk) throw new Error('Clerk is not ready');
+                const signIn = await clerk.client.signIn.create({
+                  strategy: 'ticket',
+                  ticket: \(ticketLiteral)
+                });
+                if (signIn.status !== 'complete' || !signIn.createdSessionId) {
+                  throw new Error('Sign-in did not complete');
+                }
+                await clerk.setActive({ session: signIn.createdSessionId });
+                window.webkit.messageHandlers.yapperNative.postMessage({
+                  command: 'native_auth_complete', args: {}
+                });
+              } catch (error) {
+                window.webkit.messageHandlers.yapperNative.postMessage({
+                  command: 'native_auth_error',
+                  args: { message: error?.message || 'Could not finish browser sign-in' }
+                });
+              }
+            })();
+            """
+            webView?.evaluateJavaScript(script) { [weak self] _, evaluationError in
+                guard let evaluationError else { return }
+                Task { @MainActor in
+                    self?.errorMessage.wrappedValue = evaluationError.localizedDescription
+                }
+            }
+        }
+
+        func cancelAuthentication() {
+            authenticationSession?.cancel()
+            authenticationSession = nil
+            authenticationState = nil
+        }
+
+        func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+            webView?.window ?? NSApp.keyWindow ?? NSWindow()
+        }
+
+        private static func javascriptLiteral(_ value: String) -> String? {
+            guard
+                let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
+            else { return nil }
+            return String(data: data, encoding: .utf8)
         }
 
         private func openOAuthWindow(_ url: URL) {
@@ -302,10 +434,10 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
             let configuration = WKWebViewConfiguration()
             configuration.websiteDataStore = .default()
-            configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.10"
+            configuration.applicationNameForUserAgent = "YapperStudioNative/0.9.13"
             configuration.defaultWebpagePreferences.allowsContentJavaScript = true
             let oauthWebView = WKWebView(frame: .zero, configuration: configuration)
-            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 YapperStudioNative/0.9.10"
+            oauthWebView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15 YapperStudioNative/0.9.13"
             oauthWebView.navigationDelegate = self
             oauthWebView.uiDelegate = self
 

@@ -35,12 +35,14 @@ export default function StudioRouteBoundary({
 
   useEffect(() => {
     if (environment === "pending") return;
-    if (environment === "browser") {
+    const isNativeAuthHandoff = pathname.startsWith("/studio/native-auth");
+    if (environment === "browser" && !isNativeAuthHandoff) {
       router.replace("/");
       return;
     }
     if (pathname === "/studio") router.replace("/studio/home");
   }, [environment, pathname, router]);
 
-  return environment === "desktop" ? children : null;
+  const isNativeAuthHandoff = pathname.startsWith("/studio/native-auth");
+  return environment === "desktop" || isNativeAuthHandoff ? children : null;
 }

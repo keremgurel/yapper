@@ -1,10 +1,12 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
 import { SignInButton } from "@clerk/nextjs";
 import { Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { invoke } from "@/lib/studio/native/bridge";
 
 interface GateCopy {
   eyebrow: string;
@@ -51,6 +53,29 @@ function copyFor(pathname: string): GateCopy {
 export default function StudioGate() {
   const pathname = usePathname();
   const { eyebrow, headline, sub } = copyFor(pathname);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const native = useSyncExternalStore(
+    () => () => undefined,
+    () =>
+      navigator.userAgent.includes("YapperStudioNative/") ||
+      "__TAURI__" in window,
+    () => false,
+  );
+
+  async function openBrowserSignIn() {
+    setAuthError(null);
+    try {
+      await invoke("open_auth_flow", {
+        url: `${window.location.origin}/studio/native-auth`,
+      });
+    } catch (error) {
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : "Couldn’t open browser sign-in",
+      );
+    }
+  }
 
   return (
     <div className="flex min-h-[calc(100svh-8rem)] items-center justify-center px-4 py-10">
@@ -70,19 +95,36 @@ export default function StudioGate() {
         </p>
 
         <div className="mt-8 flex flex-col items-center gap-3">
-          <SignInButton mode="modal" withSignUp>
-            <Button size="lg" className="w-full max-w-xs">
-              Start free
-            </Button>
-          </SignInButton>
-          <SignInButton mode="modal">
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground text-sm font-semibold"
+          {native ? (
+            <Button
+              size="lg"
+              className="w-full max-w-xs"
+              onClick={openBrowserSignIn}
             >
-              I already have an account
-            </button>
-          </SignInButton>
+              Sign in in your browser
+            </Button>
+          ) : (
+            <SignInButton mode="modal" withSignUp>
+              <Button size="lg" className="w-full max-w-xs">
+                Start free
+              </Button>
+            </SignInButton>
+          )}
+          {!native && (
+            <SignInButton mode="modal">
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground text-sm font-semibold"
+              >
+                I already have an account
+              </button>
+            </SignInButton>
+          )}
+          {authError && (
+            <p className="text-destructive max-w-xs text-sm" role="alert">
+              {authError}
+            </p>
+          )}
         </div>
       </div>
     </div>

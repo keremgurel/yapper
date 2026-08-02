@@ -769,6 +769,33 @@ final class EditorSession: ObservableObject {
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
+    func resetMediaToSource(_ mediaID: UUID) async {
+        guard let media = project.media.first(where: { $0.id == mediaID }), !media.isImage else { return }
+        let undoSnapshot = prepareUndoSnapshot()
+        guard let replacement = project.resetMainTrack(
+            mediaID: mediaID,
+            sourceDuration: media.duration
+        ) else { return }
+        selectedClipID = replacement.id
+        timelineSelection = [.clip(replacement.id)]
+        currentTime = project.timelineStart(for: replacement.id) ?? 0
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
+        statusMessage = "Reset \(media.name) to its full source · ⌘Z to undo"
+    }
+
+    func deleteImportedMedia(_ mediaID: UUID) async {
+        guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
+        let undoSnapshot = prepareUndoSnapshot()
+        guard project.removeImportedMedia(mediaID) else { return }
+        waveformByMedia.removeValue(forKey: mediaID)
+        waveformProgressByMedia.removeValue(forKey: mediaID)
+        thumbnailsByMedia.removeValue(forKey: mediaID)
+        reconcileSelectionAfterProjectChange()
+        currentTime = min(currentTime, project.duration)
+        await commitTimelineEdit(undoSnapshot: undoSnapshot)
+        statusMessage = "Removed \(media.name) from this project · source file kept · ⌘Z to undo"
+    }
+
     func addOverlay(_ mediaID: UUID) async {
         guard
             duration > 0,
@@ -948,24 +975,6 @@ final class EditorSession: ObservableObject {
         self.selectedTextLayerID = project.textLayers?.last?.id
         project.updatedAt = Date()
         scheduleVisualCommit(undoSnapshot: undoSnapshot)
-    }
-
-    func resetTimelineToSource() async {
-        guard let media = project.media.first(where: { !$0.isImage }) else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        project.clips = [
-            TimelineClip(mediaID: media.id, sourceStart: 0, sourceEnd: media.duration),
-        ]
-        project.overlays = []
-        project.textLayers = []
-        project.audioLayers = []
-        selectedClipID = project.clips.first?.id
-        selectedTextLayerID = nil
-        selectedAudioLayerID = nil
-        selectedOverlayID = nil
-        timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
-        currentTime = 0
-        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
     func transcribeProject() async {

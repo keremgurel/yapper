@@ -3,6 +3,89 @@ import Testing
 @testable import YapperNative
 
 struct EditorProjectTests {
+    @Test func resettingOneMediaPreservesOtherMediaAndEveryLayer() {
+        let firstID = UUID()
+        let secondID = UUID()
+        let text = ProjectTextLayer(text: "Keep me", timelineStart: 0, duration: 2)
+        let overlay = ProjectOverlay(mediaID: secondID, timelineStart: 1, duration: 2)
+        let audio = ProjectAudioLayer(
+            url: URL(fileURLWithPath: "/tmp/keep.wav"),
+            name: "Keep audio",
+            timelineStart: 0,
+            duration: 1
+        )
+        var project = EditorProject(
+            clips: [
+                TimelineClip(mediaID: firstID, sourceStart: 2, sourceEnd: 4),
+                TimelineClip(mediaID: secondID, sourceStart: 0, sourceEnd: 3),
+                TimelineClip(mediaID: firstID, sourceStart: 8, sourceEnd: 10),
+            ],
+            overlays: [overlay],
+            textLayers: [text],
+            audioLayers: [audio]
+        )
+
+        let replacement = project.resetMainTrack(mediaID: firstID, sourceDuration: 12)
+
+        #expect(replacement != nil)
+        #expect(project.clips.count == 2)
+        #expect(project.clips[0] == replacement)
+        #expect(project.clips[0].sourceStart == 0)
+        #expect(project.clips[0].sourceEnd == 12)
+        #expect(project.clips[1].mediaID == secondID)
+        #expect(project.overlays == [overlay])
+        #expect(project.textLayers == [text])
+        #expect(project.audioLayers == [audio])
+    }
+
+    @Test func removingImportedMediaNeverDeletesUnrelatedProjectContent() {
+        let removedID = UUID()
+        let keptID = UUID()
+        let removedMedia = ProjectMedia(
+            id: removedID,
+            url: URL(fileURLWithPath: "/tmp/removed.mov"),
+            name: "Removed",
+            duration: 4,
+            width: 1080,
+            height: 1920,
+            hasAudio: true
+        )
+        let keptMedia = ProjectMedia(
+            id: keptID,
+            url: URL(fileURLWithPath: "/tmp/kept.mov"),
+            name: "Kept",
+            duration: 5,
+            width: 1080,
+            height: 1920,
+            hasAudio: true
+        )
+        let keptText = ProjectTextLayer(text: "Still here", timelineStart: 0, duration: 1)
+        var project = EditorProject(
+            media: [removedMedia, keptMedia],
+            clips: [
+                TimelineClip(mediaID: removedID, sourceStart: 0, sourceEnd: 4),
+                TimelineClip(mediaID: keptID, sourceStart: 0, sourceEnd: 5),
+            ],
+            transcript: [
+                TranscriptWord(mediaID: removedID, text: "gone", start: 0, end: 0.2),
+                TranscriptWord(mediaID: keptID, text: "kept", start: 0, end: 0.2),
+            ],
+            overlays: [
+                ProjectOverlay(mediaID: removedID, timelineStart: 0, duration: 1),
+                ProjectOverlay(mediaID: keptID, timelineStart: 1, duration: 1),
+            ],
+            textLayers: [keptText]
+        )
+
+        let didRemove = project.removeImportedMedia(removedID)
+        #expect(didRemove)
+        #expect(project.media == [keptMedia])
+        #expect(project.clips.map(\.mediaID) == [keptID])
+        #expect(project.transcript?.map(\.mediaID) == [keptID])
+        #expect(project.overlays?.map(\.mediaID) == [keptID])
+        #expect(project.textLayers == [keptText])
+    }
+
     @Test func editorHistorySupportsUndoRedoAndClearsRedoAfterANewEdit() {
         let mediaID = UUID()
         let original = EditorProject(clips: [

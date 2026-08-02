@@ -532,7 +532,7 @@ private struct MediaWorkbench: View {
                                 Spacer(minLength: 0)
                                 HStack(spacing: 6) {
                                     if !media.isImage {
-                                        Button("Base") {
+                                        Button("Add") {
                                             Task { await session.appendMediaToTimeline(media.id) }
                                         }
                                         .buttonStyle(EditorSecondaryButtonStyle())
@@ -541,12 +541,27 @@ private struct MediaWorkbench: View {
                                         Task { await session.addOverlay(media.id) }
                                     }
                                     .buttonStyle(EditorSecondaryButtonStyle())
-                                    .disabled(session.project.clips.isEmpty || !media.isImage)
+                                    .disabled(session.project.clips.isEmpty)
+
+                                    Menu {
+                                        mediaActions(for: media)
+                                    } label: {
+                                        Image(systemName: "ellipsis")
+                                            .font(.system(size: 12, weight: .bold))
+                                            .frame(width: 28, height: 28)
+                                    }
+                                    .menuStyle(.borderlessButton)
+                                    .menuIndicator(.hidden)
+                                    .help("Media actions")
                                 }
                             }
                             .padding(9)
                             .background(Color.raisedBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 9))
+                            .contentShape(Rectangle())
+                            .contextMenu {
+                                mediaActions(for: media)
+                            }
                         }
                     }
                 }
@@ -555,6 +570,40 @@ private struct MediaWorkbench: View {
         }
         .padding(16)
         .inspectorPane(maxWidth: 720)
+    }
+
+    @ViewBuilder
+    private func mediaActions(for media: ProjectMedia) -> some View {
+        if !media.isImage {
+            Button {
+                Task { await session.appendMediaToTimeline(media.id) }
+            } label: {
+                Label("Add to main track", systemImage: "rectangle.stack.badge.plus")
+            }
+        }
+
+        Button {
+            Task { await session.addOverlay(media.id) }
+        } label: {
+            Label("Add as overlay", systemImage: "rectangle.on.rectangle")
+        }
+        .disabled(session.project.clips.isEmpty)
+
+        if !media.isImage {
+            Divider()
+            Button {
+                Task { await session.resetMediaToSource(media.id) }
+            } label: {
+                Label("Reset this media to source", systemImage: "arrow.counterclockwise")
+            }
+        }
+
+        Divider()
+        Button(role: .destructive) {
+            Task { await session.deleteImportedMedia(media.id) }
+        } label: {
+            Label("Remove from project", systemImage: "trash")
+        }
     }
 }
 
@@ -708,25 +757,6 @@ private struct QuickEditWorkbench: View {
                     .foregroundStyle(.secondary)
             }
 
-            Divider()
-            Text("Native timeline tools")
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
-            HStack {
-                Button("Split at playhead") {
-                    Task { await session.splitAtPlayhead() }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                Button("Delete clip") {
-                    Task { await session.deleteSelected() }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(session.selectedClipID == nil)
-                Button("Reset to source") {
-                    Task { await session.resetTimelineToSource() }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-            }
             Spacer()
         }
         .padding(16)

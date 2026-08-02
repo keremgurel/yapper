@@ -401,6 +401,54 @@ struct EditorProject: Codable, Equatable, Sendable {
         return nil
     }
 
+    /// Replaces every main-track cut that belongs to one imported video with
+    /// that video's full source range. The replacement stays where the first
+    /// cut was, while unrelated clips and every non-main-track layer remain
+    /// untouched.
+    @discardableResult
+    mutating func resetMainTrack(mediaID: UUID, sourceDuration: Double) -> TimelineClip? {
+        guard sourceDuration > 0 else { return nil }
+        let replacement = TimelineClip(
+            mediaID: mediaID,
+            sourceStart: 0,
+            sourceEnd: sourceDuration
+        )
+        var rebuilt: [TimelineClip] = []
+        var inserted = false
+
+        for clip in clips {
+            guard clip.mediaID == mediaID else {
+                rebuilt.append(clip)
+                continue
+            }
+            if !inserted {
+                rebuilt.append(replacement)
+                inserted = true
+            }
+        }
+
+        if !inserted {
+            rebuilt.append(replacement)
+        }
+        clips = rebuilt
+        updatedAt = Date()
+        return replacement
+    }
+
+    /// Removes an imported asset and only the project data that references it.
+    /// The source URL is intentionally never touched; undo can restore the
+    /// entire project entry instantly.
+    @discardableResult
+    mutating func removeImportedMedia(_ mediaID: UUID) -> Bool {
+        guard media.contains(where: { $0.id == mediaID }) else { return false }
+        media.removeAll { $0.id == mediaID }
+        clips.removeAll { $0.mediaID == mediaID }
+        transcript?.removeAll { $0.mediaID == mediaID }
+        overlays?.removeAll { $0.mediaID == mediaID }
+        updatedAt = Date()
+        return true
+    }
+
     @discardableResult
     mutating func promoteClipToOverlay(_ clipID: UUID) -> ProjectOverlay? {
         guard

@@ -31,34 +31,67 @@ struct YapperMark: View {
     var size: CGFloat = 31
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                .fill(Color.yapperOrange.gradient)
-
-            Canvas { context, canvasSize in
-                let midY = canvasSize.height * 0.5
-                let barWidth = canvasSize.width * 0.075
-                let gap = canvasSize.width * 0.095
-                let heights: [CGFloat] = [0.24, 0.46, 0.72, 0.5, 0.3]
-                let total = CGFloat(heights.count - 1) * gap
-                for (index, height) in heights.enumerated() {
-                    let x = canvasSize.width * 0.5 - total * 0.5 + CGFloat(index) * gap
-                    let rect = CGRect(
-                        x: x - barWidth * 0.5,
-                        y: midY - canvasSize.height * height * 0.34,
-                        width: barWidth,
-                        height: canvasSize.height * height * 0.68
-                    )
-                    context.fill(
-                        Path(roundedRect: rect, cornerRadius: barWidth * 0.5),
-                        with: .color(.black.opacity(0.82))
-                    )
-                }
+        Canvas { context, canvasSize in
+            let scale = min(canvasSize.width, canvasSize.height) / 40
+            func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+                CGPoint(x: x * scale, y: y * scale)
             }
-            .padding(size * 0.15)
+            func circle(_ x: CGFloat, _ y: CGFloat, _ radius: CGFloat) -> Path {
+                Path(ellipseIn: CGRect(
+                    x: (x - radius) * scale,
+                    y: (y - radius) * scale,
+                    width: radius * 2 * scale,
+                    height: radius * 2 * scale
+                ))
+            }
+
+            var tuft = Path()
+            tuft.move(to: point(17, 7))
+            tuft.addQuadCurve(to: point(21, 6), control: point(19, 2))
+            context.stroke(
+                tuft,
+                with: .linearGradient(
+                    Gradient(colors: [Color(red: 1, green: 0.42, blue: 0.10), Color(red: 0.98, green: 0.66, blue: 0.15)]),
+                    startPoint: point(17, 4),
+                    endPoint: point(22, 8)
+                ),
+                style: StrokeStyle(lineWidth: 3 * scale, lineCap: .round)
+            )
+
+            context.fill(
+                circle(20, 22, 15),
+                with: .linearGradient(
+                    Gradient(colors: [Color(red: 1, green: 0.42, blue: 0.10), Color(red: 0.98, green: 0.55, blue: 0.18), Color(red: 0.98, green: 0.66, blue: 0.15)]),
+                    startPoint: point(7, 8),
+                    endPoint: point(34, 36)
+                )
+            )
+            context.fill(circle(15, 19, 4.4), with: .color(.white))
+            context.fill(circle(25, 19, 4.4), with: .color(.white))
+            let ink = Color(red: 0.165, green: 0.102, blue: 0.055)
+            context.fill(circle(16.2, 19.8, 1.9), with: .color(ink))
+            context.fill(circle(23.8, 19.8, 1.9), with: .color(ink))
+
+            var brows = Path()
+            brows.move(to: point(11.5, 15))
+            brows.addLine(to: point(16.5, 17))
+            brows.move(to: point(28.5, 15))
+            brows.addLine(to: point(23.5, 17))
+            context.stroke(
+                brows,
+                with: .color(ink),
+                style: StrokeStyle(lineWidth: 1.6 * scale, lineCap: .round)
+            )
+
+            var beak = Path()
+            beak.move(to: point(17, 24))
+            beak.addLine(to: point(23, 24))
+            beak.addLine(to: point(20, 28))
+            beak.closeSubpath()
+            context.fill(beak, with: .color(Color(red: 0.97, green: 0.70, blue: 0.17)))
         }
         .frame(width: size, height: size)
         .shadow(color: Color.yapperOrange.opacity(0.18), radius: 9, y: 3)
+        .accessibilityLabel("Yapper")
     }
 }
-
