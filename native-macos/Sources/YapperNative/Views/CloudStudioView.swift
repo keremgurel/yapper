@@ -69,6 +69,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
+            theme: theme,
             isLoading: $isLoading,
             errorMessage: $errorMessage,
             onNavigate: onNavigate
@@ -110,6 +111,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         context.coordinator.errorMessage = $errorMessage
         context.coordinator.onNavigate = onNavigate
         context.coordinator.nativeDestination = destination
+        context.coordinator.currentTheme = theme
 
         if context.coordinator.lastReloadGeneration != reloadGeneration {
             context.coordinator.lastReloadGeneration = reloadGeneration
@@ -181,7 +183,34 @@ private struct CloudStudioWebView: NSViewRepresentable {
         };
         document.documentElement.setAttribute('data-app', '');
         document.documentElement.setAttribute('data-yapper-native-swift', '');
-        try { localStorage.setItem('theme', '\(theme.rawValue)'); } catch (_) {}
+        const nativeThemeStorageKey = 'yapper-theme';
+        const nativeThemeSessionKey = 'yapper-native-theme';
+        let initialNativeTheme = '\(theme.rawValue)';
+        try {
+          initialNativeTheme = sessionStorage.getItem(nativeThemeSessionKey) || initialNativeTheme;
+          sessionStorage.setItem(nativeThemeSessionKey, initialNativeTheme);
+          localStorage.setItem(nativeThemeStorageKey, initialNativeTheme);
+        } catch (_) {}
+        window.__yapperNativeTheme = initialNativeTheme;
+        window.__applyYapperNativeTheme = () => {
+          const activeTheme = window.__yapperNativeTheme === 'dark' ? 'dark' : 'light';
+          try {
+            sessionStorage.setItem(nativeThemeSessionKey, activeTheme);
+            localStorage.setItem(nativeThemeStorageKey, activeTheme);
+          } catch (_) {}
+          const shouldBeDark = activeTheme === 'dark';
+          if (document.documentElement.classList.contains('dark') !== shouldBeDark) {
+            document.documentElement.classList.toggle('dark', shouldBeDark);
+          }
+          if (document.documentElement.style.colorScheme !== activeTheme) {
+            document.documentElement.style.colorScheme = activeTheme;
+          }
+        };
+        window.__applyYapperNativeTheme();
+        new MutationObserver(() => window.__applyYapperNativeTheme?.()).observe(
+          document.documentElement,
+          { attributes: true, attributeFilter: ['class', 'style'] }
+        );
 
         const nativeStyle = document.createElement('style');
         nativeStyle.id = 'yapper-native-swift-shell';
@@ -200,9 +229,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
     private static func applyThemeScript(_ theme: StudioTheme) -> String {
         """
-        try { localStorage.setItem('theme', '\(theme.rawValue)'); } catch (_) {}
-        document.documentElement.classList.toggle('dark', \(theme == .dark ? "true" : "false"));
-        document.documentElement.style.colorScheme = '\(theme.rawValue)';
+        window.__yapperNativeTheme = '\(theme.rawValue)';
+        try {
+          sessionStorage.setItem('yapper-native-theme', '\(theme.rawValue)');
+          localStorage.setItem('yapper-theme', '\(theme.rawValue)');
+        } catch (_) {}
+        if (window.__applyYapperNativeTheme) {
+          window.__applyYapperNativeTheme();
+        } else {
+          document.documentElement.classList.toggle('dark', \(theme == .dark ? "true" : "false"));
+          document.documentElement.style.colorScheme = '\(theme.rawValue)';
+        }
+        window.dispatchEvent(new CustomEvent('yapper-native-theme-change', {
+          detail: { theme: '\(theme.rawValue)' }
+        }));
         """
     }
 
@@ -217,15 +257,18 @@ private struct CloudStudioWebView: NSViewRepresentable {
         var isLoading: Binding<Bool>
         var errorMessage: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
+        var currentTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
         var nativeDestination: StudioDestination?
 
         init(
+            theme: StudioTheme,
             isLoading: Binding<Bool>,
             errorMessage: Binding<String?>,
             onNavigate: @escaping (StudioDestination) -> Void
         ) {
+            currentTheme = theme
             self.isLoading = isLoading
             self.errorMessage = errorMessage
             self.onNavigate = onNavigate
@@ -249,6 +292,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 self.webView?.reload()
                 return
             }
+            webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
             isLoading.wrappedValue = false
             requestedPath = nil
         }
