@@ -5,6 +5,9 @@ struct AppShellView: View {
     @AppStorage("studioSidebarExpanded") private var sidebarExpanded = true
     @AppStorage("studioDestination") private var destinationRaw = StudioDestination.home.rawValue
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
+    @AppStorage("editorLayoutMode") private var editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
+    @AppStorage("editorTallWorkbenchFraction") private var editorTallWorkbenchFraction = 0.0
+    @AppStorage("editorLayoutDefaultsVersion") private var editorLayoutDefaultsVersion = 0
     @Namespace private var sidebarSelection
 
     private var destination: StudioDestination {
@@ -70,6 +73,12 @@ struct AppShellView: View {
             .minFrame()
         }
         .background(Color.editorBackground)
+        .onAppear {
+            guard editorLayoutDefaultsVersion < 1 else { return }
+            editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
+            editorTallWorkbenchFraction = 0
+            editorLayoutDefaultsVersion = 1
+        }
     }
 
     private func navigate(_ next: StudioDestination) {
@@ -206,10 +215,10 @@ private struct StudioTopBar: View {
     let onNavigate: (StudioDestination) -> Void
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
-    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.standard.rawValue
+    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.tallPreview.rawValue
 
     private var layoutMode: EditorLayoutMode {
-        EditorLayoutMode(rawValue: layoutModeRaw) ?? .standard
+        EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
     }
 
     var body: some View {

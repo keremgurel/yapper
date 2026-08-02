@@ -3,6 +3,13 @@ import Testing
 @testable import YapperNative
 
 struct EditorProjectTests {
+    @Test func transcriptionDownmixPreservesHeadroomWithoutStereoClipping() {
+        #expect(TranscriptionPCM.monoSample(sum: 2, channelCount: 2) == 16_384)
+        #expect(TranscriptionPCM.monoSample(sum: 0, channelCount: 2) == 0)
+        #expect(TranscriptionPCM.monoSample(sum: 1, channelCount: 2) == 8_192)
+        #expect(TranscriptionPCM.monoSample(sum: -1, channelCount: 2) == -8_192)
+    }
+
     @Test func splitPreservesTotalDurationAndSourceContinuity() {
         let mediaID = UUID()
         let original = TimelineClip(
@@ -241,6 +248,19 @@ struct EditorProjectTests {
         #expect(repairedDuplicate.count == 1)
         #expect(repairedDuplicate.first?.0 == 0)
         #expect(repairedDuplicate.first?.1 == 2)
+
+        let oneWordBoundaries = words([
+            "kept", "tests,", "drill", "individual", "questions.",
+            "discarded", "You", "have", "everything.",
+            "discarded", "the", "you", "can",
+        ])
+        let repairedBoundaries = RetakeCutBoundaryRepair.repaired(
+            words: oneWordBoundaries,
+            cuts: [(2, 2), (5, 6), (9, 10)]
+        )
+        #expect(repairedBoundaries.count == 2)
+        #expect(repairedBoundaries[0].0 == 5 && repairedBoundaries[0].1 == 5)
+        #expect(repairedBoundaries[1].0 == 9 && repairedBoundaries[1].1 == 10)
     }
 
     @Test func deletingAClipCollapsesTheTimeline() {
@@ -253,6 +273,23 @@ struct EditorProjectTests {
         #expect(didDelete)
         #expect(project.duration == 4)
         #expect(project.clips == [second])
+    }
+
+    @Test func draggingBaseClipUpPromotesItToAFullFrameOverlay() {
+        let mediaID = UUID()
+        let first = TimelineClip(mediaID: mediaID, sourceStart: 10, sourceEnd: 13)
+        let second = TimelineClip(mediaID: mediaID, sourceStart: 20, sourceEnd: 25)
+        var project = EditorProject(clips: [first, second])
+
+        let overlay = project.promoteClipToOverlay(first.id)
+
+        #expect(project.clips == [second])
+        #expect(overlay?.timelineStart == 0)
+        #expect(overlay?.sourceStart == 10)
+        #expect(overlay?.duration == 3)
+        #expect(overlay?.width == 1)
+        #expect(overlay?.height == 1)
+        #expect(project.overlays == [overlay!])
     }
 
     @Test func textLayersRoundTripAndRespectTheirTimelineWindow() throws {
@@ -457,7 +494,7 @@ struct EditorProjectTests {
     @Test func timelineZoomClampsAndKeepsThePointerAnchored() {
         #expect(TimelineZoomGeometry.scaled(36, by: 2) == 72)
         #expect(TimelineZoomGeometry.scaled(230, by: 2) == 240)
-        #expect(TimelineZoomGeometry.scaled(20, by: 0.2) == 18)
+        #expect(TimelineZoomGeometry.scaled(20, by: 0.2) == 8)
 
         let offset = TimelineZoomGeometry.anchoredOffset(
             oldOffset: 400,

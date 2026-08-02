@@ -1,6 +1,17 @@
 @preconcurrency import AVFoundation
 import Foundation
 
+enum TranscriptionPCM {
+    static func monoSample(sum: Float, channelCount: Int) -> Int16 {
+        guard channelCount > 0 else { return 0 }
+        // Apple's AAC decoder can return a camera mix several dB hotter than
+        // the encoded program. Keep 6 dB of headroom before quantizing; ASR
+        // normalizes level, while clipped consonants cannot be recovered.
+        let average = max(-1, min(1, (sum / Float(channelCount)) * 0.5))
+        return Int16((average * Float(Int16.max)).rounded())
+    }
+}
+
 actor AIEditService {
     private struct RemoteWord: Codable {
         let text: String
@@ -28,14 +39,20 @@ actor AIEditService {
         let duration: Double
     }
 
-    private let sampleRate = 16_000
-    private let chunkBytes = 1_000_000
+    private struct DecodedAudio {
+        let pcm: Data
+        let sampleRate: Int
+    }
+
+    // Keep camera speech detail at its native rate. The previous forced 16 kHz
+    // path could smear quiet sentence onsets before ASR heard them.
+    private let chunkBytes = 3_000_000
     private let overlapSeconds = 5.0
     private let defaultBaseURL = URL(string: "https://ypr.app")!
 
     func transcribe(media: ProjectMedia) async throws -> [TranscriptWord] {
-        let pcm = try await decodeMonoPCM16(url: media.url)
-        let chunks = makeChunks(pcm)
+        let decoded = try await decodeAudio(url: media.url)
+        let chunks = makeChunks(decoded.pcm, sampleRate: decoded.sampleRate)
         var completed = Array(repeating: [RemoteWord](), count: chunks.count)
 
         try await withThrowingTaskGroup(of: (Int, [RemoteWord]).self) { group in
@@ -43,7 +60,11 @@ actor AIEditService {
             func enqueue(_ index: Int) {
                 let chunk = chunks[index]
                 group.addTask { [defaultBaseURL] in
-                    let words = try await Self.transcribeChunk(chunk, baseURL: defaultBaseURL)
+                    let words = try await Self.transcribeChunk(
+                        data: chunk.data,
+                        duration: chunk.duration,
+                        baseURL: defaultBaseURL
+                    )
                     return (index, words)
                 }
             }
@@ -139,57 +160,51 @@ actor AIEditService {
         return merge(ranges)
     }
 
-    private func decodeMonoPCM16(url: URL) async throws -> Data {
-        let asset = AVURLAsset(url: url)
-        guard let track = try await asset.loadTracks(withMediaType: .audio).first else {
-            throw NativeEditorError.aiFailed("This media has no audio to transcribe.")
+    private func decodeAudio(url: URL) async throws -> DecodedAudio {
+        let file: AVAudioFile
+        do {
+            file = try AVAudioFile(
+                forReading: url,
+                commonFormat: .pcmFormatFloat32,
+                interleaved: false
+            )
+        } catch {
+            throw NativeEditorError.aiFailed("This media has no readable audio to transcribe.")
         }
-        let reader = try AVAssetReader(asset: asset)
-        let output = AVAssetReaderTrackOutput(
-            track: track,
-            outputSettings: [
-                AVFormatIDKey: kAudioFormatLinearPCM,
-                AVSampleRateKey: sampleRate,
-                AVNumberOfChannelsKey: 1,
-                AVLinearPCMBitDepthKey: 16,
-                AVLinearPCMIsFloatKey: false,
-                AVLinearPCMIsBigEndianKey: false,
-                AVLinearPCMIsNonInterleaved: false,
-            ]
-        )
-        output.alwaysCopiesSampleData = false
-        guard reader.canAdd(output) else {
-            throw NativeEditorError.aiFailed("The audio decoder could not read this file.")
+        let format = file.processingFormat
+        let channelCount = Int(format.channelCount)
+        guard channelCount > 0 else {
+            throw NativeEditorError.aiFailed("This media has no audio channels to transcribe.")
         }
-        reader.add(output)
-        guard reader.startReading() else {
-            throw reader.error ?? NativeEditorError.aiFailed("Audio decoding did not start.")
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 32_768) else {
+            throw NativeEditorError.aiFailed("The audio decoder could not allocate a buffer.")
         }
+
         var pcm = Data()
-        while reader.status == .reading, let buffer = output.copyNextSampleBuffer() {
-            guard let block = CMSampleBufferGetDataBuffer(buffer) else { continue }
-            let length = CMBlockBufferGetDataLength(block)
-            let oldCount = pcm.count
-            pcm.count += length
-            let status = pcm.withUnsafeMutableBytes { bytes in
-                CMBlockBufferCopyDataBytes(
-                    block,
-                    atOffset: 0,
-                    dataLength: length,
-                    destination: bytes.baseAddress!.advanced(by: oldCount)
-                )
+        pcm.reserveCapacity(Int(file.length) * MemoryLayout<Int16>.stride)
+        while file.framePosition < file.length {
+            buffer.frameLength = 0
+            try file.read(into: buffer, frameCount: buffer.frameCapacity)
+            let frameCount = Int(buffer.frameLength)
+            guard frameCount > 0, let channels = buffer.floatChannelData else { break }
+            var mono = [Int16](repeating: 0, count: frameCount)
+            for frame in 0 ..< frameCount {
+                var sum: Float = 0
+                for channel in 0 ..< channelCount { sum += channels[channel][frame] }
+                mono[frame] = TranscriptionPCM.monoSample(
+                    sum: sum,
+                    channelCount: channelCount
+                ).littleEndian
             }
-            guard status == kCMBlockBufferNoErr else {
-                throw NativeEditorError.aiFailed("Audio decoding returned incomplete data.")
-            }
+            mono.withUnsafeBytes { pcm.append(contentsOf: $0) }
         }
-        if reader.status == .failed {
-            throw reader.error ?? NativeEditorError.aiFailed("Audio decoding failed.")
+        guard !pcm.isEmpty else {
+            throw NativeEditorError.aiFailed("Audio decoding returned no samples.")
         }
-        return pcm
+        return DecodedAudio(pcm: pcm, sampleRate: Int(format.sampleRate.rounded()))
     }
 
-    private func makeChunks(_ pcm: Data) -> [AudioChunk] {
+    private func makeChunks(_ pcm: Data, sampleRate: Int) -> [AudioChunk] {
         guard !pcm.isEmpty else { return [] }
         let bytesPerSecond = sampleRate * 2
         let overlap = Int(overlapSeconds * Double(bytesPerSecond))
@@ -212,18 +227,34 @@ actor AIEditService {
         return result
     }
 
-    private static func transcribeChunk(_ chunk: AudioChunk, baseURL: URL) async throws -> [RemoteWord] {
-        var request = URLRequest(url: baseURL.appending(path: "api/transcribe"))
-        request.httpMethod = "POST"
-        request.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
-        request.setValue(String(chunk.duration), forHTTPHeaderField: "x-audio-duration")
-        request.httpBody = chunk.data
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
-            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-            throw NativeEditorError.aiFailed("Transcription failed (HTTP \(code)).")
+    private static func transcribeChunk(
+        data chunkData: Data,
+        duration: Double,
+        baseURL: URL
+    ) async throws -> [RemoteWord] {
+        var lastError: Error?
+        for attempt in 0 ..< 3 {
+            do {
+                var request = URLRequest(url: baseURL.appending(path: "api/transcribe"))
+                request.httpMethod = "POST"
+                request.timeoutInterval = 120
+                request.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
+                request.setValue(String(duration), forHTTPHeaderField: "x-audio-duration")
+                request.httpBody = chunkData
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
+                    let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                    throw NativeEditorError.aiFailed("Transcription failed (HTTP \(code)).")
+                }
+                return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
+            } catch {
+                lastError = error
+                if attempt < 2 {
+                    try? await Task.sleep(for: .milliseconds(attempt == 0 ? 350 : 900))
+                }
+            }
         }
-        return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
+        throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
     }
 
     private func mergeTranscribedChunks(
@@ -255,7 +286,39 @@ actor AIEditService {
                 merged.append(contentsOf: right.filter { midpoint($0) >= seam })
             }
         }
-        return merged.filter { !normalize($0.text).isEmpty }
+        return restoreUnrepresentedSeamWords(
+            in: merged.filter { !normalize($0.text).isEmpty },
+            from: shifted
+        )
+    }
+
+    /// Midpoint ownership is deterministic, but a provider pass can omit a
+    /// quiet word that the overlapping pass heard. Restore only words whose
+    /// time is otherwise uncovered so alternate spellings are not duplicated.
+    private func restoreUnrepresentedSeamWords(
+        in merged: [RemoteWord],
+        from shiftedChunks: [[RemoteWord]]
+    ) -> [RemoteWord] {
+        var result = merged
+        for candidate in shiftedChunks.flatMap({ $0 }).sorted(by: { $0.start < $1.start }) {
+            let token = normalize(candidate.text)
+            guard !token.isEmpty else { continue }
+            let candidateMidpoint = midpoint(candidate)
+            let alreadyRepresented = result.contains {
+                normalize($0.text) == token && abs(midpoint($0) - candidateMidpoint) <= 0.55
+            }
+            if alreadyRepresented { continue }
+
+            let padding = max(0.08, min(0.22, (candidate.end - candidate.start) * 0.45))
+            let occupiedByAlternative = result.contains {
+                midpoint($0) >= candidate.start - padding && midpoint($0) <= candidate.end + padding
+            }
+            if !occupiedByAlternative { result.append(candidate) }
+        }
+        return result.sorted {
+            if abs($0.start - $1.start) > 0.000_1 { return $0.start < $1.start }
+            return $0.end < $1.end
+        }
     }
 
     private func seamAnchor(
@@ -346,6 +409,7 @@ actor AIEditService {
         data.append(pcm)
         return data
     }
+
 }
 
 enum RetakeCutBoundaryRepair {
@@ -422,6 +486,31 @@ enum RetakeCutBoundaryRepair {
                   !containsFiller
             else { continue }
             for index in candidateStart ..< keptStart { removed[index] = false }
+        }
+
+        // The safe contiguous mapper can be off by one at a take boundary
+        // when the critic omits a tiny but audible source word. Restore that
+        // single connected word when it is either a real phrase starter or it
+        // follows the already-kept take. This recovers "You have", "Building
+        // the app", and "tests, drill individual" without pulling an entire
+        // abandoned phrase back into the edit.
+        for keptStart in words.indices where !removed[keptStart] && keptStart > 0 && removed[keptStart - 1] {
+            let candidate = keptStart - 1
+            let token = normalize(words[candidate].text)
+            let nextToken = normalize(words[keptStart].text)
+            let followsKeptTake = candidate > 0 && !removed[candidate - 1]
+            let connected = words[keptStart].start - words[candidate].end <= 0.32
+            let duplicatesJoin = token == nextToken
+            let invalidDeterminerJoin = determiners.contains(token) && pronouns.contains(nextToken)
+            guard !token.isEmpty,
+                  connected,
+                  !isSentenceEnd(words[candidate].text),
+                  !fillers.contains(token),
+                  !duplicatesJoin,
+                  !invalidDeterminerJoin,
+                  followsKeptTake || phraseStarters.contains(token)
+            else { continue }
+            removed[candidate] = false
         }
 
         var repaired: [(Int, Int)] = []

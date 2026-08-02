@@ -31,10 +31,10 @@ enum EditorLayoutMode: String, CaseIterable, Identifiable {
 struct EditorRootView: View {
     @ObservedObject var session: EditorSession
     var embedded = false
-    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.standard.rawValue
+    @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.tallPreview.rawValue
 
     private var layoutMode: EditorLayoutMode {
-        EditorLayoutMode(rawValue: layoutModeRaw) ?? .standard
+        EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
     }
 
     var body: some View {
@@ -135,10 +135,12 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
             return clamp(stored, in: size)
         }
 
-        let previewChrome: CGFloat = 50
+        let transportHeight: CGFloat = 48
+        let previewPadding: CGFloat = layoutMode == .standard ? 36 : 20
+        let availableStageHeight = max(1, size.height - transportHeight - previewPadding)
         let desiredPreviewWidth = max(
             layoutMode == .standard ? 480 : 330,
-            (size.height - previewChrome) * layoutMode.previewAspectRatio
+            availableStageHeight * layoutMode.previewAspectRatio + previewPadding
         )
         let automatic = (size.width - dividerWidth - desiredPreviewWidth)
             / max(1, size.width - dividerWidth)

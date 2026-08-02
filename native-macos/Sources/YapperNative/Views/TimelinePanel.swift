@@ -82,27 +82,27 @@ struct TimelinePanel: View {
                     proxy.size.width - 86,
                     session.duration * pointsPerSecond
                 )
-                HStack(spacing: 0) {
-                    TrackHeader(
-                        hasText: session.project.textLayers?.isEmpty == false,
-                        hasOverlays: session.project.overlays?.isEmpty == false,
-                        hasAudio: session.project.audioLayers?.isEmpty == false
-                    )
+                let contentHeight = max(370, proxy.size.height - 12)
+                ScrollView(.vertical, showsIndicators: true) {
+                    HStack(spacing: 0) {
+                        TrackHeader(hasText: true, hasOverlays: true, hasAudio: true)
                         .frame(width: 70)
-                    Rectangle().fill(Color.studioLine).frame(width: 1)
-                    ScrollView(.horizontal, showsIndicators: true) {
-                        TimelineContent(
-                            session: session,
-                            contentWidth: contentWidth
-                        )
-                        .frame(width: contentWidth, height: max(230, proxy.size.height - 12))
-                        .padding(.horizontal, 10)
-                        .background {
-                            TimelineZoomInputView { factor in
-                                applyZoom(factor)
+                        Rectangle().fill(Color.studioLine).frame(width: 1)
+                        ScrollView(.horizontal, showsIndicators: true) {
+                            TimelineContent(
+                                session: session,
+                                contentWidth: contentWidth
+                            )
+                            .frame(width: contentWidth, height: contentHeight)
+                            .padding(.horizontal, 10)
+                            .background {
+                                TimelineZoomInputView { factor in
+                                    applyZoom(factor)
+                                }
                             }
                         }
                     }
+                    .frame(height: contentHeight)
                 }
             }
         }
@@ -271,7 +271,7 @@ private func timelineSelectionMove(
 }
 
 enum TimelineZoomGeometry {
-    static let scaleRange = 18.0 ... 240.0
+    static let scaleRange = 8.0 ... 240.0
 
     static func scaled(_ current: Double, by factor: Double) -> Double {
         min(scaleRange.upperBound, max(scaleRange.lowerBound, current * factor))
@@ -458,14 +458,11 @@ private struct TimelineContent: View {
     @State private var isMarqueeSelecting = false
 
     var body: some View {
-        let hasText = session.project.textLayers?.isEmpty == false
-        let hasOverlays = session.project.overlays?.isEmpty == false
-        let hasAudio = session.project.audioLayers?.isEmpty == false
         let textRowY = 45.0
-        let overlayRowY = 45.0 + (hasText ? 60.0 : 0)
-        let clipRowY = 45.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0)
+        let overlayRowY = 105.0
+        let clipRowY = 165.0
         let audioRowY = clipRowY + 94.0
-        let playheadHeight = 103.0 + (hasText ? 60.0 : 0) + (hasOverlays ? 60.0 : 0) + (hasAudio ? 58.0 : 0)
+        let playheadHeight = 341.0
         let itemFrames = marqueeItemFrames(
             textRowY: textRowY,
             overlayRowY: overlayRowY,
@@ -474,13 +471,20 @@ private struct TimelineContent: View {
         )
 
         ZStack(alignment: .topLeading) {
-            Color.editorBackground
-                .contentShape(Rectangle())
-                .gesture(timelineBackgroundGesture(itemFrames: itemFrames))
+            VStack(spacing: 0) {
+                Color.clear
+                    .frame(height: 34)
+                    .allowsHitTesting(false)
+                Color.editorBackground
+                    .contentShape(Rectangle())
+                    .gesture(timelineTrackGesture(itemFrames: itemFrames))
+            }
                 .zIndex(0)
             TimelineRuler(duration: session.duration, width: contentWidth)
                 .frame(height: 34)
-                .allowsHitTesting(false)
+                .background(Color.editorBackground)
+                .contentShape(Rectangle())
+                .gesture(timelineRulerSeekGesture)
                 .zIndex(1)
 
             TimelineVideoTrack(session: session, contentWidth: contentWidth)
@@ -598,8 +602,30 @@ private struct TimelineContent: View {
         .coordinateSpace(name: Self.coordinateSpaceName)
     }
 
-    private func timelineBackgroundGesture(itemFrames: [TimelineItemFrame]) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .local)
+    private var timelineRulerSeekGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
+            .onChanged { value in
+                session.scrub(
+                    to: TimelineMetrics.time(
+                        for: value.location.x,
+                        duration: session.duration,
+                        width: contentWidth
+                    )
+                )
+            }
+            .onEnded { value in
+                session.finishScrubbing(
+                    at: TimelineMetrics.time(
+                        for: value.location.x,
+                        duration: session.duration,
+                        width: contentWidth
+                    )
+                )
+            }
+    }
+
+    private func timelineTrackGesture(itemFrames: [TimelineItemFrame]) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
             .onChanged { value in
                 if marqueeStart == nil {
                     marqueeStart = value.startLocation
@@ -624,14 +650,6 @@ private struct TimelineContent: View {
                             base: marqueeBaseSelection,
                             additive: flags.contains(.shift),
                             toggling: flags.contains(.command)
-                        )
-                    )
-                } else {
-                    session.scrub(
-                        to: TimelineMetrics.time(
-                            for: value.location.x,
-                            duration: session.duration,
-                            width: contentWidth
                         )
                     )
                 }
@@ -739,6 +757,7 @@ private struct TimelineVideoClipItem: View {
     @State private var activeTrimEdge: HorizontalEdge?
     @State private var snapAnchors: [TimelineSnapAnchor] = []
     @State private var selectionMoveBounds: (start: Double, end: Double)?
+    @State private var isPromotingToOverlay = false
 
     var body: some View {
         let displayed = trimDraft ?? clip
@@ -788,8 +807,10 @@ private struct TimelineVideoClipItem: View {
                     contentWidth: contentWidth,
                     projectDuration: session.duration
                 )
-                : 0
+                : 0,
+            y: isPromotingToOverlay ? -60 : 0
         )
+        .opacity(isPromotingToOverlay ? 0.82 : 1)
         .zIndex(activeTrimEdge == nil ? 0 : 10)
         .transaction { transaction in
             transaction.disablesAnimations = true
@@ -803,10 +824,16 @@ private struct TimelineVideoClipItem: View {
         )
             .onChanged { value in
                 guard activeTrimEdge == nil else { return }
+                isPromotingToOverlay = value.translation.height < -44
                 if selectionMoveBounds == nil {
                     session.ensureTimelineItemSelected(.clip(clip.id))
                     selectionMoveBounds = session.timelineSelectionBounds()
                     snapAnchors = session.timelineSnapAnchors()
+                }
+                if isPromotingToOverlay {
+                    session.previewTimelineSelectionMove(delta: 0)
+                    session.setActiveTimelineSnap(nil)
+                    return
                 }
                 guard let selectionMoveBounds else { return }
                 let move = timelineSelectionMove(
@@ -820,10 +847,16 @@ private struct TimelineVideoClipItem: View {
                 session.setActiveTimelineSnap(move.match)
             }
             .onEnded { _ in
+                let promote = isPromotingToOverlay
+                isPromotingToOverlay = false
                 selectionMoveBounds = nil
                 snapAnchors = []
                 session.setActiveTimelineSnap(nil)
-                Task { await session.commitTimelineSelectionMove() }
+                if promote {
+                    Task { await session.promoteClipToOverlay(clip.id) }
+                } else {
+                    Task { await session.commitTimelineSelectionMove() }
+                }
             }
     }
 

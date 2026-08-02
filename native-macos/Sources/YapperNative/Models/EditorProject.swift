@@ -392,6 +392,36 @@ struct EditorProject: Codable, Equatable, Sendable {
         return nil
     }
 
+    @discardableResult
+    mutating func promoteClipToOverlay(_ clipID: UUID) -> ProjectOverlay? {
+        guard
+            clips.count > 1,
+            let clipIndex = clips.firstIndex(where: { $0.id == clipID }),
+            let start = timelineStart(for: clipID)
+        else { return nil }
+        let clip = clips.remove(at: clipIndex)
+        let available = max(0, duration - start)
+        guard available > 0 else {
+            clips.insert(clip, at: clipIndex)
+            return nil
+        }
+        let overlay = ProjectOverlay(
+            mediaID: clip.mediaID,
+            timelineStart: start,
+            duration: min(clip.duration, available),
+            sourceStart: clip.sourceStart,
+            x: 0.5,
+            y: 0.5,
+            width: 1,
+            height: 1
+        )
+        var updatedOverlays = overlays ?? []
+        updatedOverlays.append(overlay)
+        overlays = updatedOverlays
+        updatedAt = Date()
+        return overlay
+    }
+
     func isWordKept(_ word: TranscriptWord) -> Bool {
         clips.contains {
             $0.mediaID == word.mediaID && word.midpoint >= $0.sourceStart && word.midpoint <= $0.sourceEnd

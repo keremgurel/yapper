@@ -11,6 +11,42 @@ private let djiReferenceURL = URL(
 @Suite(.serialized)
 struct ReferenceMediaIntegrationTests {
     @Test(
+        "DJI transcription and AI edit preserve complete final takes",
+        .enabled(if: ProcessInfo.processInfo.environment["YAPPER_RUN_TRANSCRIPTION_INTEGRATION"] == "1")
+    )
+    func transcribesCompleteReferenceSpeech() async throws {
+        let media = try await MediaProbe.inspect(url: djiReferenceURL)
+        let service = AIEditService()
+        let words = try await service.transcribe(media: media)
+        let tokens = words.map {
+            $0.text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
+        }
+
+        #expect(words.count >= 700)
+        #expect(contains(tokens, sequence: ["three", "months", "ago", "i", "started", "building"]))
+        #expect(contains(tokens, sequence: ["you", "have", "everything", "you", "need", "to", "practice", "for", "the", "exam"]))
+        #expect((words.last?.end ?? 0) > 370)
+
+        let cuts = try await service.cleanCuts(words: words)
+        var removed = Array(repeating: false, count: words.count)
+        for (start, end) in cuts {
+            guard words.indices.contains(start), words.indices.contains(end) else { continue }
+            for index in min(start, end) ... max(start, end) { removed[index] = true }
+        }
+        let kept = tokens.enumerated().compactMap { removed[$0.offset] ? nil : $0.element }
+        #expect(!cuts.isEmpty)
+        #expect(contains(kept, sequence: ["three", "months", "ago", "i", "started", "building"]))
+        #expect(occurrences(
+            of: ["you", "can", "take", "full", "practice", "tests", "drill", "individual", "questions", "or", "go", "through", "the", "course", "modules", "directly", "at", "the", "site"],
+            in: kept
+        ) == 1)
+        #expect(occurrences(
+            of: ["plus", "eight", "free", "credits", "to", "try", "the", "ai", "feedback"],
+            in: kept
+        ) == 1)
+    }
+
+    @Test(
         "DJI source builds a 50-cut continuous composition",
         .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
     )
@@ -190,5 +226,16 @@ struct ReferenceMediaIntegrationTests {
         #expect(try await rendered.loadTracks(withMediaType: .video).count == 1)
         #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
         #expect(abs(try await rendered.load(.duration).seconds - 3) < 0.15)
+    }
+
+    private func contains(_ tokens: [String], sequence: [String]) -> Bool {
+        occurrences(of: sequence, in: tokens) > 0
+    }
+
+    private func occurrences(of sequence: [String], in tokens: [String]) -> Int {
+        guard !sequence.isEmpty, tokens.count >= sequence.count else { return 0 }
+        return tokens.indices.dropLast(sequence.count - 1).filter { start in
+            Array(tokens[start ..< start + sequence.count]) == sequence
+        }.count
     }
 }

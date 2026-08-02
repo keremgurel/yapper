@@ -45,12 +45,6 @@ struct WorkbenchPanel: View {
         VStack(spacing: 0) {
             workbenchTabStrip
 
-            Rectangle()
-                .fill(Color.yapperOrange)
-                .frame(height: 2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(0.75)
-
             GeometryReader { proxy in
                 ZStack {
                     workbenchDock(width: proxy.size.width)
@@ -404,8 +398,8 @@ private struct WorkbenchDockPane<Content: View>: View {
             .background(Color.raisedBackground)
             .overlay(alignment: .bottom) {
                 Rectangle()
-                    .fill(focused ? Color.yapperOrange.opacity(0.78) : Color.studioLine)
-                    .frame(height: focused ? 2 : 1)
+                    .fill(Color.studioLine)
+                    .frame(height: 1)
             }
 
             content
@@ -1113,7 +1107,7 @@ private struct TranscriptWorkbench: View {
             }
         }
         .padding(16)
-        .inspectorPane(maxWidth: 760)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var selectionBar: some View {

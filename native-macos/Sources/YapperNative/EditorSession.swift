@@ -47,6 +47,8 @@ final class EditorSession: ObservableObject {
     private var endObserver: NSObjectProtocol?
     private var seekGeneration = 0
     private var playWhenSeekFinishes = false
+    private var isScrubbing = false
+    private var resumePlaybackAfterScrub = false
     private var rebuilding = false
     private var restorationTask: Task<Void, Never>?
     private var visualCommitTask: Task<Void, Never>?
@@ -397,11 +399,25 @@ final class EditorSession: ObservableObject {
     }
 
     func scrub(to time: Double) {
+        beginScrubbing()
         seek(to: time, exact: false, playAfter: false)
     }
 
     func finishScrubbing(at time: Double) {
-        seek(to: time, exact: true, playAfter: false)
+        beginScrubbing()
+        let shouldResume = resumePlaybackAfterScrub
+        isScrubbing = false
+        resumePlaybackAfterScrub = false
+        seek(to: time, exact: true, playAfter: shouldResume)
+    }
+
+    private func beginScrubbing() {
+        guard !isScrubbing else { return }
+        resumePlaybackAfterScrub = player.rate != 0 || isPlaying
+        isScrubbing = true
+        player.pause()
+        isPlaying = false
+        playWhenSeekFinishes = false
     }
 
     func seekToTranscriptWord(_ word: TranscriptWord) {
@@ -733,6 +749,12 @@ final class EditorSession: ObservableObject {
             )
         )
         project.overlays = overlays
+        await commitTimelineEdit()
+    }
+
+    func promoteClipToOverlay(_ clipID: UUID) async {
+        guard let overlay = project.promoteClipToOverlay(clipID) else { return }
+        selectTimelineItem(.overlay(overlay.id))
         await commitTimelineEdit()
     }
 
@@ -1122,7 +1144,7 @@ final class EditorSession: ObservableObject {
             queue: .main
         ) { [weak self] time in
             MainActor.assumeIsolated {
-                guard let self, self.player.rate != 0 else { return }
+                guard let self, !self.isScrubbing, self.player.rate != 0 else { return }
                 self.currentTime = min(max(0, time.seconds), self.duration)
                 self.isPlaying = true
             }
