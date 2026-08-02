@@ -357,11 +357,14 @@ private struct TimelineContent: View {
                 )
                 Rectangle()
                     .fill(Color.red)
-                    .frame(width: 1.25, height: playheadHeight)
+                    .frame(width: 1.25, height: playheadHeight + 30)
                     .overlay(alignment: .top) {
-                        Circle().fill(Color.red).frame(width: 8, height: 8)
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
+                            .offset(y: 26)
                     }
-                    .offset(x: playheadX - 0.75, y: 30)
+                    .offset(x: playheadX - 0.75)
                     .allowsHitTesting(false)
                     .zIndex(4)
             }
@@ -374,7 +377,7 @@ private struct TimelineContent: View {
                 )
                 Rectangle()
                     .fill(Color.yapperOrange.opacity(0.92))
-                    .frame(width: 1, height: playheadHeight)
+                    .frame(width: 1, height: playheadHeight + 30)
                     .overlay(alignment: .topLeading) {
                         HStack(spacing: 4) {
                             Image(systemName: snap.kind == .audio ? "waveform" : "arrow.left.and.right")
@@ -389,7 +392,7 @@ private struct TimelineContent: View {
                         .fixedSize()
                         .offset(x: 4, y: -1)
                     }
-                    .offset(x: snapX - 0.5, y: 30)
+                    .offset(x: snapX - 0.5)
                     .allowsHitTesting(false)
                     .zIndex(5)
             }
