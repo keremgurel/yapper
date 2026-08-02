@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 const DESKTOP_DOWNLOAD_URL =
-  "https://github.com/keremgurel/yapper/releases/download/v0.9.18/Yapper-Studio-macOS.zip";
+  "https://github.com/keremgurel/yapper/releases/download/v0.9.19/Yapper-Studio-macOS.zip";
 const DESKTOP_OPEN_URL = "yapper-studio://open/editor";
 
 const BENEFITS = [

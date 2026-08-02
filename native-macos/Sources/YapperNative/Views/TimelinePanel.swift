@@ -417,6 +417,7 @@ private struct TimelineZoomInputView: NSViewRepresentable {
         private var virtualScrollOffset: CGFloat?
         private var pendingTargetX: CGFloat?
         private var pendingDocumentWidth: CGFloat?
+        private var commandScrollSequenceActive = false
 
         init(
             leadingInset: CGFloat,
@@ -450,15 +451,22 @@ private struct TimelineZoomInputView: NSViewRepresentable {
                 event.window === window
             else { return event }
 
-            guard let scrollView = enclosingScrollView(from: view) else { return event }
-            let interactiveFrame = scrollView.convert(scrollView.bounds, to: nil)
+            let scrollViews = enclosingScrollViews(from: view)
+            guard let scrollView = scrollViews.first else { return event }
+            // The zoom monitor lives inside the horizontal scroller, which is
+            // itself nested in the vertically scrollable track container. Use
+            // the outermost frame for hit testing so Command-scroll is owned
+            // by zoom everywhere in the timeline, including track headers and
+            // empty track space—not only directly above a clip.
+            let timelineContainer = scrollViews.last ?? scrollView
+            let interactiveFrame = timelineContainer.convert(timelineContainer.bounds, to: nil)
             guard interactiveFrame.contains(event.locationInWindow) else { return event }
 
             let requestedFactor: Double
             switch event.type {
             case .magnify:
                 requestedFactor = min(1.18, max(0.84, 1 + Double(event.magnification)))
-            case .scrollWheel where event.modifierFlags.contains(.command):
+            case .scrollWheel where isCommandZoomEvent(event):
                 let dominantDelta = abs(event.scrollingDeltaY) >= abs(event.scrollingDeltaX)
                     ? event.scrollingDeltaY
                     : event.scrollingDeltaX
@@ -477,7 +485,10 @@ private struct TimelineZoomInputView: NSViewRepresentable {
                 virtualScrollOffset = actualOffset
             }
             let pointerInClip = clipView.convert(event.locationInWindow, from: nil)
-            let pointerX = pointerInClip.x - actualOffset
+            let pointerX = min(
+                clipView.bounds.width,
+                max(0, pointerInClip.x - actualOffset)
+            )
             let oldTimelineWidth = virtualTimelineWidth ?? timelineWidth
             let oldOffset = virtualScrollOffset ?? actualOffset
             let newTimelineWidth = onZoom(requestedFactor)
@@ -513,7 +524,7 @@ private struct TimelineZoomInputView: NSViewRepresentable {
             guard
                 pendingZoomGeneration != nil,
                 let view,
-                let scrollView = enclosingScrollView(from: view),
+                let scrollView = enclosingScrollViews(from: view).first,
                 let targetX = pendingTargetX,
                 let expectedDocumentWidth = pendingDocumentWidth
             else { return }
@@ -533,13 +544,41 @@ private struct TimelineZoomInputView: NSViewRepresentable {
             pendingDocumentWidth = nil
         }
 
-        private func enclosingScrollView(from view: NSView) -> NSScrollView? {
+        private func enclosingScrollViews(from view: NSView) -> [NSScrollView] {
+            var scrollViews: [NSScrollView] = []
             var candidate = view.superview
             while let current = candidate {
-                if let scrollView = current as? NSScrollView { return scrollView }
+                if let scrollView = current as? NSScrollView {
+                    scrollViews.append(scrollView)
+                }
                 candidate = current.superview
             }
-            return nil
+            return scrollViews
+        }
+
+        private func isCommandZoomEvent(_ event: NSEvent) -> Bool {
+            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            if modifiers.contains(.command) {
+                commandScrollSequenceActive = true
+                return true
+            }
+
+            // Trackpads and Magic Mouse gestures can emit momentum events
+            // after the modifier flag disappears. Keep consuming those events
+            // so the vertical track scroller never receives the tail of a
+            // Command-zoom gesture.
+            let isGestureContinuation = event.phase != [] || event.momentumPhase != []
+            guard commandScrollSequenceActive, isGestureContinuation else {
+                commandScrollSequenceActive = false
+                return false
+            }
+            if event.phase.contains(.ended)
+                || event.phase.contains(.cancelled)
+                || event.momentumPhase.contains(.ended)
+            {
+                commandScrollSequenceActive = false
+            }
+            return true
         }
     }
 }
