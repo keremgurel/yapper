@@ -105,27 +105,44 @@ async function resolveYouTubeReference(url: string): Promise<SourceDetails> {
 }
 
 async function resolveInstagramReference(url: string): Promise<SourceDetails> {
-  const media = await resolveInstagramMedia(url);
-  if (!media.mediaUrl) {
-    // A still-image post has nothing to transcribe, but is still a valid
-    // inspiration reference.
-    return { ...media, transcript: null, referenceType: "web-resource" };
+  try {
+    const media = await resolveInstagramMedia(url);
+    if (!media.mediaUrl) throw new Error("missing_reference_media");
+    const key = process.env.DEEPGRAM_API_KEY;
+    if (!key) throw new Error("no_transcription_provider");
+    const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
+    if (!transcript) throw new Error("empty_reference_transcript");
+    return { ...media, transcript, referenceType: "social-video" };
+  } catch (error) {
+    // Instagram's CDN media URL normally comes from Apify, but a depleted or
+    // unavailable scraper must not discard the reference entirely. Reader can
+    // still recover the post's real caption, author, engagement context, and
+    // visible page text. Store a faithful summary of that evidence and clearly
+    // leave transcript empty instead of generating from the creator note alone.
+    console.warn(
+      "[inspiration] Instagram media unavailable; using page summary",
+      error instanceof Error ? error.message : "unknown_error",
+    );
+    return resolveWrittenReference(url);
   }
-  const key = process.env.DEEPGRAM_API_KEY;
-  if (!key) throw new Error("no_transcription_provider");
-  const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
-  if (!transcript) throw new Error("empty_reference_transcript");
-  return { ...media, transcript, referenceType: "social-video" };
 }
 
 async function resolveTikTokReference(url: string): Promise<SourceDetails> {
-  const media = await resolveTikTokMedia(url);
-  if (!media.mediaUrl) throw new Error("missing_reference_media");
-  const key = process.env.DEEPGRAM_API_KEY;
-  if (!key) throw new Error("no_transcription_provider");
-  const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
-  if (!transcript) throw new Error("empty_reference_transcript");
-  return { ...media, transcript, referenceType: "social-video" };
+  try {
+    const media = await resolveTikTokMedia(url);
+    if (!media.mediaUrl) throw new Error("missing_reference_media");
+    const key = process.env.DEEPGRAM_API_KEY;
+    if (!key) throw new Error("no_transcription_provider");
+    const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
+    if (!transcript) throw new Error("empty_reference_transcript");
+    return { ...media, transcript, referenceType: "social-video" };
+  } catch (error) {
+    console.warn(
+      "[inspiration] TikTok media unavailable; using page summary",
+      error instanceof Error ? error.message : "unknown_error",
+    );
+    return resolveWrittenReference(url);
+  }
 }
 
 async function resolveWrittenReference(url: string): Promise<SourceDetails> {

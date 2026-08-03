@@ -147,11 +147,28 @@ export default function IdeaCard({
           )}
 
           {idea.source && isSocialSource(idea.source) && (
-            <Section label="Original transcript">
+            <Section
+              label={
+                idea.source.transcript
+                  ? "Original transcript"
+                  : idea.source.summary
+                    ? "Transcript status"
+                    : "Original transcript"
+              }
+            >
               {idea.source.transcript ? (
                 <p className="text-foreground/80 whitespace-pre-wrap">
                   {idea.source.transcript}
                 </p>
+              ) : idea.source.summary ? (
+                <div className="text-muted-foreground flex items-start gap-2">
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    The audio transcript was not available, so this analysis
+                    uses the source&apos;s published caption and page details.
+                    The original link is preserved above.
+                  </p>
+                </div>
               ) : (
                 <div className="text-muted-foreground flex items-start gap-2">
                   <FileText className="mt-0.5 h-4 w-4 shrink-0" />

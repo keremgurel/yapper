@@ -31,6 +31,19 @@ export interface ResolvedWebResource {
   referenceType: ReferenceContentType;
 }
 
+/** Keep reader-generated social titles useful in compact cards. Instagram's
+ * title often contains the entire caption after `on Instagram:`. */
+export function displayResourceTitle(
+  rawTitle: string | undefined,
+  fallback: string,
+): string {
+  const clean = rawTitle?.replace(/\s+/g, " ").trim();
+  if (!clean) return fallback;
+  const instagram = clean.match(/^(.+? on Instagram):\s*["“]/i)?.[1];
+  const title = instagram ?? clean;
+  return title.length > 180 ? `${title.slice(0, 177).trimEnd()}...` : title;
+}
+
 /** Reject local/private targets before handing a user-provided URL to Reader. */
 export function publicWebUrl(raw: string): URL | null {
   let url: URL;
@@ -157,7 +170,7 @@ export async function resolveWebResource(
     throw new Error("resource_summary_unparseable");
   }
   return {
-    title: reader.data?.title?.trim() || target.hostname,
+    title: displayResourceTitle(reader.data?.title, target.hostname),
     summary: summary.slice(0, 4_000),
     referenceType,
   };

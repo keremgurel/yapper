@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clipDocumentContent,
+  displayResourceTitle,
   publicWebUrl,
   resolveWebResource,
 } from "./web-resource";
@@ -34,6 +35,23 @@ describe("clipDocumentContent", () => {
     expect(clipped).toContain("CONCLUSION:");
     expect(clipped).toContain("Middle omitted for length");
     expect(clipped.length).toBeLessThanOrEqual(50_040);
+  });
+});
+
+describe("displayResourceTitle", () => {
+  it("removes the caption payload from Instagram reader titles", () => {
+    expect(
+      displayResourceTitle(
+        'Michel Marcelino on Instagram: "A very long post caption"',
+        "instagram.com",
+      ),
+    ).toBe("Michel Marcelino on Instagram");
+  });
+
+  it("keeps ordinary resource titles", () => {
+    expect(displayResourceTitle("The Pause Study", "example.com")).toBe(
+      "The Pause Study",
+    );
   });
 });
 
