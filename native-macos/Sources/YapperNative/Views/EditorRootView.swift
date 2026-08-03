@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum EditorLayoutMode: String, CaseIterable, Identifiable {
@@ -78,120 +79,201 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
     @ObservedObject var session: EditorSession
     let layoutMode: EditorLayoutMode
     @ViewBuilder let leftContent: LeftContent
-    @AppStorage("editorStandardWorkbenchFraction") private var standardWorkbenchFraction = 0.0
-    @AppStorage("editorTallWorkbenchFraction") private var tallWorkbenchFraction = 0.0
-    @State private var dragStartFraction: Double?
-    @State private var liveWorkbenchFraction: Double?
-
-    private let dividerWidth: CGFloat = 7
 
     var body: some View {
-        GeometryReader { proxy in
-            let fraction = liveWorkbenchFraction ?? resolvedWorkbenchFraction(in: proxy.size)
-            let workbenchWidth = max(0, (proxy.size.width - dividerWidth) * fraction)
-
-            HStack(spacing: 0) {
-                leftContent
-                    .frame(width: workbenchWidth)
-                    .frame(maxHeight: .infinity)
-
-                EditorPanelDivider(
-                    onDrag: { translation in
-                        if dragStartFraction == nil {
-                            dragStartFraction = fraction
-                        }
-                        let availableWidth = max(1, proxy.size.width - dividerWidth)
-                        let next = (dragStartFraction ?? fraction) + translation / availableWidth
-                        var transaction = Transaction()
-                        transaction.disablesAnimations = true
-                        withTransaction(transaction) {
-                            liveWorkbenchFraction = clamp(next, in: proxy.size)
-                        }
-                    },
-                    onEnd: {
-                        if let liveWorkbenchFraction {
-                            setWorkbenchFraction(liveWorkbenchFraction)
-                        }
-                        dragStartFraction = nil
-                        liveWorkbenchFraction = nil
-                    },
-                    onReset: {
-                        dragStartFraction = nil
-                        liveWorkbenchFraction = nil
-                        withAnimation(.easeInOut(duration: 0.22)) {
-                            setWorkbenchFraction(0)
-                        }
-                    }
-                )
-                .frame(width: dividerWidth)
-
-                PlayerPanel(session: session, layoutMode: layoutMode)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-    }
-
-    private func resolvedWorkbenchFraction(in size: CGSize) -> Double {
-        let stored = layoutMode == .standard
-            ? standardWorkbenchFraction
-            : tallWorkbenchFraction
-        if stored > 0 {
-            return clamp(stored, in: size)
-        }
-
-        let transportHeight: CGFloat = 40
-        let previewPadding: CGFloat = layoutMode == .standard ? 36 : 20
-        let availableStageHeight = max(1, size.height - transportHeight - previewPadding)
-        let desiredPreviewWidth = max(
-            layoutMode == .standard ? 480 : 330,
-            availableStageHeight * CGFloat(session.project.resolvedAspectRatio) + previewPadding
+        NativeEditorSplitView(
+            session: session,
+            layoutMode: layoutMode,
+            leftContent: leftContent
         )
-        let automatic = (size.width - dividerWidth - desiredPreviewWidth)
-            / max(1, size.width - dividerWidth)
-        return clamp(automatic, in: size)
-    }
-
-    private func clamp(_ value: Double, in size: CGSize) -> Double {
-        let availableWidth = max(1, size.width - dividerWidth)
-        let minimumWorkbench = min(390, availableWidth * 0.46)
-        let minimumPreview = min(layoutMode == .standard ? 440 : 310, availableWidth * 0.46)
-        let lower = minimumWorkbench / availableWidth
-        let upper = max(lower, 1 - minimumPreview / availableWidth)
-        return min(upper, max(lower, value))
-    }
-
-    private func setWorkbenchFraction(_ value: Double) {
-        if layoutMode == .standard {
-            standardWorkbenchFraction = value
-        } else {
-            tallWorkbenchFraction = value
-        }
     }
 }
 
-private struct EditorPanelDivider: View {
-    let onDrag: (CGFloat) -> Void
-    let onEnd: () -> Void
-    let onReset: () -> Void
-    @State private var hovering = false
+private final class EditorNativeSplitView: NSSplitView {
+    var resetPosition: (() -> Void)?
 
-    var body: some View {
-        ZStack {
-            Color.panelBackground
-            RoundedRectangle(cornerRadius: 1.5)
-                .fill(hovering ? Color.yapperOrange.opacity(0.72) : Color.studioLine)
-                .frame(width: hovering ? 3 : 1)
+    override var dividerThickness: CGFloat { 7 }
+
+    override func drawDivider(in rect: NSRect) {
+        NSColor.separatorColor.withAlphaComponent(0.7).setFill()
+        NSRect(x: rect.midX - 0.5, y: rect.minY, width: 1, height: rect.height).fill()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            resetPosition?()
+            return
         }
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        .gesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { onDrag($0.translation.width) }
-                .onEnded { _ in onEnd() }
+        super.mouseDown(with: event)
+    }
+}
+
+private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
+    let session: EditorSession
+    let layoutMode: EditorLayoutMode
+    let leftContent: LeftContent
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(
+            layoutMode: layoutMode,
+            aspectRatio: session.project.resolvedAspectRatio
         )
-        .onTapGesture(count: 2, perform: onReset)
-        .animation(.easeOut(duration: 0.1), value: hovering)
-        .help("Drag to resize · double-click to fit preview")
+    }
+
+    func makeNSView(context: Context) -> EditorNativeSplitView {
+        let splitView = EditorNativeSplitView()
+        splitView.isVertical = true
+        splitView.dividerStyle = .thin
+        splitView.delegate = context.coordinator
+        splitView.wantsLayer = true
+        splitView.layer?.actions = [
+            "bounds": NSNull(),
+            "position": NSNull(),
+            "sublayers": NSNull(),
+        ]
+
+        let workbench = NSHostingView(rootView: leftContent)
+        let preview = NSHostingView(
+            rootView: PlayerPanel(session: session, layoutMode: layoutMode)
+        )
+        workbench.identifier = NSUserInterfaceItemIdentifier("YapperEditorWorkbench")
+        preview.identifier = NSUserInterfaceItemIdentifier("YapperEditorPreview")
+        workbench.wantsLayer = true
+        preview.wantsLayer = true
+        workbench.layer?.actions = ["bounds": NSNull(), "position": NSNull()]
+        preview.layer?.actions = ["bounds": NSNull(), "position": NSNull()]
+
+        splitView.addArrangedSubview(workbench)
+        splitView.addArrangedSubview(preview)
+        splitView.setHoldingPriority(.defaultLow, forSubviewAt: 0)
+        splitView.setHoldingPriority(.defaultHigh, forSubviewAt: 1)
+        splitView.resetPosition = { [weak splitView, weak coordinator = context.coordinator] in
+            guard let splitView, let coordinator else { return }
+            coordinator.resetPosition(in: splitView)
+        }
+
+        context.coordinator.splitView = splitView
+        context.coordinator.scheduleInitialPosition()
+        return splitView
+    }
+
+    func updateNSView(_ splitView: EditorNativeSplitView, context: Context) {
+        context.coordinator.aspectRatio = session.project.resolvedAspectRatio
+        context.coordinator.scheduleInitialPosition()
+    }
+
+    static func dismantleNSView(_ splitView: EditorNativeSplitView, coordinator: Coordinator) {
+        splitView.delegate = nil
+        splitView.resetPosition = nil
+    }
+
+    @MainActor
+    final class Coordinator: NSObject, NSSplitViewDelegate {
+        weak var splitView: NSSplitView?
+        let layoutMode: EditorLayoutMode
+        var aspectRatio: Double
+        private var appliedInitialPosition = false
+        private var applyingProgrammaticPosition = false
+
+        private var defaultsKey: String {
+            layoutMode == .standard
+                ? "editorStandardWorkbenchFraction"
+                : "editorTallWorkbenchFraction"
+        }
+
+        init(layoutMode: EditorLayoutMode, aspectRatio: Double) {
+            self.layoutMode = layoutMode
+            self.aspectRatio = aspectRatio
+        }
+
+        func scheduleInitialPosition() {
+            guard !appliedInitialPosition else { return }
+            DispatchQueue.main.async { [weak self] in
+                guard let self, let splitView, !appliedInitialPosition else { return }
+                guard splitView.bounds.width > splitView.dividerThickness + 1 else { return }
+                applyPosition(in: splitView, useStoredPosition: true)
+                appliedInitialPosition = true
+            }
+        }
+
+        func resetPosition(in splitView: NSSplitView) {
+            UserDefaults.standard.set(0.0, forKey: defaultsKey)
+            applyPosition(in: splitView, useStoredPosition: false)
+        }
+
+        private func applyPosition(in splitView: NSSplitView, useStoredPosition: Bool) {
+            let availableWidth = max(1, splitView.bounds.width - splitView.dividerThickness)
+            let stored = UserDefaults.standard.double(forKey: defaultsKey)
+            let fraction = useStoredPosition && stored > 0
+                ? clampedFraction(stored, availableWidth: availableWidth)
+                : automaticFraction(in: splitView, availableWidth: availableWidth)
+
+            applyingProgrammaticPosition = true
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0
+                context.allowsImplicitAnimation = false
+                splitView.setPosition(availableWidth * fraction, ofDividerAt: 0)
+                splitView.layoutSubtreeIfNeeded()
+            }
+            applyingProgrammaticPosition = false
+            UserDefaults.standard.set(fraction, forKey: defaultsKey)
+        }
+
+        private func automaticFraction(
+            in splitView: NSSplitView,
+            availableWidth: CGFloat
+        ) -> Double {
+            let transportHeight: CGFloat = 40
+            let previewPadding: CGFloat = layoutMode == .standard ? 36 : 20
+            let availableStageHeight = max(1, splitView.bounds.height - transportHeight - previewPadding)
+            let desiredPreviewWidth = max(
+                layoutMode == .standard ? 480 : 330,
+                availableStageHeight * CGFloat(aspectRatio) + previewPadding
+            )
+            let proposed = (availableWidth - desiredPreviewWidth) / availableWidth
+            return clampedFraction(proposed, availableWidth: availableWidth)
+        }
+
+        private func clampedFraction(_ value: Double, availableWidth: CGFloat) -> Double {
+            let minimumWorkbench = min(390, availableWidth * 0.46)
+            let minimumPreview = min(layoutMode == .standard ? 440 : 310, availableWidth * 0.46)
+            let lower = minimumWorkbench / availableWidth
+            let upper = max(lower, 1 - minimumPreview / availableWidth)
+            return min(upper, max(lower, value))
+        }
+
+        func splitView(
+            _ splitView: NSSplitView,
+            constrainMinCoordinate proposedMinimumPosition: CGFloat,
+            ofSubviewAt dividerIndex: Int
+        ) -> CGFloat {
+            let availableWidth = max(1, splitView.bounds.width - splitView.dividerThickness)
+            return min(390, availableWidth * 0.46)
+        }
+
+        func splitView(
+            _ splitView: NSSplitView,
+            constrainMaxCoordinate proposedMaximumPosition: CGFloat,
+            ofSubviewAt dividerIndex: Int
+        ) -> CGFloat {
+            let availableWidth = max(1, splitView.bounds.width - splitView.dividerThickness)
+            let minimumPreview = min(layoutMode == .standard ? 440 : 310, availableWidth * 0.46)
+            return availableWidth - minimumPreview
+        }
+
+        func splitViewDidResizeSubviews(_ notification: Notification) {
+            guard
+                !applyingProgrammaticPosition,
+                let splitView = notification.object as? NSSplitView,
+                splitView.subviews.count >= 2
+            else { return }
+            let availableWidth = max(1, splitView.bounds.width - splitView.dividerThickness)
+            let fraction = clampedFraction(
+                splitView.subviews[0].frame.width / availableWidth,
+                availableWidth: availableWidth
+            )
+            UserDefaults.standard.set(fraction, forKey: defaultsKey)
+        }
     }
 }
 

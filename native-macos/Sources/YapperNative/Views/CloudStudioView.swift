@@ -2,6 +2,39 @@
 import SwiftUI
 @preconcurrency import WebKit
 
+enum CloudLinkDisposition: Equatable {
+    case allowInApp
+    case navigateInShell(StudioDestination)
+    case openInBrowser
+}
+
+enum CloudLinkRouter {
+    static func disposition(
+        for url: URL,
+        nativeDestination: StudioDestination?
+    ) -> CloudLinkDisposition {
+        if isYapperHost(url.host) {
+            if let destination = StudioDestination(cloudPath: url.path) {
+                return destination == nativeDestination
+                    ? .allowInApp
+                    : .navigateInShell(destination)
+            }
+            return url.path.hasPrefix("/studio/") ? .allowInApp : .openInBrowser
+        }
+
+        switch url.scheme?.lowercased() {
+        case "http", "https", "mailto", "tel":
+            return .openInBrowser
+        default:
+            return .allowInApp
+        }
+    }
+
+    static func isYapperHost(_ host: String?) -> Bool {
+        host == "ypr.app" || host == "www.ypr.app"
+    }
+}
+
 /// Hosts Yapper's authenticated, server-backed surfaces inside the native app.
 /// Media editing remains fully native; account data, social OAuth, publishing,
 /// schedules, and the content database keep one persistent web session.
@@ -512,14 +545,21 @@ private struct CloudStudioWebView: NSViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
             guard
+                webView !== oauthWebView,
                 navigationAction.navigationType == .linkActivated,
-                let url = navigationAction.request.url,
-                url.host == "ypr.app" || url.host == "www.ypr.app",
-                let destination = StudioDestination(cloudPath: url.path),
-                destination != nativeDestination
+                let url = navigationAction.request.url
             else { return .allow }
-            onNavigate(destination)
-            return .cancel
+
+            switch CloudLinkRouter.disposition(for: url, nativeDestination: nativeDestination) {
+            case .allowInApp:
+                return .allow
+            case let .navigateInShell(destination):
+                onNavigate(destination)
+                return .cancel
+            case .openInBrowser:
+                NSWorkspace.shared.open(url)
+                return .cancel
+            }
         }
 
         func webView(
@@ -529,7 +569,19 @@ private struct CloudStudioWebView: NSViewRepresentable {
             windowFeatures: WKWindowFeatures
         ) -> WKWebView? {
             if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
-                webView.load(URLRequest(url: url))
+                if webView === oauthWebView {
+                    webView.load(URLRequest(url: url))
+                    return nil
+                }
+
+                switch CloudLinkRouter.disposition(for: url, nativeDestination: nativeDestination) {
+                case .allowInApp:
+                    webView.load(URLRequest(url: url))
+                case let .navigateInShell(destination):
+                    onNavigate(destination)
+                case .openInBrowser:
+                    NSWorkspace.shared.open(url)
+                }
             }
             return nil
         }
