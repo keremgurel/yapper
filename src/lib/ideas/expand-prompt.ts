@@ -50,6 +50,10 @@ export function buildExpandMessages(
     "- If a reference transcript is supplied, treat it as evidence and cover " +
     "its important beats. If it is absent, never invent exact dialogue from the " +
     "source; say what is inferred from the title and creator context.\n" +
+    "- If a source summary is supplied, this is a written resource rather than " +
+    "a video transcript. Preserve its claims, findings, examples, and uncertainty, " +
+    "then explain how those ideas can become content without pretending the source " +
+    "had dialogue, shots, or edit beats.\n" +
     "- A script section may include dialogue or audio cues when appropriate. " +
     "It does not have to be first-person narration.\n" +
     "- Omit empty sections and generic marketing filler.\n" +
@@ -72,6 +76,10 @@ export function buildExpandMessages(
   if (input.source?.title) parts.push(`Reference title: ${input.source.title}`);
   if (input.source?.transcript)
     parts.push(`Reference transcript:\n${input.source.transcript}`);
+  if (input.source?.summary)
+    parts.push(`Source summary:\n${input.source.summary}`);
+  if (input.source?.referenceType)
+    parts.push(`Source type: ${input.source.referenceType}`);
   if (input.source?.url) parts.push(`Reference link: ${input.source.url}`);
   if (input.transcript) parts.push(`The creator's words:\n${input.transcript}`);
 

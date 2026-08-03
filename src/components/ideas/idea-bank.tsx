@@ -17,6 +17,7 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
     bank,
     sourceUrls,
     expanding,
+    analysisErrors,
     capture,
     importInstagramSaves,
     retry,
@@ -89,6 +90,7 @@ export default function IdeaBank({ pillars = [] }: { pillars?: string[] }) {
               idea={idea}
               selected={selected.has(idea.id)}
               expanding={expanding.has(idea.id)}
+              analysisFailed={analysisErrors.has(idea.id)}
               onToggle={() => toggle(idea.id)}
               onRetry={() => retry(idea.id)}
             />

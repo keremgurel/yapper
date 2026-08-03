@@ -25,6 +25,8 @@ export async function resolveIdeaSourceRemote(
     title: resolved.title,
     platform: resolved.platform,
     transcript: resolved.transcript,
+    summary: resolved.summary,
+    referenceType: resolved.referenceType,
   };
 }
 

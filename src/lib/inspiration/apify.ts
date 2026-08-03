@@ -1,10 +1,13 @@
 import {
+  instagramMedia,
   instagramVideo,
-  pick,
   str,
+  tiktokMedia,
   tiktokVideo,
   youtubeVideo,
 } from "./apify-parse";
+import { pick } from "./apify-parse";
+import type { InstagramMedia, TikTokMedia } from "./apify-parse";
 import type { Platform, ScrapedVideo } from "./types";
 
 /** Result of scraping a creator profile: their normalized feed plus whatever
@@ -50,6 +53,34 @@ async function scrapeInstagram(url: string): Promise<CreatorScrape> {
     name: str(pick(items[0], "ownerFullName")),
     videos: items.map((it) => instagramVideo(it, url)),
   };
+}
+
+/**
+ * Resolve a single Instagram post or Reel to its public CDN media URL. The
+ * oEmbed/Open Graph path only exposes card metadata; the media URL is what lets
+ * the transcription provider hear the actual reference.
+ */
+export async function resolveInstagramMedia(
+  url: string,
+): Promise<InstagramMedia> {
+  const items = await runActor("apify~instagram-scraper", {
+    directUrls: [url],
+    resultsType: "posts",
+    resultsLimit: 1,
+  });
+  return instagramMedia(items[0]);
+}
+
+/** Resolve one TikTok post to the CDN video used for transcription. */
+export async function resolveTikTokMedia(url: string): Promise<TikTokMedia> {
+  const items = await runActor("clockworks~tiktok-video-scraper", {
+    postURLs: [url],
+    shouldDownloadCovers: false,
+    shouldDownloadSlideshowImages: false,
+    shouldDownloadSubtitles: false,
+    shouldDownloadVideos: false,
+  });
+  return tiktokMedia(items[0]);
 }
 
 async function scrapeTikTok(handle: string): Promise<CreatorScrape> {
