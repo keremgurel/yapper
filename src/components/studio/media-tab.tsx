@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ImagePlus, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { Button } from "@/components/ui/button";
 import { isNative, pickMediaPaths } from "@/lib/studio/native/bridge";
 import { loadNativeMediaSource } from "@/lib/studio/native/load-native-source";
 
@@ -72,15 +73,16 @@ export default function MediaTab() {
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-2xl flex-col">
       <div className="border-border shrink-0 border-b p-4">
-        <button
+        <Button
           type="button"
           onClick={openPicker}
           disabled={importing}
-          className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90"
+          size="sm"
+          className="w-full"
         >
           <Upload className="h-4 w-4" />
           {importing ? "Opening media…" : "Upload media"}
-        </button>
+        </Button>
         <p className="text-foreground/45 mt-2 text-center text-xs">
           Photos &amp; videos · drag onto the timeline or press Add
         </p>
@@ -150,10 +152,12 @@ export default function MediaTab() {
                         Added{count > 1 ? ` ×${count}` : ""}
                       </span>
                     )}
-                    <button
+                    <Button
                       type="button"
                       onClick={() => removeMediaAsset(asset.id)}
-                      className="absolute top-1 right-1 rounded-md bg-black/50 p-1 text-white/80 opacity-0 transition-opacity group-hover:opacity-100 hover:text-white"
+                      variant="ghost"
+                      size="icon-xs"
+                      className="absolute top-1 right-1 bg-black/50 text-white/80 opacity-0 group-hover:opacity-100 hover:bg-black/70 hover:text-white"
                       title={
                         count > 0
                           ? "Remove from the library and the timeline"
@@ -162,43 +166,49 @@ export default function MediaTab() {
                       aria-label="Remove"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="p-2">
                     <p className="text-foreground/80 truncate text-[11px] font-bold">
                       {asset.name}
                     </p>
                     {!source ? (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => addAssetToTimeline(asset.id)}
-                        className="border-border text-foreground/80 hover:bg-muted hover:text-foreground mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-bold"
+                        variant="outline"
+                        size="xs"
+                        className="mt-1.5 w-full"
                       >
                         <Plus className="h-3 w-3" />
                         Add to timeline
-                      </button>
+                      </Button>
                     ) : (
                       <div className="mt-1.5 flex gap-1.5">
                         {asset.kind === "video" && (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => addAssetToMainTrack(asset.id)}
                             title="Add to the bottom layer sequence as another clip"
-                            className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                            variant="outline"
+                            size="xs"
+                            className="flex-1"
                           >
                             <Plus className="h-3 w-3" />
                             Base
-                          </button>
+                          </Button>
                         )}
-                        <button
+                        <Button
                           type="button"
                           onClick={() => addOverlayFromAsset(asset.id, 0)}
                           title="Add as an overlay on an upper track"
-                          className="border-border text-foreground/80 hover:bg-muted hover:text-foreground flex flex-1 items-center justify-center gap-1 rounded-lg border py-1.5 text-[11px] font-bold"
+                          variant="outline"
+                          size="xs"
+                          className="flex-1"
                         >
                           <Plus className="h-3 w-3" />
                           Overlay
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>

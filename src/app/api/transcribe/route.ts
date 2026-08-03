@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
 import type { RawWord } from "@/lib/studio/transcribe-remote";
 
@@ -22,6 +23,9 @@ interface AsrResult {
  * Responds 501 when no provider key is configured.
  */
 export async function POST(req: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
   const keyterms = [

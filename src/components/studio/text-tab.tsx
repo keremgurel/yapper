@@ -10,6 +10,7 @@ import {
   Type,
 } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { Button } from "@/components/ui/button";
 import { CAPTION_FONTS, type CaptionCase } from "@/lib/studio/captions";
 import type { TextAlign, TextHookPreset } from "@/lib/studio/types";
 
@@ -104,13 +105,14 @@ export default function TextTab({
           placeholder="Type text to place on the video…"
           className="border-border bg-background text-foreground placeholder:text-foreground/30 w-full resize-none rounded-lg border px-3 py-2 text-xs font-bold outline-none focus:border-[color:var(--sg-accent)]"
         />
-        <button
+        <Button
           type="button"
           onClick={() => add()}
-          className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-lg py-2 text-xs font-black hover:opacity-90"
+          size="sm"
+          className="w-full"
         >
           <Plus className="h-3.5 w-3.5" /> Add text at playhead
-        </button>
+        </Button>
         <p className="text-foreground/40 text-center text-[10px]">
           Drag it anywhere on the video; trim it on the timeline.
         </p>
@@ -158,11 +160,13 @@ export default function TextTab({
                 </p>
                 <div className="space-y-1.5">
                   {textLayers.map((layer) => (
-                    <button
+                    <Button
                       key={layer.id}
                       type="button"
                       onClick={() => selectCaption(layer.id)}
-                      className="border-border hover:bg-muted flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left"
+                      variant="outline"
+                      size="sm"
+                      className="w-full justify-start px-2.5"
                     >
                       <Type className="h-3.5 w-3.5 shrink-0 text-fuchsia-400" />
                       <span className="text-foreground/75 min-w-0 flex-1 truncate text-[11px] font-bold">
@@ -171,7 +175,7 @@ export default function TextTab({
                       <span className="text-foreground/30 text-[9px]">
                         {(layer.timelineStart ?? 0).toFixed(1)}s
                       </span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </section>
@@ -188,14 +192,16 @@ export default function TextTab({
                   Changes update live
                 </p>
               </div>
-              <button
+              <Button
                 type="button"
                 onClick={() => removeCaption(selected.id)}
                 aria-label="Delete text layer"
-                className="text-foreground/35 rounded-lg p-2 hover:bg-red-500/10 hover:text-red-400"
+                variant="ghost"
+                size="icon-sm"
+                className="text-foreground/35 hover:bg-red-500/10 hover:text-red-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              </Button>
             </div>
 
             <textarea

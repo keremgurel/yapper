@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { detectPlatform, extractHandle } from "@/lib/inspiration/platform";
 import { scrapeCreator } from "@/lib/inspiration/apify";
@@ -12,6 +13,10 @@ const MAX_VIDEOS = 24;
  * flags. Best-effort: on any actor failure we return an empty feed with a note
  * rather than erroring, so saving a creator never hard-fails on scraping. */
 export async function POST(req: Request) {
+  const { userId } = await auth();
+  if (!userId)
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+
   let url: string;
   try {
     const body = (await req.json()) as { url?: string };

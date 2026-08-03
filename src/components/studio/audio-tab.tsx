@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Loader2, Music2, Play, Plus, Trash2, Upload } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { Button } from "@/components/ui/button";
 import {
   previewSoundEffect,
   SOUND_EFFECTS,
@@ -37,14 +38,15 @@ export default function AudioTab({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-border shrink-0 border-b p-3">
-        <button
+        <Button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="bg-foreground text-background flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black hover:opacity-90"
+          size="sm"
+          className="w-full"
         >
           <Upload className="h-3.5 w-3.5" />
           Upload audio
-        </button>
+        </Button>
         <input
           ref={inputRef}
           type="file"
@@ -90,14 +92,15 @@ export default function AudioTab({
                   <span className="grid h-7 w-7 place-items-center rounded-lg bg-emerald-500/12 text-emerald-400">
                     <Music2 className="h-3.5 w-3.5" />
                   </span>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => previewSoundEffect(effect.id)}
                     aria-label={`Preview ${effect.name}`}
-                    className="text-foreground/50 hover:bg-muted hover:text-foreground grid h-7 w-7 place-items-center rounded-lg"
+                    variant="ghost"
+                    size="icon-xs"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" />
-                  </button>
+                  </Button>
                 </div>
                 <p className="text-foreground text-xs font-black">
                   {effect.name}
@@ -105,11 +108,13 @@ export default function AudioTab({
                 <p className="text-foreground/40 mt-0.5 truncate text-[9px]">
                   {effect.hint}
                 </p>
-                <button
+                <Button
                   type="button"
                   disabled={adding !== null}
                   onClick={() => void addEffect(effect.id)}
-                  className="border-border text-foreground/70 hover:bg-muted mt-2 flex w-full items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-black disabled:opacity-50"
+                  variant="outline"
+                  size="xs"
+                  className="mt-2 w-full"
                 >
                   {adding === effect.id ? (
                     <Loader2 className="h-3 w-3 animate-spin" />
@@ -117,7 +122,7 @@ export default function AudioTab({
                     <Plus className="h-3 w-3" />
                   )}
                   Add
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -143,14 +148,16 @@ export default function AudioTab({
                       {track.start.toFixed(1)}s · {track.duration.toFixed(1)}s
                     </p>
                   </div>
-                  <button
+                  <Button
                     type="button"
                     onClick={() => removeAudio(track.id)}
                     aria-label={`Remove ${track.name}`}
-                    className="text-foreground/35 hover:text-red-400"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-foreground/35 hover:bg-red-500/10 hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

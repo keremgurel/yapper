@@ -2,9 +2,10 @@
 
 import { Captions, Loader2, Sparkles, Type } from "lucide-react";
 import { useStudio } from "@/components/studio/studio-context";
+import { Button } from "@/components/ui/button";
 
 const ACTION =
-  "flex flex-1 flex-col items-center gap-1.5 rounded-xl border border-border px-2 py-3 text-center transition-colors hover:bg-foreground/5 disabled:cursor-not-allowed disabled:opacity-40";
+  "h-auto flex-1 flex-col gap-1.5 whitespace-normal rounded-xl px-2 py-3 text-center";
 
 /**
  * Placing a cutaway needs the words, and there is no reason to send anyone
@@ -31,8 +32,9 @@ export default function AiTranscribePrompt() {
         said.
       </p>
       <div className="flex gap-2">
-        <button
+        <Button
           type="button"
+          variant="outline"
           disabled={busy}
           onClick={() => void transcribe()}
           className={ACTION}
@@ -42,9 +44,10 @@ export default function AiTranscribePrompt() {
           <span className="text-foreground/50 text-xs leading-tight">
             Just the words
           </span>
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           disabled={busy}
           onClick={() => void autoEdit(false)}
           className={ACTION}
@@ -54,9 +57,10 @@ export default function AiTranscribePrompt() {
           <span className="text-foreground/50 text-xs leading-tight">
             Cut the retakes
           </span>
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="outline"
           disabled={busy}
           onClick={() => void autoEdit(true)}
           className={ACTION}
@@ -66,7 +70,7 @@ export default function AiTranscribePrompt() {
           <span className="text-foreground/50 text-xs leading-tight">
             And burn them in
           </span>
-        </button>
+        </Button>
       </div>
     </div>
   );

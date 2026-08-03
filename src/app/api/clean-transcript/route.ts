@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import {
   alignCleanedToContiguousTakes,
   cutsOutsideKeptTakes,
@@ -18,6 +19,9 @@ export const maxDuration = 60;
  * makes a cross-retake "Frankenstein" sentence structurally impossible.
  */
 export async function POST(req: Request): Promise<Response> {
+  const { userId } = await auth();
+  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
   const key = process.env.SURPLUS_API_KEY;
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
   const base =
