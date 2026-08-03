@@ -16,13 +16,7 @@ import {
   WandSparkles,
   type LucideIcon,
 } from "lucide-react";
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-} from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,43 +40,19 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 
 function FeatureCard({
   feature,
-  direction,
-  onSwipe,
+  index,
 }: {
   feature: MarketingFeature;
-  direction: 1 | -1;
-  onSwipe: (direction: 1 | -1) => void;
+  index: number;
 }) {
-  const reducedMotion = useReducedMotion();
   const Icon = ICONS[feature.slug] ?? WandSparkles;
 
   return (
-    <motion.div
-      className="absolute inset-0 cursor-grab touch-pan-y select-none active:cursor-grabbing"
-      initial={
-        reducedMotion
-          ? false
-          : { x: direction * 80, y: 20, rotate: direction * 2.5, opacity: 0 }
-      }
-      animate={{ x: 0, y: 0, rotate: 0, opacity: 1 }}
-      exit={
-        reducedMotion
-          ? { opacity: 0 }
-          : {
-              x: direction * -180,
-              y: 46,
-              rotate: direction * -5,
-              opacity: 0,
-            }
-      }
-      transition={{ duration: reducedMotion ? 0.01 : 0.56, ease: EASE }}
-      drag={reducedMotion ? false : "x"}
-      dragConstraints={{ left: 0, right: 0 }}
-      dragElastic={0.14}
-      onDragEnd={(_, info) => {
-        if (info.offset.x < -90 || info.velocity.x < -520) onSwipe(1);
-        if (info.offset.x > 90 || info.velocity.x > 520) onSwipe(-1);
-      }}
+    <article
+      className="h-full min-w-full snap-center snap-always px-1 select-none sm:px-2"
+      role="group"
+      aria-roledescription="slide"
+      aria-label={`${index + 1} of ${marketingFeatures.length}: ${feature.shortTitle}`}
     >
       <div className="relative h-full overflow-hidden rounded-[28px] border border-white/15 bg-[#111214] shadow-[0_34px_90px_rgba(0,0,0,.32)] sm:rounded-[36px]">
         <div
@@ -153,20 +123,17 @@ function FeatureCard({
           </p>
         </div>
       </div>
-    </motion.div>
+    </article>
   );
 }
 
 export default function FeatureDeck() {
-  const sectionRef = useRef<HTMLElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const activeIndexRef = useRef(0);
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
+  const reducedMotion = useReducedMotion();
   const active = marketingFeatures[activeIndex];
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start start", "end end"],
-  });
 
   const setIndex = useCallback((nextIndex: number) => {
     const current = activeIndexRef.current;
@@ -184,41 +151,38 @@ export default function FeatureDeck() {
       );
       if (nextIndex === activeIndex) return;
       setIndex(nextIndex);
-
-      const section = sectionRef.current;
-      if (!section) return;
-      const rect = section.getBoundingClientRect();
-      const sectionTop = window.scrollY + rect.top;
-      const scrollableDistance = section.offsetHeight - window.innerHeight;
-      window.scrollTo({
-        top:
-          sectionTop +
-          (nextIndex / (marketingFeatures.length - 1)) * scrollableDistance,
-        behavior: "smooth",
+      carouselRef.current?.scrollTo({
+        left: nextIndex * carouselRef.current.clientWidth,
+        behavior: reducedMotion ? "auto" : "smooth",
       });
     },
-    [activeIndex, setIndex],
+    [activeIndex, reducedMotion, setIndex],
   );
 
-  useMotionValueEvent(scrollYProgress, "change", (latest) => {
+  const goTo = useCallback(
+    (nextIndex: number) => {
+      setIndex(nextIndex);
+      carouselRef.current?.scrollTo({
+        left: nextIndex * carouselRef.current.clientWidth,
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+    },
+    [reducedMotion, setIndex],
+  );
+
+  const updateFromScroll = useCallback(() => {
+    const carousel = carouselRef.current;
+    if (!carousel || carousel.clientWidth === 0) return;
     const nextIndex = Math.min(
       marketingFeatures.length - 1,
-      Math.round(latest * (marketingFeatures.length - 1)),
+      Math.max(0, Math.round(carousel.scrollLeft / carousel.clientWidth)),
     );
     setIndex(nextIndex);
-  });
-
-  const waiting = [1, 2]
-    .map((offset) => marketingFeatures[activeIndex + offset])
-    .filter(Boolean);
+  }, [setIndex]);
 
   return (
-    <section
-      ref={sectionRef}
-      className="bg-background relative border-b"
-      style={{ height: `${marketingFeatures.length * 58 + 100}svh` }}
-    >
-      <div className="sticky top-14 flex h-[calc(100svh-3.5rem)] items-center overflow-hidden py-6 sm:py-10">
+    <section className="bg-background relative overflow-hidden border-b py-20 sm:py-28 lg:py-32">
+      <div className="relative flex min-h-[calc(100svh-3.5rem)] items-center">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-70 transition-[background] duration-700"
@@ -240,27 +204,40 @@ export default function FeatureDeck() {
               voice note to the scheduled social media post.
             </p>
 
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={active.slug}
-                className="mt-9 min-h-[185px]"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.34, ease: EASE }}
-              >
-                <h3 className="type-h3">{active.title}</h3>
-                <p className="type-description mt-3 max-w-md text-sm">
-                  {active.description}
-                </p>
-                <Button asChild variant="link" className="mt-3 h-auto px-0">
-                  <Link href={`/features/${active.slug}`}>
-                    Explore {active.shortTitle.toLowerCase()}
-                    <ArrowRight />
-                  </Link>
-                </Button>
-              </motion.div>
-            </AnimatePresence>
+            <div className="mt-9 h-[220px]">
+              <AnimatePresence mode="wait" initial={false} custom={direction}>
+                <motion.div
+                  key={active.slug}
+                  custom={direction}
+                  initial={
+                    reducedMotion
+                      ? { opacity: 0 }
+                      : { opacity: 0, x: direction * 14 }
+                  }
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={
+                    reducedMotion
+                      ? { opacity: 0 }
+                      : { opacity: 0, x: direction * -10 }
+                  }
+                  transition={{
+                    duration: reducedMotion ? 0.01 : 0.3,
+                    ease: EASE,
+                  }}
+                >
+                  <h3 className="type-h3">{active.title}</h3>
+                  <p className="type-description mt-3 max-w-md text-sm">
+                    {active.description}
+                  </p>
+                  <Button asChild variant="link" className="mt-3 h-auto px-0">
+                    <Link href={`/features/${active.slug}`}>
+                      Explore {active.shortTitle.toLowerCase()}
+                      <ArrowRight />
+                    </Link>
+                  </Button>
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
             <div className="mt-3 flex items-center gap-3">
               <Button
@@ -285,20 +262,24 @@ export default function FeatureDeck() {
               </Button>
               <div className="ml-2 flex items-center gap-1.5">
                 {marketingFeatures.map((feature, index) => (
-                  <span
+                  <button
+                    type="button"
                     key={feature.slug}
                     className={`h-1.5 rounded-full transition-[width,background-color] duration-300 ${
                       index === activeIndex
                         ? "bg-foreground w-8"
                         : "bg-border w-1.5"
                     }`}
+                    onClick={() => goTo(index)}
+                    aria-label={`Go to ${feature.shortTitle}`}
+                    aria-current={index === activeIndex ? "true" : undefined}
                   />
                 ))}
               </div>
             </div>
           </div>
 
-          <div>
+          <div className="min-w-0">
             <div className="mb-4 lg:hidden">
               <p className="type-label text-[var(--sg-accent-strong)]">
                 Scroll through Yapper
@@ -306,36 +287,52 @@ export default function FeatureDeck() {
               <h2 className="type-h3 mt-2">Every tool stays connected.</h2>
             </div>
             <div
-              className="relative mx-auto h-[500px] w-full max-w-[650px] outline-none sm:h-[560px]"
+              ref={carouselRef}
+              className="mx-auto flex h-[500px] w-full max-w-[650px] min-w-0 snap-x snap-mandatory overflow-x-auto overscroll-x-contain outline-none sm:h-[560px] [&::-webkit-scrollbar]:hidden"
               tabIndex={0}
+              role="region"
+              aria-roledescription="carousel"
+              aria-label="Yapper features"
+              style={{ scrollbarWidth: "none" }}
+              onScroll={updateFromScroll}
               onKeyDown={(event) => {
                 if (event.key === "ArrowRight") move(1);
                 if (event.key === "ArrowLeft") move(-1);
               }}
             >
-              {[...waiting].reverse().map((feature, reverseIndex) => {
-                const depth = waiting.length - reverseIndex;
-                return (
-                  <div
-                    key={feature.slug}
-                    aria-hidden
-                    className="absolute inset-x-3 inset-y-0 rounded-[28px] border border-white/10 bg-[#171719] shadow-2xl transition-transform duration-500 sm:inset-x-5 sm:rounded-[36px]"
-                    style={{
-                      transform: `translateY(${depth * 15}px) scale(${1 - depth * 0.034}) rotate(${depth % 2 === 0 ? -0.8 : 0.8}deg)`,
-                      opacity: 1 - depth * 0.18,
-                    }}
-                  />
-                );
-              })}
-
-              <AnimatePresence initial={false} custom={direction}>
+              {marketingFeatures.map((feature, index) => (
                 <FeatureCard
-                  key={active.slug}
-                  feature={active}
-                  direction={direction}
-                  onSwipe={move}
+                  key={feature.slug}
+                  feature={feature}
+                  index={index}
                 />
-              </AnimatePresence>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-center gap-3 lg:hidden">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => move(-1)}
+                disabled={activeIndex === 0}
+                aria-label="Previous feature"
+              >
+                <ArrowLeft />
+              </Button>
+              <p className="text-muted-foreground min-w-16 text-center text-sm font-semibold">
+                {activeIndex + 1} / {marketingFeatures.length}
+              </p>
+              <Button
+                type="button"
+                variant="contrast"
+                size="icon"
+                onClick={() => move(1)}
+                disabled={activeIndex === marketingFeatures.length - 1}
+                aria-label="Next feature"
+              >
+                <ArrowRight />
+              </Button>
             </div>
           </div>
         </div>
