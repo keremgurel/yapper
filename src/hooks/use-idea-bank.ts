@@ -29,6 +29,7 @@ import { normalizeInspoUrl } from "@/lib/inspiration/dedupe";
 export function useIdeaBank(pillars: string[] = []) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [expanding, setExpanding] = useState<Set<string>>(new Set());
+  const [analysisErrors, setAnalysisErrors] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setIdeas(loadIdeas());
@@ -37,17 +38,20 @@ export function useIdeaBank(pillars: string[] = []) {
   const resolveAndExpand = useCallback(
     async (idea: Idea) => {
       setExpanding((s) => new Set(s).add(idea.id));
+      setAnalysisErrors((s) => {
+        const next = new Set(s);
+        next.delete(idea.id);
+        return next;
+      });
       try {
         let current = idea;
         if (idea.source?.url) {
-          try {
-            const source = await resolveIdeaSourceRemote(idea.source.url);
-            current = { ...idea, source };
-            setIdeas(updateIdea(idea.id, { source }));
-          } catch {
-            // Resolution is best-effort. The exact URL is already durable, and
-            // analysis can still use the creator's own context.
-          }
+          // The reference is part of the idea, not optional context. Resolution
+          // must succeed before expansion so AI never invents source mechanics
+          // from the creator's note alone.
+          const source = await resolveIdeaSourceRemote(idea.source.url);
+          current = { ...idea, source };
+          setIdeas(updateIdea(idea.id, { source }));
         }
         const expansion = await expandIdeaRemote(
           {
@@ -59,7 +63,8 @@ export function useIdeaBank(pillars: string[] = []) {
         );
         setIdeas(setExpansion(idea.id, expansion));
       } catch {
-        // Leave it un-expanded in the bank; the card offers a retry.
+        // Keep the last durable draft, surface the failure, and offer a retry.
+        setAnalysisErrors((s) => new Set(s).add(idea.id));
       } finally {
         setExpanding((s) => {
           const n = new Set(s);
@@ -146,6 +151,7 @@ export function useIdeaBank(pillars: string[] = []) {
       .map((idea) => idea.source?.url)
       .filter((url): url is string => Boolean(url)),
     expanding,
+    analysisErrors,
     capture,
     importInstagramSaves,
     retry,

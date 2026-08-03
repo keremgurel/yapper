@@ -119,6 +119,25 @@ describe("buildExpandMessages", () => {
     expect(user).toContain("riff on");
   });
 
+  it("grounds a written resource in its stored summary", () => {
+    const { system, user } = buildExpandMessages(
+      {
+        url: "https://example.com/research.pdf",
+        source: {
+          url: "https://example.com/research.pdf",
+          title: "A research paper",
+          summary: "The study found that deliberate pauses improved recall.",
+          referenceType: "research-paper",
+        },
+      },
+      "inspiration",
+      [],
+    );
+    expect(system).toContain("written resource");
+    expect(user).toContain("deliberate pauses");
+    expect(user).toContain("research-paper");
+  });
+
   it("lists the creator's pillars in the system prompt when provided", () => {
     const { system } = buildExpandMessages({ transcript: "x" }, "original", [
       "Speaking",

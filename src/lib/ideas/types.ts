@@ -1,3 +1,5 @@
+import type { ReferenceContentType } from "@/lib/inspiration/types";
+
 /**
  * The Idea bank model. An idea is whatever a creator drops in: a spoken note, a
  * link, or a link with their own take on it. Every idea keeps the creator's
@@ -25,6 +27,10 @@ export interface IdeaSource {
   title?: string;
   /** The reference video's complete spoken transcript, never AI-rewritten. */
   transcript?: string;
+  /** A faithful source summary for articles, papers, reports, and web pages. */
+  summary?: string;
+  /** Distinguishes transcript-led social video from summarized written work. */
+  referenceType?: ReferenceContentType;
   platform?: string;
   /** Folder name preserved from an imported inspiration archive. */
   collection?: string;

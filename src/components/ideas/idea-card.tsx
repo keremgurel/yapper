@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AlertCircle,
   Check,
   ChevronDown,
   ExternalLink,
@@ -10,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { Idea, IdeaExpansionSection, IdeaType } from "@/lib/ideas/types";
+import type { ReferenceContentType } from "@/lib/inspiration/types";
 
 const TYPE_LABEL: Record<IdeaType, string> = {
   original: "Original",
@@ -21,12 +23,14 @@ export default function IdeaCard({
   idea,
   selected,
   expanding,
+  analysisFailed,
   onToggle,
   onRetry,
 }: {
   idea: Idea;
   selected: boolean;
   expanding: boolean;
+  analysisFailed: boolean;
   onToggle: () => void;
   onRetry: () => void;
 }) {
@@ -77,6 +81,12 @@ export default function IdeaCard({
                 Expanding
               </span>
             )}
+            {analysisFailed && !expanding && (
+              <span className="text-destructive flex items-center gap-1 text-xs">
+                <AlertCircle className="h-3 w-3" />
+                Reference analysis failed
+              </span>
+            )}
           </div>
           <p className="text-foreground truncate text-[15px] font-bold">
             {title}
@@ -99,6 +109,11 @@ export default function IdeaCard({
                 <p className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase">
                   Original reference
                 </p>
+                {idea.source.referenceType && (
+                  <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-bold">
+                    {referenceTypeLabel(idea.source.referenceType)}
+                  </span>
+                )}
                 {idea.source.collection && (
                   <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-bold">
                     {idea.source.collection}
@@ -123,7 +138,15 @@ export default function IdeaCard({
             </div>
           )}
 
-          {idea.source && (
+          {idea.source?.summary && (
+            <Section label="Source summary">
+              <p className="text-foreground/80 whitespace-pre-wrap">
+                {idea.source.summary}
+              </p>
+            </Section>
+          )}
+
+          {idea.source && isSocialSource(idea.source) && (
             <Section label="Original transcript">
               {idea.source.transcript ? (
                 <p className="text-foreground/80 whitespace-pre-wrap">
@@ -295,6 +318,26 @@ function Section({
 function platformName(platform?: string): string {
   if (!platform || platform === "unknown") return "the source";
   return platform[0]!.toUpperCase() + platform.slice(1);
+}
+
+function isSocialSource(source: Idea["source"]): boolean {
+  return (
+    source?.referenceType === "social-video" ||
+    ["instagram", "tiktok", "youtube"].includes(source?.platform ?? "")
+  );
+}
+
+function referenceTypeLabel(type: ReferenceContentType): string {
+  switch (type) {
+    case "social-video":
+      return "Social video";
+    case "research-paper":
+      return "Research paper";
+    case "web-resource":
+      return "Web resource";
+    default:
+      return type[0]!.toUpperCase() + type.slice(1);
+  }
 }
 
 function firstLine(s: string): string {

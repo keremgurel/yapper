@@ -5,6 +5,13 @@ export type Platform = "youtube" | "tiktok" | "instagram" | "unknown";
  * ("creator"). Both live in the same store, separated by this discriminator. */
 export type InspirationKind = "video" | "creator";
 
+export type ReferenceContentType =
+  | "social-video"
+  | "article"
+  | "research-paper"
+  | "report"
+  | "web-resource";
+
 export interface Pillar {
   id: string;
   name: string;
@@ -65,4 +72,7 @@ export interface ResolvedLink {
   handle?: string;
   thumbnail?: string;
   transcript?: string;
+  /** Written resources keep a compact faithful summary instead of raw text. */
+  summary?: string;
+  referenceType?: ReferenceContentType;
 }

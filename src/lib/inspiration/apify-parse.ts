@@ -1,5 +1,17 @@
 import type { ScrapedVideo } from "./types";
 
+export interface InstagramMedia {
+  title?: string;
+  thumbnail?: string;
+  mediaUrl?: string;
+}
+
+export interface TikTokMedia {
+  title?: string;
+  thumbnail?: string;
+  mediaUrl?: string;
+}
+
 /** A positive number, else 0. Guards against missing fields and, crucially,
  * counts an actor hands back as strings ("4,200"), which must not read as views. */
 const num = (v: unknown): number => (typeof v === "number" && v > 0 ? v : 0);
@@ -39,6 +51,28 @@ export function instagramVideo(it: unknown, fallbackUrl: string): ScrapedVideo {
     likes: num(pick(it, "likesCount")),
     comments: num(pick(it, "commentsCount")),
     postedAt: str(pick(it, "timestamp")),
+  };
+}
+
+/** Map one direct post/Reel result to the fields needed for transcription. */
+export function instagramMedia(it: unknown): InstagramMedia {
+  return {
+    title: str(pick(it, "caption")),
+    thumbnail: str(pick(it, "displayUrl")),
+    // Reels normally expose videoUrl. audioUrl is a useful fallback for actor
+    // payloads that separate the audible track from the video container.
+    mediaUrl: str(pick(it, "videoUrl")) ?? str(pick(it, "audioUrl")),
+  };
+}
+
+/** Map one direct TikTok result to the fields needed for transcription. */
+export function tiktokMedia(it: unknown): TikTokMedia {
+  return {
+    title: str(pick(it, "text")),
+    thumbnail:
+      str(pick(it, "videoMeta", "coverUrl")) ??
+      str(pick(it, "videoMeta", "originalCoverUrl")),
+    mediaUrl: str(pick(it, "videoMeta", "downloadAddr")),
   };
 }
 

@@ -1,10 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
+  instagramMedia,
   instagramVideo,
   pick,
+  tiktokMedia,
   tiktokVideo,
   youtubeVideo,
 } from "@/lib/inspiration/apify-parse";
+
+describe("instagramMedia", () => {
+  it("prefers the Reel video and falls back to a separate audio track", () => {
+    expect(
+      instagramMedia({
+        caption: "Twelve hooks",
+        displayUrl: "https://cdn/cover.jpg",
+        videoUrl: "https://cdn/reel.mp4",
+        audioUrl: "https://cdn/audio.mp4",
+      }),
+    ).toEqual({
+      title: "Twelve hooks",
+      thumbnail: "https://cdn/cover.jpg",
+      mediaUrl: "https://cdn/reel.mp4",
+    });
+    expect(instagramMedia({ audioUrl: "https://cdn/audio.mp4" }).mediaUrl).toBe(
+      "https://cdn/audio.mp4",
+    );
+  });
+});
 
 describe("pick", () => {
   it("reads a nested path and returns undefined when it breaks", () => {
@@ -71,6 +93,24 @@ describe("tiktokVideo", () => {
       views: 100,
       likes: 9,
       comments: 3,
+    });
+  });
+});
+
+describe("tiktokMedia", () => {
+  it("maps the direct CDN video used for transcription", () => {
+    expect(
+      tiktokMedia({
+        text: "A hook",
+        videoMeta: {
+          coverUrl: "https://cdn/cover.jpg",
+          downloadAddr: "https://cdn/video.mp4",
+        },
+      }),
+    ).toEqual({
+      title: "A hook",
+      thumbnail: "https://cdn/cover.jpg",
+      mediaUrl: "https://cdn/video.mp4",
     });
   });
 });
