@@ -3,6 +3,33 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // Keep canonical slash handling in the static routing table rather than
+      // running Clerk/Proxy for every crawler request to public content.
+      {
+        source: "/blog/",
+        destination: "/blog",
+        statusCode: 301,
+      },
+      {
+        source: "/blog/:path+/",
+        destination: "/blog/:path+",
+        statusCode: 301,
+      },
+      {
+        source: "/freestyle/",
+        destination: "/freestyle",
+        statusCode: 301,
+      },
+      {
+        source: "/freestyle-speech/",
+        destination: "/freestyle-speech",
+        statusCode: 301,
+      },
+      {
+        source: "/random-topic-generator/",
+        destination: "/random-topic-generator",
+        statusCode: 301,
+      },
       {
         source: "/:path*",
         has: [{ type: "host", value: "www.ypr.app" }],
