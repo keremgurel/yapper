@@ -7,10 +7,10 @@ import { SUBSCRIPTION_PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
 const muted = { color: "var(--sg-text-muted)" };
 
 const FEATURES = [
-  "Audio, video & full AI feedback",
-  "Idea + script generation",
-  "Teleprompter recorder + editor",
-  "Session history & re-watch",
+  "Every AI editing and idea tool",
+  "Audio, video, and full coaching",
+  "Private media library and re-watch",
+  "Cancel anytime in Stripe",
 ];
 
 /** Subscription tier cards. Render-only: the parent owns the checkout call and
@@ -29,9 +29,15 @@ export default function PricingCards({
         <article key={plan.key} className="sg-card flex flex-col gap-5 p-6">
           <div>
             <h3 className="sg-display text-2xl">{plan.name}</h3>
-            <p className="sg-display mt-1 text-4xl">{plan.priceLabel}</p>
-            <p className="sg-label mt-1">
-              {plan.monthlyCredits} credits / month
+            <div className="mt-1 flex items-end gap-2">
+              <p className="sg-display text-4xl">{plan.priceLabel}</p>
+              <p className="sg-label pb-1">{plan.cadenceLabel}</p>
+            </div>
+            {plan.badge ? (
+              <span className="sg-chip mt-3 inline-flex">{plan.badge}</span>
+            ) : null}
+            <p className="sg-label mt-3">
+              {plan.includedCredits.toLocaleString()} credits / {plan.cadence}
             </p>
             <p className="sg-label">{plan.storageLabel} storage</p>
           </div>
@@ -57,7 +63,7 @@ export default function PricingCards({
                 {pending === plan.key ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  `Start ${TRIAL_DAYS}-day free trial`
+                  `Try ${TRIAL_DAYS} days free`
                 )}
               </button>
             </Show>

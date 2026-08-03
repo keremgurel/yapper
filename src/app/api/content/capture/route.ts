@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { ensureUser } from "@/lib/db/users";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { createContentItem } from "@/lib/db/content";
 import { captureIdea } from "@/lib/content/capture";
 
@@ -26,25 +29,30 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!text) return Response.json({ error: "no_input" }, { status: 400 });
   const pillars = strArr(body.pillars, 12);
 
-  await ensureUser(userId);
+  const access = await reservePaidActionOrResponse(userId, "capture_idea");
+  if (access.response) return access.response;
+  const { reservation } = access;
 
-  let idea;
   try {
-    idea = await captureIdea({ text, pillars });
+    const idea = await captureIdea({ text, pillars });
+    // The angle seeds `example`; the classified pillar lands in its own column.
+    const item = await createContentItem(userId, {
+      title: idea.title,
+      hooks: idea.hooks,
+      points: idea.points,
+      example: idea.angle,
+      pillar: idea.pillar ?? undefined,
+      status: "drafted",
+    });
+
+    return Response.json({
+      item,
+      pillar: idea.pillar,
+      balance: reservation.balance,
+    });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "capture_failed";
+    await refundCreditReservation(userId, reservation, detail);
     return Response.json({ error: "capture_failed", detail }, { status: 502 });
   }
-
-  // The angle seeds `example`; the classified pillar lands in its own column.
-  const item = await createContentItem(userId, {
-    title: idea.title,
-    hooks: idea.hooks,
-    points: idea.points,
-    example: idea.angle,
-    pillar: idea.pillar ?? undefined,
-    status: "drafted",
-  });
-
-  return Response.json({ item, pillar: idea.pillar });
 }

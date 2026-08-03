@@ -28,7 +28,7 @@ export const users = pgTable("users", {
   // currentPeriodEnd, and only the webhook ever writes these fields.
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionStatus: text("subscription_status"),
-  plan: text("plan"), // plan key from the plans config (e.g. "starter", "pro")
+  plan: text("plan"), // plan key from the plans config (e.g. "creator_monthly")
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

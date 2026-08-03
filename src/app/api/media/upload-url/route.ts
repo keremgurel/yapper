@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
+import { canUsePremium } from "@/lib/billing/gate";
 import { getStorageQuota } from "@/lib/db/billing";
 import { getStorageBytes } from "@/lib/db/users";
 import { mediaKey, presignUpload, r2Configured } from "@/lib/r2";
@@ -14,6 +15,9 @@ export const runtime = "nodejs";
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
   if (!r2Configured()) {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }

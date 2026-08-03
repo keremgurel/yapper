@@ -1,4 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { parsePlacements } from "@/lib/studio/overlay-plan";
 
 export const runtime = "nodejs";
@@ -73,6 +77,10 @@ export async function POST(req: Request): Promise<Response> {
     `Transcript:\n${transcript}\n\n` +
     `The user says: ${instruction?.trim() || "Place each file where it fits best."}`;
 
+  const access = await reservePaidActionOrResponse(userId, "place_overlays");
+  if (access.response) return access.response;
+  const { reservation } = access;
+
   try {
     const res = await fetch(`${base}/chat/completions`, {
       method: "POST",
@@ -91,12 +99,20 @@ export async function POST(req: Request): Promise<Response> {
       }),
     });
     if (!res.ok) {
-      return Response.json({ error: `ai_${res.status}` }, { status: 502 });
+      throw new Error(`ai_${res.status}`);
     }
     const json = await res.json();
     const reply: string = json?.choices?.[0]?.message?.content ?? "";
-    return Response.json({ placements: parsePlacements(reply) });
+    return Response.json({
+      placements: parsePlacements(reply),
+      balance: reservation.balance,
+    });
   } catch (e) {
+    await refundCreditReservation(
+      userId,
+      reservation,
+      e instanceof Error ? e.message : "ai_failed",
+    );
     return Response.json(
       { error: e instanceof Error ? e.message : "ai_failed" },
       { status: 502 },

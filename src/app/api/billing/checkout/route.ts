@@ -4,6 +4,7 @@ import { getBillingState, setStripeCustomerId } from "@/lib/db/billing";
 import { ensureUser } from "@/lib/db/users";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { CREDIT_PACKS, planByKey, TRIAL_DAYS } from "@/lib/billing/plans";
+import { isEntitled } from "@/lib/billing/entitlement";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const stripe = getStripe();
   const state = await getBillingState(userId);
+  if (plan && isEntitled(state)) {
+    return Response.json({ error: "already_subscribed" }, { status: 409 });
+  }
+  if (pack && !isEntitled(state)) {
+    return Response.json({ error: "subscription_required" }, { status: 402 });
+  }
   let customerId = state?.stripeCustomerId ?? null;
   if (!customerId) {
     const user = await currentUser();
@@ -58,7 +65,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   const common = {
     customer: customerId,
     client_reference_id: userId,
-    success_url: `${origin}/studio?checkout=success`,
+    success_url: `${origin}/studio/home?checkout=success`,
     cancel_url: `${origin}/pricing?checkout=cancel`,
   } as const;
 
@@ -74,6 +81,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
         metadata: { userId },
       },
+      payment_method_collection: "always",
       metadata: { userId, kind: "subscription", plan: plan.key },
       allow_promotion_codes: true,
     });

@@ -7,8 +7,8 @@ const NOW = new Date("2026-01-01T00:00:00Z");
 const FUTURE = new Date("2026-02-01T00:00:00Z");
 const PAST = new Date("2025-12-01T00:00:00Z");
 
-const proBytes = planByKey("pro")!.storageBytes;
-const starterBytes = planByKey("starter")!.storageBytes;
+const yearlyBytes = planByKey("creator_yearly")!.storageBytes;
+const weeklyBytes = planByKey("creator_weekly")!.storageBytes;
 
 describe("storageQuotaFor", () => {
   it("gives the free-tier quota when there is no subscription", () => {
@@ -20,12 +20,12 @@ describe("storageQuotaFor", () => {
       storageQuotaFor(
         {
           subscriptionStatus: "active",
-          plan: "pro",
+          plan: "creator_yearly",
           currentPeriodEnd: FUTURE,
         },
         NOW,
       ),
-    ).toBe(proBytes);
+    ).toBe(yearlyBytes);
   });
 
   it("grants tier storage during a trial", () => {
@@ -33,12 +33,12 @@ describe("storageQuotaFor", () => {
       storageQuotaFor(
         {
           subscriptionStatus: "trialing",
-          plan: "starter",
+          plan: "creator_weekly",
           currentPeriodEnd: FUTURE,
         },
         NOW,
       ),
-    ).toBe(starterBytes);
+    ).toBe(weeklyBytes);
   });
 
   it("drops a lapsed subscriber back to the free quota", () => {
@@ -47,7 +47,7 @@ describe("storageQuotaFor", () => {
       storageQuotaFor(
         {
           subscriptionStatus: "canceled",
-          plan: "pro",
+          plan: "creator_yearly",
           currentPeriodEnd: FUTURE,
         },
         NOW,
@@ -61,7 +61,7 @@ describe("storageQuotaFor", () => {
       storageQuotaFor(
         {
           subscriptionStatus: "active",
-          plan: "pro",
+          plan: "creator_yearly",
           currentPeriodEnd: PAST,
         },
         NOW,

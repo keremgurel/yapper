@@ -1,5 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { expandIdea } from "@/lib/ideas/expand";
 import type { IdeaInput } from "@/lib/ideas/types";
 
@@ -33,12 +37,16 @@ export async function POST(req: NextRequest): Promise<Response> {
         .filter((p): p is string => typeof p === "string")
         .slice(0, 12)
     : [];
+  const access = await reservePaidActionOrResponse(userId, "expand_idea");
+  if (access.response) return access.response;
+  const { reservation } = access;
 
   try {
     const expansion = await expandIdea(input, pillars);
-    return Response.json({ expansion });
+    return Response.json({ expansion, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "expand_failed";
+    await refundCreditReservation(userId, reservation, detail);
     const status = detail === "no_provider" ? 501 : 502;
     return Response.json({ error: "expand_failed", detail }, { status });
   }

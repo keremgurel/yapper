@@ -19,7 +19,7 @@ export default function CreditPacks({
     <div>
       <h2 className="sg-display text-2xl">Need more this month?</h2>
       <p className="mt-1 mb-4 text-sm leading-6" style={muted}>
-        Top up any time. Credits stack on top of your monthly allotment.
+        Member top-ups never expire and stack on top of your included credits.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         {CREDIT_PACKS.map((pack) => (

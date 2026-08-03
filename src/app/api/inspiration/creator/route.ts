@@ -1,5 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { detectPlatform, extractHandle } from "@/lib/inspiration/platform";
 import { scrapeCreator } from "@/lib/inspiration/apify";
 import { rankByOutlier } from "@/lib/inspiration/outliers";
@@ -31,6 +35,9 @@ export async function POST(req: Request) {
 
   const platform = detectPlatform(url);
   const handle = extractHandle(url) ?? undefined;
+  const access = await reservePaidActionOrResponse(userId, "creator_analysis");
+  if (access.response) return access.response;
+  const { reservation } = access;
 
   try {
     const scrape = await scrapeCreator(platform, url, handle);
@@ -40,9 +47,11 @@ export async function POST(req: Request) {
       avatar: scrape.avatar,
       videos,
       scrapedAt: Date.now(),
+      balance: reservation.balance,
     });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "scrape_failed";
+    await refundCreditReservation(userId, reservation, detail);
     // Soft-fail: the creator still saves, just without a feed yet.
     return NextResponse.json({ videos: [], error: detail }, { status: 200 });
   }

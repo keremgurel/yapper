@@ -1,112 +1,120 @@
 /**
- * Subscription + top-up catalog. The plan *shape* lives here; the actual Stripe
- * price IDs come from env so they can differ per environment and be swapped
- * without a deploy. Final prices/credit allotments are tuned on measured COGS
- * (see docs/product-vision.md §7); the numbers here are placeholders and the
- * Stripe price is the source of truth for the amount charged.
+ * Launch catalog: one Creator membership with three billing cadences. Keeping
+ * the capabilities identical makes the decision about commitment, not which
+ * parts of the product a creator is allowed to use.
  *
- * To go live: create the products/prices in Stripe, then set the env vars.
+ * Price IDs are environment-specific. Stripe is the source of truth for the
+ * amount charged; these labels are the matching product copy.
  */
 
-export type PlanKey = "starter" | "plus" | "pro";
+export type PlanKey = "creator_weekly" | "creator_monthly" | "creator_yearly";
 
-/** 1 GiB in bytes, for the per-tier storage quotas below. */
 const GB = 1024 * 1024 * 1024;
 
 export interface SubscriptionPlan {
   key: PlanKey;
   name: string;
-  /** Stripe price id (recurring). Empty string when unconfigured. */
+  cadence: "week" | "month" | "year";
+  cadenceLabel: string;
   priceId: string;
-  /** Credits granted on each successful billing period (and on trial start). */
-  monthlyCredits: number;
-  /**
-   * Included media storage for this tier, in bytes. A hard cap: when a save
-   * would exceed it the write is rejected and the user deletes clips or upgrades
-   * (iCloud style). No metered overage. See storageQuotaFor.
-   */
+  includedCredits: number;
   storageBytes: number;
-  /** Display-only; Stripe's price is authoritative for the charge. */
   priceLabel: string;
-  /** Display-only storage line, e.g. "25 GB". */
   storageLabel: string;
   blurb: string;
+  badge?: string;
 }
 
 export interface CreditPack {
-  key: string;
+  key: "credits_100" | "credits_300" | "credits_1000";
   name: string;
   priceId: string;
   credits: number;
   priceLabel: string;
 }
 
-/** Free trial length, in days, applied to a new subscription. */
+/** A card is collected before the trial starts; the first real charge is day 8. */
 export const TRIAL_DAYS = 7;
 
 export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
   {
-    key: "starter",
-    name: "Starter",
-    priceId: process.env.STRIPE_PRICE_STARTER ?? "",
-    monthlyCredits: 100,
+    key: "creator_weekly",
+    name: "Weekly",
+    cadence: "week",
+    cadenceLabel: "per week",
+    priceId: process.env.STRIPE_PRICE_CREATOR_WEEKLY ?? "",
+    includedCredits: 100,
     storageBytes: 25 * GB,
-    priceLabel: "$9.99/mo",
+    priceLabel: "$7.99",
     storageLabel: "25 GB",
     blurb:
-      "For creators finding their voice: a few videos a week with room to grow.",
+      "Maximum flexibility. Pause or cancel whenever your posting rhythm changes.",
   },
   {
-    key: "plus",
-    name: "Plus",
-    priceId: process.env.STRIPE_PRICE_PLUS ?? "",
-    monthlyCredits: 400,
-    storageBytes: 150 * GB,
-    priceLabel: "$24.99/mo",
-    storageLabel: "150 GB",
-    blurb: "For consistent posters: daily feedback and generation headroom.",
+    key: "creator_monthly",
+    name: "Monthly",
+    cadence: "month",
+    cadenceLabel: "per month",
+    priceId: process.env.STRIPE_PRICE_CREATOR_MONTHLY ?? "",
+    includedCredits: 500,
+    storageBytes: 50 * GB,
+    priceLabel: "$24.99",
+    storageLabel: "50 GB",
+    blurb: "The best fit for creators posting consistently every week.",
+    badge: "Most popular",
   },
   {
-    key: "pro",
-    name: "Pro",
-    priceId: process.env.STRIPE_PRICE_PRO ?? "",
-    monthlyCredits: 1000,
-    storageBytes: 500 * GB,
-    priceLabel: "$49.99/mo",
-    storageLabel: "500 GB",
-    blurb: "For power users: high-volume feedback, scripts, and storage.",
+    key: "creator_yearly",
+    name: "Yearly",
+    cadence: "year",
+    cadenceLabel: "per year",
+    priceId: process.env.STRIPE_PRICE_CREATOR_YEARLY ?? "",
+    includedCredits: 6000,
+    storageBytes: 100 * GB,
+    priceLabel: "$199.99",
+    storageLabel: "100 GB",
+    blurb:
+      "Eight months of the monthly price, with a full year of creation headroom.",
+    badge: "Save 33%",
   },
 ];
 
 export const CREDIT_PACKS: CreditPack[] = [
-  // Priced per-credit above the subscription rate on purpose: top-ups are the
-  // convenience option, the subscription is the value option.
   {
-    key: "pack_small",
-    name: "20 credits",
-    priceId: process.env.STRIPE_PRICE_PACK_SMALL ?? "",
-    credits: 20,
+    key: "credits_100",
+    name: "100 credits",
+    priceId: process.env.STRIPE_PRICE_CREDITS_100 ?? "",
+    credits: 100,
     priceLabel: "$9",
   },
   {
-    key: "pack_large",
-    name: "60 credits",
-    priceId: process.env.STRIPE_PRICE_PACK_LARGE ?? "",
-    credits: 60,
-    priceLabel: "$22",
+    key: "credits_300",
+    name: "300 credits",
+    priceId: process.env.STRIPE_PRICE_CREDITS_300 ?? "",
+    credits: 300,
+    priceLabel: "$19",
+  },
+  {
+    key: "credits_1000",
+    name: "1,000 credits",
+    priceId: process.env.STRIPE_PRICE_CREDITS_1000 ?? "",
+    credits: 1000,
+    priceLabel: "$49",
   },
 ];
 
 export function planByKey(key: string | null | undefined) {
-  return SUBSCRIPTION_PLANS.find((p) => p.key === key);
+  return SUBSCRIPTION_PLANS.find((plan) => plan.key === key);
 }
 
 export function planByPriceId(priceId: string | null | undefined) {
   if (!priceId) return undefined;
-  return SUBSCRIPTION_PLANS.find((p) => p.priceId && p.priceId === priceId);
+  return SUBSCRIPTION_PLANS.find(
+    (plan) => plan.priceId && plan.priceId === priceId,
+  );
 }
 
 export function packByPriceId(priceId: string | null | undefined) {
   if (!priceId) return undefined;
-  return CREDIT_PACKS.find((p) => p.priceId && p.priceId === priceId);
+  return CREDIT_PACKS.find((pack) => pack.priceId && pack.priceId === priceId);
 }

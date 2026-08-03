@@ -1,6 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
+import {
   brainstorm,
   type ChatMessage,
   type ClipContext,
@@ -39,6 +43,9 @@ export async function POST(req: NextRequest): Promise<Response> {
         12,
       )
     : [];
+  const access = await reservePaidActionOrResponse(userId, "brainstorm");
+  if (access.response) return access.response;
+  const { reservation } = access;
 
   try {
     const reply = await brainstorm({
@@ -46,9 +53,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       clip,
       pillars,
     });
-    return Response.json({ reply });
+    return Response.json({ reply, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "brainstorm_failed";
+    await refundCreditReservation(userId, reservation, detail);
     return Response.json(
       { error: "brainstorm_failed", detail },
       { status: 502 },

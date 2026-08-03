@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
 import {
   ChevronDown,
+  CreditCard,
   Clock,
   Layers,
   Lightbulb,
@@ -88,6 +89,12 @@ export default function UserMenu() {
         >
           <Settings className="h-4 w-4" />
           Manage account
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
+          <Link href="/pricing" className="no-underline">
+            <CreditCard className="h-4 w-4" />
+            Membership & credits
+          </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
           <Link href="/history" className="no-underline">

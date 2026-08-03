@@ -1,6 +1,5 @@
-/** The conversational "make your own banger from this clip" assistant. Free
- * (no credits) — the ideation front door; deep script generation stays gated in
- * the workbench. Non-streaming for simplicity: one reply per turn. */
+/** The conversational "make your own banger from this clip" assistant. Each
+ * reply is metered by the API route. Non-streaming for simplicity. */
 
 export interface ChatMessage {
   role: "user" | "assistant";

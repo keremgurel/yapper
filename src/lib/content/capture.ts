@@ -1,7 +1,5 @@
 /** Turn a rough, spoken-or-typed idea into a structured content-library entry.
- * This is the FREE capture funnel (no credits) — light classification + a
- * concise title and starter hooks. The heavy, credited idea generation still
- * lives in the workbench (lib/generate/idea.ts). */
+ * The API route meters this lightweight AI pass at one credit. */
 
 export interface CapturedIdea {
   title: string;

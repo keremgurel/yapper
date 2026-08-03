@@ -73,10 +73,10 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
     // Trial subscriptions are "no_payment_required"; the grant is expected at
     // signup either way (renewals come via invoice.paid).
     const plan = planByKey(session.metadata?.plan);
-    if (plan && plan.monthlyCredits > 0) {
+    if (plan && plan.includedCredits > 0) {
       await grantCreditsIdempotent(
         userId,
-        plan.monthlyCredits,
+        plan.includedCredits,
         "subscription_grant",
         `sess_${session.id}`,
         { plan: plan.key, source: "checkout" },
@@ -148,10 +148,10 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       break;
     }
   }
-  if (!plan || plan.monthlyCredits <= 0) return;
+  if (!plan || plan.includedCredits <= 0) return;
   await grantCreditsIdempotent(
     userId,
-    plan.monthlyCredits,
+    plan.includedCredits,
     "subscription_grant",
     `inv_${invoice.id}`,
     { plan: plan.key, source: "renewal" },

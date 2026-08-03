@@ -16,7 +16,7 @@ export default function CurrentPlanBanner() {
   const label = status.trialing
     ? "Free trial"
     : plan
-      ? `${plan.name} plan`
+      ? `Creator · ${plan.name}`
       : "Subscribed";
 
   return (

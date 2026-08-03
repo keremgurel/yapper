@@ -1,5 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
+import {
   alignCleanedToContiguousTakes,
   cutsOutsideKeptTakes,
 } from "@/lib/studio/contiguous-take-alignment";
@@ -34,6 +38,9 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const rawText = words.map((w) => w.text).join(" ");
+  const access = await reservePaidActionOrResponse(userId, "clean_transcript");
+  if (access.response) return access.response;
+  const { reservation } = access;
   const complete = async (system: string, user: string): Promise<string> => {
     const res = await fetch(`${base}/chat/completions`, {
       method: "POST",
@@ -57,23 +64,32 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     const draft = await complete(CLEAN_TRANSCRIPT_SYSTEM_PROMPT, rawText);
-    if (!draft.trim()) return Response.json({ cuts: [] });
+    if (!draft.trim())
+      return Response.json({ cuts: [], balance: reservation.balance });
     const cleaned = await complete(
       CLEAN_TRANSCRIPT_CRITIC_PROMPT,
       `ORIGINAL:\n${rawText}\n\nBAD DRAFT:\n${draft}`,
     );
-    if (!cleaned.trim()) return Response.json({ cuts: [] });
+    if (!cleaned.trim())
+      return Response.json({ cuts: [], balance: reservation.balance });
 
     const alignment = alignCleanedToContiguousTakes(words, cleaned);
     // Fail closed. Applying a partial alignment looks like a successful edit
     // while silently deleting content the model intended to keep.
     if (alignment.coverage < 0.92 || alignment.keep.length === 0) {
+      await refundCreditReservation(userId, reservation, "unsafe_alignment");
       return Response.json({ error: "unsafe_alignment" }, { status: 502 });
     }
     return Response.json({
       cuts: cutsOutsideKeptTakes(words.length, alignment.keep),
+      balance: reservation.balance,
     });
   } catch (e) {
+    await refundCreditReservation(
+      userId,
+      reservation,
+      e instanceof Error ? e.message : "ai_failed",
+    );
     return Response.json(
       { error: e instanceof Error ? e.message : "ai_failed" },
       { status: 502 },

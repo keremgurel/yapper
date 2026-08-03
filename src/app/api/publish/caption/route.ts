@@ -1,4 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { getFreshAccessToken } from "@/lib/publish/connection";
 import { generateCaption } from "@/lib/publish/caption";
 import { listYouTubeVideos } from "@/lib/publish/youtube-list";
@@ -23,6 +27,9 @@ export async function POST(req: Request): Promise<Response> {
   if (!body.title?.trim()) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
+  const access = await reservePaidActionOrResponse(userId, "publish_caption");
+  if (access.response) return access.response;
+  const { reservation } = access;
 
   let styleSamples: string[] | undefined;
   if (body.matchStyle) {
@@ -43,8 +50,10 @@ export async function POST(req: Request): Promise<Response> {
       context: body.context,
       styleSamples,
     });
-    return Response.json({ caption });
+    return Response.json({ caption, balance: reservation.balance });
   } catch (e) {
+    const detail = e instanceof Error ? e.message : "generate_failed";
+    await refundCreditReservation(userId, reservation, detail);
     if (e instanceof Error && e.message === "no_provider") {
       return Response.json({ error: "no_provider" }, { status: 501 });
     }

@@ -1,6 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
+import {
   detectKind,
   detectPlatform,
   extractHandle,
@@ -51,50 +55,65 @@ export async function POST(req: Request) {
   const kind = detectKind(url);
   const handle = extractHandle(url) ?? undefined;
   const isWebResource = platform === "unknown";
+  const access = await reservePaidActionOrResponse(
+    userId,
+    "reference_analysis",
+  );
+  if (access.response) return access.response;
+  const { reservation } = access;
 
-  // Card metadata and source analysis are independent, so start both together.
-  // Instagram needs a direct media URL before Deepgram can hear the Reel.
-  const sourceDetailsPromise: Promise<SourceDetails> = isWebResource
-    ? resolveWrittenReference(url)
-    : kind === "video" && platform === "youtube"
-      ? resolveYouTubeReference(url)
-      : kind === "video" && platform === "instagram"
-        ? resolveInstagramReference(url)
-        : kind === "video" && platform === "tiktok"
-          ? resolveTikTokReference(url)
-          : Promise.resolve({ transcript: null });
-  const metadataPromise: Promise<Partial<ResolvedLink>> = isWebResource
-    ? Promise.resolve({})
-    : resolveMetadata(platform, url);
-  const [meta, sourceDetails] = await Promise.all([
-    metadataPromise,
-    sourceDetailsPromise,
-  ]);
+  try {
+    // Card metadata and source analysis are independent, so start both together.
+    // Instagram needs a direct media URL before Deepgram can hear the Reel.
+    const sourceDetailsPromise: Promise<SourceDetails> = isWebResource
+      ? resolveWrittenReference(url)
+      : kind === "video" && platform === "youtube"
+        ? resolveYouTubeReference(url)
+        : kind === "video" && platform === "instagram"
+          ? resolveInstagramReference(url)
+          : kind === "video" && platform === "tiktok"
+            ? resolveTikTokReference(url)
+            : Promise.resolve({ transcript: null });
+    const metadataPromise: Promise<Partial<ResolvedLink>> = isWebResource
+      ? Promise.resolve({})
+      : resolveMetadata(platform, url);
+    const [meta, sourceDetails] = await Promise.all([
+      metadataPromise,
+      sourceDetailsPromise,
+    ]);
 
-  const handleLabel = handle ? `@${handle}` : undefined;
+    const handleLabel = handle ? `@${handle}` : undefined;
 
-  const resolved: ResolvedLink =
-    kind === "creator"
-      ? {
-          kind,
-          platform,
-          title: meta.title || handleLabel || creatorFallback(platform),
-          author: handleLabel,
-          handle,
-          thumbnail: meta.thumbnail,
-        }
-      : {
-          kind,
-          platform,
-          title: sourceDetails.title || meta.title || videoFallback(platform),
-          author: meta.author,
-          thumbnail: sourceDetails.thumbnail || meta.thumbnail,
-          transcript: sourceDetails.transcript ?? undefined,
-          summary: sourceDetails.summary,
-          referenceType: sourceDetails.referenceType,
-        };
+    const resolved: ResolvedLink =
+      kind === "creator"
+        ? {
+            kind,
+            platform,
+            title: meta.title || handleLabel || creatorFallback(platform),
+            author: handleLabel,
+            handle,
+            thumbnail: meta.thumbnail,
+          }
+        : {
+            kind,
+            platform,
+            title: sourceDetails.title || meta.title || videoFallback(platform),
+            author: meta.author,
+            thumbnail: sourceDetails.thumbnail || meta.thumbnail,
+            transcript: sourceDetails.transcript ?? undefined,
+            summary: sourceDetails.summary,
+            referenceType: sourceDetails.referenceType,
+          };
 
-  return NextResponse.json(resolved);
+    return NextResponse.json({ ...resolved, balance: reservation.balance });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "resolve_failed";
+    await refundCreditReservation(userId, reservation, detail);
+    return NextResponse.json(
+      { error: "resolve_failed", detail },
+      { status: 502 },
+    );
+  }
 }
 
 async function resolveYouTubeReference(url: string): Promise<SourceDetails> {

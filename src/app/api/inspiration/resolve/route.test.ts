@@ -10,6 +10,17 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "user_test" }),
 }));
+vi.mock("@/lib/billing/actions", () => ({
+  reservePaidActionOrResponse: vi.fn().mockResolvedValue({
+    reservation: {
+      action: "reference_analysis",
+      cost: 2,
+      balance: 98,
+      usageId: "usage_test",
+    },
+  }),
+  refundCreditReservation: vi.fn(),
+}));
 vi.mock("@/lib/inspiration/apify", () => ({
   resolveInstagramMedia: mocks.resolveInstagramMedia,
   resolveTikTokMedia: mocks.resolveTikTokMedia,

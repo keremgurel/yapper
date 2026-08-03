@@ -1,4 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
+import {
+  refundCreditReservation,
+  reservePaidActionOrResponse,
+} from "@/lib/billing/actions";
 import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
 import type { RawWord } from "@/lib/studio/transcribe-remote";
 
@@ -75,6 +79,10 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
 
+  const access = await reservePaidActionOrResponse(userId, "transcribe");
+  if (access.response) return access.response;
+  const { reservation } = access;
+
   let lastError: unknown;
   for (const provider of providers) {
     try {
@@ -82,6 +90,7 @@ export async function POST(req: Request): Promise<Response> {
       if (isAudioTruncated(expectedDuration, heardSec)) {
         // The ASR heard less than the client sent: the body was truncated in
         // transit. Refuse rather than return a transcript missing its tail.
+        await refundCreditReservation(userId, reservation, "audio_truncated");
         return Response.json(
           {
             error: "audio_truncated",
@@ -91,12 +100,17 @@ export async function POST(req: Request): Promise<Response> {
           { status: 413 },
         );
       }
-      return Response.json({ words });
+      return Response.json({ words, balance: reservation.balance });
     } catch (e) {
       lastError = e;
       console.error(`[transcribe] ${provider.name} failed`, e);
     }
   }
+  await refundCreditReservation(
+    userId,
+    reservation,
+    lastError instanceof Error ? lastError.message : "transcribe_failed",
+  );
   return Response.json(
     {
       error:

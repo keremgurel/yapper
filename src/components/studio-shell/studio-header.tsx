@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { studioNav } from "@/data/studio-nav";
 import { useOptionalEditorLayout } from "@/components/studio/editor-layout-context";
 import UserMenu from "@/components/account/user-menu";
+import BillingStatusButton from "@/components/billing/billing-status-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -118,6 +119,7 @@ export default function StudioHeader() {
           </DropdownMenu>
         )}
         <Show when="signed-in">
+          <BillingStatusButton />
           <UserMenu />
         </Show>
         <button
