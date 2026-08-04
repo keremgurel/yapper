@@ -207,6 +207,54 @@ struct EditorProjectTests {
         #expect(project.transcriptWord(at: 4)?.id != deleted.id)
     }
 
+    @Test func nativeCaptionsFollowTheEditedTimelineAndExcludeCutWords() {
+        let mediaID = UUID()
+        let words = [
+            TranscriptWord(mediaID: mediaID, text: "This", start: 0.10, end: 0.30),
+            TranscriptWord(mediaID: mediaID, text: "stays.", start: 0.38, end: 0.64),
+            TranscriptWord(mediaID: mediaID, text: "deleted", start: 1.30, end: 1.65),
+            TranscriptWord(mediaID: mediaID, text: "Still", start: 2.10, end: 2.32),
+            TranscriptWord(mediaID: mediaID, text: "here", start: 2.40, end: 2.64),
+        ]
+        let project = EditorProject(
+            media: [
+                ProjectMedia(
+                    id: mediaID,
+                    url: URL(filePath: "/tmp/caption-test.mp4"),
+                    name: "caption-test.mp4",
+                    duration: 3,
+                    width: 1080,
+                    height: 1920,
+                    hasAudio: true
+                ),
+            ],
+            clips: [
+                TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1),
+                TimelineClip(mediaID: mediaID, sourceStart: 2, sourceEnd: 3),
+            ],
+            transcript: words,
+            captionsEnabled: true
+        )
+
+        #expect(project.captionCues.map(\.text) == ["This stays.", "Still here"])
+        #expect(project.captionCues[1].timelineStart < 1.11)
+        #expect(project.captionCues[1].timelineStart > 1.05)
+        #expect(project.captionCue(at: 0.2)?.text == "This stays.")
+        #expect(!project.captionCues.map(\.text).joined().contains("deleted"))
+    }
+
+    @Test func nativeCaptionsRemainOffUntilEnabled() {
+        let mediaID = UUID()
+        let project = EditorProject(
+            clips: [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)],
+            transcript: [
+                TranscriptWord(mediaID: mediaID, text: "Hidden", start: 0.1, end: 0.4),
+            ]
+        )
+
+        #expect(project.captionCues.isEmpty)
+    }
+
     @Test func transcriptSelectionMatchesWebRangeAndAdditiveGestures() {
         let ids = (0..<6).map { _ in UUID() }
         var selection = TranscriptWordSelection()

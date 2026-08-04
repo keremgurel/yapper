@@ -15,6 +15,7 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
     case removingRetakes
     case cuttingPauses
     case trimmingSilence
+    case addingCaptions
 
     var title: String {
         switch self {
@@ -23,6 +24,7 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
         case .removingRetakes: "Removing mistakes & retakes"
         case .cuttingPauses: "Cutting pauses"
         case .trimmingSilence: "Trimming silence"
+        case .addingCaptions: "Adding captions"
         }
     }
 }
@@ -1064,14 +1066,64 @@ final class EditorSession: ObservableObject {
                 project = original
                 throw NativeEditorError.aiFailed("The proposed edit was empty, so the original was restored.")
             }
+            setOneClickEditStage(.addingCaptions)
+            project.captionsEnabled = true
             selectedClipID = project.clips.first?.id
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
             await persist()
             recordHistory(before: original)
-            statusMessage = "1-Click Edit complete · \(project.clips.count) clips"
+            statusMessage = "1-Click Edit + captions complete · \(project.clips.count) clips"
         } catch {
             project = original
+            show(error)
+        }
+    }
+
+    func addCaptions() async {
+        guard !project.clips.isEmpty, !isAIEditing else { return }
+        if project.captionsEnabled == true {
+            let undoSnapshot = prepareUndoSnapshot()
+            project.captionsEnabled = false
+            project.updatedAt = Date()
+            await persist()
+            recordHistory(before: undoSnapshot)
+            statusMessage = "Captions removed"
+            return
+        }
+
+        let undoSnapshot = prepareUndoSnapshot()
+        isAIEditing = true
+        isBusy = true
+        errorMessage = nil
+        defer {
+            isAIEditing = false
+            isBusy = false
+        }
+        do {
+            let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
+            for mediaID in mediaIDs {
+                guard
+                    !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
+                    let media = project.media.first(where: { $0.id == mediaID })
+                else { continue }
+                statusMessage = "Transcribing before adding captions…"
+                let words = try await aiEditService.transcribe(media: media)
+                var transcript = project.transcript ?? []
+                transcript.removeAll { $0.mediaID == mediaID }
+                transcript.append(contentsOf: words)
+                project.transcript = transcript
+            }
+            guard !project.timelineTranscript.isEmpty else {
+                throw NativeEditorError.aiFailed("No spoken words were found to caption.")
+            }
+            project.captionsEnabled = true
+            project.updatedAt = Date()
+            await persist()
+            recordHistory(before: undoSnapshot)
+            statusMessage = "Captions added · \(project.captionCues.count) cards"
+        } catch {
+            project = undoSnapshot
             show(error)
         }
     }
@@ -1392,6 +1444,7 @@ final class EditorSession: ObservableObject {
                 media: availableMedia,
                 clips: saved.clips.filter { availableIDs.contains($0.mediaID) },
                 transcript: saved.transcript?.filter { availableIDs.contains($0.mediaID) },
+                captionsEnabled: saved.captionsEnabled,
                 overlays: saved.overlays?.filter { availableIDs.contains($0.mediaID) },
                 textLayers: saved.textLayers,
                 audioLayers: saved.audioLayers?.filter {

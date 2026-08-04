@@ -250,6 +250,36 @@ struct ReferenceMediaIntegrationTests {
     }
 
     @Test(
+        "DJI export burns native captions without losing audio",
+        .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
+    )
+    func exportsNativeCaptions() async throws {
+        let video = try await MediaProbe.inspect(url: djiReferenceURL)
+        let output = FileManager.default.temporaryDirectory.appending(path: "yapper-caption-check.mp4")
+        defer { try? FileManager.default.removeItem(at: output) }
+
+        let project = EditorProject(
+            name: "Caption export check",
+            media: [video],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 20, sourceEnd: 23)],
+            transcript: [
+                TranscriptWord(mediaID: video.id, text: "Native", start: 20.25, end: 20.55),
+                TranscriptWord(mediaID: video.id, text: "captions", start: 20.60, end: 20.95),
+                TranscriptWord(mediaID: video.id, text: "export.", start: 21.0, end: 21.35),
+            ],
+            captionsEnabled: true
+        )
+
+        #expect(project.captionCues.map(\.text) == ["Native captions export."])
+        try await ExportService.export(project: project, to: output)
+
+        let rendered = AVURLAsset(url: output)
+        #expect(try await rendered.loadTracks(withMediaType: .video).count == 1)
+        #expect(try await rendered.loadTracks(withMediaType: .audio).count == 1)
+        #expect(abs(try await rendered.load(.duration).seconds - 3) < 0.15)
+    }
+
+    @Test(
         "DJI export mixes a native sound effect with source audio",
         .enabled(if: FileManager.default.fileExists(atPath: djiReferenceURL.path))
     )

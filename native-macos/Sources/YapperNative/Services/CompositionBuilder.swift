@@ -153,6 +153,7 @@ enum CompositionBuilder {
         applyVisualLayers(
             project.overlays ?? [],
             textLayers: project.textLayers ?? [],
+            captions: project.captionCues,
             project: project,
             renderSize: renderSize,
             duration: cursor.seconds,
@@ -232,6 +233,7 @@ enum CompositionBuilder {
     private static func applyVisualLayers(
         _ overlays: [ProjectOverlay],
         textLayers: [ProjectTextLayer],
+        captions: [ProjectCaptionCue],
         project: EditorProject,
         renderSize: CGSize,
         duration: Double,
@@ -246,7 +248,7 @@ enum CompositionBuilder {
             else { return nil }
             return (overlay, media, cgImage)
         }
-        guard (!imageOverlays.isEmpty || !textLayers.isEmpty), duration > 0 else { return }
+        guard (!imageOverlays.isEmpty || !textLayers.isEmpty || !captions.isEmpty), duration > 0 else { return }
 
         let videoLayer = CALayer()
         videoLayer.frame = CGRect(origin: .zero, size: renderSize)
@@ -356,6 +358,66 @@ enum CompositionBuilder {
                 to: container,
                 start: text.timelineStart,
                 layerDuration: text.duration,
+                compositionDuration: duration
+            )
+            parentLayer.addSublayer(container)
+        }
+
+        for caption in captions where !caption.text.isEmpty && caption.duration > 0 {
+            let fontSize = max(22, renderSize.height * 0.046)
+            let font = textFont(for: .rounded, size: fontSize)
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.lineBreakMode = .byWordWrapping
+            let attributed = NSAttributedString(
+                string: caption.text,
+                attributes: [
+                    .font: font,
+                    .foregroundColor: NSColor.white,
+                    .paragraphStyle: paragraph,
+                ]
+            )
+            let maximumTextWidth = renderSize.width * 0.84
+            let measured = attributed.boundingRect(
+                with: CGSize(width: maximumTextWidth, height: fontSize * 2.8),
+                options: [.usesLineFragmentOrigin, .usesFontLeading]
+            )
+            let horizontalPadding = fontSize * 0.52
+            let verticalPadding = fontSize * 0.30
+            let boxSize = CGSize(
+                width: min(renderSize.width * 0.90, max(fontSize * 2.4, ceil(measured.width) + horizontalPadding * 2)),
+                height: min(fontSize * 3.1, max(fontSize * 1.45, ceil(measured.height) + verticalPadding * 2))
+            )
+            let container = CALayer()
+            container.frame = CGRect(
+                x: (renderSize.width - boxSize.width) / 2,
+                y: renderSize.height * 0.18 - boxSize.height / 2,
+                width: boxSize.width,
+                height: boxSize.height
+            )
+            container.backgroundColor = NSColor.black.withAlphaComponent(0.86).cgColor
+            container.cornerRadius = max(8, fontSize * 0.30)
+            container.shadowColor = NSColor.black.cgColor
+            container.shadowOpacity = 0.34
+            container.shadowRadius = max(3, fontSize * 0.08)
+            container.shadowOffset = CGSize(width: 0, height: -2)
+
+            let textLayer = CATextLayer()
+            textLayer.contentsScale = 2
+            textLayer.isWrapped = true
+            textLayer.alignmentMode = .center
+            textLayer.string = attributed
+            textLayer.frame = CGRect(
+                x: horizontalPadding,
+                y: verticalPadding,
+                width: boxSize.width - horizontalPadding * 2,
+                height: boxSize.height - verticalPadding * 2
+            )
+            container.addSublayer(textLayer)
+            applyVisibility(
+                to: container,
+                start: caption.timelineStart,
+                layerDuration: caption.duration,
                 compositionDuration: duration
             )
             parentLayer.addSublayer(container)

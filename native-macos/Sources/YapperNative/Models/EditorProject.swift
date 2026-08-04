@@ -80,6 +80,18 @@ struct TranscriptWord: Codable, Equatable, Identifiable, Sendable {
     var midpoint: Double { (start + end) / 2 }
 }
 
+struct ProjectCaptionCue: Equatable, Sendable {
+    var text: String
+    var timelineStart: Double
+    var timelineEnd: Double
+
+    var duration: Double { max(0, timelineEnd - timelineStart) }
+
+    func isVisible(at time: Double) -> Bool {
+        time >= timelineStart && time < timelineEnd
+    }
+}
+
 struct TranscriptSourceRange: Equatable, Sendable {
     var mediaID: UUID
     var start: Double
@@ -384,6 +396,7 @@ struct EditorProject: Codable, Equatable, Sendable {
     var media: [ProjectMedia]
     var clips: [TimelineClip]
     var transcript: [TranscriptWord]?
+    var captionsEnabled: Bool?
     var overlays: [ProjectOverlay]?
     var textLayers: [ProjectTextLayer]?
     var audioLayers: [ProjectAudioLayer]?
@@ -397,6 +410,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         media: [ProjectMedia] = [],
         clips: [TimelineClip] = [],
         transcript: [TranscriptWord]? = nil,
+        captionsEnabled: Bool? = nil,
         overlays: [ProjectOverlay]? = nil,
         textLayers: [ProjectTextLayer]? = nil,
         audioLayers: [ProjectAudioLayer]? = nil,
@@ -409,6 +423,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.media = media
         self.clips = clips
         self.transcript = transcript
+        self.captionsEnabled = captionsEnabled
         self.overlays = overlays
         self.textLayers = textLayers
         self.audioLayers = audioLayers
@@ -442,6 +457,80 @@ struct EditorProject: Codable, Equatable, Sendable {
     var timelineTranscript: [TranscriptWord] {
         let activeMediaIDs = Set(clips.map(\.mediaID))
         return (transcript ?? []).filter { activeMediaIDs.contains($0.mediaID) }
+    }
+
+    /// Short, readable spoken-caption cards derived from the edited timeline.
+    /// Keeping cues derived from timed words means trims and restored cuts can
+    /// never leave stale captions behind, while the persisted opt-in survives
+    /// project reloads.
+    var captionCues: [ProjectCaptionCue] {
+        guard captionsEnabled == true else { return [] }
+        let timedWords = timelineTranscript.compactMap { word -> (String, Double, Double)? in
+            guard
+                isWordKept(word),
+                let start = timelineTime(for: word)
+            else { return nil }
+            let clean = word.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !clean.isEmpty else { return nil }
+            let end = min(duration, start + max(0.12, word.end - word.start))
+            return (clean, start, end)
+        }
+        .sorted { left, right in
+            if abs(left.1 - right.1) > 0.000_1 { return left.1 < right.1 }
+            return left.2 < right.2
+        }
+        guard !timedWords.isEmpty else { return [] }
+
+        var cues: [ProjectCaptionCue] = []
+        var words: [String] = []
+        var cueStart = 0.0
+        var cueEnd = 0.0
+
+        func closesSentence(_ text: String) -> Bool {
+            text.hasSuffix(".") || text.hasSuffix("!") || text.hasSuffix("?")
+        }
+
+        func flush() {
+            guard !words.isEmpty else { return }
+            cues.append(
+                ProjectCaptionCue(
+                    text: words.joined(separator: " "),
+                    timelineStart: max(0, cueStart - 0.025),
+                    timelineEnd: min(duration, max(cueStart + 0.18, cueEnd + 0.10))
+                )
+            )
+            words.removeAll(keepingCapacity: true)
+            cueEnd = 0
+        }
+
+        for (text, start, end) in timedWords {
+            let candidateLength = words.joined(separator: " ").count + (words.isEmpty ? 0 : 1) + text.count
+            let shouldBreak = !words.isEmpty && (
+                start - cueEnd > 0.48
+                    || words.count >= 4
+                    || candidateLength > 34
+                    || end - cueStart > 2.35
+                    || closesSentence(words.last ?? "")
+            )
+            if shouldBreak { flush() }
+            if words.isEmpty { cueStart = start }
+            words.append(text)
+            cueEnd = max(cueEnd, end)
+        }
+        flush()
+
+        // Never show two cards simultaneously at a fast phrase boundary.
+        for index in cues.indices.dropLast() {
+            cues[index].timelineEnd = min(
+                cues[index].timelineEnd,
+                max(cues[index].timelineStart + 0.12, cues[index + 1].timelineStart)
+            )
+        }
+        return cues
+    }
+
+    func captionCue(at timelineTime: Double) -> ProjectCaptionCue? {
+        captionCues.first { $0.isVisible(at: timelineTime) }
     }
 
     func media(for clip: TimelineClip) -> ProjectMedia? {

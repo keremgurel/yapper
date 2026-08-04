@@ -31,6 +31,8 @@ struct PlayerPanel: View {
                         }
 
                         TextLayerCanvasOverlay(session: session)
+                        CaptionCanvasOverlay(session: session)
+                            .allowsHitTesting(false)
                     }
                     .frame(width: stageSize.width, height: stageSize.height)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -61,6 +63,41 @@ struct PlayerPanel: View {
             return CGSize(width: available.height * aspect, height: available.height)
         }
         return CGSize(width: available.width, height: available.width / aspect)
+    }
+}
+
+private struct CaptionCanvasOverlay: View {
+    @ObservedObject var session: EditorSession
+
+    var body: some View {
+        GeometryReader { proxy in
+            if let cue = session.project.captionCue(at: session.currentTime) {
+                Text(cue.text)
+                    .font(
+                        .system(
+                            size: max(13, proxy.size.height * 0.046),
+                            weight: .heavy,
+                            design: .rounded
+                        )
+                    )
+                    .foregroundStyle(Color.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.72)
+                    .padding(.horizontal, max(9, proxy.size.width * 0.026))
+                    .padding(.vertical, max(6, proxy.size.height * 0.010))
+                    .background {
+                        RoundedRectangle(cornerRadius: max(6, proxy.size.height * 0.012), style: .continuous)
+                            .fill(Color.black.opacity(0.86))
+                    }
+                    .shadow(color: .black.opacity(0.34), radius: 4, y: 2)
+                    .frame(maxWidth: proxy.size.width * 0.88)
+                    .position(x: proxy.size.width * 0.5, y: proxy.size.height * 0.82)
+                    .transition(.opacity)
+            }
+        }
+        .clipped()
+        .animation(.easeOut(duration: 0.08), value: session.project.captionCue(at: session.currentTime)?.text)
     }
 }
 

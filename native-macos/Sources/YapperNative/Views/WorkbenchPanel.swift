@@ -228,6 +228,8 @@ struct WorkbenchPanel: View {
             AudioWorkbench(session: session)
         case .text:
             TextWorkbench(session: session)
+        case .captions:
+            CaptionWorkbench(session: session)
         default:
             FeatureWorkbench(tab: tab)
         }
@@ -727,19 +729,23 @@ private struct QuickEditWorkbench: View {
                     Task { await session.transcribeProject() }
                 }
                 QuickAction(
-                    title: session.isAIEditing ? "Editing…" : "1-Click Edit",
-                    detail: "Retakes + dead pauses",
+                    title: session.isAIEditing ? "Editing…" : "1-Click Edit + Captions",
+                    detail: "Retakes, pauses + captions",
                     icon: "wand.and.stars",
                     busy: session.isAIEditing
                 ) {
                     Task { await session.runOneClickEdit() }
                 }
                 QuickAction(
-                    title: "Add Captions",
-                    detail: "Not migrated yet",
+                    title: session.project.captionsEnabled == true ? "Remove Captions" : "Add Captions",
+                    detail: session.project.captionsEnabled == true
+                        ? "Hide spoken captions"
+                        : "Generate from transcript",
                     icon: "captions.bubble",
-                    disabled: true
-                ) {}
+                    busy: session.isAIEditing
+                ) {
+                    Task { await session.addCaptions() }
+                }
                 QuickAction(
                     title: "Text Hook",
                     detail: "Add at the playhead",
@@ -761,6 +767,75 @@ private struct QuickEditWorkbench: View {
         }
         .padding(16)
         .inspectorPane(maxWidth: 620)
+    }
+}
+
+private struct CaptionWorkbench: View {
+    @ObservedObject var session: EditorSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "captions.bubble")
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(Color.yapperOrange)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Captions")
+                        .font(.studioSectionTitle)
+                    Text("Timed spoken captions generated from the edited transcript.")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label(
+                        session.project.captionsEnabled == true ? "Captions on" : "Captions off",
+                        systemImage: session.project.captionsEnabled == true
+                            ? "checkmark.circle.fill"
+                            : "circle"
+                    )
+                    .font(.studioBodyStrong)
+                    .foregroundStyle(
+                        session.project.captionsEnabled == true ? Color.yapperOrange : Color.secondary
+                    )
+                    Spacer()
+                    Text("\(session.project.captionCues.count) cards")
+                        .font(.studioCaption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    Task { await session.addCaptions() }
+                } label: {
+                    Label(
+                        session.project.captionsEnabled == true ? "Remove Captions" : "Generate Captions",
+                        systemImage: session.project.captionsEnabled == true ? "captions.bubble.fill" : "wand.and.stars"
+                    )
+                }
+                .buttonStyle(EditorPrimaryButtonStyle())
+                .disabled(session.project.clips.isEmpty || session.isAIEditing)
+
+                Text("Captions update automatically when transcript cuts change and are burned into exported video.")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(14)
+            .frame(maxWidth: 460, alignment: .leading)
+            .background(Color.raisedBackground)
+            .overlay {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.studioLine, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+
+            Spacer()
+        }
+        .padding(16)
+        .inspectorPane(maxWidth: 560)
     }
 }
 
