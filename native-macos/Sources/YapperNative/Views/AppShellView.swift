@@ -54,19 +54,16 @@ struct AppShellView: View {
                         .allowsHitTesting(destination == .editor)
                         .accessibilityHidden(destination != .editor)
 
-                    if destination != .editor {
-                        StudioPageView(
-                            destination: destination,
-                            onNavigate: navigate
-                        )
-                        .id(destination)
-                        .transition(
-                            .asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: 6)),
-                                removal: .opacity.combined(with: .offset(y: -3))
-                            )
-                        )
-                    }
+                    // Keep one authenticated web view alive behind the native
+                    // editor. Clerk refreshes its short-lived session there,
+                    // and native AI uploads read the resulting Yapper cookies.
+                    StudioPageView(
+                        destination: destination == .editor ? .home : destination,
+                        onNavigate: navigate
+                    )
+                    .opacity(destination == .editor ? 0 : 1)
+                    .allowsHitTesting(destination != .editor)
+                    .accessibilityHidden(destination == .editor)
                 }
                 .animation(.easeOut(duration: 0.18), value: destination)
             }

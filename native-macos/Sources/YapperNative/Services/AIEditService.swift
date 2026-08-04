@@ -1,5 +1,6 @@
 @preconcurrency import AVFoundation
 import Foundation
+@preconcurrency import WebKit
 
 enum TranscriptionPCM {
     static func monoSample(sum: Float, channelCount: Int) -> Int16 {
@@ -85,7 +86,9 @@ actor AIEditService {
     }
 
     func cleanCuts(words: [TranscriptWord]) async throws -> [(Int, Int)] {
-        var request = URLRequest(url: defaultBaseURL.appending(path: "api/clean-transcript"))
+        var request = await Self.authenticatedRequest(
+            url: defaultBaseURL.appending(path: "api/clean-transcript")
+        )
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(
@@ -239,7 +242,9 @@ actor AIEditService {
         var lastError: Error?
         for attempt in 0 ..< 3 {
             do {
-                var request = URLRequest(url: baseURL.appending(path: "api/transcribe"))
+                var request = await authenticatedRequest(
+                    url: baseURL.appending(path: "api/transcribe")
+                )
                 request.httpMethod = "POST"
                 request.timeoutInterval = 120
                 request.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
@@ -259,6 +264,42 @@ actor AIEditService {
             }
         }
         throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
+    }
+
+    /// The account session lives in the embedded Cloud Studio WKWebView, while
+    /// native media uploads use URLSession. Those cookie stores are separate,
+    /// so explicitly carry only cookies valid for the Yapper request URL. This
+    /// keeps Clerk authentication on native AI calls without exposing an
+    /// unauthenticated server route or embedding a long-lived secret in the app.
+    private static func authenticatedRequest(url: URL) async -> URLRequest {
+        let cookies = await webSessionCookies()
+        let applicableCookies = cookies.filter { cookie in
+            cookieApplies(cookie, to: url)
+        }
+        var request = URLRequest(url: url)
+        for (header, value) in HTTPCookie.requestHeaderFields(with: applicableCookies) {
+            request.setValue(value, forHTTPHeaderField: header)
+        }
+        return request
+    }
+
+    @MainActor
+    private static func webSessionCookies() async -> [HTTPCookie] {
+        await withCheckedContinuation { continuation in
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies {
+                continuation.resume(returning: $0)
+            }
+        }
+    }
+
+    private static func cookieApplies(_ cookie: HTTPCookie, to url: URL) -> Bool {
+        guard let host = url.host?.lowercased() else { return false }
+        let domain = cookie.domain.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        let hostMatches = host == domain || host.hasSuffix("." + domain)
+        let pathMatches = url.path.hasPrefix(cookie.path)
+        let securityMatches = !cookie.isSecure || url.scheme?.lowercased() == "https"
+        let freshnessMatches = cookie.expiresDate.map { $0 > Date() } ?? true
+        return hostMatches && pathMatches && securityMatches && freshnessMatches
     }
 
     private func mergeTranscribedChunks(
