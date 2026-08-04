@@ -6,7 +6,6 @@ import {
   AppWindowMac,
   ArrowRight,
   Check,
-  Download,
   ExternalLink,
   Film,
   Gauge,
@@ -18,8 +17,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-const DESKTOP_DOWNLOAD_URL =
-  "https://github.com/keremgurel/yapper/releases/download/v0.9.21/Yapper-Studio-macOS.zip";
 const DESKTOP_OPEN_URL = "yapper-studio://open/editor";
 
 const BENEFITS = [
@@ -82,15 +79,9 @@ export default function DesktopEditorGate() {
               <AppWindowMac className="h-4 w-4" />
               {opening ? "Opening Yapper Studio…" : "Open desktop editor"}
             </Button>
-            <Button asChild size="lg" variant="outline">
-              <a href={DESKTOP_DOWNLOAD_URL}>
-                <Download className="h-4 w-4" />
-                Download for Mac
-              </a>
-            </Button>
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            macOS 14 or newer · Apple Silicon · free download
+            Available to approved private-beta installations on macOS.
           </p>
         </div>
 
