@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -17,8 +17,7 @@ import {
 import PlatformIcon from "@/components/publish/platform-icon";
 import { Button } from "@/components/ui/button";
 import { useConnections } from "@/hooks/use-connections";
-import { loadIdeas } from "@/lib/ideas/store";
-import type { Idea } from "@/lib/ideas/types";
+import { listIdeas, type ItemSummary } from "@/lib/ideas/client";
 import { fetchPlatformVideos, type PlatformVideo } from "@/lib/publish/client";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
@@ -49,16 +48,11 @@ function compactNumber(value: number): string {
   }).format(value);
 }
 
-function ideaTitle(idea: Idea): string {
-  return (
-    idea.expansion?.title ||
-    idea.source?.title ||
-    idea.originalTranscript ||
-    "Untitled idea"
-  );
+function ideaTitle(idea: ItemSummary): string {
+  return idea.title || idea.sourceTitle || idea.originalNote || "Untitled idea";
 }
 
-function dailyIdeas(saved: Idea[], topVideo?: RankedVideo): string[] {
+function dailyIdeas(saved: ItemSummary[], topVideo?: RankedVideo): string[] {
   const savedTitles = saved.map(ideaTitle).filter(Boolean).slice(0, 5);
   const now = new Date();
   const day = Math.floor(
@@ -107,15 +101,24 @@ export default function StudioDashboard() {
   const { connections, loading: connectionsLoading } =
     useConnections(!!isSignedIn);
   const [channels, setChannels] = useState<ChannelResult[] | null>(null);
-  const ideaSnapshot = useSyncExternalStore(
-    () => () => undefined,
-    () => JSON.stringify(loadIdeas()),
-    () => "[]",
-  );
-  const ideas = useMemo(
-    () => JSON.parse(ideaSnapshot) as Idea[],
-    [ideaSnapshot],
-  );
+  // The bank lives on the server now, so the dashboard reads it the same way
+  // the Idea Bank does instead of peeking at localStorage.
+  const [ideas, setIdeas] = useState<ItemSummary[]>([]);
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let cancelled = false;
+    listIdeas().then(
+      (rows) => {
+        if (!cancelled) setIdeas(rows);
+      },
+      () => {
+        // The dashboard degrades to its evergreen starters.
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (!isSignedIn) return;

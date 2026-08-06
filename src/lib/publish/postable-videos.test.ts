@@ -1,3 +1,4 @@
+import type { ContentStage } from "@/lib/db/schema";
 import { describe, expect, it } from "vitest";
 import { postableVideos } from "@/lib/publish/postable-videos";
 import type { ContentSummary } from "@/lib/content/client";
@@ -11,6 +12,15 @@ function item(
     scheduledFor: null,
     submissionId: null,
     pillar: null,
+    stage: "library" as ContentStage,
+    ideaType: null,
+    pillarId: null,
+    sourceUrl: null,
+    sourceTitle: null,
+    sourcePlatform: null,
+    transcriptStatus: null,
+    script: null,
+    originalNote: "",
     updatedAt: "2026-07-01T00:00:00.000Z",
     createdAt: "2026-07-01T00:00:00.000Z",
     ...fields,

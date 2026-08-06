@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { getProjectContextSafe } from "@/lib/content/project-context-server";
 import type { NextRequest } from "next/server";
 import { GENERATE_CREDITS } from "@/lib/db/constants";
 import {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     topic: str(body.topic, 500),
     sourceTitle: str(body.sourceTitle, 300),
     transcript: str(body.transcript, 8000),
+    context: (await getProjectContextSafe(userId)).block,
   };
 
   let idea;

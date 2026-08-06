@@ -9,6 +9,7 @@ import {
   type ChatMessage,
   type ClipContext,
 } from "@/lib/content/brainstorm";
+import { getProjectContextSafe } from "@/lib/content/project-context-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -43,6 +44,9 @@ export async function POST(req: NextRequest): Promise<Response> {
         12,
       )
     : [];
+  // Read server-side: a client must not be able to claim a different voice.
+  const context = await getProjectContextSafe(userId);
+
   const access = await reservePaidActionOrResponse(userId, "brainstorm");
   if (access.response) return access.response;
   const { reservation } = access;
@@ -51,7 +55,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     const reply = await brainstorm({
       messages: asMessages(body.messages),
       clip,
-      pillars,
+      pillars: context.pillarNames.length ? context.pillarNames : pillars,
+      context: context.block,
     });
     return Response.json({ reply, balance: reservation.balance });
   } catch (e) {

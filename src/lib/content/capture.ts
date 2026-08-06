@@ -1,3 +1,5 @@
+import { projectContextSection } from "@/lib/content/project-context";
+
 /** Turn a rough, spoken-or-typed idea into a structured content-library entry.
  * The API route meters this lightweight AI pass at one credit. */
 
@@ -16,6 +18,9 @@ export interface CaptureInput {
   text: string;
   /** The user's existing content pillars, so we classify into one they use. */
   pillars?: string[];
+  /** The creator's compiled standing context. Classification only needs the
+   * pillars tier, so this stays cheap. */
+  context?: string;
 }
 
 const SYSTEM =
@@ -80,8 +85,13 @@ export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {
   const model = process.env.GENERATE_MODEL ?? "gpt-5.4-mini";
 
   const pillars = (input.pillars ?? []).slice(0, 12);
+  // Pillars ride in the context block when there is one, so naming them again
+  // in the user message would just pay for the same tokens twice.
+  const system = SYSTEM + projectContextSection(input.context ?? "");
   const userMsg = [
-    pillars.length ? `My content pillars: ${pillars.join(", ")}` : "",
+    !input.context && pillars.length
+      ? `My content pillars: ${pillars.join(", ")}`
+      : "",
     `Rough idea:\n${text.slice(0, 4000)}`,
   ]
     .filter(Boolean)
@@ -98,7 +108,7 @@ export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {
       temperature: 0.7,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM },
+        { role: "system", content: system },
         { role: "user", content: userMsg },
       ],
     }),

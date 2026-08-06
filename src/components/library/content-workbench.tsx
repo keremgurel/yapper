@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useContentItem } from "@/hooks/use-content-item";
 import { useIdeaGeneration } from "@/hooks/use-idea-generation";
 import { defaultScheduleDate, deleteContent } from "@/lib/content/client";
+import { hookTexts, mergeHookTexts } from "@/lib/content/normalize";
 import type { SaveState } from "@/hooks/use-autosave";
 
 function SaveIndicator({ state }: { state: SaveState }) {
@@ -57,13 +58,9 @@ export default function ContentWorkbench({ id }: { id: string }) {
     runIdea,
     runScript,
   } = useIdeaGeneration(
-    item ?? {
-      title: "",
-      hooks: [],
-      points: [],
-      example: "",
-      cta: "",
-    },
+    item
+      ? { ...item, hooks: hookTexts(item.hooks) }
+      : { title: "", hooks: [], points: [], example: "", cta: "" },
     update,
   );
 
@@ -125,7 +122,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
               Record
             </Link>
           </Button>
-          <CopyScriptButton idea={item} />
+          <CopyScriptButton idea={{ ...item, hooks: hookTexts(item.hooks) }} />
           <Button
             type="button"
             variant="ghost"
@@ -234,8 +231,10 @@ export default function ContentWorkbench({ id }: { id: string }) {
           <CardContent className="space-y-6">
             <EditableList
               label="Hook options"
-              items={item.hooks}
-              onChange={(hooks) => update({ hooks })}
+              items={hookTexts(item.hooks)}
+              onChange={(texts) =>
+                update({ hooks: mergeHookTexts(item.hooks, texts) })
+              }
               addLabel="Add hook"
               placeholder="An opening line that stops the scroll"
             />

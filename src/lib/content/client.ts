@@ -1,42 +1,77 @@
-import type { ContentStatus } from "@/lib/db/schema";
+import type {
+  ContentBlock,
+  ContentHook,
+  ContentStage,
+  ContentStatus,
+  IdeaTypeValue,
+  TranscriptStatus,
+} from "@/lib/db/schema";
 
 /** Row shape from GET /api/content (list summaries). */
 export interface ContentSummary {
   id: string;
   title: string;
   status: ContentStatus;
+  /** Which surface the item lives on. Both surfaces share this row shape. */
+  stage: ContentStage;
+  ideaType: IdeaTypeValue | null;
   scheduledFor: string | null;
   submissionId: string | null;
   /** The content pillar this idea is classified under (shown as a chip). */
   pillar: string | null;
+  pillarId: string | null;
+  sourceUrl: string | null;
+  sourceTitle: string | null;
+  sourcePlatform: string | null;
+  transcriptStatus: TranscriptStatus | null;
+  script: string | null;
+  originalNote: string;
   updatedAt: string;
   createdAt: string;
 }
 
 /** Full row from GET /api/content/[id]. */
 export interface ContentDetail extends ContentSummary {
-  hooks: string[];
+  /** Always the normalized shape: the API widens legacy string hooks on read. */
+  hooks: ContentHook[];
+  blocks: ContentBlock[];
+  format: string | null;
+  summary: string | null;
+  sourceTranscript: string | null;
+  sourceSummary: string | null;
+  sourceReferenceType: string | null;
+  // Legacy body columns, still read through the normalizer for old rows.
   points: string[];
   example: string;
   cta: string;
-  script: string | null;
-  sourceUrl: string | null;
-  sourceTitle: string | null;
 }
 
 /** Fields a client can write (mirrors the API's parseContentInput). */
 export interface ContentPatch {
   title?: string;
-  hooks?: string[];
+  hooks?: ContentHook[] | string[];
+  blocks?: ContentBlock[];
+  // Legacy body columns. Still writable while the old workbench editors exist;
+  // removed once the flexible body replaces them.
   points?: string[];
   example?: string;
   cta?: string;
+  originalNote?: string;
+  format?: string | null;
+  summary?: string | null;
   script?: string | null;
   status?: ContentStatus;
+  stage?: ContentStage;
   pillar?: string | null;
+  pillarId?: string | null;
   scheduledFor?: string | null;
-  sourceUrl?: string;
-  sourceTitle?: string;
+  sourceUrl?: string | null;
+  sourceTitle?: string | null;
+  sourceTranscript?: string | null;
+  sourceSummary?: string | null;
+  sourceReferenceType?: string | null;
+  sourcePlatform?: string | null;
+  transcriptStatus?: TranscriptStatus | null;
   submissionId?: string | null;
 }
 

@@ -1,3 +1,5 @@
+import { projectContextSection } from "@/lib/content/project-context";
+
 /** The conversational "make your own banger from this clip" assistant. Each
  * reply is metered by the API route. Non-streaming for simplicity. */
 
@@ -25,6 +27,8 @@ export interface BrainstormInput {
   messages: ChatMessage[];
   clip: ClipContext;
   pillars?: string[];
+  /** The creator's compiled standing context. */
+  context?: string;
 }
 
 const SYSTEM =
@@ -74,9 +78,13 @@ export async function brainstorm(input: BrainstormInput): Promise<string> {
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   const model = process.env.GENERATE_MODEL ?? "gpt-5.4-mini";
 
-  const pillarsLine = input.pillars?.length
-    ? `\n\nThe creator's content pillars: ${input.pillars.join(", ")}.`
-    : "";
+  // Pillars already appear inside the context block; only fall back to naming
+  // them separately when there is no block to carry them.
+  const pillarsLine =
+    !input.context && input.pillars?.length
+      ? `\n\nThe creator's content pillars: ${input.pillars.join(", ")}.`
+      : "";
+  const system = SYSTEM + projectContextSection(input.context ?? "");
 
   const history = input.messages
     .slice(-12)
@@ -92,7 +100,7 @@ export async function brainstorm(input: BrainstormInput): Promise<string> {
       model,
       temperature: 0.8,
       messages: [
-        { role: "system", content: SYSTEM },
+        { role: "system", content: system },
         {
           role: "user",
           content: `${clipBlock(input.clip)}${pillarsLine}`,

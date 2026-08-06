@@ -1,4 +1,9 @@
-import { contentStatuses, type ContentStatus } from "@/lib/db/schema";
+import { normalizeHooks } from "@/lib/content/normalize";
+import {
+  contentStatuses,
+  type ContentHook,
+  type ContentStatus,
+} from "@/lib/db/schema";
 import type { ContentItemInput } from "@/lib/db/content";
 
 // Clamps: generous for real scripts, tight enough that a client can't stuff
@@ -18,6 +23,17 @@ const strArr = (v: unknown): string[] | undefined =>
         .filter((x): x is string => typeof x === "string")
         .slice(0, ARRAY_MAX)
         .map((x) => x.slice(0, LINE_MAX))
+    : undefined;
+
+const hookArr = (v: unknown): ContentHook[] | undefined =>
+  Array.isArray(v)
+    ? normalizeHooks(v)
+        .slice(0, ARRAY_MAX)
+        .map((h) => ({
+          text: h.text.slice(0, LINE_MAX),
+          pattern: h.pattern ? h.pattern.slice(0, 60) : null,
+          why: h.why ? h.why.slice(0, 300) : null,
+        }))
     : undefined;
 
 const isStatus = (v: unknown): v is ContentStatus =>
@@ -45,7 +61,10 @@ export function parseContentInput(body: Record<string, unknown>): {
 
   const title = str(body.title, TITLE_MAX);
   if (title !== undefined) input.title = title;
-  const hooks = strArr(body.hooks);
+  // Hooks arrive either as the new {text, pattern, why} objects or as legacy
+  // plain strings; both are stored as objects so the read path only has to
+  // widen rows written before this existed.
+  const hooks = hookArr(body.hooks);
   if (hooks !== undefined) input.hooks = hooks;
   const points = strArr(body.points);
   if (points !== undefined) input.points = points;

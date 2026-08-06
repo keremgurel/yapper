@@ -103,7 +103,6 @@ describe("buildExpandMessages", () => {
     const { user } = buildExpandMessages(
       { transcript: "video about filler words" },
       "original",
-      [],
     );
     expect(user).toContain("brain-dumped an original idea");
     expect(user).toContain("filler words");
@@ -113,7 +112,6 @@ describe("buildExpandMessages", () => {
     const { user } = buildExpandMessages(
       { url: "https://x", source: { url: "https://x", title: "A reel" } },
       "inspiration",
-      [],
     );
     expect(user).toContain("A reel");
     expect(user).toContain("riff on");
@@ -131,19 +129,43 @@ describe("buildExpandMessages", () => {
         },
       },
       "inspiration",
-      [],
     );
     expect(system).toContain("written resource");
     expect(user).toContain("deliberate pauses");
     expect(user).toContain("research-paper");
   });
 
-  it("lists the creator's pillars in the system prompt when provided", () => {
-    const { system } = buildExpandMessages({ transcript: "x" }, "original", [
-      "Speaking",
-      "Mindset",
-    ]);
-    expect(system).toContain("Speaking, Mindset");
+  it("asks the model to classify into a pillar when the creator has some", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "original", {
+      block: "PILLARS:\n- Speaking\n- Mindset",
+      pillarNames: ["Speaking", "Mindset"],
+    });
+    expect(system).toContain("PILLARS list below");
+    expect(system).toContain("- Speaking");
+    expect(system).toContain("- Mindset");
+  });
+
+  it("omits the classify rule when the creator has no pillars", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "original");
+    expect(system).not.toContain("PILLARS list below");
+  });
+
+  it("appends the standing context after the fixed instructions", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "original", {
+      block: "PROJECT: CELPIP Speaking",
+      pillarNames: [],
+    });
+    // Fixed instructions first keeps that prefix identical for every creator,
+    // so it can cache across users as well as across one user's calls.
+    expect(system.indexOf("Output JSON")).toBeLessThan(
+      system.indexOf("PROJECT: CELPIP Speaking"),
+    );
+    expect(system).toContain("STANDING CONTEXT");
+  });
+
+  it("carries no context section when the brain is empty", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "original");
+    expect(system).not.toContain("STANDING CONTEXT");
   });
 
   it("keeps audio-led comedy in its actual format", () => {
@@ -157,7 +179,6 @@ describe("buildExpandMessages", () => {
         },
       },
       "semi-original",
-      [],
     );
     expect(system).toContain("audio-led joke");
     expect(system).toContain("Never force");

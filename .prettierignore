@@ -6,10 +6,12 @@ node_modules
 out
 build
 coverage
-desktop/dist
-desktop/src-tauri/gen
-desktop/src-tauri/target
 *.tsbuildinfo
+
+# native macOS build output (gitignored in native-macos/.gitignore, but
+# Prettier only reads the ROOT .gitignore, so it must be listed here too)
+native-macos/.build
+native-macos/dist
 
 # lockfiles (large, auto-generated)
 package-lock.json

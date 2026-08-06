@@ -13,8 +13,6 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     ".vercel/**",
-    "desktop/dist/**",
-    "desktop/src-tauri/target/**",
     "next-env.d.ts",
   ]),
   // Disable ESLint rules that conflict with Prettier (must stay last).

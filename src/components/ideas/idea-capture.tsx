@@ -95,7 +95,7 @@ function PlatformMark({ platform }: { platform: Platform }) {
 export default function IdeaCapture({
   onCapture,
 }: {
-  onCapture: (text: string) => void;
+  onCapture: (text: string) => void | Promise<void>;
 }) {
   const [text, setText] = useState("");
   const [link, setLink] = useState<string | null>(null);
@@ -140,7 +140,9 @@ export default function IdeaCapture({
     const element = ref.current;
     if (!element) return;
     element.style.height = "auto";
-    element.style.height = `${Math.min(Math.max(element.scrollHeight, 76), 300)}px`;
+    // Collapsed to one line at rest; grows with what is typed, capped so a
+    // long note scrolls inside the composer instead of taking the page.
+    element.style.height = `${Math.min(Math.max(element.scrollHeight, 28), 320)}px`;
   }, [text, link]);
 
   useEffect(() => {
@@ -239,7 +241,7 @@ export default function IdeaCapture({
         event.preventDefault();
         setLink(next.link);
       }}
-      className="border-border/80 bg-muted/80 focus-within:border-foreground/25 rounded-[28px] border p-3 shadow-sm transition-[border-color,box-shadow] duration-200 focus-within:shadow-md dark:bg-[#2b2b2b]"
+      className="sg-glass focus-within:border-foreground/25 p-2.5 transition-[border-color,box-shadow] duration-200 focus-within:shadow-md"
     >
       <textarea
         ref={ref}
@@ -252,8 +254,8 @@ export default function IdeaCapture({
           }
         }}
         placeholder="Ask Chirpy for ideas, paste a reference, or capture a thought…"
-        rows={2}
-        className="text-foreground placeholder:text-muted-foreground/75 max-h-[300px] min-h-[76px] w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-7 outline-none"
+        rows={1}
+        className="text-foreground placeholder:text-muted-foreground/75 max-h-[320px] min-h-7 w-full resize-none bg-transparent px-3 py-1 text-[16px] leading-7 outline-none"
       />
 
       {link && (
@@ -295,13 +297,14 @@ export default function IdeaCapture({
 
         <div className="min-w-0 flex-1">
           {recording ? (
-            <div className="animate-in fade-in slide-in-from-bottom-1 flex h-10 items-center justify-end gap-3 duration-200">
-              <span className="border-muted-foreground/40 hidden min-w-0 flex-1 border-b border-dashed sm:block" />
+            <div className="animate-in fade-in flex h-10 items-center gap-3 duration-200">
+              {/* The waveform IS the full-width element: its own quiet columns
+                  render as the dotted trail, so no filler rule is needed. */}
               <VoiceWaveform
                 stream={stream}
-                className="text-foreground h-10 w-[min(34vw,220px)]"
+                className="text-foreground/85 h-9 min-w-0 flex-1"
               />
-              <span className="text-muted-foreground w-9 text-right text-sm tabular-nums">
+              <span className="text-muted-foreground w-9 shrink-0 text-right text-sm tabular-nums">
                 {durationLabel(recordingSeconds)}
               </span>
             </div>

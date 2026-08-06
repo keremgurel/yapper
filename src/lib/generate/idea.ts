@@ -1,3 +1,5 @@
+import { projectContextSection } from "@/lib/content/project-context";
+
 export interface GeneratedIdea {
   hooks: string[];
   points: string[];
@@ -6,6 +8,8 @@ export interface GeneratedIdea {
 }
 
 export interface IdeaInput {
+  /** The creator's compiled standing context. */
+  context?: string;
   topic?: string;
   sourceTitle?: string;
   transcript?: string;
@@ -75,7 +79,10 @@ export async function generateIdea(input: IdeaInput): Promise<GeneratedIdea> {
       temperature: 0.8,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM },
+        {
+          role: "system",
+          content: SYSTEM + projectContextSection(input.context ?? ""),
+        },
         {
           role: "user",
           content: `${parts.join("\n\n")}\n\nGenerate the idea.`,
