@@ -47,9 +47,18 @@ describe("parseContentInput", () => {
     ]);
   });
 
-  it("drops non-string members of an array field", () => {
-    const { input } = parseContentInput({ points: ["a", 5, null, "b"] });
-    expect(input.points).toEqual(["a", "b"]);
+  /** The flexible body replaced these columns. They still hold data on old
+   * rows, which `normalizeBody` folds into blocks on read, so accepting a write
+   * would let a legacy column come back and shadow the block it became. */
+  it("ignores the retired fixed body columns", () => {
+    const { input } = parseContentInput({
+      points: ["a", "b"],
+      example: "story",
+      cta: "subscribe",
+    });
+    expect(input.points).toBeUndefined();
+    expect(input.example).toBeUndefined();
+    expect(input.cta).toBeUndefined();
   });
 
   it("accepts a valid status", () => {

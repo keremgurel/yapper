@@ -10,6 +10,8 @@ import {
 import { ensureUser } from "@/lib/db/users";
 import { canUsePremium } from "@/lib/billing/gate";
 import { generateScript, type ScriptInput } from "@/lib/generate/script";
+import { parseSections } from "@/lib/ideas/expand-prompt";
+import { sectionsToBlocks } from "@/lib/ideas/expansion-patch";
 
 // Clamp client-supplied fields so a signed-in user can't amplify token cost.
 const str = (v: unknown, max: number): string | undefined =>
@@ -47,9 +49,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const input: ScriptInput = {
     title: str(body.title, 300),
     hooks: strArr(body.hooks, 300, 6),
-    points: strArr(body.points, 300, 10),
-    example: str(body.example, 1000),
-    cta: str(body.cta, 300),
+    // Validated through the shared section parser, then clamped: the body is
+    // client-supplied, so it is also the biggest lever on token cost here.
+    blocks: sectionsToBlocks(parseSections(body.blocks)).slice(0, 8),
+    originalNote: str(body.originalNote, 4000),
     context: (await getProjectContextSafe(userId)).block,
   };
 

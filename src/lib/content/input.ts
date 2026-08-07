@@ -9,21 +9,12 @@ import type { ContentItemInput } from "@/lib/db/content";
 // Clamps: generous for real scripts, tight enough that a client can't stuff
 // megabytes into jsonb fields.
 const TITLE_MAX = 300;
-const LINE_MAX = 300; // one hook / one point / cta
-const EXAMPLE_MAX = 2000;
+const LINE_MAX = 300; // one hook
 const SCRIPT_MAX = 20_000;
 const ARRAY_MAX = 20;
 
 const str = (v: unknown, max: number): string | undefined =>
   typeof v === "string" ? v.slice(0, max) : undefined;
-
-const strArr = (v: unknown): string[] | undefined =>
-  Array.isArray(v)
-    ? v
-        .filter((x): x is string => typeof x === "string")
-        .slice(0, ARRAY_MAX)
-        .map((x) => x.slice(0, LINE_MAX))
-    : undefined;
 
 const hookArr = (v: unknown): ContentHook[] | undefined =>
   Array.isArray(v)
@@ -66,12 +57,10 @@ export function parseContentInput(body: Record<string, unknown>): {
   // widen rows written before this existed.
   const hooks = hookArr(body.hooks);
   if (hooks !== undefined) input.hooks = hooks;
-  const points = strArr(body.points);
-  if (points !== undefined) input.points = points;
-  const example = str(body.example, EXAMPLE_MAX);
-  if (example !== undefined) input.example = example;
-  const cta = str(body.cta, LINE_MAX);
-  if (cta !== undefined) input.cta = cta;
+  // `points`, `example` and `cta` are deliberately NOT parsed. They still exist
+  // on old rows and are folded into blocks by `normalizeBody` on read, but the
+  // flexible body replaced them and nothing may write them again — otherwise a
+  // legacy column could come back to life and shadow the block it became.
 
   if (body.script === null) input.script = null;
   else {

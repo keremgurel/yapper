@@ -7,11 +7,13 @@ import {
 
 const idea = (over: Partial<PromptSource> = {}): PromptSource => ({
   hooks: [],
-  points: [],
-  cta: "",
+  blocks: [],
   script: null,
   ...over,
 });
+
+const bullets = (...items: string[]) =>
+  ({ label: "Key points", kind: "bullets", items }) as const;
 
 describe("teleprompterText", () => {
   it("shows nothing for the off view", () => {
@@ -25,7 +27,7 @@ describe("teleprompterText", () => {
   });
 
   it("falls back to the notes view when the script view has no script", () => {
-    const source = idea({ hooks: ["Hook"], points: ["Point"], cta: "CTA" });
+    const source = idea({ hooks: ["Hook"], blocks: [bullets("Point")] });
     // No script written yet: the script view must degrade to the beats, not blank.
     expect(teleprompterText(source, "script")).toBe(
       teleprompterText(source, "notes"),
@@ -33,25 +35,56 @@ describe("teleprompterText", () => {
     expect(teleprompterText(source, "script")).not.toBe("");
   });
 
-  it("builds notes as first-hook, bulleted points, then cta", () => {
+  it("builds notes as first-hook then bulleted beats", () => {
     const text = teleprompterText(
       idea({
         hooks: ["", "  ", "Real hook"],
-        points: ["First", "  ", "Second"],
-        cta: "Subscribe",
+        blocks: [bullets("First", "  ", "Second")],
       }),
       "notes",
     );
-    expect(text).toBe("Real hook\n\n• First\n• Second\n\nSubscribe");
+    expect(text).toBe("Real hook\n\n• First\n• Second");
+  });
+
+  it("renders a prose block as its own paragraph", () => {
+    const text = teleprompterText(
+      idea({
+        blocks: [
+          { label: "The angle", kind: "paragraph", text: "Say this bit." },
+          bullets("Then this"),
+        ],
+      }),
+      "notes",
+    );
+    expect(text).toBe("Say this bit.\n\n• Then this");
+  });
+
+  /** Section labels are the one thing a creator must not read out by mistake,
+   * and a script block is prose for the other view. Neither belongs here. */
+  it("omits section labels and script blocks", () => {
+    const text = teleprompterText(
+      idea({
+        blocks: [
+          bullets("Beat"),
+          { label: "Draft", kind: "script", text: "Full narration here." },
+        ],
+      }),
+      "notes",
+    );
+    expect(text).toBe("• Beat");
+    expect(text).not.toContain("Key points");
   });
 
   it("omits sections that are empty", () => {
-    expect(teleprompterText(idea({ points: ["Only point"] }), "notes")).toBe(
-      "• Only point",
-    );
-    expect(teleprompterText(idea({ cta: "Just a CTA" }), "notes")).toBe(
-      "Just a CTA",
-    );
+    expect(
+      teleprompterText(idea({ blocks: [bullets("Only point")] }), "notes"),
+    ).toBe("• Only point");
+    expect(
+      teleprompterText(
+        idea({ blocks: [{ label: "Empty", kind: "paragraph", text: "  " }] }),
+        "notes",
+      ),
+    ).toBe("");
   });
 });
 

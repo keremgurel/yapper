@@ -1,10 +1,13 @@
-/** The fields the teleprompter reads. Both the legacy localStorage Idea and a
- * Content Library item satisfy this structurally. */
+import type { ContentBlock } from "@/lib/db/schema";
+
+/** The fields the teleprompter reads. */
 export interface PromptSource {
   title?: string;
   hooks: string[];
-  points: string[];
-  cta: string;
+  /** The item's adaptive body. Legacy rows have their `points` / `example` /
+   * `cta` folded into blocks by `normalizeBody` before they get here, so this
+   * one field covers both eras. */
+  blocks?: ContentBlock[];
   script?: string | null;
 }
 
@@ -52,13 +55,31 @@ export function teleprompterText(
   return notesText(idea);
 }
 
+/**
+ * The glanceable view: the opening line, then the beats.
+ *
+ * Section labels are omitted on purpose. This is read at arm's length while
+ * talking to a camera, and a heading is the one line you must not accidentally
+ * say out loud. `script` blocks are skipped too: they are prose to read
+ * verbatim, which is what the "Full script" view is for.
+ */
 function notesText(idea: PromptSource): string {
   const hook = idea.hooks.map((h) => h.trim()).find(Boolean);
-  const points = idea.points.map((p) => p.trim()).filter(Boolean);
   const lines: string[] = [];
   if (hook) lines.push(hook, "");
-  points.forEach((p) => lines.push(`• ${p}`));
-  if (idea.cta.trim()) lines.push("", idea.cta.trim());
+
+  (idea.blocks ?? [])
+    .filter((block) => block.kind !== "script")
+    .forEach((block) => {
+      const items = (block.items ?? []).map((i) => i.trim()).filter(Boolean);
+      if (items.length) {
+        items.forEach((item) => lines.push(`• ${item}`));
+        return;
+      }
+      const text = (block.text ?? "").trim();
+      if (text) lines.push(text, "");
+    });
+
   return lines.join("\n").trim();
 }
 

@@ -5,7 +5,7 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { createContentItem } from "@/lib/db/content";
-import { captureIdea } from "@/lib/content/capture";
+import { captureIdea, capturedIdeaToBlocks } from "@/lib/content/capture";
 import { normalizeHooks } from "@/lib/content/normalize";
 import { getProjectContextSafe } from "@/lib/content/project-context-server";
 
@@ -41,14 +41,14 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   try {
     const idea = await captureIdea({ text, pillars, context: context.block });
-    // The angle seeds `example`; the classified pillar lands in its own column.
     const item = await createContentItem(userId, {
       title: idea.title,
       // The capture prompt returns bare hook lines; they carry no pattern
       // attribution until the hook engine generates them.
       hooks: normalizeHooks(idea.hooks),
-      points: idea.points,
-      example: idea.angle,
+      // The angle and points become blocks, not the retired fixed columns, so
+      // a captured idea and an expanded one have the same body model.
+      blocks: capturedIdeaToBlocks(idea),
       pillar: idea.pillar ?? undefined,
       status: "drafted",
     });

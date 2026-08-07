@@ -13,7 +13,7 @@ import {
 import PlatformBadge from "@/components/inspiration/platform-badge";
 import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
-import { blankIdea } from "@/lib/inspiration/ideas";
+import { blankIdea, seedBlocks } from "@/lib/inspiration/ideas";
 import { createContent } from "@/lib/content/client";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
@@ -50,9 +50,7 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
         title: item.title,
         pillar: pillarName,
         hooks: seed.hooks,
-        points: seed.points,
-        example: context || seed.example,
-        cta: seed.cta,
+        blocks: seedBlocks(context),
         sourceTitle: item.title,
         sourceUrl: item.url,
       });
