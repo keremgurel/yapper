@@ -1,6 +1,6 @@
 # Idea Bank + Content Library revamp
 
-Status: Phases 1-4 shipped (Project Brain, unified store, shared table, flexible body); Phases 5-6 not yet implemented.
+Status: Phases 1-4 and the hook engine (5a) shipped; item chat (5b) and transcript honesty (6) not yet implemented.
 Scope: `src/lib/ideas/*`, `src/lib/content/*`, `src/components/ideas/*`, `src/components/library/*`, `src/app/api/{ideas,content,inspiration,generate}/*`, `src/lib/db/schema.ts`.
 
 ## 1. What is actually broken
@@ -250,7 +250,14 @@ Deleting the four fixed controls meant retiring everything that fed them, or gen
 
 **Phase 4 (original wording): Flexible body.** `blocks`, `hooks` as objects, `originalNote`, `format`, `summary`, the `normalizeItem` read-through. Rebuild the detail view: verbatim words → hooks → script → adaptive blocks. Delete the four fixed form controls.
 
-**Phase 5: Hooks + chat.** `hook-patterns.ts`, tagged hook generation with per-pattern regeneration, `content_messages`, `/api/content/[id]/chat` with structured patches and undo, voice input. Fold `brainstorm` into it.
+**Phase 5a: The hook engine.** _(shipped)_ `src/lib/content/hook-patterns.ts` holds the ten archetypes as data. `/api/generate/hooks` returns `{text, pattern, why}` per hook, charge-on-success at 1 credit, with `patternId` narrowing every hook to one archetype so "three more, all stakes-first" is a first-class request rather than a reroll. Generated hooks append rather than replace, so a fresh batch never discards the line the creator was weighing up. The chip shows the pattern name and the reasoning on hover.
+
+Two corrections to the plan, both from building it:
+
+- The library costs about **390 tokens**, not the ~200 in §2.4. Only `mechanism` and `example` go into the prompt (`whenToUse` and `shape` are for the UI picker, and the example already demonstrates the shape); sending all four fields was ~680. A narrowed request is ~40 tokens, so per-pattern regeneration really is the cheaper call rather than a filter over a generic one. A test pins the bound so adding a pattern is a deliberate trade.
+- An unrecognised `pattern` from the model is stored as `null`, not kept. A chip is only worth showing if it names a mechanism the creator can look up. When one pattern was requested, that id wins over whatever the model labelled the line, because it was told to write only that.
+
+**Phase 5b: Chat with any item.** _(not started)_ `content_messages`, `/api/content/[id]/chat` with structured patches and undo, voice input. Fold `brainstorm` into it.
 
 **Phase 6: Transcript honesty.** Apify stays. Stop the silent downgrade to a page summary, surface `transcriptStatus` in the UI with a retry, add the attach-media escape hatch, and fix the billing so a failed resolve does not charge 2 credits. The billing fix can be pulled forward at any time; it is small and independent of everything else here.
 

@@ -13,6 +13,7 @@ import VerbatimNote from "@/components/workbench/verbatim-note";
 import WorkbenchHeader from "@/components/workbench/workbench-header";
 import { Button } from "@/components/ui/button";
 import { useContentItem } from "@/hooks/use-content-item";
+import { useHookGeneration } from "@/hooks/use-hook-generation";
 import { useIdeaGeneration } from "@/hooks/use-idea-generation";
 import { deleteContent } from "@/lib/content/client";
 import { hookTexts, mergeHookTexts } from "@/lib/content/normalize";
@@ -51,6 +52,15 @@ export default function ContentWorkbench({ id }: { id: string }) {
         ...(fields.blocks ? { blocks: fields.blocks } : {}),
         ...(fields.script !== undefined ? { script: fields.script } : {}),
       }),
+  );
+
+  const hookGen = useHookGeneration(
+    {
+      title: item?.title ?? "",
+      blocks: item?.blocks ?? [],
+      originalNote: item?.originalNote,
+    },
+    (fresh) => update({ hooks: [...(item?.hooks ?? []), ...fresh] }),
   );
 
   if (loading) {
@@ -111,7 +121,16 @@ export default function ContentWorkbench({ id }: { id: string }) {
           onGenerate={() => void runIdea()}
         />
 
-        <HookList hooks={item.hooks} onChange={(hooks) => update({ hooks })} />
+        <HookList
+          hooks={item.hooks}
+          onChange={(hooks) => update({ hooks })}
+          generating={hookGen.running}
+          canGenerate={Boolean(item.title.trim())}
+          genError={hookGen.error}
+          // Appended, not replaced: a fresh batch must not throw away the line
+          // the creator was already weighing up.
+          onGenerate={(pattern) => void hookGen.run(pattern)}
+        />
 
         <ScriptSection
           idea={item}
