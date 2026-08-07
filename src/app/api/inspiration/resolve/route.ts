@@ -4,6 +4,7 @@ import {
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
+import { getBalance } from "@/lib/db/credits";
 import {
   detectKind,
   detectPlatform,
@@ -105,7 +106,28 @@ export async function POST(req: Request) {
             referenceType: sourceDetails.referenceType,
           };
 
-    return NextResponse.json({ ...resolved, balance: reservation.balance });
+    // Charge only for a delivered analysis. A transcript is the deliverable for
+    // a video; for a genuine written resource the summary is, which is why an
+    // article still costs. Anything else (a video we could not hear, a creator
+    // link that is only metadata) refunds.
+    //
+    // This was the billing bug: the old fallback returned normally instead of
+    // throwing, so the catch below never ran and a failed transcription still
+    // cost 2 credits.
+    const delivered =
+      Boolean(sourceDetails.transcript?.trim()) ||
+      Boolean(sourceDetails.summary?.trim());
+    let { balance } = reservation;
+    if (!delivered) {
+      await refundCreditReservation(
+        userId,
+        reservation,
+        "no_analysis_delivered",
+      );
+      balance = await getBalance(userId);
+    }
+
+    return NextResponse.json({ ...resolved, balance });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "resolve_failed";
     await refundCreditReservation(userId, reservation, detail);
@@ -123,46 +145,53 @@ async function resolveYouTubeReference(url: string): Promise<SourceDetails> {
   return { transcript, referenceType: "social-video" };
 }
 
-async function resolveInstagramReference(url: string): Promise<SourceDetails> {
+/**
+ * Resolve a social video: media URL from the scraper, audio from Deepgram.
+ *
+ * A failure here used to fall through to `resolveWrittenReference`, which
+ * returned the post's page text as a summary. That is the silent downgrade: a
+ * Reel came back looking like an article, and the expansion prompt was then
+ * explicitly told to treat it as "a written resource rather than a video
+ * transcript" and not to invent dialogue. The output was visibly worse and
+ * nothing said why.
+ *
+ * Now a video we could not hear stays a video, and reports that it has no
+ * transcript. The creator can retry it or attach the media themselves; both
+ * beat being handed a quietly degraded answer.
+ */
+async function resolveSocialVideo(
+  url: string,
+  media: () => Promise<{
+    mediaUrl?: string;
+    title?: string;
+    thumbnail?: string;
+  }>,
+  label: string,
+): Promise<SourceDetails> {
   try {
-    const media = await resolveInstagramMedia(url);
-    if (!media.mediaUrl) throw new Error("missing_reference_media");
+    const resolved = await media();
+    if (!resolved.mediaUrl) throw new Error("missing_reference_media");
     const key = process.env.DEEPGRAM_API_KEY;
     if (!key) throw new Error("no_transcription_provider");
-    const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
+    const transcript = await transcribeRemoteMedia(resolved.mediaUrl, key);
     if (!transcript) throw new Error("empty_reference_transcript");
-    return { ...media, transcript, referenceType: "social-video" };
+    return { ...resolved, transcript, referenceType: "social-video" };
   } catch (error) {
-    // Instagram's CDN media URL normally comes from Apify, but a depleted or
-    // unavailable scraper must not discard the reference entirely. Reader can
-    // still recover the post's real caption, author, engagement context, and
-    // visible page text. Store a faithful summary of that evidence and clearly
-    // leave transcript empty instead of generating from the creator note alone.
     console.warn(
-      "[inspiration] Instagram media unavailable; using page summary",
+      `[inspiration] ${label} media unavailable; reporting needs_media`,
       error instanceof Error ? error.message : "unknown_error",
     );
-    return resolveWrittenReference(url);
+    // No summary: handing back page text for a video is what made the old
+    // behaviour dishonest. The card still renders from oembed metadata.
+    return { transcript: null, referenceType: "social-video" };
   }
 }
 
-async function resolveTikTokReference(url: string): Promise<SourceDetails> {
-  try {
-    const media = await resolveTikTokMedia(url);
-    if (!media.mediaUrl) throw new Error("missing_reference_media");
-    const key = process.env.DEEPGRAM_API_KEY;
-    if (!key) throw new Error("no_transcription_provider");
-    const transcript = await transcribeRemoteMedia(media.mediaUrl, key);
-    if (!transcript) throw new Error("empty_reference_transcript");
-    return { ...media, transcript, referenceType: "social-video" };
-  } catch (error) {
-    console.warn(
-      "[inspiration] TikTok media unavailable; using page summary",
-      error instanceof Error ? error.message : "unknown_error",
-    );
-    return resolveWrittenReference(url);
-  }
-}
+const resolveInstagramReference = (url: string) =>
+  resolveSocialVideo(url, () => resolveInstagramMedia(url), "Instagram");
+
+const resolveTikTokReference = (url: string) =>
+  resolveSocialVideo(url, () => resolveTikTokMedia(url), "TikTok");
 
 async function resolveWrittenReference(url: string): Promise<SourceDetails> {
   const resource = await resolveWebResource(url);
