@@ -29,6 +29,7 @@ export interface ContentItemInput {
   originalNote?: string;
   format?: string | null;
   summary?: string | null;
+  formats?: string[];
   ideaType?: IdeaTypeValue | null;
   stage?: ContentStage;
   points?: string[];
@@ -80,6 +81,7 @@ export async function listContentItems(
        * coalesce, reclassifying an item writes `pillarId` while the table keeps
        * rendering the stale free text, and the edit looks like it did nothing.
        */
+      formats: contentItems.formats,
       pillar: sql<
         string | null
       >`coalesce(${projectPillars.name}, ${contentItems.pillar})`,

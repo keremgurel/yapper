@@ -14,6 +14,8 @@ export interface ContentSummary {
   status: ContentStatus;
   /** Which surface the item lives on. Both surfaces share this row shape. */
   stage: ContentStage;
+  /** What this will be published as. See `lib/content/formats.ts`. */
+  formats: string[];
   ideaType: IdeaTypeValue | null;
   scheduledFor: string | null;
   submissionId: string | null;
@@ -51,6 +53,7 @@ export interface ContentPatch {
   title?: string;
   hooks?: ContentHook[] | string[];
   blocks?: ContentBlock[];
+  formats?: string[];
   originalNote?: string;
   format?: string | null;
   summary?: string | null;

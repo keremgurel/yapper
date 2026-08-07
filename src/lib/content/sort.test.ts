@@ -7,6 +7,7 @@ function row(fields: Partial<ContentSummary> & { id: string }): ContentSummary {
   return {
     title: "",
     status: "drafted" as ContentStatus,
+    formats: [],
     scheduledFor: null,
     submissionId: null,
     pillar: null,

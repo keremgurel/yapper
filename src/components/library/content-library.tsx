@@ -18,7 +18,12 @@ import { useContentList } from "@/hooks/use-content-list";
 import { useContentSort } from "@/hooks/use-content-sort";
 import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
-import { LIBRARY_COLUMNS } from "@/lib/content/columns";
+import BoardView from "@/components/views/board-view";
+import ViewSettings from "@/components/views/view-settings";
+import ViewTabs from "@/components/views/view-tabs";
+import { useLibraryViews } from "@/hooks/use-library-views";
+import { LIBRARY_COLUMNS, resolveColumns } from "@/lib/content/columns";
+import { applyViewFilters } from "@/lib/content/group-items";
 import {
   defaultScheduleDate,
   patchContent,
@@ -38,8 +43,14 @@ export default function ContentLibrary() {
   const { items, refresh, patchRow } = useContentList(!!isSignedIn);
   const { importing } = useContentImport(!!isSignedIn, refresh);
 
-  const filters = useItemFilters(items ?? []);
+  const views = useLibraryViews("library", !!isSignedIn);
+  // The saved view narrows first, then the ad-hoc search and pillar picker
+  // narrow further. A view is the shape of the surface; the filter bar is what
+  // you are looking for inside it right now.
+  const inView = applyViewFilters(items ?? [], views.active?.filters ?? {});
+  const filters = useItemFilters(inView);
   const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
+  const columns = resolveColumns("library", views.active?.columns);
   const selection = useItemSelection(refresh);
   const [postItem, setPostItem] = useState<CrossPostTarget | null>(null);
 
@@ -78,6 +89,32 @@ export default function ContentLibrary() {
         </Button>
       </div>
 
+      {views.views.length > 0 && (
+        <div className="mb-4">
+          <ViewTabs
+            views={views.views}
+            activeId={views.active?.id ?? null}
+            onSelect={views.setActiveId}
+            onAdd={() =>
+              void views.create({
+                name: "New view",
+                kind: "table",
+                groupBy: null,
+                filters: {},
+                columns: [],
+              })
+            }
+          />
+          {views.active && (
+            <ViewSettings
+              view={views.active}
+              onSave={(draft) => void views.save(views.active!.id, draft)}
+              onDelete={() => void views.remove(views.active!.id)}
+            />
+          )}
+        </div>
+      )}
+
       {items === null ? (
         <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
       ) : items.length === 0 ? (
@@ -103,25 +140,34 @@ export default function ContentLibrary() {
             pillarOptions={filters.pillarOptions}
             resultLabel={filters.resultLabel}
           />
-          <ItemTable
-            rows={sorted ?? []}
-            columns={LIBRARY_COLUMNS}
-            sort={sort}
-            onToggleSort={toggleSort}
-            selectedIds={selection.ids}
-            onToggleSelect={selection.toggle}
-            onSelectAll={selection.selectAll}
-            onOpen={(id) => router.push(`/studio/library/${id}`)}
-            onStatus={changeStatus}
-            onPost={(row) =>
-              setPostItem({
-                id: row.id,
-                title: row.title.trim() || "Untitled",
-                submissionId: row.submissionId!,
-              })
-            }
-            emptyLabel="Nothing matches those filters."
-          />
+          {views.active?.kind === "board" ? (
+            <BoardView
+              rows={filters.filtered}
+              groupBy={views.active.groupBy}
+              onOpen={(id) => router.push(`/studio/library/${id}`)}
+              onStatusChange={changeStatus}
+            />
+          ) : (
+            <ItemTable
+              rows={sorted ?? []}
+              columns={columns}
+              sort={sort}
+              onToggleSort={toggleSort}
+              selectedIds={selection.ids}
+              onToggleSelect={selection.toggle}
+              onSelectAll={selection.selectAll}
+              onOpen={(id) => router.push(`/studio/library/${id}`)}
+              onStatus={changeStatus}
+              onPost={(row) =>
+                setPostItem({
+                  id: row.id,
+                  title: row.title.trim() || "Untitled",
+                  submissionId: row.submissionId!,
+                })
+              }
+              emptyLabel="Nothing matches those filters."
+            />
+          )}
         </>
       )}
 

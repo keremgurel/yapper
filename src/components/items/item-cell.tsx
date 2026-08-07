@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FileText, Film, Link2, Minus, Send } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
+import FormatChips from "@/components/views/format-chips";
 import { hasScript, type ColumnKey } from "@/lib/content/columns";
 import type { ContentSummary } from "@/lib/content/client";
 import type {
@@ -67,6 +68,13 @@ export default function ItemCell({
         <span className="truncate rounded-full bg-[color:var(--sg-accent)]/15 px-2 py-0.5 text-[11px] font-bold text-[color:var(--sg-accent)]">
           {row.pillar}
         </span>
+      ) : (
+        <Empty />
+      );
+
+    case "formats":
+      return row.formats.length ? (
+        <FormatChips formats={row.formats} />
       ) : (
         <Empty />
       );

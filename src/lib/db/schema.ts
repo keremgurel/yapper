@@ -324,6 +324,13 @@ export const contentItems = pgTable(
     format: text("format"),
     /** The read on the reference and the intended adaptation angle. */
     summary: text("summary"),
+    /**
+     * What this will be published as: short, long, article, thread and so on.
+     * An array because one angle often ships as several things. Distinct from
+     * `format` above, which is the AI's read on the SOURCE's creative shape;
+     * this one is the creator's distribution decision.
+     */
+    formats: jsonb("formats").$type<string[]>().notNull().default([]),
     ideaType: text("idea_type", { enum: ideaTypes }),
     // Legacy body columns. Read through the normalizer for old rows; never
     // written again, and dropped once nothing falls back to them.
@@ -494,6 +501,61 @@ export const publishJobs = pgTable(
     check(
       "publish_jobs_status_check",
       sql`${t.status} in ('queued','uploading','processing','published','failed')`,
+    ),
+  ],
+);
+
+/** How a saved view renders its rows. */
+export const libraryViewKinds = ["table", "board"] as const;
+export type LibraryViewKind = (typeof libraryViewKinds)[number];
+
+/** The axes a view can group or split by. `null` means one flat list. */
+export const libraryGroupings = ["status", "pillar", "format"] as const;
+export type LibraryGrouping = (typeof libraryGroupings)[number];
+
+/**
+ * A saved way of looking at the library, per creator.
+ *
+ * Server-backed rather than kept in the browser. Views are real preferences a
+ * creator builds up over time, and this project has just finished moving ideas
+ * out of localStorage precisely because that storage silently loses things and
+ * does not follow you between devices; putting views there would repeat the
+ * mistake on a smaller scale.
+ *
+ * `filters` and `columns` are jsonb because both are lists of ids from
+ * source-defined vocabularies (statuses, pillars, formats, column keys) that
+ * will keep growing, and neither is ever queried by the database.
+ */
+export const libraryViews = pgTable(
+  "library_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    kind: text("kind", { enum: libraryViewKinds }).notNull().default("table"),
+    /** Which surface it belongs to: the bank or the library. */
+    stage: text("stage", { enum: contentStages }).notNull().default("library"),
+    groupBy: text("group_by", { enum: libraryGroupings }),
+    /** `{ status?: string[], pillarId?: string[], formats?: string[] }` */
+    filters: jsonb("filters")
+      .$type<Record<string, string[]>>()
+      .notNull()
+      .default({}),
+    /** Visible column keys, in order. Empty means the surface's default set. */
+    columns: jsonb("columns").$type<string[]>().notNull().default([]),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("library_views_user_idx").on(t.userId, t.stage, t.sortOrder),
+    check("library_views_kind_check", sql`${t.kind} in ('table','board')`),
+    check(
+      "library_views_group_check",
+      sql`${t.groupBy} is null or ${t.groupBy} in ('status','pillar','format')`,
     ),
   ],
 );
