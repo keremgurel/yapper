@@ -12,6 +12,7 @@ import {
 import { getDb } from "./client";
 import {
   contentItems,
+  projectPillars,
   type ContentBlock,
   type ContentHook,
   type ContentStage,
@@ -72,7 +73,16 @@ export async function listContentItems(
       ideaType: contentItems.ideaType,
       scheduledFor: contentItems.scheduledFor,
       submissionId: contentItems.submissionId,
-      pillar: contentItems.pillar,
+      /**
+       * The pillar as a name, so one field answers "what is this filed under"
+       * for both eras of row. A linked pillar wins; legacy free text is the
+       * fallback for rows written before `project_pillars` existed. Without the
+       * coalesce, reclassifying an item writes `pillarId` while the table keeps
+       * rendering the stale free text, and the edit looks like it did nothing.
+       */
+      pillar: sql<
+        string | null
+      >`coalesce(${projectPillars.name}, ${contentItems.pillar})`,
       pillarId: contentItems.pillarId,
       sourceUrl: contentItems.sourceUrl,
       sourceTitle: contentItems.sourceTitle,
@@ -84,6 +94,7 @@ export async function listContentItems(
       createdAt: contentItems.createdAt,
     })
     .from(contentItems)
+    .leftJoin(projectPillars, eq(contentItems.pillarId, projectPillars.id))
     .where(
       options.stage ? and(owned, eq(contentItems.stage, options.stage)) : owned,
     )

@@ -13,10 +13,9 @@ import {
 import { Show, SignInButton } from "@clerk/nextjs";
 import CopyScriptButton from "@/components/library/copy-script-button";
 import EditableList from "@/components/library/editable-list";
-import PillarSelect from "@/components/library/pillar-select";
+import ItemPillarField from "@/components/library/item-pillar-field";
 import ScriptSection from "@/components/library/script-section";
 import StatusSelect from "@/components/library/status-select";
-import { usePillarNames } from "@/hooks/use-pillar-names";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,7 +50,6 @@ function SaveIndicator({ state }: { state: SaveState }) {
 export default function ContentWorkbench({ id }: { id: string }) {
   const router = useRouter();
   const { item, loading, missing, saveState, update } = useContentItem(id);
-  const pillarNames = usePillarNames();
   const {
     generating,
     error: genError,
@@ -148,12 +146,10 @@ export default function ContentWorkbench({ id }: { id: string }) {
             )
           }
         />
-        <PillarSelect
-          value={item.pillar}
-          onChange={(pillar) => update({ pillar })}
-          options={pillarNames}
-          emptyLabel="No pillar"
-          ariaLabel="Content pillar"
+        <ItemPillarField
+          pillarId={item.pillarId}
+          legacyName={item.pillar}
+          onChange={(pillarId) => update({ pillarId })}
         />
         {item.status === "scheduled" && (
           <Input

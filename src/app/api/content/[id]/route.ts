@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/content";
 import { submissions } from "@/lib/db/schema";
 import { parseContentInput } from "@/lib/content/input";
+import { resolveOwnPillar } from "@/lib/content/pillar-ownership";
 import { parseIdeaFields } from "@/lib/ideas/input";
 import { normalizeBody } from "@/lib/content/normalize";
 
@@ -64,6 +65,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       input.submissionId = own.id;
     }
+  }
+
+  // Filing under a pillar: same reasoning as the submission check above. The
+  // legacy free-text pillar is cleared with it, so the read fallback cannot
+  // shadow the link the creator just chose.
+  if (body.pillarId !== undefined) {
+    const owned = await resolveOwnPillar(userId, body.pillarId);
+    if (!owned.ok) {
+      return Response.json({ error: "bad_pillar" }, { status: 400 });
+    }
+    input.pillarId = owned.pillarId;
+    input.pillar = null;
   }
 
   if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {

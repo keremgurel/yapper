@@ -6,6 +6,7 @@ import {
   updateContentItem,
 } from "@/lib/db/content";
 import { contentStages, contentStatuses } from "@/lib/db/schema";
+import { resolveOwnPillar } from "@/lib/content/pillar-ownership";
 
 export const runtime = "nodejs";
 
@@ -60,11 +61,19 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   if (action === "pillar") {
     // A null pillarId clears the classification, which is a legitimate edit.
-    const pillarId =
-      typeof body.pillarId === "string" && body.pillarId ? body.pillarId : null;
+    const owned = await resolveOwnPillar(userId, body.pillarId ?? null);
+    if (!owned.ok) {
+      return Response.json({ error: "bad_pillar" }, { status: 400 });
+    }
     let updated = 0;
     for (const id of targets) {
-      const row = await updateContentItem(userId, id, { pillarId });
+      // The legacy free-text pillar is cleared alongside the link. It is the
+      // read fallback for rows that predate `project_pillars`, so leaving it
+      // behind would let a stale name outlive the reclassify that replaced it.
+      const row = await updateContentItem(userId, id, {
+        pillarId: owned.pillarId,
+        pillar: null,
+      });
       if (row) updated += 1;
     }
     return Response.json({ updated });

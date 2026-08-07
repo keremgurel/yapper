@@ -214,7 +214,10 @@ Charging credits for transcripts is fine and stays: it fits the trial → subscr
 
 1. **Additive schema first.** New tables and new nullable columns. Old columns keep working. No destructive step in the same deploy.
 2. **Project seed.** On first Studio load after the deploy, create the project row from Clerk onboarding metadata (socials, pillar names). Fields the user never filled stay empty and the Brain sheet shows a soft prompt to fill them, since the AI quality gain is the incentive.
-3. **Pillar reconciliation.** Existing `content_items.pillar` free-text values are matched case-insensitively to the new `project_pillars` rows and linked by `pillarId`. Unmatched names become new pillars rather than being dropped.
+3. **Pillar reconciliation.** Existing `content_items.pillar` free-text values seed the new `project_pillars` rows case-insensitively (`seedPillarsIfEmpty`), so no name is dropped. Rows themselves are **not** back-linked by `pillarId`: `listContentItems` left-joins the pillar and returns `coalesce(pillar.name, contentItems.pillar)`, so a legacy row reads correctly with no backfill, and the link wins as soon as the item is reclassified. Writing a `pillarId` clears the free text, so a stale name can never outlive the reclassify that replaced it.
+
+   Both write paths (`PATCH /api/content/[id]` and the bulk bar) validate the id against the caller's own project via `resolveOwnPillar`. The FK proves the pillar exists, not whose it is; without the check a guessed uuid would file an item under another creator's pillar and read that pillar's name back out of the list.
+
 4. **localStorage idea import.** One-time, dedupe by the existing `sourceClientId` unique index (`content_items_import_unique`), which already exists for exactly this purpose. Ideas land at `stage='bank'`, carrying `originalNote`, source, transcript, and their adaptive sections into `blocks` with nothing flattened. `src/lib/ideas/store.ts` becomes the importer, then is deleted.
 5. **Legacy body read-through.** `normalizeItem()` maps old `points`/`example`/`cta` into blocks at read time. Nothing is rewritten in place.
 6. **Cleanup migration, later.** Drop `points`, `example`, `cta`, and `pillar` once telemetry says no row is falling back to them.
@@ -230,6 +233,8 @@ Each phase is independently shippable and leaves the app working.
 **Phase 2: Unify the store.** _(shipped)_ `projectId` + `stage` on `content_items`, the localStorage importer, ideas served from Postgres. Delete `curate.ts`. Idea Bank and Library still look the same at this point; only the plumbing changed.
 
 **Phase 3: One table.** _(shipped)_ The shared `ItemTable`, columns, filters, multiselect, bulk actions on both surfaces. This is the phase you feel most.
+
+One seam surfaced after the fact and is fixed: the table rendered the legacy free-text `pillar` while the bulk bar wrote `pillarId`, so reclassifying appeared to do nothing. The read is now a coalesce over both, the workbench picks a pillar by id like the bulk bar does, and both writers check ownership. `usePillarNames` (the localStorage reader the plan retires) is now used only by `clip-chat.tsx` on the Inspiration surface; it goes when that surface moves onto the project brain.
 
 **Phase 4: Flexible body UI.** _(schema shipped early in Phase 2: importing localStorage ideas losslessly required `blocks`, `originalNote` and the source-transcript columns to exist first, otherwise the very migration meant to stop data loss would have caused it. What remains here is the detail-view rebuild.)_
 
