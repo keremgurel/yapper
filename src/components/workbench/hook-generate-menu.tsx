@@ -28,6 +28,7 @@ export default function HookGenerateMenu({
       <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
+          variant="outline"
           size="sm"
           onClick={() => onGenerate(null)}
           disabled={disabled}

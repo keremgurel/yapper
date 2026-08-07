@@ -42,8 +42,12 @@ export default function ScriptSection({
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="sg-field-label">Full script</p>
         <Show when="signed-in">
+          {/* Outline, not the accent fill. Record is the one primary action on
+              this screen; three competing orange buttons taught you to ignore
+              all of them. */}
           <Button
             type="button"
+            variant="outline"
             size="sm"
             onClick={onGenerate}
             disabled={disabled || !idea.title.trim()}
