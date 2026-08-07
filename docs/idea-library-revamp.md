@@ -1,6 +1,6 @@
 # Idea Bank + Content Library revamp
 
-Status: Phases 1-3 shipped (Project Brain, unified store, shared table); Phases 4-6 not yet implemented.
+Status: Phases 1-4 shipped (Project Brain, unified store, shared table, flexible body); Phases 5-6 not yet implemented.
 Scope: `src/lib/ideas/*`, `src/lib/content/*`, `src/components/ideas/*`, `src/components/library/*`, `src/app/api/{ideas,content,inspiration,generate}/*`, `src/lib/db/schema.ts`.
 
 ## 1. What is actually broken
@@ -236,7 +236,17 @@ Each phase is independently shippable and leaves the app working.
 
 One seam surfaced after the fact and is fixed: the table rendered the legacy free-text `pillar` while the bulk bar wrote `pillarId`, so reclassifying appeared to do nothing. The read is now a coalesce over both, the workbench picks a pillar by id like the bulk bar does, and both writers check ownership. `usePillarNames` (the localStorage reader the plan retires) is now used only by `clip-chat.tsx` on the Inspiration surface; it goes when that surface moves onto the project brain.
 
-**Phase 4: Flexible body UI.** _(schema shipped early in Phase 2: importing localStorage ideas losslessly required `blocks`, `originalNote` and the source-transcript columns to exist first, otherwise the very migration meant to stop data loss would have caused it. What remains here is the detail-view rebuild.)_
+**Phase 4: Flexible body UI.** _(shipped)_ The schema landed early in Phase 2, because importing localStorage ideas losslessly required `blocks`, `originalNote` and the source-transcript columns to exist first: otherwise the very migration meant to stop data loss would have caused it. What remained, and is now done, is the detail-view rebuild.
+
+The workbench is a composition root over `src/components/workbench/*`, ordered source → your exact words → hooks → script → adaptive blocks → pipeline. Blocks are editable: rename a section, change its kind, reorder it, delete it. Changing kind carries content across the prose/list divide instead of dropping it, so exploring a shape is non-destructive (`src/lib/content/block-edits.ts`).
+
+Deleting the four fixed controls meant retiring everything that fed them, or generation would have written to fields nothing renders:
+
+- `/api/generate/idea` returns adaptive `sections` instead of `points`/`example`/`cta`, parsed through the same `parseSections` the reference expansion uses.
+- `/api/generate/script` reads the item's blocks and the creator's verbatim note rather than the fixed columns.
+- Capture and the Inspiration seed write blocks (`capturedIdeaToBlocks`, `seedBlocks`).
+- The teleprompter's notes view builds from blocks. It skips section labels (the one line you must not read aloud by accident) and `script` blocks (that is the other view).
+- `parseContentInput` no longer parses `points`/`example`/`cta` at all. They stay on old rows and are folded into blocks by `normalizeBody` on read; accepting a write would let a legacy column come back and shadow the block it became.
 
 **Phase 4 (original wording): Flexible body.** `blocks`, `hooks` as objects, `originalNote`, `format`, `summary`, the `normalizeItem` read-through. Rebuild the detail view: verbatim words → hooks → script → adaptive blocks. Delete the four fixed form controls.
 

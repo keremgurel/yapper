@@ -1,3 +1,4 @@
+import type { ContentBlock } from "@/lib/db/schema";
 import { newId } from "@/lib/inspiration/store";
 
 export interface Idea {
@@ -37,6 +38,27 @@ const POINT_TEMPLATES = [
 
 const EXAMPLE_TEMPLATE = "A specific moment or story that proves the point.";
 const CTA_TEMPLATE = "Save this if it helped, and follow for more.";
+
+/**
+ * The starter body for an idea begun from a clip, as blocks.
+ *
+ * These are prompts to write over, not a template the app imposes: the creator
+ * can rename, reorder, or delete any of them, which is the difference between
+ * this and the fixed columns it replaces. Whatever context the creator attached
+ * leads, because it is the only part here they actually wrote.
+ */
+export function seedBlocks(context: string): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  if (context.trim()) {
+    blocks.push({ label: "Context", kind: "paragraph", text: context.trim() });
+  }
+  blocks.push(
+    { label: "Key points", kind: "bullets", items: [...POINT_TEMPLATES] },
+    { label: "The example", kind: "paragraph", text: EXAMPLE_TEMPLATE },
+    { label: "Call to action", kind: "paragraph", text: CTA_TEMPLATE },
+  );
+  return blocks;
+}
 
 export function blankIdea(seed?: {
   title?: string;

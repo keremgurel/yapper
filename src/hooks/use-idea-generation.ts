@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import type { ContentBlock } from "@/lib/db/schema";
+import { parseSections } from "@/lib/ideas/expand-prompt";
+import { sectionsToBlocks } from "@/lib/ideas/expansion-patch";
 
 export type GenErrorKind = "insufficient" | "failed" | "locked";
 type GenAction = "idea" | "script";
 export type GenError = { action: GenAction; kind: GenErrorKind } | null;
 
-/** The fields AI generation reads and writes. Both the legacy localStorage
- * Idea and a Content Library item satisfy this structurally. */
+/** The fields AI generation reads and writes. */
 export interface GenSource {
   title: string;
   hooks: string[];
-  points: string[];
-  example: string;
-  cta: string;
+  /** The adaptive body. Generation replaces it wholesale; it is not merged,
+   * because the model chooses a section set per idea and grafting a new set
+   * onto an old one produces two half-answers. */
+  blocks: ContentBlock[];
+  originalNote?: string;
   script?: string | null;
   sourceTitle?: string | null;
   sourceUrl?: string | null;
@@ -21,9 +25,7 @@ export interface GenSource {
 
 export type GenApply = (fields: {
   hooks?: string[];
-  points?: string[];
-  example?: string;
-  cta?: string;
+  blocks?: ContentBlock[];
   script?: string;
 }) => void;
 
@@ -73,12 +75,10 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
         return;
       }
       const hooks = data.hooks as string[] | undefined;
-      const points = data.points as string[] | undefined;
+      const blocks = sectionsToBlocks(parseSections(data.sections));
       apply({
         hooks: hooks?.length ? hooks : source.hooks,
-        points: points?.length ? points : source.points,
-        example: (data.example as string) || source.example,
-        cta: (data.cta as string) || source.cta,
+        blocks: blocks.length ? blocks : source.blocks,
       });
     } catch {
       setError({ action: "idea", kind: "failed" });
@@ -95,9 +95,8 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
       const { res, data } = await postJson("/api/generate/script", {
         title: source.title,
         hooks: source.hooks,
-        points: source.points,
-        example: source.example,
-        cta: source.cta,
+        blocks: source.blocks,
+        originalNote: source.originalNote,
       });
       if (!res.ok || typeof data.script !== "string") {
         setError({ action: "script", kind: kindFor(res, data) });

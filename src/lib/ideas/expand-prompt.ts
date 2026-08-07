@@ -121,7 +121,12 @@ const SECTION_KINDS = new Set<IdeaSectionKind>([
   "script",
 ]);
 
-function sections(v: unknown): IdeaExpansionSection[] {
+/**
+ * Validate a model's `sections` array. Exported because every generator that
+ * returns an adaptive body parses the same shape, and a second copy of these
+ * guards would drift from this one.
+ */
+export function parseSections(v: unknown): IdeaExpansionSection[] {
   if (!Array.isArray(v)) return [];
   return v
     .flatMap((entry): IdeaExpansionSection[] => {
@@ -192,7 +197,7 @@ export function parseExpansion(raw: string): IdeaExpansion | null {
       typeof obj.summary === "string" && obj.summary.trim()
         ? obj.summary.trim().slice(0, 4000)
         : undefined,
-    sections: sections(obj.sections),
+    sections: parseSections(obj.sections),
     hooks: strArr(obj.hooks, 5),
     outline: strArr(obj.outline, 8),
     keyPoints: strArr(obj.keyPoints, 6),

@@ -1,4 +1,5 @@
 import { projectContextSection } from "@/lib/content/project-context";
+import type { ContentBlock } from "@/lib/db/schema";
 
 /** Turn a rough, spoken-or-typed idea into a structured content-library entry.
  * The API route meters this lightweight AI pass at one credit. */
@@ -72,6 +73,27 @@ export function parseCapturedIdea(
     points: arr(raw.points).slice(0, 6),
     pillar,
   };
+}
+
+/**
+ * The capture pass onto the item's flexible body.
+ *
+ * Capture is a deliberately cheap classify-and-title pass, so its output shape
+ * really is this simple. It is still written as blocks rather than into the
+ * retired `points` / `example` columns, so that every item in the app has one
+ * body model and the workbench never has to know which pass produced a row.
+ */
+export function capturedIdeaToBlocks(idea: CapturedIdea): ContentBlock[] {
+  const blocks: ContentBlock[] = [];
+  const angle = idea.angle.trim();
+  if (angle) {
+    blocks.push({ label: "The angle", kind: "paragraph", text: angle });
+  }
+  const points = idea.points.map((p) => p.trim()).filter(Boolean);
+  if (points.length) {
+    blocks.push({ label: "Key points", kind: "bullets", items: points });
+  }
+  return blocks;
 }
 
 export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {

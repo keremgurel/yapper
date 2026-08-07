@@ -51,11 +51,6 @@ export interface ContentPatch {
   title?: string;
   hooks?: ContentHook[] | string[];
   blocks?: ContentBlock[];
-  // Legacy body columns. Still writable while the old workbench editors exist;
-  // removed once the flexible body replaces them.
-  points?: string[];
-  example?: string;
-  cta?: string;
   originalNote?: string;
   format?: string | null;
   summary?: string | null;

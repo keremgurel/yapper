@@ -1,5 +1,9 @@
 import type { ContentBlock } from "@/lib/db/schema";
-import type { IdeaExpansion, IdeaSource } from "@/lib/ideas/types";
+import type {
+  IdeaExpansion,
+  IdeaExpansionSection,
+  IdeaSource,
+} from "@/lib/ideas/types";
 
 /**
  * Map an AI expansion onto the item's stored fields.
@@ -23,8 +27,15 @@ export interface ExpansionPatch {
   pillar?: string | null;
 }
 
-export function expansionToPatch(expansion: IdeaExpansion): ExpansionPatch {
-  const blocks: ContentBlock[] = (expansion.sections ?? [])
+/**
+ * Adaptive sections as they are stored. Shared by every generator that returns
+ * a chosen-per-idea body, so there is exactly one place that decides what a
+ * section becomes on disk.
+ */
+export function sectionsToBlocks(
+  sections: readonly IdeaExpansionSection[] = [],
+): ContentBlock[] {
+  return sections
     .filter((s) => s.text?.trim() || s.items?.length)
     .map((s) => ({
       label: s.label,
@@ -32,6 +43,10 @@ export function expansionToPatch(expansion: IdeaExpansion): ExpansionPatch {
       ...(s.text?.trim() ? { text: s.text.trim() } : {}),
       ...(s.items?.length ? { items: s.items } : {}),
     }));
+}
+
+export function expansionToPatch(expansion: IdeaExpansion): ExpansionPatch {
+  const blocks = sectionsToBlocks(expansion.sections);
 
   // Older expansions predate adaptive sections and only have the fixed fields.
   // They become blocks too, so every idea ends up with one body model.

@@ -1,23 +1,27 @@
 import { projectContextSection } from "@/lib/content/project-context";
+import type { ContentBlock } from "@/lib/db/schema";
 
 export interface ScriptInput {
   /** The creator's compiled standing context. */
   context?: string;
   title?: string;
   hooks?: string[];
-  points?: string[];
-  example?: string;
-  cta?: string;
+  /** The idea's body, in whatever shape the idea actually took. */
+  blocks?: ContentBlock[];
+  /** The creator's own words, which outrank anything the AI wrote about them. */
+  originalNote?: string;
 }
 
 const SYSTEM =
   "You are a short-form video scriptwriter for creators (TikTok/Reels/Shorts). " +
   "Turn the given idea into a tight, spoken-word script the creator reads off a " +
-  "teleprompter. Rules: open with the single strongest hook, deliver the key " +
-  "points as natural spoken lines (contractions, short sentences, NO bullet " +
-  "formatting or headers), weave in the example, end on the CTA. 130-200 words " +
-  "(~45-75s spoken). Write ONLY the words to say aloud — no stage directions, " +
-  "scene labels, or notes. Return STRICT JSON only: " +
+  "teleprompter. Rules: open with the single strongest hook, then deliver the " +
+  "idea's sections as natural spoken lines (contractions, short sentences, NO " +
+  "bullet formatting or headers), following whatever order and emphasis those " +
+  "sections imply rather than a fixed template. If the creator's own words are " +
+  "supplied, their angle and meaning win over any summary of them. 130-200 " +
+  "words (~45-75s spoken). Write ONLY the words to say aloud — no stage " +
+  "directions, scene labels, or notes. Return STRICT JSON only: " +
   '{"script": "<the full script as one string, newlines allowed>"}.';
 
 function parseScript(content: string): string {
@@ -44,12 +48,20 @@ export async function generateScript(input: ScriptInput): Promise<string> {
 
   const bullets = (label: string, items?: string[]) =>
     items?.length ? `${label}:\n${items.map((x) => `- ${x}`).join("\n")}` : "";
+  // Each block keeps its own label, so the model sees the structure the idea
+  // actually has instead of it being flattened back into fixed headings.
+  const body = (input.blocks ?? [])
+    .map((b) =>
+      b.items?.length ? bullets(b.label, b.items) : `${b.label}:\n${b.text}`,
+    )
+    .filter(Boolean);
   const parts = [
     input.title ? `Title: ${input.title}` : "",
     bullets("Hooks", input.hooks),
-    bullets("Key points", input.points),
-    input.example ? `Example: ${input.example}` : "",
-    input.cta ? `CTA: ${input.cta}` : "",
+    input.originalNote?.trim()
+      ? `The creator's own words:\n${input.originalNote.trim()}`
+      : "",
+    ...body,
   ].filter(Boolean);
   if (parts.length === 0) throw new Error("no_input");
 
