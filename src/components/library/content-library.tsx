@@ -89,6 +89,12 @@ export default function ContentLibrary() {
         </Button>
       </div>
 
+      {views.failed && (
+        <p className="mb-3 text-xs font-semibold text-amber-500" role="alert">
+          Couldn&apos;t load your saved views. Showing the default table.
+        </p>
+      )}
+
       {views.views.length > 0 && (
         <div className="mb-4">
           <ViewTabs

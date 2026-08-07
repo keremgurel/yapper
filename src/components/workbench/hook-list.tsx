@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 import HookGenerateMenu from "@/components/workbench/hook-generate-menu";
+import Section from "@/components/workbench/section";
 import { Button } from "@/components/ui/button";
 import { chooseHook } from "@/lib/content/hook-choice";
 import { hookPatternName } from "@/lib/content/hook-patterns";
@@ -44,24 +45,18 @@ export default function HookList({
     );
 
   return (
-    <section aria-labelledby="wb-hooks">
-      <div className="mb-2 flex items-baseline justify-between gap-3">
-        <h2
-          id="wb-hooks"
-          className="text-muted-foreground text-[11px] font-semibold tracking-[0.08em] uppercase"
-        >
-          Hook
-        </h2>
-        {hooks.length > 1 && (
-          <span className="text-muted-foreground text-xs">
-            {hooks.length} options · top one is the take
-          </span>
-        )}
-      </div>
-
+    <Section
+      title="Hook"
+      meta={
+        hooks.length > 1
+          ? `${hooks.length} options · top is the take`
+          : undefined
+      }
+    >
       {hooks.length === 0 ? (
-        <p className="text-muted-foreground border-border rounded-lg border border-dashed px-3 py-4 text-sm">
-          No hooks yet. Generate a few and pick the one that stops the scroll.
+        <p className="text-muted-foreground max-w-[68ch] text-[15px]">
+          The line that decides whether anyone watches. Generate a few and pick
+          one.
         </p>
       ) : (
         <div className="space-y-1.5">
@@ -70,10 +65,10 @@ export default function HookList({
             return (
               <div
                 key={i}
-                className={`group flex items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors ${
+                className={`group flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors ${
                   chosen
-                    ? "border-[color:var(--sg-accent)]/50 bg-[color:var(--sg-accent)]/5"
-                    : "border-border hover:border-foreground/25"
+                    ? "bg-[color:var(--sg-accent)]/[0.07]"
+                    : "hover:bg-muted/60"
                 }`}
               >
                 <button
@@ -101,8 +96,13 @@ export default function HookList({
                     rows={1}
                     placeholder="An opening line that stops the scroll"
                     aria-label={`Hook ${i + 1}`}
-                    className={`text-foreground placeholder:text-muted-foreground/60 w-full resize-none bg-transparent text-sm outline-none ${
-                      chosen ? "font-semibold" : ""
+                    // The chosen line is the most important sentence on the
+                    // page and is set like it; the alternates stay quiet so the
+                    // shortlist does not compete with the decision.
+                    className={`placeholder:text-muted-foreground/60 w-full resize-none bg-transparent outline-none ${
+                      chosen
+                        ? "text-foreground text-[19px] leading-snug font-black tracking-tight"
+                        : "text-muted-foreground text-[15px]"
                     }`}
                   />
                   {hook.pattern && (
@@ -155,6 +155,6 @@ export default function HookList({
           Hook generation failed. No credit charged. Try again.
         </p>
       )}
-    </section>
+    </Section>
   );
 }

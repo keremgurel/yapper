@@ -116,11 +116,11 @@ export default function ContentWorkbench({ id }: { id: string }) {
         onChange={(e) => update({ title: e.target.value })}
         placeholder="Idea title"
         aria-label="Idea title"
-        className="text-foreground placeholder:text-muted-foreground/60 mb-6 w-full bg-transparent text-3xl font-black tracking-tight outline-none"
+        className="text-foreground placeholder:text-muted-foreground/60 mb-7 w-full max-w-[24ch] bg-transparent text-[34px] leading-tight font-black tracking-[-0.02em] outline-none sm:text-[40px]"
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_296px] lg:gap-10">
+        <div className="min-w-0 space-y-9">
           <HookList
             hooks={item.hooks}
             onChange={(hooks) => update({ hooks })}

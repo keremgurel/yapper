@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react";
 import BlockEditor from "@/components/workbench/block-editor";
+import Section from "@/components/workbench/section";
 import { Button } from "@/components/ui/button";
 import {
   addBlock,
@@ -28,20 +29,13 @@ export default function BlockList({
   onChange: (blocks: ContentBlock[]) => void;
 }) {
   return (
-    <section aria-labelledby="wb-blocks">
-      <h2
-        id="wb-blocks"
-        className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase"
-      >
-        Breakdown
-      </h2>
-
+    <Section title="Breakdown" rank="quiet">
       {blocks.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No sections yet. Generate with AI, or add one and write it yourself.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-5">
           {blocks.map((block, i) => (
             <BlockEditor
               key={i}
@@ -67,6 +61,6 @@ export default function BlockList({
       >
         <Plus className="h-4 w-4" /> Add section
       </Button>
-    </section>
+    </Section>
   );
 }

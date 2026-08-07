@@ -17,6 +17,7 @@ const isProtectedApi = createRouteMatcher([
   "/api/submissions(.*)",
   "/api/transcribe",
   "/api/transcription-dictionary(.*)",
+  "/api/views(.*)",
 ]);
 
 // Authentication belongs only in front of Studio and routes that call Clerk's
@@ -57,6 +58,7 @@ export const config = {
     "/api/submissions/:path*",
     "/api/transcribe",
     "/api/transcription-dictionary/:path*",
+    "/api/views/:path*",
     "/__clerk/:path*",
   ],
 };
