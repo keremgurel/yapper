@@ -109,6 +109,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
           transcript={item.sourceTranscript}
           summary={item.sourceSummary}
           status={item.transcriptStatus}
+          update={update}
         />
 
         <VerbatimNote note={item.originalNote} />

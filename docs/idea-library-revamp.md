@@ -1,6 +1,6 @@
 # Idea Bank + Content Library revamp
 
-Status: Phases 1-4 and the hook engine (5a) shipped; item chat (5b) and transcript honesty (6) not yet implemented.
+Status: Phases 1-4, the hook engine (5a) and transcript honesty (6) shipped. Only item chat (5b) remains.
 Scope: `src/lib/ideas/*`, `src/lib/content/*`, `src/components/ideas/*`, `src/components/library/*`, `src/app/api/{ideas,content,inspiration,generate}/*`, `src/lib/db/schema.ts`.
 
 ## 1. What is actually broken
@@ -204,7 +204,7 @@ The change is that a failed resolve now **stops** and says so, instead of silent
 
 **The always-works escape hatch:** when automated resolution cannot reach the media, the idea shows "Attach the video": drop the file, or paste a transcript. Attached media goes through the ASR we already own (`/api/transcribe`, Deepgram nova-3 with Groq whisper-large-v3 failover, `src/app/api/transcribe/route.ts`). You are right that we have the capability; today nothing wires the user's own file into the reference slot.
 
-**Billing correctness:** `reference_analysis` must only be charged when a transcript is actually delivered. Either reserve after the resolution succeeds, or refund on the page-summary fallback path the same way the throw path does. That is a bug fix regardless of the rest of this plan.
+**Billing correctness:** _(fixed)_ `reference_analysis` must only be charged when a transcript is actually delivered. The route now refunds unless it delivered a transcript or a genuine written-resource summary. The reason the original catch-and-refund never covered this: the fallback path returned normally instead of throwing.
 
 Charging credits for transcripts is fine and stays: it fits the trial → subscription-with-monthly-credits → top-ups model. The fix is that a _failed_ transcription must not bill.
 
@@ -259,7 +259,14 @@ Two corrections to the plan, both from building it:
 
 **Phase 5b: Chat with any item.** _(not started)_ `content_messages`, `/api/content/[id]/chat` with structured patches and undo, voice input. Fold `brainstorm` into it.
 
-**Phase 6: Transcript honesty.** Apify stays. Stop the silent downgrade to a page summary, surface `transcriptStatus` in the UI with a retry, add the attach-media escape hatch, and fix the billing so a failed resolve does not charge 2 credits. The billing fix can be pulled forward at any time; it is small and independent of everything else here.
+**Phase 6: Transcript honesty.** _(shipped)_ Apify stays, exactly as §4 argued. What changed is the failure behaviour.
+
+- **The silent downgrade is gone.** `resolveInstagramReference` and `resolveTikTokReference` are one `resolveSocialVideo` helper, and a media failure returns `{ transcript: null, referenceType: "social-video" }` with no summary. `resolveWebResource` is not called for a video at all. `sourceToPatch` then derives `needs_media` on its own, so no new status plumbing was needed.
+- **The billing bug is fixed.** The route now charges only for a delivered analysis: a transcript for a video, or a summary for a genuine written resource. Anything else refunds and returns the refreshed balance. The old fallback returned normally rather than throwing, which is precisely why the existing catch-and-refund never fired. A creator link, which only ever yields oembed metadata, now refunds too.
+- **Retry** is on the bank card whenever the reference has no transcript, not only when the whole analysis failed. It re-runs the same enrich path, which is the right move when the cause is a depleted scraper or a rate limit.
+- **The escape hatch** is `TranscriptRecovery` in the workbench: retry, attach the file (through `/api/transcribe`, the ASR we already own, at its usual 1 credit), or paste the words. The card renders even when the reference is otherwise empty, because that empty state is the thing worth showing.
+
+The expand prompt needed no change: it already says to infer from title and creator context when no transcript is supplied, and never to invent dialogue.
 
 ---
 

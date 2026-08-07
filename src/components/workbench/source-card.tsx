@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { ArrowUpRight, ChevronDown, ChevronRight } from "lucide-react";
+import TranscriptRecovery from "@/components/workbench/transcript-recovery";
+import type { ContentPatch } from "@/lib/content/client";
 import type { TranscriptStatus } from "@/lib/db/schema";
 
 /** What the app managed to hear, stated plainly. A reference we could not
@@ -26,16 +28,21 @@ export default function SourceCard({
   transcript,
   summary,
   status,
+  update,
 }: {
   title: string | null;
   url: string | null;
   transcript: string | null;
   summary: string | null;
   status: TranscriptStatus | null;
+  update: (patch: ContentPatch) => void;
 }) {
   const [open, setOpen] = useState(false);
   const body = transcript?.trim() || summary?.trim() || "";
-  if (!title && !url && !body) return null;
+  // A reference with nothing at all still renders when it needs recovering:
+  // that empty state is the point, not something to hide.
+  const needsMedia = status === "needs_media";
+  if (!title && !url && !body && !needsMedia) return null;
 
   const state = status ? STATUS[status] : null;
   const Chevron = open ? ChevronDown : ChevronRight;
@@ -83,6 +90,8 @@ export default function SourceCard({
           )}
         </>
       )}
+
+      {needsMedia && <TranscriptRecovery sourceUrl={url} update={update} />}
     </section>
   );
 }

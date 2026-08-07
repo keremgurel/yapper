@@ -121,17 +121,30 @@ export default function IdeaCard({
           )}
         </button>
 
-        {analysisFailed && !working && (
-          <button
-            type="button"
-            onClick={onRetry}
-            title="Retry analysis"
-            aria-label="Retry analysis"
-            className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 p-1"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
-        )}
+        {/* Also offered when the reference resolved but we could not hear it:
+            the usual cause is a depleted scraper or a rate limit, so the same
+            retry is the cheapest thing worth trying before attaching the file
+            by hand in the workbench. */}
+        {(analysisFailed || item.transcriptStatus === "needs_media") &&
+          !working && (
+            <button
+              type="button"
+              onClick={onRetry}
+              title={
+                analysisFailed
+                  ? "Retry analysis"
+                  : "Retry fetching the transcript"
+              }
+              aria-label={
+                analysisFailed
+                  ? "Retry analysis"
+                  : "Retry fetching the transcript"
+              }
+              className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 p-1"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          )}
         {item.sourceUrl && (
           <a
             href={item.sourceUrl}
