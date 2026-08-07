@@ -1,8 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Plus, X } from "lucide-react";
+import HookGenerateMenu from "@/components/workbench/hook-generate-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { hookPatternName } from "@/lib/content/hook-patterns";
+import type { GenErrorKind } from "@/hooks/use-idea-generation";
 import type { ContentHook } from "@/lib/db/schema";
 
 /**
@@ -15,9 +19,17 @@ import type { ContentHook } from "@/lib/db/schema";
 export default function HookList({
   hooks,
   onChange,
+  generating,
+  canGenerate,
+  genError,
+  onGenerate,
 }: {
   hooks: ContentHook[];
   onChange: (hooks: ContentHook[]) => void;
+  generating: boolean;
+  canGenerate: boolean;
+  genError: GenErrorKind | null;
+  onGenerate: (patternId: string | null) => void;
 }) {
   const setText = (index: number, text: string) =>
     onChange(
@@ -52,7 +64,7 @@ export default function HookList({
                   title={hook.why ?? undefined}
                   className="mt-1 inline-block rounded-full bg-[color:var(--sg-accent)]/15 px-2 py-0.5 text-[11px] font-bold text-[color:var(--sg-accent)]"
                 >
-                  {hook.pattern}
+                  {hookPatternName(hook.pattern)}
                 </span>
               )}
             </div>
@@ -81,6 +93,28 @@ export default function HookList({
       >
         <Plus className="h-4 w-4" /> Add hook
       </Button>
+
+      <HookGenerateMenu
+        running={generating}
+        disabled={generating || !canGenerate}
+        onGenerate={onGenerate}
+      />
+
+      {genError === "locked" && (
+        <Button asChild variant="link" className="mt-1 h-auto p-0">
+          <Link href="/pricing">Subscribe to unlock AI generation</Link>
+        </Button>
+      )}
+      {genError === "insufficient" && (
+        <p className="mt-1 text-sm font-semibold text-amber-500">
+          Out of credits. Top up to keep generating.
+        </p>
+      )}
+      {genError === "failed" && (
+        <p className="text-destructive mt-1 text-sm font-semibold">
+          Hook generation failed. No credit charged. Try again.
+        </p>
+      )}
     </section>
   );
 }

@@ -12,5 +12,8 @@ export const FEEDBACK_CREDITS = { audio: 3, video: 5, full: 8 } as const;
 export type FeedbackTier = keyof typeof FEEDBACK_CREDITS;
 
 /** Credit cost per generation action. */
-export const GENERATE_CREDITS = { idea: 2, script: 3 } as const;
+// Hooks are the cheapest call here (a handful of short lines, no long body),
+// and the one a creator is meant to re-run until a line lands, so it is priced
+// to make "give me three more" an easy click.
+export const GENERATE_CREDITS = { idea: 2, script: 3, hooks: 1 } as const;
 export type GenerateAction = keyof typeof GENERATE_CREDITS;
