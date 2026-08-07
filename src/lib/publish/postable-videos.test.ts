@@ -13,6 +13,7 @@ function item(
     submissionId: null,
     pillar: null,
     stage: "library" as ContentStage,
+    formats: [],
     ideaType: null,
     pillarId: null,
     sourceUrl: null,

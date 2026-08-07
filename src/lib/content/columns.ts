@@ -12,6 +12,7 @@ import type { ContentStage } from "@/lib/db/schema";
 export type ColumnKey =
   | "title"
   | "pillar"
+  | "formats"
   | "type"
   | "transcript"
   | "status"
@@ -43,6 +44,13 @@ const COLUMNS: Record<ColumnKey, ColumnDef> = {
     label: "Pillar",
     width: "150px",
     sortable: true,
+    compact: false,
+  },
+  formats: {
+    key: "formats",
+    label: "Format",
+    width: "170px",
+    sortable: false,
     compact: false,
   },
   type: {
@@ -95,6 +103,7 @@ export const BANK_COLUMNS: ColumnKey[] = [
   "title",
   "type",
   "pillar",
+  "formats",
   "transcript",
   "updated",
 ];
@@ -104,11 +113,39 @@ export const BANK_COLUMNS: ColumnKey[] = [
 export const LIBRARY_COLUMNS: ColumnKey[] = [
   "title",
   "pillar",
+  "formats",
   "status",
   "script",
   "updated",
   "actions",
 ];
+
+/** Every column a view may switch on, in the order the picker offers them. */
+export const ALL_COLUMN_KEYS: ColumnKey[] = [
+  "title",
+  "pillar",
+  "formats",
+  "type",
+  "transcript",
+  "status",
+  "script",
+  "updated",
+  "actions",
+];
+
+/** The columns a view actually renders. An empty saved list means "whatever
+ * this surface defaults to", so a new view is useful before it is configured,
+ * and `title` is always forced in front: a row with no title is unusable. */
+export function resolveColumns(
+  stage: ContentStage,
+  saved: string[] | undefined,
+): ColumnKey[] {
+  const chosen = (saved ?? []).filter((k): k is ColumnKey =>
+    ALL_COLUMN_KEYS.includes(k as ColumnKey),
+  );
+  if (!chosen.length) return columnsFor(stage);
+  return chosen.includes("title") ? chosen : ["title", ...chosen];
+}
 
 export function columnsFor(stage: ContentStage): ColumnKey[] {
   return stage === "bank" ? BANK_COLUMNS : LIBRARY_COLUMNS;

@@ -6,6 +6,7 @@ import CopyScriptButton from "@/components/library/copy-script-button";
 import ItemPillarField from "@/components/library/item-pillar-field";
 import StatusSelect from "@/components/library/status-select";
 import SaveIndicator from "@/components/workbench/save-indicator";
+import FormatField from "@/components/workbench/format-field";
 import SourceCard from "@/components/workbench/source-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -95,9 +96,16 @@ export default function ShootRail({
           />
         </Field>
 
+        <Field label="Publishing as">
+          <FormatField
+            formats={item.formats}
+            onChange={(formats) => update({ formats })}
+          />
+        </Field>
+
         {item.format && (
-          <Field label="Format">
-            <p className="text-foreground/85 text-sm font-semibold">
+          <Field label="Source format">
+            <p className="text-muted-foreground text-xs font-semibold">
               {item.format}
             </p>
           </Field>

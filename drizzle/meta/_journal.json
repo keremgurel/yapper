@@ -78,6 +78,13 @@
       "when": 1786005931687,
       "tag": "0010_parched_iron_lad",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786143928778,
+      "tag": "0011_worthless_ogun",
+      "breakpoints": true
     }
   ]
 }

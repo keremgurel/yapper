@@ -14,6 +14,7 @@ export interface ItemSummary {
   title: string;
   status: ContentStatus;
   stage: ContentStage;
+  formats: string[];
   ideaType: IdeaTypeValue | null;
   scheduledFor: string | null;
   submissionId: string | null;
