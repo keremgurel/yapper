@@ -5,8 +5,9 @@ import { Video } from "lucide-react";
 import CopyScriptButton from "@/components/library/copy-script-button";
 import ItemPillarField from "@/components/library/item-pillar-field";
 import StatusSelect from "@/components/library/status-select";
-import SaveIndicator from "@/components/workbench/save-indicator";
 import FormatField from "@/components/workbench/format-field";
+import RailRow from "@/components/workbench/rail-row";
+import SaveIndicator from "@/components/workbench/save-indicator";
 import SourceCard from "@/components/workbench/source-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,32 +18,16 @@ import type { ContentDetail, ContentPatch } from "@/lib/content/client";
 import type { ContentStatus } from "@/lib/db/schema";
 import type { SaveState } from "@/hooks/use-autosave";
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
-        {label}
-      </p>
-      {children}
-    </div>
-  );
-}
-
 /**
  * Everything about the shoot that is not the words themselves.
  *
- * This is the half of the workbench that used to sit at the bottom of a very
- * long page, which meant the two things the library is organised by — pillar
- * and status — were invisible while you worked. They are the first thing here.
+ * Status and pillar lead, because those are the two axes the library organises
+ * by and they used to be invisible while you worked. Then the reference, then
+ * the read time and Record, which is the point of the screen.
  *
- * Sticky, because Record is the point of the screen and should never be
- * somewhere you have to scroll to find.
+ * One card with dividers rather than four separately labelled blocks. The rail
+ * is a summary you glance at, and stacking an uppercase label above every
+ * control turned it into a form to fill in.
  */
 export default function ShootRail({
   item,
@@ -56,89 +41,93 @@ export default function ShootRail({
   onDelete: () => void;
 }) {
   const meter = scriptMeter(item.script);
+  const hasSource = Boolean(item.sourceTitle || item.sourceUrl || item.format);
 
   return (
     <aside className="lg:sticky lg:top-6 lg:self-start">
-      <div className="border-border bg-card space-y-4 rounded-xl border p-4">
-        <Field label="Status">
-          <StatusSelect
-            value={item.status}
-            onChange={(status: ContentStatus) =>
-              update(
-                status === "scheduled" && !item.scheduledFor
-                  ? { status, scheduledFor: defaultScheduleDate() }
-                  : { status },
-              )
-            }
-          />
-        </Field>
-
-        {item.status === "scheduled" && (
-          <Field label="Goes out">
-            <Input
-              type="datetime-local"
-              value={toLocalInput(item.scheduledFor)}
-              onChange={(e) => {
-                const iso = fromLocalInput(e.target.value);
-                if (iso) update({ scheduledFor: iso });
-              }}
-              className="h-9 w-full"
-              aria-label="Scheduled for"
+      <div className="border-border/70 bg-card divide-border/60 divide-y rounded-xl border">
+        <div className="space-y-3 p-4">
+          <RailRow label="Status">
+            <StatusSelect
+              value={item.status}
+              onChange={(status: ContentStatus) =>
+                update(
+                  status === "scheduled" && !item.scheduledFor
+                    ? { status, scheduledFor: defaultScheduleDate() }
+                    : { status },
+                )
+              }
             />
-          </Field>
-        )}
+          </RailRow>
 
-        <Field label="Pillar">
-          <ItemPillarField
-            pillarId={item.pillarId}
-            legacyName={item.pillar}
-            onChange={(pillarId) => update({ pillarId })}
-          />
-        </Field>
+          {item.status === "scheduled" && (
+            <RailRow label="Goes out">
+              <Input
+                type="datetime-local"
+                value={toLocalInput(item.scheduledFor)}
+                onChange={(e) => {
+                  const iso = fromLocalInput(e.target.value);
+                  if (iso) update({ scheduledFor: iso });
+                }}
+                className="h-8 w-auto text-xs"
+                aria-label="Scheduled for"
+              />
+            </RailRow>
+          )}
 
-        <Field label="Publishing as">
-          <FormatField
-            formats={item.formats}
-            onChange={(formats) => update({ formats })}
-          />
-        </Field>
+          <RailRow label="Pillar">
+            <ItemPillarField
+              pillarId={item.pillarId}
+              legacyName={item.pillar}
+              onChange={(pillarId) => update({ pillarId })}
+            />
+          </RailRow>
 
-        {item.format && (
-          <Field label="Source format">
-            <p className="text-muted-foreground text-xs font-semibold">
-              {item.format}
-            </p>
-          </Field>
-        )}
-
-        <SourceCard
-          title={item.sourceTitle}
-          url={item.sourceUrl}
-          transcript={item.sourceTranscript}
-          summary={item.sourceSummary}
-          status={item.transcriptStatus}
-          update={update}
-        />
-
-        {/* The number that decides whether this fits the format, next to the
-            button that starts the take. */}
-        <div className="border-border flex items-center justify-between border-t pt-3">
-          <span className="text-muted-foreground text-xs font-semibold">
-            {meter.words
-              ? `~${meter.label} · ${meter.words} words`
-              : "No script yet"}
-          </span>
-          <SaveIndicator state={saveState} />
+          <RailRow label="Publishing as" align="start">
+            <FormatField
+              formats={item.formats}
+              onChange={(formats) => update({ formats })}
+            />
+          </RailRow>
         </div>
 
-        <div className="space-y-2">
+        {hasSource && (
+          <div className="space-y-2 p-4">
+            <SourceCard
+              title={item.sourceTitle}
+              url={item.sourceUrl}
+              transcript={item.sourceTranscript}
+              summary={item.sourceSummary}
+              status={item.transcriptStatus}
+              update={update}
+            />
+            {item.format && (
+              <p className="text-muted-foreground/80 text-[11px] leading-snug">
+                {item.format}
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="p-4">
+          {/* The number that decides whether this fits the format, right next
+              to the button that starts the take. */}
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-muted-foreground text-xs font-bold">
+              {meter.words
+                ? `~${meter.label} · ${meter.words} words`
+                : "No script yet"}
+            </span>
+            <SaveIndicator state={saveState} />
+          </div>
+
           <Button asChild className="w-full">
             <Link href={`/studio/recorder?item=${item.id}`}>
               <Video className="h-4 w-4" />
               Record
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="mt-2 flex items-center justify-between">
             <CopyScriptButton
               idea={{ ...item, hooks: hookTexts(item.hooks) }}
             />

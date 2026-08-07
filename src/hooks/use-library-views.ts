@@ -21,6 +21,7 @@ import type { ContentStage } from "@/lib/db/schema";
 export function useLibraryViews(stage: ContentStage, enabled: boolean) {
   const [views, setViews] = useState<LibraryView[] | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!enabled) return;
@@ -32,8 +33,13 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
         setActiveId((current) => current ?? rows[0]?.id ?? null);
       },
       () => {
-        // The table still works with no views; it just falls back to defaults.
-        if (live) setViews([]);
+        // The table still works with no views, but the failure is surfaced
+        // rather than swallowed: an empty list and a broken request look
+        // identical on screen, and that is exactly how this feature once
+        // shipped completely invisible behind a 500.
+        if (!live) return;
+        setViews([]);
+        setFailed(true);
       },
     );
     return () => {
@@ -68,5 +74,13 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
 
   const active = (views ?? []).find((v) => v.id === activeId) ?? null;
 
-  return { views: views ?? [], active, setActiveId, create, save, remove };
+  return {
+    views: views ?? [],
+    active,
+    failed,
+    setActiveId,
+    create,
+    save,
+    remove,
+  };
 }

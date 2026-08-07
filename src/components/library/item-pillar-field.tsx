@@ -27,7 +27,10 @@ export default function ItemPillarField({
       value={linked && pillarId ? pillarId : ""}
       onChange={(e) => onChange(e.target.value || null)}
       aria-label="Content pillar"
-      className="border-border bg-card text-foreground/80 h-9 cursor-pointer rounded-md border px-3 text-sm"
+      // Borderless and right-aligned: in the rail this is a value you read,
+      // not a form field to fill in. The chevron and hover state still say it
+      // is editable.
+      className="text-foreground hover:bg-muted -mr-1 max-w-[160px] cursor-pointer truncate rounded bg-transparent px-1 py-0.5 text-right text-[13px] font-bold transition-colors outline-none"
     >
       <option value="">
         {legacyName && !linked ? legacyName : "No pillar"}
