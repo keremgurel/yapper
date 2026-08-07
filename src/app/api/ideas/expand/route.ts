@@ -4,6 +4,7 @@ import {
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
+import { getProjectContextSafe } from "@/lib/content/project-context-server";
 import { expandIdea } from "@/lib/ideas/expand";
 import type { IdeaInput } from "@/lib/ideas/types";
 
@@ -21,7 +22,6 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const body = (await req.json().catch(() => ({}))) as {
     input?: IdeaInput;
-    pillars?: string[];
   };
   const input = body.input;
   const hasMaterial =
@@ -32,17 +32,16 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!hasMaterial) {
     return Response.json({ error: "no_input" }, { status: 400 });
   }
-  const pillars = Array.isArray(body.pillars)
-    ? body.pillars
-        .filter((p): p is string => typeof p === "string")
-        .slice(0, 12)
-    : [];
+  // The creator's standing context is read server-side rather than trusted from
+  // the client, so a request cannot claim someone else's pillars or voice.
+  const context = await getProjectContextSafe(userId);
+
   const access = await reservePaidActionOrResponse(userId, "expand_idea");
   if (access.response) return access.response;
   const { reservation } = access;
 
   try {
-    const expansion = await expandIdea(input, pillars);
+    const expansion = await expandIdea(input, context);
     return Response.json({ expansion, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "expand_failed";

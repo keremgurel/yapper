@@ -28,7 +28,23 @@ describe("parseContentInput", () => {
       hooks: Array.from({ length: 25 }, () => "h".repeat(400)),
     });
     expect(input.hooks).toHaveLength(20);
-    expect(input.hooks!.every((h) => h.length === 300)).toBe(true);
+    expect(input.hooks!.every((h) => h.text.length === 300)).toBe(true);
+  });
+
+  it("stores legacy plain-string hooks as untagged hook objects", () => {
+    const { input } = parseContentInput({ hooks: ["Stop saying um."] });
+    expect(input.hooks).toEqual([
+      { text: "Stop saying um.", pattern: null, why: null },
+    ]);
+  });
+
+  it("keeps the pattern and reasoning on structured hooks", () => {
+    const { input } = parseContentInput({
+      hooks: [{ text: "Nobody passes.", pattern: "negation", why: "stakes" }],
+    });
+    expect(input.hooks).toEqual([
+      { text: "Nobody passes.", pattern: "negation", why: "stakes" },
+    ]);
   });
 
   it("drops non-string members of an array field", () => {

@@ -1,5 +1,10 @@
 import { deriveIdeaType } from "@/lib/ideas/derive-type";
-import { buildExpandMessages, parseExpansion } from "@/lib/ideas/expand-prompt";
+import {
+  buildExpandMessages,
+  EMPTY_PROMPT_CONTEXT,
+  parseExpansion,
+  type PromptContext,
+} from "@/lib/ideas/expand-prompt";
 import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
 
 /**
@@ -13,7 +18,7 @@ import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
  */
 export async function expandIdea(
   input: IdeaInput,
-  pillars: string[] = [],
+  context: PromptContext = EMPTY_PROMPT_CONTEXT,
 ): Promise<IdeaExpansion> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
@@ -23,7 +28,7 @@ export async function expandIdea(
     process.env.AI_IDEA_MODEL ?? process.env.AI_CLEAN_MODEL ?? "gpt-5.4";
 
   const type = deriveIdeaType(input);
-  const { system, user } = buildExpandMessages(input, type, pillars);
+  const { system, user } = buildExpandMessages(input, type, context);
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",

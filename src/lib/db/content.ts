@@ -1,52 +1,135 @@
-import { and, desc, eq, isNull, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import { getDb } from "./client";
-import { contentItems, type ContentStatus } from "./schema";
+import {
+  contentItems,
+  projectPillars,
+  type ContentBlock,
+  type ContentHook,
+  type ContentStage,
+  type ContentStatus,
+  type IdeaTypeValue,
+  type TranscriptStatus,
+} from "./schema";
 
 /** Fields a client may set on a content item (everything else is server-owned). */
 export interface ContentItemInput {
   title?: string;
-  hooks?: string[];
+  hooks?: ContentHook[];
+  blocks?: ContentBlock[];
+  originalNote?: string;
+  format?: string | null;
+  summary?: string | null;
+  ideaType?: IdeaTypeValue | null;
+  stage?: ContentStage;
   points?: string[];
   example?: string;
   cta?: string;
   script?: string | null;
   status?: ContentStatus;
   pillar?: string | null;
+  pillarId?: string | null;
+  projectId?: string | null;
   scheduledFor?: Date | null;
   sourceUrl?: string | null;
   sourceTitle?: string | null;
+  sourceTranscript?: string | null;
+  sourceSummary?: string | null;
+  sourceReferenceType?: string | null;
+  sourcePlatform?: string | null;
+  transcriptStatus?: TranscriptStatus | null;
   submissionId?: string | null;
 }
 
 export async function listContentItems(
   userId: string,
-  options: { includePosterUploads?: boolean } = {},
+  options: { includePosterUploads?: boolean; stage?: ContentStage } = {},
 ) {
+  const owned = options.includePosterUploads
+    ? eq(contentItems.userId, userId)
+    : and(
+        eq(contentItems.userId, userId),
+        or(
+          isNull(contentItems.sourceUrl),
+          ne(contentItems.sourceUrl, "yapper://poster-upload"),
+        ),
+      );
+
   return getDb()
     .select({
       id: contentItems.id,
       title: contentItems.title,
       status: contentItems.status,
+      stage: contentItems.stage,
+      ideaType: contentItems.ideaType,
       scheduledFor: contentItems.scheduledFor,
       submissionId: contentItems.submissionId,
-      pillar: contentItems.pillar,
+      /**
+       * The pillar as a name, so one field answers "what is this filed under"
+       * for both eras of row. A linked pillar wins; legacy free text is the
+       * fallback for rows written before `project_pillars` existed. Without the
+       * coalesce, reclassifying an item writes `pillarId` while the table keeps
+       * rendering the stale free text, and the edit looks like it did nothing.
+       */
+      pillar: sql<
+        string | null
+      >`coalesce(${projectPillars.name}, ${contentItems.pillar})`,
+      pillarId: contentItems.pillarId,
+      sourceUrl: contentItems.sourceUrl,
+      sourceTitle: contentItems.sourceTitle,
+      sourcePlatform: contentItems.sourcePlatform,
+      transcriptStatus: contentItems.transcriptStatus,
+      script: contentItems.script,
+      originalNote: contentItems.originalNote,
       updatedAt: contentItems.updatedAt,
       createdAt: contentItems.createdAt,
     })
     .from(contentItems)
+    .leftJoin(projectPillars, eq(contentItems.pillarId, projectPillars.id))
     .where(
-      options.includePosterUploads
-        ? eq(contentItems.userId, userId)
-        : and(
-            eq(contentItems.userId, userId),
-            or(
-              isNull(contentItems.sourceUrl),
-              ne(contentItems.sourceUrl, "yapper://poster-upload"),
-            ),
-          ),
+      options.stage ? and(owned, eq(contentItems.stage, options.stage)) : owned,
     )
     .orderBy(desc(contentItems.updatedAt))
-    .limit(200);
+    .limit(500);
+}
+
+/** Flip items between the bank and the library. Scoped to the owner, and a
+ * pure stage change: no field is transformed, which is the whole point of the
+ * two surfaces sharing one table. Returns how many rows moved. */
+export async function setContentStage(
+  userId: string,
+  ids: string[],
+  stage: ContentStage,
+): Promise<number> {
+  if (!ids.length) return 0;
+  const rows = await getDb()
+    .update(contentItems)
+    .set({ stage, updatedAt: new Date() })
+    .where(and(eq(contentItems.userId, userId), inArray(contentItems.id, ids)))
+    .returning({ id: contentItems.id });
+  return rows.length;
+}
+
+/** Bulk delete, scoped to the owner. Returns how many rows were removed. */
+export async function deleteContentItems(
+  userId: string,
+  ids: string[],
+): Promise<number> {
+  if (!ids.length) return 0;
+  const rows = await getDb()
+    .delete(contentItems)
+    .where(and(eq(contentItems.userId, userId), inArray(contentItems.id, ids)))
+    .returning({ id: contentItems.id });
+  return rows.length;
 }
 
 export async function getContentItem(userId: string, id: string) {
@@ -133,4 +216,15 @@ export async function setContentSubmission(
     .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)))
     .returning({ id: contentItems.id });
   return rows.length > 0;
+}
+
+/** Every source URL the user has already saved, for import deduplication. */
+export async function existingSourceUrls(userId: string): Promise<string[]> {
+  const rows = await getDb()
+    .select({ url: contentItems.sourceUrl })
+    .from(contentItems)
+    .where(
+      and(eq(contentItems.userId, userId), isNotNull(contentItems.sourceUrl)),
+    );
+  return rows.map((r) => r.url).filter((u): u is string => Boolean(u));
 }

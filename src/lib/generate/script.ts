@@ -1,4 +1,8 @@
+import { projectContextSection } from "@/lib/content/project-context";
+
 export interface ScriptInput {
+  /** The creator's compiled standing context. */
+  context?: string;
   title?: string;
   hooks?: string[];
   points?: string[];
@@ -60,7 +64,10 @@ export async function generateScript(input: ScriptInput): Promise<string> {
       temperature: 0.7,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM },
+        {
+          role: "system",
+          content: SYSTEM + projectContextSection(input.context ?? ""),
+        },
         {
           role: "user",
           content: `${parts.join("\n\n")}\n\nWrite the script.`,

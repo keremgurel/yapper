@@ -1,3 +1,4 @@
+import { projectContextSection } from "@/lib/content/project-context";
 import type {
   IdeaExpansion,
   IdeaExpansionSection,
@@ -5,6 +6,20 @@ import type {
   IdeaSectionKind,
   IdeaType,
 } from "@/lib/ideas/types";
+
+/** The creator's standing context, as the prompt builders consume it. */
+export interface PromptContext {
+  /** The compiled context block, "" when the creator has filled nothing in. */
+  block: string;
+  /** Pillar names, used only to decide whether to emit the classify rule; the
+   * names themselves already live in the block. */
+  pillarNames: string[];
+}
+
+export const EMPTY_PROMPT_CONTEXT: PromptContext = {
+  block: "",
+  pillarNames: [],
+};
 
 /**
  * Build the chat messages that turn a raw idea into a faithful reference
@@ -16,7 +31,7 @@ import type {
 export function buildExpandMessages(
   input: IdeaInput,
   type: IdeaType,
-  pillars: string[],
+  context: PromptContext = EMPTY_PROMPT_CONTEXT,
 ): { system: string; user: string } {
   const system =
     "You are a sharp short-form creative director. Analyze the reference in " +
@@ -57,11 +72,15 @@ export function buildExpandMessages(
     "- A script section may include dialogue or audio cues when appropriate. " +
     "It does not have to be first-person narration.\n" +
     "- Omit empty sections and generic marketing filler.\n" +
-    (pillars.length
-      ? `- Pick pillar from this list when one fits: ${pillars.join(", ")}. ` +
-        "Only invent a new pillar if none fit.\n"
+    // The pillar names are already in the context block below; naming them
+    // again here would spend tokens restating what the model can already read.
+    (context.pillarNames.length
+      ? "- Set pillar to the best fit from the creator's PILLARS list below, " +
+        "copied verbatim. Only invent a new pillar if none fit.\n"
       : "") +
-    "- Output JSON and nothing else.";
+    "- Say plainly why this could land with THIS creator's audience.\n" +
+    "- Output JSON and nothing else." +
+    projectContextSection(context.block);
 
   const parts: string[] = [];
   if (type === "inspiration") {

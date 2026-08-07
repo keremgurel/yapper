@@ -1,5 +1,6 @@
 "use client";
 
+import { hookTexts } from "@/lib/content/normalize";
 import { useEffect, useState } from "react";
 import TeleprompterRecorder from "@/components/teleprompter/teleprompter-recorder";
 import TeleprompterViewPicker from "@/components/teleprompter/teleprompter-view-picker";
@@ -52,7 +53,8 @@ export default function RecordClient() {
 
     if (item) {
       getContent(item).then(
-        (detail) => adopt(detail, detail.id),
+        (detail) =>
+          adopt({ ...detail, hooks: hookTexts(detail.hooks) }, detail.id),
         () => adopt(null), // not found / signed out -> plain recorder
       );
     } else if (legacyIdea) {

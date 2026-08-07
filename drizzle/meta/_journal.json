@@ -64,6 +64,20 @@
       "when": 1784535248256,
       "tag": "0008_groovy_old_lace",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786004218938,
+      "tag": "0009_massive_polaris",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786005931687,
+      "tag": "0010_parched_iron_lad",
+      "breakpoints": true
     }
   ]
 }

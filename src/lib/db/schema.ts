@@ -167,6 +167,76 @@ export const submissions = pgTable(
   ],
 );
 
+/**
+ * A creator's project: the standing context every AI call needs in order to
+ * write like them rather than like a generic content bot. One row per user
+ * today (`getActiveProject` creates it on first sight), but the table is keyed
+ * so a future account switcher is a UI change and not a data migration.
+ *
+ * `contextVersion` is bumped on every write and used as the cache key for the
+ * compiled context block, so the block is rebuilt only when the brain changes.
+ */
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull().default(""),
+    // Every field is free text on purpose: a creator describes their own
+    // account better than any set of enums we could invent for them.
+    whatIMake: text("what_i_make").notNull().default(""),
+    audience: text("audience").notNull().default(""),
+    voice: text("voice").notNull().default(""),
+    offers: text("offers").notNull().default(""),
+    doNots: text("do_nots").notNull().default(""),
+    links: jsonb("links").$type<string[]>().notNull().default([]),
+    contextVersion: integer("context_version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    // One project per user, for now. This is what makes `getActiveProject`'s
+    // get-or-create race-safe (ON CONFLICT DO NOTHING needs a conflict target),
+    // so two concurrent first requests cannot both insert. Adding the account
+    // switcher later drops this one index; it is not a data migration.
+    uniqueIndex("projects_user_unique").on(t.userId),
+  ],
+);
+
+/**
+ * One content pillar. Unlike the free-text `contentItems.pillar` it replaces, a
+ * pillar carries a description and example angles, which is what lets the model
+ * classify into it and write for it instead of pattern-matching on a bare name.
+ */
+export const projectPillars = pgTable(
+  "project_pillars",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    examples: jsonb("examples").$type<string[]>().notNull().default([]),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("project_pillars_project_idx").on(t.projectId, t.sortOrder),
+    // Two pillars with the same name would make classification ambiguous and
+    // the reconciliation of legacy free-text pillars non-deterministic.
+    uniqueIndex("project_pillars_name_unique").on(t.projectId, t.name),
+  ],
+);
+
 export const contentStatuses = [
   "drafted",
   "planned",
@@ -174,6 +244,44 @@ export const contentStatuses = [
   "posted",
 ] as const;
 export type ContentStatus = (typeof contentStatuses)[number];
+
+/** Which surface an item lives on. `bank` is the Idea Bank inbox, `library` the
+ * pipeline you actually shoot. Sending an idea to the library is a stage flip,
+ * not a copy, so nothing about it is transformed on the way. */
+export const contentStages = ["bank", "library"] as const;
+export type ContentStage = (typeof contentStages)[number];
+
+/** What kind of idea this is, derived from what the creator dropped in. */
+export const ideaTypes = ["original", "semi-original", "inspiration"] as const;
+export type IdeaTypeValue = (typeof ideaTypes)[number];
+
+/** Whether we have the reference's actual words. Reported honestly rather than
+ * silently degrading a video to a page summary. */
+export const transcriptStatuses = [
+  "ready",
+  "pending",
+  "needs_media",
+  "unavailable",
+] as const;
+export type TranscriptStatus = (typeof transcriptStatuses)[number];
+
+/** One flexible body block. Labels are free-form on purpose: an audio-led
+ * sketch needs "Joke mechanics", an explainer needs "Argument". */
+export interface ContentBlock {
+  label: string;
+  kind: "paragraph" | "bullets" | "steps" | "script";
+  text?: string;
+  items?: string[];
+}
+
+/** A hook variation. `pattern` names the archetype it uses and `why` explains
+ * the mechanism, so a creator can see why it should work. Legacy rows hold
+ * plain strings; the normalizer widens those on read. */
+export interface ContentHook {
+  text: string;
+  pattern?: string | null;
+  why?: string | null;
+}
 
 /** A Content Library item: an idea that becomes a structured script (the Lab)
  * and moves through the posting pipeline. `submissionId` links the latest
@@ -186,8 +294,39 @@ export const contentItems = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // The project this belongs to. Nullable so the column could be added to
+    // existing rows without a backfill window; every new write sets it.
+    projectId: uuid("project_id").references(() => projects.id, {
+      onDelete: "set null",
+    }),
+    /**
+     * Which surface this sits on. Defaults to `library` so that adding the
+     * column left every pre-existing row (all of which were library items)
+     * correctly classified. Idea capture passes `bank` explicitly.
+     */
+    stage: text("stage", { enum: contentStages }).notNull().default("library"),
     title: text("title").notNull().default(""),
-    hooks: jsonb("hooks").notNull().default([]),
+    /** Hook variations. `ContentHook[]` going forward, `string[]` on legacy
+     * rows; read through `normalizeItem` rather than directly. */
+    hooks: jsonb("hooks")
+      .$type<ContentHook[] | string[]>()
+      .notNull()
+      .default([]),
+    /** The flexible body: whatever blocks fit THIS idea. */
+    blocks: jsonb("blocks").$type<ContentBlock[]>().notNull().default([]),
+    /**
+     * The creator's exact words, verbatim and immutable. Never regenerated,
+     * never paraphrased. Everything else about an item can be rebuilt by AI;
+     * this cannot, so it is the one field nothing is allowed to overwrite.
+     */
+    originalNote: text("original_note").notNull().default(""),
+    /** The source's actual creative form, not a forced content bucket. */
+    format: text("format"),
+    /** The read on the reference and the intended adaptation angle. */
+    summary: text("summary"),
+    ideaType: text("idea_type", { enum: ideaTypes }),
+    // Legacy body columns. Read through the normalizer for old rows; never
+    // written again, and dropped once nothing falls back to them.
     points: jsonb("points").notNull().default([]),
     example: text("example").notNull().default(""),
     cta: text("cta").notNull().default(""),
@@ -196,11 +335,24 @@ export const contentItems = pgTable(
       .notNull()
       .default("drafted"),
     // The content pillar this idea belongs to (a free-form name, matched to the
-    // user's inspiration pillars at capture time).
+    // user's inspiration pillars at capture time). Superseded by pillarId;
+    // retained so legacy rows keep their classification until reconciled.
     pillar: text("pillar"),
+    pillarId: uuid("pillar_id").references(() => projectPillars.id, {
+      onDelete: "set null",
+    }),
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
     sourceUrl: text("source_url"),
     sourceTitle: text("source_title"),
+    /** The reference's complete spoken transcript, verbatim, never AI-rewritten.
+     * Previously client-only; without it, moving ideas to the server would lose
+     * the single most valuable thing an idea carries. */
+    sourceTranscript: text("source_transcript"),
+    /** A faithful summary, for articles and papers that never had dialogue. */
+    sourceSummary: text("source_summary"),
+    sourceReferenceType: text("source_reference_type"),
+    sourcePlatform: text("source_platform"),
+    transcriptStatus: text("transcript_status", { enum: transcriptStatuses }),
     sourceClientId: text("source_client_id"),
     submissionId: uuid("submission_id").references(() => submissions.id, {
       onDelete: "set null",
@@ -214,9 +366,20 @@ export const contentItems = pgTable(
   },
   (t) => [
     index("content_items_user_idx").on(t.userId, t.updatedAt),
+    // Both surfaces list by stage, so the stage leads the index.
+    index("content_items_stage_idx").on(t.userId, t.stage, t.updatedAt),
     check(
       "content_items_status_check",
       sql`${t.status} in ('drafted','planned','scheduled','posted')`,
+    ),
+    check("content_items_stage_check", sql`${t.stage} in ('bank','library')`),
+    check(
+      "content_items_idea_type_check",
+      sql`${t.ideaType} is null or ${t.ideaType} in ('original','semi-original','inspiration')`,
+    ),
+    check(
+      "content_items_transcript_status_check",
+      sql`${t.transcriptStatus} is null or ${t.transcriptStatus} in ('ready','pending','needs_media','unavailable')`,
     ),
     // A scheduled item must have a date; enforced at the DB so no API path
     // (create, update, import, future writers) can produce the invalid pairing.

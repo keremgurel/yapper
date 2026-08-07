@@ -8,6 +8,7 @@ import {
   type ContentPatch,
 } from "@/lib/content/client";
 import { useAutosave, type SaveState } from "@/hooks/use-autosave";
+import { normalizeHooks } from "@/lib/content/normalize";
 
 interface Loaded {
   id: string;
@@ -61,7 +62,19 @@ export function useContentItem(id: string): {
     (fields: ContentPatch) => {
       setLoaded((prev) =>
         prev && prev.id === id && prev.item
-          ? { ...prev, item: { ...prev.item, ...fields } }
+          ? {
+              ...prev,
+              item: {
+                ...prev.item,
+                ...fields,
+                // A patch may carry either hook shape; local state keeps the
+                // normalized one so the UI never sees a bare string.
+                hooks:
+                  fields.hooks === undefined
+                    ? prev.item.hooks
+                    : normalizeHooks(fields.hooks),
+              },
+            }
           : prev,
       );
       queue(fields);

@@ -6,6 +6,8 @@ import {
 } from "@/lib/billing/actions";
 import { createContentItem } from "@/lib/db/content";
 import { captureIdea } from "@/lib/content/capture";
+import { normalizeHooks } from "@/lib/content/normalize";
+import { getProjectContextSafe } from "@/lib/content/project-context-server";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,18 +29,24 @@ export async function POST(req: NextRequest): Promise<Response> {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) return Response.json({ error: "no_input" }, { status: 400 });
-  const pillars = strArr(body.pillars, 12);
+  // Classification only needs the pillars, not the voice or the offers.
+  const context = await getProjectContextSafe(userId, "pillars");
+  const pillars = context.pillarNames.length
+    ? context.pillarNames
+    : strArr(body.pillars, 12);
 
   const access = await reservePaidActionOrResponse(userId, "capture_idea");
   if (access.response) return access.response;
   const { reservation } = access;
 
   try {
-    const idea = await captureIdea({ text, pillars });
+    const idea = await captureIdea({ text, pillars, context: context.block });
     // The angle seeds `example`; the classified pillar lands in its own column.
     const item = await createContentItem(userId, {
       title: idea.title,
-      hooks: idea.hooks,
+      // The capture prompt returns bare hook lines; they carry no pattern
+      // attribution until the hook engine generates them.
+      hooks: normalizeHooks(idea.hooks),
       points: idea.points,
       example: idea.angle,
       pillar: idea.pillar ?? undefined,

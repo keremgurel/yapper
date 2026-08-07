@@ -10,8 +10,12 @@ export const runtime = "nodejs";
 export async function GET(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const poster = req.nextUrl.searchParams.get("surface") === "poster";
   const items = await listContentItems(userId, {
-    includePosterUploads: req.nextUrl.searchParams.get("surface") === "poster",
+    includePosterUploads: poster,
+    // The library is the pipeline, not the inbox. The poster surface wants
+    // everything recordable, so it is the one caller that spans both stages.
+    stage: poster ? undefined : "library",
   });
   return Response.json({ items });
 }
@@ -31,6 +35,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
   }
 
-  const item = await createContentItem(userId, input);
+  // Anything created through this route is a library item; ideas go through
+  // /api/ideas, which stamps stage explicitly.
+  const item = await createContentItem(userId, { ...input, stage: "library" });
   return Response.json({ item }, { status: 201 });
 }

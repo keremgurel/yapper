@@ -85,7 +85,7 @@ export default function InstagramImportSheet({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existingUrls: string[];
-  onImport: (entries: InstagramSavedEntry[]) => number;
+  onImport: (entries: InstagramSavedEntry[]) => Promise<number>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [reading, setReading] = useState(false);
@@ -170,8 +170,8 @@ export default function InstagramImportSheet({
     });
   };
 
-  const commit = () => {
-    const imported = onImport(importable);
+  const commit = async () => {
+    const imported = await onImport(importable);
     setResult({ imported, skipped: selectedDuplicateCount });
   };
 
@@ -398,7 +398,7 @@ export default function InstagramImportSheet({
           <SheetFooter className="border-border border-t px-5 py-4">
             <Button
               disabled={importable.length === 0}
-              onClick={commit}
+              onClick={() => void commit()}
               className="w-full justify-between"
             >
               <span>Import {importable.length} new saves</span>

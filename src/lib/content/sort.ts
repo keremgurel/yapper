@@ -1,8 +1,14 @@
 import { contentStatuses, type ContentStatus } from "@/lib/db/schema";
 import type { ContentSummary } from "@/lib/content/client";
 
-/** The columns the library table can sort by. */
-export type ContentSortKey = "title" | "status" | "updated";
+/** The columns the shared item table can sort by. */
+export type ContentSortKey =
+  | "title"
+  | "status"
+  | "updated"
+  | "pillar"
+  | "type"
+  | "script";
 export type SortDir = "asc" | "desc";
 
 export interface ContentSort {
@@ -22,6 +28,11 @@ export const DEFAULT_CONTENT_SORT: ContentSort = {
 export function defaultDirFor(key: ContentSortKey): SortDir {
   return key === "updated" ? "desc" : "asc";
 }
+
+/** Unclassified rows sort last whichever way the column is pointing: "no
+ * pillar" is the absence of a value, not a value that comes before "Brain
+ * dumps". Same for an idea with no type yet. */
+const LAST = "\uffff";
 
 /** How a row's title reads in the table, so sorting matches what the eye sees:
  * an empty title shows as "Untitled idea", so that is what it sorts as. */
@@ -48,6 +59,18 @@ function compareAsc(
       return statusRank(a.status) - statusRank(b.status);
     case "updated":
       return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    case "pillar":
+      return (a.pillar?.toLowerCase() || LAST).localeCompare(
+        b.pillar?.toLowerCase() || LAST,
+      );
+    case "type":
+      return (a.ideaType || LAST).localeCompare(b.ideaType || LAST);
+    case "script":
+      // Rows that already have a script sort together, ascending = without
+      // first, so "what still needs writing" is one click away.
+      return (
+        Number(Boolean(a.script?.trim())) - Number(Boolean(b.script?.trim()))
+      );
   }
 }
 

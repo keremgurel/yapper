@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { sortContent, type ContentSort } from "@/lib/content/sort";
 import type { ContentSummary } from "@/lib/content/client";
-import type { ContentStatus } from "@/lib/db/schema";
+import type { ContentStage, ContentStatus } from "@/lib/db/schema";
 
 function row(fields: Partial<ContentSummary> & { id: string }): ContentSummary {
   return {
@@ -10,6 +10,15 @@ function row(fields: Partial<ContentSummary> & { id: string }): ContentSummary {
     scheduledFor: null,
     submissionId: null,
     pillar: null,
+    stage: "library" as ContentStage,
+    ideaType: null,
+    pillarId: null,
+    sourceUrl: null,
+    sourceTitle: null,
+    sourcePlatform: null,
+    transcriptStatus: null,
+    script: null,
+    originalNote: "",
     updatedAt: "2026-07-01T00:00:00.000Z",
     createdAt: "2026-07-01T00:00:00.000Z",
     ...fields,

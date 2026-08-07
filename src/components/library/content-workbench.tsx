@@ -13,10 +13,9 @@ import {
 import { Show, SignInButton } from "@clerk/nextjs";
 import CopyScriptButton from "@/components/library/copy-script-button";
 import EditableList from "@/components/library/editable-list";
-import PillarSelect from "@/components/library/pillar-select";
+import ItemPillarField from "@/components/library/item-pillar-field";
 import ScriptSection from "@/components/library/script-section";
 import StatusSelect from "@/components/library/status-select";
-import { usePillarNames } from "@/hooks/use-pillar-names";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useContentItem } from "@/hooks/use-content-item";
 import { useIdeaGeneration } from "@/hooks/use-idea-generation";
 import { defaultScheduleDate, deleteContent } from "@/lib/content/client";
+import { hookTexts, mergeHookTexts } from "@/lib/content/normalize";
 import type { SaveState } from "@/hooks/use-autosave";
 
 function SaveIndicator({ state }: { state: SaveState }) {
@@ -50,20 +50,15 @@ function SaveIndicator({ state }: { state: SaveState }) {
 export default function ContentWorkbench({ id }: { id: string }) {
   const router = useRouter();
   const { item, loading, missing, saveState, update } = useContentItem(id);
-  const pillarNames = usePillarNames();
   const {
     generating,
     error: genError,
     runIdea,
     runScript,
   } = useIdeaGeneration(
-    item ?? {
-      title: "",
-      hooks: [],
-      points: [],
-      example: "",
-      cta: "",
-    },
+    item
+      ? { ...item, hooks: hookTexts(item.hooks) }
+      : { title: "", hooks: [], points: [], example: "", cta: "" },
     update,
   );
 
@@ -125,7 +120,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
               Record
             </Link>
           </Button>
-          <CopyScriptButton idea={item} />
+          <CopyScriptButton idea={{ ...item, hooks: hookTexts(item.hooks) }} />
           <Button
             type="button"
             variant="ghost"
@@ -151,12 +146,10 @@ export default function ContentWorkbench({ id }: { id: string }) {
             )
           }
         />
-        <PillarSelect
-          value={item.pillar}
-          onChange={(pillar) => update({ pillar })}
-          options={pillarNames}
-          emptyLabel="No pillar"
-          ariaLabel="Content pillar"
+        <ItemPillarField
+          pillarId={item.pillarId}
+          legacyName={item.pillar}
+          onChange={(pillarId) => update({ pillarId })}
         />
         {item.status === "scheduled" && (
           <Input
@@ -234,8 +227,10 @@ export default function ContentWorkbench({ id }: { id: string }) {
           <CardContent className="space-y-6">
             <EditableList
               label="Hook options"
-              items={item.hooks}
-              onChange={(hooks) => update({ hooks })}
+              items={hookTexts(item.hooks)}
+              onChange={(texts) =>
+                update({ hooks: mergeHookTexts(item.hooks, texts) })
+              }
               addLabel="Add hook"
               placeholder="An opening line that stops the scroll"
             />

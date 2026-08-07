@@ -9,6 +9,9 @@ import {
 } from "@/lib/db/content";
 import { submissions } from "@/lib/db/schema";
 import { parseContentInput } from "@/lib/content/input";
+import { resolveOwnPillar } from "@/lib/content/pillar-ownership";
+import { parseIdeaFields } from "@/lib/ideas/input";
+import { normalizeBody } from "@/lib/content/normalize";
 
 export const runtime = "nodejs";
 
@@ -21,7 +24,8 @@ export async function GET(_req: Request, { params }: Params) {
   const { id } = await params;
   const item = await getContentItem(userId, id);
   if (!item) return Response.json({ error: "not_found" }, { status: 404 });
-  return Response.json({ item });
+  // Legacy rows are widened here, so no client has to know the old shape.
+  return Response.json({ item: { ...item, ...normalizeBody(item) } });
 }
 
 /**
@@ -37,6 +41,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { input, badStatus } = parseContentInput(body);
   if (badStatus) return Response.json({ error: "bad_status" }, { status: 400 });
+  // The idea-specific half: verbatim words, the resolved reference, and the
+  // flexible body. Both surfaces write through this one path.
+  Object.assign(input, parseIdeaFields(body));
 
   // Linking a recording: verify the submission is the caller's own. (The FK
   // only proves existence; without this a user could link someone else's.)
@@ -58,6 +65,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       }
       input.submissionId = own.id;
     }
+  }
+
+  // Filing under a pillar: same reasoning as the submission check above. The
+  // legacy free-text pillar is cleared with it, so the read fallback cannot
+  // shadow the link the creator just chose.
+  if (body.pillarId !== undefined) {
+    const owned = await resolveOwnPillar(userId, body.pillarId);
+    if (!owned.ok) {
+      return Response.json({ error: "bad_pillar" }, { status: 400 });
+    }
+    input.pillarId = owned.pillarId;
+    input.pillar = null;
   }
 
   if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {
