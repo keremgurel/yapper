@@ -30,7 +30,7 @@ export default function PillarSelect({
       aria-label={ariaLabel}
       className={
         className ??
-        "border-border bg-card text-foreground/80 h-9 cursor-pointer rounded-md border px-3 text-sm"
+        "border-border bg-card text-foreground/80 h-9 cursor-pointer rounded-md border px-3 text-[13px] focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
       }
     >
       <option value="">{emptyLabel}</option>

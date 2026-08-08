@@ -1,5 +1,6 @@
 "use client";
 
+import { Chip, formatTone } from "@/components/studio-ui";
 import { contentFormat } from "@/lib/content/formats";
 
 /** What an item ships as, at a glance. Colour does the work here: a row is
@@ -13,12 +14,9 @@ export default function FormatChips({ formats }: { formats: string[] }) {
         const format = contentFormat(id);
         if (!format) return null;
         return (
-          <span
-            key={id}
-            className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${format.chip}`}
-          >
+          <Chip key={id} tone={formatTone(id)}>
             {format.label}
-          </span>
+          </Chip>
         );
       })}
     </span>

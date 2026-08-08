@@ -41,7 +41,7 @@ export default function ItemRow({
           onOpen();
         }
       }}
-      className={`grid cursor-pointer items-center gap-3 border-b px-4 py-3 text-left transition-colors last:border-b-0 ${
+      className={`grid min-h-10 cursor-pointer items-center gap-3 border-b px-4 py-1 text-left transition-colors outline-none last:border-b-0 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)]/60 focus-visible:ring-inset ${
         selected ? "bg-[color:var(--sg-accent)]/8" : "hover:bg-muted/40"
       }`}
       style={{ gridTemplateColumns: "var(--item-grid)" }}

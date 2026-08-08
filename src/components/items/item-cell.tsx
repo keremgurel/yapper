@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FileText, Film, Link2, Minus, Send } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import FormatChips from "@/components/views/format-chips";
+import { Chip, pillarTone } from "@/components/studio-ui";
 import { hasScript, type ColumnKey } from "@/lib/content/columns";
 import type { ContentSummary } from "@/lib/content/client";
 import type {
@@ -18,16 +19,21 @@ const TYPE_LABEL: Record<IdeaTypeValue, string> = {
   inspiration: "Inspiration",
 };
 
-/** Reference state in one word. `ready` deliberately has no chip: the normal
- * case should be quiet, and only the problem cases should catch the eye. */
+/** Caution text on the shared yellow token, mixed toward `--sg-text` the same
+ * way chip tones are so it stays readable on both themes. */
+const CAUTION_TEXT =
+  "text-[color-mix(in_oklab,var(--sg-yellow-500)_48%,var(--sg-text))]";
+
+/** Reference state in one word. Healthy states stay quiet muted text; only the
+ * problem cases get the caution color, so they are what catches the eye. */
 const TRANSCRIPT: Record<
   TranscriptStatus,
   { label: string; tone: string } | null
 > = {
   ready: { label: "Transcript", tone: "text-muted-foreground" },
   pending: { label: "Fetching", tone: "text-muted-foreground" },
-  needs_media: { label: "No transcript", tone: "text-amber-500" },
-  unavailable: { label: "Summary only", tone: "text-amber-500" },
+  needs_media: { label: "No transcript", tone: CAUTION_TEXT },
+  unavailable: { label: "Summary only", tone: CAUTION_TEXT },
 };
 
 function Empty() {
@@ -51,7 +57,7 @@ export default function ItemCell({
     case "title":
       return (
         <span className="flex min-w-0 items-center gap-2">
-          <span className="text-foreground min-w-0 truncate text-[15px] font-semibold">
+          <span className="text-foreground min-w-0 truncate text-sm font-medium">
             {row.title.trim() || firstLine(row.originalNote) || "Untitled idea"}
           </span>
           {row.sourceUrl && (
@@ -65,9 +71,9 @@ export default function ItemCell({
 
     case "pillar":
       return row.pillar ? (
-        <span className="truncate rounded-full bg-[color:var(--sg-accent)]/15 px-2 py-0.5 text-[11px] font-bold text-[color:var(--sg-accent)]">
+        <Chip tone={pillarTone(row.pillar)} variant="dot">
           {row.pillar}
-        </span>
+        </Chip>
       ) : (
         <Empty />
       );
@@ -81,7 +87,7 @@ export default function ItemCell({
 
     case "type":
       return row.ideaType ? (
-        <span className="text-muted-foreground truncate text-xs font-semibold">
+        <span className="text-muted-foreground truncate text-[13px]">
           {TYPE_LABEL[row.ideaType]}
         </span>
       ) : (
@@ -93,7 +99,7 @@ export default function ItemCell({
         ? TRANSCRIPT[row.transcriptStatus]
         : null;
       return state ? (
-        <span className={`truncate text-xs font-semibold ${state.tone}`}>
+        <span className={`truncate text-[13px] ${state.tone}`}>
           {state.label}
         </span>
       ) : (
@@ -108,7 +114,7 @@ export default function ItemCell({
       return hasScript(row) ? (
         <FileText
           aria-label="Has a script"
-          className="h-4 w-4 text-[color:var(--sg-accent)]"
+          className="text-muted-foreground h-4 w-4"
         />
       ) : (
         <Empty />
@@ -116,7 +122,7 @@ export default function ItemCell({
 
     case "updated":
       return (
-        <span className="text-muted-foreground truncate text-sm">
+        <span className="text-muted-foreground truncate text-[13px] tabular-nums">
           {when(row.updatedAt)}
         </span>
       );
@@ -142,7 +148,7 @@ export default function ItemCell({
               e.stopPropagation();
               onPost();
             }}
-            className="p-1 text-[color:var(--sg-accent)] hover:opacity-80"
+            className="text-muted-foreground hover:text-foreground p-1"
             title="Post to a platform"
             aria-label="Post to a platform"
           >

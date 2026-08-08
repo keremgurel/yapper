@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CHIP_TONES, EmptyState, statusTone } from "@/components/studio-ui";
 import BoardCard from "@/components/views/board-card";
 import { groupItems } from "@/lib/content/group-items";
 import type { ContentSummary } from "@/lib/content/client";
@@ -42,6 +43,7 @@ export default function BoardView({
         return (
           <section
             key={group.key}
+            aria-label={group.label}
             onDragOver={(e) => {
               if (!canDrag || !dragging) return;
               // Required for the drop to fire at all.
@@ -57,15 +59,23 @@ export default function BoardView({
               }
               setDragging(null);
             }}
-            className={`w-[260px] shrink-0 rounded-xl p-2 transition-colors ${
-              active ? "bg-[color:var(--sg-accent)]/8" : ""
+            className={`bg-muted w-[264px] shrink-0 rounded-xl p-2 transition-shadow ${
+              active
+                ? "ring-2 ring-[color:var(--sg-accent)] ring-inset"
+                : "ring-0"
             }`}
           >
-            <header className="mb-2 flex items-center gap-2 px-1">
-              <h2 className="text-foreground text-xs font-black tracking-wide uppercase">
+            <header className="mb-2 flex items-center gap-2 px-1.5 pt-1">
+              {isStatus(group.key) && (
+                <span
+                  aria-hidden
+                  className={`h-1.5 w-1.5 shrink-0 rounded-full ${CHIP_TONES[statusTone(group.key)].dot}`}
+                />
+              )}
+              <h2 className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
                 {group.label}
               </h2>
-              <span className="text-muted-foreground text-xs font-semibold">
+              <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
                 {group.items.length}
               </span>
             </header>
@@ -78,12 +88,19 @@ export default function BoardView({
                   onOpen={() => onOpen(row.id)}
                   draggable={canDrag}
                   onDragStart={() => setDragging(row)}
+                  onDragEnd={() => {
+                    setDragging(null);
+                    setOver(null);
+                  }}
                 />
               ))}
               {!group.items.length && (
-                <p className="text-muted-foreground/70 px-1 py-3 text-xs">
-                  Nothing here.
-                </p>
+                <EmptyState
+                  title="Nothing here"
+                  description={
+                    canDrag ? "Drag a card here to move it." : undefined
+                  }
+                />
               )}
             </div>
           </section>

@@ -1,23 +1,27 @@
 "use client";
 
 import { FileText } from "lucide-react";
+import { Chip, pillarTone } from "@/components/studio-ui";
 import FormatChips from "@/components/views/format-chips";
 import { scriptMeter } from "@/lib/content/script-meter";
 import type { ContentSummary } from "@/lib/content/client";
 
 /** One item as a board card: what it is, what it ships as, and whether it is
- * ready to shoot. Deliberately not the whole row — a board is for deciding what
- * to work on next, and the table is there when you need every field. */
+ * ready to shoot. Deliberately not the whole row, because a board is for
+ * deciding what to work on next, and the table is there when you need every
+ * field. */
 export default function BoardCard({
   row,
   onOpen,
   draggable,
   onDragStart,
+  onDragEnd,
 }: {
   row: ContentSummary;
   onOpen: () => void;
   draggable: boolean;
   onDragStart: () => void;
+  onDragEnd: () => void;
 }) {
   const meter = scriptMeter(row.script);
 
@@ -27,26 +31,29 @@ export default function BoardCard({
       onClick={onOpen}
       draggable={draggable}
       onDragStart={onDragStart}
-      className="border-border bg-card hover:border-foreground/25 w-full rounded-lg border p-3 text-left transition-colors"
+      onDragEnd={onDragEnd}
+      className={`border-border bg-card hover:border-foreground/25 w-full rounded-lg border p-3 text-left transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
+        draggable ? "cursor-grab active:cursor-grabbing" : ""
+      }`}
     >
-      <p className="text-foreground line-clamp-2 text-[13px] font-bold">
+      <p className="text-foreground line-clamp-2 text-[13px] font-semibold">
         {row.title || "Untitled"}
       </p>
 
-      {(row.pillar || row.formats.length) && (
-        <span className="mt-1.5 flex flex-wrap items-center gap-1">
+      {(row.pillar || row.formats.length > 0) && (
+        <span className="mt-2 flex flex-wrap items-center gap-1">
           {row.pillar && (
-            <span className="truncate rounded bg-[color:var(--sg-accent)]/15 px-1.5 py-0.5 text-[11px] font-bold text-[color:var(--sg-accent)]">
+            <Chip tone={pillarTone(row.pillar)} variant="dot">
               {row.pillar}
-            </span>
+            </Chip>
           )}
           <FormatChips formats={row.formats} />
         </span>
       )}
 
       {meter.words > 0 && (
-        <span className="text-muted-foreground mt-1.5 flex items-center gap-1 text-[11px] font-semibold">
-          <FileText className="h-3 w-3" />~{meter.label}
+        <span className="text-muted-foreground mt-2 flex items-center gap-1 font-mono text-[11px] tabular-nums">
+          <FileText aria-hidden className="h-3 w-3" />~{meter.label}
         </span>
       )}
     </button>
