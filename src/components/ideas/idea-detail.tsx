@@ -1,25 +1,11 @@
 "use client";
 
+import { Chip, Section } from "@/components/studio-ui";
 import { normalizeBody } from "@/lib/content/normalize";
 import type { ContentDetail } from "@/lib/content/client";
 import type { ContentBlock } from "@/lib/db/schema";
 
-function Section({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-        {label}
-      </p>
-      {children}
-    </div>
-  );
-}
+const PROSE = "text-foreground/85 max-w-[68ch] text-[15px] leading-relaxed";
 
 function BlockBody({ block }: { block: ContentBlock }) {
   if (block.items?.length) {
@@ -27,9 +13,7 @@ function BlockBody({ block }: { block: ContentBlock }) {
     const List = ordered ? "ol" : "ul";
     return (
       <List
-        className={`text-foreground/85 space-y-1 ${
-          ordered ? "list-decimal" : "list-disc"
-        } pl-5`}
+        className={`${PROSE} space-y-1 ${ordered ? "list-decimal" : "list-disc"} pl-5`}
       >
         {block.items.map((item, i) => (
           <li key={i}>{item}</li>
@@ -37,7 +21,7 @@ function BlockBody({ block }: { block: ContentBlock }) {
       </List>
     );
   }
-  return <p className="text-foreground/85 whitespace-pre-wrap">{block.text}</p>;
+  return <p className={`${PROSE} whitespace-pre-wrap`}>{block.text}</p>;
 }
 
 /**
@@ -53,37 +37,35 @@ export default function IdeaDetail({ detail }: { detail: ContentDetail }) {
   return (
     <div className="space-y-5">
       {detail.originalNote && (
-        <Section label="Your words">
-          <p className="text-foreground/85 whitespace-pre-wrap italic">
+        <Section title="Your words" rank="quiet">
+          <p className={`${PROSE} whitespace-pre-wrap italic`}>
             {detail.originalNote}
           </p>
         </Section>
       )}
 
       {detail.format && (
-        <Section label="Format">
-          <p className="text-foreground/85">{detail.format}</p>
+        <Section title="Format" rank="quiet">
+          <p className={PROSE}>{detail.format}</p>
         </Section>
       )}
 
       {detail.summary && (
-        <Section label="The read">
-          <p className="text-foreground/85 whitespace-pre-wrap">
-            {detail.summary}
-          </p>
+        <Section title="The read" rank="quiet">
+          <p className={`${PROSE} whitespace-pre-wrap`}>{detail.summary}</p>
         </Section>
       )}
 
       {hooks.length > 0 && (
-        <Section label="Hooks">
-          <ul className="text-foreground/85 space-y-1.5">
+        <Section title="Hooks" rank="quiet">
+          <ul className={`${PROSE} space-y-1.5`}>
             {hooks.map((hook, i) => (
               <li key={i}>
                 {hook.text}
                 {hook.pattern && (
-                  <span className="bg-muted text-muted-foreground ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold">
+                  <Chip tone="neutral" pill className="ml-2 align-middle">
                     {hook.pattern}
-                  </span>
+                  </Chip>
                 )}
               </li>
             ))}
@@ -92,22 +74,22 @@ export default function IdeaDetail({ detail }: { detail: ContentDetail }) {
       )}
 
       {blocks.map((block, i) => (
-        <Section key={`${block.label}-${i}`} label={block.label}>
+        <Section key={`${block.label}-${i}`} title={block.label} rank="quiet">
           <BlockBody block={block} />
         </Section>
       ))}
 
       {detail.sourceTranscript && (
-        <Section label="Original transcript">
-          <p className="text-foreground/70 max-h-64 overflow-y-auto whitespace-pre-wrap">
+        <Section title="Original transcript" rank="quiet">
+          <p className="text-foreground/70 max-h-64 max-w-[68ch] overflow-y-auto text-[15px] leading-relaxed whitespace-pre-wrap">
             {detail.sourceTranscript}
           </p>
         </Section>
       )}
 
       {!detail.sourceTranscript && detail.sourceSummary && (
-        <Section label="Source summary">
-          <p className="text-foreground/70 whitespace-pre-wrap">
+        <Section title="Source summary" rank="quiet">
+          <p className="text-foreground/70 max-w-[68ch] text-[15px] leading-relaxed whitespace-pre-wrap">
             {detail.sourceSummary}
           </p>
           <p className="text-muted-foreground mt-1.5 text-xs">
