@@ -22,7 +22,7 @@ export default function ItemTableSkeleton({
   return (
     <Card className="gap-0 overflow-hidden py-0" aria-hidden>
       <div
-        className="bg-muted/40 text-muted-foreground grid items-center gap-3 border-b px-4 py-2.5 text-xs font-semibold"
+        className="bg-muted text-muted-foreground grid min-h-9 items-center gap-3 border-b px-4 py-1.5 text-xs font-semibold"
         style={{ gridTemplateColumns: grid }}
       >
         <span />
@@ -35,7 +35,7 @@ export default function ItemTableSkeleton({
       {Array.from({ length: rows }, (_, i) => (
         <div
           key={i}
-          className="grid items-center gap-3 border-b px-4 py-3.5 last:border-b-0"
+          className="grid min-h-10 items-center gap-3 border-b px-4 py-1 last:border-b-0"
           style={{ gridTemplateColumns: grid }}
         >
           <Skeleton className="h-[18px] w-[18px] rounded-[5px]" />

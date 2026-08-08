@@ -3,6 +3,7 @@
 import { Check, Minus } from "lucide-react";
 import ItemRow from "@/components/items/item-row";
 import SortHeader from "@/components/library/sort-header";
+import { EmptyState } from "@/components/studio-ui";
 import { Card } from "@/components/ui/card";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { columnDef, gridTemplate, type ColumnKey } from "@/lib/content/columns";
@@ -62,8 +63,10 @@ export default function ItemTable({
       className="gap-0 overflow-hidden py-0"
       style={{ ["--item-grid" as string]: grid }}
     >
+      {/* Header sits on the sunken well (opaque bg-muted per the design
+          language), not a translucent wash. */}
       <div
-        className="bg-muted/40 grid items-center gap-3 border-b px-4 py-2.5"
+        className="bg-muted grid min-h-9 items-center gap-3 border-b px-4 py-1.5"
         style={{ gridTemplateColumns: grid }}
       >
         <button
@@ -108,9 +111,7 @@ export default function ItemTable({
       </div>
 
       {rows.length === 0 ? (
-        <div className="text-muted-foreground px-4 py-10 text-center text-sm">
-          {emptyLabel}
-        </div>
+        <EmptyState title={emptyLabel} />
       ) : (
         rows.map((row) => (
           <ItemRow

@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Settings2, Trash2 } from "lucide-react";
+import { Settings2, Trash2 } from "lucide-react";
+import { formatTone, statusTone } from "@/components/studio-ui";
+import ViewColumnPicker from "@/components/views/view-column-picker";
+import ViewFilterChips from "@/components/views/view-filter-chips";
+import ViewToggle from "@/components/views/view-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ALL_COLUMN_KEYS, columnDef } from "@/lib/content/columns";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ALL_COLUMN_KEYS } from "@/lib/content/columns";
 import { CONTENT_FORMATS } from "@/lib/content/formats";
 import { contentStatuses, type LibraryGrouping } from "@/lib/db/schema";
 import type { LibraryView, ViewDraft } from "@/lib/views/client";
@@ -23,36 +31,28 @@ const STATUS_LABEL: Record<string, string> = {
   posted: "Posted",
 };
 
-function Toggle({
-  on,
+function Field({
   label,
-  onClick,
+  children,
 }: {
-  on: boolean;
   label: string;
-  onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors ${
-        on
-          ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/10 text-[color:var(--sg-accent)]"
-          : "border-border text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {on && <Check className="h-3 w-3" />}
-      {label}
-    </button>
+    <div>
+      <p className="text-muted-foreground mb-1.5 text-xs font-semibold">
+        {label}
+      </p>
+      {children}
+    </div>
   );
 }
 
 /**
  * Everything that makes one view different from another: its name, whether it
  * is a table or a board, what it groups by, what it filters to, and which
- * columns it shows.
+ * columns it shows. A popover rather than an inline card, so opening it never
+ * shoves the table down the page.
  *
  * Column visibility is per view on purpose. A week spent only on short-form
  * has no use for the columns about everything else, and hiding them there
@@ -67,8 +67,6 @@ export default function ViewSettings({
   onSave: (draft: ViewDraft) => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   const patch = (fields: Partial<ViewDraft>) =>
     onSave({
       name: view.name,
@@ -96,58 +94,48 @@ export default function ViewSettings({
   const visible = view.columns.length ? view.columns : ALL_COLUMN_KEYS.slice(0);
 
   return (
-    <div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="text-muted-foreground h-8"
-      >
-        <Settings2 className="h-3.5 w-3.5" />
-        View
-      </Button>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground h-7 px-2 text-xs"
+        >
+          <Settings2 aria-hidden className="h-3.5 w-3.5" />
+          View options
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={8} className="w-80">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto">
+          <Field label="Name">
+            <Input
+              value={view.name}
+              onChange={(e) => patch({ name: e.target.value })}
+              aria-label="View name"
+              className="h-8 text-[13px]"
+            />
+          </Field>
 
-      {open && (
-        <div className="border-border bg-card mt-2 space-y-4 rounded-xl border p-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-[180px] flex-1">
-              <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
-                Name
-              </p>
-              <Input
-                value={view.name}
-                onChange={(e) => patch({ name: e.target.value })}
-                aria-label="View name"
+          <Field label="Layout">
+            <div className="flex gap-1.5">
+              <ViewToggle
+                on={view.kind === "table"}
+                label="Table"
+                onClick={() => patch({ kind: "table" })}
+              />
+              <ViewToggle
+                on={view.kind === "board"}
+                label="Board"
+                onClick={() => patch({ kind: "board" })}
               />
             </div>
-            <div>
-              <p className="text-muted-foreground mb-1 text-[11px] font-semibold tracking-[0.08em] uppercase">
-                Layout
-              </p>
-              <div className="flex gap-1.5">
-                <Toggle
-                  on={view.kind === "table"}
-                  label="Table"
-                  onClick={() => patch({ kind: "table" })}
-                />
-                <Toggle
-                  on={view.kind === "board"}
-                  label="Board"
-                  onClick={() => patch({ kind: "board" })}
-                />
-              </div>
-            </div>
-          </div>
+          </Field>
 
-          <div>
-            <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-              Group by
-            </p>
+          <Field label="Group by">
             <div className="flex flex-wrap gap-1.5">
               {GROUPINGS.map((g) => (
-                <Toggle
+                <ViewToggle
                   key={g.label}
                   on={view.groupBy === g.value}
                   label={g.label}
@@ -155,73 +143,57 @@ export default function ViewSettings({
                 />
               ))}
             </div>
-          </div>
+          </Field>
 
-          <div>
-            <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-              Only show status
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {contentStatuses.map((status) => (
-                <Toggle
-                  key={status}
-                  on={filterFor("status").includes(status)}
-                  label={STATUS_LABEL[status] ?? status}
-                  onClick={() => patchFilter("status", status)}
-                />
-              ))}
-            </div>
-          </div>
+          <Field label="Only show status">
+            <ViewFilterChips
+              groupLabel="Filter by status"
+              options={contentStatuses.map((status) => ({
+                id: status,
+                label: STATUS_LABEL[status] ?? status,
+                tone: statusTone(status),
+              }))}
+              selected={filterFor("status")}
+              onToggle={(id) => patchFilter("status", id)}
+            />
+          </Field>
 
-          <div>
-            <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-              Only show format
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {CONTENT_FORMATS.map((format) => (
-                <Toggle
-                  key={format.id}
-                  on={filterFor("formats").includes(format.id)}
-                  label={format.label}
-                  onClick={() => patchFilter("formats", format.id)}
-                />
-              ))}
-            </div>
-          </div>
+          <Field label="Only show format">
+            <ViewFilterChips
+              groupLabel="Filter by format"
+              options={CONTENT_FORMATS.map((format) => ({
+                id: format.id,
+                label: format.label,
+                tone: formatTone(format.id),
+              }))}
+              selected={filterFor("formats")}
+              onToggle={(id) => patchFilter("formats", id)}
+            />
+          </Field>
 
           {view.kind === "table" && (
-            <div>
-              <p className="text-muted-foreground mb-1.5 text-[11px] font-semibold tracking-[0.08em] uppercase">
-                Columns
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {ALL_COLUMN_KEYS.filter((key) => key !== "title").map((key) => (
-                  <Toggle
-                    key={key}
-                    on={visible.includes(key)}
-                    label={columnDef(key).label || "Actions"}
-                    onClick={() => patch({ columns: toggleIn(visible, key) })}
-                  />
-                ))}
-              </div>
-              <p className="text-muted-foreground mt-1.5 text-xs">
-                Title is always shown.
-              </p>
-            </div>
+            <Field label="Columns">
+              <ViewColumnPicker
+                visible={visible}
+                onToggle={(key) => patch({ columns: toggleIn(visible, key) })}
+              />
+            </Field>
           )}
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete this view
-          </Button>
+          <div className="border-border/60 border-t pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onDelete}
+              className="text-muted-foreground hover:text-destructive h-7 px-2 text-xs"
+            >
+              <Trash2 aria-hidden className="h-3.5 w-3.5" />
+              Delete this view
+            </Button>
+          </div>
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

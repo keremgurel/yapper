@@ -1,105 +1,30 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { ArrowUp, Loader2, Mic, Square } from "lucide-react";
+import CaptureLinkAttachment from "@/components/ideas/capture-link-attachment";
 import {
-  ArrowUp,
-  Link2,
-  Loader2,
-  Mic,
-  Music2,
-  Plus,
-  Square,
-  X,
-} from "lucide-react";
+  pullLink,
+  useCaptureDraft,
+} from "@/components/ideas/use-capture-draft";
+import {
+  durationLabel,
+  useRecordingTimer,
+} from "@/components/ideas/use-recording-timer";
 import { useVoiceCapture } from "@/hooks/use-voice-capture";
 import VoiceWaveform from "@/components/common/voice-waveform";
-import { detectPlatform } from "@/lib/inspiration/platform";
-import type { Platform } from "@/lib/inspiration/types";
 
-const DRAFT_KEY = "yapper.idea.draft";
-const URL_PATTERN = /https?:\/\/[^\s]+/i;
-
-type ComposerDraft = { text: string; link: string | null };
-
-function pullLink(value: string): ComposerDraft {
-  const match = value.match(URL_PATTERN);
-  if (!match) return { text: value, link: null };
-  return {
-    link: match[0].replace(/[),.;]+$/, ""),
-    text: value
-      .replace(match[0], " ")
-      .replace(/\s{2,}/g, " ")
-      .trimStart(),
-  };
-}
-
-function durationLabel(seconds: number): string {
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function PlatformMark({ platform }: { platform: Platform }) {
-  if (platform === "instagram") {
-    return (
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] bg-[radial-gradient(circle_at_68%_68%,#ffd600_0_18%,#ff7a00_32%,#ff0169_56%,#d300c5_76%,#7638fa_100%)] text-white shadow-sm">
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-          <rect
-            x="3.5"
-            y="3.5"
-            width="17"
-            height="17"
-            rx="5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-          />
-          <circle
-            cx="12"
-            cy="12"
-            r="4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.2"
-          />
-          <circle cx="17.7" cy="6.7" r="1.15" fill="currentColor" />
-        </svg>
-      </span>
-    );
-  }
-  if (platform === "youtube") {
-    return (
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] bg-[#ff0033] text-white shadow-sm">
-        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4">
-          <path d="m9.5 7.8 7 4.2-7 4.2Z" fill="currentColor" />
-        </svg>
-      </span>
-    );
-  }
-  if (platform === "tiktok") {
-    return (
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[6px] bg-black text-white shadow-sm ring-1 ring-white/10">
-        <Music2 aria-hidden="true" className="h-4 w-4" />
-      </span>
-    );
-  }
-  return (
-    <span className="bg-background text-muted-foreground grid h-6 w-6 shrink-0 place-items-center rounded-[6px] shadow-sm">
-      <Link2 aria-hidden="true" className="h-4 w-4" />
-    </span>
-  );
-}
-
-/** Chat-style composer for every kind of idea: text, one reference attachment,
- * or voice. Links become a visual attachment instead of polluting the writing
- * surface, while submit still preserves the exact URL for the idea pipeline. */
+/**
+ * The hero of the bank: one field a creator can dump a thought into with zero
+ * clicks. Focused on mount, submits on Cmd+Enter, dictates on Cmd+D, and links
+ * become a visual attachment instead of polluting the writing surface.
+ */
 export default function IdeaCapture({
   onCapture,
 }: {
   onCapture: (text: string) => void | Promise<void>;
 }) {
-  const [text, setText] = useState("");
-  const [link, setLink] = useState<string | null>(null);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const draft = useCaptureDraft();
   const ref = useRef<HTMLTextAreaElement>(null);
   const {
     phase,
@@ -113,28 +38,10 @@ export default function IdeaCapture({
     openMicrophoneSettings,
   } = useVoiceCapture();
 
-  useEffect(() => {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    if (!saved) return;
-    try {
-      const parsed = JSON.parse(saved) as ComposerDraft;
-      if (typeof parsed.text === "string") setText(parsed.text);
-      if (typeof parsed.link === "string") setLink(parsed.link);
-    } catch {
-      // Drafts from the previous plain-text composer remain valid.
-      const parsed = pullLink(saved);
-      setText(parsed.text);
-      setLink(parsed.link);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!text && !link) {
-      localStorage.removeItem(DRAFT_KEY);
-      return;
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, link }));
-  }, [text, link]);
+  const recording = phase === "recording";
+  const transcribing = phase === "transcribing";
+  const recordingSeconds = useRecordingTimer(recording);
+  const canSubmit = Boolean(draft.text.trim() || draft.link || recording);
 
   useLayoutEffect(() => {
     const element = ref.current;
@@ -143,23 +50,10 @@ export default function IdeaCapture({
     // Collapsed to one line at rest; grows with what is typed, capped so a
     // long note scrolls inside the composer instead of taking the page.
     element.style.height = `${Math.min(Math.max(element.scrollHeight, 28), 320)}px`;
-  }, [text, link]);
+  }, [draft.text, draft.link]);
 
   useEffect(() => {
-    if (phase !== "recording") {
-      setRecordingSeconds(0);
-      return;
-    }
-    const started = Date.now();
-    const timer = window.setInterval(
-      () => setRecordingSeconds(Math.floor((Date.now() - started) / 1_000)),
-      250,
-    );
-    return () => window.clearInterval(timer);
-  }, [phase]);
-
-  useEffect(() => {
-    if (phase !== "recording") return;
+    if (!recording) return;
     const onEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.preventDefault();
@@ -167,39 +61,26 @@ export default function IdeaCapture({
     };
     window.addEventListener("keydown", onEscape);
     return () => window.removeEventListener("keydown", onEscape);
-  }, [phase, cancel]);
-
-  const recording = phase === "recording";
-  const transcribing = phase === "transcribing";
-  const canSubmit = Boolean(text.trim() || link || recording);
-  const platform = link ? detectPlatform(link) : "unknown";
-
-  const updateText = (value: string) => {
-    if (link) return setText(value);
-    const next = pullLink(value);
-    setText(next.text);
-    if (next.link) setLink(next.link);
-  };
+  }, [recording, cancel]);
 
   const finishRecording = async (): Promise<string> => {
     if (!recording) return "";
     const heard = await stop();
-    if (heard) setText((current) => (current ? `${current} ${heard}` : heard));
+    draft.append(heard);
     ref.current?.focus();
     return heard;
   };
 
   const submit = async () => {
-    let words = text.trim();
+    let words = draft.text.trim();
     if (recording) {
       const heard = await finishRecording();
       words = [words, heard].filter(Boolean).join(" ");
     }
-    const capture = [words, link].filter(Boolean).join("\n").trim();
+    const capture = [words, draft.link].filter(Boolean).join("\n").trim();
     if (!capture) return;
     onCapture(capture);
-    setText("");
-    setLink(null);
+    draft.clear();
   };
 
   const toggleVoice = async () => {
@@ -239,65 +120,41 @@ export default function IdeaCapture({
         const next = pullLink(dropped);
         if (!next.link) return;
         event.preventDefault();
-        setLink(next.link);
+        draft.setLink(next.link);
       }}
       className="sg-glass focus-within:border-foreground/25 p-2.5 transition-[border-color,box-shadow] duration-200 focus-within:shadow-md"
     >
       <textarea
         ref={ref}
-        value={text}
-        onChange={(event) => updateText(event.target.value)}
+        value={draft.text}
+        autoFocus
+        onChange={(event) => draft.updateText(event.target.value)}
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();
             void submit();
           }
         }}
-        placeholder="Ask Chirpy for ideas, paste a reference, or capture a thought…"
+        placeholder="Capture a thought, paste a reference, or ask Chirpy for ideas…"
         rows={1}
+        aria-label="Capture an idea"
         className="text-foreground placeholder:text-muted-foreground/75 max-h-[320px] min-h-7 w-full resize-none bg-transparent px-3 py-1 text-[16px] leading-7 outline-none"
       />
 
-      {link && (
-        <div className="group/link animate-in fade-in slide-in-from-bottom-1 mx-3 mb-2 flex min-w-0 items-center gap-2 duration-150">
-          <PlatformMark platform={platform} />
-          <a
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            className="min-w-0 truncate text-[16px] leading-6 font-medium text-[#78baff] underline-offset-2 hover:underline dark:text-[#8ec7ff]"
-          >
-            {link}
-          </a>
-          <button
-            type="button"
-            aria-label="Remove link"
-            title="Remove link"
-            onClick={() => {
-              setLink(null);
-              ref.current?.focus();
-            }}
-            className="text-muted-foreground hover:bg-background/70 hover:text-foreground ml-auto grid h-7 w-7 shrink-0 place-items-center rounded-full opacity-0 transition-[opacity,color,background-color] duration-150 group-hover/link:opacity-100 focus-visible:opacity-100"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
+      {draft.link && (
+        <CaptureLinkAttachment
+          link={draft.link}
+          onRemove={() => {
+            draft.setLink(null);
+            ref.current?.focus();
+          }}
+        />
       )}
 
       <div className="flex min-h-11 items-end gap-2 px-1 pb-0.5">
-        <button
-          type="button"
-          onClick={() => ref.current?.focus()}
-          aria-label="Add a reference"
-          title="Paste or drop a link"
-          className="text-muted-foreground hover:bg-background/70 hover:text-foreground grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-
         <div className="min-w-0 flex-1">
           {recording ? (
-            <div className="animate-in fade-in flex h-10 items-center gap-3 duration-200">
+            <div className="animate-in fade-in flex h-10 items-center gap-3 pl-2 duration-200">
               {/* The waveform IS the full-width element: its own quiet columns
                   render as the dotted trail, so no filler rule is needed. */}
               <VoiceWaveform
@@ -317,7 +174,7 @@ export default function IdeaCapture({
                 {error ??
                   (transcribing
                     ? "Transcribing your thought…"
-                    : "⌘D to dictate")}
+                    : "⌘D to dictate · ⌘Enter to bank it")}
               </p>
               {error && (
                 <button
@@ -327,7 +184,7 @@ export default function IdeaCapture({
                       ? openMicrophoneSettings()
                       : start())
                   }
-                  className="border-border bg-background/60 text-foreground hover:bg-background shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors"
+                  className="border-border bg-card text-foreground hover:bg-muted shrink-0 rounded-md border px-2.5 py-1 text-xs font-semibold transition-colors"
                 >
                   {permissionBlocked && canOpenMicrophoneSettings
                     ? "Open settings"
@@ -344,7 +201,7 @@ export default function IdeaCapture({
             onClick={() => void finishRecording()}
             aria-label="Stop dictating"
             title="Stop dictating"
-            className="bg-background/70 text-foreground grid h-10 w-10 shrink-0 place-items-center rounded-full transition-transform duration-150 hover:scale-105"
+            className="bg-muted text-foreground hover:bg-muted/80 grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
           >
             <Square className="h-3.5 w-3.5 fill-current" />
           </button>
@@ -354,8 +211,8 @@ export default function IdeaCapture({
             onClick={() => void toggleVoice()}
             disabled={transcribing}
             aria-label="Dictate an idea"
-            title="Dictate an idea"
-            className="text-foreground hover:bg-background/70 grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 disabled:opacity-50"
+            title="Dictate an idea (⌘D)"
+            className="text-foreground hover:bg-muted grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-50"
           >
             {transcribing ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -365,13 +222,14 @@ export default function IdeaCapture({
           </button>
         )}
 
+        {/* The one accent-filled action on this surface. */}
         <button
           type="button"
           onClick={() => void submit()}
           disabled={!canSubmit || transcribing}
           aria-label="Add to Idea Bank"
-          title="Add to Idea Bank"
-          className="bg-foreground text-background grid h-11 w-11 shrink-0 place-items-center rounded-full shadow-sm transition-[transform,opacity] duration-150 hover:scale-105 disabled:scale-100 disabled:opacity-35"
+          title="Add to Idea Bank (⌘Enter)"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-white shadow-sm transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-35"
         >
           <ArrowUp className="h-5 w-5 stroke-[2.4]" />
         </button>

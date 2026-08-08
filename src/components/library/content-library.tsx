@@ -12,6 +12,7 @@ import BulkBar from "@/components/items/bulk-bar";
 import ItemFilters from "@/components/items/item-filters";
 import ItemTable from "@/components/items/item-table";
 import ItemTableSkeleton from "@/components/items/item-table-skeleton";
+import { EmptyState, PageHeader } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
 import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
@@ -19,8 +20,7 @@ import { useContentSort } from "@/hooks/use-content-sort";
 import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
 import BoardView from "@/components/views/board-view";
-import ViewSettings from "@/components/views/view-settings";
-import ViewTabs from "@/components/views/view-tabs";
+import ViewBar from "@/components/views/view-bar";
 import { useLibraryViews } from "@/hooks/use-library-views";
 import { LIBRARY_COLUMNS, resolveColumns } from "@/lib/content/columns";
 import { applyViewFilters } from "@/lib/content/group-items";
@@ -70,72 +70,37 @@ export default function ContentLibrary() {
 
   return (
     <div className="w-full pb-24">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-foreground text-2xl font-black tracking-tight">
-            Content Library
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            The ideas you sent from the Idea Bank, from draft to posted.
-            {importing && " Importing your saved ideas…"}
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <Link href="/studio/ideas">
-            <Lightbulb className="h-4 w-4" />
-            Open Idea Bank
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        title="Content Library"
+        description={`The ideas you sent from the Idea Bank, from draft to posted.${
+          importing ? " Importing your saved ideas…" : ""
+        }`}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/studio/ideas">
+              <Lightbulb className="h-4 w-4" />
+              Open Idea Bank
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        }
+      />
 
-      {views.failed && (
-        <p className="mb-3 text-xs font-semibold text-amber-500" role="alert">
-          Couldn&apos;t load your saved views. Showing the default table.
-        </p>
-      )}
-
-      {views.views.length > 0 && (
-        <div className="mb-4">
-          <ViewTabs
-            views={views.views}
-            activeId={views.active?.id ?? null}
-            onSelect={views.setActiveId}
-            onAdd={() =>
-              void views.create({
-                name: "New view",
-                kind: "table",
-                groupBy: null,
-                filters: {},
-                columns: [],
-              })
-            }
-          />
-          {views.active && (
-            <ViewSettings
-              view={views.active}
-              onSave={(draft) => void views.save(views.active!.id, draft)}
-              onDelete={() => void views.remove(views.active!.id)}
-            />
-          )}
-        </div>
-      )}
+      <ViewBar views={views} />
 
       {items === null ? (
         <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
       ) : items.length === 0 ? (
-        <div className="text-muted-foreground px-6 py-14 text-center">
-          <p className="text-foreground text-base font-bold">
-            Nothing in the pipeline yet
-          </p>
-          <p className="mx-auto mt-1 max-w-sm text-sm">
-            Capture ideas in the Idea Bank, then send the ones you want to
-            develop here.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/studio/ideas">Go to Idea Bank</Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={Lightbulb}
+          title="Nothing in the pipeline yet"
+          description="Capture ideas in the Idea Bank, then send the ones you want to develop here."
+          action={
+            <Button asChild>
+              <Link href="/studio/ideas">Go to Idea Bank</Link>
+            </Button>
+          }
+        />
       ) : (
         <>
           <ItemFilters

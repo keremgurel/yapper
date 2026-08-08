@@ -28,13 +28,13 @@ export default function SortHeader({
       type="button"
       onClick={() => onToggle(columnKey)}
       aria-label={`Sort by ${label}`}
-      className={`group flex items-center gap-1 text-[11px] font-bold tracking-wider uppercase transition-colors ${
+      className={`group flex items-center gap-1 text-xs font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground"
       } ${className}`}
     >
-      <span className="font-display">{label}</span>
+      <span className="truncate">{label}</span>
       <Arrow
         className={`h-3 w-3 shrink-0 transition-opacity ${
           active ? "opacity-100" : "opacity-0 group-hover:opacity-60"

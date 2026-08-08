@@ -5,45 +5,22 @@
  * creative shape ("audio-led reaction sketch"). This is the distribution
  * decision, it is the creator's to make, and one idea can be several: the same
  * angle often ships as a short and an article.
+ *
+ * Chip colors are not stored here: they come from `formatTone()` in
+ * `@/components/studio-ui`, so every surface renders a format the same way.
  */
 export interface ContentFormat {
   id: string;
   label: string;
-  /** Chip classes. Distinct hues so a row is scannable without reading. */
-  chip: string;
 }
 
 export const CONTENT_FORMATS: ContentFormat[] = [
-  {
-    id: "short",
-    label: "Short-form",
-    chip: "bg-blue-500/15 text-blue-500",
-  },
-  {
-    id: "long",
-    label: "Long-form",
-    chip: "bg-amber-500/15 text-amber-600",
-  },
-  {
-    id: "article",
-    label: "Article",
-    chip: "bg-rose-500/15 text-rose-500",
-  },
-  {
-    id: "thread",
-    label: "Thread",
-    chip: "bg-violet-500/15 text-violet-500",
-  },
-  {
-    id: "carousel",
-    label: "Carousel",
-    chip: "bg-teal-500/15 text-teal-600",
-  },
-  {
-    id: "newsletter",
-    label: "Newsletter",
-    chip: "bg-slate-500/15 text-slate-500",
-  },
+  { id: "short", label: "Short-form" },
+  { id: "long", label: "Long-form" },
+  { id: "article", label: "Article" },
+  { id: "thread", label: "Thread" },
+  { id: "carousel", label: "Carousel" },
+  { id: "newsletter", label: "Newsletter" },
 ];
 
 const BY_ID = new Map(CONTENT_FORMATS.map((f) => [f.id, f]));

@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import { Toolbar } from "@/components/studio-ui";
 import { Input } from "@/components/ui/input";
 import PillarSelect from "@/components/library/pillar-select";
 
@@ -25,7 +26,15 @@ export default function ItemFilters({
   resultLabel: string | null;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2">
+    <Toolbar
+      end={
+        resultLabel && (
+          <span className="text-muted-foreground text-xs tabular-nums">
+            {resultLabel}
+          </span>
+        )
+      }
+    >
       <div className="relative min-w-0 flex-1 sm:max-w-xs">
         <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
         <Input
@@ -56,10 +65,6 @@ export default function ItemFilters({
           ariaLabel="Filter by pillar"
         />
       )}
-
-      {resultLabel && (
-        <span className="text-muted-foreground text-xs">{resultLabel}</span>
-      )}
-    </div>
+    </Toolbar>
   );
 }

@@ -11,6 +11,9 @@ import type { LibraryView } from "@/lib/views/client";
  * tab changes the whole shape of the surface rather than just narrowing it.
  * The icon says which kind it is before you click, because a board and a table
  * of the same rows are very different things to land on.
+ *
+ * Renders only the tabs and the add button; the bar around it (hairline,
+ * settings on the right, loading state) belongs to ViewBar.
  */
 export default function ViewTabs({
   views,
@@ -23,8 +26,11 @@ export default function ViewTabs({
   onSelect: (id: string) => void;
   onAdd: () => void;
 }) {
+  // Plain buttons with aria-current rather than role="tablist": the ARIA tabs
+  // pattern demands roving tabindex and arrow-key movement, and claiming the
+  // role without them is worse than not claiming it.
   return (
-    <div className="border-border flex flex-wrap items-center gap-1 border-b pb-px">
+    <nav aria-label="Saved views" className="flex flex-wrap items-center gap-1">
       {views.map((view) => {
         const active = view.id === activeId;
         const Icon = view.kind === "board" ? Columns3 : Table2;
@@ -32,15 +38,15 @@ export default function ViewTabs({
           <button
             key={view.id}
             type="button"
+            aria-current={active ? "true" : undefined}
             onClick={() => onSelect(view.id)}
-            aria-current={active ? "page" : undefined}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[13px] font-bold transition-colors ${
+            className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
               active
-                ? "text-foreground border-[color:var(--sg-accent)]"
+                ? "border-foreground text-foreground"
                 : "text-muted-foreground hover:text-foreground border-transparent"
             }`}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon aria-hidden className="h-3.5 w-3.5" />
             {view.name}
           </button>
         );
@@ -56,6 +62,6 @@ export default function ViewTabs({
       >
         <Plus className="h-3.5 w-3.5" />
       </Button>
-    </div>
+    </nav>
   );
 }

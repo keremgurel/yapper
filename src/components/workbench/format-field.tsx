@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { Chip, formatTone } from "@/components/studio-ui";
 import { CONTENT_FORMATS, contentFormat } from "@/lib/content/formats";
 
 /**
@@ -44,9 +45,9 @@ export default function FormatField({
             type="button"
             onClick={() => toggle(id)}
             title={`Remove ${format.label}`}
-            className={`rounded px-1.5 py-0.5 text-[11px] font-bold ${format.chip}`}
+            className="rounded-md transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
           >
-            {format.label}
+            <Chip tone={formatTone(id)}>{format.label}</Chip>
           </button>
         );
       })}
@@ -72,7 +73,7 @@ export default function FormatField({
                   toggle(format.id);
                   setOpen(false);
                 }}
-                className="text-muted-foreground hover:text-foreground border-border rounded border px-1.5 py-0.5 text-[11px] font-bold transition-colors"
+                className="text-muted-foreground hover:text-foreground border-border rounded-md border px-2 py-0.5 text-[11px] font-semibold transition-colors"
               >
                 {format.label}
               </button>
