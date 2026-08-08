@@ -64,16 +64,10 @@ export function useCaptureDraft() {
     if (next.link) setLink(next.link);
   };
 
-  /** Appends dictated words after whatever is already typed. */
-  const append = (words: string) => {
-    if (!words) return;
-    setText((current) => (current ? `${current} ${words}` : words));
-  };
-
   const clear = () => {
     setText("");
     setLink(null);
   };
 
-  return { text, link, updateText, append, setLink, clear };
+  return { text, link, updateText, setLink, clear };
 }
