@@ -1,60 +1,52 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchPlatformVideos, type PlatformVideo } from "@/lib/publish/client";
+import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
+import { useClientResource } from "@/hooks/use-client-resource";
 import type { PublishPlatform } from "@/lib/db/schema";
 
 export type VideoSort = "recent" | "views";
 
 /**
- * A connected platform's own videos, sortable by recency or view count. `null`
- * while loading; `connected` says whether the platform is even linked (so the
- * UI shows "connect" vs "no videos yet"). Switching platform reloads. Only the
- * fetch differs per platform, so one hook serves them all.
+ * A connected platform's own videos, sortable by recency or view count.
+ *
+ * Served from the shared resource cache, keyed per platform. Poster and
+ * Connections both mount this, so fetching per mount meant every visit to
+ * either tab started empty even though the answer had just been fetched.
+ * Keying by platform is also what makes flipping between platforms instant
+ * once each has been seen: the entries do not evict one another.
+ *
+ * `null` videos means loading; `connected` says whether the platform is linked
+ * at all, so the UI can show "connect" rather than "no videos yet".
  */
 export function usePlatformVideos(
   platform: PublishPlatform,
   enabled: boolean,
   sort: VideoSort,
 ) {
-  const [videos, setVideos] = useState<PlatformVideo[] | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [loadedPlatform, setLoadedPlatform] = useState<PublishPlatform | null>(
-    null,
-  );
   const [refreshing, setRefreshing] = useState(false);
-  const requestId = useRef(0);
+
+  const { data, refresh: refreshResource } = useClientResource(
+    STUDIO_RESOURCE_KEYS.channel(platform),
+    enabled,
+    () => fetchPlatformVideos(platform),
+    60_000,
+  );
 
   const refresh = useCallback(async () => {
     if (!enabled) return;
-    const id = ++requestId.current;
     setRefreshing(true);
-    const data = await fetchPlatformVideos(platform);
-    if (id !== requestId.current) return;
-    setConnected(data.connected);
-    setVideos(data.videos);
-    setLoadedPlatform(platform);
-    setRefreshing(false);
-  }, [enabled, platform]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    const id = ++requestId.current;
-    void fetchPlatformVideos(platform).then((data) => {
-      if (id !== requestId.current) return;
-      setConnected(data.connected);
-      setVideos(data.videos);
-      setLoadedPlatform(platform);
+    try {
+      await refreshResource(true);
+    } finally {
       setRefreshing(false);
-    });
-    return () => {
-      requestId.current += 1;
-    };
-  }, [enabled, platform]);
+    }
+  }, [enabled, refreshResource]);
 
-  // Posts are often published in Instagram/TikTok/YouTube while Poster stays
-  // open. Refresh on return and periodically while visible, without clearing
-  // the existing cards or shifting the layout.
+  // Posts are often published in Instagram, TikTok or YouTube while Poster
+  // stays open. Refresh on return and periodically while visible, without
+  // clearing the existing cards or shifting the layout.
   useEffect(() => {
     if (!enabled) return;
     const refreshIfVisible = () => {
@@ -70,18 +62,17 @@ export function usePlatformVideos(
     };
   }, [enabled, refresh]);
 
-  const visibleVideos = loadedPlatform === platform ? videos : null;
-  const sorted =
-    visibleVideos &&
-    [...visibleVideos].sort((a, b) =>
-      sort === "views"
-        ? b.viewCount - a.viewCount
-        : b.publishedAt.localeCompare(a.publishedAt),
-    );
+  const sorted: PlatformVideo[] | null = data
+    ? [...data.videos].sort((a, b) =>
+        sort === "views"
+          ? b.viewCount - a.viewCount
+          : b.publishedAt.localeCompare(a.publishedAt),
+      )
+    : null;
 
   return {
     videos: sorted,
-    connected: loadedPlatform === platform ? connected : false,
+    connected: data?.connected ?? false,
     refreshing,
     refresh,
   };
