@@ -11,6 +11,7 @@ import {
 } from "@/lib/studio/transcription-dictionary";
 
 const STORAGE_KEY = "yapper:transcription-dictionary:v1";
+let dictionaryMemoryCache: TranscriptionDictionaryEntry[] | null = null;
 
 function readLocalEntries(): TranscriptionDictionaryEntry[] {
   try {
@@ -65,8 +66,12 @@ async function postEntry(term: string, aliases: string[]) {
 /** Personal ASR vocabulary: local-first in the free editor, DB-synced on login. */
 export function useTranscriptionDictionary() {
   const { isLoaded, isSignedIn } = useUser();
-  const [entries, setEntries] = useState<TranscriptionDictionaryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<TranscriptionDictionaryEntry[]>(
+    () => dictionaryMemoryCache ?? readLocalEntries(),
+  );
+  // Local or last-known data is useful immediately. Cloud sync happens in the
+  // background instead of replacing the whole dictionary with a spinner.
+  const loading = false;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -78,7 +83,6 @@ export function useTranscriptionDictionary() {
       if (!isSignedIn) {
         if (!cancelled) {
           setEntries(local);
-          setLoading(false);
         }
         return;
       }
@@ -108,8 +112,6 @@ export function useTranscriptionDictionary() {
           setEntries(local);
           setError("Couldn’t sync your dictionary. Local terms still work.");
         }
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     };
 
@@ -120,8 +122,9 @@ export function useTranscriptionDictionary() {
   }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
-    if (!loading) writeLocalEntries(entries);
-  }, [entries, loading]);
+    dictionaryMemoryCache = entries;
+    writeLocalEntries(entries);
+  }, [entries]);
 
   const addEntry = useCallback(
     async (term: string, aliases: string[] = []) => {
