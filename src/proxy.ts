@@ -1,7 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isStudioPage = createRouteMatcher(["/studio/(.*)"]);
-const isNativeAuthHandoff = createRouteMatcher(["/studio/native-auth(.*)"]);
+// Both handoffs must render for a signed-OUT visitor: each exists precisely to
+// establish a session, so protecting them would bounce the arriving device to
+// sign-in before it could redeem its ticket.
+const isNativeAuthHandoff = createRouteMatcher([
+  "/studio/native-auth(.*)",
+  "/studio/handoff",
+]);
 const isProtectedApi = createRouteMatcher([
   "/api/billing(.*)",
   "/api/brain(.*)",
@@ -19,6 +25,7 @@ const isProtectedApi = createRouteMatcher([
   "/api/transcribe",
   "/api/transcription-dictionary(.*)",
   "/api/views(.*)",
+  "/api/handoff(.*)",
 ]);
 
 // Authentication belongs only in front of Studio and routes that call Clerk's
@@ -61,6 +68,7 @@ export const config = {
     "/api/transcribe",
     "/api/transcription-dictionary/:path*",
     "/api/views/:path*",
+    "/api/handoff/:path*",
     "/__clerk/:path*",
   ],
 };

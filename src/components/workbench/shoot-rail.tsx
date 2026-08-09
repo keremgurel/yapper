@@ -8,6 +8,7 @@ import StatusSelect from "@/components/library/status-select";
 import FormatField from "@/components/workbench/format-field";
 import RailRow from "@/components/workbench/rail-row";
 import SaveIndicator from "@/components/workbench/save-indicator";
+import SendToPhone from "@/components/workbench/send-to-phone";
 import SourceCard from "@/components/workbench/source-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +128,9 @@ export default function ShootRail({
               Record
             </Link>
           </Button>
+          <div className="mt-2">
+            <SendToPhone itemId={item.id} />
+          </div>
           <div className="mt-2 flex items-center justify-between">
             <CopyScriptButton
               idea={{ ...item, hooks: hookTexts(item.hooks) }}

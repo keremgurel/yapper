@@ -10,6 +10,10 @@ import {
   type Project,
   type ProjectPatch,
 } from "@/lib/project/client";
+import {
+  mutateClientResource,
+  STUDIO_RESOURCE_KEYS,
+} from "@/lib/client-resource-cache";
 
 /** The fetched brain. `project: null` means the load failed, which the sheet
  * reports rather than showing an empty form the creator would type into. */
@@ -71,6 +75,10 @@ export function useProject(enabled: boolean): {
   const save = useCallback(
     async (dirty: ProjectPatch, opts?: { keepalive?: boolean }) => {
       const payload = await patchProject(dirty, opts);
+      // Pillars are read from the shared cache by the library, the bank and the
+      // workbench rail. Without this, renaming one here would leave every other
+      // surface showing the old name until a reload.
+      mutateClientResource(STUDIO_RESOURCE_KEYS.project, () => payload);
       // The server owns pillar ids: a pillar the creator just typed comes back
       // with the id that later edits must target, so the local list is
       // reconciled from the response rather than left as an id-less draft.
