@@ -1,3 +1,5 @@
+import type { CaptionSet } from "@/components/publish/captions/caption-draft";
+
 /**
  * The master video a compose body posts. It resolves to an R2 media key one of
  * two ways: `submissionId` (a Yapper recording) or `mediaKey` (a raw key for a
@@ -11,6 +13,12 @@ export interface CrossPostTarget {
   /** Optional prepared copy/cover from the Poster workspace. */
   initialTitle?: string;
   initialDescription?: string;
+  /**
+   * Per-platform captions prepared upstream. Present only from the Poster,
+   * which is the surface that writes them; the surfaces that open the sheet
+   * straight from a list fall back to `initialTitle`/`initialDescription`.
+   */
+  captions?: CaptionSet;
   thumbnailKey?: string;
   thumbnailPreviewUrl?: string;
   submissionId?: string;

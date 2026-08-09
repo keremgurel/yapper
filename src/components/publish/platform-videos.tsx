@@ -124,7 +124,7 @@ export default function PlatformVideos() {
   };
 
   return (
-    <section className="border-border bg-card/35 rounded-xl border p-4 sm:p-5">
+    <section className="border-border bg-card rounded-xl border p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[11px] font-black tracking-wide text-[color:var(--sg-accent)] uppercase">
@@ -323,7 +323,7 @@ export default function PlatformVideos() {
                     <p className="text-foreground line-clamp-2 min-h-8 text-xs font-black">
                       {video.title || "Untitled"}
                     </p>
-                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[10px]">
+                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
                       <Eye className="h-3 w-3" />
                       {compactViews(video.viewCount)}
                       {video.publishedAt ? ` · ${when(video.publishedAt)}` : ""}

@@ -1,40 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { parseCaption } from "@/lib/publish/caption";
+import { captionFits, renderCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-prompt";
 
-describe("parseCaption", () => {
-  it("pulls the JSON object out of surrounding prose and code fences", () => {
-    const out = parseCaption(
-      'Sure! ```json\n{"title":"Hi there","description":"a line"}\n```',
+const caption = (over: Partial<PlatformCaption> = {}): PlatformCaption => ({
+  platform: "instagram",
+  title: "",
+  body: "A caption body",
+  hashtags: [],
+  ...over,
+});
+
+describe("renderCaption", () => {
+  it("is just the body when there are no hashtags", () => {
+    expect(renderCaption(caption())).toBe("A caption body");
+  });
+
+  /** Tags on their own line so they read as tags. Run into the body they look
+   * like a sentence that trailed off into keywords. */
+  it("puts hashtags on their own line, each with one hash", () => {
+    expect(renderCaption(caption({ hashtags: ["celpip", "ielts"] }))).toBe(
+      "A caption body\n\n#celpip #ielts",
     );
-    expect(out).toEqual({ title: "Hi there", description: "a line" });
   });
 
-  it("clamps the title to 100 chars (YouTube's limit)", () => {
-    const long = "t".repeat(150);
-    const out = parseCaption(`{"title":"${long}","description":"d"}`);
-    expect(out.title).toHaveLength(100);
-  });
-
-  it("clamps the description to 5000 chars", () => {
-    const long = "d".repeat(6000);
-    const out = parseCaption(`{"title":"t","description":"${long}"}`);
-    expect(out.description).toHaveLength(5000);
-  });
-
-  it("drops non-string fields to an empty string", () => {
-    const out = parseCaption('{"title":5,"description":"keep me"}');
-    expect(out).toEqual({ title: "", description: "keep me" });
-  });
-
-  it("throws when there is no object to parse", () => {
-    expect(() => parseCaption("no json at all")).toThrow("caption_unparseable");
-    expect(() => parseCaption("}{")).toThrow("caption_unparseable");
-  });
-
-  it("throws when the object has neither a title nor a description", () => {
-    expect(() => parseCaption("{}")).toThrow("caption_empty");
-    expect(() => parseCaption('{"title":"","description":""}')).toThrow(
-      "caption_empty",
+  it("collapses cleanly when the body is empty", () => {
+    expect(renderCaption(caption({ body: "  ", hashtags: ["celpip"] }))).toBe(
+      "#celpip",
     );
+  });
+});
+
+describe("captionFits", () => {
+  it("accepts a caption inside the platform's limits", () => {
+    expect(captionFits(caption())).toBe(true);
+  });
+
+  /** Measured on the RENDERED text, not the body alone: the hashtags are part
+   * of what gets posted, and a body that only fits without them would be
+   * rejected at upload. */
+  it("counts the hashtags against the limit", () => {
+    const tags = Array.from({ length: 8 }, () => "x".repeat(300));
+    expect(
+      captionFits(caption({ body: "x".repeat(2000), hashtags: tags })),
+    ).toBe(false);
+  });
+
+  it("holds YouTube to its shorter title limit", () => {
+    expect(
+      captionFits(caption({ platform: "youtube", title: "t".repeat(101) })),
+    ).toBe(false);
+    expect(
+      captionFits(caption({ platform: "youtube", title: "t".repeat(100) })),
+    ).toBe(true);
   });
 });
