@@ -34,6 +34,12 @@ struct YapperNativeApp: App {
                 .keyboardShortcut("z", modifiers: [.command, .shift])
                 .disabled(!session.canRedo || session.isBusy || session.isExporting)
             }
+            CommandGroup(after: .toolbar) {
+                Button(session.isAssistantOpen ? "Hide Yapper" : "Ask Yapper") {
+                    session.toggleAssistant()
+                }
+                .keyboardShortcut("k", modifiers: [.command])
+            }
             CommandGroup(after: .newItem) {
                 Button("Import Media…") { ImportPanels.openMedia(for: session) }
                     .keyboardShortcut("i")
@@ -61,10 +67,13 @@ struct YapperNativeApp: App {
                 .keyboardShortcut("t", modifiers: [.command, .shift])
             }
             CommandMenu("Playback") {
+                // No key equivalent on purpose. Space is handled by the
+                // timeline's key monitor, which checks what has the keyboard
+                // first; a menu shortcut fires whatever is focused, so the two
+                // together toggled playback twice and it looked stuck.
                 Button(session.isPlaying ? "Pause" : "Play") {
                     session.togglePlayback()
                 }
-                .keyboardShortcut(.space, modifiers: [])
             }
         }
     }

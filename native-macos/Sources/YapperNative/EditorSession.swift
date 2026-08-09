@@ -31,15 +31,51 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
 
 @MainActor
 final class EditorSession: ObservableObject {
-    @Published private(set) var project = EditorProject()
+    @Published private(set) var project = EditorProject() {
+        didSet { refreshPlaybackCursor() }
+    }
     @Published var selectedClipID: UUID?
+    /// What is picked in the media bin. Its own selection, not the timeline's:
+    /// a file in the bin may be on the timeline several times or not at all.
+    @Published var mediaSelection: MediaSelection = .empty
     @Published var selectedTextLayerID: UUID?
     @Published var selectedAudioLayerID: UUID?
     @Published var selectedOverlayID: UUID?
+    /// The speaker's own picture, picked up for framing. Its own flag rather
+    /// than a clip selection: the timeline keeps a clip selected almost all the
+    /// time, and the framing handles must only appear when they were asked for.
+    @Published var isVideoFrameSelected = false
+    /// What the crop editor is open on, or nil when it is closed. See
+    /// `CropRequest`.
+    @Published var cropRequest: CropRequest?
+    /// Whether Chirpy is grown into the panel or sitting in the corner.
+    ///
+    /// Held here rather than inside the view so ⌘K and Escape can reach it. A
+    /// flag that only the bird can see is a flag only the bird can toggle.
+    @Published var isAssistantOpen = false
     @Published private(set) var timelineSelection: Set<TimelineSelectionItem> = []
-    @Published private(set) var timelineSelectionDragDelta = 0.0
+    /// Live drag values live on `timelineDrag`; these read through to it so the
+    /// editing logic below is unchanged. They are private on purpose: a view
+    /// reading them here would see the right number and never be told when it
+    /// changes, so the compiler points every view at the drag state instead.
+    private var timelineSelectionDragDelta: Double { timelineDrag.offset }
+    private var timelineReorderPlan: TimelineReorderPlan? { timelineDrag.reorderPlan }
     @Published private(set) var inspectorRequest: EditorInspectorRequest?
-    @Published private(set) var currentTime = 0.0
+    /// The playhead, stored on the clock rather than published here.
+    ///
+    /// Every published change on this object invalidates every view that
+    /// observes it, and the editor observes it everywhere. A playhead moving at
+    /// thirty frames a second was therefore rebuilding the transcript, the
+    /// workbench and the player on every frame. The clock publishes to the two
+    /// small views that draw the time; the editor's own logic keeps reading and
+    /// writing `currentTime` exactly as before.
+    private(set) var currentTime: Double {
+        get { playbackClock.currentTime }
+        set {
+            playbackClock.set(newValue)
+            syncPlaybackCursor()
+        }
+    }
     @Published private(set) var isPlaying = false
     @Published private(set) var isBusy = false
     @Published private(set) var isExporting = false
@@ -56,40 +92,142 @@ final class EditorSession: ObservableObject {
     @Published var isTimelineSnappingEnabled: Bool {
         didSet { UserDefaults.standard.set(isTimelineSnappingEnabled, forKey: "timelineSnappingEnabled") }
     }
-    @Published private(set) var activeTimelineSnap: TimelineSnapMatch?
+    /// The creator's own spellings, applied to everything transcribed from
+    /// here on.
+    @Published var dictionaryEntries: [DictionaryEntry] = []
+    /// A one-word caption fix worth remembering, waiting on a yes or no.
+    @Published var dictionarySuggestion: CaptionCorrection?
+    /// Where the AI overlay placement pass has got to.
+    @Published private(set) var overlayPlacement: OverlayPlacementStatus = .idle
+    /// Caption cards the styling controls act on when Apply-to-all is off.
+    @Published private(set) var selectedCaptionIDs: Set<UUID> = []
+    /// Whether caption styling changes go to the shared style or the selection.
+    @Published var captionApplyToAll = true
+    /// The effect being played to be heard, if any. Published so the card that
+    /// started it can offer a stop.
+    @Published private(set) var previewingSoundID: String?
 
     let player = AVPlayer()
+    /// Where the playhead is, published on its own so the moving time only
+    /// redraws the playhead and the transport readout.
+    let playbackClock = PlaybackClock()
+    /// What the playhead is over, published only when the answer changes.
+    let playbackCursor = PlaybackCursor()
+    /// Live drag feedback, published on its own for the same reason as the
+    /// clock: a drag updates on every mouse move, and only the timeline tracks
+    /// have any use for it.
+    let timelineDrag = TimelineDragState()
+    /// The caption cue list, rebuilt only when the captions themselves change.
+    let captionCueCache = CaptionCueCache()
+    /// A drag in progress on the player canvas, held outside the views so
+    /// rebuilding them cannot lose it.
+    let canvasDrag = CanvasDragState()
+    /// What framing the composition on screen is actually rendering, so the
+    /// canvas can carry the picture the rest of the way while a rebuild runs.
+    let renderedFraming = RenderedFramingStore()
+    /// Whether the project's files are still reachable. Published on its own so
+    /// a card being pulled redraws the banner and nothing else.
+    let mediaAvailability = MediaAvailabilityWatcher()
+    /// The fader being dragged right now, held outside the project so a drag
+    /// does not republish the whole editor per step.
+    let audioLevels = AudioLevelDraft()
+    /// What you and Chirpy have said to each other lately. Published on its own
+    /// so a reply arriving redraws the panel and nothing else.
+    let conversation = AssistantConversation()
+    /// The transcript's reading order, rebuilt only when the words or cuts move.
+    let transcriptFlowCache = TranscriptFlowCache()
+    /// The shape of every sound on the audio track, so an effect can be lined
+    /// up against what is being said rather than guessed at.
+    let audioWaveforms: AudioWaveformStore
 
     private let store = ProjectStore.shared
-    private let waveformService = WaveformService()
+    let waveformService = WaveformService()
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
-    private let soundEffectService = SoundEffectService.shared
+    let overlayPlacementService = OverlayPlacementService()
+    /// Where the speaker is on screen, found on this machine so a cutaway can
+    /// be put somewhere else.
+    let faceDetectionService = FaceDetectionService()
+    let soundEffectService = SoundEffectService.shared
     private var soundPreview: NSSound?
+    private var soundPreviewEnd: Task<Void, Never>?
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var playbackStatusObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
     private var seekGeneration = 0
+    /// How long one frame of the finished video lasts. Read off the composition
+    /// as it is built, so stepping matches the footage rather than a guess.
+    private(set) var frameDuration = 1.0 / 30.0
     private var playWhenSeekFinishes = false
     private var isScrubbing = false
     private var resumePlaybackAfterScrub = false
     private var rebuilding = false
+    private var rebuildGeneration = 0
+    /// The project the composition the player is holding was built from.
+    ///
+    /// What makes it possible to tell a framing change from a real edit: see
+    /// `differsOnlyInFraming`. `nil` when the player is holding nothing.
+    private var builtProject: EditorProject?
     private var restorationTask: Task<Void, Never>?
     private var visualCommitTask: Task<Void, Never>?
     private var history = EditorHistory()
     private var pendingVisualUndoSnapshot: EditorProject?
     private var snapGuideClearTask: Task<Void, Never>?
     private var transientCache: [UUID: (peakCount: Int, times: [Double])] = [:]
+    /// Overlay stills with the project's grade already applied, keyed by the
+    /// image they came from. Regrading one on every frame of playback would be
+    /// the most expensive thing the canvas does.
+    var gradedOverlayImages: [ObjectIdentifier: (filter: VisualFilter, image: CGImage)] = [:]
 
     init() {
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
+        audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
         installObservers()
         restorationTask = Task { [weak self] in
             await self?.restoreProject()
+            await self?.loadDictionary()
         }
+        mediaAvailability.start(
+            supplying: { [weak self] in self?.project.media ?? [] },
+            onRestored: { [weak self] in
+                // Plugging the card back in is a fix, so it should be one: the
+                // composition that could not be built without those files is
+                // built now, without anybody being asked to do anything.
+                Task { await self?.reloadAfterRecovery() }
+            }
+        )
     }
 
     var duration: Double { project.duration }
+
+    /// Keeps the playhead inside the timeline whenever the project changes
+    /// under it. An edit that shortens the video must never leave the cursor
+    /// past its end.
+    private func refreshPlaybackCursor() {
+        captionCueCache.refresh(for: project)
+        transcriptFlowCache.refresh(for: project)
+        let end = max(0, project.duration)
+        if currentTime > end { currentTime = end }
+        syncPlaybackCursor()
+    }
+
+    /// Resolves the transcript word under the playhead. The cursor only
+    /// publishes when that word changes, which is what keeps the transcript
+    /// from re-laying out every one of its tokens on every frame of playback.
+    private func syncPlaybackCursor() {
+        playbackCursor.setTranscriptWordID(project.transcriptWord(at: currentTime)?.id)
+        playbackCursor.setCanvasItems(
+            PlaybackCursor.CanvasItems(
+                overlayIDs: overlays(at: currentTime).map(\.id),
+                textLayerIDs: (project.textLayers ?? [])
+                    .filter { $0.isVisible(at: currentTime) }
+                    .map(\.id),
+                captionID: captionCueCache.cue(at: currentTime)?.id
+            )
+        )
+    }
 
     var selectedClip: TimelineClip? {
         guard let selectedClipID else { return nil }
@@ -107,6 +245,12 @@ final class EditorSession: ObservableObject {
     }
 
     var hasTimelineSelection: Bool { !timelineSelection.isEmpty }
+
+    /// True when a playhead command has something to act on. Trimming already
+    /// falls back to the clip under the playhead when nothing is selected, so
+    /// the buttons must not claim otherwise: with a single clip loaded there is
+    /// nothing to select, and the commands still work perfectly well.
+    var hasPlayheadCommandTarget: Bool { !commandTimelineSelection().isEmpty }
 
     func isTimelineSelected(_ item: TimelineSelectionItem) -> Bool {
         timelineSelection.contains(item)
@@ -154,50 +298,69 @@ final class EditorSession: ObservableObject {
 
     func previewTimelineSelectionMove(delta: Double) {
         guard let bounds = timelineSelectionBounds() else {
-            timelineSelectionDragDelta = 0
+            timelineDrag.clear()
             return
         }
-        timelineSelectionDragDelta = min(
-            duration - bounds.end,
-            max(-bounds.start, delta)
-        )
+        let clamped = min(duration - bounds.end, max(-bounds.start, delta))
+        timelineDrag.claimIfNeeded()
+        let plan = reorderPlan(for: clamped)
+        // One tap when the drop actually moves to a different place in the
+        // running order, rather than one per pixel of pointer travel.
+        if plan?.insertionIndex != timelineDrag.reorderPlan?.insertionIndex {
+            TimelineHaptics.settled()
+        }
+        timelineDrag.setOffset(clamped, plan: plan)
     }
 
     func cancelTimelineSelectionMove() {
-        timelineSelectionDragDelta = 0
+        timelineDrag.clear()
+    }
+
+    /// Shared by the drag preview and the drop so both resolve to the same
+    /// index; computing it twice from separate code drifted them apart.
+    private func reorderPlan(for delta: Double) -> TimelineReorderPlan? {
+        let draggedIDs = draggedClipIDs
+        guard !draggedIDs.isEmpty else { return nil }
+        let block = project.clips.filter { draggedIDs.contains($0.id) }
+        guard !block.isEmpty else { return nil }
+        let blockDuration = block.reduce(0) { $0 + $1.duration }
+        let blockStart = block.compactMap { project.timelineStart(for: $0.id) }.min() ?? 0
+        let remaining = project.clips.filter { !draggedIDs.contains($0.id) }
+        let target = TimelineReorderGeometry.targetStart(
+            blockStart: blockStart,
+            delta: delta,
+            blockDuration: blockDuration,
+            projectDuration: project.duration
+        )
+        return TimelineReorderPlan(
+            insertionIndex: TimelineReorderGeometry.insertionIndex(
+                targetStart: target,
+                remainingDurations: remaining.map(\.duration)
+            ),
+            blockDuration: blockDuration
+        )
+    }
+
+    var draggedClipIDs: Set<UUID> {
+        Set(timelineSelection.compactMap { item -> UUID? in
+            if case let .clip(id) = item { return id }
+            return nil
+        })
     }
 
     func commitTimelineSelectionMove() async {
         let delta = timelineSelectionDragDelta
-        timelineSelectionDragDelta = 0
+        let committedPlan = timelineReorderPlan ?? reorderPlan(for: delta)
+        timelineDrag.clear()
         guard abs(delta) > 0.000_001, !timelineSelection.isEmpty else { return }
         let undoSnapshot = prepareUndoSnapshot()
 
-        let selectedClipIDs = Set(timelineSelection.compactMap { item -> UUID? in
-            if case let .clip(id) = item { return id }
-            return nil
-        })
-        if !selectedClipIDs.isEmpty {
+        let selectedClipIDs = draggedClipIDs
+        if !selectedClipIDs.isEmpty, let plan = committedPlan {
             let block = project.clips.filter { selectedClipIDs.contains($0.id) }
             if !block.isEmpty {
-                let firstStart = block.compactMap { project.timelineStart(for: $0.id) }.min() ?? 0
-                let blockDuration = block.reduce(0) { $0 + $1.duration }
-                let remaining = project.clips.filter { !selectedClipIDs.contains($0.id) }
-                let target = min(
-                    max(0, project.duration - blockDuration),
-                    max(0, firstStart + delta)
-                )
-                var cursor = 0.0
-                var insertionIndex = remaining.count
-                for (index, clip) in remaining.enumerated() {
-                    if target < cursor + clip.duration / 2 {
-                        insertionIndex = index
-                        break
-                    }
-                    cursor += clip.duration
-                }
-                var reordered = remaining
-                reordered.insert(contentsOf: block, at: insertionIndex)
+                var reordered = project.clips.filter { !selectedClipIDs.contains($0.id) }
+                reordered.insert(contentsOf: block, at: min(plan.insertionIndex, reordered.count))
                 project.clips = reordered
             }
         }
@@ -229,6 +392,10 @@ final class EditorSession: ObservableObject {
             }
             project.audioLayers = layers
         }
+        for item in timelineSelection {
+            guard case let .caption(id) = item else { continue }
+            nudgeCaption(id, by: delta)
+        }
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
@@ -244,6 +411,9 @@ final class EditorSession: ObservableObject {
         case let .overlay(id):
             guard let overlay = project.overlays?.first(where: { $0.id == id }) else { return nil }
             return (overlay.timelineStart, overlay.timelineStart + overlay.duration)
+        case let .caption(id):
+            guard let cue = captionCueCache.cue(id) else { return nil }
+            return (cue.timelineStart, cue.timelineEnd)
         case let .audio(id):
             guard let layer = project.audioLayers?.first(where: { $0.id == id }) else { return nil }
             return (layer.timelineStart, layer.timelineStart + layer.duration)
@@ -255,17 +425,40 @@ final class EditorSession: ObservableObject {
     }
 
     private func applyInspectorSelection(_ item: TimelineSelectionItem) {
+        // Asking for the inspector is a request, not a state: it carries a new
+        // id every time so that clicking the same item twice reopens the panel.
+        // That makes re-selecting something already selected an event, and an
+        // event mid-drag republishes and relays out the editor underneath the
+        // gesture. Only a selection that actually changes asks.
+        let wasAlreadySelected: Bool
+        switch item {
+        case let .clip(id): wasAlreadySelected = selectedClipID == id
+        case let .text(id): wasAlreadySelected = selectedTextLayerID == id
+        case let .overlay(id): wasAlreadySelected = selectedOverlayID == id
+        case let .caption(id): wasAlreadySelected = selectedCaptionIDs == [id]
+        case let .audio(id): wasAlreadySelected = selectedAudioLayerID == id
+        }
+
         switch item {
         case let .clip(id):
             selectedClipID = id
         case let .text(id):
             selectedTextLayerID = id
-            inspectorRequest = EditorInspectorRequest(tool: "Text")
         case let .overlay(id):
             selectedOverlayID = id
+        case let .caption(id):
+            setSelectedCaptionIDs([id])
         case let .audio(id):
             selectedAudioLayerID = id
-            inspectorRequest = EditorInspectorRequest(tool: "Audio")
+        }
+
+        guard !wasAlreadySelected else { return }
+        switch item {
+        case .clip: break
+        case .text: inspectorRequest = EditorInspectorRequest(tool: "Text")
+        case .overlay: inspectorRequest = EditorInspectorRequest(tool: "Overlays")
+        case .caption: inspectorRequest = EditorInspectorRequest(tool: "Captions")
+        case .audio: inspectorRequest = EditorInspectorRequest(tool: "Audio")
         }
     }
 
@@ -274,6 +467,13 @@ final class EditorSession: ObservableObject {
         selectedTextLayerID = nil
         selectedAudioLayerID = nil
         selectedOverlayID = nil
+        // Captions were left out of this, so picking a text layer left the
+        // caption still selected: both drew handles on the canvas, and it was
+        // anyone's guess which one a drag would move.
+        selectedCaptionIDs = []
+        // Picking anything else puts the picture back down. Two things drawing
+        // handles on the canvas at once is how a drag becomes a guess.
+        isVideoFrameSelected = false
         if let item { applyInspectorSelection(item) }
     }
 
@@ -291,25 +491,22 @@ final class EditorSession: ObservableObject {
     }
 
     func setActiveTimelineSnap(_ match: TimelineSnapMatch?) {
-        let targetChanged = activeTimelineSnap?.time != match?.time
-            || activeTimelineSnap?.kind != match?.kind
+        let current = timelineDrag.snap
+        let targetChanged = current?.time != match?.time || current?.kind != match?.kind
         // Distance changes on every pointer event but the visible guide does
         // not use it. Publishing those changes invalidated every clip view and
         // made precision trimming feel sticky. Only publish a target change.
         guard targetChanged else { return }
         snapGuideClearTask?.cancel()
-        if match != nil {
-            NSHapticFeedbackManager.defaultPerformer.perform(
-                .alignment,
-                performanceTime: .now
-            )
+        if let kind = match?.kind {
+            TimelineHaptics.snapped(to: kind)
         }
-        activeTimelineSnap = match
+        timelineDrag.setSnap(match)
         guard match != nil else { return }
         snapGuideClearTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
-            self?.activeTimelineSnap = nil
+            self?.timelineDrag.setSnap(nil)
         }
     }
 
@@ -374,6 +571,11 @@ final class EditorSession: ObservableObject {
         statusMessage = "Reading media…"
         defer { isBusy = false }
 
+        // Named back to the creator, because a video that does not appear on
+        // the timeline it was just dropped into looks like an import that
+        // failed rather than one that is waiting to be placed.
+        var landedInBin: [String] = []
+
         do {
             for url in urls {
                 let canonical = url.resolvingSymlinksInPath()
@@ -385,7 +587,14 @@ final class EditorSession: ObservableObject {
                     project.media.append(media)
                     beginDerivedMedia(for: media)
                 }
-                if !media.isImage {
+                // The first video is the thing being edited, so it goes down on
+                // the main track. Everything imported after that is B-roll
+                // until somebody says otherwise: it waits in the bin, where
+                // Add, Overlay and @ can all reach it. Laying it on the main
+                // track automatically both buried it under the footage and hid
+                // it from the assistant, which will not offer main-track
+                // footage as a cutaway over itself.
+                if !media.isImage, project.clips.isEmpty {
                     project.clips.append(
                         TimelineClip(
                             mediaID: media.id,
@@ -393,6 +602,8 @@ final class EditorSession: ObservableObject {
                             sourceEnd: media.duration
                         )
                     )
+                } else if !media.isImage {
+                    landedInBin.append(media.name)
                 }
                 if project.name == "Untitled project" {
                     project.name = canonical.deletingPathExtension().lastPathComponent
@@ -403,36 +614,49 @@ final class EditorSession: ObservableObject {
             try await rebuildComposition(preserveTime: false)
             await persist()
             recordHistory(before: undoSnapshot)
-            statusMessage = "Ready"
+            statusMessage = landedInBin.isEmpty
+                ? "Ready"
+                : "\(landedInBin.joined(separator: ", ")) added to Media · use Overlay, Add, or @ it"
         } catch {
             show(error)
         }
     }
 
     func togglePlayback() {
-        if player.rate != 0 || isPlaying {
-            player.pause()
-            isPlaying = false
-            playWhenSeekFinishes = false
+        // The player's own status is the only honest answer to "is it running".
+        // Tracking it in a flag let the two disagree, and a first click that
+        // only paused a player which had already stopped read as a dead button.
+        if player.timeControlStatus != .paused {
+            pausePlayback()
             return
         }
         guard player.currentItem != nil, duration > 0 else { return }
-        if currentTime >= duration - 0.02 {
+        // Playing to the end leaves the player parked there. Asking it to play
+        // again from that spot does nothing at all, so the transport has to
+        // rewind first.
+        if isParkedAtEnd || currentTime >= duration - 0.02 {
             seek(to: 0, exact: true, playAfter: true)
             return
         }
         if player.currentItem?.status == .readyToPlay {
             player.playImmediately(atRate: 1)
-            isPlaying = true
         } else {
-            playWhenSeekFinishes = true
             seek(to: currentTime, exact: false, playAfter: true)
         }
     }
 
+    /// Whether the player is sitting on the last frame of its item.
+    private var isParkedAtEnd: Bool {
+        guard let item = player.currentItem else { return false }
+        let end = item.duration.seconds
+        guard end.isFinite, end > 0 else { return false }
+        return item.currentTime().seconds >= end - 0.05
+    }
+
+    /// `isPlaying` follows the player through its status observer, so pausing
+    /// only has to tell the player and cancel any play a seek still owes.
     func pausePlayback() {
         player.pause()
-        isPlaying = false
         playWhenSeekFinishes = false
     }
 
@@ -451,11 +675,26 @@ final class EditorSession: ObservableObject {
 
     private func beginScrubbing() {
         guard !isScrubbing else { return }
-        resumePlaybackAfterScrub = player.rate != 0 || isPlaying
+        resumePlaybackAfterScrub = player.timeControlStatus != .paused
         isScrubbing = true
-        player.pause()
-        isPlaying = false
-        playWhenSeekFinishes = false
+        pausePlayback()
+    }
+
+    /// Nudges the playhead by whole frames, which is the smallest move the
+    /// video has. What the arrow keys do after a click has landed the playhead
+    /// roughly where it belongs.
+    func stepPlayhead(frames: Int) {
+        guard player.currentItem != nil, duration > 0, frames != 0 else { return }
+        pausePlayback()
+        let step = frameDuration * Double(frames)
+        let target = min(max(0, currentTime + step), duration)
+        guard abs(target - currentTime) > 0.000_1 else { return }
+        seek(to: target, exact: true, playAfter: false)
+    }
+
+    func seekToTimelineTime(_ time: Double) {
+        pausePlayback()
+        seek(to: min(max(0, time), duration), exact: true, playAfter: false)
     }
 
     func seekToTranscriptWord(_ word: TranscriptWord) {
@@ -569,12 +808,20 @@ final class EditorSession: ObservableObject {
                     x: layer.x,
                     y: layer.y,
                     width: layer.width,
-                    fontScale: layer.fontScale,
-                    style: layer.style,
-                    font: layer.font
+                    appearance: layer.appearance
                 )
                 project.textLayers?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.text(right.id))
+                didSplit = true
+            case let .caption(id):
+                guard let cue = captionCueCache.cue(id),
+                      currentTime > cue.timelineStart + 0.02,
+                      currentTime < cue.timelineEnd - 0.02,
+                      let tailID = project.splitCaption(
+                          id,
+                          afterWords: captionWordsBeforePlayhead(id)
+                      ) else { continue }
+                resultingSelection.insert(.caption(tailID))
                 didSplit = true
             case let .overlay(id):
                 guard let index = project.overlays?.firstIndex(where: { $0.id == id }),
@@ -641,6 +888,10 @@ final class EditorSession: ObservableObject {
         project.textLayers?.removeAll { textIDs.contains($0.id) }
         project.overlays?.removeAll { overlayIDs.contains($0.id) }
         project.audioLayers?.removeAll { audioIDs.contains($0.id) }
+        for item in selection {
+            guard case let .caption(id) = item else { continue }
+            project.removeCaption(id)
+        }
         setTimelineSelection([])
         currentTime = min(currentTime, project.duration)
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
@@ -687,6 +938,16 @@ final class EditorSession: ObservableObject {
                 }
                 project.textLayers?[index] = layer
                 changed = true
+            case let .caption(id):
+                guard let cue = captionCueCache.cue(id),
+                      currentTime > cue.timelineStart + 0.02,
+                      currentTime < cue.timelineEnd - 0.02 else { continue }
+                let retimed = project.retimeCaption(
+                    id,
+                    toTimelineStart: edge == .leading ? currentTime : cue.timelineStart,
+                    end: edge == .leading ? cue.timelineEnd : currentTime
+                )
+                if retimed { changed = true }
             case let .overlay(id):
                 guard let index = project.overlays?.firstIndex(where: { $0.id == id }),
                       var overlay = project.overlays?[index],
@@ -794,16 +1055,32 @@ final class EditorSession: ObservableObject {
     }
 
     func deleteImportedMedia(_ mediaID: UUID) async {
-        guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
+        await deleteImportedMedia([mediaID])
+    }
+
+    /// Removes several files in one edit, so clearing a bin full of takes is
+    /// one gesture and comes back with one ⌘Z rather than a dozen.
+    func deleteImportedMedia(_ mediaIDs: [UUID]) async {
+        let wanted = Set(mediaIDs)
+        let doomed = project.media.filter { wanted.contains($0.id) }
+        guard !doomed.isEmpty else { return }
         let undoSnapshot = prepareUndoSnapshot()
-        guard project.removeImportedMedia(mediaID) else { return }
-        waveformByMedia.removeValue(forKey: mediaID)
-        waveformProgressByMedia.removeValue(forKey: mediaID)
-        thumbnailsByMedia.removeValue(forKey: mediaID)
+        var removed: [String] = []
+        for media in doomed {
+            guard project.removeImportedMedia(media.id) else { continue }
+            waveformByMedia.removeValue(forKey: media.id)
+            waveformProgressByMedia.removeValue(forKey: media.id)
+            thumbnailsByMedia.removeValue(forKey: media.id)
+            removed.append(media.name)
+        }
+        guard !removed.isEmpty else { return }
+        mediaSelection = mediaSelection.reconciled(against: project.media.map(\.id))
         reconcileSelectionAfterProjectChange()
         currentTime = min(currentTime, project.duration)
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
-        statusMessage = "Removed \(media.name) from this project · source file kept · ⌘Z to undo"
+        let what = removed.count == 1 ? removed[0] : "\(removed.count) files"
+        let kept = removed.count == 1 ? "source file kept" : "source files kept"
+        statusMessage = "Removed \(what) from this project · \(kept) · ⌘Z to undo"
     }
 
     func addOverlay(_ mediaID: UUID) async {
@@ -815,39 +1092,96 @@ final class EditorSession: ObservableObject {
         let start = min(currentTime, max(0, duration - 0.1))
         let available = max(0.1, duration - start)
         let overlayDuration = min(available, media.isImage ? 4 : media.duration)
-        var overlays = project.overlays ?? []
-        overlays.append(
-            ProjectOverlay(
-                mediaID: mediaID,
-                timelineStart: start,
-                duration: overlayDuration
-            )
+        let overlay = introducedOverlay(
+            media: media,
+            timelineStart: start,
+            duration: overlayDuration
         )
-        project.overlays = overlays
+        project.overlays = (project.overlays ?? []) + [overlay]
+        selectTimelineItem(.overlay(overlay.id))
+        inspectorRequest = EditorInspectorRequest(tool: "Overlays")
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 
-    func promoteClipToOverlay(_ clipID: UUID) async {
+    /// An overlay sized to its media before it ever reaches the frame: media
+    /// cut to the video's own shape covers it, anything else lands as a card.
+    ///
+    /// It also lands on the lowest lane that is free at that moment, so adding
+    /// a second overlay over the first stacks it rather than refusing.
+    /// - Parameter box: where it should land, when something has already worked
+    ///   that out. Placing overlays with AI passes the box `OverlayLayout`
+    ///   solved around the speaker; everything else leaves this alone and gets
+    ///   the default card.
+    func introducedOverlay(
+        media: ProjectMedia,
+        timelineStart: Double,
+        duration: Double,
+        sourceStart: Double = 0,
+        alongside existing: [ProjectOverlay]? = nil,
+        box solved: OverlayBox? = nil
+    ) -> ProjectOverlay {
+        let box = solved ?? {
+            let introduced = OverlayFrame.introduced(
+                mediaAspect: CompositionBuilder.aspect(of: media),
+                frameAspect: project.resolvedAspectRatio
+            )
+            return OverlayBox(
+                x: introduced.x,
+                y: introduced.y,
+                width: introduced.width,
+                height: introduced.height
+            )
+        }()
+        let id = UUID()
+        let track = OverlayTracks.firstFreeTrack(
+            for: (id, timelineStart, duration),
+            in: existing ?? project.overlays ?? []
+        )
+        return ProjectOverlay(
+            id: id,
+            mediaID: media.id,
+            timelineStart: timelineStart,
+            duration: duration,
+            sourceStart: sourceStart,
+            x: box.x,
+            y: box.y,
+            width: box.width,
+            height: box.height,
+            track: track == 0 ? nil : track
+        )
+    }
+
+    /// Lifts a clip onto an overlay lane, landing it where it was dropped.
+    func promoteClipToOverlay(
+        _ clipID: UUID,
+        start: Double? = nil,
+        lane: Int? = nil
+    ) async {
         let undoSnapshot = prepareUndoSnapshot()
-        guard let overlay = project.promoteClipToOverlay(clipID) else { return }
+        guard let overlay = project.promoteClipToOverlay(clipID, start: start, lane: lane) else {
+            setStatus("A clip has to stay on the video track")
+            return
+        }
         selectTimelineItem(.overlay(overlay.id))
         await commitTimelineEdit(undoSnapshot: undoSnapshot)
+        setStatus("Lifted to overlay lane \(overlay.lane + 1) · ⌘Z to undo")
     }
 
     func addTextLayer(asHook: Bool = false) {
         guard duration > 0 else { return }
         let undoSnapshot = prepareUndoSnapshot()
-        let start = min(currentTime, max(0, duration - 0.1))
-        let available = max(0.1, duration - start)
+        let span = TextLayerPlacement.span(
+            asHook: asHook,
+            currentTime: currentTime,
+            projectDuration: duration
+        )
         let layer = ProjectTextLayer(
             text: asHook ? "Your hook" : "Text",
-            timelineStart: start,
-            duration: min(asHook ? 4 : 5, available),
+            timelineStart: span.start,
+            duration: span.duration,
             y: asHook ? 0.14 : 0.5,
             width: asHook ? 0.74 : 0.7,
-            fontScale: asHook ? 0.043 : 0.05,
-            style: asHook ? .whiteCard : .plain,
-            font: asHook ? .rounded : .modern
+            appearance: asHook ? .hookDefault : .textLayerDefault
         )
         var layers = project.textLayers ?? []
         layers.append(layer)
@@ -859,15 +1193,39 @@ final class EditorSession: ObservableObject {
         scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
+    /// Plays an effect to hear it, and says which one is playing.
+    ///
+    /// Which one matters: a ten-second typing loop started by accident had no
+    /// way to be stopped except waiting it out, because nothing on screen knew
+    /// a preview was running.
     func previewSoundEffect(_ effect: SoundEffectDescriptor) async {
         do {
             let url = try await soundEffectService.fileURL(for: effect)
             soundPreview?.stop()
             soundPreview = NSSound(contentsOf: url, byReference: true)
             soundPreview?.play()
+            previewingSoundID = effect.id
+            // Cleared when it finishes on its own, so the button goes back to
+            // offering a play rather than a stop for a sound already over.
+            soundPreviewEnd?.cancel()
+            soundPreviewEnd = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(Int(effect.duration * 1000) + 120))
+                guard !Task.isCancelled, let self, previewingSoundID == effect.id else { return }
+                previewingSoundID = nil
+                soundPreview = nil
+            }
         } catch {
             show(error)
         }
+    }
+
+    /// Stops whatever is being previewed, now.
+    func stopSoundPreview() {
+        soundPreviewEnd?.cancel()
+        soundPreviewEnd = nil
+        soundPreview?.stop()
+        soundPreview = nil
+        previewingSoundID = nil
     }
 
     func addSoundEffect(_ effect: SoundEffectDescriptor) async {
@@ -896,11 +1254,14 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func importAudio(_ urls: [URL]) async {
+    /// - Parameter startingAt: where the first sound lands, for a drop that
+    ///   named its own moment. The playhead otherwise, which is what the import
+    ///   button means.
+    func importAudio(_ urls: [URL], startingAt: Double? = nil) async {
         guard duration > 0, !urls.isEmpty else { return }
         do {
             let undoSnapshot = prepareUndoSnapshot()
-            var insertionTime = min(currentTime, max(0, duration - 0.02))
+            var insertionTime = min(startingAt ?? currentTime, max(0, duration - 0.02))
             var layers = project.audioLayers ?? []
             for rawURL in urls {
                 let url = rawURL.resolvingSymlinksInPath()
@@ -949,15 +1310,6 @@ final class EditorSession: ObservableObject {
         selectTimelineItem(.overlay(id))
     }
 
-    func commitOverlayTrim(_ updated: ProjectOverlay) {
-        guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
-        let undoSnapshot = project
-        project.overlays?[index] = updated
-        selectedOverlayID = updated.id
-        project.updatedAt = Date()
-        scheduleVisualCommit(undoSnapshot: undoSnapshot)
-    }
-
     func commitAudioTrim(_ updated: ProjectAudioLayer) async {
         guard let index = project.audioLayers?.firstIndex(where: { $0.id == updated.id }) else { return }
         let undoSnapshot = prepareUndoSnapshot()
@@ -1003,7 +1355,7 @@ final class EditorSession: ObservableObject {
             for (index, mediaID) in mediaIDs.enumerated() {
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 statusMessage = "Transcribing \(media.name)…"
-                let words = try await aiEditService.transcribe(media: media)
+                let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
@@ -1040,7 +1392,7 @@ final class EditorSession: ObservableObject {
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
                     setOneClickEditStage(.transcribing)
-                    words = try await aiEditService.transcribe(media: media)
+                    words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
@@ -1067,7 +1419,8 @@ final class EditorSession: ObservableObject {
                 throw NativeEditorError.aiFailed("The proposed edit was empty, so the original was restored.")
             }
             setOneClickEditStage(.addingCaptions)
-            project.captionsEnabled = true
+            project.regenerateCaptions()
+            setSelectedCaptionIDs([])
             selectedClipID = project.clips.first?.id
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
@@ -1080,18 +1433,34 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func addCaptions() async {
+    /// The Captions on/off switch. Turning them off keeps the cards so the
+    /// creator's text edits and restyling survive turning them back on.
+    func toggleCaptions() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
         if project.captionsEnabled == true {
             let undoSnapshot = prepareUndoSnapshot()
-            project.captionsEnabled = false
-            project.updatedAt = Date()
+            project.setCaptionsVisible(false)
             await persist()
             recordHistory(before: undoSnapshot)
-            statusMessage = "Captions removed"
+            statusMessage = "Captions hidden · \(project.storedCaptions.count) cards kept"
             return
         }
+        if !project.storedCaptions.isEmpty {
+            let undoSnapshot = prepareUndoSnapshot()
+            project.setCaptionsVisible(true)
+            await persist()
+            recordHistory(before: undoSnapshot)
+            statusMessage = "Captions shown · \(project.captionEntries.count) cards"
+            return
+        }
+        await generateCaptions()
+    }
 
+    /// Rebuilds every card from the current transcript and cut, transcribing
+    /// first if the project has never been listened to. Regeneration is always
+    /// explicit, so hand-edited text is never silently thrown away.
+    func generateCaptions() async {
+        guard !project.clips.isEmpty, !isAIEditing else { return }
         let undoSnapshot = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
@@ -1108,7 +1477,7 @@ final class EditorSession: ObservableObject {
                     let media = project.media.first(where: { $0.id == mediaID })
                 else { continue }
                 statusMessage = "Transcribing before adding captions…"
-                let words = try await aiEditService.transcribe(media: media)
+                let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
@@ -1117,11 +1486,11 @@ final class EditorSession: ObservableObject {
             guard !project.timelineTranscript.isEmpty else {
                 throw NativeEditorError.aiFailed("No spoken words were found to caption.")
             }
-            project.captionsEnabled = true
-            project.updatedAt = Date()
+            project.regenerateCaptions()
+            setSelectedCaptionIDs([])
             await persist()
             recordHistory(before: undoSnapshot)
-            statusMessage = "Captions added · \(project.captionCues.count) cards"
+            statusMessage = "Captions ready · \(project.captionEntries.count) cards"
         } catch {
             project = undoSnapshot
             show(error)
@@ -1146,7 +1515,7 @@ final class EditorSession: ObservableObject {
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
                     statusMessage = "Transcribing before auto-trim…"
-                    words = try await aiEditService.transcribe(media: media)
+                    words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
@@ -1233,7 +1602,10 @@ final class EditorSession: ObservableObject {
         syncHistoryAvailability()
     }
 
-    private func commitTimelineEdit(undoSnapshot: EditorProject? = nil) async {
+    /// The seam an edit that changes the composition goes through: rebuild the
+    /// player item, save, and record one undo step. Focused extensions on this
+    /// session use it, which is why it is not private.
+    func commitTimelineEdit(undoSnapshot: EditorProject? = nil) async {
         project.updatedAt = Date()
         do {
             try await rebuildComposition(preserveTime: true)
@@ -1251,7 +1623,71 @@ final class EditorSession: ObservableObject {
         statusMessage = stage.title
     }
 
-    private func scheduleVisualCommit(undoSnapshot: EditorProject) {
+    /// The one seam the focused intent extensions (captions, and anything that
+    /// follows) use to change the project. Keeping it explicit means every
+    /// mutation outside this file is greppable, without opening the setter to
+    /// the views.
+    func updateProject(_ change: (inout EditorProject) -> Void) {
+        change(&project)
+    }
+
+    func setStatus(_ message: String) {
+        statusMessage = message
+    }
+
+    func setBusy(_ busy: Bool) {
+        isBusy = busy
+    }
+
+    func setOverlayPlacement(_ status: OverlayPlacementStatus) {
+        overlayPlacement = status
+    }
+
+    /// The one seam caption selection goes through, so selecting a card here
+    /// puts down whatever else was held on the canvas.
+    /// Brings a selected item into view on the canvas.
+    ///
+    /// A caption, an overlay or a text layer is only drawn while the playhead
+    /// is inside it, so picking one on the timeline while the playhead sits
+    /// somewhere else selected something invisible: the handles were on a card
+    /// that was not on screen, and there was nothing to drag in the preview.
+    /// The playhead moves to the item only when it is not already inside it.
+    func revealOnCanvas(_ item: TimelineSelectionItem) {
+        guard let span = timelineSpan(for: item) else { return }
+        guard currentTime < span.start || currentTime > span.end else { return }
+        // Just inside the leading edge, so the item really is on screen rather
+        // than exactly on the boundary where it starts.
+        seekToTimelineTime(min(span.end, span.start + 0.05))
+    }
+
+    /// Puts down everything on the canvas: the picture, the captions, the text
+    /// and the overlays.
+    ///
+    /// What a click on the workspace around the stage does, and what Escape
+    /// does. There was no way to do this at all before: every canvas item could
+    /// be picked up and none of them could be put back down except by picking
+    /// up another one, so a dashed box sat on the last thing you touched for
+    /// the rest of the session.
+    ///
+    /// The timeline selection is deliberately left alone. The timeline keeps a
+    /// clip selected nearly all the time and the inspector follows it, so
+    /// clearing it here would empty a panel on the other side of the window
+    /// over a click that was about the picture.
+    func clearCanvasSelection() {
+        isVideoFrameSelected = false
+        selectedOverlayID = nil
+        selectedTextLayerID = nil
+        setSelectedCaptionIDs([])
+    }
+
+    func setSelectedCaptionIDs(_ ids: Set<UUID>) {
+        selectedCaptionIDs = ids
+        guard !ids.isEmpty else { return }
+        selectedTextLayerID = nil
+        selectedOverlayID = nil
+    }
+
+    func scheduleVisualCommit(undoSnapshot: EditorProject) {
         if pendingVisualUndoSnapshot == nil {
             pendingVisualUndoSnapshot = undoSnapshot
         }
@@ -1273,7 +1709,36 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func prepareUndoSnapshot() -> EditorProject {
+    /// Like `scheduleVisualCommit`, for edits the composition itself has to be
+    /// rebuilt for: a video cutaway moving, or being resized. Rebuilding on
+    /// every step of a gesture would stutter, so the last one wins and the
+    /// whole gesture lands as a single undo step.
+    func scheduleCompositionCommit(undoSnapshot: EditorProject, settleFor delay: Duration = .milliseconds(220)) {
+        if pendingVisualUndoSnapshot == nil {
+            pendingVisualUndoSnapshot = undoSnapshot
+        }
+        visualCommitTask?.cancel()
+        var run = EditLatencyLog.Run("composition commit")
+        visualCommitTask = Task { [weak self] in
+            do {
+                try await Task.sleep(for: delay)
+                guard !Task.isCancelled, let self else { return }
+                run.mark("settled")
+                try await self.rebuildComposition(preserveTime: true, run: &run)
+                run.mark("composition shown")
+                await self.persist()
+                run.mark("saved")
+                self.finalizePendingVisualHistory(cancelTask: false)
+                self.statusMessage = "Ready"
+            } catch is CancellationError {
+                return
+            } catch {
+                self?.show(error)
+            }
+        }
+    }
+
+    func prepareUndoSnapshot() -> EditorProject {
         finalizePendingVisualHistory()
         return project
     }
@@ -1286,7 +1751,7 @@ final class EditorSession: ObservableObject {
         recordHistory(before: snapshot)
     }
 
-    private func recordHistory(before snapshot: EditorProject) {
+    func recordHistory(before snapshot: EditorProject) {
         history.record(before: snapshot, after: project)
         syncHistoryAvailability()
     }
@@ -1296,16 +1761,24 @@ final class EditorSession: ObservableObject {
         canRedo = history.canRedo
     }
 
+    /// Drops anything from the selection that the project no longer has, and
+    /// falls back to the clip under the playhead when that empties it.
+    func reconcileTimelineSelection() {
+        reconcileSelectionAfterProjectChange()
+    }
+
     private func reconcileSelectionAfterProjectChange() {
         let clipIDs = Set(project.clips.map(\.id))
         let textIDs = Set((project.textLayers ?? []).map(\.id))
         let overlayIDs = Set((project.overlays ?? []).map(\.id))
         let audioIDs = Set((project.audioLayers ?? []).map(\.id))
+        let captionIDs = Set(project.captionEntries.map(\.id))
         timelineSelection = timelineSelection.filter { item in
             switch item {
             case let .clip(id): clipIDs.contains(id)
             case let .text(id): textIDs.contains(id)
             case let .overlay(id): overlayIDs.contains(id)
+            case let .caption(id): captionIDs.contains(id)
             case let .audio(id): audioIDs.contains(id)
             }
         }
@@ -1321,27 +1794,128 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func rebuildComposition(preserveTime: Bool) async throws {
+    func rebuildComposition(preserveTime: Bool) async throws {
+        var run = EditLatencyLog.Run("rebuild")
+        try await rebuildComposition(preserveTime: preserveTime, run: &run)
+    }
+
+    private func rebuildComposition(preserveTime: Bool, run: inout EditLatencyLog.Run) async throws {
         guard !project.clips.isEmpty else {
+            pausePlayback()
             player.replaceCurrentItem(with: nil)
+            builtProject = nil
+            renderedFraming.record([])
             currentTime = 0
-            isPlaying = false
             return
         }
+        // Edits arrive in bursts: a drop lands, the undo snapshot commits, a
+        // trim follows. Only the newest of them is worth building, so a request
+        // that has been overtaken while waiting its turn simply stands down.
+        rebuildGeneration += 1
+        let generation = rebuildGeneration
         while rebuilding {
-            try await Task.sleep(for: .milliseconds(10))
+            try await Task.sleep(for: .milliseconds(4))
+            guard generation == rebuildGeneration else { return }
         }
         rebuilding = true
         defer { rebuilding = false }
+        run.mark("queue clear")
 
         let resumeAt = preserveTime ? min(currentTime, project.duration) : 0
-        let resumePlayback = isPlaying || player.rate != 0
-        let built = try await CompositionBuilder.build(project: project)
+        let resumePlayback = player.timeControlStatus != .paused
+        // The project as the composition sees it. What the player ends up
+        // showing is this, not whatever the project has become by the time the
+        // build returns, which is the whole point of recording it below.
+        let snapshot = project
+        // The player draws none of the Core Animation pass, so it must not wait
+        // for it: see CompositionPurpose.
+        let built = try await CompositionBuilder.build(project: snapshot, for: .preview)
+        run.mark("built")
+        guard generation == rebuildGeneration else { return }
+        if let frame = built.videoComposition?.frameDuration.seconds, frame > 0 {
+            frameDuration = frame
+        }
+        // A framing or a volume change needs none of the upheaval below: same
+        // tracks, same playhead, only a different transform laid over them and
+        // a different number in the mix. Handing the item those keeps the
+        // picture on screen, where swapping the item blacks the preview out for
+        // as long as the exact seek back takes. See `differsOnlyInPresentation`.
+        if
+            let current = player.currentItem,
+            let builtProject,
+            builtProject.differsOnlyInPresentation(from: snapshot),
+            let reframed = built.playbackVideoComposition
+        {
+            let levelsMoved = builtProject.audioLevelsDiffer(from: snapshot)
+            current.videoComposition = reframed
+            current.audioMix = built.audioMix
+            self.builtProject = snapshot
+            renderedFraming.record(snapshot.clips)
+            run.mark("presentation swapped in")
+            // Paused, AVFoundation holds the frame it last rendered and has no
+            // reason to notice the composition under it has changed. Asking for
+            // the frame it is already on is what makes it draw the new one.
+            //
+            // A mix is worse than that: handed to a running item it takes
+            // effect at the next playback cycle, so a fader moved while paused
+            // changed the waveform and nothing else, and moved while playing
+            // did not land until the next thing that happened to seek. Asking
+            // for the time it is already at starts that cycle now.
+            if levelsMoved {
+                refreshCurrentTime()
+            } else if player.timeControlStatus == .paused {
+                refreshPausedFrame()
+            }
+            return
+        }
+
         let item = built.playerItem
+        // Land on a rendered frame rather than showing whatever decodes first.
+        item.seekingWaitsForVideoCompositionRendering = true
         _ = try await item.asset.load(.isPlayable)
+        run.mark("item playable")
+        guard generation == rebuildGeneration else { return }
+
         player.pause()
         player.replaceCurrentItem(with: item)
+        builtProject = snapshot
+        renderedFraming.record(snapshot.clips)
+        watchForFailure(of: item)
         seek(to: resumeAt, exact: true, playAfter: resumePlayback)
+        run.mark("item swapped in (the slow way)")
+    }
+
+    /// Re-serves the moment the player is on, so a new mix or composition takes
+    /// effect now rather than at whatever happens next.
+    ///
+    /// Playing or paused: the seek is to the time it is already at, so nothing
+    /// moves, and playback carries on by itself afterwards.
+    private func refreshCurrentTime() {
+        guard player.currentItem != nil else { return }
+        let now = player.currentTime()
+        player.seek(to: now, toleranceBefore: .zero, toleranceAfter: .zero)
+    }
+
+    /// Redraws the frame the player is sitting on, for a change that alters how
+    /// the current time looks rather than which time is current.
+    private func refreshPausedFrame() {
+        guard let item = player.currentItem else { return }
+        let now = item.currentTime()
+        item.seek(to: now, toleranceBefore: .zero, toleranceAfter: .zero, completionHandler: nil)
+    }
+
+    /// A player item that fails shows nothing at all: the preview simply goes
+    /// black, with no hint of why. This says so instead.
+    private func watchForFailure(of item: AVPlayerItem) {
+        itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            guard item.status == .failed else { return }
+            let reason = item.error?.localizedDescription
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item else { return }
+                self.errorMessage = reason ?? "The preview could not be built."
+                self.statusMessage = "Preview failed"
+            }
+        }
     }
 
     private func seek(to requestedTime: Double, exact: Bool, playAfter: Bool) {
@@ -1358,15 +1932,10 @@ final class EditorSession: ObservableObject {
             toleranceAfter: tolerance
         ) { [weak self] finished in
             Task { @MainActor in
-                guard
-                    let self,
-                    finished,
-                    generation == self.seekGeneration
-                else { return }
+                guard let self, finished, generation == self.seekGeneration else { return }
                 if self.playWhenSeekFinishes {
-                    self.player.playImmediately(atRate: 1)
-                    self.isPlaying = true
                     self.playWhenSeekFinishes = false
+                    self.player.playImmediately(atRate: 1)
                 }
             }
         }
@@ -1380,18 +1949,49 @@ final class EditorSession: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self, !self.isScrubbing, self.player.rate != 0 else { return }
                 self.currentTime = min(max(0, time.seconds), self.duration)
-                self.isPlaying = true
+            }
+        }
+        // The transport reflects what the player is actually doing rather than
+        // what it was last asked to do. A play that never got going used to
+        // leave the button showing a pause icon over a still frame.
+        playbackStatusObservation = player.observe(
+            \.timeControlStatus,
+            options: [.initial, .new]
+        ) { [weak self] player, _ in
+            let playing = player.timeControlStatus != .paused
+            Task { @MainActor [weak self] in
+                guard let self, self.isPlaying != playing else { return }
+                self.isPlaying = playing
             }
         }
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            let endedItem = (notification.object as? AVPlayerItem).map(ObjectIdentifier.init)
             MainActor.assumeIsolated {
-                self?.isPlaying = false
+                guard
+                    let self,
+                    let endedItem,
+                    let playing = self.player.currentItem,
+                    ObjectIdentifier(playing) == endedItem
+                else { return }
+                // Park the playhead exactly on the end. The periodic observer
+                // stops as soon as the rate hits zero, so it used to be left a
+                // frame short, and the next play then asked a player sitting on
+                // its last frame to carry on from there: nothing moved, and the
+                // button flipped to pause anyway.
+                self.pausePlayback()
+                self.currentTime = self.duration
             }
         }
+    }
+
+    /// Has another go at the thumbnails and the waveform, for media whose first
+    /// attempt had no file to read.
+    func restartDerivedMedia(for media: ProjectMedia) {
+        beginDerivedMedia(for: media)
     }
 
     private func beginDerivedMedia(for media: ProjectMedia) {
@@ -1416,7 +2016,7 @@ final class EditorSession: ObservableObject {
         }
         Task {
             do {
-                _ = try await waveformService.peaks(for: media) { [weak self] peaks, fraction in
+                _ = try await waveformService.peaks(for: WaveformSource(media: media)) { [weak self] peaks, fraction in
                     self?.waveformByMedia[media.id] = peaks
                     self?.waveformProgressByMedia[media.id] = fraction
                 }
@@ -1432,32 +2032,27 @@ final class EditorSession: ObservableObject {
             history.clear()
             pendingVisualUndoSnapshot = nil
             syncHistoryAvailability()
-            let availableMedia = saved.media.filter {
-                FileManager.default.fileExists(atPath: $0.url.path)
-            }
-            let availableIDs = Set(availableMedia.map(\.id))
-            project = EditorProject(
-                id: saved.id,
-                name: saved.name,
-                createdAt: saved.createdAt,
-                updatedAt: saved.updatedAt,
-                media: availableMedia,
-                clips: saved.clips.filter { availableIDs.contains($0.mediaID) },
-                transcript: saved.transcript?.filter { availableIDs.contains($0.mediaID) },
-                captionsEnabled: saved.captionsEnabled,
-                overlays: saved.overlays?.filter { availableIDs.contains($0.mediaID) },
-                textLayers: saved.textLayers,
-                audioLayers: saved.audioLayers?.filter {
-                    FileManager.default.fileExists(atPath: $0.url.path)
-                },
-                aspectRatio: saved.aspectRatio
-            )
+            // Restored whole, including anything the editor cannot currently
+            // read. This used to drop unreachable media along with its clips,
+            // its transcript, its captions and its cutaways, which meant an
+            // unplugged card silently deleted the edit made on it: reopening
+            // with the card out and saving once made that permanent. A file
+            // that is not there right now is a file to reconnect, and every cut
+            // made against it is still exactly right. See MediaAvailability.
+            project = saved
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
             selectedAudioLayerID = project.audioLayers?.first?.id
             selectedOverlayID = project.overlays?.first?.id
             timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
-            for media in project.media { beginDerivedMedia(for: media) }
+            mediaAvailability.refresh()
+            for media in project.media where !offlineMedia.contains(where: { $0.id == media.id }) {
+                beginDerivedMedia(for: media)
+            }
+            guard offlineMedia.isEmpty else {
+                statusMessage = "Media offline"
+                return
+            }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)
                 statusMessage = "Restored \(project.name)"
@@ -1467,7 +2062,7 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func persist() async {
+    func persist() async {
         do {
             try await store.save(project)
         } catch {
@@ -1475,8 +2070,27 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func show(_ error: Error) {
+    func show(_ error: Error) {
         errorMessage = error.localizedDescription
         statusMessage = "Needs attention"
+    }
+
+    /// Wipes the last failure before starting something that might raise its
+    /// own, so what is on screen belongs to the run you are watching.
+    func clearError() {
+        errorMessage = nil
+    }
+
+    func toggleAssistant() {
+        isAssistantOpen.toggle()
+    }
+
+    /// True when there was something open to close, so Escape can go on to mean
+    /// whatever else it means when there was not.
+    @discardableResult
+    func closeAssistant() -> Bool {
+        guard isAssistantOpen else { return false }
+        isAssistantOpen = false
+        return true
     }
 }

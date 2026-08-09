@@ -4,7 +4,20 @@ import SwiftUI
 
 struct TimelinePanel: View {
     @ObservedObject var session: EditorSession
-    @State private var pointsPerSecond = 36.0
+    @StateObject private var viewport = TimelineViewportState()
+    /// Held here rather than read per event: the scroller has to be off for the
+    /// whole time the key is down, not decided again on each scroll.
+    @StateObject private var commandKey = CommandKeyMonitor()
+    /// Mirrors the layout computed inside the `GeometryReader` so the toolbar
+    /// zoom slider, which sits above it, can anchor its own zooms.
+    @State private var layoutSnapshot = TimelineViewportLayout(
+        duration: 0,
+        viewportWidth: 1,
+        minimumContentWidth: 280,
+        leadingInset: 84,
+        trailingInset: 160
+    )
+    private let trackHeaderWidth = 71.0
     private let leadingTimelineInset = 84.0
     private let trailingTimelineInset = 160.0
 
@@ -31,44 +44,59 @@ struct TimelinePanel: View {
                                 .stroke(session.isTimelineSnappingEnabled ? Color.yapperOrange.opacity(0.32) : Color.studioLine, lineWidth: 1)
                         }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.studioPlain)
                 .help("Snap to the playhead, edges, seconds, and audio transients · hold Option to bypass")
                 Divider()
                     .frame(height: 18)
-                Button {
+                TimelineActionButton(
+                    title: "Split",
+                    systemImage: "scissors",
+                    shortcut: "S",
+                    help: "Split the selected item at the playhead"
+                ) {
                     Task { await session.splitAtPlayhead() }
-                } label: {
-                    Image(systemName: "scissors")
-                        .frame(width: 28, height: 26)
-                        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
-                .buttonStyle(.plain)
                 .disabled(session.project.clips.isEmpty)
-                .help("Split selected item at playhead · S")
-                Button {
+                TimelineActionButton(
+                    title: "Trim Start",
+                    systemImage: "arrow.right.to.line",
+                    shortcut: "[",
+                    help: "Pull the selected item's left edge to the playhead"
+                ) {
+                    Task { await session.trimTimelineSelection(toPlayhead: .leading) }
+                }
+                .disabled(!session.hasPlayheadCommandTarget)
+                TimelineActionButton(
+                    title: "Trim End",
+                    systemImage: "arrow.left.to.line",
+                    shortcut: "]",
+                    help: "Pull the selected item's right edge to the playhead"
+                ) {
+                    Task { await session.trimTimelineSelection(toPlayhead: .trailing) }
+                }
+                .disabled(!session.hasPlayheadCommandTarget)
+                TimelineActionButton(
+                    title: "Delete",
+                    systemImage: "trash",
+                    shortcut: "⌫",
+                    help: "Delete the selected timeline items"
+                ) {
                     Task { await session.deleteTimelineSelection() }
-                } label: {
-                    Image(systemName: "trash")
-                        .frame(width: 28, height: 26)
-                        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
-                .buttonStyle(.plain)
                 .disabled(!session.hasTimelineSelection)
-                .help("Delete selected timeline items · Delete")
-                Button {
+                TimelineActionButton(
+                    title: "Auto-trim",
+                    systemImage: "waveform",
+                    shortcut: "⇧⌘T",
+                    help: "Remove silent gaps across the timeline"
+                ) {
                     Task { await session.autoTrimSilences() }
-                } label: {
-                    Image(systemName: "waveform")
-                        .frame(width: 28, height: 26)
-                        .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                 }
-                .buttonStyle(.plain)
                 .disabled(session.project.clips.isEmpty || session.isAIEditing)
-                .help("Auto-trim silent gaps · ⇧⌘T")
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
                     .foregroundStyle(.secondary)
-                Slider(value: $pointsPerSecond, in: TimelineZoomGeometry.scaleRange)
+                Slider(value: sliderZoom, in: TimelineZoomGeometry.scaleRange)
                     .frame(width: 130)
                     .controlSize(.mini)
                     .help("Pinch or ⌘-scroll over the timeline to zoom")
@@ -80,49 +108,98 @@ struct TimelinePanel: View {
             .background(Color.panelBackground)
 
             GeometryReader { proxy in
-                let timelineViewportWidth = max(1, proxy.size.width - 71)
-                let minimumTimelineWidth = max(
-                    280,
-                    min(520, timelineViewportWidth * 0.52)
+                let layout = timelineLayout(panelWidth: proxy.size.width)
+                let contentWidth = layout.contentWidth(at: viewport.pointsPerSecond)
+                let contentHeight = max(session.timelineRowLayout.contentHeight, proxy.size.height)
+                // When every track already fits, the scroller must be inert.
+                // Left enabled it still rubber-banded, which dragged the ruler
+                // out of view part-way through a zoom gesture.
+                let tracksFit = contentHeight <= proxy.size.height + 0.5
+                VStack(spacing: 0) {
+                TimelineRulerHeader(
+                    session: session,
+                    viewport: viewport,
+                    clock: session.playbackClock,
+                    layout: layout,
+                    contentWidth: contentWidth,
+                    railWidth: TimelineTrackRail.width
                 )
-                let contentWidth = max(minimumTimelineWidth, session.duration * pointsPerSecond)
-                let contentHeight = max(540, proxy.size.height + 168)
-                ScrollView(.vertical, showsIndicators: true) {
+                ScrollView(.vertical, showsIndicators: !tracksFit) {
                     HStack(spacing: 0) {
-                        TrackHeader(hasText: true, hasOverlays: true, hasAudio: true)
-                        .frame(width: 70)
+                        TimelineTrackRail(
+                            session: session,
+                            layout: session.timelineRowLayout
+                        )
+                            .frame(width: TimelineTrackRail.width)
                         Rectangle().fill(Color.studioLine).frame(width: 1)
-                        ScrollView(.horizontal, showsIndicators: true) {
-                            TimelineContent(
-                                session: session,
-                                contentWidth: contentWidth
-                            )
-                            .frame(width: contentWidth, height: contentHeight)
-                            .padding(.leading, leadingTimelineInset)
-                            .padding(.trailing, trailingTimelineInset)
-                            .background {
-                                TimelineZoomInputView(
-                                    leadingInset: leadingTimelineInset,
-                                    trailingInset: trailingTimelineInset,
-                                    timelineWidth: contentWidth
-                                ) { factor in
-                                    applyZoom(
-                                        factor,
-                                        minimumTimelineWidth: minimumTimelineWidth
-                                    )
-                                }
-                            }
-                        }
+                        TimelineViewport(
+                            session: session,
+                            viewport: viewport,
+                            layout: layout,
+                            contentHeight: contentHeight
+                        )
                     }
                     .frame(height: contentHeight)
+                }
+                // Command means zoom, and only zoom. The scroll monitor claims
+                // those events for the zoom and consumes them, but consuming is
+                // a promise made one event at a time; switching the scroller
+                // off while the key is down is the promise kept.
+                .scrollDisabled(tracksFit || commandKey.isHeld)
+                .scrollBounceBehavior(.basedOnSize)
+                // Outside the vertical scroller so the monitor's window frame
+                // always matches the visible timeline, whatever the tracks are
+                // scrolled to.
+                .background {
+                    TimelineScrollInputView(
+                        layout: layout,
+                        viewportOriginX: trackHeaderWidth,
+                        onZoom: { factor, anchorX in
+                            viewport.zoom(by: factor, anchorX: anchorX, layout: layout)
+                        },
+                        onPan: { delta in
+                            viewport.pan(by: delta, layout: layout)
+                        }
+                    )
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    if layout.maximumScrollX(contentWidth: contentWidth) > 0 {
+                        TimelineScrollBar(
+                            layout: layout,
+                            contentWidth: contentWidth,
+                            scrollX: viewport.scrollX
+                        ) { offset in
+                            viewport.scroll(to: offset, layout: layout)
+                        }
+                        .padding(.bottom, 2)
+                    }
+                }
+                .onChange(of: layout, initial: true) { _, updated in
+                    viewport.reconcile(with: updated)
+                    // The snapshot is only read by the zoom slider, which has
+                    // no pointer to anchor on and uses the middle of the
+                    // viewport instead. It is `@State`, so writing it rebuilds
+                    // the whole panel down to the toolbar, and the layout
+                    // changes on every frame of a horizontal drag. A step is
+                    // close enough for a slider that is not being touched.
+                    guard
+                        layoutSnapshot.duration != updated.duration
+                            || abs(layoutSnapshot.viewportWidth - updated.viewportWidth)
+                                >= PaneSizeStep.standard
+                    else { return }
+                    layoutSnapshot = updated
+                }
                 }
             }
         }
         .background {
             ZStack {
                 Color.editorBackground
-                TimelineKeyboardInputView { command in
-                    performKeyboardCommand(command)
+                TimelineKeyCommandView { command in
+                    performKeyCommand(command)
+                }
+                TimelineDragWatchdog {
+                    session.recoverStrandedTimelineDrag()
                 }
             }
         }
@@ -131,21 +208,36 @@ struct TimelinePanel: View {
         }
     }
 
-    private func applyZoom(_ factor: Double, minimumTimelineWidth: Double) -> Double {
-        let previous = pointsPerSecond
-        let updated = TimelineZoomGeometry.scaled(previous, by: factor)
-        let previousWidth = max(minimumTimelineWidth, session.duration * previous)
-        guard abs(updated - previous) > 0.0001 else { return previousWidth }
-        var transaction = Transaction()
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            pointsPerSecond = updated
-        }
-        return max(minimumTimelineWidth, session.duration * updated)
+    private func timelineLayout(panelWidth: Double) -> TimelineViewportLayout {
+        let viewportWidth = max(1, panelWidth - trackHeaderWidth)
+        return TimelineViewportLayout(
+            duration: session.duration,
+            viewportWidth: viewportWidth,
+            minimumContentWidth: max(280, min(520, viewportWidth * 0.52)),
+            leadingInset: leadingTimelineInset,
+            trailingInset: trailingTimelineInset
+        )
     }
 
-    private func performKeyboardCommand(_ command: TimelineKeyboardCommand) {
+    /// The slider has no pointer to anchor to, so it zooms about the middle of
+    /// the viewport the way the zoom control in any editor does.
+    private var sliderZoom: Binding<Double> {
+        Binding(
+            get: { viewport.pointsPerSecond },
+            set: { value in
+                viewport.setPointsPerSecond(
+                    value,
+                    anchorX: layoutSnapshot.viewportWidth / 2,
+                    layout: layoutSnapshot
+                )
+            }
+        )
+    }
+
+    private func performKeyCommand(_ command: TimelineKeyCommand) {
         switch command {
+        case .togglePlayback:
+            session.togglePlayback()
         case .split:
             Task { await session.splitAtPlayhead() }
         case .delete:
@@ -154,168 +246,20 @@ struct TimelinePanel: View {
             Task { await session.trimTimelineSelection(toPlayhead: .leading) }
         case .trimTrailing:
             Task { await session.trimTimelineSelection(toPlayhead: .trailing) }
+        case .stepBack:
+            session.stepPlayhead(frames: -1)
+        case .stepForward:
+            session.stepPlayhead(frames: 1)
+        case .cancelDrag:
+            session.cancelTimelineDrag()
+            // Escape closes whatever is open, nearest first: Chirpy, then
+            // everything picked up on the canvas.
+            if session.closeAssistant() { return }
+            session.clearCanvasSelection()
         }
     }
 }
 
-private enum TimelineKeyboardCommand {
-    case split
-    case delete
-    case trimLeading
-    case trimTrailing
-}
-
-private final class TimelineKeyboardMonitorView: NSView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
-private struct TimelineKeyboardInputView: NSViewRepresentable {
-    let onCommand: (TimelineKeyboardCommand) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onCommand: onCommand)
-    }
-
-    func makeNSView(context: Context) -> TimelineKeyboardMonitorView {
-        let view = TimelineKeyboardMonitorView()
-        context.coordinator.view = view
-        context.coordinator.install()
-        return view
-    }
-
-    func updateNSView(_ nsView: TimelineKeyboardMonitorView, context: Context) {
-        context.coordinator.view = nsView
-        context.coordinator.onCommand = onCommand
-    }
-
-    static func dismantleNSView(_ nsView: TimelineKeyboardMonitorView, coordinator: Coordinator) {
-        coordinator.uninstall()
-    }
-
-    @MainActor
-    final class Coordinator {
-        weak var view: TimelineKeyboardMonitorView?
-        var onCommand: (TimelineKeyboardCommand) -> Void
-        private var monitor: Any?
-
-        init(onCommand: @escaping (TimelineKeyboardCommand) -> Void) {
-            self.onCommand = onCommand
-        }
-
-        func install() {
-            guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                self?.handle(event) ?? event
-            }
-        }
-
-        func uninstall() {
-            guard let monitor else { return }
-            NSEvent.removeMonitor(monitor)
-            self.monitor = nil
-        }
-
-        private func handle(_ event: NSEvent) -> NSEvent? {
-            guard let view, let window = view.window, event.window === window else { return event }
-            if window.firstResponder is NSTextView || window.firstResponder is NSTextField {
-                return event
-            }
-            let disallowedModifiers: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
-            guard event.modifierFlags.intersection(disallowedModifiers).isEmpty else { return event }
-
-            let command: TimelineKeyboardCommand?
-            if event.keyCode == 51 || event.keyCode == 117 {
-                command = .delete
-            } else {
-                switch event.charactersIgnoringModifiers?.lowercased() {
-                case "s": command = .split
-                case "[": command = .trimLeading
-                case "]": command = .trimTrailing
-                default: command = nil
-                }
-            }
-            guard let command else { return event }
-            onCommand(command)
-            return nil
-        }
-    }
-}
-
-private var isTimelineSnapTemporarilyBypassed: Bool {
-    NSEvent.modifierFlags.contains(.option)
-}
-
-@MainActor
-private func selectTimelineItemFromPointer(
-    _ item: TimelineSelectionItem,
-    session: EditorSession
-) {
-    let flags = NSEvent.modifierFlags
-    session.selectTimelineItem(
-        item,
-        additive: flags.contains(.shift),
-        toggling: flags.contains(.command)
-    )
-}
-
-@MainActor
-private func timelineSelectionMove(
-    session: EditorSession,
-    bounds: (start: Double, end: Double),
-    rawTranslationX: CGFloat,
-    contentWidth: Double,
-    snapAnchors: [TimelineSnapAnchor]
-) -> (delta: Double, match: TimelineSnapMatch?) {
-    let rawDelta = TimelineTrimGeometry.timeDelta(
-        for: rawTranslationX,
-        contentWidth: contentWidth,
-        projectDuration: session.duration
-    )
-    guard session.isTimelineSnappingEnabled,
-          !isTimelineSnapTemporarilyBypassed,
-          let snapped = TimelineSnapEngine.movingMatch(
-            start: bounds.start + rawDelta,
-            duration: bounds.end - bounds.start,
-            anchors: snapAnchors,
-            contentWidth: contentWidth,
-            projectDuration: session.duration
-          ) else { return (rawDelta, nil) }
-    return (snapped.start - bounds.start, snapped.match)
-}
-
-enum TimelineZoomGeometry {
-    static let scaleRange = 1.25 ... 320.0
-
-    static func scrollFactor(delta: CGFloat, hasPreciseDeltas: Bool) -> Double {
-        // Trackpads emit many small deltas. Keeping the curve shallow makes the
-        // timeline stay visually pinned beneath the pointer instead of pulsing
-        // several frames in and out for one physical gesture.
-        let sensitivity = hasPreciseDeltas ? 0.002 : 0.024
-        return min(1.08, max(0.925, exp(Double(delta) * sensitivity)))
-    }
-
-    static func scaled(_ current: Double, by factor: Double) -> Double {
-        min(scaleRange.upperBound, max(scaleRange.lowerBound, current * factor))
-    }
-
-    static func anchoredOffset(
-        oldOffset: CGFloat,
-        pointerX: CGFloat,
-        oldContentWidth: CGFloat,
-        newContentWidth: CGFloat,
-        viewportWidth: CGFloat,
-        leadingInset: CGFloat = 0,
-        trailingInset: CGFloat = 0
-    ) -> CGFloat {
-        guard oldContentWidth > 0, newContentWidth > 0 else { return 0 }
-        let documentX = oldOffset + pointerX
-        let timelineX = documentX - leadingInset
-        let fraction = min(1, max(0, timelineX / oldContentWidth))
-        let proposed = leadingInset + fraction * newContentWidth - pointerX
-        let documentWidth = leadingInset + newContentWidth + trailingInset
-        return min(max(0, documentWidth - viewportWidth), max(0, proposed))
-    }
-}
 
 struct TimelineWaveformWindow: Equatable {
     let range: Range<Int>
@@ -364,277 +308,129 @@ enum TimelineWaveformGeometry {
     }
 }
 
-private final class TimelineZoomMonitorView: NSView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-}
-
-private struct TimelineZoomInputView: NSViewRepresentable {
-    let leadingInset: CGFloat
-    let trailingInset: CGFloat
-    let timelineWidth: CGFloat
-    let onZoom: (Double) -> Double
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(
-            leadingInset: leadingInset,
-            trailingInset: trailingInset,
-            timelineWidth: timelineWidth,
-            onZoom: onZoom
-        )
-    }
-
-    func makeNSView(context: Context) -> TimelineZoomMonitorView {
-        let view = TimelineZoomMonitorView()
-        context.coordinator.view = view
-        context.coordinator.install()
-        return view
-    }
-
-    func updateNSView(_ nsView: TimelineZoomMonitorView, context: Context) {
-        context.coordinator.view = nsView
-        context.coordinator.leadingInset = leadingInset
-        context.coordinator.trailingInset = trailingInset
-        context.coordinator.timelineWidth = timelineWidth
-        context.coordinator.onZoom = onZoom
-        context.coordinator.synchronizeZoomLayout()
-    }
-
-    static func dismantleNSView(_ nsView: TimelineZoomMonitorView, coordinator: Coordinator) {
-        coordinator.uninstall()
-    }
-
-    @MainActor
-    final class Coordinator {
-        weak var view: TimelineZoomMonitorView?
-        var leadingInset: CGFloat
-        var trailingInset: CGFloat
-        var timelineWidth: CGFloat
-        var onZoom: (Double) -> Double
-        private var monitor: Any?
-        private var zoomGeneration = 0
-        private var pendingZoomGeneration: Int?
-        private var virtualTimelineWidth: CGFloat?
-        private var virtualScrollOffset: CGFloat?
-        private var pendingTargetX: CGFloat?
-        private var pendingDocumentWidth: CGFloat?
-        private var commandScrollSequenceActive = false
-
-        init(
-            leadingInset: CGFloat,
-            trailingInset: CGFloat,
-            timelineWidth: CGFloat,
-            onZoom: @escaping (Double) -> Double
-        ) {
-            self.leadingInset = leadingInset
-            self.trailingInset = trailingInset
-            self.timelineWidth = timelineWidth
-            self.onZoom = onZoom
-        }
-
-        func install() {
-            guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { [weak self] event in
-                self?.handle(event) ?? event
-            }
-        }
-
-        func uninstall() {
-            guard let monitor else { return }
-            NSEvent.removeMonitor(monitor)
-            self.monitor = nil
-        }
-
-        private func handle(_ event: NSEvent) -> NSEvent? {
-            guard
-                let view,
-                let window = view.window,
-                event.window === window
-            else { return event }
-
-            let scrollViews = enclosingScrollViews(from: view)
-            guard let scrollView = scrollViews.first else { return event }
-            // The zoom monitor lives inside the horizontal scroller, which is
-            // itself nested in the vertically scrollable track container. Use
-            // the outermost frame for hit testing so Command-scroll is owned
-            // by zoom everywhere in the timeline, including track headers and
-            // empty track space—not only directly above a clip.
-            let timelineContainer = scrollViews.last ?? scrollView
-            let interactiveFrame = timelineContainer.convert(timelineContainer.bounds, to: nil)
-            guard interactiveFrame.contains(event.locationInWindow) else { return event }
-
-            let requestedFactor: Double
-            switch event.type {
-            case .magnify:
-                requestedFactor = min(1.18, max(0.84, 1 + Double(event.magnification)))
-            case .scrollWheel where isCommandZoomEvent(event):
-                let dominantDelta = abs(event.scrollingDeltaY) >= abs(event.scrollingDeltaX)
-                    ? event.scrollingDeltaY
-                    : event.scrollingDeltaX
-                requestedFactor = TimelineZoomGeometry.scrollFactor(
-                    delta: dominantDelta,
-                    hasPreciseDeltas: event.hasPreciseScrollingDeltas
-                )
-            default:
-                return event
-            }
-
-            let clipView = scrollView.contentView
-            let actualOffset = clipView.bounds.minX
-            if pendingZoomGeneration == nil {
-                virtualTimelineWidth = timelineWidth
-                virtualScrollOffset = actualOffset
-            }
-            let pointerInClip = clipView.convert(event.locationInWindow, from: nil)
-            let pointerX = min(
-                clipView.bounds.width,
-                max(0, pointerInClip.x - actualOffset)
-            )
-            let oldTimelineWidth = virtualTimelineWidth ?? timelineWidth
-            let oldOffset = virtualScrollOffset ?? actualOffset
-            let newTimelineWidth = onZoom(requestedFactor)
-            guard abs(newTimelineWidth - oldTimelineWidth) > 0.0001 else { return nil }
-            timelineWidth = newTimelineWidth
-            virtualTimelineWidth = newTimelineWidth
-            zoomGeneration += 1
-            let generation = zoomGeneration
-
-            let targetX = TimelineZoomGeometry.anchoredOffset(
-                oldOffset: oldOffset,
-                pointerX: pointerX,
-                oldContentWidth: oldTimelineWidth,
-                newContentWidth: newTimelineWidth,
-                viewportWidth: clipView.bounds.width,
-                leadingInset: leadingInset,
-                trailingInset: trailingInset
-            )
-            virtualScrollOffset = targetX
-            pendingZoomGeneration = generation
-            pendingTargetX = targetX
-            pendingDocumentWidth = leadingInset + newTimelineWidth + trailingInset
-            // updateNSView applies this during the same SwiftUI layout pass as
-            // the new content width. This prevents a visible frame where the
-            // clips resize around the left edge before the scroll anchor moves.
-            DispatchQueue.main.async { [weak self] in
-                self?.synchronizeZoomLayout()
-            }
-            return nil
-        }
-
-        func synchronizeZoomLayout() {
-            guard
-                pendingZoomGeneration != nil,
-                let view,
-                let scrollView = enclosingScrollViews(from: view).first,
-                let targetX = pendingTargetX,
-                let expectedDocumentWidth = pendingDocumentWidth
-            else { return }
-
-            scrollView.documentView?.layoutSubtreeIfNeeded()
-            let actualDocumentWidth = scrollView.documentView?.bounds.width ?? 0
-            guard abs(actualDocumentWidth - expectedDocumentWidth) <= 1.5 else { return }
-
-            let clipView = scrollView.contentView
-            let maximumOffset = max(0, actualDocumentWidth - clipView.bounds.width)
-            let resolvedOffset = min(maximumOffset, max(0, targetX))
-            clipView.scroll(to: CGPoint(x: resolvedOffset, y: clipView.bounds.minY))
-            scrollView.reflectScrolledClipView(clipView)
-            virtualScrollOffset = resolvedOffset
-            pendingZoomGeneration = nil
-            pendingTargetX = nil
-            pendingDocumentWidth = nil
-        }
-
-        private func enclosingScrollViews(from view: NSView) -> [NSScrollView] {
-            var scrollViews: [NSScrollView] = []
-            var candidate = view.superview
-            while let current = candidate {
-                if let scrollView = current as? NSScrollView {
-                    scrollViews.append(scrollView)
-                }
-                candidate = current.superview
-            }
-            return scrollViews
-        }
-
-        private func isCommandZoomEvent(_ event: NSEvent) -> Bool {
-            let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-            if modifiers.contains(.command) {
-                commandScrollSequenceActive = true
-                return true
-            }
-
-            // Trackpads and Magic Mouse gestures can emit momentum events
-            // after the modifier flag disappears. Keep consuming those events
-            // so the vertical track scroller never receives the tail of a
-            // Command-zoom gesture.
-            let isGestureContinuation = event.phase != [] || event.momentumPhase != []
-            guard commandScrollSequenceActive, isGestureContinuation else {
-                commandScrollSequenceActive = false
-                return false
-            }
-            if event.phase.contains(.ended)
-                || event.phase.contains(.cancelled)
-                || event.momentumPhase.contains(.ended)
-            {
-                commandScrollSequenceActive = false
-            }
-            return true
-        }
-    }
-}
-
-private struct TimelineContent: View {
+struct TimelineContent: View {
     static let coordinateSpaceName = "yapper.timeline.content"
+    /// Height of the ruler strip. The viewport paints its own strip of the same
+    /// height so the bar reaches the edges even when the content is narrower.
+    static let rulerHeight = 34.0
+    /// Tall enough for the overlay row to show real frames rather than a pill.
+    static let overlayRowHeight = 54.0
+    /// The caption row, which needs only enough height to read one line.
+    static let captionRowHeight = 46.0
+    /// Height the tracks occupy with a single overlay lane. The stack grows
+    /// with the lanes, so anything laying out the timeline asks
+    /// `TimelineRowLayout` rather than this.
+    static let intrinsicHeight = TimelineRowLayout().contentHeight
 
     @ObservedObject var session: EditorSession
     let contentWidth: Double
+    /// The stretch of timeline that gets cells. Everything outside it is off
+    /// screen, and a selected item is drawn wherever it is so that carrying one
+    /// past the edge never makes it vanish.
+    let visibleRange: ClosedRange<Double>
     @State private var marqueeStart: CGPoint?
     @State private var marqueeCurrent: CGPoint?
     @State private var marqueeBaseSelection: Set<TimelineSelectionItem> = []
     @State private var isMarqueeSelecting = false
+    /// Where every item sits, built when a marquee starts and dropped when it ends.
+    @State private var marqueeItemFrameTable: [TimelineItemFrame] = []
+
+    /// Cells inside the visible stretch, plus anything selected so a drag can
+    /// carry it anywhere without it disappearing.
+    private var visibleCaptionCues: [ProjectCaptionCue] {
+        session.captionCues.filter { cue in
+            visibleRange.showsItem(start: cue.timelineStart, duration: cue.duration)
+                || session.isTimelineSelected(.caption(cue.id))
+        }
+    }
+
+    private var visibleTextLayers: [ProjectTextLayer]? {
+        session.project.textLayers?.filter { layer in
+            visibleRange.showsItem(start: layer.timelineStart, duration: layer.duration)
+                || session.isTimelineSelected(.text(layer.id))
+        }
+    }
+
+    private var visibleOverlays: [ProjectOverlay]? {
+        session.project.overlays?.filter { overlay in
+            visibleRange.showsItem(start: overlay.timelineStart, duration: overlay.duration)
+                || session.isTimelineSelected(.overlay(overlay.id))
+        }
+    }
+
+    private var visibleAudioLayers: [ProjectAudioLayer]? {
+        session.project.audioLayers?.filter { layer in
+            visibleRange.showsItem(start: layer.timelineStart, duration: layer.duration)
+                || session.isTimelineSelected(.audio(layer.id))
+        }
+    }
 
     var body: some View {
-        let textRowY = 45.0
-        let overlayRowY = 105.0
-        let clipRowY = 165.0
-        let audioRowY = clipRowY + 94.0
-        let playheadHeight = 341.0
-        let itemFrames = marqueeItemFrames(
-            textRowY: textRowY,
-            overlayRowY: overlayRowY,
-            clipRowY: clipRowY,
-            audioRowY: audioRowY
-        )
+        let layout = session.timelineRowLayout
+        let textRowY = layout.textRowY
+        let captionRowY = layout.captionRowY
+        let clipRowY = layout.clipRowY
+        // Which row each sound sits on, so two that overlap in time do not
+        // overlap on screen. Worked out from every sound, not just the visible
+        // ones: a lane that changed as you scrolled would be no lane at all.
+        let audioLanes = AudioTracks.lanes(for: session.project.audioLayers ?? [])
+        let playheadHeight = layout.playheadHeight
 
         ZStack(alignment: .topLeading) {
-            VStack(spacing: 0) {
-                Color.clear
-                    .frame(height: 34)
-                    .allowsHitTesting(false)
-                Color.editorBackground
-                    .contentShape(Rectangle())
-                    .gesture(timelineTrackGesture(itemFrames: itemFrames))
-            }
-                .zIndex(0)
-            TimelineRuler(duration: session.duration, width: contentWidth)
-                .frame(height: 34)
-                .background(Color.panelBackground)
+            // The whole of it, right up to the ruler. The rows are measured
+            // from a top that includes the ruler's height even though the ruler
+            // itself is drawn above the scroller, and that band used to be a
+            // dead `Color.clear`: a click in the strip above the first lane hit
+            // nothing at all, which is most of the empty space on a timeline
+            // that has one overlay row.
+            Color.editorBackground
                 .contentShape(Rectangle())
-                .gesture(timelineRulerSeekGesture)
-                .zIndex(1)
-
-            TimelineVideoTrack(session: session, contentWidth: contentWidth)
+                .gesture(timelineTrackGesture(layout: layout))
+                .zIndex(0)
+            TimelineVideoTrack(
+                session: session,
+                drag: session.timelineDrag,
+                contentWidth: contentWidth,
+                visibleRange: visibleRange
+            )
             .fixedSize(horizontal: true, vertical: true)
             .frame(height: 88, alignment: .top)
             .offset(y: clipRowY)
             .zIndex(2)
 
-            if let textLayers = session.project.textLayers, !textLayers.isEmpty {
+            // The landing spot for anything being carried between rows. It sits
+            // above every track because the lane it is aiming at is usually not
+            // the one the dragged cell lives in.
+            TimelineDropOverlay(
+                drag: session.timelineDrag,
+                rows: layout,
+                contentWidth: contentWidth,
+                projectDuration: session.duration
+            )
+            .zIndex(19)
+
+            ForEach(visibleCaptionCues) { cue in
+                TimelineCaptionCell(
+                    session: session,
+                    drag: session.timelineDrag,
+                    cue: cue,
+                    contentWidth: contentWidth,
+                    projectDuration: session.duration,
+                    rowY: captionRowY,
+                    selected: session.isTimelineSelected(.caption(cue.id))
+                )
+                    .accessibilityLabel("Caption: \(cue.text)")
+                    .zIndex(3)
+            }
+
+            if let textLayers = visibleTextLayers, !textLayers.isEmpty {
                 ForEach(textLayers) { layer in
                     TimelineTextLayerCell(
                         session: session,
+                        drag: session.timelineDrag,
                         layer: layer,
                         contentWidth: contentWidth,
+                        projectDuration: session.duration,
                         rowY: textRowY,
                         selected: session.isTimelineSelected(.text(layer.id))
                     )
@@ -643,81 +439,64 @@ private struct TimelineContent: View {
                 }
             }
 
-            if let overlays = session.project.overlays, !overlays.isEmpty {
+            if let overlays = visibleOverlays, !overlays.isEmpty {
                 ForEach(overlays) { overlay in
                     if let media = session.project.media.first(where: { $0.id == overlay.mediaID }) {
                         TimelineOverlayItem(
                             session: session,
+                            drag: session.timelineDrag,
                             overlay: overlay,
                             media: media,
+                            thumbnails: session.thumbnailsByMedia[media.id] ?? [],
                             contentWidth: contentWidth,
-                            rowY: overlayRowY,
+                            projectDuration: session.duration,
+                            rowY: layout.overlayRowY(track: overlay.lane),
+                            layout: layout,
                             selected: session.isTimelineSelected(.overlay(overlay.id))
                         )
+                        .opacity(overlay.isVisible ? 1 : 0.45)
                         .zIndex(3)
                     }
                 }
             }
 
-            if let audioLayers = session.project.audioLayers, !audioLayers.isEmpty {
+            if let audioLayers = visibleAudioLayers, !audioLayers.isEmpty {
                 ForEach(audioLayers) { layer in
                     TimelineAudioItem(
                         session: session,
+                        drag: session.timelineDrag,
+                        waveforms: session.audioWaveforms,
+                        levels: session.audioLevels,
                         layer: layer,
                         contentWidth: contentWidth,
-                        rowY: audioRowY,
+                        projectDuration: session.duration,
+                        rowY: layout.audioRowY(track: audioLanes[layer.id] ?? 0),
                         selected: session.isTimelineSelected(.audio(layer.id))
                     )
                     .zIndex(3)
                 }
             }
 
+            // Both of these move constantly, the playhead on every frame of
+            // playback and the guide on every frame of a drag. They observe the
+            // clock and the drag state directly so the tracks around them, with
+            // their thumbnails and waveforms, stay out of it.
             if session.duration > 0 {
-                let playheadX = TimelineMetrics.x(
-                    for: session.currentTime,
+                TimelinePlayheadLine(
+                    clock: session.playbackClock,
                     duration: session.duration,
-                    width: contentWidth
+                    contentWidth: contentWidth,
+                    height: playheadHeight + 30
                 )
-                Rectangle()
-                    .fill(Color.red)
-                    .frame(width: 1.25, height: playheadHeight + 30)
-                    .overlay(alignment: .top) {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 8, height: 8)
-                            .offset(y: 26)
-                    }
-                    .offset(x: playheadX - 0.75)
-                    .allowsHitTesting(false)
-                    .zIndex(4)
-            }
+                .zIndex(4)
 
-            if let snap = session.activeTimelineSnap, session.duration > 0 {
-                let snapX = TimelineMetrics.x(
-                    for: snap.time,
+                TimelineSnapGuideLine(
+                    drag: session.timelineDrag,
                     duration: session.duration,
-                    width: contentWidth
+                    contentWidth: contentWidth,
+                    height: playheadHeight + 30
                 )
-                Rectangle()
-                    .fill(Color.yapperOrange.opacity(0.92))
-                    .frame(width: 1, height: playheadHeight + 30)
-                    .overlay(alignment: .topLeading) {
-                        HStack(spacing: 4) {
-                            Image(systemName: snap.kind == .audio ? "waveform" : "arrow.left.and.right")
-                            Text("\(snap.kind.title)  \(formatTimelineTrimTime(snap.time))")
-                        }
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Color.white)
-                        .padding(.horizontal, 6)
-                        .frame(height: 20)
-                        .background(Color.yapperOrange.opacity(0.96))
-                        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                        .fixedSize()
-                        .offset(x: 4, y: -1)
-                    }
-                    .offset(x: snapX - 0.5)
-                    .allowsHitTesting(false)
-                    .zIndex(5)
+                .zIndex(5)
             }
 
             if let marqueeStart, let marqueeCurrent, isMarqueeSelecting {
@@ -736,37 +515,27 @@ private struct TimelineContent: View {
 
         }
         .coordinateSpace(name: Self.coordinateSpaceName)
+        // Files from Finder land here, on the row and the second they were let
+        // go over, rather than in the bin to be fetched and carried in again.
+        .timelineExternalDrop(
+            session: session,
+            contentWidth: contentWidth,
+            rowLayout: layout
+        )
     }
 
-    private var timelineRulerSeekGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
-            .onChanged { value in
-                session.scrub(
-                    to: TimelineMetrics.time(
-                        for: value.location.x,
-                        duration: session.duration,
-                        width: contentWidth
-                    )
-                )
-            }
-            .onEnded { value in
-                session.finishScrubbing(
-                    at: TimelineMetrics.time(
-                        for: value.location.x,
-                        duration: session.duration,
-                        width: contentWidth
-                    )
-                )
-            }
-    }
-
-    private func timelineTrackGesture(itemFrames: [TimelineItemFrame]) -> some Gesture {
+    /// The frame table costs a pass over every item on the timeline, and it is
+    /// only ever read by a marquee. It used to be worked out on every body,
+    /// which meant every keystroke in a caption paid for it; now a marquee
+    /// builds it once, when it starts.
+    private func timelineTrackGesture(layout: TimelineRowLayout) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
             .onChanged { value in
                 if marqueeStart == nil {
                     marqueeStart = value.startLocation
                     marqueeCurrent = value.location
                     marqueeBaseSelection = session.timelineSelection
+                    marqueeItemFrameTable = marqueeItemFrames(layout: layout)
                 }
                 let distance = hypot(
                     value.location.x - value.startLocation.x,
@@ -782,7 +551,7 @@ private struct TimelineContent: View {
                                 from: value.startLocation,
                                 to: value.location
                             ),
-                            itemFrames: itemFrames,
+                            itemFrames: marqueeItemFrameTable,
                             base: marqueeBaseSelection,
                             additive: flags.contains(.shift),
                             toggling: flags.contains(.command)
@@ -804,16 +573,16 @@ private struct TimelineContent: View {
                 marqueeStart = nil
                 marqueeCurrent = nil
                 marqueeBaseSelection = []
+                marqueeItemFrameTable = []
                 isMarqueeSelecting = false
             }
     }
 
-    private func marqueeItemFrames(
-        textRowY: Double,
-        overlayRowY: Double,
-        clipRowY: Double,
-        audioRowY: Double
-    ) -> [TimelineItemFrame] {
+    private func marqueeItemFrames(layout: TimelineRowLayout) -> [TimelineItemFrame] {
+        let textRowY = layout.textRowY
+        let captionRowY = layout.captionRowY
+        let clipRowY = layout.clipRowY
+        let audioLanes = AudioTracks.lanes(for: session.project.audioLayers ?? [])
         guard session.duration > 0 else { return [] }
         func x(_ time: Double) -> Double { contentWidth * time / session.duration }
         var frames: [TimelineItemFrame] = []
@@ -839,7 +608,25 @@ private struct TimelineContent: View {
             frames.append(
                 TimelineItemFrame(
                     item: .overlay(overlay.id),
-                    frame: CGRect(x: x(overlay.timelineStart), y: overlayRowY, width: max(1, x(overlay.duration)), height: 42)
+                    frame: CGRect(
+                        x: x(overlay.timelineStart),
+                        y: layout.overlayRowY(track: overlay.lane),
+                        width: max(1, x(overlay.duration)),
+                        height: Self.overlayRowHeight
+                    )
+                )
+            )
+        }
+        for cue in session.captionCues {
+            frames.append(
+                TimelineItemFrame(
+                    item: .caption(cue.id),
+                    frame: CGRect(
+                        x: x(cue.timelineStart),
+                        y: captionRowY,
+                        width: max(1, x(cue.duration)),
+                        height: TimelineCaptionCell.height
+                    )
                 )
             )
         }
@@ -847,7 +634,14 @@ private struct TimelineContent: View {
             frames.append(
                 TimelineItemFrame(
                     item: .audio(layer.id),
-                    frame: CGRect(x: x(layer.timelineStart), y: audioRowY, width: max(1, x(layer.duration)), height: 46)
+                    frame: CGRect(
+                        x: x(layer.timelineStart),
+                        y: layout.audioRowY(track: audioLanes[layer.id] ?? 0),
+                        // The same floor the cell is drawn at, so a marquee
+                        // catches what it visibly went over.
+                        width: max(TimelineAudioItem.minimumDrawnWidth, x(layer.duration)),
+                        height: 46
+                    )
                 )
             )
         }
@@ -857,36 +651,144 @@ private struct TimelineContent: View {
 
 private struct TimelineVideoTrack: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject var drag: TimelineDragState
     let contentWidth: Double
+    let visibleRange: ClosedRange<Double>
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
-            ForEach(session.project.clips) { clip in
-                if let media = session.project.media(for: clip) {
-                    TimelineVideoClipItem(
-                        session: session,
-                        clip: clip,
-                        media: media,
-                        thumbnails: session.thumbnailsByMedia[media.id] ?? [],
-                        peaks: session.waveformByMedia[media.id] ?? [],
-                        waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
-                        contentWidth: contentWidth,
-                        selected: session.isTimelineSelected(.clip(clip.id))
+        // Every clip keeps its place in this stack for the whole drag and moves
+        // by an offset. Nothing is added, removed or reparented mid-gesture,
+        // which is what stops a drag ending without the mouse-up ever arriving
+        // and leaving the gap open behind it.
+        let clips = session.project.clips
+        let positions = TimelineTrackLayout.positions(
+            clips: clips.map { .init(id: $0.id, duration: $0.duration) },
+            drag: TimelineTrackLayout.Drag(
+                movingIDs: drag.reorderPlan == nil ? [] : session.draggedClipIDs,
+                offset: drag.offset,
+                insertionIndex: drag.reorderPlan?.insertionIndex,
+                blockDuration: drag.reorderPlan?.blockDuration,
+                liftedID: liftedClipID(among: clips)
+            )
+        )
+        let movingIDs = drag.reorderPlan == nil ? [] : session.draggedClipIDs
+
+        ZStack(alignment: .topLeading) {
+            // Gated on a live gesture, not on the plan. A plan outliving its
+            // gesture is what left a gap open with nothing able to close it.
+            if drag.isDragging, let plan = drag.reorderPlan, liftedClipID(among: clips) == nil {
+                dropGap(duration: plan.blockDuration)
+                    .offset(x: x(of: gapStart(plan: plan, clips: clips)))
+                    .animation(.easeOut(duration: 0.14), value: plan)
+            }
+
+            ForEach(clips) { clip in
+                let isMoving = movingIDs.contains(clip.id)
+                let isLifted = liftedClipID(among: clips) == clip.id
+                clipItem(for: clip, timelineStart: positions[clip.id] ?? 0)
+                    .offset(x: x(of: positions[clip.id] ?? 0))
+                    .shadow(
+                        color: .black.opacity(isMoving || isLifted ? 0.55 : 0),
+                        radius: isMoving || isLifted ? 8 : 0,
+                        y: isMoving || isLifted ? 4 : 0
                     )
-                }
+                    .zIndex(isMoving || isLifted ? 1 : 0)
+                    // The clip under the pointer must not be eased, or it lags
+                    // the mouse. Its neighbours settle into their new places.
+                    .animation(
+                        isMoving || isLifted
+                            ? nil
+                            : .spring(response: 0.26, dampingFraction: 0.86),
+                        value: positions[clip.id] ?? 0
+                    )
             }
         }
+        .frame(width: contentWidth, height: 88, alignment: .topLeading)
+    }
+
+    /// The clip currently being carried up to an overlay lane, if it is one of
+    /// ours: a lift can also be an overlay moving between lanes.
+    private func liftedClipID(among clips: [TimelineClip]) -> UUID? {
+        guard let id = drag.lift?.itemID, clips.contains(where: { $0.id == id }) else { return nil }
+        return id
+    }
+
+    /// Where the gap sits, in seconds, given the clips that are staying put.
+    private func gapStart(plan: TimelineReorderPlan, clips: [TimelineClip]) -> Double {
+        let staying = clips.filter { !session.draggedClipIDs.contains($0.id) }
+        return staying.prefix(plan.insertionIndex).reduce(0) { $0 + $1.duration }
+    }
+
+    private func x(of seconds: Double) -> Double {
+        contentWidth * seconds / max(0.001, session.duration)
+    }
+
+    @ViewBuilder
+    private func clipItem(for clip: TimelineClip, timelineStart: Double) -> some View {
+        if let media = session.project.media(for: clip) {
+            TimelineVideoClipItem(
+                session: session,
+                drag: session.timelineDrag,
+                levels: session.audioLevels,
+                trackVolume: session.project.resolvedVideoTrackVolume,
+                clip: clip,
+                media: media,
+                thumbnails: session.thumbnailsByMedia[media.id] ?? [],
+                peaks: session.waveformByMedia[media.id] ?? [],
+                waveformProgress: session.waveformProgressByMedia[media.id] ?? 0,
+                contentWidth: contentWidth,
+                projectDuration: session.duration,
+                visibleFraction: visibleRange.visibleFraction(
+                    start: timelineStart,
+                    duration: clip.duration
+                ),
+                selected: session.isTimelineSelected(.clip(clip.id))
+            )
+        }
+    }
+
+    private func dropGap(duration: Double) -> some View {
+        RoundedRectangle(cornerRadius: 5, style: .continuous)
+            .fill(Color.yapperOrange.opacity(0.22))
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(Color.yapperOrange, lineWidth: 1.5)
+            }
+            .frame(width: width(of: duration), height: 88)
+            .padding(.horizontal, 1)
+    }
+
+    private func width(of duration: Double) -> Double {
+        max(1, contentWidth * duration / max(0.001, session.duration))
     }
 }
 
 private struct TimelineVideoClipItem: View {
-    @ObservedObject var session: EditorSession
+    /// Held, not observed. A cell that subscribes to the session is rebuilt
+    /// whenever anything in the editor changes, so typing in one caption used
+    /// to re-run the body of every cell on the timeline. Everything the body
+    /// draws with arrives as a value, and the reference is here only to call
+    /// commands from the gestures below.
+    let session: EditorSession
+    @ObservedObject var drag: TimelineDragState
+    /// Watched, unlike the session: the waveform is drawn at whatever the
+    /// speaker's fader is set to, and it has to follow one being dragged.
+    @ObservedObject var levels: AudioLevelDraft
+    /// What that fader is saved at, for when nobody is dragging it.
+    let trackVolume: Double
     let clip: TimelineClip
     let media: ProjectMedia
     let thumbnails: [CGImage]
     let peaks: [Float]
     let waveformProgress: Double
     let contentWidth: Double
+    /// The project length the cell lays itself out against, passed in so
+    /// the cell does not have to watch the session for it.
+    let projectDuration: Double
+    /// The portion intersecting the viewport and its preload margin. The cell
+    /// stays full-width, while thumbnails and bars outside this window do not
+    /// get created or drawn.
+    let visibleFraction: ClosedRange<Double>
     let selected: Bool
     @State private var trimOrigin: TimelineClip?
     @State private var trimDraft: TimelineClip?
@@ -894,36 +796,55 @@ private struct TimelineVideoClipItem: View {
     @State private var snapAnchors: [TimelineSnapAnchor] = []
     @State private var selectionMoveBounds: (start: Double, end: Double)?
     @State private var isPromotingToOverlay = false
+    /// How far the pointer has carried the clip since the drag began, used only
+    /// while it is off its own row.
+    @State private var carryOffset = CGSize.zero
 
     var body: some View {
         let displayed = trimDraft ?? clip
         let originalWidth = max(
             1,
-            contentWidth * clip.duration / max(0.001, session.duration)
+            contentWidth * clip.duration / max(0.001, projectDuration)
         )
         let displayedWidth = max(
             1,
-            contentWidth * displayed.duration / max(0.001, session.duration)
+            contentWidth * displayed.duration / max(0.001, projectDuration)
         )
         let leadingPreviewOffset = activeTrimEdge == .leading
             ? TimelineTrimGeometry.x(
                 for: displayed.sourceStart - clip.sourceStart,
                 contentWidth: contentWidth,
-                projectDuration: session.duration
+                projectDuration: projectDuration
             )
             : 0
         let layoutWidth = activeTrimEdge == .leading ? originalWidth : displayedWidth
 
         ZStack(alignment: .leading) {
-            TimelineClipCell(
-                clip: displayed,
-                media: media,
+            TimelineMediaCell(
+                name: media.name,
+                sourceStart: displayed.sourceStart,
+                sourceEnd: displayed.sourceEnd,
+                mediaDuration: media.duration,
                 thumbnails: thumbnails,
                 peaks: peaks,
                 waveformProgress: waveformProgress,
-                selected: selected
+                height: 88,
+                selected: selected,
+                // The speaker's own fader, live while it is being dragged.
+                volume: levels.mainTrack ?? trackVolume,
+                visibleFraction: visibleFraction
             )
+            // Inset the drawing, never the layout: the frame still maps exactly
+            // onto the clip's duration, so the playhead and ruler stay honest
+            // while neighbouring clips gain a 2pt seam between them.
+            .padding(.horizontal, 1)
             .frame(width: displayedWidth, height: 88)
+            // Where the picture moves, marked on the clip it moves over. A
+            // punch-in is invisible on the timeline otherwise: the footage
+            // looks the same whether or not anything is happening to it.
+            .overlay(alignment: .bottomLeading) {
+                FramingKeyMarkers(session: session, clip: displayed, cellWidth: displayedWidth)
+            }
             .contentShape(Rectangle())
             .onTapGesture { selectTimelineItemFromPointer(.clip(clip.id), session: session) }
             .gesture(selectionMoveGesture)
@@ -936,18 +857,17 @@ private struct TimelineVideoClipItem: View {
             .offset(x: leadingPreviewOffset)
         }
         .frame(width: layoutWidth, height: 88, alignment: .leading)
+        // Where the clip sits along the track is the track's business — see
+        // `TimelineTrackLayout`. All that is left here is the lift: once the
+        // clip has been carried off its own row it follows the pointer freely,
+        // in both directions.
         .offset(
-            x: selected
-                ? TimelineTrimGeometry.x(
-                    for: session.timelineSelectionDragDelta,
-                    contentWidth: contentWidth,
-                    projectDuration: session.duration
-                )
-                : 0,
-            y: isPromotingToOverlay ? -60 : 0
+            x: isPromotingToOverlay ? carryOffset.width : 0,
+            y: isPromotingToOverlay ? carryOffset.height : 0
         )
-        .opacity(isPromotingToOverlay ? 0.82 : 1)
-        .zIndex(activeTrimEdge == nil ? 0 : 10)
+        .scaleEffect(isPromotingToOverlay ? 0.96 : 1, anchor: .center)
+        .opacity(isPromotingToOverlay ? 0.9 : 1)
+        .zIndex(isPromotingToOverlay ? 30 : (activeTrimEdge == nil ? 0 : 10))
         .transaction { transaction in
             transaction.disablesAnimations = true
         }
@@ -994,18 +914,21 @@ private struct TimelineVideoClipItem: View {
         )
             .onChanged { value in
                 guard activeTrimEdge == nil else { return }
-                isPromotingToOverlay = value.translation.height < -44
                 if selectionMoveBounds == nil {
                     session.ensureTimelineItemSelected(.clip(clip.id))
                     selectionMoveBounds = session.timelineSelectionBounds()
                     snapAnchors = session.timelineSnapAnchors()
+                    session.beginTimelineDrag(clip.id)
                 }
-                if isPromotingToOverlay {
-                    session.previewTimelineSelectionMove(delta: 0)
-                    session.setActiveTimelineSnap(nil)
+                // Escape has already put everything back, so the rest of this
+                // gesture is somebody holding a mouse button down over nothing.
+                guard !session.isTimelineDragCancelled else {
+                    isPromotingToOverlay = false
+                    carryOffset = .zero
                     return
                 }
                 guard let selectionMoveBounds else { return }
+
                 let move = timelineSelectionMove(
                     session: session,
                     bounds: selectionMoveBounds,
@@ -1013,17 +936,66 @@ private struct TimelineVideoClipItem: View {
                     contentWidth: contentWidth,
                     snapAnchors: snapAnchors
                 )
-                session.previewTimelineSelectionMove(delta: move.delta)
-                session.setActiveTimelineSnap(move.match)
+                // One proposal answers both questions at once — which row, and
+                // where along it — so what is drawn and what happens on release
+                // come from the same numbers.
+                let target = TimelineDropGeometry.target(
+                    pointerY: Double(value.location.y),
+                    leadingEdgeTime: clip.timelineStart(in: session.project) + move.delta,
+                    duration: clip.duration,
+                    rows: session.timelineRowLayout,
+                    stationaryDurations: [],
+                    projectDuration: projectDuration,
+                    // Lifting this clip takes its length out of the track, so
+                    // the room left for it is that much shorter. Working it out
+                    // here is what keeps the ghost honest about where it lands.
+                    latestStart: max(0, projectDuration - 2 * clip.duration),
+                    contentWidth: contentWidth,
+                    snapAnchors: snapAnchors,
+                    isSnappingEnabled: session.isTimelineSnappingEnabled,
+                    canLift: session.project.clips.count > 1
+                )
+
+                if target.isOverlay {
+                    isPromotingToOverlay = true
+                    carryOffset = CGSize(
+                        width: value.location.x - value.startLocation.x,
+                        height: value.location.y - value.startLocation.y
+                    )
+                    // It is leaving the track, so the track stops previewing a
+                    // reorder and closes up behind it instead. Leaving the
+                    // reorder in place is what left a gap open after the drop.
+                    session.cancelTimelineSelectionMove()
+                    session.setActiveTimelineSnap(target.snap)
+                    session.setTimelineLift(
+                        TimelineLift(
+                            itemID: clip.id,
+                            title: media.name,
+                            duration: clip.duration,
+                            target: session.blocking(target, ignoring: clip.id)
+                        )
+                    )
+                } else {
+                    isPromotingToOverlay = false
+                    session.setTimelineLift(nil)
+                    session.previewTimelineSelectionMove(delta: move.delta)
+                    session.setActiveTimelineSnap(move.match)
+                }
             }
             .onEnded { _ in
-                let promote = isPromotingToOverlay
+                let lift = session.timelineDrag.lift
+                let wasCancelled = session.isTimelineDragCancelled
+                session.endTimelineDrag()
                 isPromotingToOverlay = false
+                carryOffset = .zero
                 selectionMoveBounds = nil
                 snapAnchors = []
                 session.setActiveTimelineSnap(nil)
-                if promote {
-                    Task { await session.promoteClipToOverlay(clip.id) }
+                session.setTimelineLift(nil)
+                if wasCancelled {
+                    session.cancelTimelineSelectionMove()
+                } else if let lift, let lane = lift.target.overlayLane, !lift.target.isBlocked {
+                    Task { await session.promoteClipToOverlay(clip.id, start: lift.target.start, lane: lane) }
                 } else {
                     Task { await session.commitTimelineSelectionMove() }
                 }
@@ -1058,7 +1030,7 @@ private struct TimelineVideoClipItem: View {
                             edge: edge,
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             mediaDuration: media.duration
                         )
                         let timelineStart = session.project.timelineStart(for: clip.id) ?? 0
@@ -1074,7 +1046,7 @@ private struct TimelineVideoClipItem: View {
                             rawTranslationX: rawTranslation,
                             anchors: snapAnchors,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                         )
                         trimDraft = TimelineClipGeometry.trimmed(
@@ -1082,7 +1054,7 @@ private struct TimelineVideoClipItem: View {
                             edge: edge,
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             mediaDuration: media.duration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
@@ -1094,7 +1066,6 @@ private struct TimelineVideoClipItem: View {
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
-                        NSCursor.arrow.set()
                         guard let committedTrim else { return }
                         Task {
                             await session.commitClipTrim(committedTrim)
@@ -1138,7 +1109,7 @@ enum TimelineClipGeometry {
     }
 }
 
-private struct TimelineTrimHandle: View {
+struct TimelineTrimHandle: View {
     let edge: HorizontalEdge
     let height: CGFloat
     let isActive: Bool
@@ -1156,8 +1127,12 @@ private struct TimelineTrimHandle: View {
                         .stroke(Color.black.opacity(0.38), lineWidth: 0.55)
                 }
         }
-        .frame(width: 18, height: height)
-        .contentShape(Rectangle())
+        // A wide target, and a wider one still for the pointer: the arrows have
+        // to appear before the handle is reached, or a trim feels like it needs
+        // aiming for.
+        .frame(width: 22, height: height)
+        .contentShape(Rectangle().inset(by: -6))
+        .cursor(.resizeLeftRight)
         .overlay(alignment: .top) {
             if let readout {
                 Text(readout)
@@ -1176,15 +1151,12 @@ private struct TimelineTrimHandle: View {
                     .allowsHitTesting(false)
             }
         }
-        .onHover { hovering in
-            isHovering = hovering
-            (hovering ? NSCursor.resizeLeftRight : NSCursor.arrow).set()
-        }
+        .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.08), value: isHovering)
     }
 }
 
-private func formatTimelineTrimTime(_ seconds: Double) -> String {
+func formatTimelineTrimTime(_ seconds: Double) -> String {
     guard seconds.isFinite else { return "0:00.000" }
     let safe = max(0, seconds)
     let minutes = Int(safe) / 60
@@ -1193,11 +1165,22 @@ private func formatTimelineTrimTime(_ seconds: Double) -> String {
 }
 
 private struct TimelineOverlayItem: View {
-    @ObservedObject var session: EditorSession
+    /// Held, not observed. A cell that subscribes to the session is rebuilt
+    /// whenever anything in the editor changes, so typing in one caption used
+    /// to re-run the body of every cell on the timeline. Everything the body
+    /// draws with arrives as a value, and the reference is here only to call
+    /// commands from the gestures below.
+    let session: EditorSession
+    @ObservedObject var drag: TimelineDragState
     let overlay: ProjectOverlay
     let media: ProjectMedia
+    let thumbnails: [CGImage]
     let contentWidth: Double
+    /// The project length the cell lays itself out against, passed in so
+    /// the cell does not have to watch the session for it.
+    let projectDuration: Double
     let rowY: Double
+    let layout: TimelineRowLayout
     let selected: Bool
     @State private var trimOrigin: ProjectOverlay?
     @State private var trimDraft: ProjectOverlay?
@@ -1206,32 +1189,107 @@ private struct TimelineOverlayItem: View {
     @State private var activeTrimEdge: HorizontalEdge?
     @State private var snapAnchors: [TimelineSnapAnchor] = []
     @State private var selectionMoveBounds: (start: Double, end: Double)?
+    /// The lane the pointer is currently over, so a drag up or down the stack
+    /// lands where it looks like it will.
+    @State private var draggedToTrack: Int?
+    /// Carried all the way down onto the speaker's own track, where it stops
+    /// being an overlay. The cell rides down with the pointer so it is obvious
+    /// that is what letting go would do.
+    @State private var isOverVideoTrack = false
+    /// Where it would sit once the track has opened up for it. The video track
+    /// is magnetic, so the cell settles into that space rather than floating
+    /// wherever the pointer happens to be — it fills the gap it is making.
+    @State private var videoDropStart: Double?
+    /// Where the pointer actually is, before snapping pulls the drop onto a
+    /// guide. The cell floats here while the ghost sits on the landing spot, so
+    /// the two are visibly different things — which is the only way to see where
+    /// a drag is going while it is still going there.
+    @State private var freeMoveStart: Double?
 
     var body: some View {
         let displayed = trimDraft ?? moveDraft ?? overlay
-        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
-        Button {
-            selectTimelineItemFromPointer(.overlay(overlay.id), session: session)
-        } label: {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(Color.yapperOrange.opacity(0.24))
-                .overlay(alignment: .leading) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "photo.on.rectangle")
-                        Text(media.name).lineLimit(1)
-                    }
-                    .font(.studioCaptionStrong)
-                    .padding(.horizontal, selected ? 11 : 7)
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 5, style: .continuous)
-                        .stroke(selected ? Color.yapperOrange : Color.yapperOrange.opacity(0.55), lineWidth: selected ? 1.1 : 0.7)
-                }
-        }
-        .buttonStyle(.plain)
-        .frame(width: width, height: 42)
+        let startX = contentWidth
+            * (videoDropStart ?? freeMoveStart ?? displayed.timelineStart)
+            / max(0.001, projectDuration)
+        let width = max(1, contentWidth * displayed.duration / max(0.001, projectDuration))
+        let isMoving = moveDraft != nil
+        // Deliberately not a Button. A button takes the mouse-down for itself
+        // and only lets the drag through in bursts, so the cell appeared to sit
+        // still and then jump to its new home on release. Every other cell on
+        // the timeline selects on tap and drags on drag, and this one has to
+        // work the same way.
+        //
+        // Same cell as the video track: a promoted clip is the same footage on
+        // another row, so it has to look like the footage it came from.
+        TimelineMediaCell(
+            name: media.name,
+            sourceStart: displayed.sourceStart,
+            sourceEnd: displayed.sourceStart + displayed.duration,
+            mediaDuration: media.duration,
+            thumbnails: thumbnails,
+            peaks: [],
+            waveformProgress: 0,
+            height: TimelineContent.overlayRowHeight,
+            selected: selected,
+            idleBorder: Color.yapperOrange.opacity(0.62),
+            badgeIcon: "photo.on.rectangle"
+        )
+        .padding(.horizontal, 1)
+        .frame(width: width, height: TimelineContent.overlayRowHeight)
         .clipped()
+        .overlay(alignment: .bottomLeading) {
+            OverlayKeyMarkers(session: session, overlay: displayed, cellWidth: width)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { selectTimelineItemFromPointer(.overlay(overlay.id), session: session) }
+        // A cutaway is the thing people want to crop, and the cell on the
+        // timeline is where they are looking at it.
+        .contextMenu {
+            Button {
+                session.beginCropping(overlayID: overlay.id)
+            } label: {
+                Label("Crop…", systemImage: "crop")
+            }
+            Button {
+                session.setOverlayHidden(overlay, hidden: overlay.isVisible)
+            } label: {
+                Label(
+                    overlay.isVisible ? "Hide" : "Show",
+                    systemImage: overlay.isVisible ? "eye.slash" : "eye"
+                )
+            }
+            Divider()
+            Button(role: .destructive) {
+                Task { await session.deleteOverlay(overlay.id) }
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+        }
+        // Picked up: it lifts off the lane and says where it is, because one
+        // second of a lane looks exactly like every other second of it. It also
+        // goes translucent, so the dashed landing box stays readable through it
+        // on the stretch of the drag where the two happen to line up.
+        .opacity(isMoving ? 0.72 : 1)
+        .scaleEffect(isMoving ? 1.02 : 1, anchor: .center)
+        .shadow(
+            color: .black.opacity(isMoving ? 0.55 : 0),
+            radius: isMoving ? 10 : 0,
+            y: isMoving ? 5 : 0
+        )
+        .overlay(alignment: .top) {
+            if isMoving {
+                Text(TimelineDropInsertionLine.clock(displayed.timelineStart))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(height: 15)
+                    .background(Color.yapperOrange)
+                    .clipShape(Capsule(style: .continuous))
+                    .fixedSize()
+                    .offset(y: -18)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: isMoving)
         .gesture(
             DragGesture(
                 minimumDistance: 2,
@@ -1242,11 +1300,20 @@ private struct TimelineOverlayItem: View {
                     if moveOrigin == nil, selectionMoveBounds == nil {
                         session.ensureTimelineItemSelected(.overlay(overlay.id))
                         snapAnchors = session.timelineSnapAnchors()
+                        session.beginTimelineDrag(overlay.id)
                         if session.timelineSelection.count > 1 {
                             selectionMoveBounds = session.timelineSelectionBounds()
                         } else {
                             moveOrigin = overlay
                         }
+                    }
+                    guard !session.isTimelineDragCancelled else {
+                        moveDraft = nil
+                        draggedToTrack = nil
+                        isOverVideoTrack = false
+                        videoDropStart = nil
+                        freeMoveStart = nil
+                        return
                     }
                     if let selectionMoveBounds {
                         let move = timelineSelectionMove(
@@ -1266,7 +1333,7 @@ private struct TimelineOverlayItem: View {
                         overlay: moveOrigin,
                         translationX: rawTranslation,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration
+                        projectDuration: projectDuration
                     )
                     let adjusted = TimelineSnapDragGeometry.moveTranslation(
                         originalStart: moveOrigin.timelineStart,
@@ -1275,18 +1342,118 @@ private struct TimelineOverlayItem: View {
                         rawTranslationX: rawTranslation,
                         anchors: snapAnchors,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration,
+                        projectDuration: projectDuration,
                         enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                     )
                     moveDraft = TimelineOverlayGeometry.moved(
                         overlay: moveOrigin,
                         translationX: adjusted.translationX,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration
+                        projectDuration: projectDuration
                     )
+                    // The cell rides the raw pointer, always. Putting it on the
+                    // snapped position instead made it stick: with a caption
+                    // every half second the anchors are dense, so small drags
+                    // moved nothing at all and larger ones jumped between
+                    // anchors. It lands on the snapped spot when you let go, and
+                    // the orange guide says which anchor that is.
+                    freeMoveStart = rawDraft.timelineStart
+                    // The same proposal the video track uses, so an overlay can
+                    // be carried onto a brand new lane on top, or all the way
+                    // down onto the speaker's own track.
+                    let proposed = TimelineDropGeometry.target(
+                        pointerY: Double(value.location.y),
+                        leadingEdgeTime: moveDraft?.timelineStart ?? overlay.timelineStart,
+                        duration: moveDraft?.duration ?? overlay.duration,
+                        rows: layout,
+                        stationaryDurations: session.project.clips.map(\.duration),
+                        projectDuration: session.duration,
+                        contentWidth: contentWidth,
+                        snapAnchors: snapAnchors,
+                        isSnappingEnabled: false,
+                        canLift: true
+                    )
+                    let target: TimelineDropTarget
+                    if case let .overlay(lane, _) = proposed.track {
+                        draggedToTrack = lane
+                        isOverVideoTrack = false
+                        videoDropStart = nil
+                        session.previewVideoTrackInsertion(index: nil, duration: 0)
+                        target = TimelineDropTarget(
+                            track: .overlay(lane: lane, isNew: lane >= layout.overlayTrackCount),
+                            start: moveDraft?.timelineStart ?? overlay.timelineStart,
+                            snap: adjusted.match
+                        )
+                    } else {
+                        // On its way back down to the video track, where it
+                        // stops being an overlay altogether. The track opens the
+                        // space it will fill, exactly as it would for a clip
+                        // already living there.
+                        draggedToTrack = nil
+                        isOverVideoTrack = true
+                        videoDropStart = proposed.start
+                        session.previewVideoTrackInsertion(
+                            index: proposed.videoInsertionIndex,
+                            duration: moveDraft?.duration ?? overlay.duration
+                        )
+                        target = proposed
+                    }
                     session.setActiveTimelineSnap(adjusted.match)
+
+                    // A move along the overlay's own lane shows exactly one
+                    // thing: the cell, sitting on the spot it will land on. The
+                    // ghost is for a carry to somewhere else, which is what a
+                    // lift means and what the clip track already does. Drawing
+                    // both for an ordinary slide gave two copies of the same
+                    // overlay moving at once, which reads as duplication.
+                    let staysInItsLane: Bool
+                    if case let .overlay(lane, isNew) = target.track {
+                        staysInItsLane = !isNew && lane == overlay.lane
+                    } else {
+                        staysInItsLane = false
+                    }
+                    if staysInItsLane {
+                        // One moving copy. A slide along the lane needs no
+                        // landing ghost: the cell is the preview, and the snap
+                        // guide already says where it will settle.
+                        session.setTimelineLift(nil)
+                    } else {
+                        // Carried off its lane, where the ghost earns its place:
+                        // it marks a spot in a different row that the cell under
+                        // the pointer cannot show.
+                        session.setTimelineLift(
+                            TimelineLift(
+                                itemID: overlay.id,
+                                title: media.name,
+                                duration: moveDraft?.duration ?? overlay.duration,
+                                target: session.blocking(target, ignoring: overlay.id)
+                            )
+                        )
+                    }
                 }
                 .onEnded { _ in
+                    let lift = session.timelineDrag.lift
+                    let wasCancelled = session.isTimelineDragCancelled
+                    session.endTimelineDrag()
+                    session.setTimelineLift(nil)
+                    if wasCancelled {
+                        // Every scrap of where-it-was-going has to go, or the
+                        // cell keeps being drawn at the spot it was carried to
+                        // while the project still holds the spot it came from —
+                        // a move that looks like it happened but did not.
+                        moveDraft = nil
+                        moveOrigin = nil
+                        draggedToTrack = nil
+                        isOverVideoTrack = false
+                        videoDropStart = nil
+                        freeMoveStart = nil
+                        selectionMoveBounds = nil
+                        snapAnchors = []
+                        session.previewVideoTrackInsertion(index: nil, duration: 0)
+                        session.cancelTimelineSelectionMove()
+                        session.setActiveTimelineSnap(nil)
+                        return
+                    }
                     if selectionMoveBounds != nil {
                         selectionMoveBounds = nil
                         snapAnchors = []
@@ -1294,10 +1461,42 @@ private struct TimelineOverlayItem: View {
                         Task { await session.commitTimelineSelectionMove() }
                         return
                     }
-                    if let moveDraft { session.commitOverlayTrim(moveDraft) }
+                    // Carried all the way down: it stops being an overlay and
+                    // becomes a cut of its own, where the ghost said it would.
+                    if let index = lift?.target.videoInsertionIndex, lift?.target.isBlocked != true {
+                        moveDraft = nil
+                        moveOrigin = nil
+                        draggedToTrack = nil
+                        isOverVideoTrack = false
+                        videoDropStart = nil
+                        freeMoveStart = nil
+                        snapAnchors = []
+                        // The gap stops being a preview and becomes the edit, so
+                        // it closes here rather than waiting to be tidied away.
+                        session.previewVideoTrackInsertion(index: nil, duration: 0)
+                        session.setActiveTimelineSnap(nil)
+                        Task { await session.demoteOverlayToClip(overlay.id, insertionIndex: index) }
+                        return
+                    }
+                    if var moved = moveDraft {
+                        // A lane change and a time change are one gesture, so
+                        // they land as one edit and undo together. A lane the
+                        // preview showed as busy keeps its refusal here.
+                        if let draggedToTrack,
+                           draggedToTrack != overlay.lane,
+                           lift?.target.isBlocked != true {
+                            moved.track = draggedToTrack
+                        }
+                        session.commitOverlayEdit(moved)
+                    }
                     moveDraft = nil
                     moveOrigin = nil
+                    draggedToTrack = nil
+                    isOverVideoTrack = false
+                    videoDropStart = nil
+                    freeMoveStart = nil
                     snapAnchors = []
+                    session.previewVideoTrackInsertion(index: nil, duration: 0)
                     session.setActiveTimelineSnap(nil)
                 }
         )
@@ -1310,13 +1509,39 @@ private struct TimelineOverlayItem: View {
         .offset(
             x: startX + (selected
                 ? TimelineTrimGeometry.x(
-                    for: session.timelineSelectionDragDelta,
+                    for: drag.offset,
                     contentWidth: contentWidth,
-                    projectDuration: session.duration
+                    projectDuration: projectDuration
                 )
                 : 0),
-            y: rowY
+            y: draggedRowY
         )
+        // Sliding along the track has to stay locked to the pointer, but
+        // changing lane is a decision — it glides, so the eye can follow the
+        // cell from one lane to the next instead of finding it somewhere new.
+        .animation(.spring(response: 0.24, dampingFraction: 0.84), value: draggedRowY)
+    }
+
+    /// The row the cell is drawn on: the lane it is being carried to while a
+    /// drag is running, otherwise its own.
+    private var draggedRowY: Double {
+        if isOverVideoTrack { return layout.clipRowY }
+        guard let draggedToTrack else { return rowY }
+        guard draggedToTrack < layout.overlayTrackCount else {
+            // A lane that does not exist yet has no row of its own, so the cell
+            // rides one row above the stack — exactly where the lane will be.
+            return max(
+                TimelineRowLayout.rulerHeight + 4,
+                layout.overlayStackTop - TimelineRowLayout.overlayRowHeight + TimelineRowLayout.cellInset
+            )
+        }
+        return layout.overlayRowY(track: draggedToTrack)
+    }
+
+    /// How much footage the cell can be pulled back out to, or nil for a still,
+    /// which has no in point and no end to run out of.
+    private var trimmableSourceDuration: Double? {
+        media.isImage ? nil : media.duration
     }
 
     private func trimHandle(_ edge: HorizontalEdge) -> some View {
@@ -1326,7 +1551,7 @@ private struct TimelineOverlayItem: View {
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
-            height: 38,
+            height: TimelineContent.overlayRowHeight - 4,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
@@ -1349,7 +1574,8 @@ private struct TimelineOverlayItem: View {
                             edge: edge,
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration,
+                            sourceDuration: trimmableSourceDuration
                         )
                         let originalEdgeTime = edge == .leading
                             ? trimOrigin.timelineStart
@@ -1363,7 +1589,7 @@ private struct TimelineOverlayItem: View {
                             rawTranslationX: rawTranslation,
                             anchors: snapAnchors,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                         )
                         trimDraft = TimelineOverlayGeometry.trimmed(
@@ -1371,28 +1597,42 @@ private struct TimelineOverlayItem: View {
                             edge: edge,
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration,
+                            sourceDuration: trimmableSourceDuration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
                     }
                     .onEnded { _ in
-                        if let trimDraft { session.commitOverlayTrim(trimDraft) }
+                        if let trimDraft { session.commitOverlayEdit(trimDraft) }
                         trimDraft = nil
                         trimOrigin = nil
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
-                        NSCursor.arrow.set()
                     }
             )
             .help(edge == .leading ? "Trim overlay start" : "Extend or trim overlay end")
     }
 }
 
-private struct TimelineAudioItem: View {
-    @ObservedObject var session: EditorSession
+struct TimelineAudioItem: View {
+    /// Held, not observed. A cell that subscribes to the session is rebuilt
+    /// whenever anything in the editor changes, so typing in one caption used
+    /// to re-run the body of every cell on the timeline. Everything the body
+    /// draws with arrives as a value, and the reference is here only to call
+    /// commands from the gestures below.
+    let session: EditorSession
+    @ObservedObject var drag: TimelineDragState
+    /// Watched, unlike the session: this cell wants to redraw when its own
+    /// waveform arrives, and nothing else on the timeline does.
+    @ObservedObject var waveforms: AudioWaveformStore
+    /// Watched for the same reason: this cell's own fader.
+    @ObservedObject var levels: AudioLevelDraft
     let layer: ProjectAudioLayer
     let contentWidth: Double
+    /// The project length the cell lays itself out against, passed in so
+    /// the cell does not have to watch the session for it.
+    let projectDuration: Double
     let rowY: Double
     let selected: Bool
     @State private var trimOrigin: ProjectAudioLayer?
@@ -1402,35 +1642,105 @@ private struct TimelineAudioItem: View {
     @State private var activeTrimEdge: HorizontalEdge?
     @State private var snapAnchors: [TimelineSnapAnchor] = []
     @State private var selectionMoveBounds: (start: Double, end: Double)?
+    /// Where the pointer actually is, before snapping pulls the drop onto a
+    /// guide. Exactly as the overlay cell does it: the sound rides the pointer
+    /// and the orange guide says which anchor it will settle on, because a cell
+    /// drawn on the snapped position sticks between anchors instead of moving.
+    @State private var freeMoveStart: Double?
+
+    /// Tall enough for a waveform to read inside the audio row.
+    static let cellHeight = 46.0
+    /// The narrowest a sound is ever drawn.
+    ///
+    /// Some effects are barely there: the classic click is thirty-nine
+    /// milliseconds, which is a third of a point at the default zoom and a
+    /// sliver at any zoom the rest of the edit is usable at. Drawn honestly it
+    /// is a hairline nobody can see, let alone hit, so a sound shorter than
+    /// this is drawn at this and anchored to its own start.
+    ///
+    /// The left edge is always the truth — that is the moment the sound plays,
+    /// and it is what the eye reads a cell's position from. Only the right edge
+    /// of a very short sound is a rounding, and a thirty-nine millisecond click
+    /// has no meaningful end to be wrong about.
+    static let minimumDrawnWidth = 20.0
 
     var body: some View {
         let displayed = trimDraft ?? moveDraft ?? layer
-        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
-        Button {
-            selectTimelineItemFromPointer(.audio(layer.id), session: session)
-        } label: {
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color(red: 0.07, green: 0.25, blue: 0.27).opacity(0.96))
-                MiniAudioWave(seed: layer.name.hashValue)
-                    .foregroundStyle(Color.cyan.opacity(0.58))
-                    .padding(.horizontal, 5)
-                HStack(spacing: 5) {
-                    Image(systemName: "waveform")
-                    Text(layer.name).lineLimit(1)
-                }
-                .font(.studioCaptionStrong)
-                .padding(.horizontal, selected ? 11 : 7)
+        let startX = contentWidth
+            * (freeMoveStart ?? displayed.timelineStart)
+            / max(0.001, projectDuration)
+        let trueWidth = max(1, contentWidth * displayed.duration / max(0.001, projectDuration))
+        // Never below what can be seen and grabbed: see minimumDrawnWidth.
+        let width = max(trueWidth, Self.minimumDrawnWidth)
+        let isMoving = moveDraft != nil
+        // Not a Button, for the same reason the overlay cell is not: a button
+        // holds on to the mouse-down and the drag only reaches the gesture in
+        // bursts, so the cell looks stuck until it is let go.
+        TimelineAudioCell(
+            name: layer.name,
+            peaks: waveforms.peaks(for: layer),
+            sourceStart: displayed.sourceStart,
+            sourceEnd: displayed.sourceStart + displayed.duration,
+            fileDuration: max(
+                displayed.sourceStart + displayed.duration,
+                layer.sourceDuration ?? displayed.duration
+            ),
+            height: Self.cellHeight,
+            selected: selected,
+            volume: levels.volume(for: layer.id) ?? layer.volume
+        )
+        // Inset the drawing, never the layout, exactly as the video and overlay
+        // cells do. The trim handles are aligned to the layout box, so without
+        // this they sat wholly inside the drawn rectangle — inside the rounded
+        // corner, over the waveform — instead of straddling the edge they trim.
+        .padding(.horizontal, 1)
+        // Leading, and clipped: a cell can only ever be as wide as its sound is
+        // long, and anything that will not fit runs off the end rather than
+        // pushing the cell off its own moment.
+        .frame(width: width, height: Self.cellHeight, alignment: .leading)
+        .clipped()
+        .contentShape(Rectangle())
+        .task(id: layer.url) { await waveforms.load(for: layer) }
+        .onTapGesture { selectTimelineItemFromPointer(.audio(layer.id), session: session) }
+        // The cell on the timeline is where you are looking at the sound when
+        // you decide it is the wrong one.
+        .contextMenu {
+            Menu {
+                SoundSwapMenu(session: session, layer: layer)
+            } label: {
+                Label("Replace", systemImage: "arrow.2.squarepath")
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .stroke(selected ? Color.cyan.opacity(0.9) : Color.secondary.opacity(0.34), lineWidth: selected ? 1.1 : 0.7)
+            Divider()
+            Button(role: .destructive) {
+                session.selectedAudioLayerID = layer.id
+                Task { await session.deleteSelectedAudioLayer() }
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
         }
-        .buttonStyle(.plain)
-        .frame(width: width, height: 46)
-        .clipped()
+        // Picked up: it lifts off the lane and says where it is, because one
+        // second of the audio track looks like every other second of it.
+        .opacity(isMoving ? 0.72 : 1)
+        .scaleEffect(isMoving ? 1.02 : 1, anchor: .center)
+        .shadow(
+            color: .black.opacity(isMoving ? 0.55 : 0),
+            radius: isMoving ? 10 : 0,
+            y: isMoving ? 5 : 0
+        )
+        .overlay(alignment: .top) {
+            if isMoving {
+                Text(TimelineDropInsertionLine.clock(displayed.timelineStart))
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 5)
+                    .frame(height: 15)
+                    .background(Color.yapperOrange)
+                    .clipShape(Capsule(style: .continuous))
+                    .fixedSize()
+                    .offset(y: -18)
+            }
+        }
+        .animation(.easeOut(duration: 0.12), value: isMoving)
         .gesture(
             DragGesture(
                 minimumDistance: 2,
@@ -1441,11 +1751,19 @@ private struct TimelineAudioItem: View {
                     if moveOrigin == nil, selectionMoveBounds == nil {
                         session.ensureTimelineItemSelected(.audio(layer.id))
                         snapAnchors = session.timelineSnapAnchors()
+                        session.beginTimelineDrag(layer.id)
                         if session.timelineSelection.count > 1 {
                             selectionMoveBounds = session.timelineSelectionBounds()
                         } else {
                             moveOrigin = layer
                         }
+                    }
+                    // Escape gives the sound back to where it came from, the
+                    // same as it does for an overlay.
+                    guard !session.isTimelineDragCancelled else {
+                        moveDraft = nil
+                        freeMoveStart = nil
+                        return
                     }
                     if let selectionMoveBounds {
                         let move = timelineSelectionMove(
@@ -1465,7 +1783,7 @@ private struct TimelineAudioItem: View {
                         layer: moveOrigin,
                         translationX: rawTranslation,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration
+                        projectDuration: projectDuration
                     )
                     let adjusted = TimelineSnapDragGeometry.moveTranslation(
                         originalStart: moveOrigin.timelineStart,
@@ -1474,18 +1792,33 @@ private struct TimelineAudioItem: View {
                         rawTranslationX: rawTranslation,
                         anchors: snapAnchors,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration,
+                        projectDuration: projectDuration,
                         enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                     )
                     moveDraft = TimelineAudioGeometry.moved(
                         layer: moveOrigin,
                         translationX: adjusted.translationX,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration
+                        projectDuration: projectDuration
                     )
+                    // The cell rides the raw pointer and lands on the snapped
+                    // spot when it is let go.
+                    freeMoveStart = rawDraft.timelineStart
                     session.setActiveTimelineSnap(adjusted.match)
                 }
                 .onEnded { _ in
+                    let wasCancelled = session.isTimelineDragCancelled
+                    session.endTimelineDrag()
+                    if wasCancelled {
+                        moveDraft = nil
+                        moveOrigin = nil
+                        freeMoveStart = nil
+                        selectionMoveBounds = nil
+                        snapAnchors = []
+                        session.cancelTimelineSelectionMove()
+                        session.setActiveTimelineSnap(nil)
+                        return
+                    }
                     if selectionMoveBounds != nil {
                         selectionMoveBounds = nil
                         snapAnchors = []
@@ -1496,6 +1829,7 @@ private struct TimelineAudioItem: View {
                     let committedMove = moveDraft
                     moveDraft = nil
                     moveOrigin = nil
+                    freeMoveStart = nil
                     snapAnchors = []
                     session.setActiveTimelineSnap(nil)
                     guard let committedMove else { return }
@@ -1511,9 +1845,9 @@ private struct TimelineAudioItem: View {
         .offset(
             x: startX + (selected
                 ? TimelineTrimGeometry.x(
-                    for: session.timelineSelectionDragDelta,
+                    for: drag.offset,
                     contentWidth: contentWidth,
-                    projectDuration: session.duration
+                    projectDuration: projectDuration
                 )
                 : 0),
             y: rowY
@@ -1550,7 +1884,7 @@ private struct TimelineAudioItem: View {
                             edge: edge,
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         let originalEdgeTime = edge == .leading
                             ? trimOrigin.timelineStart
@@ -1564,7 +1898,7 @@ private struct TimelineAudioItem: View {
                             rawTranslationX: rawTranslation,
                             anchors: snapAnchors,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                         )
                         trimDraft = TimelineAudioGeometry.trimmed(
@@ -1572,7 +1906,7 @@ private struct TimelineAudioItem: View {
                             edge: edge,
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
                     }
@@ -1583,7 +1917,6 @@ private struct TimelineAudioItem: View {
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
-                        NSCursor.arrow.set()
                         guard let committedTrim else { return }
                         Task {
                             await session.commitAudioTrim(committedTrim)
@@ -1615,12 +1948,16 @@ enum TimelineOverlayGeometry {
         return updated
     }
 
+    /// - Parameter sourceDuration: how much footage there is behind the cell.
+    ///   `nil` for a still, which has no in point to move and can be held on
+    ///   screen for as long as anyone likes.
     static func trimmed(
         overlay: ProjectOverlay,
         edge: HorizontalEdge,
         translationX: CGFloat,
         contentWidth: Double,
-        projectDuration: Double
+        projectDuration: Double,
+        sourceDuration: Double? = nil
     ) -> ProjectOverlay {
         var updated = overlay
         guard projectDuration > 0, contentWidth > 0 else { return updated }
@@ -1630,14 +1967,58 @@ enum TimelineOverlayGeometry {
             projectDuration: projectDuration
         )
         let minimumDuration = min(0.2, max(0.02, projectDuration))
+
+        guard let sourceDuration, sourceDuration > 0 else {
+            // A still shows the same picture whenever it is played, so its
+            // edges only decide how long it is up.
+            switch edge {
+            case .leading:
+                let end = overlay.timelineStart + overlay.duration
+                updated.timelineStart = min(
+                    end - minimumDuration,
+                    max(0, overlay.timelineStart + delta)
+                )
+                updated.duration = end - updated.timelineStart
+            case .trailing:
+                updated.duration = min(
+                    max(minimumDuration, overlay.duration + delta),
+                    max(minimumDuration, projectDuration - overlay.timelineStart)
+                )
+            }
+            return updated
+        }
+
+        // Footage saved before this was source-aware can already claim more
+        // than the file holds; that is what it is showing, so it is the floor.
+        let available = max(sourceDuration, overlay.sourceStart + overlay.duration)
         switch edge {
         case .leading:
-            let end = overlay.timelineStart + overlay.duration
-            updated.timelineStart = min(end - minimumDuration, max(0, overlay.timelineStart + delta))
-            updated.duration = end - updated.timelineStart
+            // Dragging the left edge moves the in point with it, so the cell
+            // loses its opening rather than starting the same footage later.
+            let sourceEnd = overlay.sourceStart + overlay.duration
+            // Neither past the head of the footage nor off the front of the
+            // video: whichever runs out first stops the drag.
+            let earliest = max(0, overlay.sourceStart - overlay.timelineStart)
+            let newSourceStart = min(
+                sourceEnd - minimumDuration,
+                max(earliest, overlay.sourceStart + delta)
+            )
+            updated.sourceStart = newSourceStart
+            updated.timelineStart = max(
+                0,
+                overlay.timelineStart + (newSourceStart - overlay.sourceStart)
+            )
+            updated.duration = sourceEnd - newSourceStart
         case .trailing:
+            let sourceEnd = min(
+                available,
+                max(
+                    overlay.sourceStart + minimumDuration,
+                    overlay.sourceStart + overlay.duration + delta
+                )
+            )
             updated.duration = min(
-                max(minimumDuration, overlay.duration + delta),
+                sourceEnd - overlay.sourceStart,
                 max(minimumDuration, projectDuration - overlay.timelineStart)
             )
         }
@@ -1712,9 +2093,18 @@ enum TimelineAudioGeometry {
 }
 
 private struct TimelineTextLayerCell: View {
-    @ObservedObject var session: EditorSession
+    /// Held, not observed. A cell that subscribes to the session is rebuilt
+    /// whenever anything in the editor changes, so typing in one caption used
+    /// to re-run the body of every cell on the timeline. Everything the body
+    /// draws with arrives as a value, and the reference is here only to call
+    /// commands from the gestures below.
+    let session: EditorSession
+    @ObservedObject var drag: TimelineDragState
     let layer: ProjectTextLayer
     let contentWidth: Double
+    /// The project length the cell lays itself out against, passed in so
+    /// the cell does not have to watch the session for it.
+    let projectDuration: Double
     let rowY: Double
     let selected: Bool
     @State private var trimOrigin: ProjectTextLayer?
@@ -1727,8 +2117,8 @@ private struct TimelineTextLayerCell: View {
 
     var body: some View {
         let displayed = trimDraft ?? moveDraft ?? layer
-        let startX = contentWidth * displayed.timelineStart / max(0.001, session.duration)
-        let width = max(1, contentWidth * displayed.duration / max(0.001, session.duration))
+        let startX = contentWidth * displayed.timelineStart / max(0.001, projectDuration)
+        let width = max(1, contentWidth * displayed.duration / max(0.001, projectDuration))
         RoundedRectangle(cornerRadius: 5, style: .continuous)
             .fill(Color(red: 0.42, green: 0.20, blue: 0.12).opacity(0.88))
             .overlay(alignment: .leading) {
@@ -1737,6 +2127,7 @@ private struct TimelineTextLayerCell: View {
                     Text(displayed.text.isEmpty ? "Text" : displayed.text).lineLimit(1)
                 }
                 .font(.studioCaptionStrong)
+                .foregroundStyle(Color.white.opacity(0.95))
                 .padding(.horizontal, selected ? 11 : 7)
             }
             .overlay {
@@ -1784,7 +2175,7 @@ private struct TimelineTextLayerCell: View {
                             layer: moveOrigin,
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         let adjusted = TimelineSnapDragGeometry.moveTranslation(
                             originalStart: moveOrigin.timelineStart,
@@ -1793,14 +2184,14 @@ private struct TimelineTextLayerCell: View {
                             rawTranslationX: rawTranslation,
                             anchors: snapAnchors,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                         )
                         moveDraft = TimelineTextGeometry.moved(
                             layer: moveOrigin,
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
                     }
@@ -1828,9 +2219,9 @@ private struct TimelineTextLayerCell: View {
             .offset(
                 x: startX + (selected
                     ? TimelineTrimGeometry.x(
-                        for: session.timelineSelectionDragDelta,
+                        for: drag.offset,
                         contentWidth: contentWidth,
-                        projectDuration: session.duration
+                        projectDuration: projectDuration
                     )
                     : 0),
                 y: rowY
@@ -1867,7 +2258,7 @@ private struct TimelineTextLayerCell: View {
                             edge: edge,
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         let originalEdgeTime = edge == .leading
                             ? trimOrigin.timelineStart
@@ -1881,7 +2272,7 @@ private struct TimelineTextLayerCell: View {
                             rawTranslationX: rawTranslation,
                             anchors: snapAnchors,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration,
+                            projectDuration: projectDuration,
                             enabled: session.isTimelineSnappingEnabled && !isTimelineSnapTemporarilyBypassed
                         )
                         trimDraft = TimelineTextGeometry.trimmed(
@@ -1889,7 +2280,7 @@ private struct TimelineTextLayerCell: View {
                             edge: edge,
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
-                            projectDuration: session.duration
+                            projectDuration: projectDuration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
                     }
@@ -1900,7 +2291,6 @@ private struct TimelineTextLayerCell: View {
                         activeTrimEdge = nil
                         snapAnchors = []
                         session.setActiveTimelineSnap(nil)
-                        NSCursor.arrow.set()
                     }
             )
             .help(edge == .leading ? "Trim text start" : "Extend or trim text end")
@@ -1962,7 +2352,7 @@ enum TimelineTextGeometry {
     }
 }
 
-private struct TimelineRuler: View {
+struct TimelineRuler: View {
     let duration: Double
     let width: Double
 
@@ -2010,224 +2400,33 @@ private struct TimelineRuler: View {
     }
 }
 
-private struct TimelineClipCell: View {
-    let clip: TimelineClip
-    let media: ProjectMedia
-    let thumbnails: [CGImage]
-    let peaks: [Float]
-    let waveformProgress: Double
-    let selected: Bool
-
-    var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                Color(red: 0.12, green: 0.15, blue: 0.16)
-                if !thumbnails.isEmpty {
-                    StableThumbnailStrip(
-                        thumbnails: thumbnails,
-                        width: proxy.size.width,
-                        sourceStart: clip.sourceStart,
-                        sourceEnd: clip.sourceEnd,
-                        mediaDuration: media.duration
-                    )
-                    .opacity(0.72)
-                }
-                LinearGradient(
-                    colors: [.clear, .black.opacity(0.58)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                WaveformShape(
-                    peaks: peaks,
-                    sampleRange: waveformWindow.range,
-                    color: .cyan.opacity(0.95)
-                )
-                .padding(.horizontal, 2)
-                .padding(.bottom, 2)
-                .frame(height: 30)
-                .frame(width: max(0, proxy.size.width * waveformWindow.fraction), alignment: .leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-
-                Text(media.name)
-                    .font(.system(size: 10, weight: .semibold))
-                    .lineLimit(1)
-                    .padding(5)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .opacity(proxy.size.width > 65 ? 1 : 0)
-            }
-            .clipped()
-            .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .stroke(
-                        selected ? Color.white.opacity(0.86) : Color.secondary.opacity(0.28),
-                        lineWidth: selected ? 1.15 : 0.55
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 5))
-        }
-    }
-
-    private var waveformWindow: TimelineWaveformWindow {
-        TimelineWaveformGeometry.window(
-            peakCount: peaks.count,
-            progress: waveformProgress,
-            sourceStart: clip.sourceStart,
-            sourceEnd: clip.sourceEnd,
-            mediaDuration: media.duration
-        )
-    }
-}
-
-private struct StableThumbnailStrip: View {
-    let thumbnails: [CGImage]
-    let width: CGFloat
-    let sourceStart: Double
-    let sourceEnd: Double
-    let mediaDuration: Double
-
-    private let tileWidth: CGFloat = 74
-
-    var body: some View {
-        HStack(spacing: 1) {
-            ForEach(0 ..< tileCount, id: \.self) { tile in
-                let index = thumbnailIndex(for: tile)
-                Image(decorative: thumbnails[index], scale: 1)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: tileWidth, height: 88)
-                    .clipped()
-            }
-        }
-        .frame(width: width, height: 88, alignment: .leading)
-        .clipped()
-    }
-
-    private var tileCount: Int {
-        // Keep thumbnails a constant visual size while zooming. This avoids the
-        // stretched/cropped strip that made clips appear to resize at each zoom.
-        max(1, min(1_200, Int(ceil(width / (tileWidth + 1)))))
-    }
-
-    private func thumbnailIndex(for tile: Int) -> Int {
-        guard thumbnails.count > 1, mediaDuration > 0 else { return 0 }
-        let tileFraction = (Double(tile) + 0.5) / Double(tileCount)
-        let sourceTime = sourceStart + max(0, sourceEnd - sourceStart) * tileFraction
-        let mediaFraction = min(0.999, max(0, sourceTime / mediaDuration))
-        return min(thumbnails.count - 1, Int(mediaFraction * Double(thumbnails.count)))
-    }
-}
-
-private struct TrackHeader: View {
-    let hasText: Bool
-    let hasOverlays: Bool
-    let hasAudio: Bool
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Color.clear.frame(height: 38)
-            if hasText {
-                HStack(spacing: 7) {
-                    Image(systemName: "textformat")
-                    Text("Text")
-                }
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 60)
-                .background(Color.yapperOrange.opacity(0.035))
-            }
-            if hasOverlays {
-                HStack(spacing: 7) {
-                    Image(systemName: "photo.on.rectangle")
-                    Text("Overlay")
-                }
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 60)
-                .background(Color.yapperOrange.opacity(0.045))
-            }
-            HStack(spacing: 7) {
-                Image(systemName: "eye")
-                Image(systemName: "speaker.wave.2")
-                Image(systemName: "lock.open")
-            }
-            .font(.studioCaptionStrong)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, minHeight: 88)
-            .background(Color.studioFaintFill.opacity(0.55))
-            if hasAudio {
-                HStack(spacing: 7) {
-                    Image(systemName: "waveform")
-                    Text("Audio")
-                }
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 58)
-                .background(Color.cyan.opacity(0.035))
-            }
-            Spacer()
-        }
-        .background(Color.panelBackground.opacity(0.72))
-    }
-}
-
-private struct MiniAudioWave: Shape {
-    let seed: Int
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let count = max(4, Int(rect.width / 5))
-        let middle = rect.midY
-        for index in 0 ..< count {
-            let mixed = abs((index &* 73 &+ seed) % 97)
-            let amplitude = max(2, CGFloat(mixed) / 96 * rect.height * 0.72)
-            let x = rect.minX + CGFloat(index) / CGFloat(max(1, count - 1)) * rect.width
-            path.move(to: CGPoint(x: x, y: middle - amplitude / 2))
-            path.addLine(to: CGPoint(x: x, y: middle + amplitude / 2))
-        }
-        return path
-    }
-}
-
-private struct WaveformShape: View {
+struct WaveformShape: View {
     let peaks: [Float]
     let sampleRange: Range<Int>
     let color: Color
+    /// How loud this is playing. The bars are drawn at the height the mix will
+    /// actually give them, so pulling a fader down is something you can see on
+    /// the timeline rather than something you have to remember.
+    var gain: Double = 1
 
     var body: some View {
         Canvas { context, size in
-            let lowerBound = max(0, min(peaks.count, sampleRange.lowerBound))
-            let upperBound = max(lowerBound, min(peaks.count, sampleRange.upperBound))
-            let sampleCount = upperBound - lowerBound
-            guard sampleCount > 0, size.width > 0 else { return }
-            let barWidth: CGFloat = 1.5
-            let barGap: CGFloat = 1
-            let step = barWidth + barGap
-            let columns = max(1, Int(ceil(size.width / step)))
-            let middle = size.height / 2
-            for column in 0 ..< columns {
-                let samples = TimelineWaveformGeometry.sampleRange(
-                    column: column,
-                    columnCount: columns,
-                    samples: lowerBound ..< upperBound
-                )
-                guard !samples.isEmpty else { continue }
-                let peak = peaks[samples].max() ?? 0
-                let emphasized = pow(CGFloat(max(0, peak)), 0.72)
-                let height = max(1.5, emphasized * (size.height - 2))
-                let x = CGFloat(column) * step
-                guard x < size.width else { break }
-                let rect = CGRect(
-                    x: x,
-                    y: middle - height / 2,
-                    width: min(barWidth, size.width - x),
-                    height: height
-                )
-                context.fill(
-                    Path(roundedRect: rect, cornerRadius: 0.75),
-                    with: .color(color)
+            // One path, one fill. Filling each bar separately meant a thousand
+            // fills across a timeline for every frame of a resize or a zoom.
+            var path = Path()
+            for rect in WaveformBars.rects(
+                peaks: peaks,
+                sampleRange: sampleRange,
+                size: size,
+                gain: gain
+            ) {
+                path.addRoundedRect(
+                    in: rect,
+                    cornerSize: CGSize(width: WaveformBars.cornerRadius, height: WaveformBars.cornerRadius)
                 )
             }
+            guard !path.isEmpty else { return }
+            context.fill(path, with: .color(color))
         }
     }
 }

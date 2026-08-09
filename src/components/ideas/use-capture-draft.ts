@@ -36,13 +36,14 @@ export function useCaptureDraft() {
     const restore = window.requestAnimationFrame(() => {
       try {
         const parsed = JSON.parse(saved) as ComposerDraft;
-        if (typeof parsed.text === "string") setText(parsed.text);
-        if (typeof parsed.link === "string") setLink(parsed.link);
+        // A draft saved by the old composer kept its link in a field of its
+        // own. Put it back in the sentence, at the end, which is where it was
+        // taken from.
+        const restored = [parsed.text, parsed.link].filter(Boolean).join(" ");
+        if (restored) setText(restored.trim());
       } catch {
         // Drafts from the previous plain-text composer remain valid.
-        const parsed = pullLink(saved);
-        setText(parsed.text);
-        setLink(parsed.link);
+        setText(saved);
       }
     });
     return () => window.cancelAnimationFrame(restore);
@@ -56,12 +57,17 @@ export function useCaptureDraft() {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, link }));
   }, [text, link]);
 
-  /** Typed input; the first URL becomes the attachment unless one is set. */
+  /**
+   * Typed input, kept exactly as typed.
+   *
+   * Links used to be lifted out of the sentence into an attachment row, which
+   * suited a capture that was only a link and mangled one with a link in the
+   * middle of it: the words and the thing they pointed at ended up in two
+   * different places. They stay where they are put now, and the composer paints
+   * them. See `link-spans` and `LinkHighlightOverlay`.
+   */
   const updateText = (value: string) => {
-    if (link) return setText(value);
-    const next = pullLink(value);
-    setText(next.text);
-    if (next.link) setLink(next.link);
+    setText(value);
   };
 
   const clear = () => {

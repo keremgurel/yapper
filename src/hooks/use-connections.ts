@@ -1,12 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import {
-  disconnectPlatform,
-  fetchConnections,
-  type ConnectionSummary,
-} from "@/lib/publish/client";
+import { useCallback } from "react";
+import { disconnectPlatform, fetchConnections } from "@/lib/publish/client";
 import type { PublishPlatform } from "@/lib/db/schema";
+import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
+import { useClientResource } from "@/hooks/use-client-resource";
 
 /**
  * The user's platform connections: which are connected, which can be connected,
@@ -14,46 +12,49 @@ import type { PublishPlatform } from "@/lib/db/schema";
  * redirect (see `connectUrl`), so it isn't handled here.
  */
 export function useConnections(enabled: boolean) {
-  const [connections, setConnections] = useState<ConnectionSummary[] | null>(
-    null,
+  const {
+    data,
+    refresh: refreshResource,
+    mutate,
+  } = useClientResource(
+    STUDIO_RESOURCE_KEYS.connections,
+    enabled,
+    fetchConnections,
   );
-  const [available, setAvailable] = useState<PublishPlatform[]>([]);
   // `available` starts empty before the first fetch resolves, so a caller
   // that reads "not available yet" as "coming soon" would flash every
   // platform as unconfigured on every load. Exposed so the panel can render
   // a neutral loading state instead of that false negative.
-  const [loading, setLoading] = useState(true);
-
   const refresh = useCallback(async () => {
     try {
-      const data = await fetchConnections();
-      setConnections(data.connections);
-      setAvailable(data.available);
+      return await refreshResource(true);
     } catch {
-      setConnections([]);
-    } finally {
-      setLoading(false);
+      return data ?? { connections: [], available: [] };
     }
-  }, []);
-
-  useEffect(() => {
-    if (enabled) void refresh();
-  }, [enabled, refresh]);
+  }, [refreshResource, data]);
 
   const disconnect = useCallback(
     async (platform: PublishPlatform) => {
       // Optimistic: drop it, then reconcile.
-      setConnections(
-        (prev) => prev?.filter((c) => c.platform !== platform) ?? prev,
-      );
+      mutate((prev) => ({
+        connections:
+          prev?.connections.filter((c) => c.platform !== platform) ?? [],
+        available: prev?.available ?? [],
+      }));
       try {
         await disconnectPlatform(platform);
       } finally {
         void refresh();
       }
     },
-    [refresh],
+    [refresh, mutate],
   );
 
-  return { connections, available, refresh, disconnect, loading };
+  return {
+    connections: data?.connections ?? null,
+    available: data?.available ?? [],
+    refresh,
+    disconnect,
+    loading: data === null,
+  };
 }

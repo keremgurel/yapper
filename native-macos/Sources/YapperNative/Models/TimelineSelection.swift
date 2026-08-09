@@ -5,11 +5,12 @@ enum TimelineSelectionItem: Hashable, Sendable {
     case clip(UUID)
     case text(UUID)
     case overlay(UUID)
+    case caption(UUID)
     case audio(UUID)
 
     var id: UUID {
         switch self {
-        case let .clip(id), let .text(id), let .overlay(id), let .audio(id): id
+        case let .clip(id), let .text(id), let .overlay(id), let .caption(id), let .audio(id): id
         }
     }
 }

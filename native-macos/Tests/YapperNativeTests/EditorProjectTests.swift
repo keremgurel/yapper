@@ -445,6 +445,43 @@ struct EditorProjectTests {
         #expect(repairedBoundaries[1].0 == 9 && repairedBoundaries[1].1 == 10)
     }
 
+    @Test func retakeRepairGivesTheFinalTakeBackTheWordItOpenedWith() {
+        let mediaID = UUID()
+        func words(_ values: [String]) -> [TranscriptWord] {
+            values.enumerated().map { index, text in
+                TranscriptWord(
+                    mediaID: mediaID,
+                    text: text,
+                    start: Double(index) * 0.26,
+                    end: Double(index) * 0.26 + 0.22
+                )
+            }
+        }
+
+        // The matcher landed one word into the last attempt, leaving the "Stop"
+        // the speaker said on the cut side. Every earlier attempt opens the same
+        // way, so it belongs to the take.
+        let retakes = words([
+            "Stop", "trying", "to", "memorize", "full", "CELPIP", "speaking", "answers.",
+            "Stop", "trying", "to", "memorize", "full", "CELPIP", "speaking", "answers",
+            "and", "try", "these", "templates", "instead.",
+        ])
+        let repaired = RetakeCutBoundaryRepair.repaired(words: retakes, cuts: [(0, 8)])
+        #expect(repaired.count == 1)
+        #expect(repaired[0].0 == 0)
+        #expect(repaired[0].1 == 7)
+
+        // Only a whole repeated phrase counts. A single shared word before an
+        // unrelated take is the boundary being right.
+        let unrelated = words([
+            "Stop", "trying", "to", "memorize", "full", "CELPIP", "speaking", "answers.",
+            "Stop", "and", "think", "about", "what", "the", "examiner", "wants.",
+        ])
+        let leftAlone = RetakeCutBoundaryRepair.repaired(words: unrelated, cuts: [(0, 8)])
+        #expect(leftAlone.count == 1)
+        #expect(leftAlone[0].1 == 8)
+    }
+
     @Test func retakeRepairReplacesDetachedFinalWordWithCompleteMatchingTake() {
         let mediaID = UUID()
         let values = [
@@ -519,9 +556,13 @@ struct EditorProjectTests {
             x: 0.4,
             y: 0.2,
             width: 0.72,
-            fontScale: 0.065,
-            style: .blackCard,
-            font: .editorial
+            appearance: TextAppearance(
+                font: .editorial,
+                fontScale: 0.065,
+                color: .white,
+                backgroundEnabled: true,
+                backgroundColor: StudioColor.black.withOpacity(0.86)
+            )
         )
         let project = EditorProject(textLayers: [layer])
 
@@ -546,15 +587,41 @@ struct EditorProjectTests {
         #expect(session.inspectorRequest?.tool == "Text")
     }
 
-    @Test func allBuiltInSoundEffectsAreRealNonSilentAudio() {
-        #expect(SoundEffectDescriptor.library.count == 10)
-        #expect(Set(SoundEffectDescriptor.library.map(\.id)).count == 10)
-        for effect in SoundEffectDescriptor.library {
-            let samples = SoundEffectService.render(effect)
-            #expect(samples.count == Int((effect.duration * SoundEffectService.sampleRate).rounded()))
-            #expect((samples.map { abs($0) }.max() ?? 0) > 0.5)
+    /// The library ships as real recordings now, so the thing worth checking is
+    /// that every one of them is actually in the build and says what it is.
+    @Test func everySoundEffectShipsWithTheApp() async throws {
+        let library = SoundEffectDescriptor.library
+        #expect(!library.isEmpty)
+        #expect(Set(library.map(\.id)).count == library.count, "ids must be unique")
+        #expect(Set(library.map(\.name)).count == library.count, "names must be unique")
+
+        for effect in library {
+            let url = try #require(
+                SoundEffectService.shared.bundledURL(for: effect),
+                "\(effect.id) is missing from the bundle"
+            )
+            let measured = try await SoundEffectService.shared.duration(of: url)
+            // The stated duration is what the timeline lays out before the file
+            // is read, so a wrong one puts the clip in the wrong place.
+            #expect(
+                abs(measured - effect.duration) < 0.12,
+                "\(effect.id) is \(measured)s, listed as \(effect.duration)s"
+            )
         }
-        #expect(SoundEffectDescriptor.library.first(where: { $0.id == "mechanical-keyboard" })?.duration == 5)
+    }
+
+    /// Every shelf a creator can open has something on it.
+    @Test func everyCategoryHasEffects() {
+        for category in SoundEffectCategory.allCases {
+            #expect(
+                !SoundEffectDescriptor.library(in: category).isEmpty,
+                "\(category.title) is empty"
+            )
+        }
+        #expect(
+            SoundEffectDescriptor.library
+                .allSatisfy { SoundEffectCategory.allCases.contains($0.category) }
+        )
     }
 
     @Test func audioLayersRoundTripWithTheProject() throws {
@@ -593,7 +660,7 @@ struct EditorProjectTests {
             x: 0.5,
             y: 0.5,
             width: 0.5,
-            fontScale: 0.05
+            appearance: TextAppearance(fontScale: 0.05)
         )
         let enlarged = TextCanvasGeometry.resized(
             layer: layer,
@@ -769,8 +836,158 @@ struct EditorProjectTests {
         #expect(TimelineZoomGeometry.scrollFactor(delta: 0, hasPreciseDeltas: true) == 1)
         #expect(TimelineZoomGeometry.scrollFactor(delta: 10, hasPreciseDeltas: true) > 1)
         #expect(TimelineZoomGeometry.scrollFactor(delta: -10, hasPreciseDeltas: true) < 1)
-        #expect(TimelineZoomGeometry.scrollFactor(delta: 10_000, hasPreciseDeltas: true) == 1.08)
-        #expect(TimelineZoomGeometry.scrollFactor(delta: -10_000, hasPreciseDeltas: true) == 0.925)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: 10_000, hasPreciseDeltas: true) == 2)
+        #expect(TimelineZoomGeometry.scrollFactor(delta: -10_000, hasPreciseDeltas: true) == 0.5)
+        // A line-based wheel notch has to move the zoom as far as a comparable
+        // trackpad swipe, otherwise a mouse can barely zoom at all.
+        #expect(
+            TimelineZoomGeometry.scrollFactor(delta: 1, hasPreciseDeltas: false)
+                > TimelineZoomGeometry.scrollFactor(delta: 1, hasPreciseDeltas: true)
+        )
+    }
+
+    @Test func timelineZoomIsExactlySplittableAcrossEvents() {
+        // One physical gesture arrives as many events. Ten small steps must land
+        // on the same scale as the single large step covering the same distance.
+        let stepped = (0 ..< 10).reduce(8.0) { scale, _ in
+            TimelineZoomGeometry.scaled(
+                scale,
+                by: TimelineZoomGeometry.scrollFactor(delta: 6, hasPreciseDeltas: true)
+            )
+        }
+        let single = TimelineZoomGeometry.scaled(
+            8,
+            by: TimelineZoomGeometry.scrollFactor(delta: 60, hasPreciseDeltas: true)
+        )
+        #expect(abs(stepped - single) < 0.000_000_1)
+    }
+
+    @Test func timelineZoomAnchorsAPointerParkedInTheLeadingInset() {
+        // A pointer over the inset resolves to a negative fraction. Clamping it
+        // used to pin the anchor to the first frame and let the clips slide.
+        let leadingInset = 84.0
+        let offset = TimelineZoomGeometry.anchoredOffset(
+            oldOffset: 200,
+            pointerX: 20,
+            oldContentWidth: 1_200,
+            newContentWidth: 2_400,
+            viewportWidth: 600,
+            leadingInset: leadingInset,
+            trailingInset: 160
+        )
+        let before = (200 + 20 - leadingInset) / 1_200
+        let after = (offset + 20 - leadingInset) / 2_400
+        #expect(abs(after - before) < 0.000_000_001)
+    }
+
+    @MainActor
+    @Test func timelineViewportKeepsThePointerPinnedAcrossAWholeZoomGesture() {
+        let layout = TimelineViewportLayout(
+            duration: 600,
+            viewportWidth: 900,
+            minimumContentWidth: 468,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        let viewport = TimelineViewportState()
+        viewport.pan(by: 5_000, layout: layout)
+        #expect(viewport.scrollX == 5_000)
+
+        let anchorX = 400.0
+        func fractionUnderPointer() -> Double {
+            (viewport.scrollX + anchorX - layout.leadingInset)
+                / layout.contentWidth(at: viewport.pointsPerSecond)
+        }
+        let anchored = fractionUnderPointer()
+
+        // A real gesture is dozens of events in both directions; the anchor must
+        // survive every one of them, not just a single clean zoom step.
+        for step in 0 ..< 24 {
+            viewport.zoom(
+                by: step.isMultiple(of: 3) ? 0.94 : 1.07,
+                anchorX: anchorX,
+                layout: layout
+            )
+            #expect(abs(fractionUnderPointer() - anchored) < 0.000_000_001)
+        }
+        // The gesture really did move the zoom, so the check above is not
+        // passing on a no-op.
+        #expect(viewport.pointsPerSecond > 60)
+    }
+
+    @MainActor
+    @Test func timelineViewportHoldsStillWhenZoomIsAlreadyAtItsLimit() {
+        let layout = TimelineViewportLayout(
+            duration: 60,
+            viewportWidth: 900,
+            minimumContentWidth: 468,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        let viewport = TimelineViewportState(pointsPerSecond: TimelineZoomGeometry.scaleRange.upperBound)
+        viewport.pan(by: 1_000, layout: layout)
+        let offsetAtLimit = viewport.scrollX
+        viewport.zoom(by: 1.2, anchorX: 400, layout: layout)
+        #expect(viewport.pointsPerSecond == TimelineZoomGeometry.scaleRange.upperBound)
+        #expect(viewport.scrollX == offsetAtLimit)
+    }
+
+    @Test func timelinePinchAmplifiesButStillComposesAcrossUpdates() {
+        // A pinch has to move the zoom further than the raw trackpad scale.
+        #expect(TimelineZoomGeometry.pinchFactor(ratio: 1.1) > 1.1)
+        #expect(TimelineZoomGeometry.pinchFactor(ratio: 0.9) < 0.9)
+        #expect(TimelineZoomGeometry.pinchFactor(ratio: 1) == 1)
+        #expect(TimelineZoomGeometry.pinchFactor(ratio: 0) == 1)
+
+        // One pinch arrives as many updates, so amplifying each one must land
+        // on the same scale as amplifying the gesture's total once.
+        let perUpdate = (0 ..< 8).reduce(1.0) { total, _ in
+            total * TimelineZoomGeometry.pinchFactor(ratio: 1.03)
+        }
+        let asOneStep = TimelineZoomGeometry.pinchFactor(ratio: pow(1.03, 8))
+        #expect(abs(perUpdate - asOneStep) < 0.000_000_1)
+    }
+
+    @Test func timelineViewportLayoutFloorsShortProjectsAndBoundsScrolling() {
+        let layout = TimelineViewportLayout(
+            duration: 10,
+            viewportWidth: 900,
+            minimumContentWidth: 400,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        #expect(layout.contentWidth(at: 5) == 400)
+        #expect(layout.contentWidth(at: 100) == 1_000)
+        #expect(layout.maximumScrollX(contentWidth: 400) == 0)
+        #expect(layout.maximumScrollX(contentWidth: 1_000) == 344)
+        #expect(layout.clampedScrollX(-50, contentWidth: 1_000) == 0)
+        #expect(layout.clampedScrollX(9_999, contentWidth: 1_000) == 344)
+    }
+
+    @Test func timelineScrollBarThumbRoundTripsThroughTheScrollOffset() {
+        let layout = TimelineViewportLayout(
+            duration: 120,
+            viewportWidth: 900,
+            minimumContentWidth: 400,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        let contentWidth = layout.contentWidth(at: 36)
+        let maximumScrollX = layout.maximumScrollX(contentWidth: contentWidth)
+        #expect(maximumScrollX > 0)
+        for scrollX in [0.0, maximumScrollX / 3, maximumScrollX] {
+            let thumbX = TimelineScrollBarGeometry.thumbX(
+                scrollX: scrollX,
+                layout: layout,
+                contentWidth: contentWidth
+            )
+            let restored = TimelineScrollBarGeometry.scrollX(
+                thumbX: thumbX,
+                layout: layout,
+                contentWidth: contentWidth
+            )
+            #expect(abs(restored - scrollX) < 0.000_000_1)
+        }
     }
 
     @Test func projectAspectRatioControlsExportFrame() {

@@ -3,6 +3,8 @@ import {
   findQuoteSpan,
   keptWords,
   parsePlacements,
+  parseSounds,
+  parseTexts,
   placementsToSpans,
 } from "@/lib/studio/overlay-plan";
 import type { Clip, Word } from "@/lib/studio/types";
@@ -160,6 +162,118 @@ describe("parsePlacements", () => {
     expect(parsePlacements('{"placements": "soon"}')).toEqual([]);
     expect(parsePlacements("{ not json ]")).toEqual([]);
   });
+
+  it("carries the box the model asked for", () => {
+    const reply =
+      '{"placements":[{"file":"a.mp4","quote":"hello","x":0.06,"y":0.05,"width":0.55}]}';
+    expect(parsePlacements(reply)[0].box).toEqual({
+      x: 0.06,
+      y: 0.05,
+      width: 0.55,
+    });
+  });
+
+  // The words are the hard part. A model that fumbles the arithmetic should
+  // still land its cutaway on the right sentence, in the client's default card.
+  it("drops a bad box without dropping the placement", () => {
+    const box = (fields: string) =>
+      parsePlacements(
+        `{"placements":[{"file":"a.mp4","quote":"hello"${fields}}]}`,
+      )[0];
+    // Nothing said at all.
+    expect(box("").box).toBeUndefined();
+    // Half a box is not a box.
+    expect(box(',"width":0.5').box).toBeUndefined();
+    // Pixels, not fractions.
+    expect(box(',"x":120,"y":40,"width":600').box).toBeUndefined();
+    // A width of zero would be an overlay nobody can see.
+    expect(box(',"x":0.1,"y":0.1,"width":0').box).toBeUndefined();
+    // Strings where numbers belong.
+    expect(box(',"x":"left","y":"top","width":"half"').box).toBeUndefined();
+    // Every one of those kept the placement itself.
+    expect(box("").file).toBe("a.mp4");
+  });
+
+  it("carries the cue, the group and the sound", () => {
+    const reply =
+      '{"placements":[{"file":"ig.png","quote":"on Instagram and TikTok",' +
+      '"cue":"Instagram","group":"icons","sound":"pop"}]}';
+    const placement = parsePlacements(reply)[0];
+    expect(placement.cue).toBe("Instagram");
+    expect(placement.group).toBe("icons");
+    expect(placement.sound).toBe("pop");
+  });
+
+  it("treats blank strings as absent", () => {
+    const reply =
+      '{"placements":[{"file":"a.mp4","quote":"hello","cue":"  ","group":""}]}';
+    const placement = parsePlacements(reply)[0];
+    expect(placement.cue).toBeUndefined();
+    expect(placement.group).toBeUndefined();
+  });
+});
+
+describe("parseSounds", () => {
+  const known = ["pop", "whoosh", "cha-ching"];
+
+  it("reads the shape the model was asked for", () => {
+    const reply =
+      '{"sounds":[{"effect":"pop","quote":"on Instagram","cue":"Instagram"},' +
+      '{"effect":"whoosh","every":"cut"}]}';
+    expect(parseSounds(reply, known)).toEqual([
+      {
+        effect: "pop",
+        quote: "on Instagram",
+        cue: "Instagram",
+        every: undefined,
+        at: undefined,
+      },
+      {
+        effect: "whoosh",
+        quote: undefined,
+        cue: undefined,
+        every: "cut",
+        at: undefined,
+      },
+    ]);
+  });
+
+  // The client checks the user really typed that time before acting on it, but
+  // a negative or nonsense one never needs to get that far.
+  it("carries a usable time and drops an unusable one", () => {
+    expect(
+      parseSounds('{"sounds":[{"effect":"pop","at":12}]}', known)[0].at,
+    ).toBe(12);
+    expect(
+      parseSounds('{"sounds":[{"effect":"pop","at":-3}]}', known)[0].at,
+    ).toBeUndefined();
+    expect(
+      parseSounds('{"sounds":[{"effect":"pop","at":"0:12"}]}', known)[0].at,
+    ).toBeUndefined();
+  });
+
+  // The library is fixed and travels with the question, so an effect the client
+  // does not have is dropped here rather than sent back for it to puzzle over.
+  it("drops an effect the client does not have", () => {
+    const reply = '{"sounds":[{"effect":"airhorn"},{"effect":"pop"}]}';
+    expect(parseSounds(reply, known).map((s) => s.effect)).toEqual(["pop"]);
+  });
+
+  it("asks for no sounds when the client sent no library", () => {
+    expect(parseSounds('{"sounds":[{"effect":"pop"}]}', [])).toEqual([]);
+  });
+
+  it("returns nothing for a reply with no sounds in it", () => {
+    expect(parseSounds('{"placements":[]}', known)).toEqual([]);
+    expect(parseSounds('{"sounds":"later"}', known)).toEqual([]);
+    expect(parseSounds("not json at all", known)).toEqual([]);
+  });
+
+  it("keeps the good entries and drops the malformed ones", () => {
+    const reply =
+      '{"sounds":[null,7,{"quote":"x"},{"effect":"  "},{"effect":"pop"}]}';
+    expect(parseSounds(reply, known).map((s) => s.effect)).toEqual(["pop"]);
+  });
 });
 
 describe("keptWords", () => {
@@ -198,5 +312,46 @@ describe("keptWords", () => {
 
   it("keeps nothing when the bottom track is empty", () => {
     expect(keptWords(spoken, [])).toEqual([]);
+  });
+});
+
+describe("parseTexts", () => {
+  it("reads the shape the model was asked for", () => {
+    const reply =
+      '{"texts":[{"text":"44%","quote":"44% of users came from search",' +
+      '"cue":"44%","until":"next"}]}';
+    expect(parseTexts(reply)).toEqual([
+      {
+        text: "44%",
+        quote: "44% of users came from search",
+        cue: "44%",
+        until: "next",
+      },
+    ]);
+  });
+
+  it("keeps every mention as its own entry", () => {
+    const reply =
+      '{"texts":[{"text":"44%","quote":"44% of users"},' +
+      '{"text":"12%","quote":"and 12% from socials"}]}';
+    expect(parseTexts(reply).map((t) => t.text)).toEqual(["44%", "12%"]);
+  });
+
+  it("drops an entry with nothing to say or nowhere to say it", () => {
+    expect(parseTexts('{"texts":[{"quote":"44% of users"}]}')).toEqual([]);
+    expect(parseTexts('{"texts":[{"text":"44%"}]}')).toEqual([]);
+    expect(parseTexts('{"texts":[{"text":"  ","quote":"44%"}]}')).toEqual([]);
+  });
+
+  it("is unbothered by a reply that carries no text at all", () => {
+    expect(parseTexts('{"placements":[]}')).toEqual([]);
+    expect(parseTexts("not json")).toEqual([]);
+  });
+
+  it("holds an until quoted from later in the transcript", () => {
+    const reply =
+      '{"texts":[{"text":"44%","quote":"44% of users",' +
+      '"until":"that is the whole funnel"}]}';
+    expect(parseTexts(reply)[0].until).toBe("that is the whole funnel");
   });
 });

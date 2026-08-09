@@ -6,6 +6,10 @@ import type {
   IdeaTypeValue,
   TranscriptStatus,
 } from "@/lib/db/schema";
+import {
+  invalidateClientResource,
+  STUDIO_RESOURCE_KEYS,
+} from "@/lib/client-resource-cache";
 
 /** One row as both surfaces list it. Same shape for the bank and the library;
  * only the default filter and the visible columns differ. */
@@ -121,6 +125,9 @@ export async function bulkItems(
       body: JSON.stringify({ ids, ...action }),
     }),
   );
+  invalidateClientResource(STUDIO_RESOURCE_KEYS.ideas);
+  invalidateClientResource(STUDIO_RESOURCE_KEYS.content);
+  invalidateClientResource(STUDIO_RESOURCE_KEYS.posterContent);
   return data.updated;
 }
 

@@ -3,13 +3,25 @@ import SwiftUI
 struct PlayerPanel: View {
     @ObservedObject var session: EditorSession
     let layoutMode: EditorLayoutMode
+    /// How far the stage is pulled back from the panel. View state on purpose:
+    /// it is how you are looking at the project, not part of it, and it has no
+    /// business being saved or exported. See `PreviewZoom`.
+    @State private var zoom: PreviewZoom = .fit
+    /// Where a pinch started, so its factor is applied once rather than
+    /// compounding on every step of the gesture.
+    @State private var zoomAtPinchStart: PreviewZoom?
 
     var body: some View {
         VStack(spacing: 0) {
             GeometryReader { proxy in
                 let stageSize = fittedStageSize(in: proxy.size)
                 ZStack {
+                    // The room around the stage, and the way out of everything
+                    // on it. Under the stage, so only a click that misses the
+                    // picture entirely lands here.
                     Color.previewWorkspaceBackground
+                        .contentShape(Rectangle())
+                        .onTapGesture { session.clearCanvasSelection() }
                     ZStack {
                         Color.black
                         if session.project.clips.isEmpty {
@@ -26,32 +38,119 @@ struct PlayerPanel: View {
                                     .padding(.horizontal, 24)
                             }
                         } else {
-                            NativePlayerView(player: session.player)
-                                .id(ObjectIdentifier(session.player))
+                            FramedPlayerView(
+                                session: session,
+                                drag: session.canvasDrag,
+                                renderedFraming: session.renderedFraming,
+                                stageSize: stageSize
+                            )
                         }
 
-                        TextLayerCanvasOverlay(session: session)
-                        CaptionCanvasOverlay(session: session)
-                            .allowsHitTesting(false)
+                        // Clicking the picture itself picks the picture up, so
+                        // the framing handles are where the thing they frame
+                        // is. It sits under every item, so a click on a
+                        // caption, a text layer or an overlay still reaches the
+                        // item and only a click that misses them all lands here.
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture { session.selectVideoFrame() }
+
+                        // Under everything that is drawn over the video, since
+                        // it is the video.
+                        VideoFrameCanvasLayer(session: session, drag: session.canvasDrag)
+
+                        // Under the text and the captions, the way they stack
+                        // in the export.
+                        OverlayCanvasLayer(
+                            session: session,
+                            clock: session.playbackClock,
+                            cursor: session.playbackCursor
+                        )
+                        TextLayerCanvasOverlay(session: session, cursor: session.playbackCursor)
+                        // Captions are draggable on the canvas, so this layer
+                        // has to take clicks. Only the card itself is hittable;
+                        // the rest of the layer stays transparent to the player.
+                        CaptionCanvasOverlay(session: session, cursor: session.playbackCursor)
                     }
                     .frame(width: stageSize.width, height: stageSize.height)
+                    // What every drag on the canvas is measured against. It has
+                    // to be something that stands still: see
+                    // CanvasCoordinateSpace.
+                    .coordinateSpace(name: CanvasCoordinateSpace.stage)
                     .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-                    .shadow(color: .black.opacity(0.52), radius: 16, y: 6)
+                    // Outside the clip on purpose: the box follows the picture,
+                    // and the picture is often zoomed past the frame. See
+                    // VideoFrameHandleOverlay.
+                    .overlay {
+                        if session.isVideoFrameSelected {
+                            VideoFrameHandleOverlay(
+                                session: session,
+                                drag: session.canvasDrag,
+                                stageSize: stageSize
+                            )
+                        }
+                    }
+                    // Over everything on the canvas: when the footage cannot be
+                    // read, why that is beats anything drawn on top of it.
+                    .overlay {
+                        OfflineMediaBanner(
+                            session: session,
+                            availability: session.mediaAvailability
+                        )
+                    }
+                    // Over the clip, so the bar is never cut in half by the
+                    // edge of the stage it belongs to.
+                    .overlay(alignment: .bottom) {
+                        if session.isVideoFrameSelected {
+                            VideoFrameControlBar(session: session, drag: session.canvasDrag)
+                                .transition(.opacity.combined(with: .offset(y: 6)))
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.16), value: session.isVideoFrameSelected)
+                    // The shadow is cast by a plain rectangle behind the stage,
+                    // not by the stage itself. Shadowing the stage made Core
+                    // Animation work out the alpha of the video, the captions
+                    // and the text layers on every frame of a window resize.
+                    .background {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(Color.black)
+                            .shadow(color: .black.opacity(0.52), radius: 16, y: 6)
+                    }
                     .overlay(
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .stroke(Color.previewCanvasBorder, lineWidth: 1)
                     )
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Handles hanging outside the stage are the point, handles
+                // hanging over the timeline are not. Zooming out is what brings
+                // a far-flung corner back inside this.
+                .clipped()
+                .gesture(pinchToZoom)
                 .padding(layoutMode == .standard ? 18 : 10)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            TransportBar(session: session)
+            TransportBar(session: session, zoom: $zoom)
         }
         .background(Color.previewWorkspaceBackground)
     }
 
+    /// A trackpad pinch, which is what anyone coming from another editor tries
+    /// first. Measured from where the pinch began rather than from the last
+    /// step, so the same spread always lands on the same zoom.
+    private var pinchToZoom: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                let start = zoomAtPinchStart ?? zoom
+                if zoomAtPinchStart == nil { zoomAtPinchStart = start }
+                zoom = start.scaled(by: value.magnification)
+            }
+            .onEnded { _ in zoomAtPinchStart = nil }
+    }
+
+    /// The stage: as large as the panel allows, then pulled back by however far
+    /// the preview has been zoomed out.
     private func fittedStageSize(in container: CGSize) -> CGSize {
         let inset: CGFloat = layoutMode == .standard ? 36 : 20
         let available = CGSize(
@@ -59,50 +158,21 @@ struct PlayerPanel: View {
             height: max(1, container.height - inset)
         )
         let aspect = CGFloat(session.project.resolvedAspectRatio)
-        if available.width / available.height > aspect {
-            return CGSize(width: available.height * aspect, height: available.height)
-        }
-        return CGSize(width: available.width, height: available.width / aspect)
-    }
-}
-
-private struct CaptionCanvasOverlay: View {
-    @ObservedObject var session: EditorSession
-
-    var body: some View {
-        GeometryReader { proxy in
-            if let cue = session.project.captionCue(at: session.currentTime) {
-                Text(cue.text)
-                    .font(
-                        .system(
-                            size: max(13, proxy.size.height * 0.046),
-                            weight: .heavy,
-                            design: .rounded
-                        )
-                    )
-                    .foregroundStyle(Color.white)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.72)
-                    .padding(.horizontal, max(9, proxy.size.width * 0.026))
-                    .padding(.vertical, max(6, proxy.size.height * 0.010))
-                    .background {
-                        RoundedRectangle(cornerRadius: max(6, proxy.size.height * 0.012), style: .continuous)
-                            .fill(Color.black.opacity(0.86))
-                    }
-                    .shadow(color: .black.opacity(0.34), radius: 4, y: 2)
-                    .frame(maxWidth: proxy.size.width * 0.88)
-                    .position(x: proxy.size.width * 0.5, y: proxy.size.height * 0.82)
-                    .transition(.opacity)
-            }
-        }
-        .clipped()
-        .animation(.easeOut(duration: 0.08), value: session.project.captionCue(at: session.currentTime)?.text)
+        let fitted = available.width / available.height > aspect
+            ? CGSize(width: available.height * aspect, height: available.height)
+            : CGSize(width: available.width, height: available.width / aspect)
+        return CGSize(
+            width: fitted.width * zoom.scale,
+            height: fitted.height * zoom.scale
+        )
     }
 }
 
 private struct TextLayerCanvasOverlay: View {
     @ObservedObject var session: EditorSession
+    /// Watches which layers are on screen rather than the clock: see
+    /// OverlayCanvasLayer for why.
+    @ObservedObject var cursor: PlaybackCursor
     @State private var alignmentGuides = TextCanvasAlignmentGuides()
 
     var body: some View {
@@ -114,7 +184,8 @@ private struct TextLayerCanvasOverlay: View {
                         layer: layer,
                         canvasSize: proxy.size,
                         selected: session.selectedTextLayerID == layer.id,
-                        alignmentGuides: $alignmentGuides
+                        alignmentGuides: $alignmentGuides,
+                        drag: session.canvasDrag
                     )
                 }
 
@@ -126,7 +197,8 @@ private struct TextLayerCanvasOverlay: View {
     }
 
     private var visibleLayers: [ProjectTextLayer] {
-        (session.project.textLayers ?? []).filter { $0.isVisible(at: session.currentTime) }
+        let onScreen = cursor.canvasItems.textLayerIDs
+        return (session.project.textLayers ?? []).filter { onScreen.contains($0.id) }
     }
 }
 
@@ -136,27 +208,62 @@ private struct TextLayerCanvasItem: View {
     let canvasSize: CGSize
     let selected: Bool
     @Binding var alignmentGuides: TextCanvasAlignmentGuides
-    @State private var dragOrigin: CGPoint?
-    @State private var resizeOrigin: ProjectTextLayer?
-    @State private var interactionLayer: ProjectTextLayer?
+    /// Held on the session: see CanvasDragState. These views are rebuilt while
+    /// a gesture runs, and a drag kept here went with them.
+    @ObservedObject var drag: CanvasDragState
+
+    /// The saved position places the layer; the drag is carried as a transform
+    /// on top. See CaptionCanvasOverlay for why.
+    private var dragOffset: CGSize {
+        guard let draft = drag.textDraft(for: layer.id) else { return .zero }
+        return CGSize(
+            width: (draft.x - layer.x) * canvasSize.width,
+            height: (draft.y - layer.y) * canvasSize.height
+        )
+    }
 
     var body: some View {
-        let displayed = interactionLayer ?? layer
-        Text(displayed.text.isEmpty ? "Text" : displayed.text)
-            .font(previewFont(for: displayed))
-            .fontWeight(.bold)
-            .multilineTextAlignment(.center)
-            .foregroundStyle(foregroundColor(for: displayed))
-            .lineLimit(5)
-            .minimumScaleFactor(0.45)
-            .padding(.horizontal, displayed.style == .plain ? 4 : 14)
-            .padding(.vertical, displayed.style == .plain ? 4 : 10)
+        let displayed = drag.textDraft(for: layer.id) ?? layer
+        AppearanceText(
+            text: displayed.text.isEmpty ? "Text" : displayed.text,
+            appearance: displayed.appearance,
+            fontSize: max(11, canvasSize.height * displayed.fontScale),
+            lineLimit: 5,
+            minimumScaleFactor: 0.45
+        )
             .frame(width: max(60, canvasSize.width * displayed.width))
-            .background(background(for: displayed))
-            .shadow(
-                color: displayed.style == .plain ? .black.opacity(0.72) : .clear,
-                radius: displayed.style == .plain ? 2 : 0,
-                y: 1
+            // The body takes its own clicks and drags before any decoration
+            // goes on top. A hit shape applied after the corner handles cut
+            // them off: they hang outside the box on purpose, so the shape
+            // clipped exactly the part you reach for, and resizing stopped
+            // working on every item at once.
+            .contentShape(Rectangle())
+            .onTapGesture { session.selectTextLayer(layer.id) }
+            .gesture(
+                // Measured against the stage, never against the layer: the
+                // layer is moving with the drag. See CanvasCoordinateSpace.
+                DragGesture(minimumDistance: 1, coordinateSpace: .named(CanvasCoordinateSpace.stage))
+                    .onChanged { value in
+                        if drag.textOrigin?.id != layer.id {
+                            drag.beginText(layer)
+                            // See OverlayCanvasItem: re-selecting mid-drag
+                            // rebuilds the view.
+                            if !selected { session.selectTextLayer(layer.id) }
+                        }
+                        guard let origin = drag.textOrigin else { return }
+                        let result = TextCanvasGeometry.moved(
+                            layer: origin,
+                            origin: CGPoint(x: origin.x, y: origin.y),
+                            translation: value.translation,
+                            canvasSize: canvasSize
+                        )
+                        alignmentGuides = result.guides
+                        drag.updateText(result.layer)
+                    }
+                    .onEnded { _ in
+                        if let finished = drag.endText() { session.updateTextLayer(finished) }
+                        alignmentGuides = TextCanvasAlignmentGuides()
+                    }
             )
             .overlay {
                 if selected {
@@ -177,39 +284,16 @@ private struct TextLayerCanvasItem: View {
             .overlay(alignment: .bottomTrailing) {
                 if selected { resizeHandle(.bottomTrailing) }
             }
+            // Placed last: `position` hands back a view the size of the whole
+            // canvas, so anything after it would claim the lot.
             .position(
-                x: canvasSize.width * displayed.x,
-                y: canvasSize.height * displayed.y
+                x: canvasSize.width * layer.x,
+                y: canvasSize.height * layer.y
             )
-            .contentShape(Rectangle())
-            .onTapGesture { session.selectTextLayer(layer.id) }
-            .gesture(
-                DragGesture(minimumDistance: 1)
-                    .onChanged { value in
-                        if dragOrigin == nil {
-                            dragOrigin = CGPoint(x: layer.x, y: layer.y)
-                            session.selectTextLayer(layer.id)
-                        }
-                        guard let dragOrigin else { return }
-                        let result = TextCanvasGeometry.moved(
-                            layer: layer,
-                            origin: dragOrigin,
-                            translation: value.translation,
-                            canvasSize: canvasSize
-                        )
-                        alignmentGuides = result.guides
-                        interactionLayer = result.layer
-                    }
-                    .onEnded { _ in
-                        if let interactionLayer { session.updateTextLayer(interactionLayer) }
-                        interactionLayer = nil
-                        dragOrigin = nil
-                        alignmentGuides = TextCanvasAlignmentGuides()
-                    }
-            )
+            .offset(dragOffset)
     }
 
-    private func resizeHandle(_ corner: TextResizeCorner) -> some View {
+    private func resizeHandle(_ corner: CanvasResizeCorner) -> some View {
         RoundedRectangle(cornerRadius: 1.5, style: .continuous)
             .fill(Color.white)
             .overlay {
@@ -218,99 +302,38 @@ private struct TextLayerCanvasItem: View {
             }
             .frame(width: 9, height: 9)
             .offset(x: corner.xOffset, y: corner.yOffset)
-            .contentShape(Rectangle().inset(by: -7))
+            .contentShape(Rectangle().inset(by: -8))
+            .cursor(.crosshair)
             .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
+                // The handle travels with the corner it is resizing, so it can
+                // no more measure against itself than the layer can.
+                DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.stage))
                     .onChanged { value in
-                        if resizeOrigin == nil {
-                            resizeOrigin = layer
-                            session.selectTextLayer(layer.id)
+                        if drag.textOrigin?.id != layer.id {
+                            drag.beginText(layer)
+                            if !selected { session.selectTextLayer(layer.id) }
                         }
-                        guard let resizeOrigin else { return }
+                        guard let origin = drag.textOrigin else { return }
                         let updated = TextCanvasGeometry.resized(
-                            layer: resizeOrigin,
+                            layer: origin,
                             translation: value.translation,
                             corner: corner,
                             canvasSize: canvasSize
                         )
-                        interactionLayer = updated
+                        drag.updateText(updated)
                     }
                     .onEnded { _ in
-                        if let interactionLayer { session.updateTextLayer(interactionLayer) }
-                        interactionLayer = nil
-                        resizeOrigin = nil
+                        if let finished = drag.endText() { session.updateTextLayer(finished) }
                     }
             )
             .accessibilityLabel("Resize text from \(corner.accessibilityName)")
     }
 
-    private func previewFont(for layer: ProjectTextLayer) -> Font {
-        let size = max(11, canvasSize.height * layer.fontScale)
-        switch layer.font {
-        case .modern:
-            return .system(size: size, weight: .bold, design: .default)
-        case .rounded:
-            return .system(size: size, weight: .bold, design: .rounded)
-        case .editorial:
-            return .system(size: size, weight: .bold, design: .serif)
-        }
-    }
-
-    private func foregroundColor(for layer: ProjectTextLayer) -> Color {
-        layer.style == .whiteCard ? .black : .white
-    }
-
-    @ViewBuilder
-    private func background(for layer: ProjectTextLayer) -> some View {
-        switch layer.style {
-        case .plain:
-            Color.clear
-        case .whiteCard:
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.white.opacity(0.96))
-        case .blackCard:
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(Color.black.opacity(0.9))
-        }
-    }
 }
 
 struct TextCanvasAlignmentGuides: Equatable {
     var verticalCenter = false
     var horizontalCenter = false
-}
-
-enum TextResizeCorner: Sendable {
-    case topLeading
-    case topTrailing
-    case bottomLeading
-    case bottomTrailing
-
-    var xSign: Double {
-        switch self {
-        case .topLeading, .bottomLeading: -1
-        case .topTrailing, .bottomTrailing: 1
-        }
-    }
-
-    var ySign: Double {
-        switch self {
-        case .topLeading, .topTrailing: -1
-        case .bottomLeading, .bottomTrailing: 1
-        }
-    }
-
-    var xOffset: CGFloat { CGFloat(xSign) * 7 }
-    var yOffset: CGFloat { CGFloat(ySign) * 7 }
-
-    var accessibilityName: String {
-        switch self {
-        case .topLeading: "top left"
-        case .topTrailing: "top right"
-        case .bottomLeading: "bottom left"
-        case .bottomTrailing: "bottom right"
-        }
-    }
 }
 
 enum TextCanvasGeometry {
@@ -345,7 +368,7 @@ enum TextCanvasGeometry {
     static func resized(
         layer: ProjectTextLayer,
         translation: CGSize,
-        corner: TextResizeCorner,
+        corner: CanvasResizeCorner,
         canvasSize: CGSize
     ) -> ProjectTextLayer {
         var updated = layer
@@ -416,6 +439,7 @@ private struct DashedGuideLine: View {
 
 private struct TransportBar: View {
     @ObservedObject var session: EditorSession
+    @Binding var zoom: PreviewZoom
 
     var body: some View {
         HStack(spacing: 10) {
@@ -426,16 +450,16 @@ private struct TransportBar: View {
                     .font(.system(size: 13, weight: .bold))
                     .frame(width: 30, height: 30)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.studioPlain)
             .background(Color.studioFaintFill)
             .clipShape(RoundedRectangle(cornerRadius: 7))
             .disabled(session.project.clips.isEmpty)
 
-            Text("\(formatTimePrecise(session.currentTime)) / \(formatTimePrecise(session.duration))")
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .foregroundStyle(.secondary)
+            PlaybackTimeReadout(clock: session.playbackClock, duration: session.duration)
 
             Spacer()
+
+            PreviewZoomControl(zoom: $zoom)
 
             Menu {
                 ForEach(ProjectAspectRatio.allCases) { aspectRatio in

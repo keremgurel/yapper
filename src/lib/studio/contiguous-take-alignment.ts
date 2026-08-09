@@ -53,7 +53,13 @@ function bestContiguousCandidate(
       const laterNearMatch =
         best != null &&
         target.length >= 6 &&
-        start > best.start &&
+        // A separate attempt further into the recording, not the same attempt
+        // read from one word later. Windows sliding across the winning take
+        // score one error worse per word skipped, which is inside the slack
+        // below, so without this the last take lost its own first word: the
+        // speaker's final "Stop trying to memorize..." was cut down to
+        // "trying to memorize...".
+        start >= best.end &&
         errors <= minimumErrors + 1 &&
         errors / target.length <= 0.16;
       // Retakes resolve to the speaker's final attempt. The final correction

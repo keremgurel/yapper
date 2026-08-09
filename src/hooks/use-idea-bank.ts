@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { patchContent } from "@/lib/content/client";
 import {
   createIdea,
@@ -14,6 +14,8 @@ import { deriveIdeaType } from "@/lib/ideas/derive-type";
 import { expansionToPatch, sourceToPatch } from "@/lib/ideas/expansion-patch";
 import { parseCapture } from "@/lib/ideas/parse-capture";
 import { useIdeaMigration } from "@/hooks/use-idea-migration";
+import { useClientResource } from "@/hooks/use-client-resource";
+import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
 
 /**
  * The Idea bank lifecycle, server-backed.
@@ -26,41 +28,43 @@ import { useIdeaMigration } from "@/hooks/use-idea-migration";
  * nothing about the brain passes through here.
  */
 export function useIdeaBank() {
-  const [items, setItems] = useState<ItemSummary[] | null>(null);
   const [working, setWorking] = useState<Set<string>>(new Set());
   const [analysisErrors, setAnalysisErrors] = useState<Set<string>>(new Set());
   // Hand over any ideas still in this browser BEFORE listing, so a returning
   // creator never sees an empty bank where their ideas used to be.
   const { migrating } = useIdeaMigration(true);
+  const {
+    data: items,
+    refresh: refreshResource,
+    mutate,
+  } = useClientResource(STUDIO_RESOURCE_KEYS.ideas, !migrating, listIdeas);
+  const setItems = useCallback(
+    (
+      update:
+        | ItemSummary[]
+        | ((current: ItemSummary[] | null) => ItemSummary[]),
+    ) => mutate(update),
+    [mutate],
+  );
 
-  useEffect(() => {
-    if (migrating) return;
-    let active = true;
-    listIdeas().then(
-      (rows) => {
-        if (active) setItems(rows);
-      },
-      () => {
-        if (active) setItems([]);
-      },
-    );
-    return () => {
-      active = false;
-    };
-  }, [migrating]);
+  const mark = useCallback(
+    (id: string, busy: boolean) =>
+      setWorking((prev) => {
+        const next = new Set(prev);
+        if (busy) next.add(id);
+        else next.delete(id);
+        return next;
+      }),
+    [],
+  );
 
-  const mark = (id: string, busy: boolean) =>
-    setWorking((prev) => {
-      const next = new Set(prev);
-      if (busy) next.add(id);
-      else next.delete(id);
-      return next;
-    });
-
-  const patchRow = (id: string, fields: Partial<ItemSummary>) =>
-    setItems((prev) =>
-      prev ? prev.map((r) => (r.id === id ? { ...r, ...fields } : r)) : prev,
-    );
+  const patchRow = useCallback(
+    (id: string, fields: Partial<ItemSummary>) =>
+      setItems((prev) =>
+        prev ? prev.map((r) => (r.id === id ? { ...r, ...fields } : r)) : [],
+      ),
+    [setItems],
+  );
 
   /**
    * Resolve the reference, then expand. Each step persists as soon as it
@@ -111,7 +115,7 @@ export function useIdeaBank() {
         mark(id, false);
       }
     },
-    [],
+    [mark, patchRow],
   );
 
   const capture = useCallback(
@@ -129,7 +133,7 @@ export function useIdeaBank() {
       setItems((prev) => (prev ? [item, ...prev] : [item]));
       void enrich(item.id, input.url ?? null, note);
     },
-    [enrich],
+    [enrich, setItems],
   );
 
   const retry = useCallback(
@@ -148,18 +152,18 @@ export function useIdeaBank() {
       if (imported > 0) setItems(await listIdeas());
       return imported;
     },
-    [],
+    [setItems],
   );
 
   /** Re-read the bank. The shared bulk actions call this once their mutation
    * lands, so a partially-applied edit can never linger on screen. */
   const refresh = useCallback(async () => {
     try {
-      setItems(await listIdeas());
+      await refreshResource(true);
     } catch {
       // Keep what is on screen; the next action will try again.
     }
-  }, []);
+  }, [refreshResource]);
 
   return {
     bank: items ?? [],
