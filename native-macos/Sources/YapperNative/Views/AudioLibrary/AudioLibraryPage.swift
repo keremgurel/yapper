@@ -3,11 +3,10 @@ import UniformTypeIdentifiers
 
 /// The Audio tab: every sound the creator can reach, in one place.
 ///
-/// Two halves, and only one of them is theirs. Yours is what they imported,
-/// shelved by what it is for. Built in is the catalogue that ships with Yapper.
-/// Both are here because "where are my sounds" has to have one answer: a
-/// library that listed only the imports would leave the whoosh used on every
-/// video somewhere else entirely.
+/// A rail of shelves, a search field, and a grid that uses the width the window
+/// actually has. Both halves of the library are in it: what the creator
+/// imported and what ships with Yapper, because "where do I find my sounds" has
+/// to have one answer.
 ///
 /// Desktop only, and it could not be anything else. The saved half is a folder
 /// of real files on this Mac that the timeline opens directly, which is why
@@ -20,17 +19,115 @@ struct AudioLibraryPage: View {
     let onOpenEditor: () -> Void
 
     @StateObject private var preview = SavedAudioPreview()
+    @State private var section: AudioLibrarySection = .all
+    @State private var search = ""
     @State private var isDropTargeted = false
+
+    private var entries: [AudioEntry] {
+        AudioEntry.all(saved: store.items)
+    }
 
     private var canAddToProject: Bool {
         !session.project.clips.isEmpty
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                header
+        VStack(spacing: 0) {
+            header
+            Divider()
+            HStack(alignment: .top, spacing: 0) {
+                ScrollView {
+                    AudioLibraryRail(entries: entries, search: search, section: $section)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 14)
+                }
+                .frame(width: 210)
+                .background(Color.panelBackground)
 
+                Divider()
+                content
+            }
+        }
+        .background(Color.editorBackground)
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(Color.yapperOrange, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
+                    .padding(10)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
+            Task {
+                let added = await store.add(await DroppedFiles.urls(from: providers))
+                // Land the creator on what they just dropped rather than on
+                // whichever shelf they happened to be looking at.
+                if let first = added.first { section = .savedKind(first.kind) }
+            }
+            return true
+        }
+        // A preview is a sound playing out of a page that is no longer on
+        // screen. Leaving the tab has to end it.
+        .onDisappear(perform: preview.stop)
+    }
+
+    private var header: some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Audio library")
+                    .font(.studioSectionTitle)
+                Text("Everything you can drop on a timeline: yours and Yapper's.")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 12)
+
+            searchField
+
+            Button(action: importAudio) {
+                Label("Import audio", systemImage: "square.and.arrow.down")
+            }
+            .buttonStyle(EditorSecondaryButtonStyle())
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 14)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.secondary)
+            TextField("Search sounds", text: $search)
+                .textFieldStyle(.plain)
+                .font(.studioBody)
+                .frame(width: 150)
+            if !search.isEmpty {
+                Button {
+                    search = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.studioPlain)
+                .clickableCursor()
+            }
+        }
+        .padding(.horizontal, 9)
+        .frame(height: 28)
+        .background {
+            Capsule().fill(Color.studioInputBackground)
+                .overlay { Capsule().strokeBorder(Color.studioLine, lineWidth: 1) }
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let shown = AudioLibraryFilter.entries(entries, section: section, search: search)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
                 if let message = store.errorMessage {
                     banner(message)
                 }
@@ -44,107 +141,51 @@ struct AudioLibraryPage: View {
                     }
                 }
 
-                yours
-                Divider()
-                builtIn
-            }
-            .frame(maxWidth: 720, alignment: .leading)
-            .padding(.horizontal, 28)
-            .padding(.vertical, 22)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .background(Color.editorBackground)
-        .overlay {
-            if isDropTargeted {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.yapperOrange, style: StrokeStyle(lineWidth: 2, dash: [7, 5]))
-                    .padding(10)
-                    .allowsHitTesting(false)
-            }
-        }
-        .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
-            Task { await store.add(await DroppedFiles.urls(from: providers)) }
-            return true
-        }
-        // A preview is a sound playing out of a page that is no longer on
-        // screen. Leaving the tab has to end it.
-        .onDisappear(perform: preview.stop)
-    }
-
-    private var header: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Audio library")
-                    .font(.studioSectionTitle)
-                Text("Everything you can drop on a timeline: yours and Yapper's.")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 8)
-            Button(action: importAudio) {
-                Label("Import audio", systemImage: "square.and.arrow.down")
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-        }
-    }
-
-    /// The creator's own files. Empty until they import something, and saying
-    /// so plainly rather than hiding, because the shelves are how they learn
-    /// this is a place their own music goes.
-    @ViewBuilder
-    private var yours: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("YOURS")
-                .font(.studioCaptionStrong)
-                .foregroundStyle(.secondary)
-
-            if store.items.isEmpty {
-                AudioLibraryEmptyState(onImport: importAudio)
-            } else {
-                ForEach(SavedAudioKind.allCases) { kind in
-                    AudioLibraryShelf(
-                        kind: kind,
-                        items: store.items(of: kind),
+                if shown.isEmpty {
+                    empty
+                } else {
+                    AudioLibraryGrid(
+                        entries: shown,
                         missingIDs: store.missingIDs,
                         playingID: preview.playingID,
                         canAddToProject: canAddToProject,
-                        onToggle: { preview.toggle($0, at: store.url(for: $0)) },
+                        onToggle: toggle,
                         onAdd: add,
-                        onRename: { store.rename($0.id, to: $1) },
-                        onSetKind: { store.setKind($1, for: $0.id) },
+                        onRename: { entry, name in
+                            guard let item = entry.saved else { return }
+                            store.rename(item.id, to: name)
+                        },
+                        onSetKind: { entry, kind in
+                            guard let item = entry.saved else { return }
+                            store.setKind(kind, for: item.id)
+                        },
                         onDelete: delete
                     )
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
-    /// The shipped catalogue, on the same page and shelved the way it always
-    /// has been in the editor.
-    private var builtIn: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("BUILT IN")
-                    .font(.studioCaptionStrong)
-                    .foregroundStyle(.secondary)
-                Text("Levelled to one loudness, so any two of them sit together.")
-                    .font(.studioCaption)
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach(SoundEffectCategory.allCases) { category in
-                let effects = SoundEffectDescriptor.library(in: category)
-                if !effects.isEmpty {
-                    BundledAudioShelf(
-                        category: category,
-                        effects: effects,
-                        playingID: preview.playingID,
-                        canAddToProject: canAddToProject,
-                        onToggle: { preview.toggle($0) },
-                        onAdd: addEffect
-                    )
+    /// Nothing to show, which means one of two things, and they need different
+    /// answers: a search that found nothing, or a shelf of the creator's that
+    /// is waiting for its first import.
+    @ViewBuilder
+    private var empty: some View {
+        if !search.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Nothing here matches “\(search)”.")
+                    .font(.studioBody)
+                Button("Search everything") {
+                    section = .all
                 }
+                .buttonStyle(EditorGhostButtonStyle())
             }
+            .padding(.vertical, 28)
+        } else {
+            AudioLibraryEmptyState(onImport: importAudio)
         }
     }
 
@@ -170,26 +211,32 @@ struct AudioLibraryPage: View {
         ImportPanels.openLibraryAudio(into: store)
     }
 
-    private func add(_ item: SavedAudio) {
+    private func toggle(_ entry: AudioEntry) {
+        switch entry.source {
+        case let .saved(item):
+            preview.toggle(item, at: store.url(for: item))
+        case let .bundled(effect):
+            preview.toggle(effect)
+        }
+    }
+
+    private func add(_ entry: AudioEntry) {
         guard canAddToProject else { return }
         preview.stop()
         Task {
-            await session.addSavedAudio(item, at: store.url(for: item))
+            switch entry.source {
+            case let .saved(item):
+                await session.addSavedAudio(item, at: store.url(for: item))
+            case let .bundled(effect):
+                await session.addSoundEffect(effect)
+            }
             onOpenEditor()
         }
     }
 
-    private func addEffect(_ effect: SoundEffectDescriptor) {
-        guard canAddToProject else { return }
-        preview.stop()
-        Task {
-            await session.addSoundEffect(effect)
-            onOpenEditor()
-        }
-    }
-
-    private func delete(_ item: SavedAudio) {
-        if preview.isPlaying(item) { preview.stop() }
+    private func delete(_ entry: AudioEntry) {
+        guard let item = entry.saved else { return }
+        if preview.playingID == entry.id { preview.stop() }
         store.remove(item.id)
     }
 }
