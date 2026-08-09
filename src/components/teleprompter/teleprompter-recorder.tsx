@@ -14,6 +14,7 @@ import {
   Type,
 } from "lucide-react";
 import { useMediaStream } from "@/hooks/use-media-stream";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import { useMediaDevices } from "@/hooks/use-media-devices";
 import { useAudioLevel } from "@/hooks/use-audio-level";
 import {
@@ -79,6 +80,10 @@ export default function TeleprompterRecorder({
     getStream,
   } = useMediaStream();
   const { cameras, mics } = useMediaDevices(cameraOn || micOn);
+  // Held while the camera is live, not only while recording: the creator reads
+  // the prompter to find their place before hitting record, and a phone that
+  // dims during that is just as broken.
+  useWakeLock(cameraOn || isRecording);
   const audioLevel = useAudioLevel(getStream, micOn, audioDeviceId);
   const { settings: tp, update: updateTp } = useTeleprompterSettings();
   const scroll = useTeleprompterScroll(tp.fontScale);
