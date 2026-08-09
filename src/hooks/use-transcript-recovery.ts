@@ -77,9 +77,12 @@ export function useTranscriptRecovery(
         body: await file.arrayBuffer(),
       });
       if (!res.ok) return "transcribe_failed";
-      const data = (await res.json()) as { words?: { word?: string }[] };
+      // `/api/transcribe` returns RawWord, whose field is `text`. Reading
+      // `word` here yielded undefined for every entry, so an attached file
+      // always transcribed to nothing and reported an empty take.
+      const data = (await res.json()) as { words?: { text?: string }[] };
       const text = (data.words ?? [])
-        .map((w) => w.word ?? "")
+        .map((w) => w.text ?? "")
         .join(" ")
         .replace(/\s+/g, " ")
         .trim();

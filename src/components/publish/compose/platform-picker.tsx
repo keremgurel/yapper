@@ -28,7 +28,7 @@ export default function PlatformPicker({
           }`}
         >
           <span className="block">{PLATFORMS[p].label}</span>
-          <span className="mt-1 block text-[10px] leading-4 font-medium opacity-70">
+          <span className="mt-1 block text-[11px] leading-4 font-medium opacity-70">
             {PLATFORMS[p].postMeaning}
           </span>
         </button>

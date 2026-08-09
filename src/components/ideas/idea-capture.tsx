@@ -11,6 +11,7 @@ import {
   durationLabel,
   useRecordingTimer,
 } from "@/components/ideas/use-recording-timer";
+import { useDictationCaret } from "@/components/ideas/use-dictation-caret";
 import { useVoiceCapture } from "@/hooks/use-voice-capture";
 import VoiceWaveform from "@/components/common/voice-waveform";
 
@@ -26,6 +27,7 @@ export default function IdeaCapture({
 }) {
   const draft = useCaptureDraft();
   const ref = useRef<HTMLTextAreaElement>(null);
+  const dictation = useDictationCaret(ref, draft.text, draft.updateText);
   const {
     phase,
     error,
@@ -63,21 +65,29 @@ export default function IdeaCapture({
     return () => window.removeEventListener("keydown", onEscape);
   }, [recording, cancel]);
 
-  const finishRecording = async (): Promise<string> => {
-    if (!recording) return "";
+  /** Resolves the composer's full text once the take has been spliced in, or
+   * null if nothing was heard. */
+  const finishRecording = async (): Promise<string | null> => {
+    if (!recording) return null;
     const heard = await stop();
-    draft.append(heard);
-    ref.current?.focus();
-    return heard;
+    return dictation.insert(heard);
   };
 
   const submit = async () => {
-    let words = draft.text.trim();
+    let words = draft.text;
     if (recording) {
-      const heard = await finishRecording();
-      words = [words, heard].filter(Boolean).join(" ");
+      // Sending mid-take means "include what I just said". A failed or silent
+      // take returns null, and the draft is deliberately left alone: dropping
+      // the creator's words and clearing the composer anyway is the one
+      // outcome that loses work.
+      const inserted = await finishRecording();
+      if (inserted === null) return;
+      words = inserted;
     }
-    const capture = [words, draft.link].filter(Boolean).join("\n").trim();
+    const capture = [words.trim(), draft.link]
+      .filter(Boolean)
+      .join("\n")
+      .trim();
     if (!capture) return;
     onCapture(capture);
     draft.clear();
@@ -128,7 +138,14 @@ export default function IdeaCapture({
         ref={ref}
         value={draft.text}
         autoFocus
-        onChange={(event) => draft.updateText(event.target.value)}
+        onChange={(event) => {
+          draft.updateText(event.target.value);
+          dictation.remember();
+        }}
+        onSelect={dictation.remember}
+        onKeyUp={dictation.remember}
+        onClick={dictation.remember}
+        onBlur={dictation.remember}
         onKeyDown={(event) => {
           if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
             event.preventDefault();

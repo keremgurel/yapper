@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
-import { crossPostToYouTube, generateCaption } from "@/lib/publish/client";
+import { crossPostToYouTube, generateCaptions } from "@/lib/publish/client";
+import { renderCaption } from "@/lib/publish/caption";
 import { Button } from "@/components/ui/button";
 import { useCrossPost } from "@/hooks/use-cross-post";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
@@ -36,12 +37,19 @@ export default function YouTubeCompose({
     setGenerating(true);
     setGenError(null);
     try {
-      const caption = await generateCaption({
+      const [caption] = await generateCaptions({
         title: title.trim() || item.title,
+        platforms: ["youtube"],
+        // Without it the server writes from the title alone instead of from
+        // what is actually said in the video.
+        contentItemId: item.contentItemId,
         matchStyle,
       });
+      if (!caption) throw new Error("failed");
       setTitle(caption.title || title);
-      setDescription(caption.description);
+      // renderCaption, not the raw body, so the description carries its
+      // hashtags exactly the way the rest of the app posts them.
+      setDescription(renderCaption(caption));
     } catch (e) {
       setGenError(
         e instanceof Error && e.message === "no_provider"

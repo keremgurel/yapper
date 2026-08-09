@@ -27,10 +27,16 @@ export function combinedCaption(draft: PostDraft): string | undefined {
 }
 
 /**
- * Map one shared draft onto a platform's content fields. YouTube is the only
- * platform with a real title + description; Instagram folds both into a single
- * caption; TikTok takes neither, since it lands in the user's drafts to caption
- * in the app. Omitting an empty field keeps us from sending "" downstream.
+ * Map a draft onto a platform's content fields.
+ *
+ * The draft is now per platform rather than shared: folding one YouTube title
+ * and description into an Instagram caption is what made every cross-post read
+ * like a cross-post. `combinedCaption` survives for the platforms that have no
+ * title field and for callers still holding a single draft.
+ *
+ * TikTok still takes neither, because it publishes through the inbox endpoint
+ * and lands in the creator's drafts to be captioned in the app. Omitting an
+ * empty field keeps us from sending "" downstream.
  */
 export function platformContent(
   platform: PublishPlatform,

@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Check, ExternalLink, Loader2, Send, Video } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -10,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
 import { useConnections } from "@/hooks/use-connections";
 import type { PublishPlatform } from "@/lib/db/schema";
 import {
@@ -20,34 +18,37 @@ import {
 } from "@/lib/publish/client";
 import { connectedInOrder } from "@/lib/publish/connected-order";
 import { crossPostTargets } from "@/lib/publish/cross-post-plan";
-import { PLATFORMS } from "@/lib/publish/platforms";
+import { runCrossPost } from "@/lib/publish/run-cross-post";
+import PreparedCaptions from "@/components/publish/captions/prepared-captions";
 import {
-  runCrossPost,
-  type CrossPostOutcome,
-} from "@/lib/publish/run-cross-post";
+  hasPreparedCaptions,
+  outgoingCopy,
+  type CopyOverride,
+} from "@/components/publish/outgoing-copy";
+import DestinationGrid from "@/components/publish/sheet/destination-grid";
+import NoConnections from "@/components/publish/sheet/no-connections";
+import OutcomeList, {
+  type SourceOutcome,
+} from "@/components/publish/sheet/outcome-list";
+import PublishButton from "@/components/publish/sheet/publish-button";
+import SingleCopyFields from "@/components/publish/sheet/single-copy-fields";
+import SourceList from "@/components/publish/sheet/source-list";
 import type { CrossPostTarget } from "./compose/types";
 
 export type { CrossPostTarget } from "./compose/types";
 
-interface SourceOutcome extends CrossPostOutcome {
-  sourceId: string;
-  sourceTitle: string;
-}
-
 function postSource(
   source: CrossPostTarget,
   platform: PublishPlatform,
-  singleTitle: string,
-  singleCaption: string,
+  override: CopyOverride | null,
 ) {
-  const title = singleTitle.trim() || source.initialTitle || source.title;
-  const caption = singleCaption.trim() || source.initialDescription;
+  const { title, body } = outgoingCopy(source, platform, override);
   if (platform === "youtube") {
     return crossPostToYouTube({
       submissionId: source.submissionId,
       mediaKey: source.mediaKey,
       title,
-      description: caption || undefined,
+      description: body || undefined,
       contentItemId: source.contentItemId,
       thumbnailKey: source.thumbnailKey,
       privacyStatus: "public",
@@ -57,11 +58,13 @@ function postSource(
     return crossPostToInstagram({
       submissionId: source.submissionId,
       mediaKey: source.mediaKey,
-      caption: caption || title || undefined,
+      caption: body || title || undefined,
       contentItemId: source.contentItemId,
       thumbnailKey: source.thumbnailKey,
     });
   }
+  // TikTok's inbox endpoint takes no caption at all: the video lands in the
+  // creator's drafts and they paste the caption in the app.
   return crossPostToTikTok({
     submissionId: source.submissionId,
     mediaKey: source.mediaKey,
@@ -71,26 +74,37 @@ function postSource(
 
 /**
  * One explicit publish surface for one or many videos and one or many
- * destinations. Nothing is selected automatically. A single click fans every
- * chosen source out to every chosen platform while isolating failures, so an
- * Instagram error never blocks a public YouTube upload.
+ * destinations. A single click fans every chosen source out to every chosen
+ * platform while isolating failures, so an Instagram error never blocks a
+ * public YouTube upload.
+ *
+ * When the Poster has already written a caption per platform, this surface
+ * shows them rather than offering a fourth box to edit: the constraints that
+ * shape a caption live where it is written.
  */
 export default function CrossPostSheet({
   item,
   items,
+  initialPlatforms,
   onClose,
 }: {
   item?: CrossPostTarget;
   items?: CrossPostTarget[];
+  /** Destinations chosen upstream, pre-ticked here so the creator does not
+   * pick them twice. Still visible and still removable. */
+  initialPlatforms?: PublishPlatform[];
   onClose: () => void;
 }) {
   const sources = useMemo(
     () => (items?.length ? items : item ? [item] : []),
     [item, items],
   );
+  const prepared = hasPreparedCaptions(sources);
   const single = sources.length === 1 ? sources[0] : null;
   const [open, setOpen] = useState(true);
-  const [selected, setSelected] = useState<Set<PublishPlatform>>(new Set());
+  const [selected, setSelected] = useState<Set<PublishPlatform>>(
+    () => new Set(initialPlatforms ?? []),
+  );
   const [title, setTitle] = useState(
     single?.initialTitle ?? single?.title ?? "",
   );
@@ -107,7 +121,13 @@ export default function CrossPostSheet({
   const connected = connectedInOrder(
     connections?.map((connection) => connection.platform) ?? [],
   );
-  const targets = crossPostTargets([...selected]);
+  // A platform chosen upstream but never connected has no button here, so it
+  // must not be posted to either.
+  const chosen = connected.filter((platform) => selected.has(platform));
+  const targets = crossPostTargets(chosen);
+  // Only the surfaces that prepared nothing get an editable copy field, and
+  // only for a single video: a batch has no one title.
+  const editable = !prepared && single ? { title, caption } : null;
 
   const togglePlatform = (platform: PublishPlatform) => {
     setSelected((current) => {
@@ -128,12 +148,7 @@ export default function CrossPostSheet({
     // parallel and independently through runCrossPost.
     for (const source of sources) {
       const sourceResults = await runCrossPost(targets, (platform) =>
-        postSource(
-          source,
-          platform,
-          single ? title : (source.initialTitle ?? source.title),
-          single ? caption : (source.initialDescription ?? ""),
-        ),
+        postSource(source, platform, editable),
       );
       finished.push(
         ...sourceResults.map((result) => ({
@@ -165,213 +180,71 @@ export default function CrossPostSheet({
         </SheetHeader>
 
         <div className="flex flex-col gap-5 p-4">
-          {sources.length > 1 ? (
-            <div className="border-border bg-muted/25 rounded-2xl border p-3">
-              <p className="text-foreground/60 mb-2 text-[11px] font-black tracking-wide uppercase">
-                Videos
-              </p>
-              <div className="space-y-1.5">
-                {sources.map((source) => (
-                  <div
-                    key={source.id}
-                    className="text-foreground flex items-center gap-2 text-sm font-bold"
-                  >
-                    <Video className="h-3.5 w-3.5 text-[color:var(--sg-accent)]" />
-                    <span className="truncate">{source.title}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : single ? (
-            <div className="space-y-3">
-              <label className="block">
-                <span className="text-foreground/65 mb-1.5 block text-xs font-black">
-                  Title
-                </span>
-                <input
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  maxLength={100}
-                  disabled={posting}
-                  className="border-border bg-card text-foreground w-full rounded-xl border px-3 py-2.5 text-sm font-bold outline-none focus:border-[color:var(--sg-accent)]"
-                />
-              </label>
-              <label className="block">
-                <span className="text-foreground/65 mb-1.5 block text-xs font-black">
-                  Caption / description
-                </span>
-                <textarea
-                  value={caption}
-                  onChange={(event) => setCaption(event.target.value)}
-                  rows={4}
-                  maxLength={2200}
-                  disabled={posting}
-                  placeholder="Used for Instagram and YouTube."
-                  className="border-border bg-card text-foreground placeholder:text-muted-foreground w-full resize-none rounded-xl border px-3 py-2.5 text-sm leading-6 outline-none focus:border-[color:var(--sg-accent)]"
-                />
-              </label>
-            </div>
-          ) : null}
+          {prepared ? (
+            <PreparedCaptions sources={sources} />
+          ) : editable ? (
+            <SingleCopyFields
+              title={title}
+              caption={caption}
+              disabled={posting}
+              onTitle={setTitle}
+              onCaption={setCaption}
+            />
+          ) : (
+            <SourceList sources={sources} />
+          )}
 
           {connections === null ? (
             <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
               Loading your connections…
             </div>
           ) : connected.length === 0 ? (
-            <div className="text-muted-foreground py-6 text-sm">
-              <p className="text-foreground font-bold">
-                No platforms connected
-              </p>
-              <p className="mt-1">
-                Connect YouTube, TikTok, or Instagram first.
-              </p>
-              <Link
-                href="/studio/connections"
-                className="mt-3 inline-block font-bold text-[color:var(--sg-accent)] hover:opacity-80"
-              >
-                Go to Connections
-              </Link>
-            </div>
+            <NoConnections />
           ) : (
             <>
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <p className="text-foreground/65 text-[11px] font-black tracking-wide uppercase">
-                    Destinations
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSelected(
-                        selected.size === connected.length
-                          ? new Set()
-                          : new Set(connected),
-                      )
-                    }
-                    className="text-xs font-black text-[color:var(--sg-accent)]"
-                  >
-                    {selected.size === connected.length
-                      ? "Clear"
-                      : "Select all"}
-                  </button>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {connected.map((platform) => {
-                    const active = selected.has(platform);
-                    return (
-                      <button
-                        key={platform}
-                        type="button"
-                        onClick={() => togglePlatform(platform)}
-                        disabled={posting}
-                        className={`relative rounded-md border px-3 py-3 text-left transition ${
-                          active
-                            ? "border-[color:var(--sg-accent)] bg-[color:color-mix(in_srgb,var(--sg-accent)_10%,transparent)]"
-                            : "border-border hover:border-foreground/25"
-                        }`}
-                      >
-                        <span className="text-foreground block text-xs font-black">
-                          {PLATFORMS[platform].label}
-                        </span>
-                        <span className="text-muted-foreground mt-1 block text-[10px] leading-4">
-                          {PLATFORMS[platform].postMeaning}
-                        </span>
-                        <span
-                          className={`absolute top-2 right-2 grid h-5 w-5 place-items-center rounded-md border ${
-                            active
-                              ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)] text-black"
-                              : "border-border text-transparent"
-                          }`}
-                        >
-                          <Check className="h-3 w-3" />
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              <DestinationGrid
+                connected={connected}
+                selected={selected}
+                disabled={posting}
+                onToggle={togglePlatform}
+                onToggleAll={() =>
+                  setSelected(
+                    chosen.length === connected.length
+                      ? new Set()
+                      : new Set(connected),
+                  )
+                }
+              />
 
-              {outcomes.length > 0 && (
-                <div className="border-border rounded-2xl border">
-                  {outcomes.map((outcome) => (
-                    <div
-                      key={`${outcome.sourceId}-${outcome.platform}`}
-                      className="border-border flex items-center justify-between gap-3 border-b px-3 py-2.5 last:border-b-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-foreground truncate text-xs font-bold">
-                          {outcome.sourceTitle}
-                        </p>
-                        <p className="text-muted-foreground text-[11px]">
-                          {PLATFORMS[outcome.platform].label}
-                        </p>
-                      </div>
-                      {outcome.url ? (
-                        <a
-                          href={outcome.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-xs font-black text-[color:var(--sg-accent)]"
-                        >
-                          Posted <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        <span
-                          className={`text-xs font-black ${
-                            outcome.status === "failed"
-                              ? "text-red-500"
-                              : "text-[color:var(--sg-green-500)]"
-                          }`}
-                        >
-                          {outcome.status === "draft"
-                            ? "Sent to drafts"
-                            : outcome.status === "failed"
-                              ? "Failed"
-                              : "Posted"}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <OutcomeList outcomes={outcomes} />
 
               {failures.length > 0 && done && (
-                <p className="text-xs font-bold text-red-500">
+                <p className="text-xs font-semibold text-[color:var(--sg-pink-500)]">
                   {failures.length} destination
                   {failures.length === 1 ? "" : "s"} failed. Successful posts
                   were not rolled back.
                 </p>
               )}
 
-              <Button
-                type="button"
-                onClick={() => void publish()}
+              <PublishButton
+                videos={sources.length}
+                platforms={chosen.length}
+                postedSoFar={outcomes.length}
+                posting={posting}
+                done={done}
                 disabled={
                   posting ||
                   sources.length === 0 ||
-                  selected.size === 0 ||
-                  (single ? !title.trim() : false)
+                  chosen.length === 0 ||
+                  (editable ? !title.trim() : false)
                 }
-                style={{ background: "var(--sg-accent-gradient)" }}
-                className="text-white"
-              >
-                {posting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : done ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                {posting
-                  ? `Publishing ${outcomes.length + 1} of ${sources.length * targets.length}…`
-                  : done
-                    ? "Publish again"
-                    : `Publish ${sources.length} video${sources.length === 1 ? "" : "s"} to ${selected.size} platform${selected.size === 1 ? "" : "s"}`}
-              </Button>
-              <p className="text-muted-foreground text-center text-[11px]">
-                YouTube posts are requested as public. TikTok currently lands in
-                drafts until its direct-post approval is active.
+                onPublish={() => void publish()}
+              />
+              <p className="text-muted-foreground text-center text-xs">
+                YouTube posts are requested as public. TikTok lands in your
+                drafts and takes no caption over its API, so paste it in the
+                app.
               </p>
             </>
           )}

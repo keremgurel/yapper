@@ -1,3 +1,4 @@
+import type { PlatformCaption } from "@/lib/publish/caption-prompt";
 import type { PublishPlatform } from "@/lib/db/schema";
 
 /** A platform connection as the UI sees it (never any token). */
@@ -140,11 +141,16 @@ export interface CrossPostResult {
   draft?: boolean;
 }
 
-export async function generateCaption(input: {
+/** Draft one caption per platform. `contentItemId` is what lets the server
+ * read the video's own script, which is the difference between a caption about
+ * this video and a caption about its title. */
+export async function generateCaptions(input: {
   title: string;
+  platforms: PublishPlatform[];
+  contentItemId?: string;
   context?: string;
   matchStyle: boolean;
-}): Promise<{ title: string; description: string }> {
+}): Promise<PlatformCaption[]> {
   const res = await fetch("/api/publish/caption", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -153,10 +159,28 @@ export async function generateCaption(input: {
   if (!res.ok) {
     throw new Error(res.status === 501 ? "no_provider" : "failed");
   }
-  const data = (await res.json()) as {
-    caption: { title: string; description: string };
+  const data = (await res.json()) as { captions: PlatformCaption[] };
+  return data.captions;
+}
+
+/** Compatibility for the existing single-platform composers while they move
+ * to the multi-platform draft UI. */
+export async function generateCaption(input: {
+  title: string;
+  context?: string;
+  matchStyle: boolean;
+  contentItemId?: string;
+}): Promise<{ title: string; description: string }> {
+  const [caption] = await generateCaptions({
+    ...input,
+    platforms: ["youtube"],
+  });
+  if (!caption) throw new Error("caption_empty");
+  const hashtags = caption.hashtags.map((tag) => `#${tag}`).join(" ");
+  return {
+    title: caption.title,
+    description: [caption.body, hashtags].filter(Boolean).join("\n\n"),
   };
-  return data.caption;
 }
 
 export async function crossPostToYouTube(

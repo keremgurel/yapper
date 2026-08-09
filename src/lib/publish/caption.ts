@@ -1,62 +1,31 @@
-export interface CaptionInput {
-  title: string;
-  context?: string;
-  /** Past captions to mimic — present ONLY when the user opts into matching
-   * their usual format. Empty/absent means write a clean caption from scratch. */
-  styleSamples?: string[];
-}
+import {
+  buildCaptionMessages,
+  parseCaptions,
+  type CaptionInput,
+  type PlatformCaption,
+} from "@/lib/publish/caption-prompt";
+import { captionSpec } from "@/lib/publish/caption-specs";
+import type { PublishPlatform } from "@/lib/db/schema";
 
-export interface GeneratedCaption {
-  title: string;
-  description: string;
-}
-
-const SYSTEM =
-  "You write YouTube Shorts titles and descriptions for a creator. Return " +
-  "STRICT JSON only:\n" +
-  '{"title": "<= 100 chars, punchy>", "description": "<2-4 lines, natural, ' +
-  'may include a few relevant hashtags>"}\n' +
-  "Write in the creator's voice, concrete not corporate. No prose outside JSON.";
+export type { CaptionInput, PlatformCaption };
 
 /**
- * Pull the caption object out of a model response and clamp it to what the
- * platform accepts. Exported so its guards can be unit-tested against untrusted
- * LLM output: titles over 100 chars and descriptions over 5000 are rejected by
- * the YouTube API, and an all-empty result must throw so a paid caller isn't
- * billed for nothing.
+ * One caption per platform, written together so they stay the same idea in
+ * three voices rather than three ideas.
  */
-export function parseCaption(content: string): GeneratedCaption {
-  const s = content.indexOf("{");
-  const e = content.lastIndexOf("}");
-  if (s < 0 || e <= s) throw new Error("caption_unparseable");
-  const raw = JSON.parse(content.slice(s, e + 1)) as Partial<GeneratedCaption>;
-  const title = typeof raw.title === "string" ? raw.title.slice(0, 100) : "";
-  const description =
-    typeof raw.description === "string" ? raw.description.slice(0, 5000) : "";
-  // Empty result must throw so a paid caller isn't charged for nothing.
-  if (!title && !description) throw new Error("caption_empty");
-  return { title, description };
-}
-
-/** Generate a YouTube title + description via the Surplus gateway. When
- * `styleSamples` are supplied, mimic their format; otherwise write fresh. */
-export async function generateCaption(
+export async function generateCaptions(
   input: CaptionInput,
-): Promise<GeneratedCaption> {
+): Promise<PlatformCaption[]> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   const model = process.env.GENERATE_MODEL ?? "gpt-5.4-mini";
 
-  const samples = (input.styleSamples ?? []).filter(Boolean).slice(0, 12);
-  const parts = [
-    `Video title: ${input.title}`,
-    input.context ? `About: ${input.context}` : "",
-    samples.length
-      ? `Match the format and voice of the creator's recent titles:\n- ${samples.join("\n- ")}`
-      : "",
-  ].filter(Boolean);
+  const platforms: PublishPlatform[] = input.platforms.length
+    ? input.platforms
+    : ["youtube"];
+  const { system, user } = buildCaptionMessages({ ...input, platforms });
 
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
@@ -66,18 +35,35 @@ export async function generateCaption(
     },
     body: JSON.stringify({
       model,
-      temperature: 0.7,
+      temperature: 0.8,
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: SYSTEM },
-        {
-          role: "user",
-          content: `${parts.join("\n\n")}\n\nWrite the caption.`,
-        },
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
     }),
   });
   if (!res.ok) throw new Error(`caption_${res.status}`);
   const json = await res.json();
-  return parseCaption(json?.choices?.[0]?.message?.content ?? "{}");
+  return parseCaptions(json?.choices?.[0]?.message?.content ?? "{}", platforms);
+}
+
+/**
+ * The caption as it is actually posted: body then hashtags, with the tags on
+ * their own line so they read as tags rather than as a sentence that trailed
+ * off. Kept out of the model's hands because the platforms differ on where
+ * tags belong and the model is inconsistent about it.
+ */
+export function renderCaption(caption: PlatformCaption): string {
+  const tags = caption.hashtags.map((tag) => `#${tag}`).join(" ");
+  return [caption.body.trim(), tags].filter(Boolean).join("\n\n");
+}
+
+/** Whether this caption fits what the platform will accept once rendered. */
+export function captionFits(caption: PlatformCaption): boolean {
+  const spec = captionSpec(caption.platform);
+  return (
+    caption.title.length <= spec.titleMax &&
+    renderCaption(caption).length <= spec.bodyMax
+  );
 }
