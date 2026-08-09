@@ -31,6 +31,16 @@ export interface PillarContextSource {
   examples: string[];
 }
 
+/** One section of the brain the creator wrote themselves. Prose blocks carry
+ * `body`, collected ones carry `items`; a block can hold both. */
+export interface BrainBlockContextSource {
+  title: string;
+  body: string;
+  items: string[];
+  /** False for a block the creator keeps out of prompts. */
+  inContext: boolean;
+}
+
 /**
  * How much context a given call needs.
  * - `pillars`: classification only (which bucket does this belong to).
@@ -41,12 +51,17 @@ export type ContextTier = "pillars" | "full";
 
 export interface ProjectContextOptions {
   tier?: ContextTier;
+  /** The creator's own sections, in their own order. */
+  blocks?: BrainBlockContextSource[];
   /** Characters, not tokens, since that is what we can actually measure. Set
    * around 4 chars/token; the default is a ~400 token ceiling. */
   maxChars?: number;
 }
 
-const DEFAULT_MAX_CHARS = 1600;
+// Raised from 1600 when the brain gained blocks the creator writes themselves.
+// The fixed fields answer the questions every creator has; the blocks answer
+// the ones only this one has, and they are worth the room.
+const DEFAULT_MAX_CHARS = 2400;
 
 /** Per-field caps, applied before the global ceiling. Pillars get the most
  * headroom because they are the part the model classifies against. */
@@ -64,6 +79,14 @@ const FIELD_CAPS = {
 
 const MAX_PILLARS = 12;
 const MAX_EXAMPLES_PER_PILLAR = 2;
+
+const BLOCK_CAPS = {
+  title: 60,
+  body: 400,
+  item: 120,
+} as const;
+const MAX_BLOCKS = 12;
+const MAX_ITEMS_PER_BLOCK = 8;
 
 /** Collapse whitespace and cap length. Truncation is on a word boundary so the
  * block never ends mid-word, which reads as corrupted to both humans and
@@ -88,6 +111,25 @@ function pillarLine(pillar: PillarContextSource): string {
   if (description) line += `: ${description}`;
   if (examples.length) line += ` (e.g. ${examples.join("; ")})`;
   return line;
+}
+
+/** One brain block, as its heading and what is under it. */
+function blockLines(block: BrainBlockContextSource): string[] {
+  if (!block.inContext) return [];
+  const title = clamp(block.title, BLOCK_CAPS.title);
+  if (!title) return [];
+
+  const body = clamp(block.body ?? "", BLOCK_CAPS.body);
+  const items = (block.items ?? [])
+    .map((item) => clamp(item, BLOCK_CAPS.item))
+    .filter(Boolean)
+    .slice(0, MAX_ITEMS_PER_BLOCK);
+  if (!body && !items.length) return [];
+
+  const lines = [`${title.toUpperCase()}:`];
+  if (body) lines.push(body);
+  lines.push(...items.map((item) => `- ${item}`));
+  return lines;
 }
 
 /**
@@ -126,6 +168,15 @@ export function buildProjectContext(
     .map(pillarLine);
   if (named.length) {
     lines.push("PILLARS:", ...named);
+  }
+
+  // Last, so the global ceiling drops these before it drops who the creator is
+  // talking to. A missing hook list costs less than a missing audience.
+  if (tier === "full") {
+    for (const block of (options.blocks ?? []).slice(0, MAX_BLOCKS)) {
+      const section = blockLines(block);
+      if (section.length) lines.push(...section);
+    }
   }
 
   if (!lines.length) return "";

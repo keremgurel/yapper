@@ -1,3 +1,4 @@
+import { listBrainBlocks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
 import { getActiveProject } from "@/lib/db/projects";
 import {
@@ -74,7 +75,14 @@ export async function getProjectContext(
   }
 
   const pillars = await listPillars(project.id);
-  const block = buildProjectContext(project, pillars, { tier });
+  // Only for the writing tier. Classification asks which pillar something is,
+  // and the creator's own sections cannot answer that question, so the query is
+  // skipped rather than paid for on every classify call.
+  const brainBlocks = tier === "full" ? await listBrainBlocks(project.id) : [];
+  const block = buildProjectContext(project, pillars, {
+    tier,
+    blocks: brainBlocks,
+  });
   const pillarNames = pillars.map((p) => p.name).filter(Boolean);
 
   writeCache(project.id, {

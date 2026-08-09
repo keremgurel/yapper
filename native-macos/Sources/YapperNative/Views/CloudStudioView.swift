@@ -652,6 +652,7 @@ private extension StudioDestination {
     var cloudPath: String? {
         switch self {
         case .home: "/studio/home"
+        case .brain: "/studio/brain"
         case .ideas: "/studio/ideas"
         case .library: "/studio/library"
         case .recorder: "/studio/recorder"

@@ -4,6 +4,7 @@ const isStudioPage = createRouteMatcher(["/studio/(.*)"]);
 const isNativeAuthHandoff = createRouteMatcher(["/studio/native-auth(.*)"]);
 const isProtectedApi = createRouteMatcher([
   "/api/billing(.*)",
+  "/api/brain(.*)",
   "/api/clean-transcript",
   "/api/content(.*)",
   "/api/feedback",
@@ -45,6 +46,7 @@ export const config = {
     // /studio itself is a static marketing page; authenticated tools are below it.
     "/studio/:path+",
     "/api/billing/:path*",
+    "/api/brain/:path*",
     "/api/clean-transcript",
     "/api/content/:path*",
     "/api/feedback",

@@ -1,4 +1,5 @@
 import {
+  Brain,
   CalendarDays,
   BookType,
   Layers,
@@ -23,6 +24,7 @@ const map = {
   send: Send,
   dictionary: BookType,
   zap: Zap,
+  brain: Brain,
 } as const;
 
 export default function StudioNavIcon({
