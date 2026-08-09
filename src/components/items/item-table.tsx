@@ -60,7 +60,7 @@ export default function ItemTable({
 
   return (
     <Card
-      className="gap-0 overflow-hidden py-0"
+      className="gap-0 overflow-x-auto py-0"
       style={{ ["--item-grid" as string]: grid }}
     >
       {/* Header sits on the sunken well (opaque bg-muted per the design

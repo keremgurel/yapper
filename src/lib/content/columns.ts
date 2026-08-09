@@ -35,7 +35,15 @@ const COLUMNS: Record<ColumnKey, ColumnDef> = {
   title: {
     key: "title",
     label: "Title",
-    width: "1fr",
+    /**
+     * Absorbs the slack, but never below what a title needs to be a title.
+     *
+     * A bare `1fr` loses every argument with the fixed tracks beside it, so on
+     * a narrow window the title was the one column that collapsed — down to
+     * "C…", which is not a row anybody can use. `minmax` makes the table
+     * scroll instead, which costs a gesture and keeps the column readable.
+     */
+    width: "minmax(220px, 1fr)",
     sortable: true,
     compact: true,
   },
