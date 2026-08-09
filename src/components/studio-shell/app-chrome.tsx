@@ -8,6 +8,7 @@ import { clearClientResources } from "@/lib/client-resource-cache";
 
 const NATIVE_ROUTES = [
   "/studio/home",
+  "/studio/brain",
   "/studio/ideas",
   "/studio/library",
   "/studio/recorder",

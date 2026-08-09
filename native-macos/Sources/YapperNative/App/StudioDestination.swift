@@ -2,6 +2,7 @@ import Foundation
 
 enum StudioDestination: String, CaseIterable, Identifiable {
     case home
+    case brain
     case ideas
     case library
     case recorder
@@ -27,6 +28,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .home: "Home"
+        case .brain: "Brain"
         case .ideas: "Idea bank"
         case .library: "Content Library"
         case .recorder: "Recorder"
@@ -43,6 +45,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .home: "house"
+        case .brain: "brain"
         case .ideas: "lightbulb"
         case .library: "square.stack.3d.up"
         case .recorder: "video"
@@ -59,7 +62,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     var group: String {
         switch self {
         case .home: ""
-        case .ideas, .library: "Lab"
+        case .brain, .ideas, .library: "Lab"
         case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
         case .dictionary, .connections: "Settings"
@@ -68,7 +71,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
 
     static let groups: [(String, [StudioDestination])] = [
         ("", [.home]),
-        ("Lab", [.ideas, .library]),
+        ("Lab", [.brain, .ideas, .library]),
         ("Studio", [.recorder, .editor, .audio]),
         ("Press", [.poster, .calendar, .automations]),
         ("Settings", [.dictionary, .connections]),
