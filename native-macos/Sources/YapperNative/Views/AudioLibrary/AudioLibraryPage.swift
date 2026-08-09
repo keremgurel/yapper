@@ -1,11 +1,17 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// The Audio tab: everything the creator has saved to reuse.
+/// The Audio tab: every sound the creator can reach, in one place.
 ///
-/// Desktop only, and it could not be anything else. It is a folder of real
-/// files on this Mac that the timeline opens directly, which is why importing
-/// a music bed costs nothing and playing one starts instantly.
+/// Two halves, and only one of them is theirs. Yours is what they imported,
+/// shelved by what it is for. Built in is the catalogue that ships with Yapper.
+/// Both are here because "where are my sounds" has to have one answer: a
+/// library that listed only the imports would leave the whoosh used on every
+/// video somewhere else entirely.
+///
+/// Desktop only, and it could not be anything else. The saved half is a folder
+/// of real files on this Mac that the timeline opens directly, which is why
+/// importing a music bed costs nothing and playing one starts instantly.
 struct AudioLibraryPage: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var store: AudioLibraryStore
@@ -38,24 +44,9 @@ struct AudioLibraryPage: View {
                     }
                 }
 
-                if store.items.isEmpty {
-                    AudioLibraryEmptyState(onImport: importAudio)
-                } else {
-                    ForEach(SavedAudioKind.allCases) { kind in
-                        AudioLibraryShelf(
-                            kind: kind,
-                            items: store.items(of: kind),
-                            missingIDs: store.missingIDs,
-                            playingID: preview.playingID,
-                            canAddToProject: canAddToProject,
-                            onToggle: { preview.toggle($0, at: store.url(for: $0)) },
-                            onAdd: add,
-                            onRename: { store.rename($0.id, to: $1) },
-                            onSetKind: { store.setKind($1, for: $0.id) },
-                            onDelete: delete
-                        )
-                    }
-                }
+                yours
+                Divider()
+                builtIn
             }
             .frame(maxWidth: 720, alignment: .leading)
             .padding(.horizontal, 28)
@@ -85,7 +76,7 @@ struct AudioLibraryPage: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Audio library")
                     .font(.studioSectionTitle)
-                Text("Your music, sound effects and voice, saved on this Mac for every project.")
+                Text("Everything you can drop on a timeline: yours and Yapper's.")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
@@ -94,6 +85,66 @@ struct AudioLibraryPage: View {
                 Label("Import audio", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(EditorSecondaryButtonStyle())
+        }
+    }
+
+    /// The creator's own files. Empty until they import something, and saying
+    /// so plainly rather than hiding, because the shelves are how they learn
+    /// this is a place their own music goes.
+    @ViewBuilder
+    private var yours: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("YOURS")
+                .font(.studioCaptionStrong)
+                .foregroundStyle(.secondary)
+
+            if store.items.isEmpty {
+                AudioLibraryEmptyState(onImport: importAudio)
+            } else {
+                ForEach(SavedAudioKind.allCases) { kind in
+                    AudioLibraryShelf(
+                        kind: kind,
+                        items: store.items(of: kind),
+                        missingIDs: store.missingIDs,
+                        playingID: preview.playingID,
+                        canAddToProject: canAddToProject,
+                        onToggle: { preview.toggle($0, at: store.url(for: $0)) },
+                        onAdd: add,
+                        onRename: { store.rename($0.id, to: $1) },
+                        onSetKind: { store.setKind($1, for: $0.id) },
+                        onDelete: delete
+                    )
+                }
+            }
+        }
+    }
+
+    /// The shipped catalogue, on the same page and shelved the way it always
+    /// has been in the editor.
+    private var builtIn: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("BUILT IN")
+                    .font(.studioCaptionStrong)
+                    .foregroundStyle(.secondary)
+                Text("Levelled to one loudness, so any two of them sit together.")
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(SoundEffectCategory.allCases) { category in
+                let effects = SoundEffectDescriptor.library(in: category)
+                if !effects.isEmpty {
+                    BundledAudioShelf(
+                        category: category,
+                        effects: effects,
+                        playingID: preview.playingID,
+                        canAddToProject: canAddToProject,
+                        onToggle: { preview.toggle($0) },
+                        onAdd: addEffect
+                    )
+                }
+            }
         }
     }
 
@@ -128,8 +179,17 @@ struct AudioLibraryPage: View {
         }
     }
 
+    private func addEffect(_ effect: SoundEffectDescriptor) {
+        guard canAddToProject else { return }
+        preview.stop()
+        Task {
+            await session.addSoundEffect(effect)
+            onOpenEditor()
+        }
+    }
+
     private func delete(_ item: SavedAudio) {
-        if preview.playingID == item.id { preview.stop() }
+        if preview.isPlaying(item) { preview.stop() }
         store.remove(item.id)
     }
 }

@@ -20,7 +20,8 @@ struct AudioLibraryEmptyState: View {
             Text(
                 """
                 Drop music, sound effects or voice here and they stay on the \
-                shelf, ready to drop into this project and every one after it.
+                shelf beside the built-in ones, ready for this project and \
+                every one after it.
                 """
             )
             .font(.studioBody)
@@ -33,6 +34,6 @@ struct AudioLibraryEmptyState: View {
                 .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 54)
+        .padding(.vertical, 34)
     }
 }

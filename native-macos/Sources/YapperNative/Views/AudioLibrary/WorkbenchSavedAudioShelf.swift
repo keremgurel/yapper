@@ -46,7 +46,7 @@ struct WorkbenchSavedAudioShelf: View {
                         SavedAudioCard(
                             item: item,
                             disabled: session.project.clips.isEmpty,
-                            isPlaying: preview.playingID == item.id,
+                            isPlaying: preview.isPlaying(item),
                             preview: {
                                 // One sound at a time across the whole tab: the
                                 // shelf above this one has a preview of its own.
@@ -98,7 +98,7 @@ private struct SavedAudioCard: View {
                 Text(item.name)
                     .font(.studioBodyStrong)
                     .lineLimit(1)
-                Text("\(item.kind.itemTitle) · \(SavedAudioRow.length(item.duration))")
+                Text("\(item.kind.itemTitle) · \(AudioLength.short(item.duration))")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

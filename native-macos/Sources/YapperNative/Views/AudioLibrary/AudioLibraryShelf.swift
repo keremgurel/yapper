@@ -9,7 +9,8 @@ struct AudioLibraryShelf: View {
     let kind: SavedAudioKind
     let items: [SavedAudio]
     let missingIDs: Set<UUID>
-    let playingID: UUID?
+    /// Whatever the page is auditioning, keyed the way the preview keys it.
+    let playingID: String?
     let canAddToProject: Bool
     let onToggle: (SavedAudio) -> Void
     let onAdd: (SavedAudio) -> Void
@@ -45,7 +46,7 @@ struct AudioLibraryShelf: View {
                     ForEach(items) { item in
                         SavedAudioRow(
                             item: item,
-                            isPlaying: playingID == item.id,
+                            isPlaying: playingID == item.id.uuidString,
                             isMissing: missingIDs.contains(item.id),
                             canAddToProject: canAddToProject,
                             onToggle: { onToggle(item) },
