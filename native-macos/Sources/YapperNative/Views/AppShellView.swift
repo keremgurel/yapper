@@ -12,6 +12,12 @@ struct AppShellView: View {
     @AppStorage("editorTallWorkbenchFraction") private var editorTallWorkbenchFraction = 0.0
     @AppStorage("editorLayoutDefaultsVersion") private var editorLayoutDefaultsVersion = 0
     @Namespace private var sidebarSelection
+    /// The web tab the hidden web view stays parked on while a native tab is in
+    /// front. Home used to be the park, so coming back from the editor to the
+    /// Idea Bank meant watching Home for a beat first. Parking where the
+    /// creator was makes the common return instant, because the page is already
+    /// the right one.
+    @State private var parkedWebDestination = StudioDestination.home
 
     private var destination: StudioDestination {
         StudioDestination(rawValue: destinationRaw) ?? .home
@@ -76,7 +82,7 @@ struct AppShellView: View {
                     // editor. Clerk refreshes its short-lived session there,
                     // and native AI uploads read the resulting Yapper cookies.
                     StudioPageView(
-                        destination: destination.isNative ? .home : destination,
+                        destination: destination.isNative ? parkedWebDestination : destination,
                         onNavigate: navigate
                     )
                     .opacity(destination.isNative ? 0 : 1)
@@ -100,6 +106,8 @@ struct AppShellView: View {
         }
         .background(Color.editorBackground)
         .onAppear {
+            // A launch straight into a web tab parks on that tab, not on Home.
+            if !destination.isNative { parkedWebDestination = destination }
             guard editorLayoutDefaultsVersion < 1 else { return }
             editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
             editorTallWorkbenchFraction = 0
@@ -110,6 +118,7 @@ struct AppShellView: View {
     private func navigate(_ next: StudioDestination) {
         guard next != destination else { return }
         if destination == .editor { session.pausePlayback() }
+        if !next.isNative { parkedWebDestination = next }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {

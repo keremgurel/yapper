@@ -12,6 +12,10 @@ import SwiftUI
 struct WorkspaceProfileBadge: View {
     let name: String
     let onNavigate: (StudioDestination) -> Void
+    /// The account actions, which the web session carries out because Clerk
+    /// owns the session. See `StudioWebCommands`.
+    var onManageAccount: () -> Void = { StudioWebCommands.shared.manageAccount() }
+    var onSignOut: () -> Void = { StudioWebCommands.shared.signOut() }
     /// Hidden when the bar is tight, because a truncated workspace name is
     /// worse than none: "Celpip Speak…" reads as an error, and the avatar
     /// already identifies it.
@@ -71,10 +75,21 @@ struct WorkspaceProfileBadge: View {
         .help(name)
         .accessibilityLabel("Workspace: \(name)")
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
-            WorkspaceProfileMenu(name: name) { destination in
-                isOpen = false
-                onNavigate(destination)
-            }
+            WorkspaceProfileMenu(
+                name: name,
+                onNavigate: { destination in
+                    isOpen = false
+                    onNavigate(destination)
+                },
+                onManageAccount: {
+                    isOpen = false
+                    onManageAccount()
+                },
+                onSignOut: {
+                    isOpen = false
+                    onSignOut()
+                }
+            )
         }
     }
 }
@@ -83,6 +98,8 @@ struct WorkspaceProfileBadge: View {
 private struct WorkspaceProfileMenu: View {
     let name: String
     let onNavigate: (StudioDestination) -> Void
+    let onManageAccount: () -> Void
+    let onSignOut: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -93,11 +110,25 @@ private struct WorkspaceProfileMenu: View {
                 .padding(.top, 8)
                 .padding(.bottom, 4)
 
+            row("Brain", "brain", .brain)
             row("Idea Bank", "lightbulb", .ideas)
             row("Content Library", "square.stack.3d.up", .library)
             Divider().padding(.vertical, 4)
             row("Dictionary", "character.book.closed", .dictionary)
             row("Connections", "link", .connections)
+            Divider().padding(.vertical, 4)
+            // The two the badge was missing entirely, which left a creator
+            // signed into the wrong account with nothing to click.
+            WorkspaceMenuRow(
+                title: "Manage account",
+                icon: "person.crop.circle",
+                action: onManageAccount
+            )
+            WorkspaceMenuRow(
+                title: "Sign out",
+                icon: "rectangle.portrait.and.arrow.right",
+                action: onSignOut
+            )
         }
         .padding(.bottom, 6)
         .frame(width: 210)

@@ -1,4 +1,4 @@
-import { PLATFORMS } from "@/lib/publish/platforms";
+import { tiktokScopes } from "@/lib/publish/oauth/tiktok-scopes";
 import {
   expiryFrom,
   type Creds,
@@ -18,7 +18,7 @@ export const tiktok: OAuthProvider = {
     const params = new URLSearchParams({
       client_key: creds.id,
       response_type: "code",
-      scope: PLATFORMS.tiktok.scopes.join(","),
+      scope: tiktokScopes().join(","),
       redirect_uri: redirectUri,
       state,
     });

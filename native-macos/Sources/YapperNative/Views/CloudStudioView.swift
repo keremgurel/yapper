@@ -43,9 +43,25 @@ struct CloudStudioView: View {
     let theme: StudioTheme
     let onNavigate: (StudioDestination) -> Void
 
+    @ObservedObject private var commands = StudioWebCommands.shared
+
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var reloadGeneration = 0
+    /// The route the web view is really showing, which is not the one that was
+    /// asked for until the page says so.
+    @State private var shownPath: String?
+
+    /// Whether what is on screen is what the sidebar says is on screen.
+    ///
+    /// Switching tabs used to reveal the web view the instant the request went
+    /// out, so the old page sat there under the new tab's name until Next
+    /// finished: clicking Brain showed Home for a beat, then Brain. The view
+    /// stays covered until the route it is on matches the one that was asked
+    /// for.
+    private var isShowingDestination: Bool {
+        destination.cloudPath == nil || shownPath == destination.cloudPath
+    }
 
     var body: some View {
         ZStack {
@@ -55,10 +71,18 @@ struct CloudStudioView: View {
                 reloadGeneration: reloadGeneration,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
+                shownPath: $shownPath,
+                signOutGeneration: commands.signOutGeneration,
+                manageAccountGeneration: commands.manageAccountGeneration,
                 onNavigate: onNavigate
             )
+            .opacity(isShowingDestination ? 1 : 0)
 
-            if isLoading {
+            if !isShowingDestination {
+                StudioPageCover(destination: destination)
+            }
+
+            if isLoading, isShowingDestination {
                 ProgressView("Loading " + destination.title + "…")
                     .controlSize(.small)
                     .padding(.horizontal, 16)
@@ -83,6 +107,15 @@ struct CloudStudioView: View {
             }
         }
         .background(Color.editorBackground)
+        .task(id: destination) {
+            guard !isShowingDestination else { return }
+            // A page that never announced itself still has to be shown. Long
+            // enough that a normal route change wins the race, short enough
+            // that a missing signal is a beat rather than a hang.
+            try? await Task.sleep(for: .milliseconds(1200))
+            guard !Task.isCancelled else { return }
+            shownPath = destination.cloudPath
+        }
     }
 }
 
@@ -92,6 +125,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
     let reloadGeneration: Int
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
+    @Binding var shownPath: String?
+    let signOutGeneration: Int
+    let manageAccountGeneration: Int
     let onNavigate: (StudioDestination) -> Void
 
     private static var nativeUserAgentToken: String {
@@ -105,6 +141,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             theme: theme,
             isLoading: $isLoading,
             errorMessage: $errorMessage,
+            shownPath: $shownPath,
             onNavigate: onNavigate
         )
     }
@@ -135,6 +172,8 @@ private struct CloudStudioWebView: NSViewRepresentable {
         context.coordinator.webView = webView
         context.coordinator.startObservingAuthenticationCallbacks()
         context.coordinator.lastReloadGeneration = reloadGeneration
+        context.coordinator.lastSignOutGeneration = signOutGeneration
+        context.coordinator.lastManageAccountGeneration = manageAccountGeneration
         load(destination, in: webView, coordinator: context.coordinator)
         return webView
     }
@@ -142,9 +181,22 @@ private struct CloudStudioWebView: NSViewRepresentable {
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.isLoading = $isLoading
         context.coordinator.errorMessage = $errorMessage
+        context.coordinator.shownPath = $shownPath
         context.coordinator.onNavigate = onNavigate
         context.coordinator.nativeDestination = destination
         context.coordinator.currentTheme = theme
+
+        if context.coordinator.lastSignOutGeneration != signOutGeneration {
+            context.coordinator.lastSignOutGeneration = signOutGeneration
+            context.coordinator.signOut(in: webView)
+            return
+        }
+
+        if context.coordinator.lastManageAccountGeneration != manageAccountGeneration {
+            context.coordinator.lastManageAccountGeneration = manageAccountGeneration
+            webView.evaluateJavaScript("window.__yapperNativeManageAccount?.() === true")
+            return
+        }
 
         if context.coordinator.lastReloadGeneration != reloadGeneration, let url = destination.cloudURL {
             context.coordinator.lastReloadGeneration = reloadGeneration
@@ -320,24 +372,71 @@ private struct CloudStudioWebView: NSViewRepresentable {
         private var authenticationObserverID: UUID?
         var isLoading: Binding<Bool>
         var errorMessage: Binding<String?>
+        var shownPath: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
         var currentTheme: StudioTheme
         var lastAppliedTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
+        var lastSignOutGeneration = 0
+        var lastManageAccountGeneration = 0
         var nativeDestination: StudioDestination?
 
         init(
             theme: StudioTheme,
             isLoading: Binding<Bool>,
             errorMessage: Binding<String?>,
+            shownPath: Binding<String?>,
             onNavigate: @escaping (StudioDestination) -> Void
         ) {
             currentTheme = theme
             lastAppliedTheme = theme
             self.isLoading = isLoading
             self.errorMessage = errorMessage
+            self.shownPath = shownPath
             self.onNavigate = onNavigate
+        }
+
+        /// Asks Clerk to end the session, and forgets it locally if the page
+        /// cannot be asked.
+        ///
+        /// The fallback matters: a creator signed into the wrong account has to
+        /// be able to get out of it without waiting for a deploy. It is weaker,
+        /// because the session stays alive on the server until it expires, but
+        /// it does put the sign-in screen back in front of them.
+        func signOut(in webView: WKWebView) {
+            webView.evaluateJavaScript("window.__yapperNativeSignOut?.() === true") { result, _ in
+                Task { @MainActor in
+                    guard (result as? Bool) != true else { return }
+                    self.forgetSessionLocally(in: webView)
+                }
+            }
+        }
+
+        private func forgetSessionLocally(in webView: WKWebView) {
+            let store = webView.configuration.websiteDataStore
+            let types: Set<String> = [
+                WKWebsiteDataTypeCookies,
+                WKWebsiteDataTypeLocalStorage,
+                WKWebsiteDataTypeSessionStorage,
+            ]
+            store.fetchDataRecords(ofTypes: types) { records in
+                // Only Yapper's own and Clerk's: a creator's YouTube or TikTok
+                // login in this session is not ours to throw away.
+                let ours = records.filter { record in
+                    record.displayName.contains("ypr.app")
+                        || record.displayName.contains("clerk")
+                        || record.displayName.contains("accounts.dev")
+                }
+                store.removeData(ofTypes: types, for: ours) {
+                    Task { @MainActor in
+                        webView.load(URLRequest(
+                            url: URL(string: "https://ypr.app/studio/home?native=swift")!,
+                            cachePolicy: .reloadIgnoringLocalCacheData
+                        ))
+                    }
+                }
+            }
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
@@ -360,6 +459,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
             webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
             isLoading.wrappedValue = false
+            shownPath.wrappedValue = webView.url?.path
             requestedPath = nil
         }
 
@@ -381,6 +481,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
             let nsError = error as NSError
             guard nsError.code != NSURLErrorCancelled else { return }
             isLoading.wrappedValue = false
+            // The error takes the whole surface, so the cover must come off or
+            // it would hide the one thing the creator can act on.
+            shownPath.wrappedValue = webView?.url?.path
             errorMessage.wrappedValue = error.localizedDescription
             requestedPath = nil
         }
@@ -413,6 +516,15 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     Self.isYapperHost(url.host)
                 else { return }
                 openOAuthWindow(url)
+            case "route_changed":
+                guard
+                    let arguments = payload["args"] as? [String: Any],
+                    let path = arguments["path"] as? String
+                else { return }
+                // Sent by the web shell once the App Router has committed the
+                // new route. Until it arrives the previous page is still what
+                // is painted, whatever the sidebar says.
+                shownPath.wrappedValue = path
             case "open_microphone_settings":
                 guard let url = URL(
                     string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone"

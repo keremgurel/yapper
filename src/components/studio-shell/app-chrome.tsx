@@ -1,8 +1,8 @@
 "use client";
 
 import { startTransition, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useClerk, useUser } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
 
 import { clearClientResources } from "@/lib/client-resource-cache";
 
@@ -21,6 +21,13 @@ const NATIVE_ROUTES = [
 
 type NativeNavigationWindow = Window & {
   __yapperNativeNavigate?: (path: string) => boolean;
+  __yapperNativeSignOut?: () => boolean;
+  __yapperNativeManageAccount?: () => boolean;
+  webkit?: {
+    messageHandlers?: {
+      yapperNative?: { postMessage: (body: unknown) => void };
+    };
+  };
 };
 
 let activeCacheOwner: string | null | undefined;
@@ -34,7 +41,25 @@ let activeCacheOwner: string | null | undefined;
  */
 export default function AppChrome() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isLoaded, user } = useUser();
+  const { signOut, openUserProfile } = useClerk();
+
+  // Tell the native shell which route is actually on screen.
+  //
+  // It asks for a tab and then has no way of knowing when React has committed
+  // it, so it used to reveal the web view immediately: clicking Brain showed
+  // the previous page under the Brain heading for a beat. This effect runs
+  // after the new route paints, which is exactly the moment the shell can stop
+  // covering it.
+  useEffect(() => {
+    const bridge = (window as NativeNavigationWindow).webkit?.messageHandlers
+      ?.yapperNative;
+    bridge?.postMessage({
+      command: "route_changed",
+      args: { path: pathname },
+    });
+  }, [pathname]);
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -61,6 +86,19 @@ export default function AppChrome() {
         return true;
       };
 
+      // The account lives with Clerk, in this web session, so the native badge
+      // cannot sign anyone out on its own: clearing cookies would leave the
+      // session alive on the server and log the creator out of nothing. These
+      // hand the two account actions to Clerk, where they belong.
+      nativeWindow.__yapperNativeSignOut = () => {
+        void signOut({ redirectUrl: "/studio/home" });
+        return true;
+      };
+      nativeWindow.__yapperNativeManageAccount = () => {
+        openUserProfile();
+        return true;
+      };
+
       // Warm every lightweight dashboard route after the first page becomes
       // interactive. Next deduplicates these and keeps the route payloads in
       // its client cache, so the native sidebar can switch immediately.
@@ -77,11 +115,13 @@ export default function AppChrome() {
 
       return () => {
         delete nativeWindow.__yapperNativeNavigate;
+        delete nativeWindow.__yapperNativeSignOut;
+        delete nativeWindow.__yapperNativeManageAccount;
         if (idleID !== undefined) idleWindow.cancelIdleCallback?.(idleID);
         if (timeoutID !== undefined) window.clearTimeout(timeoutID);
       };
     }
-  }, [router]);
+  }, [router, signOut, openUserProfile]);
 
   return null;
 }
