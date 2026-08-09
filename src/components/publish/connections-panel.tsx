@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConnections } from "@/hooks/use-connections";
 import { connectUrl } from "@/lib/publish/client";
+import TikTokInsightsRow from "@/components/publish/tiktok-insights-row";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 import { invoke, isNative } from "@/lib/studio/native/bridge";
@@ -99,6 +100,7 @@ export default function ConnectionsPanel() {
                     ? (connected.handle ?? "Connected")
                     : spec.postMeaning}
                 </p>
+                {connected && p === "tiktok" && <TikTokInsightsRow />}
               </div>
               {connected ? (
                 <span className="flex items-center gap-3">

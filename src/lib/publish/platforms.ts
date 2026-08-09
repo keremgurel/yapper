@@ -57,7 +57,21 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
     id: "tiktok",
     label: "TikTok",
     mode: "draft-inbox",
-    scopes: ["user.info.basic", "video.list", "video.upload"],
+    // Four products' worth, and every one of them has to be added to the app
+    // in TikTok's developer portal or the whole authorization is refused with
+    // "scope" and nothing else. Login Kit grants user.info.basic; the Display
+    // API grants user.info.profile, user.info.stats and video.list; the
+    // Content Posting API grants video.upload. `TIKTOK_SCOPES` overrides this
+    // for an app that is only half approved. video.publish (direct posting) is
+    // deliberately absent: asking for a scope nothing uses fails TikTok's own
+    // review, and direct posting needs an audit and a compliance UI first.
+    scopes: [
+      "user.info.basic",
+      "user.info.profile",
+      "user.info.stats",
+      "video.list",
+      "video.upload",
+    ],
     needsPublicUrl: false,
     requiresProfessional: false,
     env: {
