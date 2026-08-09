@@ -109,6 +109,8 @@ export const STUDIO_RESOURCE_KEYS = {
   content: "studio:content",
   posterContent: "studio:content:poster",
   connections: "studio:connections",
+  project: "studio:project",
+  billing: "studio:billing",
   views: (stage: string) => `studio:views:${stage}`,
   channel: (platform: string) => `studio:channel:${platform}`,
 } as const;
