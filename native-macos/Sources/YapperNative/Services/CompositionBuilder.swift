@@ -24,21 +24,123 @@ struct BuiltComposition: @unchecked Sendable {
     }
 }
 
-private struct LoadedSource {
-    // AVAssetTrack does not retain all of the source asset's loading state.
-    // Keep the asset alive for the entire composition build.
-    let asset: AVURLAsset
-    let video: AVAssetTrack
-    let audio: AVAssetTrack?
-    let videoSize: CGSize
-    let videoTransform: CGAffineTransform
-    let audioTimeRange: CMTimeRange?
+/// One clip of the main track, and where it sits in the finished frame.
+///
+/// Carries what it takes to work the transform out again at any moment rather
+/// than only the one it starts at, because a keyed clip is a different picture
+/// every frame: see `FramingKey`.
+private struct MainSegment {
+    let range: CMTimeRange
+    /// The whole clip, for its keys and where it starts in its own media.
+    let clip: TimelineClip
+    let naturalSize: CGSize
+    let preferredTransform: CGAffineTransform
+    let renderSize: CGSize
+
+    var isKeyed: Bool { VideoFramingTrack.isKeyed(clip) }
+
+    /// Where the picture sits at one moment of the finished video.
+    func transform(atTimeline time: Double) -> CGAffineTransform {
+        let intoClip = max(0, time - range.start.seconds)
+        let framing = VideoFramingTrack.framing(
+            of: clip,
+            atSource: clip.sourceStart + intoClip
+        )
+        return CompositionBuilder.fittedTransform(
+            naturalSize: naturalSize,
+            preferredTransform: preferredTransform,
+            renderSize: renderSize,
+            framing: framing
+        )
+    }
+
+    /// What it is framed at throughout, for a clip that does not move.
+    var transform: CGAffineTransform { transform(atTimeline: range.start.seconds) }
+
+    /// The moments this clip's framing changes direction, in timeline seconds.
+    var keyframeTimes: [Double] {
+        VideoFramingTrack.keys(of: clip).map {
+            range.start.seconds + ($0.at - clip.sourceStart)
+        }
+    }
+}
+
+/// A moving cutaway: everything needed to place it at any second of its life.
+private struct OverlayMotion {
+    let overlay: ProjectOverlay
+    let naturalSize: CGSize
+    let preferredTransform: CGAffineTransform
+    let crop: OverlayCrop
+    let renderSize: CGSize
+    let mediaAspect: Double
+
+    /// Where the card sits at one moment of the finished video.
+    func transform(atTimeline time: Double) -> CGAffineTransform {
+        let box = OverlayKeyTrack.box(of: overlay, atTimeline: time)
+        let frame = OverlayFrame.fitted(
+            CGRect(
+                x: box.x * renderSize.width,
+                y: box.y * renderSize.height,
+                width: box.width * renderSize.width,
+                height: box.height * renderSize.height
+            ),
+            mediaAspect: OverlayFrame.shownAspect(mediaAspect: mediaAspect, crop: crop)
+        )
+        return CompositionBuilder.overlayTransform(
+            naturalSize: naturalSize,
+            preferredTransform: preferredTransform,
+            crop: crop,
+            box: frame
+        )
+    }
+
+    /// The moments this cutaway changes direction, in timeline seconds.
+    var keyframeTimes: [Double] {
+        OverlayKeyTrack.keys(of: overlay).map { overlay.timelineStart + $0.at }
+    }
+}
+
+/// A track of video overlays and the transform each of them is drawn with.
+/// Lanes are ordered back to front, so a later lane covers an earlier one.
+private struct CutawayLane {
+    let track: AVMutableCompositionTrack
+    let overlays: [ProjectOverlay]
+    let transforms: [UUID: CGAffineTransform]
+    /// What it takes to work an overlay's transform out again at any moment,
+    /// for the ones that move. Empty for a lane where nothing is keyed, which
+    /// builds exactly the composition it always did.
+    var motion: [UUID: OverlayMotion] = [:]
+    /// The part of each cutaway's own picture that survives, in the source's
+    /// pixels. AVFoundation applies this before the transform, so it is the
+    /// crop expressed where the crop was drawn: on the media itself.
+    let cropRects: [UUID: CGRect]
+}
+
+/// What a composition is being built for, which decides how much of it there is
+/// to build.
+///
+/// The two differ by the Core Animation pass that draws the captions, the text
+/// and the image overlays into the frame. An export needs it. The player cannot
+/// use it at all: `AVPlayerItem` rejects an animation tool, which is why the
+/// canvas draws those things itself, live, in SwiftUI.
+///
+/// So the preview was building a text layer per caption and throwing every one
+/// of them away. On a real project that was 288 of them, and measured in the
+/// running app it was over a second of the wait after every single edit.
+enum CompositionPurpose {
+    case preview
+    case export
+
+    var needsVisualLayers: Bool { self == .export }
 }
 
 enum CompositionBuilder {
     static let timeScale: CMTimeScale = 600
 
-    static func build(project: EditorProject) async throws -> BuiltComposition {
+    static func build(
+        project: EditorProject,
+        for purpose: CompositionPurpose = .export
+    ) async throws -> BuiltComposition {
         guard !project.clips.isEmpty else { throw NativeEditorError.emptyTimeline }
 
         let composition = AVMutableComposition()
@@ -60,7 +162,7 @@ enum CompositionBuilder {
             aspectRatio: project.selectedAspectRatio
         )
         var cursor = CMTime.zero
-        var instructions: [AVMutableVideoCompositionInstruction] = []
+        var segments: [MainSegment] = []
         var maximumFrameRate: Float = 30
         var sourceCache: [UUID: LoadedSource] = [:]
 
@@ -70,23 +172,9 @@ enum CompositionBuilder {
             if let cached = sourceCache[media.id] {
                 source = cached
             } else {
-                let asset = AVURLAsset(url: media.url)
-                let videoTracks = try await asset.loadTracks(withMediaType: .video)
-                guard let sourceVideo = videoTracks.first else {
-                    throw NativeEditorError.noVideoTrack(media.name)
-                }
-                let audio = try await asset.loadTracks(withMediaType: .audio).first
-                let loaded = LoadedSource(
-                    asset: asset,
-                    video: sourceVideo,
-                    audio: audio,
-                    videoSize: try await sourceVideo.load(.naturalSize),
-                    videoTransform: try await sourceVideo.load(.preferredTransform),
-                    audioTimeRange: try await audio?.load(.timeRange)
-                )
-                let frameRate = try await sourceVideo.load(.nominalFrameRate)
-                if frameRate.isFinite, frameRate > 0 {
-                    maximumFrameRate = max(maximumFrameRate, min(120, frameRate))
+                let loaded = try await CompositionSourceCache.shared.source(for: media)
+                if loaded.frameRate.isFinite, loaded.frameRate > 0 {
+                    maximumFrameRate = max(maximumFrameRate, min(120, loaded.frameRate))
                 }
                 sourceCache[media.id] = loaded
                 source = loaded
@@ -98,24 +186,19 @@ enum CompositionBuilder {
             try compositionVideo.insertTimeRange(sourceRange, of: source.video, at: cursor)
 
             let segmentRange = CMTimeRange(start: cursor, duration: sourceRange.duration)
-            let instruction = AVMutableVideoCompositionInstruction()
-            instruction.timeRange = segmentRange
-            let layerInstruction = AVMutableVideoCompositionLayerInstruction(
-                assetTrack: compositionVideo
-            )
-            layerInstruction.setTransform(
-                fittedTransform(
+            segments.append(
+                MainSegment(
+                    range: segmentRange,
+                    clip: clip,
                     naturalSize: source.videoSize,
                     preferredTransform: source.videoTransform,
                     renderSize: renderSize
-                ),
-                at: cursor
+                )
             )
-            instruction.layerInstructions = [layerInstruction]
-            instructions.append(instruction)
 
             if let compositionAudio {
                 if
+                    !project.isVideoTrackMuted,
                     let sourceAudio = source.audio,
                     let availableRange = source.audioTimeRange
                 {
@@ -138,32 +221,69 @@ enum CompositionBuilder {
             cursor = cursor + sourceRange.duration
         }
 
+        let overlays = project.overlays ?? []
+        let cutaways = try await addVideoOverlays(
+            overlays,
+            project: project,
+            to: composition,
+            renderSize: renderSize,
+            compositionDuration: cursor.seconds,
+            sourceCache: &sourceCache
+        )
+        let filter = project.resolvedVisualFilter
+        let instructions = instructions(
+            segments: segments,
+            cutaways: cutaways,
+            mainTrack: compositionVideo,
+            isMainTrackHidden: project.isVideoTrackHidden,
+            filter: filter,
+            duration: cursor.seconds
+        )
+
         let videoComposition = AVMutableVideoComposition()
         videoComposition.renderSize = renderSize
         videoComposition.frameDuration = CMTime(
             value: 1,
             timescale: CMTimeScale(maximumFrameRate.rounded())
         )
+        // A graded project is composited by hand, because a colour pass is not
+        // something layer instructions can express. An ungraded one stays on
+        // AVFoundation's own compositor.
+        if !filter.isNeutral {
+            videoComposition.customVideoCompositorClass = StudioVideoCompositor.self
+        }
         videoComposition.instructions = instructions
 
+        // The preview renders at the export's size on purpose. Rendering it
+        // smaller looks like an obvious saving and is not: the source decodes at
+        // full size whichever frame it lands in, so a smaller frame only adds a
+        // resample. Measured on 4K footage, pulling frames through a correctly
+        // scaled 1080p preview ran at 130 fps against 185 fps at full size.
         let playbackVideoComposition = AVMutableVideoComposition()
         playbackVideoComposition.renderSize = videoComposition.renderSize
         playbackVideoComposition.frameDuration = videoComposition.frameDuration
+        if !filter.isNeutral {
+            playbackVideoComposition.customVideoCompositorClass = StudioVideoCompositor.self
+        }
         playbackVideoComposition.instructions = instructions
-        applyVisualLayers(
-            project.overlays ?? [],
-            textLayers: project.textLayers ?? [],
-            captions: project.captionCues,
-            project: project,
-            renderSize: renderSize,
-            duration: cursor.seconds,
-            to: videoComposition
-        )
+        if purpose.needsVisualLayers {
+            applyVisualLayers(
+                overlays,
+                textLayers: project.textLayers ?? [],
+                captions: project.captionCues,
+                project: project,
+                renderSize: renderSize,
+                duration: cursor.seconds,
+                to: videoComposition
+            )
+        }
 
         let audioMix = try await addAudioLayers(
             project.audioLayers ?? [],
             to: composition,
-            compositionDuration: cursor
+            compositionDuration: cursor,
+            mainTrack: compositionAudio,
+            mainVolume: project.resolvedVideoTrackVolume
         )
 
         return BuiltComposition(
@@ -175,13 +295,271 @@ enum CompositionBuilder {
         )
     }
 
+    private static func track(
+        _ trackID: CMPersistentTrackID,
+        mainTrack: AVMutableCompositionTrack,
+        cutaways: [CutawayLane]
+    ) -> AVMutableCompositionTrack {
+        cutaways.first { $0.track.trackID == trackID }?.track ?? mainTrack
+    }
+
+    /// Lays every video overlay onto its own track so it can play over the
+    /// speaker. Images are not here: they are drawn by `applyVisualLayers`,
+    /// which can round their corners and is not limited to four tracks.
+    ///
+    /// Overlay audio is deliberately left out. A cutaway is a picture over the
+    /// speaker's own voice, and mixing a second dialogue track under it without
+    /// being asked would be a surprise, not a feature.
+    private static func addVideoOverlays(
+        _ overlays: [ProjectOverlay],
+        project: EditorProject,
+        to composition: AVMutableComposition,
+        renderSize: CGSize,
+        compositionDuration: Double,
+        sourceCache: inout [UUID: LoadedSource]
+    ) async throws -> [CutawayLane] {
+        let cutaways = overlays.filter { overlay in
+            guard
+                overlay.isVisible,
+                let media = project.media.first(where: { $0.id == overlay.mediaID })
+            else { return false }
+            return !media.isImage
+        }
+        guard !cutaways.isEmpty, compositionDuration > 0 else { return [] }
+
+        var lanes: [CutawayLane] = []
+        for lane in OverlayCompositionPlan.lanes(for: cutaways) {
+            guard let track = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                throw NativeEditorError.cannotCreateTrack("overlay video")
+            }
+
+            var placed: [ProjectOverlay] = []
+            var transforms: [UUID: CGAffineTransform] = [:]
+            var motion: [UUID: OverlayMotion] = [:]
+            var cropRects: [UUID: CGRect] = [:]
+            for overlay in lane {
+                guard let media = project.media.first(where: { $0.id == overlay.mediaID }) else {
+                    continue
+                }
+                let source: LoadedSource
+                if let cached = sourceCache[media.id] {
+                    source = cached
+                } else {
+                    source = try await CompositionSourceCache.shared.source(for: media)
+                    sourceCache[media.id] = source
+                }
+
+                let start = max(0, overlay.timelineStart)
+                let available = min(
+                    max(0, source.duration - max(0, overlay.sourceStart)),
+                    max(0, compositionDuration - start)
+                )
+                let duration = min(overlay.duration, available)
+                guard duration > OverlayCompositionPlan.epsilon else { continue }
+
+                try track.insertTimeRange(
+                    CMTimeRange(
+                        start: CMTime(seconds: max(0, overlay.sourceStart), preferredTimescale: timeScale),
+                        duration: CMTime(seconds: duration, preferredTimescale: timeScale)
+                    ),
+                    of: source.video,
+                    at: CMTime(seconds: start, preferredTimescale: timeScale)
+                )
+
+                var clamped = overlay
+                clamped.timelineStart = start
+                clamped.duration = duration
+                placed.append(clamped)
+                let box = OverlayFrame.fitted(
+                    OverlayFrame.box(overlay, in: renderSize),
+                    mediaAspect: OverlayFrame.shownAspect(
+                        mediaAspect: aspect(of: media),
+                        crop: overlay.resolvedCrop
+                    )
+                )
+                let crop = overlay.resolvedCrop
+                if !crop.isFull {
+                    let oriented = CGRect(origin: .zero, size: source.videoSize)
+                        .applying(source.videoTransform)
+                    let orientedSize = CGSize(
+                        width: abs(oriented.width),
+                        height: abs(oriented.height)
+                    )
+                    cropRects[overlay.id] = CGRect(
+                        x: crop.x * orientedSize.width,
+                        y: crop.y * orientedSize.height,
+                        width: crop.width * orientedSize.width,
+                        height: crop.height * orientedSize.height
+                    )
+                }
+                transforms[overlay.id] = overlayTransform(
+                    naturalSize: source.videoSize,
+                    preferredTransform: source.videoTransform,
+                    crop: overlay.resolvedCrop,
+                    box: box
+                )
+                if OverlayKeyTrack.isKeyed(overlay) {
+                    motion[overlay.id] = OverlayMotion(
+                        overlay: overlay,
+                        naturalSize: source.videoSize,
+                        preferredTransform: source.videoTransform,
+                        crop: overlay.resolvedCrop,
+                        renderSize: renderSize,
+                        mediaAspect: aspect(of: media)
+                    )
+                }
+            }
+            if !placed.isEmpty {
+                lanes.append(
+                    CutawayLane(
+                        track: track,
+                        overlays: placed,
+                        transforms: transforms,
+                        motion: motion,
+                        cropRects: cropRects
+                    )
+                )
+            }
+        }
+        return lanes
+    }
+
+    /// One instruction per stretch of time where the picture is unchanged: a
+    /// cut on the main track, or a cutaway arriving or leaving, starts a new
+    /// one. Within an instruction the front-most layer comes first, so the
+    /// cutaway lanes are listed before the speaker.
+    private static func instructions(
+        segments: [MainSegment],
+        cutaways: [CutawayLane],
+        mainTrack: AVMutableCompositionTrack,
+        isMainTrackHidden: Bool,
+        filter: VisualFilter,
+        duration: Double
+    ) -> [any AVVideoCompositionInstructionProtocol] {
+        let boundaries = OverlayCompositionPlan.boundaries(
+            clipEnds: segments.map(\.range.end.seconds),
+            overlays: cutaways.flatMap(\.overlays),
+            duration: duration,
+            keyframes: segments.flatMap(\.keyframeTimes)
+                + cutaways.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
+        )
+        guard boundaries.count > 1 else { return [] }
+
+        let matrix = filter.colorMatrix
+        var instructions: [any AVVideoCompositionInstructionProtocol] = []
+        for (index, start) in boundaries.dropLast().enumerated() {
+            let end = boundaries[index + 1]
+            let midpoint = (start + end) / 2
+            guard let segment = segments.first(where: {
+                midpoint >= $0.range.start.seconds && midpoint <= $0.range.end.seconds
+            }) ?? segments.last else { continue }
+
+            let timeRange = CMTimeRange(
+                start: CMTime(seconds: start, preferredTimescale: timeScale),
+                end: CMTime(seconds: end, preferredTimescale: timeScale)
+            )
+
+            // Front to back: the cutaways on top of the speaker.
+            var placements: [StudioCompositionInstruction.Layer] = []
+            for lane in cutaways.reversed() {
+                guard
+                    let overlay = OverlayCompositionPlan.overlay(in: lane.overlays, from: start, to: end),
+                    let transform = lane.transforms[overlay.id]
+                else { continue }
+                // A keyed cutaway is given both ends of this stretch, exactly
+                // as the main track is, so a card that slides in or grows is
+                // the same mechanism as a punch-in rather than a second one.
+                let motion = lane.motion[overlay.id]
+                let from = motion?.transform(atTimeline: start) ?? transform
+                let to = motion?.transform(atTimeline: end)
+                placements.append(
+                    .init(
+                        trackID: lane.track.trackID,
+                        transform: from,
+                        endTransform: to == from ? nil : to,
+                        cropRect: lane.cropRects[overlay.id],
+                        opacity: 1
+                    )
+                )
+            }
+            // A keyed clip moves across this instruction, so it is given both
+            // ends and whichever compositor is running interpolates between
+            // them. Every key is a boundary, so the move inside one instruction
+            // is always a straight line.
+            let mainStart = segment.isKeyed ? segment.transform(atTimeline: start) : segment.transform
+            let mainEnd = segment.isKeyed ? segment.transform(atTimeline: end) : nil
+            placements.append(
+                .init(
+                    trackID: mainTrack.trackID,
+                    transform: mainStart,
+                    endTransform: mainEnd == mainStart ? nil : mainEnd,
+                    cropRect: nil,
+                    opacity: isMainTrackHidden ? 0 : 1
+                )
+            )
+
+            if filter.isNeutral {
+                let instruction = AVMutableVideoCompositionInstruction()
+                instruction.timeRange = timeRange
+                instruction.layerInstructions = placements.map { placement in
+                    let layer = AVMutableVideoCompositionLayerInstruction(
+                        assetTrack: track(placement.trackID, mainTrack: mainTrack, cutaways: cutaways)
+                    )
+                    if let endTransform = placement.endTransform {
+                        layer.setTransformRamp(
+                            fromStart: placement.transform,
+                            toEnd: endTransform,
+                            timeRange: timeRange
+                        )
+                    } else {
+                        layer.setTransform(placement.transform, at: timeRange.start)
+                    }
+                    if let cropRect = placement.cropRect {
+                        layer.setCropRectangle(cropRect, at: timeRange.start)
+                    }
+                    if placement.opacity < 1 {
+                        layer.setOpacity(placement.opacity, at: timeRange.start)
+                    }
+                    return layer
+                }
+                instructions.append(instruction)
+            } else {
+                instructions.append(
+                    StudioCompositionInstruction(
+                        timeRange: timeRange,
+                        layers: placements,
+                        colorMatrix: matrix
+                    )
+                )
+            }
+        }
+        return instructions
+    }
+
+    /// - Parameters:
+    ///   - mainTrack: the speaker's own audio, which has a fader of its own.
+    ///   - mainVolume: what that fader is set to. Only given input parameters
+    ///     when it is set to something, so a project nobody has touched builds
+    ///     exactly the composition it always did.
     private static func addAudioLayers(
         _ layers: [ProjectAudioLayer],
         to composition: AVMutableComposition,
-        compositionDuration: CMTime
+        compositionDuration: CMTime,
+        mainTrack: AVMutableCompositionTrack? = nil,
+        mainVolume: Double = 1
     ) async throws -> AVAudioMix? {
-        guard !layers.isEmpty, compositionDuration > .zero else { return nil }
+        guard compositionDuration > .zero else { return nil }
         var parameters: [AVMutableAudioMixInputParameters] = []
+
+        if let mainTrack, abs(mainVolume - 1) > 0.001 {
+            let input = AVMutableAudioMixInputParameters(track: mainTrack)
+            input.setVolume(Float(AudioLevel.clamped(mainVolume)), at: .zero)
+            parameters.append(input)
+        }
+        guard !layers.isEmpty || !parameters.isEmpty else { return nil }
 
         for layer in layers {
             let destinationStart = CMTime(
@@ -190,11 +568,12 @@ enum CompositionBuilder {
             )
             guard destinationStart < compositionDuration else { continue }
 
-            let asset = AVURLAsset(url: layer.url)
-            guard let sourceTrack = try await asset.loadTracks(withMediaType: .audio).first else {
-                throw NativeEditorError.noAudioTrack(layer.name)
-            }
-            let available = try await sourceTrack.load(.timeRange)
+            let loaded = try await CompositionSourceCache.shared.audioSource(
+                for: layer.url,
+                name: layer.name
+            )
+            let sourceTrack = loaded.track
+            let available = loaded.timeRange
             let requestedStart = CMTime(
                 seconds: max(0, layer.sourceStart),
                 preferredTimescale: timeScale
@@ -220,7 +599,7 @@ enum CompositionBuilder {
                 at: destinationStart
             )
             let input = AVMutableAudioMixInputParameters(track: track)
-            input.setVolume(Float(min(2, max(0, layer.volume))), at: destinationStart)
+            input.setVolume(Float(AudioLevel.clamped(layer.volume)), at: destinationStart)
             parameters.append(input)
         }
 
@@ -239,8 +618,9 @@ enum CompositionBuilder {
         duration: Double,
         to videoComposition: AVMutableVideoComposition
     ) {
-        let imageOverlays = overlays.compactMap { overlay -> (ProjectOverlay, ProjectMedia, CGImage)? in
+        let imageOverlays = OverlayTracks.backToFront(overlays).compactMap { overlay -> (ProjectOverlay, ProjectMedia, CGImage)? in
             guard
+                overlay.isVisible,
                 let media = project.media.first(where: { $0.id == overlay.mediaID }),
                 media.isImage,
                 let image = NSImage(contentsOf: media.url),
@@ -256,32 +636,53 @@ enum CompositionBuilder {
         parentLayer.frame = videoLayer.frame
         parentLayer.addSublayer(videoLayer)
 
+        // The grade covers the footage and the overlays laid over it, exactly
+        // as it does in the browser. Captions and text stay ungraded: they are
+        // the editor's own marks on the picture, not part of it.
+        let grade = project.resolvedVisualFilter.colorMatrix
         for (overlay, media, image) in imageOverlays {
             let layer = CALayer()
-            layer.contents = image
-            layer.contentsGravity = .resizeAspect
-            layer.masksToBounds = true
-            layer.cornerRadius = min(renderSize.width, renderSize.height) * 0.018
-            layer.shadowColor = NSColor.black.cgColor
-            layer.shadowOpacity = 0.28
-            layer.shadowRadius = 12
-            layer.shadowOffset = CGSize(width: 0, height: -4)
-
-            let box = CGRect(
-                x: renderSize.width * overlay.x,
-                y: renderSize.height * (1 - overlay.y - overlay.height),
-                width: renderSize.width * overlay.width,
-                height: renderSize.height * overlay.height
-            )
-            let mediaAspect = CGFloat(media.width) / CGFloat(max(1, media.height))
-            let boxAspect = box.width / max(1, box.height)
-            if mediaAspect > boxAspect {
-                let height = box.width / mediaAspect
-                layer.frame = CGRect(x: box.minX, y: box.midY - height / 2, width: box.width, height: height)
+            layer.contents = grade.graded(image) ?? image
+            let crop = overlay.resolvedCrop
+            if !crop.isFull {
+                // Core Animation measures its contents from the bottom left.
+                layer.contentsRect = CGRect(
+                    x: crop.x,
+                    y: 1 - crop.y - crop.height,
+                    width: crop.width,
+                    height: crop.height
+                )
+                layer.contentsGravity = .resizeAspectFill
             } else {
-                let width = box.height * mediaAspect
-                layer.frame = CGRect(x: box.midX - width / 2, y: box.minY, width: width, height: box.height)
+                layer.contentsGravity = .resizeAspect
             }
+            layer.masksToBounds = true
+            // A card on top of the picture is rounded and casts a shadow. A
+            // graphic cut to the whole frame is part of the picture, so it gets
+            // neither.
+            if !OverlayFrame.isFullFrame(overlay) {
+                layer.cornerRadius = OverlayFrame.cornerRadius(in: renderSize)
+                layer.shadowColor = NSColor.black.cgColor
+                layer.shadowOpacity = 0.28
+                layer.shadowRadius = 12
+                layer.shadowOffset = CGSize(width: 0, height: -4)
+            }
+
+            // The canvas measures from the top of the frame and Core Animation
+            // from the bottom, so the fitted box is flipped on its way in.
+            let box = OverlayFrame.fitted(
+                OverlayFrame.box(overlay, in: renderSize),
+                mediaAspect: OverlayFrame.shownAspect(
+                    mediaAspect: aspect(of: media),
+                    crop: overlay.resolvedCrop
+                )
+            )
+            layer.frame = CGRect(
+                x: box.minX,
+                y: renderSize.height - box.maxY,
+                width: box.width,
+                height: box.height
+            )
 
             applyVisibility(
                 to: layer,
@@ -289,71 +690,31 @@ enum CompositionBuilder {
                 layerDuration: overlay.duration,
                 compositionDuration: duration
             )
+            // A keyed still moves by Core Animation rather than by a transform
+            // ramp: it is drawn into the frame by the animation tool, not by a
+            // composition track, so it has no layer instruction to ramp. Both
+            // roads have to lead to the same picture, or keyframing a
+            // screenshot would work in the preview and export as a still.
+            applyMotion(
+                to: layer,
+                overlay: overlay,
+                mediaAspect: aspect(of: media),
+                renderSize: renderSize,
+                compositionDuration: duration
+            )
             parentLayer.addSublayer(layer)
         }
 
         for text in textLayers where !text.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            let fontSize = max(18, renderSize.height * text.fontScale)
-            let font = textFont(for: text.font, size: fontSize)
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.alignment = .center
-            paragraph.lineBreakMode = .byWordWrapping
-            let foreground: NSColor = text.style == .whiteCard ? .black : .white
-            let attributed = NSAttributedString(
-                string: text.text,
-                attributes: [
-                    .font: font,
-                    .foregroundColor: foreground,
-                    .paragraphStyle: paragraph,
-                ]
+            let container = TextAppearanceLayer.make(
+                text: text.text,
+                appearance: text.appearance,
+                renderSize: renderSize,
+                centerX: text.x,
+                centerY: text.y,
+                maximumWidth: min(0.94, text.width),
+                maximumHeight: 0.46
             )
-            let maximumTextWidth = max(fontSize * 3, renderSize.width * text.width)
-            let measured = attributed.boundingRect(
-                with: CGSize(width: maximumTextWidth, height: renderSize.height * 0.5),
-                options: [.usesLineFragmentOrigin, .usesFontLeading]
-            )
-            let horizontalPadding = text.style == .plain ? fontSize * 0.08 : fontSize * 0.48
-            let verticalPadding = text.style == .plain ? fontSize * 0.08 : fontSize * 0.32
-            let boxSize = CGSize(
-                width: min(renderSize.width * 0.94, max(fontSize * 2, ceil(measured.width) + horizontalPadding * 2)),
-                height: min(renderSize.height * 0.46, max(fontSize * 1.2, ceil(measured.height) + verticalPadding * 2))
-            )
-
-            let container = CALayer()
-            container.frame = CGRect(
-                x: renderSize.width * text.x - boxSize.width / 2,
-                y: renderSize.height * (1 - text.y) - boxSize.height / 2,
-                width: boxSize.width,
-                height: boxSize.height
-            )
-            container.cornerRadius = fontSize * 0.32
-            switch text.style {
-            case .plain:
-                container.backgroundColor = NSColor.clear.cgColor
-            case .whiteCard:
-                container.backgroundColor = NSColor.white.withAlphaComponent(0.96).cgColor
-            case .blackCard:
-                container.backgroundColor = NSColor.black.withAlphaComponent(0.88).cgColor
-            }
-
-            let textLayer = CATextLayer()
-            textLayer.contentsScale = 2
-            textLayer.isWrapped = true
-            textLayer.alignmentMode = .center
-            textLayer.string = attributed
-            textLayer.frame = CGRect(
-                x: horizontalPadding,
-                y: verticalPadding,
-                width: boxSize.width - horizontalPadding * 2,
-                height: boxSize.height - verticalPadding * 2
-            )
-            if text.style == .plain {
-                textLayer.shadowColor = NSColor.black.cgColor
-                textLayer.shadowOpacity = 0.82
-                textLayer.shadowRadius = max(3, fontSize * 0.08)
-                textLayer.shadowOffset = CGSize(width: 0, height: -2)
-            }
-            container.addSublayer(textLayer)
             applyVisibility(
                 to: container,
                 start: text.timelineStart,
@@ -364,56 +725,15 @@ enum CompositionBuilder {
         }
 
         for caption in captions where !caption.text.isEmpty && caption.duration > 0 {
-            let fontSize = max(22, renderSize.height * 0.046)
-            let font = textFont(for: .rounded, size: fontSize)
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.alignment = .center
-            paragraph.lineBreakMode = .byWordWrapping
-            let attributed = NSAttributedString(
-                string: caption.text,
-                attributes: [
-                    .font: font,
-                    .foregroundColor: NSColor.white,
-                    .paragraphStyle: paragraph,
-                ]
+            let container = TextAppearanceLayer.make(
+                text: caption.text,
+                appearance: caption.style.appearance,
+                renderSize: renderSize,
+                centerX: caption.style.x,
+                centerY: caption.style.y,
+                maximumWidth: caption.style.width,
+                maximumHeight: 0.4
             )
-            let maximumTextWidth = renderSize.width * 0.84
-            let measured = attributed.boundingRect(
-                with: CGSize(width: maximumTextWidth, height: fontSize * 2.8),
-                options: [.usesLineFragmentOrigin, .usesFontLeading]
-            )
-            let horizontalPadding = fontSize * 0.52
-            let verticalPadding = fontSize * 0.30
-            let boxSize = CGSize(
-                width: min(renderSize.width * 0.90, max(fontSize * 2.4, ceil(measured.width) + horizontalPadding * 2)),
-                height: min(fontSize * 3.1, max(fontSize * 1.45, ceil(measured.height) + verticalPadding * 2))
-            )
-            let container = CALayer()
-            container.frame = CGRect(
-                x: (renderSize.width - boxSize.width) / 2,
-                y: renderSize.height * 0.18 - boxSize.height / 2,
-                width: boxSize.width,
-                height: boxSize.height
-            )
-            container.backgroundColor = NSColor.black.withAlphaComponent(0.86).cgColor
-            container.cornerRadius = max(8, fontSize * 0.30)
-            container.shadowColor = NSColor.black.cgColor
-            container.shadowOpacity = 0.34
-            container.shadowRadius = max(3, fontSize * 0.08)
-            container.shadowOffset = CGSize(width: 0, height: -2)
-
-            let textLayer = CATextLayer()
-            textLayer.contentsScale = 2
-            textLayer.isWrapped = true
-            textLayer.alignmentMode = .center
-            textLayer.string = attributed
-            textLayer.frame = CGRect(
-                x: horizontalPadding,
-                y: verticalPadding,
-                width: boxSize.width - horizontalPadding * 2,
-                height: boxSize.height - verticalPadding * 2
-            )
-            container.addSublayer(textLayer)
             applyVisibility(
                 to: container,
                 start: caption.timelineStart,
@@ -429,6 +749,60 @@ enum CompositionBuilder {
         )
     }
 
+    /// Animates a keyed still along the boxes it was given.
+    ///
+    /// Core Animation measures from the bottom left, so every box is flipped on
+    /// the way in, exactly as the static frame above it is.
+    private static func applyMotion(
+        to layer: CALayer,
+        overlay: ProjectOverlay,
+        mediaAspect: Double,
+        renderSize: CGSize,
+        compositionDuration: Double
+    ) {
+        let keys = OverlayKeyTrack.keys(of: overlay)
+        guard keys.count > 1, compositionDuration > 0 else { return }
+
+        var positions: [CGPoint] = []
+        var bounds: [CGRect] = []
+        var times: [NSNumber] = []
+        for key in keys {
+            let box = OverlayFrame.fitted(
+                CGRect(
+                    x: key.box.x * renderSize.width,
+                    y: key.box.y * renderSize.height,
+                    width: key.box.width * renderSize.width,
+                    height: key.box.height * renderSize.height
+                ),
+                mediaAspect: OverlayFrame.shownAspect(
+                    mediaAspect: mediaAspect,
+                    crop: overlay.resolvedCrop
+                )
+            )
+            positions.append(
+                CGPoint(x: box.midX, y: renderSize.height - box.midY)
+            )
+            bounds.append(CGRect(origin: .zero, size: box.size))
+            let at = (overlay.timelineStart + key.at) / compositionDuration
+            times.append(NSNumber(value: min(1, max(0, at))))
+        }
+
+        for (keyPath, values) in [
+            ("position", positions as [Any]),
+            ("bounds", bounds as [Any]),
+        ] {
+            let animation = CAKeyframeAnimation(keyPath: keyPath)
+            animation.values = values
+            animation.keyTimes = times
+            animation.calculationMode = .linear
+            animation.duration = compositionDuration
+            animation.beginTime = AVCoreAnimationBeginTimeAtZero
+            animation.isRemovedOnCompletion = false
+            animation.fillMode = .both
+            layer.add(animation, forKey: "overlayMotion.\(keyPath)")
+        }
+    }
+
     private static func applyVisibility(
         to layer: CALayer,
         start: Double,
@@ -436,44 +810,19 @@ enum CompositionBuilder {
         compositionDuration: Double
     ) {
         layer.opacity = 0
-        let animation = CAKeyframeAnimation(keyPath: "opacity")
-        let normalizedStart = max(0, min(1, start / compositionDuration))
-        let normalizedEnd = max(
-            normalizedStart,
-            min(1, (start + layerDuration) / compositionDuration)
+        let track = LayerVisibilityKeyframes.make(
+            start: start,
+            layerDuration: layerDuration,
+            compositionDuration: compositionDuration
         )
-        let epsilon = min(0.0001, max(0.000001, 1 / max(1, compositionDuration * 60)))
-        animation.values = [0, 0, 1, 1, 0]
-        animation.keyTimes = [
-            0,
-            NSNumber(value: max(0, normalizedStart - epsilon)),
-            NSNumber(value: normalizedStart),
-            NSNumber(value: normalizedEnd),
-            1,
-        ]
+        let animation = CAKeyframeAnimation(keyPath: "opacity")
+        animation.values = track.values
+        animation.keyTimes = track.keyTimes.map(NSNumber.init(value:))
         animation.duration = compositionDuration
         animation.beginTime = AVCoreAnimationBeginTimeAtZero
         animation.isRemovedOnCompletion = false
         animation.fillMode = .both
         layer.add(animation, forKey: "timelineVisibility")
-    }
-
-    private static func textFont(for family: TextLayerFont, size: CGFloat) -> NSFont {
-        switch family {
-        case .modern:
-            return NSFont.systemFont(ofSize: size, weight: .bold)
-        case .rounded:
-            let base = NSFont.systemFont(ofSize: size, weight: .heavy)
-            if let descriptor = base.fontDescriptor.withDesign(.rounded),
-               let rounded = NSFont(descriptor: descriptor, size: size)
-            {
-                return rounded
-            }
-            return base
-        case .editorial:
-            return NSFont(name: "New York", size: size)
-                ?? NSFont.systemFont(ofSize: size, weight: .semibold)
-        }
     }
 
     private static func media(
@@ -514,10 +863,66 @@ enum CompositionBuilder {
         )
     }
 
-    private static func fittedTransform(
+    static func aspect(of media: ProjectMedia) -> Double {
+        Double(max(1, media.width)) / Double(max(1, media.height))
+    }
+
+    /// Places an overlay's own video inside `box`, which is measured from the
+    /// top left of the frame, the same way the composition's render space is.
+    static func overlayTransform(
         naturalSize: CGSize,
         preferredTransform: CGAffineTransform,
-        renderSize: CGSize
+        crop: OverlayCrop,
+        box: CGRect
+    ) -> CGAffineTransform {
+        let orientedRect = CGRect(origin: .zero, size: naturalSize)
+            .applying(preferredTransform)
+        let orientedSize = CGSize(
+            width: abs(orientedRect.width),
+            height: abs(orientedRect.height)
+        )
+        guard
+            orientedSize.width > 0,
+            orientedSize.height > 0,
+            box.width > 0,
+            box.height > 0
+        else { return preferredTransform }
+
+        // The box already has the shape of what the crop kept, so scaling the
+        // kept rectangle onto it is a plain fit. The whole picture is scaled by
+        // the same amount and slid so that rectangle lands in the box; the crop
+        // rectangle on the layer instruction hides the rest.
+        let keptSize = CGSize(
+            width: max(1, orientedSize.width * crop.width),
+            height: max(1, orientedSize.height * crop.height)
+        )
+        let scale = min(box.width / keptSize.width, box.height / keptSize.height)
+        let scaledKept = CGSize(width: keptSize.width * scale, height: keptSize.height * scale)
+        // The composition draws from the top left, and so does the crop.
+        let keptOrigin = CGPoint(
+            x: orientedSize.width * crop.x * scale,
+            y: orientedSize.height * crop.y * scale
+        )
+        return preferredTransform
+            .concatenating(
+                CGAffineTransform(translationX: -orientedRect.minX, y: -orientedRect.minY)
+            )
+            .concatenating(CGAffineTransform(scaleX: scale, y: scale))
+            .concatenating(
+                CGAffineTransform(
+                    translationX: box.midX - scaledKept.width / 2 - keptOrigin.x,
+                    y: box.midY - scaledKept.height / 2 - keptOrigin.y
+                )
+            )
+    }
+
+    /// Places the main track's picture in the output frame: fitted and centred,
+    /// then zoomed and slid by whatever framing the clip carries.
+    static func fittedTransform(
+        naturalSize: CGSize,
+        preferredTransform: CGAffineTransform,
+        renderSize: CGSize,
+        framing: VideoFraming = .identity
     ) -> CGAffineTransform {
         let orientedRect = CGRect(origin: .zero, size: naturalSize)
             .applying(preferredTransform)
@@ -553,6 +958,23 @@ enum CompositionBuilder {
                 y: (renderSize.height - outputSize.height) / 2
             )
         )
+        guard !framing.isIdentity else { return transform }
+
+        // Zoom about the middle of the output frame, then slide. Doing it in
+        // that order is what keeps a zoom from throwing the picture off to one
+        // side, and what lets the offset mean the same thing at every scale.
+        // The composition draws from the top left, so a positive offset moves
+        // the picture right and down, exactly as it does on the canvas.
+        let centreX = renderSize.width / 2
+        let centreY = renderSize.height / 2
         return transform
+            .concatenating(CGAffineTransform(translationX: -centreX, y: -centreY))
+            .concatenating(CGAffineTransform(scaleX: framing.scale, y: framing.scale))
+            .concatenating(
+                CGAffineTransform(
+                    translationX: centreX + framing.x * renderSize.width,
+                    y: centreY + framing.y * renderSize.height
+                )
+            )
     }
 }

@@ -3,7 +3,9 @@ import Foundation
 
 enum ExportService {
     static func export(project: EditorProject, to outputURL: URL) async throws {
-        let built = try await CompositionBuilder.build(project: project)
+        // Everything, including the captions and the text: this is the one that
+        // has to look like the finished video, because it is.
+        let built = try await CompositionBuilder.build(project: project, for: .export)
         guard let session = AVAssetExportSession(
             asset: built.asset,
             presetName: AVAssetExportPresetHighestQuality

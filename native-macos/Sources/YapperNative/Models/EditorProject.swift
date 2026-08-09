@@ -40,6 +40,16 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     var mediaID: UUID
     var sourceStart: Double
     var sourceEnd: Double
+    /// How the picture sits in the output frame. `nil` on clips saved before
+    /// framing existed, and read as fitted: see `resolvedFraming`.
+    ///
+    /// What the clip is framed at when it is not keyed. A keyed clip is drawn
+    /// from its keys, and this holds the first of them so removing the last key
+    /// leaves the picture where it was.
+    var framing: VideoFraming?
+    /// The framings the picture moves through over this clip, in the media's
+    /// own seconds. `nil` or empty means it does not move. See `FramingKey`.
+    var framingKeys: [FramingKey]?
 
     var duration: Double { max(0, sourceEnd - sourceStart) }
 
@@ -47,12 +57,16 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         id: UUID = UUID(),
         mediaID: UUID,
         sourceStart: Double,
-        sourceEnd: Double
+        sourceEnd: Double,
+        framing: VideoFraming? = nil,
+        framingKeys: [FramingKey]? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
         self.sourceStart = sourceStart
         self.sourceEnd = sourceEnd
+        self.framing = framing
+        self.framingKeys = framingKeys
     }
 }
 
@@ -78,18 +92,6 @@ struct TranscriptWord: Codable, Equatable, Identifiable, Sendable {
     }
 
     var midpoint: Double { (start + end) / 2 }
-}
-
-struct ProjectCaptionCue: Equatable, Sendable {
-    var text: String
-    var timelineStart: Double
-    var timelineEnd: Double
-
-    var duration: Double { max(0, timelineEnd - timelineStart) }
-
-    func isVisible(at time: Double) -> Bool {
-        time >= timelineStart && time < timelineEnd
-    }
 }
 
 struct TranscriptSourceRange: Equatable, Sendable {
@@ -220,6 +222,18 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     var y: Double
     var width: Double
     var height: Double
+    /// The part of the media that is shown. `nil` on overlays saved before
+    /// cropping, which show all of it.
+    var crop: OverlayCrop?
+    /// Which lane above the speaker this sits on. 0 is the lane directly above,
+    /// and a higher lane draws over a lower one. `nil` reads as 0.
+    var track: Int?
+    /// Hidden overlays keep their place on the timeline and draw nothing, which
+    /// is what the eye on the track rail toggles.
+    var isHidden: Bool?
+    /// The boxes this cutaway moves through, in seconds from its own start.
+    /// `nil` or empty means it holds still. See `OverlayKey`.
+    var keys: [OverlayKey]?
 
     init(
         id: UUID = UUID(),
@@ -230,7 +244,11 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         x: Double = 0.55,
         y: Double = 0.07,
         width: Double = 0.38,
-        height: Double = 0.38
+        height: Double = 0.38,
+        crop: OverlayCrop? = nil,
+        track: Int? = nil,
+        isHidden: Bool? = nil,
+        keys: [OverlayKey]? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -241,9 +259,20 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.y = y
         self.width = width
         self.height = height
+        self.crop = crop
+        self.track = track
+        self.isHidden = isHidden
+        self.keys = keys
     }
+
+    var resolvedCrop: OverlayCrop { crop ?? .full }
+    var lane: Int { max(0, track ?? 0) }
+    var isVisible: Bool { isHidden != true }
 }
 
+/// The three-way look captions and text layers shipped with before colour,
+/// stroke, card and shadow became properties of their own. Kept only so saved
+/// projects can be read back; see `TextAppearance.fromLegacy(style:font:…)`.
 enum TextLayerStyle: String, Codable, CaseIterable, Identifiable, Sendable {
     case plain
     case whiteCard
@@ -276,7 +305,7 @@ enum TextLayerFont: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
+struct ProjectTextLayer: Equatable, Identifiable, Sendable {
     var id: UUID
     var text: String
     var timelineStart: Double
@@ -284,9 +313,9 @@ struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
     var x: Double
     var y: Double
     var width: Double
-    var fontScale: Double
-    var style: TextLayerStyle
-    var font: TextLayerFont
+    /// How the words are drawn. The same value type captions use, so both
+    /// inspectors offer the same properties.
+    var appearance: TextAppearance
 
     init(
         id: UUID = UUID(),
@@ -296,9 +325,7 @@ struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
         x: Double = 0.5,
         y: Double = 0.18,
         width: Double = 0.74,
-        fontScale: Double = 0.043,
-        style: TextLayerStyle = .whiteCard,
-        font: TextLayerFont = .rounded
+        appearance: TextAppearance = .hookDefault
     ) {
         self.id = id
         self.text = text
@@ -307,13 +334,53 @@ struct ProjectTextLayer: Codable, Equatable, Identifiable, Sendable {
         self.x = x
         self.y = y
         self.width = width
-        self.fontScale = fontScale
-        self.style = style
-        self.font = font
+        self.appearance = appearance
     }
+
+    /// Reached for often enough by the canvas and the timeline to be worth
+    /// spelling short.
+    var fontScale: Double {
+        get { appearance.fontScale }
+        set { appearance.fontScale = newValue }
+    }
+
+    var displayText: String { appearance.displayText(text) }
 
     func isVisible(at time: Double) -> Bool {
         time >= timelineStart && time <= timelineStart + duration
+    }
+}
+
+extension ProjectTextLayer: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case id, text, timelineStart, duration, x, y, width, appearance
+    }
+
+    /// Layers saved before the appearance model kept their look in three flat
+    /// fields, so they are folded into one here.
+    private enum LegacyKeys: String, CodingKey {
+        case fontScale, style, font
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        text = try container.decode(String.self, forKey: .text)
+        timelineStart = try container.decode(Double.self, forKey: .timelineStart)
+        duration = try container.decode(Double.self, forKey: .duration)
+        x = try container.decode(Double.self, forKey: .x)
+        y = try container.decode(Double.self, forKey: .y)
+        width = try container.decode(Double.self, forKey: .width)
+        if let stored = try container.decodeIfPresent(TextAppearance.self, forKey: .appearance) {
+            appearance = stored
+            return
+        }
+        let legacy = try decoder.container(keyedBy: LegacyKeys.self)
+        appearance = TextAppearance.fromLegacy(
+            style: try legacy.decodeIfPresent(TextLayerStyle.self, forKey: .style) ?? .whiteCard,
+            font: try legacy.decodeIfPresent(TextLayerFont.self, forKey: .font) ?? .rounded,
+            fontScale: try legacy.decodeIfPresent(Double.self, forKey: .fontScale) ?? 0.043
+        )
     }
 }
 
@@ -397,10 +464,25 @@ struct EditorProject: Codable, Equatable, Sendable {
     var clips: [TimelineClip]
     var transcript: [TranscriptWord]?
     var captionsEnabled: Bool?
+    /// Editable caption cards. `nil` marks a project saved before captions were
+    /// editable, whose cards are derived from the transcript on demand.
+    var captions: [ProjectCaption]?
+    var captionStyle: TextStyle?
+    var captionWordsPerCard: Int?
     var overlays: [ProjectOverlay]?
     var textLayers: [ProjectTextLayer]?
     var audioLayers: [ProjectAudioLayer]?
     var aspectRatio: ProjectAspectRatio?
+    /// The speaker's own track, hidden or silenced from the track rail. Both
+    /// keep every clip where it is; they only stop it being seen or heard.
+    var videoTrackHidden: Bool?
+    var videoTrackMuted: Bool?
+    /// How loud the speaker's own track plays, as a multiple. `nil` on projects
+    /// saved before there was a fader, and that reads as untouched.
+    var videoTrackVolume: Double?
+    /// The look the whole video is graded with, in the preview and the export
+    /// alike. `nil` on projects saved before filters.
+    var visualFilter: VisualFilter?
 
     init(
         id: UUID = UUID(),
@@ -411,10 +493,17 @@ struct EditorProject: Codable, Equatable, Sendable {
         clips: [TimelineClip] = [],
         transcript: [TranscriptWord]? = nil,
         captionsEnabled: Bool? = nil,
+        captions: [ProjectCaption]? = nil,
+        captionStyle: TextStyle? = nil,
+        captionWordsPerCard: Int? = nil,
         overlays: [ProjectOverlay]? = nil,
         textLayers: [ProjectTextLayer]? = nil,
         audioLayers: [ProjectAudioLayer]? = nil,
-        aspectRatio: ProjectAspectRatio? = .source
+        aspectRatio: ProjectAspectRatio? = .source,
+        videoTrackHidden: Bool? = nil,
+        videoTrackMuted: Bool? = nil,
+        videoTrackVolume: Double? = nil,
+        visualFilter: VisualFilter? = nil
     ) {
         self.id = id
         self.name = name
@@ -424,10 +513,30 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.clips = clips
         self.transcript = transcript
         self.captionsEnabled = captionsEnabled
+        self.captions = captions
+        self.captionStyle = captionStyle
+        self.captionWordsPerCard = captionWordsPerCard
         self.overlays = overlays
         self.textLayers = textLayers
         self.audioLayers = audioLayers
         self.aspectRatio = aspectRatio
+        self.videoTrackHidden = videoTrackHidden
+        self.videoTrackMuted = videoTrackMuted
+        self.videoTrackVolume = videoTrackVolume
+        self.visualFilter = visualFilter
+    }
+
+    var resolvedVisualFilter: VisualFilter { visualFilter ?? .none }
+
+    var isVideoTrackHidden: Bool { videoTrackHidden == true }
+    var isVideoTrackMuted: Bool { videoTrackMuted == true }
+
+    /// What the main track actually plays at: the fader, or nothing at all when
+    /// it is muted. Muting and a fader at zero sound the same and mean
+    /// different things, so both are kept and this is where they meet.
+    var resolvedVideoTrackVolume: Double {
+        guard !isVideoTrackMuted else { return 0 }
+        return AudioLevel.clamped(videoTrackVolume ?? 1)
     }
 
     var duration: Double {
@@ -459,78 +568,15 @@ struct EditorProject: Codable, Equatable, Sendable {
         return (transcript ?? []).filter { activeMediaIDs.contains($0.mediaID) }
     }
 
-    /// Short, readable spoken-caption cards derived from the edited timeline.
-    /// Keeping cues derived from timed words means trims and restored cuts can
-    /// never leave stale captions behind, while the persisted opt-in survives
-    /// project reloads.
-    var captionCues: [ProjectCaptionCue] {
-        guard captionsEnabled == true else { return [] }
-        let timedWords = timelineTranscript.compactMap { word -> (String, Double, Double)? in
-            guard
-                isWordKept(word),
-                let start = timelineTime(for: word)
-            else { return nil }
-            let clean = word.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !clean.isEmpty else { return nil }
-            let end = min(duration, start + max(0.12, word.end - word.start))
-            return (clean, start, end)
-        }
-        .sorted { left, right in
-            if abs(left.1 - right.1) > 0.000_1 { return left.1 < right.1 }
-            return left.2 < right.2
-        }
-        guard !timedWords.isEmpty else { return [] }
-
-        var cues: [ProjectCaptionCue] = []
-        var words: [String] = []
-        var cueStart = 0.0
-        var cueEnd = 0.0
-
-        func closesSentence(_ text: String) -> Bool {
-            text.hasSuffix(".") || text.hasSuffix("!") || text.hasSuffix("?")
-        }
-
-        func flush() {
-            guard !words.isEmpty else { return }
-            cues.append(
-                ProjectCaptionCue(
-                    text: words.joined(separator: " "),
-                    timelineStart: max(0, cueStart - 0.025),
-                    timelineEnd: min(duration, max(cueStart + 0.18, cueEnd + 0.10))
-                )
-            )
-            words.removeAll(keepingCapacity: true)
-            cueEnd = 0
-        }
-
-        for (text, start, end) in timedWords {
-            let candidateLength = words.joined(separator: " ").count + (words.isEmpty ? 0 : 1) + text.count
-            let shouldBreak = !words.isEmpty && (
-                start - cueEnd > 0.48
-                    || words.count >= 4
-                    || candidateLength > 34
-                    || end - cueStart > 2.35
-                    || closesSentence(words.last ?? "")
-            )
-            if shouldBreak { flush() }
-            if words.isEmpty { cueStart = start }
-            words.append(text)
-            cueEnd = max(cueEnd, end)
-        }
-        flush()
-
-        // Never show two cards simultaneously at a fast phrase boundary.
-        for index in cues.indices.dropLast() {
-            cues[index].timelineEnd = min(
-                cues[index].timelineEnd,
-                max(cues[index].timelineStart + 0.12, cues[index + 1].timelineStart)
-            )
-        }
-        return cues
-    }
-
-    func captionCue(at timelineTime: Double) -> ProjectCaptionCue? {
-        captionCues.first { $0.isVisible(at: timelineTime) }
+    /// Whether there are any such words, without building the array to find
+    /// out. Asking `timelineTranscript.isEmpty` filters every word in the
+    /// project and allocates the result, which is a strange amount of work to
+    /// do from inside a view body that only wants to know what to call a
+    /// button. It stops at the first word it finds.
+    var hasTimelineTranscript: Bool {
+        guard let transcript, !transcript.isEmpty else { return false }
+        let activeMediaIDs = Set(clips.map(\.mediaID))
+        return transcript.contains { activeMediaIDs.contains($0.mediaID) }
     }
 
     func media(for clip: TimelineClip) -> ProjectMedia? {
@@ -595,33 +641,79 @@ struct EditorProject: Codable, Equatable, Sendable {
     }
 
     @discardableResult
-    mutating func promoteClipToOverlay(_ clipID: UUID) -> ProjectOverlay? {
+    /// Lifts a clip off the speaker's track and onto an overlay lane.
+    ///
+    /// - Parameters:
+    ///   - start: where to drop it, or nil to leave it where it was playing.
+    ///     Taking the clip out shortens the track underneath it, so "where it
+    ///     was" is worked out before the removal, not after.
+    ///   - lane: which lane to drop it on, or nil for the lowest free one.
+    mutating func promoteClipToOverlay(
+        _ clipID: UUID,
+        start requestedStart: Double? = nil,
+        lane requestedLane: Int? = nil
+    ) -> ProjectOverlay? {
         guard
             clips.count > 1,
             let clipIndex = clips.firstIndex(where: { $0.id == clipID }),
-            let start = timelineStart(for: clipID)
+            let originalStart = timelineStart(for: clipID)
         else { return nil }
         let clip = clips.remove(at: clipIndex)
-        let available = max(0, duration - start)
-        guard available > 0 else {
+        // Taking the clip out shortens the track under it, and an overlay past
+        // the end of the edit would never be seen. So the drop is pulled back
+        // inside what is left rather than being truncated to fit where it was
+        // aimed — the footage keeps its length and moves.
+        let remaining = duration
+        guard remaining > 0 else {
             clips.insert(clip, at: clipIndex)
             return nil
         }
+        let placed = min(clip.duration, remaining)
+        let start = min(max(0, requestedStart ?? originalStart), remaining - placed)
         let overlay = ProjectOverlay(
             mediaID: clip.mediaID,
             timelineStart: start,
-            duration: min(clip.duration, available),
+            duration: placed,
             sourceStart: clip.sourceStart,
             x: 0.5,
             y: 0.5,
             width: 1,
-            height: 1
+            height: 1,
+            track: requestedLane ?? OverlayTracks.firstFreeTrack(
+                for: (id: UUID(), start: start, duration: placed),
+                in: overlays ?? []
+            )
         )
         var updatedOverlays = overlays ?? []
         updatedOverlays.append(overlay)
         overlays = updatedOverlays
         updatedAt = Date()
         return overlay
+    }
+
+    /// Drops an overlay back onto the speaker's track, as a cut of its own.
+    ///
+    /// The inverse of lifting one off it. The track is magnetic, so the overlay
+    /// takes a place in the running order rather than a time, and everything
+    /// after it moves along to make room.
+    @discardableResult
+    mutating func demoteOverlayToClip(_ overlayID: UUID, insertionIndex: Int) -> TimelineClip? {
+        guard
+            let overlayIndex = overlays?.firstIndex(where: { $0.id == overlayID }),
+            let overlay = overlays?[overlayIndex],
+            overlay.duration > 0,
+            media.contains(where: { $0.id == overlay.mediaID })
+        else { return nil }
+
+        let clip = TimelineClip(
+            mediaID: overlay.mediaID,
+            sourceStart: overlay.sourceStart,
+            sourceEnd: overlay.sourceStart + overlay.duration
+        )
+        overlays?.remove(at: overlayIndex)
+        clips.insert(clip, at: min(max(0, insertionIndex), clips.count))
+        updatedAt = Date()
+        return clip
     }
 
     func isWordKept(_ word: TranscriptWord) -> Bool {

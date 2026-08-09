@@ -50,9 +50,12 @@ actor AIEditService {
     private let chunkBytes = 3_000_000
     private let overlapSeconds = 5.0
     private let maximumConcurrentChunks = 4
-    private let defaultBaseURL = URL(string: "https://ypr.app")!
 
-    func transcribe(media: ProjectMedia) async throws -> [TranscriptWord] {
+    func transcribe(
+        media: ProjectMedia,
+        dictionary: [DictionaryEntry] = []
+    ) async throws -> [TranscriptWord] {
+        let keyterms = TranscriptionDictionary.keyterms(dictionary)
         let decoded = try await decodeAudio(url: media.url)
         let chunks = makeChunks(decoded.pcm, sampleRate: decoded.sampleRate)
         var completed = Array(repeating: [RemoteWord](), count: chunks.count)
@@ -61,11 +64,12 @@ actor AIEditService {
             var next = 0
             func enqueue(_ index: Int) {
                 let chunk = chunks[index]
-                group.addTask { [defaultBaseURL] in
+                group.addTask {
                     let words = try await Self.transcribeChunk(
                         data: chunk.data,
                         duration: chunk.duration,
-                        baseURL: defaultBaseURL
+                        keyterms: keyterms,
+                        baseURL: YapperAPI.baseURL
                     )
                     return (index, words)
                 }
@@ -80,14 +84,16 @@ actor AIEditService {
             }
         }
 
-        return mergeTranscribedChunks(chunks: chunks, completed: completed).map {
+        let heard = mergeTranscribedChunks(chunks: chunks, completed: completed).map {
             TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
         }
+        // The creator's own spellings win over what the transcriber heard.
+        return TranscriptionDictionary.applied(to: heard, entries: dictionary)
     }
 
     func cleanCuts(words: [TranscriptWord]) async throws -> [(Int, Int)] {
-        var request = await Self.authenticatedRequest(
-            url: defaultBaseURL.appending(path: "api/clean-transcript")
+        var request = await YapperAPI.authenticatedRequest(
+            url: YapperAPI.url(path: "api/clean-transcript")
         )
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -237,13 +243,14 @@ actor AIEditService {
     private static func transcribeChunk(
         data chunkData: Data,
         duration: Double,
+        keyterms: [String],
         baseURL: URL
     ) async throws -> [RemoteWord] {
         var lastError: Error?
         for attempt in 0 ..< 3 {
             do {
-                var request = await authenticatedRequest(
-                    url: baseURL.appending(path: "api/transcribe")
+                var request = await YapperAPI.authenticatedRequest(
+                    url: transcribeURL(baseURL: baseURL, keyterms: keyterms)
                 )
                 request.httpMethod = "POST"
                 request.timeoutInterval = 120
@@ -266,40 +273,17 @@ actor AIEditService {
         throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
     }
 
-    /// The account session lives in the embedded Cloud Studio WKWebView, while
-    /// native media uploads use URLSession. Those cookie stores are separate,
-    /// so explicitly carry only cookies valid for the Yapper request URL. This
-    /// keeps Clerk authentication on native AI calls without exposing an
-    /// unauthenticated server route or embedding a long-lived secret in the app.
-    private static func authenticatedRequest(url: URL) async -> URLRequest {
-        let cookies = await webSessionCookies()
-        let applicableCookies = cookies.filter { cookie in
-            cookieApplies(cookie, to: url)
-        }
-        var request = URLRequest(url: url)
-        for (header, value) in HTTPCookie.requestHeaderFields(with: applicableCookies) {
-            request.setValue(value, forHTTPHeaderField: header)
-        }
-        return request
-    }
-
-    @MainActor
-    private static func webSessionCookies() async -> [HTTPCookie] {
-        await withCheckedContinuation { continuation in
-            WKWebsiteDataStore.default().httpCookieStore.getAllCookies {
-                continuation.resume(returning: $0)
-            }
-        }
-    }
-
-    private static func cookieApplies(_ cookie: HTTPCookie, to url: URL) -> Bool {
-        guard let host = url.host?.lowercased() else { return false }
-        let domain = cookie.domain.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
-        let hostMatches = host == domain || host.hasSuffix("." + domain)
-        let pathMatches = url.path.hasPrefix(cookie.path)
-        let securityMatches = !cookie.isSecure || url.scheme?.lowercased() == "https"
-        let freshnessMatches = cookie.expiresDate.map { $0 > Date() } ?? true
-        return hostMatches && pathMatches && securityMatches && freshnessMatches
+    /// The transcribe route takes the creator's terms up front, one query item
+    /// each, so the transcriber is listening for them rather than only being
+    /// corrected afterwards.
+    private static func transcribeURL(baseURL: URL, keyterms: [String]) -> URL {
+        let url = baseURL.appending(path: "api/transcribe")
+        guard
+            !keyterms.isEmpty,
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return url }
+        components.queryItems = keyterms.map { URLQueryItem(name: "keyterm", value: $0) }
+        return components.url ?? url
     }
 
     private func mergeTranscribedChunks(
@@ -558,6 +542,7 @@ enum RetakeCutBoundaryRepair {
             removed[candidate] = false
         }
 
+        restoreShavedTakeOpenings(words: words, removed: &removed)
         repairOrphanedKeptFragments(words: words, removed: &removed)
 
         var repaired: [(Int, Int)] = []
@@ -571,6 +556,70 @@ enum RetakeCutBoundaryRepair {
         }
         if let start { repaired.append((start, words.count - 1)) }
         return repaired
+    }
+
+    /// Give the final take back the word it opened with.
+    ///
+    /// Every attempt at a line starts with the same words, so a matcher scoring
+    /// the last attempt can score a window starting one word into it almost as
+    /// well and take that instead. What survives then opens mid-phrase: the
+    /// speaker's "Stop trying to memorize..." arrives as "trying to
+    /// memorize...", with the "Stop" they actually said sitting on the cut side
+    /// of the boundary.
+    ///
+    /// The tell is that the phrase reads on from the removed word into the take
+    /// exactly as an earlier, abandoned attempt did. That is the speaker saying
+    /// the same line again, not two attempts being stitched together, so the
+    /// word belongs to the take. Anything short of a whole repeated phrase, a
+    /// break in the speech, or a sentence that has already ended, leaves the
+    /// boundary alone.
+    private static func restoreShavedTakeOpenings(
+        words: [TranscriptWord],
+        removed: inout [Bool]
+    ) {
+        let tokens = words.map { normalize($0.text) }
+        for keptStart in words.indices where !removed[keptStart] && keptStart > 0 && removed[keptStart - 1] {
+            var opening = keptStart
+            let takeEnd = (opening ..< words.count).first { removed[$0] } ?? words.count
+            while opening > 0, removed[opening - 1], keptStart - opening < maximumShavedOpening {
+                let candidate = opening - 1
+                guard !tokens[candidate].isEmpty,
+                      !isSentenceEnd(words[candidate].text),
+                      words[opening].start - words[candidate].end <= 0.32,
+                      repeatsAnAbandonedAttempt(
+                          from: candidate,
+                          through: takeEnd,
+                          tokens: tokens,
+                          removed: removed
+                      )
+                else { break }
+                removed[candidate] = false
+                opening = candidate
+            }
+        }
+    }
+
+    /// At most this many words, so a boundary that is wrong for some other
+    /// reason cannot drag a whole abandoned attempt back into the edit.
+    private static let maximumShavedOpening = 4
+    /// Enough words that matching one is the speaker repeating a line rather
+    /// than a turn of phrase they happen to use twice.
+    private static let repeatedPhraseLength = 6
+
+    private static func repeatsAnAbandonedAttempt(
+        from candidate: Int,
+        through takeEnd: Int,
+        tokens: [String],
+        removed: [Bool]
+    ) -> Bool {
+        let length = min(repeatedPhraseLength, takeEnd - candidate)
+        guard length >= 3, candidate >= length else { return false }
+        let phrase = Array(tokens[candidate ..< candidate + length])
+        guard !phrase.contains(where: \.isEmpty) else { return false }
+        return (0 ... candidate - length).contains { start in
+            Array(tokens[start ..< start + length]) == phrase
+                && (start ..< start + length).allSatisfy { removed[$0] }
+        }
     }
 
     /// A semantic response can occasionally end its final cut one token too

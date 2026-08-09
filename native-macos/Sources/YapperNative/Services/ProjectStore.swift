@@ -16,14 +16,43 @@ actor ProjectStore {
         return decoder
     }()
 
+    /// Where the open project lives.
+    ///
+    /// Somewhere else entirely when the tests are running. An `EditorSession`
+    /// loads the saved project the moment it is made and saves it again after
+    /// almost any edit, so a test that makes one was reading and writing the
+    /// creator's real work: one `swift test` away from a fabricated two-clip
+    /// project being written over an afternoon's editing. Tests get their own
+    /// file, per process, and are welcome to do whatever they like to it.
     private var projectURL: URL {
+        Self.directory
+            .appending(path: "CurrentProject.json", directoryHint: .notDirectory)
+    }
+
+    /// True while a test bundle is what is running. Read from the environment
+    /// XCTest sets up rather than from a compile-time flag, because the app and
+    /// the tests are built from the same target.
+    static var isTesting: Bool {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil
+            || environment["SWIFT_TESTING_ENABLED"] != nil
+            || ProcessInfo.processInfo.arguments.contains { $0.hasSuffix(".xctest") }
+    }
+
+    static var directory: URL {
+        guard !isTesting else {
+            return FileManager.default.temporaryDirectory
+                .appending(
+                    path: "YapperNativeTests-\(ProcessInfo.processInfo.processIdentifier)",
+                    directoryHint: .isDirectory
+                )
+        }
         let support = FileManager.default.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0]
-        return support
-            .appending(path: "Yapper Studio Native", directoryHint: .isDirectory)
-            .appending(path: "CurrentProject.json", directoryHint: .notDirectory)
+        return support.appending(path: "Yapper Studio Native", directoryHint: .isDirectory)
     }
 
     func load() throws -> EditorProject? {

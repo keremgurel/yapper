@@ -50,6 +50,7 @@ enum NativeEditorError: LocalizedError {
     case cannotCreateTrack(String)
     case exportFailed(String)
     case aiFailed(String)
+    case missingSoundEffect(String)
 
     var errorDescription: String? {
         switch self {
@@ -61,6 +62,8 @@ enum NativeEditorError: LocalizedError {
             "The project cannot find media \(id)."
         case .emptyTimeline:
             "Add at least one clip before playing or exporting."
+        case let .missingSoundEffect(name):
+            "The \(name) sound effect is missing from this build."
         case let .cannotCreateTrack(kind):
             "AVFoundation could not create the \(kind) composition track."
         case let .exportFailed(message):

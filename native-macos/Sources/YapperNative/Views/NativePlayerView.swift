@@ -25,6 +25,7 @@ final class PlayerSurfaceView: NSView {
         CATransaction.commit()
         super.layout()
     }
+
 }
 
 struct NativePlayerView: NSViewRepresentable {

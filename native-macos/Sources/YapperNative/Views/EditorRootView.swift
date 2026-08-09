@@ -40,27 +40,50 @@ struct EditorRootView: View {
             }
             if layoutMode == .tallPreview {
                 EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
-                    VSplitView {
+                    NativeSplitPanes(
+                        isVertical: false,
+                        minimumFirst: 320,
+                        minimumSecond: 230,
+                        defaultFraction: 0.65,
+                        defaultsKey: "editorTallWorkbenchTimelineFraction"
+                    ) {
                         WorkbenchPanel(session: session)
-                            .frame(minHeight: 320, idealHeight: 610)
-
+                    } second: {
                         TimelinePanel(session: session)
-                            .frame(minHeight: 230, idealHeight: 330)
                     }
                 }
             } else {
-                VSplitView {
+                NativeSplitPanes(
+                    isVertical: false,
+                    minimumFirst: 390,
+                    minimumSecond: 230,
+                    defaultFraction: 0.65,
+                    defaultsKey: "editorStandardWorkspaceTimelineFraction"
+                ) {
                     EditorHorizontalWorkspace(session: session, layoutMode: layoutMode) {
                         WorkbenchPanel(session: session)
                     }
-                    .frame(minHeight: 390, idealHeight: 610)
-
+                } second: {
                     TimelinePanel(session: session)
-                        .frame(minHeight: 230, idealHeight: 320)
                 }
             }
         }
         .background(Color.editorBackground)
+        // Chirpy floats over the whole editor rather than living in a tab: what
+        // you want to say is not the property of any one panel, and a thing you
+        // can move is a thing that is never in the way.
+        .overlay {
+            FloatingAssistant(session: session, conversation: session.conversation)
+        }
+        // Cropping opens over the whole editor rather than inside the panel
+        // that started it: it is opened from the bin, from the timeline and
+        // from the inspector, and it is the same editor from all three.
+        .sheet(item: $session.cropRequest) { request in
+            CropSheet(session: session, request: request)
+        }
+        // Clicking away from a caption or a field puts the keyboard back where
+        // the editor's own keys work, so Space plays instead of typing.
+        .background(EndEditingOnOutsideClickView())
         .alert(
             "Yapper needs attention",
             isPresented: Binding(
@@ -89,25 +112,6 @@ private struct EditorHorizontalWorkspace<LeftContent: View>: View {
     }
 }
 
-private final class EditorNativeSplitView: NSSplitView {
-    var resetPosition: (() -> Void)?
-
-    override var dividerThickness: CGFloat { 7 }
-
-    override func drawDivider(in rect: NSRect) {
-        NSColor.separatorColor.withAlphaComponent(0.7).setFill()
-        NSRect(x: rect.midX - 0.5, y: rect.minY, width: 1, height: rect.height).fill()
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        if event.clickCount == 2 {
-            resetPosition?()
-            return
-        }
-        super.mouseDown(with: event)
-    }
-}
-
 private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
     let session: EditorSession
     let layoutMode: EditorLayoutMode
@@ -120,8 +124,8 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
         )
     }
 
-    func makeNSView(context: Context) -> EditorNativeSplitView {
-        let splitView = EditorNativeSplitView()
+    func makeNSView(context: Context) -> SplitContainerView {
+        let splitView = StudioSplitView()
         splitView.isVertical = true
         splitView.dividerStyle = .thin
         splitView.delegate = context.coordinator
@@ -138,6 +142,11 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
         )
         workbench.identifier = NSUserInterfaceItemIdentifier("YapperEditorWorkbench")
         preview.identifier = NSUserInterfaceItemIdentifier("YapperEditorPreview")
+        // Neither pane offers a fitting size: the split view tells them how
+        // big they are. Left to report one, each drag frame solved Auto Layout
+        // constraints for the whole subtree behind it.
+        workbench.sizingOptions = []
+        preview.sizingOptions = []
         workbench.wantsLayer = true
         preview.wantsLayer = true
         workbench.layer?.actions = ["bounds": NSNull(), "position": NSNull()]
@@ -154,17 +163,28 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
 
         context.coordinator.splitView = splitView
         context.coordinator.scheduleInitialPosition()
-        return splitView
+        return SplitContainerView(splitView: splitView)
     }
 
-    func updateNSView(_ splitView: EditorNativeSplitView, context: Context) {
+    func updateNSView(_ container: SplitContainerView, context: Context) {
         context.coordinator.aspectRatio = session.project.resolvedAspectRatio
         context.coordinator.scheduleInitialPosition()
+        context.coordinator.refitIfAspectRatioChanged()
     }
 
-    static func dismantleNSView(_ splitView: EditorNativeSplitView, coordinator: Coordinator) {
-        splitView.delegate = nil
-        splitView.resetPosition = nil
+    /// Takes whatever it is offered, so SwiftUI never asks the split view to
+    /// measure itself. See `NativeSplitPanes` for the same note.
+    func sizeThatFits(
+        _ proposal: ProposedViewSize,
+        nsView: SplitContainerView,
+        context: Context
+    ) -> CGSize? {
+        proposal.replacingUnspecifiedDimensions()
+    }
+
+    static func dismantleNSView(_ container: SplitContainerView, coordinator: Coordinator) {
+        container.splitView.delegate = nil
+        container.splitView.resetPosition = nil
     }
 
     @MainActor
@@ -191,9 +211,32 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
             DispatchQueue.main.async { [weak self] in
                 guard let self, let splitView, !appliedInitialPosition else { return }
                 guard splitView.bounds.width > splitView.dividerThickness + 1 else { return }
-                applyPosition(in: splitView, useStoredPosition: true)
+                // Tall preview exists to show the whole frame, so opening it
+                // always fits the video to the full height rather than
+                // reopening at whatever width the divider was last left at.
+                // Dragging the divider still works, and still sticks, until the
+                // mode is left and come back to.
+                applyPosition(in: splitView, useStoredPosition: layoutMode == .standard)
                 appliedInitialPosition = true
+                fittedAspectRatio = aspectRatio
             }
+        }
+
+        /// The frame shape the current position was fitted to. A project that
+        /// changes shape — nine by sixteen to one by one — has to be re-fitted,
+        /// or the preview keeps the width the old shape needed.
+        private var fittedAspectRatio: Double?
+
+        func refitIfAspectRatioChanged() {
+            guard
+                appliedInitialPosition,
+                let splitView,
+                let fittedAspectRatio,
+                abs(fittedAspectRatio - aspectRatio) > 0.000_1,
+                splitView.bounds.width > splitView.dividerThickness + 1
+            else { return }
+            self.fittedAspectRatio = aspectRatio
+            applyPosition(in: splitView, useStoredPosition: false)
         }
 
         func resetPosition(in splitView: NSSplitView) {
@@ -259,6 +302,13 @@ private struct NativeEditorSplitView<LeftContent: View>: NSViewRepresentable {
             let availableWidth = max(1, splitView.bounds.width - splitView.dividerThickness)
             let minimumPreview = min(layoutMode == .standard ? 440 : 310, availableWidth * 0.46)
             return availableWidth - minimumPreview
+        }
+
+        func splitView(
+            _ splitView: NSSplitView,
+            additionalEffectiveRectOfDividerAt dividerIndex: Int
+        ) -> NSRect {
+            SplitDividerHitArea.additionalRect(in: splitView, dividerIndex: dividerIndex)
         }
 
         func splitViewDidResizeSubviews(_ notification: Notification) {
@@ -328,43 +378,5 @@ private struct EditorHeader: View {
         .padding(.horizontal, 16)
         .frame(height: 52)
         .background(Color.panelBackground)
-    }
-}
-
-struct EditorPrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(.black)
-            .padding(.horizontal, 14)
-            .frame(height: 36)
-            .background(
-                Color.yapperOrange.opacity(
-                    isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.38
-                )
-            )
-            .opacity(isEnabled ? 1 : 0.72)
-            .clipShape(RoundedRectangle(cornerRadius: 7))
-    }
-}
-
-struct EditorSecondaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 12)
-            .frame(height: 36)
-            .background(Color.studioFaintFill.opacity(configuration.isPressed ? 1.6 : 1))
-            .overlay(
-                RoundedRectangle(cornerRadius: 7)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 7))
-            .opacity(isEnabled ? 1 : 0.42)
     }
 }

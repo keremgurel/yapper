@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct AppShellView: View {
-    @ObservedObject var session: EditorSession
+    // The shell has no visual dependency on editor state. Observing the whole
+    // session here made every selection, caption edit and background waveform
+    // update rebuild the sidebar and cross the WKWebView bridge as well.
+    let session: EditorSession
     @AppStorage("studioSidebarExpanded") private var sidebarExpanded = true
     @AppStorage("studioDestination") private var destinationRaw = StudioDestination.home.rawValue
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
@@ -49,7 +52,10 @@ struct AppShellView: View {
                 )
 
                 ZStack {
-                    EditorRootView(session: session, embedded: true)
+                    PersistentEditorHost(
+                        session: session,
+                        isActive: destination == .editor
+                    )
                         .opacity(destination == .editor ? 1 : 0)
                         .allowsHitTesting(destination == .editor)
                         .accessibilityHidden(destination != .editor)
@@ -64,8 +70,19 @@ struct AppShellView: View {
                     .opacity(destination == .editor ? 0 : 1)
                     .allowsHitTesting(destination != .editor)
                     .accessibilityHidden(destination == .editor)
+                    // A WKWebView goes on tracking the pointer at zero opacity,
+                    // and sets the cursor from the web process, after everything
+                    // the app does. Sitting full-size behind the editor it took
+                    // the resize arrows back off every divider and handle a
+                    // fraction of a second after they appeared. Parked outside
+                    // the window it keeps the Clerk session alive exactly as
+                    // before, without ever being under the pointer.
+                    .offset(x: destination == .editor ? -50_000 : 0)
+                    // The park is a jump, not a journey: left animated, the
+                    // web view would slide fifty thousand points on every
+                    // switch into the editor.
+                    .transaction { $0.disablesAnimations = true }
                 }
-                .animation(.easeOut(duration: 0.18), value: destination)
             }
             .minFrame()
         }
@@ -81,7 +98,9 @@ struct AppShellView: View {
     private func navigate(_ next: StudioDestination) {
         guard next != destination else { return }
         if destination == .editor { session.pausePlayback() }
-        withAnimation(.easeOut(duration: 0.18)) {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
             destinationRaw = next.rawValue
         }
     }
@@ -166,7 +185,8 @@ private struct StudioSidebar: View {
                                     }
                                 }
                             }
-                            .buttonStyle(.plain)
+                            .buttonStyle(.studioPlain)
+        .clickableCursor()
                             .help(item.title)
                         }
                     }
@@ -196,11 +216,15 @@ private struct StudioSidebar: View {
             .padding(.horizontal, expanded ? 14 : 18)
             .frame(height: 58)
         }
+        // Clip the content, then paint behind it. The other order clips the
+        // background too, and a clipped background stops at the layout bounds
+        // instead of reaching up through the hidden titlebar's safe-area inset,
+        // which left the window colour showing behind the traffic lights.
+        .clipped()
         .background(Color.sidebarBackground)
         .overlay(alignment: .trailing) {
             Rectangle().fill(Color.studioLine).frame(width: 1)
         }
-        .clipped()
     }
 }
 
@@ -213,6 +237,9 @@ private struct StudioTopBar: View {
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
     @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.tallPreview.rawValue
+    /// How much room the bar has, in steps, so the badge can decide whether its
+    /// name fits rather than being clipped when it does not.
+    @State private var barWidth: CGFloat = 1_200
 
     private var layoutMode: EditorLayoutMode {
         EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
@@ -225,9 +252,10 @@ private struct StudioTopBar: View {
                     .font(.system(size: 14, weight: .semibold))
                     .frame(width: 28, height: 28)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.studioPlain)
+        .clickableCursor()
             .foregroundStyle(.secondary)
-            .studioGlass(radius: 8, interactive: true)
+            .studioGlass(radius: 8)
             .help(sidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
 
             Rectangle().fill(Color.studioLine).frame(width: 1, height: 22)
@@ -252,7 +280,8 @@ private struct StudioTopBar: View {
                                 .background(layoutMode == mode ? Color.yapperOrange.opacity(0.12) : Color.clear)
                                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.studioPlain)
+        .clickableCursor()
                         .help(mode.title)
                     }
                 }
@@ -277,23 +306,47 @@ private struct StudioTopBar: View {
                 } label: {
                     Label("Import", systemImage: "plus")
                 }
-                .buttonStyle(StudioTopBarSecondaryButtonStyle())
+                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
-                .buttonStyle(StudioTopBarPrimaryButtonStyle())
+                .buttonStyle(EditorPrimaryButtonStyle(size: .small))
                 .disabled(session.project.clips.isEmpty || session.isExporting)
             }
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
 
-            WorkspaceProfileMenu(onNavigate: onNavigate)
+            WorkspaceProfileBadge(
+                name: "Celpip Speaking Team",
+                onNavigate: onNavigate,
+                // The editor's own controls take the middle of this bar, so on a
+                // narrow window the badge is what gets squeezed. It gives up its
+                // name at a width it chooses rather than being cut off mid-word.
+                showsName: barWidth >= 980
+            )
         }
         .padding(.horizontal, 10)
         .frame(height: 46)
-        .background(.regularMaterial)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { barWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, width in
+                        // In steps: the badge only cares which side of 980 it is
+                        // on, and a state write per frame of a window resize is
+                        // the whole editor rebuilt per frame. See PaneSizeStep.
+                        let stepped = PaneSizeStep.rounded(width, step: 40)
+                        guard stepped != barWidth else { return }
+                        barWidth = stepped
+                    }
+            }
+        }
+        // The same tone as the sidebar, not a material: chrome is one
+        // continuous surface across the top of the window, and `.regularMaterial`
+        // resolved to a grey that belongs to no token in the ramp.
+        .background(Color.sidebarBackground)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.studioLine).frame(height: 1)
         }
@@ -342,7 +395,8 @@ private struct NativeThemeSwitcher: View {
             .frame(width: 58, height: 28)
             .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.studioPlain)
+        .clickableCursor()
         .animation(.spring(response: 0.32, dampingFraction: 0.78), value: theme)
         .help(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
         .accessibilityLabel(theme == .dark ? "Switch to light mode" : "Switch to dark mode")
@@ -380,88 +434,6 @@ private struct NativeThemeSwitcher: View {
 
     private var trackStroke: Color {
         theme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.12)
-    }
-}
-
-private struct WorkspaceProfileMenu: View {
-    let onNavigate: (StudioDestination) -> Void
-
-    var body: some View {
-        Menu {
-            Button("Content Library", systemImage: "square.stack.3d.up") {
-                onNavigate(.library)
-            }
-            Button("Dictionary", systemImage: "character.book.closed") {
-                onNavigate(.dictionary)
-            }
-            Button("Connections", systemImage: "link") {
-                onNavigate(.connections)
-            }
-        } label: {
-            HStack(spacing: 9) {
-                ZStack {
-                    Circle()
-                        .fill(
-                            LinearGradient(
-                                colors: [Color.yapperOrange, Color.red.opacity(0.9)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Text("C")
-                        .font(.system(size: 12, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 25, height: 25)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Celpip Speaking Team")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 8)
-            .frame(height: 30)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .studioGlass(radius: 10, interactive: true)
-    }
-}
-
-private struct StudioTopBarPrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) private var isEnabled
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11, weight: .bold))
-            .foregroundStyle(.black)
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(
-                Color.yapperOrange.opacity(
-                    isEnabled ? (configuration.isPressed ? 0.78 : 1) : 0.35
-                )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .opacity(isEnabled ? 1 : 0.66)
-    }
-}
-
-private struct StudioTopBarSecondaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11, weight: .semibold))
-            .padding(.horizontal, 9)
-            .frame(height: 30)
-            .background(Color.studioFaintFill.opacity(configuration.isPressed ? 1.5 : 1))
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                    .stroke(Color.studioLine, lineWidth: 1)
-            }
     }
 }
 

@@ -154,15 +154,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
             return
         }
 
-        let themeScript = Self.applyThemeScript(theme)
-        webView.evaluateJavaScript(themeScript)
+        // Updating an NSViewRepresentable is cheap until it sends work to the
+        // web process. The shell can update for unrelated SwiftUI state, so
+        // only cross that process boundary when the theme really changed.
+        if context.coordinator.lastAppliedTheme != theme {
+            context.coordinator.lastAppliedTheme = theme
+            webView.evaluateJavaScript(Self.applyThemeScript(theme))
+        }
 
         guard destination != .editor else { return }
         let currentURL = webView.url
         let isYapperPage = currentURL?.host == "ypr.app" || currentURL?.host == "www.ypr.app"
         if isYapperPage, currentURL?.path != destination.cloudPath,
            context.coordinator.requestedPath != destination.cloudPath {
-            load(destination, in: webView, coordinator: context.coordinator)
+            navigate(destination, in: webView, coordinator: context.coordinator)
         }
     }
 
@@ -184,6 +189,30 @@ private struct CloudStudioWebView: NSViewRepresentable {
         isLoading = true
         errorMessage = nil
         webView.load(URLRequest(url: destination.cloudURL))
+    }
+
+    /// Move between Studio tabs through Next's App Router. Falling back to a
+    /// document load keeps startup and error recovery robust, but the normal
+    /// path preserves React state, prefetched route payloads and client data.
+    private func navigate(
+        _ destination: StudioDestination,
+        in webView: WKWebView,
+        coordinator: Coordinator
+    ) {
+        let path = destination.cloudPath
+        guard let literal = Coordinator.javascriptLiteral(path) else {
+            load(destination, in: webView, coordinator: coordinator)
+            return
+        }
+        coordinator.requestedPath = path
+        let script = "window.__yapperNativeNavigate?.(\(literal)) === true"
+        webView.evaluateJavaScript(script) { result, error in
+            Task { @MainActor in
+                guard error != nil || (result as? Bool) != true else { return }
+                coordinator.requestedPath = nil
+                load(destination, in: webView, coordinator: coordinator)
+            }
+        }
     }
 
     private static func shellScript(theme: StudioTheme) -> String {
@@ -291,6 +320,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         var errorMessage: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
         var currentTheme: StudioTheme
+        var lastAppliedTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
         var nativeDestination: StudioDestination?
@@ -302,6 +332,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             onNavigate: @escaping (StudioDestination) -> Void
         ) {
             currentTheme = theme
+            lastAppliedTheme = theme
             self.isLoading = isLoading
             self.errorMessage = errorMessage
             self.onNavigate = onNavigate
@@ -497,7 +528,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             UserDefaults.standard.removeObject(forKey: Self.authenticationStateKey)
         }
 
-        private static func javascriptLiteral(_ value: String) -> String? {
+        fileprivate static func javascriptLiteral(_ value: String) -> String? {
             guard
                 let data = try? JSONSerialization.data(withJSONObject: value, options: .fragmentsAllowed)
             else { return nil }
