@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Loader2, Mic, Square } from "lucide-react";
-import CaptureLinkAttachment from "@/components/ideas/capture-link-attachment";
-import {
-  pullLink,
-  useCaptureDraft,
-} from "@/components/ideas/use-capture-draft";
+import LinkHighlightOverlay, {
+  COMPOSER_TEXT_CLASSES,
+} from "@/components/ideas/link-highlight-overlay";
+import { linkEndingAt, linksIn } from "@/lib/inspiration/link-spans";
+import { useCaptureDraft } from "@/components/ideas/use-capture-draft";
 import {
   durationLabel,
   useRecordingTimer,
@@ -27,6 +27,47 @@ export default function IdeaCapture({
 }) {
   const draft = useCaptureDraft();
   const ref = useRef<HTMLTextAreaElement>(null);
+  /// The link Backspace has taken hold of, waiting for the second press.
+  const [armedLink, setArmedLink] = useState<string | null>(null);
+
+  /**
+   * Backspace against a link takes the whole thing, in two presses.
+   *
+   * A link is one thing to a reader and forty characters to a textarea, so
+   * plain Backspace dismantles it into rubble one character at a time — and a
+   * half-eaten URL is neither a link nor prose. The first press selects it and
+   * marks it, which is the confirmation; the second deletes it. Anywhere else
+   * Backspace is exactly Backspace.
+   */
+  const handleBackspace = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Backspace") {
+      setArmedLink(null);
+      return;
+    }
+    const field = event.currentTarget;
+    if (field.selectionStart !== field.selectionEnd) {
+      setArmedLink(null);
+      return;
+    }
+    const span = linkEndingAt(draft.text, field.selectionStart ?? 0);
+    if (!span) {
+      setArmedLink(null);
+      return;
+    }
+    event.preventDefault();
+    if (armedLink === span.text) {
+      draft.updateText(
+        draft.text.slice(0, span.start) + draft.text.slice(span.end),
+      );
+      setArmedLink(null);
+      requestAnimationFrame(() => {
+        field.setSelectionRange(span.start, span.start);
+      });
+      return;
+    }
+    setArmedLink(span.text);
+    field.setSelectionRange(span.start, span.end);
+  };
   const dictation = useDictationCaret(ref, draft.text, draft.updateText);
   const {
     phase,
@@ -84,10 +125,8 @@ export default function IdeaCapture({
       if (inserted === null) return;
       words = inserted;
     }
-    const capture = [words.trim(), draft.link]
-      .filter(Boolean)
-      .join("\n")
-      .trim();
+    // The links are already in the words, where they were typed.
+    const capture = words.trim();
     if (!capture) return;
     onCapture(capture);
     draft.clear();
@@ -127,46 +166,55 @@ export default function IdeaCapture({
         const dropped =
           event.dataTransfer.getData("text/uri-list") ||
           event.dataTransfer.getData("text/plain");
-        const next = pullLink(dropped);
-        if (!next.link) return;
+        if (!linksIn(dropped).length) return;
         event.preventDefault();
-        draft.setLink(next.link);
+        // Dropped where the writing is, not into a slot underneath it.
+        draft.updateText(
+          draft.text
+            ? `${draft.text.trimEnd()} ${dropped.trim()}`
+            : dropped.trim(),
+        );
       }}
       className="sg-glass focus-within:border-foreground/25 p-2.5 transition-[border-color,box-shadow] duration-200 focus-within:shadow-md"
     >
-      <textarea
-        ref={ref}
-        value={draft.text}
-        autoFocus
-        onChange={(event) => {
-          draft.updateText(event.target.value);
-          dictation.remember();
-        }}
-        onSelect={dictation.remember}
-        onKeyUp={dictation.remember}
-        onClick={dictation.remember}
-        onBlur={dictation.remember}
-        onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-            event.preventDefault();
-            void submit();
-          }
-        }}
-        placeholder="Capture a thought, paste a reference, or ask Chirpy for ideas…"
-        rows={1}
-        aria-label="Capture an idea"
-        className="text-foreground placeholder:text-muted-foreground/75 max-h-[320px] min-h-7 w-full resize-none bg-transparent px-3 py-1 text-[16px] leading-7 outline-none"
-      />
-
-      {draft.link && (
-        <CaptureLinkAttachment
-          link={draft.link}
-          onRemove={() => {
-            draft.setLink(null);
-            ref.current?.focus();
+      {/* The links are painted a layer down, in the same metrics, so they can
+          look like links while this stays an ordinary textarea. See
+          LinkHighlightOverlay. */}
+      <div className="relative">
+        <LinkHighlightOverlay text={draft.text} armedLink={armedLink} />
+        <textarea
+          ref={ref}
+          value={draft.text}
+          autoFocus
+          onChange={(event) => {
+            draft.updateText(event.target.value);
+            setArmedLink(null);
+            dictation.remember();
           }}
+          onSelect={dictation.remember}
+          onKeyUp={dictation.remember}
+          onClick={() => {
+            setArmedLink(null);
+            dictation.remember();
+          }}
+          onBlur={() => {
+            setArmedLink(null);
+            dictation.remember();
+          }}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              void submit();
+              return;
+            }
+            handleBackspace(event);
+          }}
+          placeholder="Capture a thought, paste a reference, or ask Chirpy for ideas…"
+          rows={1}
+          aria-label="Capture an idea"
+          className={`${COMPOSER_TEXT_CLASSES} caret-foreground placeholder:text-muted-foreground/75 relative resize-none bg-transparent text-transparent outline-none`}
         />
-      )}
+      </div>
 
       <div className="flex min-h-11 items-end gap-2 px-1 pb-0.5">
         <div className="min-w-0 flex-1">
