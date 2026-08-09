@@ -78,6 +78,20 @@ describe("alignCleanedToContiguousTakes", () => {
     expect(result.coverage).toBe(1);
   });
 
+  it("keeps the first word of the final take when earlier takes open the same way", () => {
+    const source = words(
+      "Stop trying to memorize full CELPIP speaking answers. " +
+        "Stop trying to memorize full CELPIP speaking answers and try these templates instead.",
+    );
+    const result = alignCleanedToContiguousTakes(
+      source,
+      "Stop trying to memorize full CELPIP speaking answers and try these templates instead.",
+    );
+
+    expect(result.keep).toEqual([[8, 20]]);
+    expect(source[8].text).toBe("Stop");
+  });
+
   it("turns kept spans into the complement cut ranges", () => {
     expect(
       cutsOutsideKeptTakes(12, [
