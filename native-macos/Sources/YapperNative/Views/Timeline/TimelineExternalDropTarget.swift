@@ -151,36 +151,11 @@ private struct TimelineFileDropDelegate: DropDelegate {
             return false
         }
         Task { @MainActor in
-            // One at a time, in the order they were dragged. A drop is a
-            // handful of files and reading a URL out of one is nothing, so
-            // there is no race here worth arranging for, and the order is worth
-            // keeping: it is the order they land in.
-            var urls: [URL] = []
-            for provider in providers {
-                if let url = await Self.url(from: provider) { urls.append(url) }
-            }
             // Always reported, empty or not: this is the only place that knows
             // the drag is finished, so it is the only place that can say so.
-            dropped(location, urls)
+            dropped(location, await DroppedFiles.urls(from: providers))
         }
         return true
-    }
-
-    /// The file behind one dragged item. A Finder drag carries its URL as data
-    /// rather than as a string, and several of them arrive at once, so each is
-    /// read on its own and whatever fails is simply not part of the drop.
-    private static func url(from provider: NSItemProvider) async -> URL? {
-        await withCheckedContinuation { continuation in
-            _ = provider.loadDataRepresentation(
-                forTypeIdentifier: UTType.fileURL.identifier
-            ) { data, _ in
-                guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                continuation.resume(returning: url)
-            }
-        }
     }
 }
 

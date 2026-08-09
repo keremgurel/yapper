@@ -8,7 +8,8 @@ export type StudioIcon =
   | "scissors"
   | "dictionary"
   | "send"
-  | "zap";
+  | "zap"
+  | "brain";
 
 export interface StudioNavItem {
   title: string;
@@ -36,6 +37,14 @@ const inspiration: StudioNavItem = {
   description:
     "Drop a link or a voice note. We keep your words and build the idea.",
   icon: "library",
+};
+
+const brain: StudioNavItem = {
+  title: "Brain",
+  href: "/studio/brain",
+  description:
+    "What you make, who it is for, and why. Everything we write reads this first.",
+  icon: "brain",
 };
 
 const contentLibrary: StudioNavItem = {
@@ -105,7 +114,7 @@ const connections: StudioNavItem = {
  */
 export const studioNavGroups: StudioNavGroup[] = [
   { label: "", items: [home] },
-  { label: "Lab", items: [inspiration, contentLibrary] },
+  { label: "Lab", items: [brain, inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
   { label: "Settings", items: [dictionary, connections] },

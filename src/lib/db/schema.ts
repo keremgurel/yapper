@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -234,6 +235,48 @@ export const projectPillars = pgTable(
     // Two pillars with the same name would make classification ambiguous and
     // the reconciliation of legacy free-text pillars non-deterministic.
     uniqueIndex("project_pillars_name_unique").on(t.projectId, t.name),
+  ],
+);
+
+/** How a brain block holds what it holds. `note` is prose, `list` is lines the
+ * creator collects: hooks that worked, formats that worked, rules. */
+export const brainBlockKinds = ["note", "list"] as const;
+export type BrainBlockKind = (typeof brainBlockKinds)[number];
+
+/**
+ * One section of the creator's brain, written by them.
+ *
+ * The fixed project fields (what I make, who it's for, how I sound) answer the
+ * questions everyone has. These answer the ones only this creator has: why they
+ * are posting at all, what they are actually chasing, the hooks that keep
+ * working, the formats they trust, the rule they keep breaking. Free-form on
+ * purpose, because a brain that shipped as a fixed form would be the same brain
+ * for everybody, and the whole point is that it is theirs.
+ */
+export const projectBrainBlocks = pgTable(
+  "project_brain_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    kind: text("kind").$type<BrainBlockKind>().notNull().default("note"),
+    body: text("body").notNull().default(""),
+    items: jsonb("items").$type<string[]>().notNull().default([]),
+    /** Whether the AI reads it. Some of the brain is the creator thinking out
+     * loud, and a private block has to be able to stay out of every prompt. */
+    inContext: boolean("in_context").notNull().default(true),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("project_brain_blocks_project_idx").on(t.projectId, t.sortOrder),
   ],
 );
 
