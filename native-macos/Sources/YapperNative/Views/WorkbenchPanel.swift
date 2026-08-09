@@ -1354,6 +1354,10 @@ private struct AudioWorkbench: View {
                     Divider()
                 }
 
+                WorkbenchSavedAudioShelf(session: session, store: .shared)
+
+                Divider().frame(maxWidth: 528)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("SOUND EFFECTS")
                         .font(.studioCaptionStrong)

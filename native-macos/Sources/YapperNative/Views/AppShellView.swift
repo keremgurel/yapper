@@ -60,16 +60,28 @@ struct AppShellView: View {
                         .allowsHitTesting(destination == .editor)
                         .accessibilityHidden(destination != .editor)
 
+                    // Built on arrival and torn down on the way out, unlike the
+                    // editor: the library holds no work in progress, and one
+                    // that stayed mounted would rebuild on every edit made in
+                    // the tab next door.
+                    if destination == .audio {
+                        AudioLibraryPage(
+                            session: session,
+                            store: .shared,
+                            onOpenEditor: { navigate(.editor) }
+                        )
+                    }
+
                     // Keep one authenticated web view alive behind the native
                     // editor. Clerk refreshes its short-lived session there,
                     // and native AI uploads read the resulting Yapper cookies.
                     StudioPageView(
-                        destination: destination == .editor ? .home : destination,
+                        destination: destination.isNative ? .home : destination,
                         onNavigate: navigate
                     )
-                    .opacity(destination == .editor ? 0 : 1)
-                    .allowsHitTesting(destination != .editor)
-                    .accessibilityHidden(destination == .editor)
+                    .opacity(destination.isNative ? 0 : 1)
+                    .allowsHitTesting(!destination.isNative)
+                    .accessibilityHidden(destination.isNative)
                     // A WKWebView goes on tracking the pointer at zero opacity,
                     // and sets the cursor from the web process, after everything
                     // the app does. Sitting full-size behind the editor it took
@@ -77,7 +89,7 @@ struct AppShellView: View {
                     // fraction of a second after they appeared. Parked outside
                     // the window it keeps the Clerk session alive exactly as
                     // before, without ever being under the pointer.
-                    .offset(x: destination == .editor ? -50_000 : 0)
+                    .offset(x: destination.isNative ? -50_000 : 0)
                     // The park is a jump, not a journey: left animated, the
                     // web view would slide fifty thousand points on every
                     // switch into the editor.
