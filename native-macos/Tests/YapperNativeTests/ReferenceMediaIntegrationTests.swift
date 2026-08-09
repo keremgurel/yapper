@@ -232,8 +232,7 @@ struct ReferenceMediaIntegrationTests {
                     timelineStart: 0.25,
                     duration: 2.25,
                     y: 0.16,
-                    style: .whiteCard,
-                    font: .rounded
+                    appearance: .hookDefault
                 ),
             ]
         )
