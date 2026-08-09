@@ -34,4 +34,19 @@ enum ImportPanels {
         guard panel.runModal() == .OK else { return }
         Task { await session.importAudio(panel.urls) }
     }
+
+    /// Into the library rather than into the open project: the same panel, a
+    /// different destination, and the reason the two are named apart.
+    @MainActor
+    static func openLibraryAudio(into store: AudioLibraryStore) {
+        let panel = NSOpenPanel()
+        panel.title = "Add to audio library"
+        panel.prompt = "Add"
+        panel.allowedContentTypes = [.audio]
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        guard panel.runModal() == .OK else { return }
+        let urls = panel.urls
+        Task { await store.add(urls) }
+    }
 }

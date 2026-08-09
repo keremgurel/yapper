@@ -146,11 +146,11 @@ private struct CloudStudioWebView: NSViewRepresentable {
         context.coordinator.nativeDestination = destination
         context.coordinator.currentTheme = theme
 
-        if context.coordinator.lastReloadGeneration != reloadGeneration {
+        if context.coordinator.lastReloadGeneration != reloadGeneration, let url = destination.cloudURL {
             context.coordinator.lastReloadGeneration = reloadGeneration
             context.coordinator.requestedPath = destination.cloudPath
             isLoading = true
-            webView.load(URLRequest(url: destination.cloudURL, cachePolicy: .reloadIgnoringLocalCacheData))
+            webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
             return
         }
 
@@ -162,7 +162,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
             webView.evaluateJavaScript(Self.applyThemeScript(theme))
         }
 
-        guard destination != .editor else { return }
+        // A tab the app draws itself has no page to keep in step with. The web
+        // view stays on whatever it was showing, signed in and ready.
+        guard !destination.isNative else { return }
         let currentURL = webView.url
         let isYapperPage = currentURL?.host == "ypr.app" || currentURL?.host == "www.ypr.app"
         if isYapperPage, currentURL?.path != destination.cloudPath,
@@ -184,11 +186,11 @@ private struct CloudStudioWebView: NSViewRepresentable {
         in webView: WKWebView,
         coordinator: Coordinator
     ) {
-        guard destination != .editor else { return }
+        guard !destination.isNative, let url = destination.cloudURL else { return }
         coordinator.requestedPath = destination.cloudPath
         isLoading = true
         errorMessage = nil
-        webView.load(URLRequest(url: destination.cloudURL))
+        webView.load(URLRequest(url: url))
     }
 
     /// Move between Studio tabs through Next's App Router. Falling back to a
@@ -199,7 +201,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         in webView: WKWebView,
         coordinator: Coordinator
     ) {
-        let path = destination.cloudPath
+        guard let path = destination.cloudPath else { return }
         guard let literal = Coordinator.javascriptLiteral(path) else {
             load(destination, in: webView, coordinator: coordinator)
             return
@@ -646,13 +648,17 @@ private struct CloudStudioWebView: NSViewRepresentable {
 }
 
 private extension StudioDestination {
-    var cloudPath: String {
+    /// The web route this tab shows, or nil for one the app draws itself.
+    var cloudPath: String? {
         switch self {
         case .home: "/studio/home"
         case .ideas: "/studio/ideas"
         case .library: "/studio/library"
         case .recorder: "/studio/recorder"
         case .editor: "/studio/editor"
+        // Nothing to load: the audio library is a folder on this Mac, and there
+        // is no page on the web that could show it.
+        case .audio: nil
         case .poster: "/studio/poster"
         case .calendar: "/studio/calendar"
         case .automations: "/studio/automations"
@@ -661,8 +667,9 @@ private extension StudioDestination {
         }
     }
 
-    var cloudURL: URL {
-        URL(string: "https://ypr.app\(cloudPath)?native=swift")!
+    var cloudURL: URL? {
+        guard let cloudPath else { return nil }
+        return URL(string: "https://ypr.app\(cloudPath)?native=swift")
     }
 
     init?(cloudPath: String) {
@@ -670,7 +677,8 @@ private extension StudioDestination {
             ? String(cloudPath.dropLast())
             : cloudPath
         guard let match = StudioDestination.allCases.first(where: {
-            normalized == $0.cloudPath || normalized.hasPrefix("\($0.cloudPath)/")
+            guard let path = $0.cloudPath else { return false }
+            return normalized == path || normalized.hasPrefix("\(path)/")
         }) else { return nil }
         self = match
     }

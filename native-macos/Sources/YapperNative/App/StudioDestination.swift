@@ -6,6 +6,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     case library
     case recorder
     case editor
+    case audio
     case poster
     case calendar
     case automations
@@ -14,6 +15,15 @@ enum StudioDestination: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// Drawn by the app itself rather than loaded from the web.
+    ///
+    /// The editor is native because a browser cannot cut video the way this
+    /// does, and the audio library is native because it is a folder of real
+    /// files on this Mac. Everything else is the same page the browser shows.
+    var isNative: Bool {
+        self == .editor || self == .audio
+    }
+
     var title: String {
         switch self {
         case .home: "Home"
@@ -21,6 +31,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .library: "Content Library"
         case .recorder: "Recorder"
         case .editor: "Editor"
+        case .audio: "Audio"
         case .poster: "Poster"
         case .calendar: "Calendar"
         case .automations: "Automations"
@@ -36,6 +47,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .library: "square.stack.3d.up"
         case .recorder: "video"
         case .editor: "scissors"
+        case .audio: "music.note.list"
         case .poster: "paperplane"
         case .calendar: "calendar"
         case .automations: "bolt"
@@ -48,7 +60,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         switch self {
         case .home: ""
         case .ideas, .library: "Lab"
-        case .recorder, .editor: "Studio"
+        case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
         case .dictionary, .connections: "Settings"
         }
@@ -57,7 +69,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     static let groups: [(String, [StudioDestination])] = [
         ("", [.home]),
         ("Lab", [.ideas, .library]),
-        ("Studio", [.recorder, .editor]),
+        ("Studio", [.recorder, .editor, .audio]),
         ("Press", [.poster, .calendar, .automations]),
         ("Settings", [.dictionary, .connections]),
     ]
