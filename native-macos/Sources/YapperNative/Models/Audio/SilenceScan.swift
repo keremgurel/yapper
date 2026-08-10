@@ -122,10 +122,15 @@ enum SilenceScan {
     /// with nothing said in it goes with its neighbours, however loud the noise
     /// in it was. Longer than that it stays, because a laugh or a held beat is
     /// wordless too and worth keeping.
+    /// - Parameters:
+    ///   - lively: loudness per frame and the line above which a wordless
+    ///     moment is worth keeping. A laugh reaches it; a breath and a second
+    ///     of room tone do not. Without it, length is the only test.
     static func absorbingIslands(
         _ ranges: [(Double, Double)],
         words: [(Double, Double)],
-        minimumKeep: Double = 0.6
+        minimumKeep: Double = 0.6,
+        lively: (loudness: [Double], hop: Double, line: Double)? = nil
     ) -> [(Double, Double)] {
         let sorted = ranges.sorted { $0.0 < $1.0 }
         guard sorted.count > 1 else { return sorted }
@@ -135,13 +140,46 @@ enum SilenceScan {
             let previous = merged[merged.count - 1]
             let island = (previous.1, range.0)
             let holdsSpeech = words.contains { $0.1 > island.0 && $0.0 < island.1 }
-            if island.1 - island.0 < minimumKeep, !holdsSpeech {
+            // Long enough to keep is not the same as worth keeping. Measured on
+            // a real take, a 1.22s stretch with nothing said in it sat at
+            // -47.9 dB against speech at -27.9: room tone and a breath, which
+            // survived on length alone and read as a dead clip on the timeline.
+            let isLively = lively.map { hasSound(above: $0.line, in: island, loudness: $0.loudness, hop: $0.hop) } ?? true
+            if !holdsSpeech, island.1 - island.0 < minimumKeep || !isLively {
                 merged[merged.count - 1] = (previous.0, max(previous.1, range.1))
             } else {
                 merged.append(range)
             }
         }
         return merged
+    }
+
+    /// The line a wordless moment has to reach to be worth keeping: within
+    /// 12 dB of how loud this recording's speech is. A laugh clears it. A
+    /// breath, a chair, and a second of room tone do not.
+    static func livelyLine(
+        for envelope: LoudnessEnvelope.Envelope,
+        settings: Settings = Settings()
+    ) -> (loudness: [Double], hop: Double, line: Double) {
+        let sorted = envelope.loudness.sorted()
+        let speech = sorted.isEmpty
+            ? settings.ceiling
+            : sorted[min(sorted.count - 1, Int(Double(sorted.count) * 0.8))]
+        return (envelope.loudness, envelope.hop, speech - 12)
+    }
+
+    /// Whether anything in this stretch reaches a given loudness.
+    static func hasSound(
+        above line: Double,
+        in range: (Double, Double),
+        loudness: [Double],
+        hop: Double
+    ) -> Bool {
+        guard hop > 0 else { return true }
+        let from = max(0, Int(range.0 / hop))
+        let to = min(loudness.count, Int(range.1 / hop) + 1)
+        guard from < to else { return false }
+        return loudness[from ..< to].contains { $0 >= line }
     }
 
     private static func append(

@@ -174,7 +174,8 @@ actor AIEditService {
                         SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
                         words: spoken
                     ),
-                    words: spoken
+                    words: spoken,
+                    lively: SilenceScan.livelyLine(for: envelope)
                 )
             }
 
@@ -219,7 +220,8 @@ actor AIEditService {
                     SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
                     words: spoken
                 ),
-                words: spoken
+                words: spoken,
+                lively: SilenceScan.livelyLine(for: envelope)
             )
             // A take that is silent from end to end is a take with no speech in
             // it, and removing all of it is never what was meant.
