@@ -60,7 +60,11 @@ struct CloudStudioView: View {
     /// stays covered until the route it is on matches the one that was asked
     /// for.
     private var isShowingDestination: Bool {
-        destination.cloudPath == nil || shownPath == destination.cloudPath
+        // Nothing to hide on the way to the sign-in card: there is no previous
+        // page behind it worth covering, and a cover that outlives its reason
+        // is an opaque sheet over the only button in the app.
+        if destination == .signIn { return true }
+        return destination.cloudPath == nil || shownPath == destination.cloudPath
     }
 
     var body: some View {
@@ -107,15 +111,6 @@ struct CloudStudioView: View {
             }
         }
         .background(Color.editorBackground)
-        .task(id: destination) {
-            guard !isShowingDestination else { return }
-            // A page that never announced itself still has to be shown. Long
-            // enough that a normal route change wins the race, short enough
-            // that a missing signal is a beat rather than a hang.
-            try? await Task.sleep(for: .milliseconds(1200))
-            guard !Task.isCancelled else { return }
-            shownPath = destination.cloudPath
-        }
     }
 }
 
@@ -240,6 +235,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     ) {
         guard !destination.isNative, let url = destination.cloudURL else { return }
         coordinator.requestedPath = destination.cloudPath
+        coordinator.armCoverTimeout(for: destination.cloudPath)
         isLoading = true
         errorMessage = nil
         webView.load(URLRequest(url: url))
@@ -259,6 +255,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
             return
         }
         coordinator.requestedPath = path
+        // A router push that quietly does nothing (a page with no shell on it,
+        // an error page) would otherwise leave the cover up for good.
+        coordinator.armCoverTimeout(for: path)
         let script = "window.__yapperNativeNavigate?.(\(literal)) === true"
         webView.evaluateJavaScript(script) { result, error in
             Task { @MainActor in
@@ -378,6 +377,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         var lastAppliedTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
+        private var coverTimeout: Task<Void, Never>?
         var lastSignOutGeneration = 0
         var lastManageAccountGeneration = 0
         var nativeDestination: StudioDestination?
@@ -439,6 +439,30 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
         }
 
+        /// The cover cannot outlive the navigation that raised it.
+        ///
+        /// This used to be a SwiftUI `.task`, which every rebuild cancelled,
+        /// and the shell rebuilds every couple of seconds while signed out. It
+        /// lost that race and left an opaque sheet over the sign-in card,
+        /// swallowing the click on the only button on screen.
+        func armCoverTimeout(for path: String?) {
+            coverTimeout?.cancel()
+            guard let path else { return }
+            coverTimeout = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(1500))
+                guard !Task.isCancelled else { return }
+                self?.shownPath.wrappedValue = path
+            }
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
+            guard webView !== oauthWebView else { return }
+            // A committed navigation has already replaced what was on screen,
+            // so there is no stale page left to hide.
+            coverTimeout?.cancel()
+            shownPath.wrappedValue = webView.url?.path
+        }
+
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
             guard webView !== oauthWebView else { return }
             isLoading.wrappedValue = true
@@ -459,6 +483,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
             webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
             isLoading.wrappedValue = false
+            coverTimeout?.cancel()
             shownPath.wrappedValue = webView.url?.path
             requestedPath = nil
         }
@@ -525,6 +550,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 // new route. Until it arrives the previous page is still what
                 // is painted, whatever the sidebar says.
                 shownPath.wrappedValue = path
+                coverTimeout?.cancel()
             case "open_microphone_settings":
                 guard let url = URL(
                     string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone"
