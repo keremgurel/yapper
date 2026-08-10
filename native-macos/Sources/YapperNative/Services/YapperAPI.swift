@@ -15,6 +15,18 @@ enum YapperAPI {
         baseURL.appending(path: path)
     }
 
+    /// Whether the web session has a Clerk session cookie to send.
+    ///
+    /// Checked before a long job rather than discovered at the end of one: the
+    /// AI edit transcribes first, and finding out it was signed out after
+    /// uploading every chunk wastes a minute of the creator's time.
+    static func hasSession() async -> Bool {
+        let cookies = await webSessionCookies()
+        return cookies.contains { cookie in
+            cookie.name.hasPrefix("__session") && cookieApplies(cookie, to: baseURL)
+        }
+    }
+
     static func authenticatedRequest(url: URL) async -> URLRequest {
         let cookies = await webSessionCookies()
         let applicableCookies = cookies.filter { cookie in
@@ -61,7 +73,12 @@ enum YapperAPI {
             }
             return .aiFailed("\(action) needs more Yapper credits.")
         }
-        if status == 401 || status == 403 {
+        // 404 belongs here, strange as it looks. Clerk's `auth.protect()`
+        // answers a protected API route with 404 rather than 401 when the
+        // caller has no session, deliberately, so nobody can enumerate which
+        // routes exist. From the app's side an expired session and a missing
+        // route are the same status, and one of those is the creator's to fix.
+        if status == 401 || status == 403 || status == 404 {
             return .aiFailed("Sign in from the Cloud Studio tab, then try \(action.lowercased()) again.")
         }
         return .aiFailed("\(action) failed (HTTP \(status)).")

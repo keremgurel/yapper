@@ -55,6 +55,9 @@ actor AIEditService {
         media: ProjectMedia,
         dictionary: [DictionaryEntry] = []
     ) async throws -> [TranscriptWord] {
+        // Before the decode, not after the upload: a signed-out account should
+        // cost a sentence, not a minute of chunking and sending.
+        try await Self.requireSession()
         let keyterms = TranscriptionDictionary.keyterms(dictionary)
         let decoded = try await decodeAudio(url: media.url)
         let chunks = makeChunks(decoded.pcm, sampleRate: decoded.sampleRate)
@@ -91,7 +94,17 @@ actor AIEditService {
         return TranscriptionDictionary.applied(to: heard, entries: dictionary)
     }
 
+    /// Fails before the work starts when nobody is signed in.
+    static func requireSession() async throws {
+        guard await YapperAPI.hasSession() else {
+            throw NativeEditorError.aiFailed(
+                "Sign in from the Cloud Studio tab first. The AI edit runs on your Yapper account."
+            )
+        }
+    }
+
     func cleanCuts(words: [TranscriptWord]) async throws -> [(Int, Int)] {
+        try await Self.requireSession()
         var request = await YapperAPI.authenticatedRequest(
             url: YapperAPI.url(path: "api/clean-transcript")
         )
