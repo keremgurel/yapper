@@ -670,11 +670,19 @@ private struct CloudStudioWebView: NSViewRepresentable {
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
-            guard
-                webView !== oauthWebView,
-                navigationAction.navigationType == .linkActivated,
-                let url = navigationAction.request.url
+            guard webView !== oauthWebView, let url = navigationAction.request.url
             else { return .allow }
+
+            // Google will not serve OAuth to an embedded web view at all, so
+            // this is the one thing that genuinely belongs in a real browser.
+            // Caught at Clerk's kickoff, before the app leaves the page it is
+            // showing.
+            if NativeSignIn.needsSystemBrowser(url) {
+                NativeAuthHandoff.shared.begin()
+                return .cancel
+            }
+
+            guard navigationAction.navigationType == .linkActivated else { return .allow }
 
             switch CloudLinkRouter.disposition(for: url, nativeDestination: nativeDestination) {
             case .allowInApp:
@@ -758,6 +766,7 @@ private extension StudioDestination {
         case .automations: "/studio/automations"
         case .dictionary: "/studio/dictionary"
         case .connections: "/studio/connections"
+        case .signIn: "/studio/app-sign-in"
         }
     }
 

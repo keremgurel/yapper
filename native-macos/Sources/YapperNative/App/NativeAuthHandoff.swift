@@ -12,8 +12,11 @@ import Foundation
 /// asked for it, and the callback itself, kept in memory when nothing is
 /// listening yet so switching pages mid-login cannot lose it.
 @MainActor
-final class NativeAuthHandoff {
+final class NativeAuthHandoff: ObservableObject {
     static let shared = NativeAuthHandoff()
+
+    /// True from opening the browser until a callback comes back.
+    @Published private(set) var isWaitingInBrowser = false
 
     /// The ticket that came back, for whoever can redeem it.
     private var pendingCallback: URL?
@@ -44,6 +47,7 @@ final class NativeAuthHandoff {
         guard let url = components.url else { return false }
 
         UserDefaults.standard.set(state, forKey: Self.stateKey)
+        isWaitingInBrowser = true
         // NSWorkspace uses the person's configured default browser and its
         // normal cookie jar. ASWebAuthenticationSession presents a separate auth
         // sheet, which was the source of the inconsistent sign-in UX.
@@ -56,6 +60,7 @@ final class NativeAuthHandoff {
 
     func clearState() {
         UserDefaults.standard.removeObject(forKey: Self.stateKey)
+        isWaitingInBrowser = false
     }
 
     /// The ticket in a callback, if the callback is one we asked for.
@@ -79,6 +84,7 @@ final class NativeAuthHandoff {
     }
 
     func receive(_ url: URL) {
+        isWaitingInBrowser = false
         guard
             url.scheme == "yapper-studio",
             url.host == "auth",

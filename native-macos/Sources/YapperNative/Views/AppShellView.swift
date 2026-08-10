@@ -19,11 +19,26 @@ struct AppShellView: View {
     /// the right one.
     @State private var parkedWebDestination = StudioDestination.home
     @ObservedObject private var auth = StudioAuth.shared
+    @ObservedObject private var handoff = NativeAuthHandoff.shared
 
     /// The chrome is for people who are in. A signed-out window shows one door,
     /// not eleven locked ones.
     private var isSignedIn: Bool {
         auth.isSignedIn ?? true
+    }
+
+    /// What the one web view is showing: the tab, the tab it is parked on while
+    /// a native tab is in front, or the sign-in card.
+    private var webDestination: StudioDestination {
+        guard isSignedIn else { return .signIn }
+        return destination.isNative ? parkedWebDestination : destination
+    }
+
+    /// Hidden while a native tab is in front, and while the browser has the
+    /// creator's attention mid sign-in.
+    private var isWebViewVisible: Bool {
+        guard isSignedIn else { return !handoff.isWaitingInBrowser }
+        return !destination.isNative
     }
 
     private var destination: StudioDestination {
@@ -92,13 +107,14 @@ struct AppShellView: View {
                     // Keep one authenticated web view alive behind the native
                     // editor. Clerk refreshes its short-lived session there,
                     // and native AI uploads read the resulting Yapper cookies.
-                    StudioPageView(
-                        destination: destination.isNative ? parkedWebDestination : destination,
-                        onNavigate: navigate
-                    )
-                    .opacity(destination.isNative || !isSignedIn ? 0 : 1)
-                    .allowsHitTesting(!destination.isNative && isSignedIn)
-                    .accessibilityHidden(destination.isNative || !isSignedIn)
+                    // Signed out, this is the whole window: Clerk's own sign-in
+                    // card, where an email and a password work without leaving
+                    // the app. Only Google and Apple are sent to a browser, and
+                    // only because they refuse to be shown here.
+                    StudioPageView(destination: webDestination, onNavigate: navigate)
+                        .opacity(isWebViewVisible ? 1 : 0)
+                        .allowsHitTesting(isWebViewVisible)
+                        .accessibilityHidden(!isWebViewVisible)
                     // A WKWebView goes on tracking the pointer at zero opacity,
                     // and sets the cursor from the web process, after everything
                     // the app does. Sitting full-size behind the editor it took
@@ -106,13 +122,13 @@ struct AppShellView: View {
                     // fraction of a second after they appeared. Parked outside
                     // the window it keeps the Clerk session alive exactly as
                     // before, without ever being under the pointer.
-                    .offset(x: destination.isNative || !isSignedIn ? -50_000 : 0)
+                    .offset(x: isWebViewVisible ? 0 : -50_000)
                     // The park is a jump, not a journey: left animated, the
                     // web view would slide fifty thousand points on every
                     // switch into the editor.
                     .transaction { $0.disablesAnimations = true }
 
-                    if !isSignedIn {
+                    if !isSignedIn, handoff.isWaitingInBrowser {
                         StudioSignInView()
                     }
                 }

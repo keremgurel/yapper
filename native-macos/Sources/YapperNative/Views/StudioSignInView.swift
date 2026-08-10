@@ -1,13 +1,13 @@
 import SwiftUI
 
-/// The whole window, when nobody is signed in.
+/// What the window shows while sign-in is happening in the browser.
 ///
-/// The app used to show its full self to a signed-out creator: a sidebar of
-/// tabs, each one loading a web page that said "Sign in". Eleven doors, all
-/// locked, and the same key behind every one of them. There is only one thing
-/// to do here, so this is the only thing on screen.
+/// Only Google and Apple get here: they refuse to be shown inside an embedded
+/// web view, so the creator is in Safari or Chrome and this window has nothing
+/// to do but wait. It says that, because a window that went quiet for thirty
+/// seconds read as a hung app.
 struct StudioSignInView: View {
-    @State private var isWaiting = false
+    @ObservedObject private var handoff = NativeAuthHandoff.shared
     @State private var errorMessage: String?
 
     var body: some View {
@@ -22,32 +22,26 @@ struct StudioSignInView: View {
                 VStack(spacing: 6) {
                     Text("Yapper Studio")
                         .font(.system(size: 26, weight: .black, design: .rounded))
-                    Text("Sign in to reach your projects, ideas and connected accounts.")
+                    Text("Finish signing in in your browser. This window updates by itself.")
                         .font(.studioBody)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: 360)
                 }
 
-                Button(action: signIn) {
-                    Text(isWaiting ? "Waiting for your browser…" : "Sign in")
-                        .frame(minWidth: 150)
-                }
-                .buttonStyle(EditorPrimaryButtonStyle())
-                .disabled(isWaiting)
-                .padding(.top, 4)
+                ProgressView()
+                    .controlSize(.small)
+                    .padding(.top, 2)
 
-                if isWaiting {
-                    // Said plainly, because the window goes quiet while the
-                    // browser has the person's attention, and a stalled login
-                    // otherwise looks like a stuck app.
-                    VStack(spacing: 8) {
-                        Text("Finish signing in in your browser. This window updates by itself.")
-                            .font(.studioCaption)
-                            .foregroundStyle(.secondary)
-                        Button("Open it again", action: signIn)
-                            .buttonStyle(EditorGhostButtonStyle())
+                HStack(spacing: 10) {
+                    Button("Open it again", action: signIn)
+                        .buttonStyle(EditorSecondaryButtonStyle())
+                    // The way back for somebody who changed their mind, or
+                    // closed the browser tab, or would rather type a password.
+                    Button("Use email instead") {
+                        NativeAuthHandoff.shared.clearState()
                     }
+                    .buttonStyle(EditorGhostButtonStyle())
                 }
 
                 if let errorMessage {
@@ -72,10 +66,8 @@ struct StudioSignInView: View {
 
     private func signIn() {
         errorMessage = nil
-        guard NativeAuthHandoff.shared.begin() else {
+        if !NativeAuthHandoff.shared.begin() {
             errorMessage = "Couldn’t open your browser. Open ypr.app and sign in there."
-            return
         }
-        isWaiting = true
     }
 }

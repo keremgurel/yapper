@@ -13,6 +13,8 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     case automations
     case dictionary
     case connections
+    /// Not a tab. The page a signed-out window shows, in place of everything.
+    case signIn
 
     var id: String { rawValue }
 
@@ -39,6 +41,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .automations: "Automations"
         case .dictionary: "Dictionary"
         case .connections: "Connections"
+        case .signIn: "Sign in"
         }
     }
 
@@ -56,6 +59,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .automations: "bolt"
         case .dictionary: "character.book.closed"
         case .connections: "point.3.connected.trianglepath.dotted"
+        case .signIn: "person.crop.circle"
         }
     }
 
@@ -66,6 +70,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
         case .dictionary, .connections: "Settings"
+        case .signIn: ""
         }
     }
 
