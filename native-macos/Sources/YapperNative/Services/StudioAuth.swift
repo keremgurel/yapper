@@ -29,13 +29,25 @@ final class StudioAuth: ObservableObject {
         if signedIn { stopWatching() }
     }
 
+    /// Whether we have waited long enough to call it: a page that never says
+    /// anything, on a build too old to report, still has to reach the door.
+    private var firstLook: Date?
+
     func refresh() async {
         guard !reportedByWeb else { return }
-        let hasCookie = await YapperAPI.hasSession()
-        // Only ever used to say "signed in" early. Saying "signed out" from a
-        // cookie that might simply be named something else is what tore the
-        // chrome off a working session.
-        if hasCookie { isSignedIn = true } else if isSignedIn == nil { isSignedIn = false }
+        if await YapperAPI.hasSession() {
+            isSignedIn = true
+            return
+        }
+        // Never says "signed out" on the cookie's word alone. The guess was
+        // wrong once already and took the whole sidebar with it, and being
+        // wrong in this direction throws a working session out of the app.
+        // Unknown stays unknown, which the shell treats as signed in, until
+        // either the page speaks or nothing has spoken for long enough.
+        let now = Date()
+        let started = firstLook ?? now
+        firstLook = started
+        if isSignedIn == nil, now.timeIntervalSince(started) > 6 { isSignedIn = false }
     }
 
     /// After a sign-out, the web view's own report is stale by definition.

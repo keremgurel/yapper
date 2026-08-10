@@ -48,9 +48,9 @@ struct CloudStudioView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var reloadGeneration = 0
-    /// The route the web view is really showing, which is not the one that was
-    /// asked for until the page says so.
-    @State private var shownPath: String?
+    /// The route the web view is really showing, kept outside the view: see
+    /// `StudioWebPresentation` for why `@State` could not hold it.
+    @ObservedObject private var presentation = StudioWebPresentation.shared
 
     /// Whether what is on screen is what the sidebar says is on screen.
     ///
@@ -64,7 +64,8 @@ struct CloudStudioView: View {
         // page behind it worth covering, and a cover that outlives its reason
         // is an opaque sheet over the only button in the app.
         if destination == .signIn { return true }
-        return destination.cloudPath == nil || shownPath == destination.cloudPath
+        return destination.cloudPath == nil
+            || presentation.shownPath == destination.cloudPath
     }
 
     var body: some View {
@@ -75,7 +76,6 @@ struct CloudStudioView: View {
                 reloadGeneration: reloadGeneration,
                 isLoading: $isLoading,
                 errorMessage: $errorMessage,
-                shownPath: $shownPath,
                 signOutGeneration: commands.signOutGeneration,
                 manageAccountGeneration: commands.manageAccountGeneration,
                 onNavigate: onNavigate
@@ -120,7 +120,6 @@ private struct CloudStudioWebView: NSViewRepresentable {
     let reloadGeneration: Int
     @Binding var isLoading: Bool
     @Binding var errorMessage: String?
-    @Binding var shownPath: String?
     let signOutGeneration: Int
     let manageAccountGeneration: Int
     let onNavigate: (StudioDestination) -> Void
@@ -136,7 +135,6 @@ private struct CloudStudioWebView: NSViewRepresentable {
             theme: theme,
             isLoading: $isLoading,
             errorMessage: $errorMessage,
-            shownPath: $shownPath,
             onNavigate: onNavigate
         )
     }
@@ -176,7 +174,6 @@ private struct CloudStudioWebView: NSViewRepresentable {
     func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.isLoading = $isLoading
         context.coordinator.errorMessage = $errorMessage
-        context.coordinator.shownPath = $shownPath
         context.coordinator.onNavigate = onNavigate
         context.coordinator.nativeDestination = destination
         context.coordinator.currentTheme = theme
@@ -371,13 +368,16 @@ private struct CloudStudioWebView: NSViewRepresentable {
         private var authenticationObserverID: UUID?
         var isLoading: Binding<Bool>
         var errorMessage: Binding<String?>
-        var shownPath: Binding<String?>
         var onNavigate: (StudioDestination) -> Void
         var currentTheme: StudioTheme
         var lastAppliedTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
         private var coverTimeout: Task<Void, Never>?
+        /// The destination the cover is currently protecting. A page arriving
+        /// for anything else is not the one being waited for, and must not take
+        /// this one's safety net with it.
+        private var coveringPath: String?
         var lastSignOutGeneration = 0
         var lastManageAccountGeneration = 0
         var nativeDestination: StudioDestination?
@@ -386,14 +386,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
             theme: StudioTheme,
             isLoading: Binding<Bool>,
             errorMessage: Binding<String?>,
-            shownPath: Binding<String?>,
             onNavigate: @escaping (StudioDestination) -> Void
         ) {
             currentTheme = theme
             lastAppliedTheme = theme
             self.isLoading = isLoading
             self.errorMessage = errorMessage
-            self.shownPath = shownPath
             self.onNavigate = onNavigate
         }
 
@@ -447,11 +445,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
         /// swallowing the click on the only button on screen.
         func armCoverTimeout(for path: String?) {
             coverTimeout?.cancel()
+            coveringPath = path
             guard let path else { return }
             coverTimeout = Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(1500))
                 guard !Task.isCancelled else { return }
-                self?.shownPath.wrappedValue = path
+                StudioWebPresentation.shared.shownPath = path
             }
         }
 
@@ -459,8 +458,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
             guard webView !== oauthWebView else { return }
             // A committed navigation has already replaced what was on screen,
             // so there is no stale page left to hide.
+            report(shown: webView.url?.path)
+        }
+
+        /// A page arrived.
+        ///
+        /// The timeout is only stood down when what arrived is what the cover
+        /// is waiting for. A late commit from the page being navigated away
+        /// from used to cancel the new destination's safety net and then name
+        /// itself as what was on screen, which left the cover up for good.
+        func report(shown path: String?) {
+            StudioWebPresentation.shared.shownPath = path
+            guard path == coveringPath else { return }
             coverTimeout?.cancel()
-            shownPath.wrappedValue = webView.url?.path
+            coveringPath = nil
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation?) {
@@ -483,8 +494,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
             webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
             isLoading.wrappedValue = false
-            coverTimeout?.cancel()
-            shownPath.wrappedValue = webView.url?.path
+            report(shown: webView.url?.path)
             requestedPath = nil
         }
 
@@ -508,7 +518,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             isLoading.wrappedValue = false
             // The error takes the whole surface, so the cover must come off or
             // it would hide the one thing the creator can act on.
-            shownPath.wrappedValue = webView?.url?.path
+            report(shown: webView?.url?.path)
             errorMessage.wrappedValue = error.localizedDescription
             requestedPath = nil
         }
@@ -555,8 +565,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 // Sent by the web shell once the App Router has committed the
                 // new route. Until it arrives the previous page is still what
                 // is painted, whatever the sidebar says.
-                shownPath.wrappedValue = path
-                coverTimeout?.cancel()
+                report(shown: path)
             case "open_microphone_settings":
                 guard let url = URL(
                     string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone"
