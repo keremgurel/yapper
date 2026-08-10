@@ -107,6 +107,14 @@ struct YapperAPICookieTests {
         )
     }
 
+    @Test("A site-wide cookie applies to the site's own root")
+    func rootPath() {
+        // `https://ypr.app` has an empty path, and "" does not start with "/".
+        // Taken literally that hid a live session from the app and put the
+        // sign-in screen in front of somebody who was signed in.
+        #expect(YapperAPI.cookieApplies(cookie(), to: URL(string: "https://ypr.app")!))
+    }
+
     @Test("A cookie scoped to another path stays there")
     func paths() {
         #expect(!YapperAPI.cookieApplies(cookie(path: "/studio"), to: url))

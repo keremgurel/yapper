@@ -21,9 +21,12 @@ enum YapperAPI {
     /// AI edit transcribes first, and finding out it was signed out after
     /// uploading every chunk wastes a minute of the creator's time.
     static func hasSession() async -> Bool {
+        // Asked about a real request URL rather than the bare host, so the
+        // answer is the same one the request itself will get.
+        let target = url(path: "api/transcribe")
         let cookies = await webSessionCookies()
         return cookies.contains { cookie in
-            cookie.name.hasPrefix("__session") && cookieApplies(cookie, to: baseURL)
+            cookie.name.hasPrefix("__session") && cookieApplies(cookie, to: target)
         }
     }
 
@@ -52,7 +55,12 @@ enum YapperAPI {
         guard let host = url.host?.lowercased() else { return false }
         let domain = cookie.domain.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
         let hostMatches = host == domain || host.hasSuffix("." + domain)
-        let pathMatches = url.path.hasPrefix(cookie.path)
+        // A URL with nothing after the host has an empty path, and an empty
+        // string starts with nothing, not even "/". Read as written, that says
+        // a site-wide cookie does not apply to the site's own root, which is
+        // how a valid session came back as "signed out".
+        let path = url.path.isEmpty ? "/" : url.path
+        let pathMatches = path.hasPrefix(cookie.path)
         let securityMatches = !cookie.isSecure || url.scheme?.lowercased() == "https"
         let freshnessMatches = cookie.expiresDate.map { $0 > Date() } ?? true
         return hostMatches && pathMatches && securityMatches && freshnessMatches
