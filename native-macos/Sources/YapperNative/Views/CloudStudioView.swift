@@ -534,6 +534,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 clearAuthenticationState()
                 errorMessage.wrappedValue = nil
                 self.webView?.reload()
+                Task { await StudioAuth.shared.refresh() }
             case "native_auth_error":
                 let arguments = payload["args"] as? [String: Any]
                 let message = arguments?["message"] as? String
@@ -544,40 +545,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
         }
 
         private func openBrowserAuthentication(_ baseURL: URL) {
-            clearAuthenticationState()
-            let state = UUID().uuidString.lowercased()
-            guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else { return }
-            var queryItems = components.queryItems ?? []
-            queryItems.removeAll { $0.name == "state" }
-            queryItems.append(URLQueryItem(name: "state", value: state))
-            components.queryItems = queryItems
-            guard let url = components.url else { return }
-
-            authenticationState = state
-            UserDefaults.standard.set(state, forKey: Self.authenticationStateKey)
-
-            // NSWorkspace uses the person's configured default browser and its
-            // normal cookie jar. ASWebAuthenticationSession presents a separate
-            // auth sheet, which was the source of the inconsistent sign-in UX.
-            guard NSWorkspace.shared.open(url) else {
-                clearAuthenticationState()
+            // One implementation, shared with the sign-in screen: two ways of
+            // minting the state is two ways of failing to verify it.
+            guard NativeAuthHandoff.shared.begin(at: baseURL) else {
                 errorMessage.wrappedValue = "Couldn’t open your browser for sign-in"
                 return
             }
         }
 
         private func finishBrowserAuthentication(callbackURL: URL) {
-            let expectedState = authenticationState
-                ?? UserDefaults.standard.string(forKey: Self.authenticationStateKey)
             guard
-                callbackURL.scheme == "yapper-studio",
-                callbackURL.host == "auth",
-                callbackURL.path == "/callback",
-                let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-                let ticket = components.queryItems?.first(where: { $0.name == "ticket" })?.value,
-                let returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value,
-                returnedState == expectedState,
-                !ticket.isEmpty
+                let ticket = NativeAuthHandoff.ticket(
+                    in: callbackURL,
+                    expecting: NativeAuthHandoff.shared.expectedState
+                )
             else {
                 clearAuthenticationState()
                 errorMessage.wrappedValue = "Browser sign-in could not be verified"
@@ -639,7 +620,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
         private func clearAuthenticationState() {
             authenticationState = nil
-            UserDefaults.standard.removeObject(forKey: Self.authenticationStateKey)
+            NativeAuthHandoff.shared.clearState()
         }
 
         fileprivate static func javascriptLiteral(_ value: String) -> String? {

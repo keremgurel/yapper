@@ -18,6 +18,13 @@ struct AppShellView: View {
     /// creator was makes the common return instant, because the page is already
     /// the right one.
     @State private var parkedWebDestination = StudioDestination.home
+    @ObservedObject private var auth = StudioAuth.shared
+
+    /// The chrome is for people who are in. A signed-out window shows one door,
+    /// not eleven locked ones.
+    private var isSignedIn: Bool {
+        auth.isSignedIn ?? true
+    }
 
     private var destination: StudioDestination {
         StudioDestination(rawValue: destinationRaw) ?? .home
@@ -29,17 +36,20 @@ struct AppShellView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            StudioSidebar(
-                destination: destination,
-                expanded: sidebarExpanded,
-                selectionNamespace: sidebarSelection,
-                onNavigate: navigate
-            )
-            .frame(width: sidebarExpanded ? 238 : 66)
-            .animation(.smooth(duration: 0.24), value: sidebarExpanded)
+            if isSignedIn {
+                StudioSidebar(
+                    destination: destination,
+                    expanded: sidebarExpanded,
+                    selectionNamespace: sidebarSelection,
+                    onNavigate: navigate
+                )
+                .frame(width: sidebarExpanded ? 238 : 66)
+                .animation(.smooth(duration: 0.24), value: sidebarExpanded)
+            }
 
             VStack(spacing: 0) {
-                StudioTopBar(
+                if isSignedIn {
+                    StudioTopBar(
                     destination: destination,
                     sidebarExpanded: sidebarExpanded,
                     session: session,
@@ -56,6 +66,7 @@ struct AppShellView: View {
                         }
                     }
                 )
+                }
 
                 ZStack {
                     PersistentEditorHost(
@@ -85,9 +96,9 @@ struct AppShellView: View {
                         destination: destination.isNative ? parkedWebDestination : destination,
                         onNavigate: navigate
                     )
-                    .opacity(destination.isNative ? 0 : 1)
-                    .allowsHitTesting(!destination.isNative)
-                    .accessibilityHidden(destination.isNative)
+                    .opacity(destination.isNative || !isSignedIn ? 0 : 1)
+                    .allowsHitTesting(!destination.isNative && isSignedIn)
+                    .accessibilityHidden(destination.isNative || !isSignedIn)
                     // A WKWebView goes on tracking the pointer at zero opacity,
                     // and sets the cursor from the web process, after everything
                     // the app does. Sitting full-size behind the editor it took
@@ -95,16 +106,29 @@ struct AppShellView: View {
                     // fraction of a second after they appeared. Parked outside
                     // the window it keeps the Clerk session alive exactly as
                     // before, without ever being under the pointer.
-                    .offset(x: destination.isNative ? -50_000 : 0)
+                    .offset(x: destination.isNative || !isSignedIn ? -50_000 : 0)
                     // The park is a jump, not a journey: left animated, the
                     // web view would slide fifty thousand points on every
                     // switch into the editor.
                     .transaction { $0.disablesAnimations = true }
+
+                    if !isSignedIn {
+                        StudioSignInView()
+                    }
                 }
             }
             .minFrame()
         }
         .background(Color.editorBackground)
+        .task {
+            await auth.refresh()
+            if auth.isSignedIn == false { auth.startWatching() }
+        }
+        .onChange(of: auth.isSignedIn) { _, signedIn in
+            // Someone signing out mid-session lands on the door, and the watcher
+            // picks them back up when they come through it.
+            if signedIn == false { auth.startWatching() } else { auth.stopWatching() }
+        }
         .onAppear {
             // A launch straight into a web tab parks on that tab, not on Home.
             if !destination.isNative { parkedWebDestination = destination }

@@ -16,6 +16,14 @@ final class StudioWebCommands: ObservableObject {
     @Published private(set) var signOutGeneration = 0
     @Published private(set) var manageAccountGeneration = 0
 
-    func signOut() { signOutGeneration += 1 }
+    func signOut() {
+        signOutGeneration += 1
+        // Clerk clears its cookies as it goes; the shell looks again shortly
+        // after so the window falls back to the sign-in screen by itself.
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            await StudioAuth.shared.refresh()
+        }
+    }
     func manageAccount() { manageAccountGeneration += 1 }
 }
