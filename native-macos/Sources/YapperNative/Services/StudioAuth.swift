@@ -1,12 +1,14 @@
 import AppKit
 import Foundation
 
-/// Whether anybody is signed in, as far as the app can tell.
+/// Whether anybody is signed in.
 ///
-/// Read from the web session's own cookies rather than kept as a flag: Clerk
-/// owns the session, it can end without the app being told (an expiry, a sign
-/// out in a browser tab), and a flag would go on claiming a session that is no
-/// longer there. The cookie is the truth.
+/// Clerk is asked, not guessed at. The first version read the cookie jar for a
+/// `__session` cookie on ypr.app, which is a guess about a shape that is
+/// Clerk's to change and is split across two domains; it came back false for a
+/// signed-in account and hid the entire sidebar. The web session reports its
+/// own state now (see `auth_state` in the web shell), and the cookie check is
+/// only a first guess for the moment before the page has loaded.
 @MainActor
 final class StudioAuth: ObservableObject {
     static let shared = StudioAuth()
@@ -15,10 +17,30 @@ final class StudioAuth: ObservableObject {
     /// at somebody who is already signed in.
     @Published private(set) var isSignedIn: Bool?
 
+    /// Set once the web session has spoken for itself. From then on the cookie
+    /// guess is ignored: Clerk knows, and it is right.
+    private var reportedByWeb = false
     private var watcher: Task<Void, Never>?
 
+    /// What the web session says about itself.
+    func report(signedIn: Bool) {
+        reportedByWeb = true
+        isSignedIn = signedIn
+        if signedIn { stopWatching() }
+    }
+
     func refresh() async {
-        isSignedIn = await YapperAPI.hasSession()
+        guard !reportedByWeb else { return }
+        let hasCookie = await YapperAPI.hasSession()
+        // Only ever used to say "signed in" early. Saying "signed out" from a
+        // cookie that might simply be named something else is what tore the
+        // chrome off a working session.
+        if hasCookie { isSignedIn = true } else if isSignedIn == nil { isSignedIn = false }
+    }
+
+    /// After a sign-out, the web view's own report is stale by definition.
+    func forgetWebReport() {
+        reportedByWeb = false
     }
 
     /// Watches while signed out, and stops as soon as somebody is in.

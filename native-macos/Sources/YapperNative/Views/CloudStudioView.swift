@@ -541,6 +541,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     Self.isYapperHost(url.host)
                 else { return }
                 openOAuthWindow(url)
+            case "auth_state":
+                guard
+                    let arguments = payload["args"] as? [String: Any],
+                    let signedIn = arguments["signedIn"] as? Bool
+                else { return }
+                StudioAuth.shared.report(signedIn: signedIn)
             case "route_changed":
                 guard
                     let arguments = payload["args"] as? [String: Any],

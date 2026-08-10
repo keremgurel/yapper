@@ -20,6 +20,7 @@ final class StudioWebCommands: ObservableObject {
         signOutGeneration += 1
         // Clerk clears its cookies as it goes; the shell looks again shortly
         // after so the window falls back to the sign-in screen by itself.
+        StudioAuth.shared.forgetWebReport()
         Task {
             try? await Task.sleep(for: .milliseconds(600))
             await StudioAuth.shared.refresh()

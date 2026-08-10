@@ -45,6 +45,22 @@ export default function AppChrome() {
   const { isLoaded, user } = useUser();
   const { signOut, openUserProfile } = useClerk();
 
+  // Tell the native shell who is signed in.
+  //
+  // It used to work this out from cookies, which is a guess: Clerk's cookies
+  // are split across the app and its own domain and the shape is theirs to
+  // change, and one wrong guess hid the entire sidebar from somebody who was
+  // signed in. Clerk itself knows, and this is where it can say so.
+  useEffect(() => {
+    if (!isLoaded) return;
+    const bridge = (window as NativeNavigationWindow).webkit?.messageHandlers
+      ?.yapperNative;
+    bridge?.postMessage({
+      command: "auth_state",
+      args: { signedIn: !!user },
+    });
+  }, [isLoaded, user]);
+
   // Tell the native shell which route is actually on screen.
   //
   // It asks for a tab and then has no way of knowing when React has committed
