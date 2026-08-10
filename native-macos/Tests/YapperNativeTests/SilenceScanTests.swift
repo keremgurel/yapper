@@ -88,6 +88,57 @@ struct SilenceScanTests {
         #expect(SilenceScan.silentRanges(loudness: [-50, -50], hop: 0).isEmpty)
     }
 
+    @Test("A cut never reaches into a word that is still spoken")
+    func avoidsWords() {
+        // A transcriber puts "if" at 10.0-10.4 while the sound starts at 10.2,
+        // so measured quiet laps over its front. Cutting there takes the word's
+        // attack and, worse, drags its midpoint into the removed side: the
+        // transcript then strikes through a word that is still in the video.
+        let ranges = SilenceScan.avoiding(
+            [(9.0, 10.3)],
+            words: [(10.0, 10.4)]
+        )
+        #expect(ranges.count == 1)
+        #expect(ranges[0].0 == 9.0)
+        #expect(ranges[0].1 == 10.0, "the cut stops where the word begins")
+    }
+
+    @Test("A word inside a long silence splits the cut around it")
+    func splitsAroundWord() {
+        let ranges = SilenceScan.avoiding([(0, 10)], words: [(4.0, 4.5)])
+        #expect(ranges.count == 2)
+        #expect(ranges[0] == (0, 4.0))
+        #expect(ranges[1] == (4.5, 10))
+    }
+
+    @Test("Frames left over after the words are taken out are not worth a splice")
+    func dropsCrumbs() {
+        // 20ms of quiet between two words is not a cut, it is a click.
+        #expect(SilenceScan.avoiding([(1.0, 1.02)], words: [(0.5, 1.0), (1.02, 1.5)]).isEmpty)
+    }
+
+    @Test("A sliver holding no speech goes with its neighbours")
+    func absorbsIslands() {
+        // A breath between two silences survived as a clip a few frames long,
+        // holding nothing, with a splice either side of it.
+        let ranges = SilenceScan.absorbingIslands(
+            [(0, 2.0), (2.08, 4.0)],
+            words: [(4.2, 4.6)]
+        )
+        #expect(ranges.count == 1)
+        #expect(ranges[0] == (0, 4.0))
+    }
+
+    @Test("A sliver with a word in it stays")
+    func keepsSpokenIslands() {
+        // Short words are still words. "No." between two pauses must survive.
+        let ranges = SilenceScan.absorbingIslands(
+            [(0, 2.0), (2.1, 4.0)],
+            words: [(2.0, 2.1)]
+        )
+        #expect(ranges.count == 2)
+    }
+
     @Test("The threshold sits under the talking, not under the pauses")
     func threshold() {
         // Mostly pauses: the median is silence, and a threshold taken from it

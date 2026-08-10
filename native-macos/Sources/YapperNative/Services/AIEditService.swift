@@ -166,8 +166,17 @@ actor AIEditService {
         // Measured silence, which finds the dead air a transcript hides: a
         // word's end is where it stops being a word, not where the room goes
         // quiet, and a second of flat waveform routinely reads as a 0.2s gap.
+        let spoken = kept.map { ($0.start, $0.end) }
         let measured = (url.flatMap { try? LoudnessEnvelope.measure(url: $0) })
-            .map { SilenceScan.silentRanges(loudness: $0.loudness, hop: $0.hop) }
+            .map { envelope in
+                SilenceScan.absorbingIslands(
+                    SilenceScan.avoiding(
+                        SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
+                        words: spoken
+                    ),
+                    words: spoken
+                )
+            }
 
         if let measured, !measured.isEmpty {
             ranges.append(contentsOf: measured)
@@ -204,9 +213,13 @@ actor AIEditService {
             let envelope = try? LoudnessEnvelope.measure(url: url),
             !envelope.loudness.isEmpty
         {
-            var ranges = SilenceScan.silentRanges(
-                loudness: envelope.loudness,
-                hop: envelope.hop
+            let spoken = words.map { ($0.start, $0.end) }
+            var ranges = SilenceScan.absorbingIslands(
+                SilenceScan.avoiding(
+                    SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
+                    words: spoken
+                ),
+                words: spoken
             )
             // A take that is silent from end to end is a take with no speech in
             // it, and removing all of it is never what was meant.

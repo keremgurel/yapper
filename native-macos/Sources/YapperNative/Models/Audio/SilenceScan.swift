@@ -77,6 +77,68 @@ enum SilenceScan {
         return min(settings.ceiling, max(settings.floor, relative))
     }
 
+    /// Silence, kept out of the words.
+    ///
+    /// A transcriber's word boundaries are generous, so measured quiet often
+    /// laps over the start or end of a word that is genuinely spoken. Cutting
+    /// there costs the word its attack, and worse, moves its midpoint into the
+    /// removed side: the transcript then shows a word struck through that is
+    /// still in the video, which is a lie about the edit.
+    static func avoiding(
+        _ ranges: [(Double, Double)],
+        words: [(Double, Double)],
+        smallestWorthCutting: Double = 0.05
+    ) -> [(Double, Double)] {
+        guard !words.isEmpty else { return ranges }
+        let spoken = words.sorted { $0.0 < $1.0 }
+        var kept: [(Double, Double)] = []
+
+        for range in ranges {
+            var pieces = [range]
+            for word in spoken where word.1 > range.0 && word.0 < range.1 {
+                pieces = pieces.flatMap { piece -> [(Double, Double)] in
+                    guard word.1 > piece.0, word.0 < piece.1 else { return [piece] }
+                    var remains: [(Double, Double)] = []
+                    if word.0 > piece.0 { remains.append((piece.0, word.0)) }
+                    if word.1 < piece.1 { remains.append((word.1, piece.1)) }
+                    return remains
+                }
+            }
+            // Whatever is left of a cut once the words are out of it can be a
+            // few frames wide. Removing those buys nothing and costs a splice.
+            kept.append(contentsOf: pieces.filter { $0.1 - $0.0 >= smallestWorthCutting })
+        }
+        return kept
+    }
+
+    /// Closes the slivers between two cuts.
+    ///
+    /// A lip smack or a breath between two silences survives as a clip a few
+    /// frames long holding no speech: visible on the timeline, pointless in the
+    /// edit, and a splice either side of it. If nothing is said in the gap, the
+    /// gap goes with its neighbours.
+    static func absorbingIslands(
+        _ ranges: [(Double, Double)],
+        words: [(Double, Double)],
+        minimumKeep: Double = 0.16
+    ) -> [(Double, Double)] {
+        let sorted = ranges.sorted { $0.0 < $1.0 }
+        guard sorted.count > 1 else { return sorted }
+        var merged: [(Double, Double)] = [sorted[0]]
+
+        for range in sorted.dropFirst() {
+            let previous = merged[merged.count - 1]
+            let island = (previous.1, range.0)
+            let holdsSpeech = words.contains { $0.1 > island.0 && $0.0 < island.1 }
+            if island.1 - island.0 < minimumKeep, !holdsSpeech {
+                merged[merged.count - 1] = (previous.0, max(previous.1, range.1))
+            } else {
+                merged.append(range)
+            }
+        }
+        return merged
+    }
+
     private static func append(
         _ ranges: inout [(Double, Double)],
         start: Int,
