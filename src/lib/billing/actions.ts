@@ -46,6 +46,11 @@ export async function reservePaidAction(
 ): Promise<CreditReservation> {
   await ensureUser(userId);
   if (!(await canUsePremium(userId))) {
+    // Logged with the account and the action, because a 402 is indistinguishable
+    // from the outside: "needs a subscription" and "out of credits" look the
+    // same to a client, and an account that should have passed leaves no trace
+    // of why it did not.
+    console.warn("[billing] refused", { userId, action, code: "not_entitled" });
     throw new BillingAccessError("not_entitled");
   }
 
@@ -58,6 +63,12 @@ export async function reservePaidAction(
     return { action, cost: definition.credits, balance, usageId };
   } catch (error) {
     if (error instanceof InsufficientCreditsError) {
+      console.warn("[billing] refused", {
+        userId,
+        action,
+        code: "insufficient_credits",
+        cost: definition.credits,
+      });
       throw new BillingAccessError("insufficient_credits");
     }
     throw error;

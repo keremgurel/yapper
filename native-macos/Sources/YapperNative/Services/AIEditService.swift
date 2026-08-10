@@ -108,8 +108,15 @@ actor AIEditService {
             return RetakeCutBoundaryRepair.repaired(words: words, cuts: deterministicRetakeCuts(words))
         }
         guard (200 ..< 300).contains(http.statusCode) else {
-            let detail = (try? JSONDecoder().decode(CleanResponse.self, from: data).error) ?? "HTTP \(http.statusCode)"
-            throw NativeEditorError.aiFailed("Retake analysis failed: \(detail)")
+            // Through the one place that knows what a status means to a
+            // creator. "HTTP 402" told them nothing: a subscription problem and
+            // an empty credit balance are different problems with different
+            // fixes, and the body says which one it is.
+            throw YapperAPI.failure(
+                status: http.statusCode,
+                body: data,
+                action: "The AI edit"
+            )
         }
         let decoded = try JSONDecoder().decode(CleanResponse.self, from: data)
         let cuts = (decoded.cuts ?? []).compactMap { pair -> (Int, Int)? in
@@ -260,7 +267,7 @@ actor AIEditService {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
                     let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-                    throw NativeEditorError.aiFailed("Transcription failed (HTTP \(code)).")
+                    throw YapperAPI.failure(status: code, body: data, action: "Transcription")
                 }
                 return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
             } catch {
