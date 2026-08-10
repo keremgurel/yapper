@@ -1408,7 +1408,8 @@ final class EditorSession: ObservableObject {
                 let ranges = await aiEditService.autoEditRanges(
                     words: words,
                     duration: media.duration,
-                    aiCuts: cuts
+                    aiCuts: cuts,
+                    url: media.url
                 )
                 project.removeSourceRanges(ranges, for: mediaID)
                 setOneClickEditStage(.trimmingSilence)
@@ -1525,7 +1526,8 @@ final class EditorSession: ObservableObject {
                 statusMessage = "Trimming silent gaps…"
                 let ranges = await aiEditService.silenceRanges(
                     words: words,
-                    duration: media.duration
+                    duration: media.duration,
+                    url: media.url
                 )
                 project.removeSourceRanges(ranges, for: mediaID)
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))

@@ -144,10 +144,17 @@ actor AIEditService {
         )
     }
 
+    /// What to remove for a one-click edit: the retakes, the fillers, and the
+    /// silence.
+    ///
+    /// - Parameter url: the media, for measuring where it is actually quiet.
+    ///   Word gaps stand in when it cannot be read, which is the old behaviour
+    ///   and a good deal gentler.
     func autoEditRanges(
         words: [TranscriptWord],
         duration: Double,
-        aiCuts: [(Int, Int)]
+        aiCuts: [(Int, Int)],
+        url: URL? = nil
     ) -> [(Double, Double)] {
         var ranges = aiCuts.map { (words[$0.0].start, words[$0.1].end) }
         let retakeRanges = merge(ranges)
@@ -156,27 +163,64 @@ actor AIEditService {
         }
         guard let first = kept.first, let last = kept.last else { return retakeRanges }
 
-        for index in kept.indices.dropLast() {
-            let next = kept.index(after: index)
-            if kept[next].start - kept[index].end >= 0.25 {
-                let start = kept[index].end + 0.06
-                let end = kept[next].start - 0.04
-                if end > start { ranges.append((start, end)) }
+        // Measured silence, which finds the dead air a transcript hides: a
+        // word's end is where it stops being a word, not where the room goes
+        // quiet, and a second of flat waveform routinely reads as a 0.2s gap.
+        let measured = (url.flatMap { try? LoudnessEnvelope.measure(url: $0) })
+            .map { SilenceScan.silentRanges(loudness: $0.loudness, hop: $0.hop) }
+
+        if let measured, !measured.isEmpty {
+            ranges.append(contentsOf: measured)
+        } else {
+            for index in kept.indices.dropLast() {
+                let next = kept.index(after: index)
+                if kept[next].start - kept[index].end >= 0.20 {
+                    let start = kept[index].end + 0.04
+                    let end = kept[next].start - 0.03
+                    if end > start { ranges.append((start, end)) }
+                }
             }
         }
         let fillers = Set(["um", "umm", "uh", "uhh", "uhm", "er", "err", "ah", "ahh", "hmm", "mhm"])
         for word in kept where fillers.contains(normalize(word.text)) {
             ranges.append((word.start, word.end))
         }
-        if first.start >= 0.4 { ranges.append((0, max(0, first.start - 0.04))) }
-        if duration - last.end >= 0.4 { ranges.append((last.end + 0.06, duration)) }
+        // The ends of a take are dead air rather than rhythm, so they go
+        // nearly whole, whichever way the silence was found.
+        if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
+        if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
         return merge(ranges)
     }
 
+    /// The silence-only pass, for the Auto-trim button.
     func silenceRanges(
         words: [TranscriptWord],
         duration: Double,
-        minimumPause: Double = 0.30
+        minimumPause: Double = 0.20,
+        url: URL? = nil
+    ) -> [(Double, Double)] {
+        if
+            let url,
+            let envelope = try? LoudnessEnvelope.measure(url: url),
+            !envelope.loudness.isEmpty
+        {
+            var ranges = SilenceScan.silentRanges(
+                loudness: envelope.loudness,
+                hop: envelope.hop
+            )
+            // A take that is silent from end to end is a take with no speech in
+            // it, and removing all of it is never what was meant.
+            let total = ranges.reduce(0.0) { $0 + ($1.1 - $1.0) }
+            if duration > 0, total < duration * 0.98 { return merge(ranges) }
+            ranges.removeAll()
+        }
+        return wordGapSilences(words: words, duration: duration, minimumPause: minimumPause)
+    }
+
+    private func wordGapSilences(
+        words: [TranscriptWord],
+        duration: Double,
+        minimumPause: Double
     ) -> [(Double, Double)] {
         let ordered = words.sorted { $0.start < $1.start }
         guard let first = ordered.first, let last = ordered.last else { return [] }
@@ -184,12 +228,12 @@ actor AIEditService {
         for index in ordered.indices.dropLast() {
             let next = ordered.index(after: index)
             guard ordered[next].start - ordered[index].end >= minimumPause else { continue }
-            let start = ordered[index].end + 0.06
-            let end = ordered[next].start - 0.04
+            let start = ordered[index].end + 0.04
+            let end = ordered[next].start - 0.03
             if end > start { ranges.append((start, end)) }
         }
-        if first.start >= 0.4 { ranges.append((0, max(0, first.start - 0.04))) }
-        if duration - last.end >= 0.4 { ranges.append((last.end + 0.06, duration)) }
+        if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
+        if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
         return merge(ranges)
     }
 
