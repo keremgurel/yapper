@@ -1,5 +1,6 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { warnOnCrossInstanceDatabase } from "./cross-instance-guard";
 import * as schema from "./schema";
 
 // Lazily created so importing the db module never opens a connection at build
@@ -12,6 +13,8 @@ export function getDb(): NodePgDatabase<typeof schema> {
     if (!connectionString) {
       throw new Error("DATABASE_URL is not set");
     }
+    // Once, on the first connection of the process.
+    warnOnCrossInstanceDatabase();
     const pool = new Pool({
       connectionString,
       max: 10,
