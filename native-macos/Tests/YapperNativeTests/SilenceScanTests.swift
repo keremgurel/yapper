@@ -119,14 +119,27 @@ struct SilenceScanTests {
 
     @Test("A sliver holding no speech goes with its neighbours")
     func absorbsIslands() {
-        // A breath between two silences survived as a clip a few frames long,
-        // holding nothing, with a splice either side of it.
+        // Measured on a real take: 14 of 34 surviving clips were these, 0.16s
+        // to 0.28s, and not one held a word. They are breaths and lip smacks,
+        // loud enough to break a silence in two and worth nothing on a
+        // timeline, so being audible is not enough to survive.
+        for gap in [0.08, 0.2, 0.28, 0.5] {
+            let ranges = SilenceScan.absorbingIslands(
+                [(0, 2.0), (2.0 + gap, 4.0)],
+                words: [(4.2, 4.6)]
+            )
+            #expect(ranges.count == 1, "a wordless \(gap)s island should not survive")
+        }
+    }
+
+    @Test("A long wordless moment is left alone")
+    func keepsLongIslands() {
+        // A laugh, or a beat held on purpose. Wordless, and not ours to cut.
         let ranges = SilenceScan.absorbingIslands(
-            [(0, 2.0), (2.08, 4.0)],
+            [(0, 2.0), (2.9, 4.0)],
             words: [(4.2, 4.6)]
         )
-        #expect(ranges.count == 1)
-        #expect(ranges[0] == (0, 4.0))
+        #expect(ranges.count == 2)
     }
 
     @Test("A sliver with a word in it stays")
