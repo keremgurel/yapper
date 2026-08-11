@@ -1,6 +1,11 @@
 import Foundation
 
-actor ProjectStore {
+protocol ProjectPersisting: Sendable {
+    func load() async throws -> EditorProject?
+    func save(_ project: EditorProject) async throws
+}
+
+actor ProjectStore: ProjectPersisting {
     static let shared = ProjectStore()
 
     private let encoder: JSONEncoder = {
@@ -55,14 +60,14 @@ actor ProjectStore {
         return support.appending(path: "Yapper Studio Native", directoryHint: .isDirectory)
     }
 
-    func load() throws -> EditorProject? {
+    func load() async throws -> EditorProject? {
         guard FileManager.default.fileExists(atPath: projectURL.path) else {
             return nil
         }
         return try decoder.decode(EditorProject.self, from: Data(contentsOf: projectURL))
     }
 
-    func save(_ project: EditorProject) throws {
+    func save(_ project: EditorProject) async throws {
         let directory = projectURL.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: directory,
