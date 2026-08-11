@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import {
@@ -15,14 +15,14 @@ import {
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
 import { ensureUser, getStorageBytes } from "@/lib/db/users";
-import { countMediaOnce } from "@/lib/db/storage-accounting";
+import { countMediaOnceWithinTx } from "@/lib/db/storage-accounting";
 import { runAudioFeedback } from "@/lib/feedback/audio";
 import type { Coaching } from "@/lib/feedback/coach";
 import { uploadBytesToGemini } from "@/lib/feedback/gemini";
 import { computeMetrics, type DeliveryMetrics } from "@/lib/feedback/metrics";
 import { transcribeForFeedback } from "@/lib/feedback/transcribe";
 import { coachOnCamera } from "@/lib/feedback/video";
-import { deleteObject, getObjectBytes, ownsKey } from "@/lib/r2";
+import { getObjectBytes, ownsKey } from "@/lib/r2";
 import { canUsePremium } from "@/lib/billing/gate";
 
 export const runtime = "nodejs";
@@ -92,15 +92,35 @@ export async function POST(req: NextRequest): Promise<Response> {
     })
     .returning({ id: submissions.id });
 
+  let result: FeedbackResult;
   try {
-    const result = await runTier(tier, audio, mediaKey, mimeType, userId);
+    result = await runTier(tier, audio, mediaKey, mimeType, userId);
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : "feedback_failed";
+    await markSubmissionFailed(db, submission.id, userId, detail);
+    return Response.json({ error: "feedback_failed", detail }, { status: 502 });
+  }
+
+  try {
     // Charge and mark complete in one transaction: a crash before commit rolls
-    // back the debit, so the user is never charged without a result.
+    // back the debit, result, and storage counter together.
     const balance = await db.transaction(async (tx) => {
+      if (mediaKey && result.mediaBytes) {
+        // All storage registration paths acquire the per-object advisory lock
+        // before the user row. Keep this ordering ahead of the credit debit to
+        // prevent an advisory-lock ↔ user-row deadlock.
+        await countMediaOnceWithinTx(
+          tx,
+          userId,
+          mediaKey,
+          result.mediaBytes,
+          submission.id,
+        );
+      }
       const bal = await deductWithinTx(tx, userId, cost, {
         submissionId: submission.id,
       });
-      await tx
+      const completed = await tx
         .update(submissions)
         .set({
           status: "complete",
@@ -112,14 +132,17 @@ export async function POST(req: NextRequest): Promise<Response> {
           mediaBytes: result.mediaBytes ?? 0,
           updatedAt: new Date(),
         })
-        .where(eq(submissions.id, submission.id));
+        .where(
+          and(
+            eq(submissions.id, submission.id),
+            eq(submissions.userId, userId),
+            eq(submissions.status, "processing"),
+          ),
+        )
+        .returning({ id: submissions.id });
+      if (completed.length === 0) throw new Error("submission_not_processing");
       return bal;
     });
-    // Count the stored recording against the user's quota, but only once per
-    // object, so re-analyzing the same mediaKey can't inflate the counter.
-    if (mediaKey && result.mediaBytes) {
-      await countMediaOnce(userId, mediaKey, result.mediaBytes, submission.id);
-    }
 
     return Response.json({
       submissionId: submission.id,
@@ -128,33 +151,41 @@ export async function POST(req: NextRequest): Promise<Response> {
       coaching: result.coaching,
     });
   } catch (e) {
-    // The work failed, or the balance ran out at charge time. Either way the
-    // transaction rolled back, so nothing was charged and there is nothing to
-    // refund. The uploaded clip is now an orphan, reclaim it.
-    if (mediaKey) {
-      try {
-        await deleteObject(mediaKey);
-      } catch {
-        // a lifecycle sweep can reclaim it later
-      }
-    }
+    // The completion transaction rolled back, so no debit, result, or storage
+    // update committed. This route did not create the caller-supplied R2 object
+    // and must never delete it on a processing failure.
     const insufficient = e instanceof InsufficientCreditsError;
     const detail = insufficient
       ? "insufficient_credits"
       : e instanceof Error
         ? e.message
         : "feedback_failed";
-    await db
-      .update(submissions)
-      .set({ status: "failed", error: detail, updatedAt: new Date() })
-      .where(eq(submissions.id, submission.id))
-      .catch(() => {
-        // best effort; a stranded "processing" row is cosmetic (never charged)
-      });
+    await markSubmissionFailed(db, submission.id, userId, detail);
     return insufficient
       ? Response.json({ error: "insufficient_credits" }, { status: 402 })
       : Response.json({ error: "feedback_failed", detail }, { status: 502 });
   }
+}
+
+async function markSubmissionFailed(
+  db: ReturnType<typeof getDb>,
+  submissionId: string,
+  userId: string,
+  detail: string,
+): Promise<void> {
+  await db
+    .update(submissions)
+    .set({ status: "failed", error: detail, updatedAt: new Date() })
+    .where(
+      and(
+        eq(submissions.id, submissionId),
+        eq(submissions.userId, userId),
+        eq(submissions.status, "processing"),
+      ),
+    )
+    .catch(() => {
+      // Best effort: a stranded processing row is cosmetic and never charged.
+    });
 }
 
 async function runTier(

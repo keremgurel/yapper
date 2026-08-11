@@ -1,17 +1,6 @@
-import { and, eq, sql, type ExtractTablesWithRelations } from "drizzle-orm";
-import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
-import type { PgTransaction } from "drizzle-orm/pg-core";
-import { getDb } from "./client";
+import { and, eq, sql } from "drizzle-orm";
+import { getDb, type DbTx } from "./client";
 import { creditLedger, users, type CreditReason } from "./schema";
-import type * as schema from "./schema";
-
-/** A live transaction handle, so callers can compose a debit into a larger
- * atomic unit (e.g. "charge the user and store the result together"). */
-export type DbTx = PgTransaction<
-  NodePgQueryResultHKT,
-  typeof schema,
-  ExtractTablesWithRelations<typeof schema>
->;
 
 /** Thrown by `deductCredits` when the user can't cover the cost. */
 export class InsufficientCreditsError extends Error {
