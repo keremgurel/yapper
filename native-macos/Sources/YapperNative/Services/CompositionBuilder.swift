@@ -10,6 +10,7 @@ struct BuiltComposition: @unchecked Sendable {
     let playbackVideoComposition: AVMutableVideoComposition?
     let audioMix: AVAudioMix?
     let renderSize: CGSize
+    let hasRenderedAudio: Bool
 
     @MainActor var playerItem: AVPlayerItem {
         let item = AVPlayerItem(asset: asset)
@@ -278,20 +279,28 @@ enum CompositionBuilder {
             )
         }
 
+        let mainTrackHasAudio = compositionAudio?.segments.contains { !$0.isEmpty } == true
+        if let compositionAudio, !mainTrackHasAudio {
+            composition.removeTrack(compositionAudio)
+        }
         let audioMix = try await addAudioLayers(
             project.audioLayers ?? [],
             to: composition,
             compositionDuration: cursor,
-            mainTrack: compositionAudio,
+            mainTrack: mainTrackHasAudio ? compositionAudio : nil,
             mainVolume: project.resolvedVideoTrackVolume
         )
+        let hasRenderedAudio = composition.tracks(withMediaType: .audio).contains { track in
+            track.segments.contains { !$0.isEmpty }
+        }
 
         return BuiltComposition(
             asset: composition,
             videoComposition: videoComposition,
             playbackVideoComposition: playbackVideoComposition,
             audioMix: audioMix,
-            renderSize: renderSize
+            renderSize: renderSize,
+            hasRenderedAudio: hasRenderedAudio
         )
     }
 
