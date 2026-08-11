@@ -5,11 +5,20 @@
  * the media, which the cross-post pipeline downloads and re-uploads to another
  * platform. Photos and carousels are dropped: there is no single video file to
  * backfill from them.
+ *
+ * `sourceFileUrl` is null when Graph withholds `media_url`, which it does for
+ * any Reel carrying licensed audio from Instagram's music library. Those Reels
+ * still belong in the list — they are the creator's most recent posts, with a
+ * thumbnail, caption and permalink — they just cannot be imported, so they
+ * appear the way a YouTube or TikTok post does: visible, marked as needing a
+ * source file. Dropping them made freshly posted Reels look like they had
+ * never been posted at all.
  */
 const GRAPH = "https://graph.instagram.com/v21.0";
 
 /** One Instagram video, shaped like the shared PlatformVideo the Poster renders
- * plus `sourceFileUrl`: the downloadable file that makes it a backfill source. */
+ * plus `sourceFileUrl`: the downloadable file that makes it a backfill source,
+ * or null when Instagram withholds it. */
 export interface InstagramVideo {
   id: string;
   title: string;
@@ -18,7 +27,7 @@ export interface InstagramVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
-  sourceFileUrl: string;
+  sourceFileUrl: string | null;
 }
 
 /** One item from the Graph `me/media` edge, only the fields we request. */
@@ -48,15 +57,16 @@ export function captionToTitle(caption: string | undefined): string {
 }
 
 /**
- * Map raw `me/media` items to backfill sources: keep only VIDEO media that has
- * a real id and a downloadable `media_url`, newest first. Pure so the route and
- * its test agree on which media are postable and how each row is shaped.
+ * Map raw `me/media` items to Poster rows: keep every VIDEO media with a real
+ * id, newest first, whether or not Instagram handed back a downloadable
+ * `media_url`. Pure so the route and its test agree on which media are listed
+ * and how each row is shaped.
  */
 export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
   return data
     .filter(
-      (m): m is InstagramMedia & { id: string; media_url: string } =>
-        m.media_type === "VIDEO" && Boolean(m.id) && Boolean(m.media_url),
+      (m): m is InstagramMedia & { id: string } =>
+        m.media_type === "VIDEO" && Boolean(m.id),
     )
     .map((m) => ({
       id: m.id,
@@ -66,7 +76,7 @@ export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
       publishedAt: m.timestamp ?? "",
       privacyStatus: "public",
       url: m.permalink ?? "",
-      sourceFileUrl: m.media_url,
+      sourceFileUrl: m.media_url ?? null,
     }))
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }

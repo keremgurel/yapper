@@ -42,6 +42,20 @@ function sourceKey(platform: PublishPlatform, video: PlatformVideo): string {
 }
 
 /**
+ * Whether Yapper can fetch this post's video file on its own. Instagram gives
+ * up the file for most posts, and for the Reels it withholds (licensed audio)
+ * the public permalink still resolves to one, so every Instagram post Yapper
+ * can name is importable. YouTube and TikTok hand back no file at all.
+ */
+function importableSource(
+  platform: PublishPlatform,
+  video: PlatformVideo,
+): boolean {
+  if (platform !== "instagram") return false;
+  return Boolean(video.sourceFileUrl) || Boolean(video.url);
+}
+
+/**
  * A source browser for every connected platform. Selection survives platform
  * switches, so creators can choose several archived originals across YouTube,
  * TikTok, and Instagram and fan them out in one publish action.
@@ -69,9 +83,7 @@ export default function PlatformVideos() {
   );
 
   const toggle = (video: PlatformVideo) => {
-    if (!video.mediaKey && !(platform === "instagram" && video.sourceFileUrl)) {
-      return;
-    }
+    if (!video.mediaKey && !importableSource(platform, video)) return;
     const key = sourceKey(platform, video);
     setSelected((current) => {
       const next = new Map(current);
@@ -90,11 +102,7 @@ export default function PlatformVideos() {
       for (const { platform: sourcePlatform, video } of selected.values()) {
         let mediaKey = video.mediaKey;
         let title = video.title;
-        if (
-          !mediaKey &&
-          sourcePlatform === "instagram" &&
-          video.sourceFileUrl
-        ) {
+        if (!mediaKey && importableSource(sourcePlatform, video)) {
           const imported = await importInstagramMedia(video.id);
           mediaKey = imported.mediaKey;
           title = imported.title || title;
@@ -263,8 +271,7 @@ export default function PlatformVideos() {
             const key = sourceKey(platform, video);
             const active = selected.has(key);
             const retainedByYapper = Boolean(video.mediaKey);
-            const importable =
-              platform === "instagram" && Boolean(video.sourceFileUrl);
+            const importable = importableSource(platform, video);
             const reusable = retainedByYapper || importable;
             const sourceStatus = retainedByYapper
               ? "Ready to reuse"

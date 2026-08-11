@@ -21,8 +21,8 @@ export interface CreatorScrape {
 const RUN_BASE = "https://api.apify.com/v2/acts";
 
 /** Run an Apify actor synchronously and get its dataset items back in one call.
- * The response body is the items array directly. Kept modest (30 items) so the
- * run finishes well inside the sync window. */
+ * The response body is the items array directly. Callers keep the result count
+ * modest so the run finishes well inside the sync window. */
 async function runActor(
   actorId: string,
   input: Record<string, unknown>,
@@ -43,11 +43,14 @@ async function runActor(
   return Array.isArray(data) ? data : [];
 }
 
-async function scrapeInstagram(url: string): Promise<CreatorScrape> {
+async function scrapeInstagram(
+  url: string,
+  max: number,
+): Promise<CreatorScrape> {
   const items = await runActor("apify~instagram-scraper", {
     directUrls: [url],
     resultsType: "posts",
-    resultsLimit: 30,
+    resultsLimit: max,
   });
   return {
     name: str(pick(items[0], "ownerFullName")),
@@ -83,10 +86,13 @@ export async function resolveTikTokMedia(url: string): Promise<TikTokMedia> {
   return tiktokMedia(items[0]);
 }
 
-async function scrapeTikTok(handle: string): Promise<CreatorScrape> {
+async function scrapeTikTok(
+  handle: string,
+  max: number,
+): Promise<CreatorScrape> {
   const items = await runActor("clockworks~free-tiktok-scraper", {
     profiles: [handle],
-    resultsPerPage: 30,
+    resultsPerPage: max,
     profileScrapeSections: ["videos"],
     profileSorting: "latest",
     shouldDownloadVideos: false,
@@ -99,14 +105,14 @@ async function scrapeTikTok(handle: string): Promise<CreatorScrape> {
   };
 }
 
-async function scrapeYouTube(url: string): Promise<CreatorScrape> {
+async function scrapeYouTube(url: string, max: number): Promise<CreatorScrape> {
   // The channel feed lives at /videos; normalize whatever profile URL we got.
   const channelUrl = url.replace(/\/+$/, "").endsWith("/videos")
     ? url
     : `${url.replace(/\/+$/, "")}/videos`;
   const items = await runActor("streamers~youtube-scraper", {
     startUrls: [{ url: channelUrl }],
-    maxResults: 30,
+    maxResults: max,
     sortVideosBy: "NEWEST",
   });
   return {
@@ -115,21 +121,28 @@ async function scrapeYouTube(url: string): Promise<CreatorScrape> {
   };
 }
 
-/** Scrape a creator's recent feed on the given platform. Throws on an
- * unsupported platform or an actor failure (the caller degrades gracefully). */
+/**
+ * Scrape a creator's recent feed on the given platform. Throws on an
+ * unsupported platform or an actor failure (the caller degrades gracefully).
+ *
+ * `max` is billed, not just fetched: every actor here charges per result, so
+ * asking for more posts than the caller displays is money spent on rows that
+ * are sliced off and thrown away.
+ */
 export async function scrapeCreator(
   platform: Platform,
   url: string,
   handle: string | undefined,
+  max: number,
 ): Promise<CreatorScrape> {
   switch (platform) {
     case "instagram":
-      return scrapeInstagram(url);
+      return scrapeInstagram(url, max);
     case "tiktok":
       if (!handle) throw new Error("no_handle");
-      return scrapeTikTok(handle);
+      return scrapeTikTok(handle, max);
     case "youtube":
-      return scrapeYouTube(url);
+      return scrapeYouTube(url, max);
     default:
       throw new Error("unsupported_platform");
   }

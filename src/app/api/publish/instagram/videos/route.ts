@@ -4,6 +4,7 @@ import {
   NoConnectionError,
 } from "@/lib/publish/connection";
 import { archivedMediaKeysForPosts } from "@/lib/db/publish";
+import { importedMediaKeysForPosts } from "@/lib/db/imported-media";
 import { listInstagramVideos } from "@/lib/publish/instagram-list";
 
 export const runtime = "nodejs";
@@ -33,17 +34,19 @@ export async function GET(): Promise<Response> {
 
   try {
     const videos = await listInstagramVideos(accessToken);
-    const archived = await archivedMediaKeysForPosts(
-      userId,
-      "instagram",
-      videos.map((video) => video.id),
-    );
+    const ids = videos.map((video) => video.id);
+    // Two ways a post can already have its original in storage: it was
+    // published through Yapper, or it was imported back afterwards.
+    const [archived, imported] = await Promise.all([
+      archivedMediaKeysForPosts(userId, "instagram", ids),
+      importedMediaKeysForPosts(userId, "instagram", ids),
+    ]);
     return Response.json(
       {
         connected: true,
         videos: videos.map((video) => ({
           ...video,
-          mediaKey: archived.get(video.id),
+          mediaKey: archived.get(video.id) ?? imported.get(video.id),
           sourcePlatform: "instagram",
         })),
       },

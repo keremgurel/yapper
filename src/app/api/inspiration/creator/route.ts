@@ -5,17 +5,20 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { detectPlatform, extractHandle } from "@/lib/inspiration/platform";
-import { scrapeCreator } from "@/lib/inspiration/apify";
+import {
+  CREATOR_FEED_LIMIT,
+  fetchCreatorFeed,
+} from "@/lib/inspiration/creator-feed";
 import { rankByOutlier } from "@/lib/inspiration/outliers";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
-const MAX_VIDEOS = 24;
-
-/** Scrape a creator's recent feed (via Apify) and return it ranked with outlier
- * flags. Best-effort: on any actor failure we return an empty feed with a note
- * rather than erroring, so saving a creator never hard-fails on scraping. */
+/** Fetch a creator's recent feed and return it ranked with outlier flags.
+ * Best-effort: on any failure we return an empty feed with a note rather than
+ * erroring, so saving a creator never hard-fails on the feed being unavailable.
+ * Which source serves the feed is `fetchCreatorFeed`'s business, not this
+ * route's. */
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId)
@@ -40,8 +43,8 @@ export async function POST(req: Request) {
   const { reservation } = access;
 
   try {
-    const scrape = await scrapeCreator(platform, url, handle);
-    const videos = rankByOutlier(scrape.videos).slice(0, MAX_VIDEOS);
+    const scrape = await fetchCreatorFeed(userId, platform, url, handle);
+    const videos = rankByOutlier(scrape.videos).slice(0, CREATOR_FEED_LIMIT);
     return NextResponse.json({
       name: scrape.name,
       avatar: scrape.avatar,

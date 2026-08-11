@@ -92,6 +92,13 @@
       "when": 1786300531624,
       "tag": "0012_white_solo",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786436207641,
+      "tag": "0013_acoustic_kabuki",
+      "breakpoints": true
     }
   ]
 }
