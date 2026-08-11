@@ -1,7 +1,20 @@
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { ExtractTablesWithRelations } from "drizzle-orm";
+import {
+  drizzle,
+  type NodePgDatabase,
+  type NodePgQueryResultHKT,
+} from "drizzle-orm/node-postgres";
+import type { PgTransaction } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import { warnOnCrossInstanceDatabase } from "./cross-instance-guard";
 import * as schema from "./schema";
+
+/** A live transaction handle shared by helpers that must commit together. */
+export type DbTx = PgTransaction<
+  NodePgQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
 
 // Lazily created so importing the db module never opens a connection at build
 // time. Uses the pooled Neon endpoint (pgbouncer) — good for serverless.
