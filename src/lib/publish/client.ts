@@ -46,8 +46,9 @@ export interface PlatformVideo {
   url: string;
   /** The downloadable source file, present only for platforms we can backfill
    * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
-   * back a file, so those rows are view-only. */
-  sourceFileUrl?: string;
+   * back a file, and null for an Instagram Reel whose licensed audio makes
+   * Instagram withhold the file, so those rows are view-only. */
+  sourceFileUrl?: string | null;
   /** Original source retained by Yapper when this post was published through
    * the app. Unlike a platform transcode, it can be posted elsewhere intact. */
   mediaKey?: string;

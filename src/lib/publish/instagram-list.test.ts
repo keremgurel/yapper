@@ -32,12 +32,11 @@ describe("mapInstagramMedia", () => {
     ...over,
   });
 
-  it("keeps only VIDEO media that has an id and a downloadable url", () => {
+  it("keeps only VIDEO media that has an id", () => {
     const out = mapInstagramMedia([
       video(),
       { ...video({ id: "img" }), media_type: "IMAGE" },
       { ...video({ id: "carousel" }), media_type: "CAROUSEL_ALBUM" },
-      video({ id: "no-url", media_url: undefined }),
       video({ id: undefined }),
     ]);
     expect(out.map((v) => v.id)).toEqual(["v1"]);
@@ -46,6 +45,17 @@ describe("mapInstagramMedia", () => {
   it("carries the media_url through as the backfill sourceFileUrl", () => {
     const [v] = mapInstagramMedia([video()]);
     expect(v.sourceFileUrl).toBe("https://cdn.example/v1.mp4");
+  });
+
+  // Instagram omits media_url for Reels with licensed audio. Those are usually
+  // the newest posts, so dropping them made a just-published Reel invisible.
+  it("lists a Reel with no media_url, as a row with no source file", () => {
+    const [v] = mapInstagramMedia([
+      video({ id: "licensed-audio", media_url: undefined }),
+    ]);
+    expect(v.id).toBe("licensed-audio");
+    expect(v.sourceFileUrl).toBeNull();
+    expect(v.thumbnail).toBe("https://cdn.example/v1.jpg");
   });
 
   it("titles the row from the caption's first line", () => {

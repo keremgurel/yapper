@@ -548,6 +548,48 @@ export const publishJobs = pgTable(
   ],
 );
 
+/**
+ * One of the creator's own platform posts whose video file we pulled back into
+ * their storage, so it can be cross-posted.
+ *
+ * This exists to make that pull happen once. Recovering the file for a post
+ * published outside Yapper costs a metered third-party lookup, and without a
+ * record of the result every re-post of the same video pays for it again. The
+ * unique index is the whole point: one row per (user, platform, post).
+ *
+ * Distinct from `publish_jobs.media_key`, which is the original Yapper already
+ * held because the post went out through the app. Both answer "can this post be
+ * reused", from opposite directions.
+ */
+export const importedPlatformMedia = pgTable(
+  "imported_platform_media",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: publishPlatforms }).notNull(),
+    /** The platform's own id for the post the file came from. */
+    externalPostId: text("external_post_id").notNull(),
+    mediaKey: text("media_key").notNull(),
+    title: text("title"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("imported_platform_media_post_unique").on(
+      t.userId,
+      t.platform,
+      t.externalPostId,
+    ),
+    check(
+      "imported_platform_media_platform_check",
+      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+    ),
+  ],
+);
+
 /** How a saved view renders its rows. */
 export const libraryViewKinds = ["table", "board"] as const;
 export type LibraryViewKind = (typeof libraryViewKinds)[number];
