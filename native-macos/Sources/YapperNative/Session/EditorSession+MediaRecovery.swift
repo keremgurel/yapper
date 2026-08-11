@@ -60,13 +60,17 @@ extension EditorSession {
         }
 
         refreshMediaAvailability()
-        await reloadAfterRecovery()
-        recordHistory(before: undoSnapshot)
-        setStatus(
-            relinked.count == 1
-                ? "Reconnected \(media.name)"
-                : "Reconnected \(relinked.count) files"
-        )
+        do {
+            try await reloadAfterRecovery()
+            recordHistory(before: undoSnapshot)
+            setStatus(
+                relinked.count == 1
+                    ? "Reconnected \(media.name)"
+                    : "Reconnected \(relinked.count) files"
+            )
+        } catch {
+            show(error)
+        }
     }
 
     func refreshMediaAvailability() {
@@ -76,17 +80,14 @@ extension EditorSession {
     /// Rebuilds everything that could not be built while the files were away:
     /// the composition, and the thumbnails and waveforms whose earlier attempts
     /// found nothing to read.
-    func reloadAfterRecovery() async {
-        guard !project.clips.isEmpty else { return }
+    func reloadAfterRecovery() async throws {
         clearError()
-        do {
+        if !project.clips.isEmpty {
             try await rebuildComposition(preserveTime: true)
-            for media in project.media { restartDerivedMedia(for: media) }
-            await persist()
-            setStatus("Ready")
-        } catch {
-            show(error)
         }
+        for media in project.media { restartDerivedMedia(for: media) }
+        try await persist()
+        setStatus("Ready")
     }
 
     /// What the creator is told, and what they can do about it.

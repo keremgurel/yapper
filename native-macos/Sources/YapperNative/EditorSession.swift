@@ -140,7 +140,7 @@ final class EditorSession: ObservableObject {
     /// up against what is being said rather than guessed at.
     let audioWaveforms: AudioWaveformStore
 
-    private let store = ProjectStore.shared
+    private let store: any ProjectPersisting
     let waveformService = WaveformService()
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
@@ -180,7 +180,8 @@ final class EditorSession: ObservableObject {
     /// the most expensive thing the canvas does.
     var gradedOverlayImages: [ObjectIdentifier: (filter: VisualFilter, image: CGImage)] = [:]
 
-    init() {
+    init(store: any ProjectPersisting = ProjectStore.shared) {
+        self.store = store
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
@@ -195,7 +196,13 @@ final class EditorSession: ObservableObject {
                 // Plugging the card back in is a fix, so it should be one: the
                 // composition that could not be built without those files is
                 // built now, without anybody being asked to do anything.
-                Task { await self?.reloadAfterRecovery() }
+                Task {
+                    do {
+                        try await self?.reloadAfterRecovery()
+                    } catch {
+                        self?.show(error)
+                    }
+                }
             }
         )
     }
@@ -612,7 +619,7 @@ final class EditorSession: ObservableObject {
             }
             project.updatedAt = Date()
             try await rebuildComposition(preserveTime: false)
-            await persist()
+            try await persist()
             recordHistory(before: undoSnapshot)
             statusMessage = landedInBin.isEmpty
                 ? "Ready"
@@ -1363,7 +1370,7 @@ final class EditorSession: ObservableObject {
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
             }
             project.updatedAt = Date()
-            await persist()
+            try await persist()
             recordHistory(before: undoSnapshot)
             statusMessage = "Transcript ready · \(project.timelineTranscript.count) words"
         } catch {
@@ -1373,6 +1380,7 @@ final class EditorSession: ObservableObject {
 
     func runOneClickEdit() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
+        let rollbackState = captureRollbackState()
         let original = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
@@ -1425,12 +1433,11 @@ final class EditorSession: ObservableObject {
             selectedClipID = project.clips.first?.id
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
-            await persist()
+            try await persist()
             recordHistory(before: original)
             statusMessage = "1-Click Edit + captions complete · \(project.clips.count) clips"
         } catch {
-            project = original
-            show(error)
+            await restoreRebuiltProject(rollbackState, preserving: error)
         }
     }
 
@@ -1441,17 +1448,19 @@ final class EditorSession: ObservableObject {
         if project.captionsEnabled == true {
             let undoSnapshot = prepareUndoSnapshot()
             project.setCaptionsVisible(false)
-            await persist()
-            recordHistory(before: undoSnapshot)
-            statusMessage = "Captions hidden · \(project.storedCaptions.count) cards kept"
+            await persistChange(
+                undoSnapshot: undoSnapshot,
+                successStatus: "Captions hidden · \(project.storedCaptions.count) cards kept"
+            )
             return
         }
         if !project.storedCaptions.isEmpty {
             let undoSnapshot = prepareUndoSnapshot()
             project.setCaptionsVisible(true)
-            await persist()
-            recordHistory(before: undoSnapshot)
-            statusMessage = "Captions shown · \(project.captionEntries.count) cards"
+            await persistChange(
+                undoSnapshot: undoSnapshot,
+                successStatus: "Captions shown · \(project.captionEntries.count) cards"
+            )
             return
         }
         await generateCaptions()
@@ -1489,7 +1498,7 @@ final class EditorSession: ObservableObject {
             }
             project.regenerateCaptions()
             setSelectedCaptionIDs([])
-            await persist()
+            try await persist()
             recordHistory(before: undoSnapshot)
             statusMessage = "Captions ready · \(project.captionEntries.count) cards"
         } catch {
@@ -1500,6 +1509,7 @@ final class EditorSession: ObservableObject {
 
     func autoTrimSilences() async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
+        let rollbackState = captureRollbackState()
         let original = prepareUndoSnapshot()
         isAIEditing = true
         isBusy = true
@@ -1540,12 +1550,11 @@ final class EditorSession: ObservableObject {
             timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
             currentTime = 0
             try await rebuildComposition(preserveTime: false)
-            await persist()
+            try await persist()
             recordHistory(before: original)
             statusMessage = "Auto-trim complete · \(project.clips.count) clips"
         } catch {
-            project = original
-            show(error)
+            await restoreRebuiltProject(rollbackState, preserving: error)
         }
     }
 
@@ -1569,6 +1578,7 @@ final class EditorSession: ObservableObject {
     private func restoreHistorySnapshot(direction: HistoryDirection) async {
         guard !isBusy, !isExporting else { return }
         finalizePendingVisualHistory()
+        let rollbackState = captureRollbackState()
         let current = project
         let target: EditorProject?
         switch direction {
@@ -1588,18 +1598,16 @@ final class EditorSession: ObservableObject {
         currentTime = min(currentTime, project.duration)
         do {
             try await rebuildComposition(preserveTime: true)
-            await persist()
+            try await persist()
             statusMessage = direction == .undo ? "Undo" : "Redo"
         } catch {
-            project = current
             switch direction {
             case .undo:
                 _ = history.redo(current: target)
             case .redo:
                 _ = history.undo(current: target)
             }
-            reconcileSelectionAfterProjectChange()
-            show(error)
+            await restoreRebuiltProject(rollbackState, preserving: error)
         }
         syncHistoryAvailability()
     }
@@ -1611,7 +1619,7 @@ final class EditorSession: ObservableObject {
         project.updatedAt = Date()
         do {
             try await rebuildComposition(preserveTime: true)
-            await persist()
+            try await persist()
             if let undoSnapshot { recordHistory(before: undoSnapshot) }
             statusMessage = "Ready"
         } catch {
@@ -1700,7 +1708,7 @@ final class EditorSession: ObservableObject {
                 guard !Task.isCancelled, let self else { return }
                 // Text is rendered directly over the native player. Persisting
                 // must never swap the player item or interrupt active playback.
-                await self.persist()
+                try await self.persist()
                 self.finalizePendingVisualHistory(cancelTask: false)
                 self.statusMessage = "Ready"
             } catch is CancellationError {
@@ -1728,7 +1736,7 @@ final class EditorSession: ObservableObject {
                 run.mark("settled")
                 try await self.rebuildComposition(preserveTime: true, run: &run)
                 run.mark("composition shown")
-                await self.persist()
+                try await self.persist()
                 run.mark("saved")
                 self.finalizePendingVisualHistory(cancelTask: false)
                 self.statusMessage = "Ready"
@@ -2064,12 +2072,74 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func persist() async {
+    func persist() async throws {
+        try await store.save(project)
+    }
+
+    /// Saves a synchronous UI edit before making it part of undo history or
+    /// announcing success. Fire-and-forget edit tasks all use this seam so a
+    /// disk failure cannot be overwritten by a cheerful status message.
+    func persistChange(undoSnapshot: EditorProject, successStatus: String? = nil) async {
         do {
-            try await store.save(project)
+            try await persist()
+            recordHistory(before: undoSnapshot)
+            if let successStatus { statusMessage = successStatus }
         } catch {
             show(error)
         }
+    }
+
+    private struct RebuiltProjectRollbackState {
+        let project: EditorProject
+        let currentTime: Double
+        let selectedClipID: UUID?
+        let selectedTextLayerID: UUID?
+        let selectedAudioLayerID: UUID?
+        let selectedOverlayID: UUID?
+        let selectedCaptionIDs: Set<UUID>
+        let timelineSelection: Set<TimelineSelectionItem>
+        let mediaSelection: MediaSelection
+        let isVideoFrameSelected: Bool
+        let cropRequest: CropRequest?
+    }
+
+    private func captureRollbackState() -> RebuiltProjectRollbackState {
+        RebuiltProjectRollbackState(
+            project: project,
+            currentTime: currentTime,
+            selectedClipID: selectedClipID,
+            selectedTextLayerID: selectedTextLayerID,
+            selectedAudioLayerID: selectedAudioLayerID,
+            selectedOverlayID: selectedOverlayID,
+            selectedCaptionIDs: selectedCaptionIDs,
+            timelineSelection: timelineSelection,
+            mediaSelection: mediaSelection,
+            isVideoFrameSelected: isVideoFrameSelected,
+            cropRequest: cropRequest
+        )
+    }
+
+    /// A failed save can arrive after the player has already accepted a newly
+    /// built composition. Restoring only the model would leave the canvas and
+    /// transport playing a different edit, so rollback rebuilds the snapshot
+    /// too and then restores the original failure message.
+    private func restoreRebuiltProject(
+        _ state: RebuiltProjectRollbackState,
+        preserving error: Error
+    ) async {
+        project = state.project
+        selectedClipID = state.selectedClipID
+        selectedTextLayerID = state.selectedTextLayerID
+        selectedAudioLayerID = state.selectedAudioLayerID
+        selectedOverlayID = state.selectedOverlayID
+        selectedCaptionIDs = state.selectedCaptionIDs
+        timelineSelection = state.timelineSelection
+        mediaSelection = state.mediaSelection
+        isVideoFrameSelected = state.isVideoFrameSelected
+        cropRequest = state.cropRequest
+        currentTime = min(state.currentTime, project.duration)
+        try? await rebuildComposition(preserveTime: true)
+        show(error)
     }
 
     func show(_ error: Error) {

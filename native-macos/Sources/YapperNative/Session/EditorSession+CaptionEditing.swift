@@ -18,9 +18,7 @@ extension EditorSession {
         guard let created else { return }
         setSelectedCaptionIDs([created.id])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Caption added")
+            await persistChange(undoSnapshot: undoSnapshot, successStatus: "Caption added")
         }
     }
 
@@ -34,8 +32,7 @@ extension EditorSession {
         guard let created else { return nil }
         setSelectedCaptionIDs([created.id])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
+            await persistChange(undoSnapshot: undoSnapshot)
         }
         return created.id
     }
@@ -48,9 +45,7 @@ extension EditorSession {
         ids.remove(id)
         setSelectedCaptionIDs(ids)
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Caption deleted")
+            await persistChange(undoSnapshot: undoSnapshot, successStatus: "Caption deleted")
         }
     }
 
@@ -63,9 +58,10 @@ extension EditorSession {
         updateProject { $0.mergeCaptions(merging) }
         setSelectedCaptionIDs([])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Merged \(merging.count) captions")
+            await persistChange(
+                undoSnapshot: undoSnapshot,
+                successStatus: "Merged \(merging.count) captions"
+            )
         }
     }
 
@@ -86,9 +82,7 @@ extension EditorSession {
         let survivor = captions.first { $0.sourceStart == previous.sourceStart }?.id ?? previous.id
         setSelectedCaptionIDs([survivor])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Captions merged")
+            await persistChange(undoSnapshot: undoSnapshot, successStatus: "Captions merged")
         }
         return survivor
     }
@@ -101,9 +95,7 @@ extension EditorSession {
         guard let tailID else { return }
         setSelectedCaptionIDs([tailID])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Caption split")
+            await persistChange(undoSnapshot: undoSnapshot, successStatus: "Caption split")
         }
     }
 
@@ -113,9 +105,7 @@ extension EditorSession {
         updateProject { $0.clearCaptions() }
         setSelectedCaptionIDs([])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus("Captions cleared")
+            await persistChange(undoSnapshot: undoSnapshot, successStatus: "Captions cleared")
         }
     }
 }

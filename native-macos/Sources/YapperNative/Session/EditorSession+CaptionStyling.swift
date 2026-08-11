@@ -85,10 +85,9 @@ extension EditorSession {
         updateProject { $0.setCaptionWordsPerCard(value) }
         setSelectedCaptionIDs([])
         Task {
-            await persist()
-            recordHistory(before: undoSnapshot)
-            setStatus(
-                value == CaptionWordsPerCard.auto
+            await persistChange(
+                undoSnapshot: undoSnapshot,
+                successStatus: value == CaptionWordsPerCard.auto
                     ? "Captions grouped by phrase"
                     : "Captions set to \(value) word\(value == 1 ? "" : "s") per card"
             )
@@ -119,8 +118,7 @@ extension EditorSession {
             scheduleVisualCommit(undoSnapshot: undoSnapshot)
         } else {
             Task {
-                await persist()
-                recordHistory(before: undoSnapshot)
+                await persistChange(undoSnapshot: undoSnapshot)
             }
         }
     }
