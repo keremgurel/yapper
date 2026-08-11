@@ -6,9 +6,18 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
+    name: Web
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -25,4 +34,24 @@ jobs:
 
       - run: npm run typecheck
 
+      - run: npm test
+
       - run: npm run build
+
+  native-macos:
+    runs-on: macos-26
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: native-macos
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Report Swift toolchain
+        run: swift --version
+
+      - name: Test native app
+        run: swift test
+
+      - name: Build release executable
+        run: swift build --configuration release
