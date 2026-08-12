@@ -1,236 +1,90 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useUser } from "@clerk/nextjs";
 import {
+  browserDictionaryApi,
+  createDictionaryRepository,
+  resolveDictionaryOwner,
+  type DictionaryOwner,
+} from "@/lib/studio/transcription-dictionary-repository";
+import {
   cleanDictionaryAliases,
-  cleanDictionaryValue,
   dictionaryKey,
-  MAX_DICTIONARY_ENTRIES,
-  type TranscriptionDictionaryEntry,
 } from "@/lib/studio/transcription-dictionary";
 
-const STORAGE_KEY = "yapper:transcription-dictionary:v1";
-let dictionaryMemoryCache: TranscriptionDictionaryEntry[] | null = null;
+const dictionaryRepository = createDictionaryRepository({
+  api: browserDictionaryApi,
+  getStorage: () => {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage;
+    } catch {
+      return null;
+    }
+  },
+  createId: () => crypto.randomUUID(),
+});
 
-function readLocalEntries(): TranscriptionDictionaryEntry[] {
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    if (!value) return [];
-    const parsed = JSON.parse(value) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((entry): entry is TranscriptionDictionaryEntry =>
-        Boolean(
-          entry &&
-          typeof entry === "object" &&
-          "id" in entry &&
-          typeof entry.id === "string" &&
-          "term" in entry &&
-          typeof entry.term === "string" &&
-          "aliases" in entry &&
-          Array.isArray(entry.aliases),
-        ),
-      )
-      .slice(0, MAX_DICTIONARY_ENTRIES);
-  } catch {
-    return [];
-  }
-}
-
-function writeLocalEntries(entries: TranscriptionDictionaryEntry[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-}
-
-function localEntry(
-  term: string,
-  aliases: string[],
-): TranscriptionDictionaryEntry {
-  return {
-    id: `local-${crypto.randomUUID()}`,
-    term: cleanDictionaryValue(term),
-    aliases: cleanDictionaryAliases(aliases),
-  };
-}
-
-async function postEntry(term: string, aliases: string[]) {
-  const res = await fetch("/api/transcription-dictionary", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ term, aliases }),
-  });
-  if (!res.ok) throw new Error(`dictionary_create_${res.status}`);
-  return ((await res.json()) as { entry: TranscriptionDictionaryEntry }).entry;
-}
-
-/** Personal ASR vocabulary: local-first in the free editor, DB-synced on login. */
+/** Personal ASR vocabulary isolated by the Clerk account that owns it. */
 export function useTranscriptionDictionary() {
-  const { isLoaded, isSignedIn } = useUser();
-  const [entries, setEntries] = useState<TranscriptionDictionaryEntry[]>(
-    () => dictionaryMemoryCache ?? readLocalEntries(),
+  const { isLoaded, isSignedIn, user } = useUser();
+  const owner: DictionaryOwner | null = resolveDictionaryOwner(
+    isLoaded,
+    isSignedIn ? user?.id : undefined,
   );
-  // Local or last-known data is useful immediately. Cloud sync happens in the
-  // background instead of replacing the whole dictionary with a spinner.
-  const loading = false;
-  const [error, setError] = useState<string | null>(null);
+
+  const subscribe = useCallback(
+    (listener: () => void) => dictionaryRepository.subscribe(owner, listener),
+    [owner],
+  );
+  const getSnapshot = useCallback(
+    () => dictionaryRepository.getSnapshot(owner),
+    [owner],
+  );
+  const snapshot = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    let cancelled = false;
-    const local = readLocalEntries();
-
-    const load = async () => {
-      if (!isSignedIn) {
-        if (!cancelled) {
-          setEntries(local);
-        }
-        return;
-      }
-
-      try {
-        const res = await fetch("/api/transcription-dictionary");
-        if (!res.ok) throw new Error(`dictionary_load_${res.status}`);
-        const remote = (
-          (await res.json()) as { entries: TranscriptionDictionaryEntry[] }
-        ).entries;
-        const remoteKeys = new Set(
-          remote.map((entry) => dictionaryKey(entry.term)),
-        );
-        const missing = local.filter(
-          (entry) => !remoteKeys.has(dictionaryKey(entry.term)),
-        );
-        const synced = await Promise.all(
-          missing.map((entry) => postEntry(entry.term, entry.aliases)),
-        );
-        const next = [...synced, ...remote].slice(0, MAX_DICTIONARY_ENTRIES);
-        if (!cancelled) {
-          setEntries(next);
-        }
-      } catch (cause) {
-        console.error("[dictionary] load failed", cause);
-        if (!cancelled) {
-          setEntries(local);
-          setError("Couldn’t sync your dictionary. Local terms still work.");
-        }
-      }
-    };
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, isSignedIn]);
-
-  useEffect(() => {
-    dictionaryMemoryCache = entries;
-    writeLocalEntries(entries);
-  }, [entries]);
+    if (owner) void dictionaryRepository.load(owner);
+  }, [owner]);
 
   const addEntry = useCallback(
-    async (term: string, aliases: string[] = []) => {
-      const cleanTerm = cleanDictionaryValue(term);
-      if (!dictionaryKey(cleanTerm)) throw new Error("bad_term");
-      setError(null);
-
-      try {
-        const entry = isSignedIn
-          ? await postEntry(cleanTerm, aliases)
-          : localEntry(cleanTerm, aliases);
-        setEntries((current) => {
-          const next = [
-            entry,
-            ...current.filter(
-              (item) => dictionaryKey(item.term) !== dictionaryKey(entry.term),
-            ),
-          ].slice(0, MAX_DICTIONARY_ENTRIES);
-          return next;
-        });
-        return entry;
-      } catch (cause) {
-        console.error("[dictionary] add failed", cause);
-        const fallback = localEntry(cleanTerm, aliases);
-        setEntries((current) => {
-          const next = [fallback, ...current].slice(0, MAX_DICTIONARY_ENTRIES);
-          return next;
-        });
-        setError("Saved on this device; cloud sync will retry next time.");
-        return fallback;
-      }
-    },
-    [isSignedIn],
+    (term: string, aliases: string[] = []) =>
+      dictionaryRepository.add(owner, term, aliases),
+    [owner],
   );
 
   const updateEntry = useCallback(
-    async (id: string, term: string, aliases: string[]) => {
-      const cleanTerm = cleanDictionaryValue(term);
-      const cleanAliases = cleanDictionaryAliases(aliases).filter(
-        (alias) => dictionaryKey(alias) !== dictionaryKey(cleanTerm),
-      );
-      if (!dictionaryKey(cleanTerm)) throw new Error("bad_term");
-      setError(null);
-
-      let entry: TranscriptionDictionaryEntry;
-      if (isSignedIn && !id.startsWith("local-")) {
-        const res = await fetch(`/api/transcription-dictionary/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ term: cleanTerm, aliases: cleanAliases }),
-        });
-        if (!res.ok) throw new Error(`dictionary_update_${res.status}`);
-        entry = ((await res.json()) as { entry: TranscriptionDictionaryEntry })
-          .entry;
-      } else if (isSignedIn) {
-        entry = await postEntry(cleanTerm, cleanAliases);
-      } else {
-        entry = { id, term: cleanTerm, aliases: cleanAliases };
-      }
-
-      setEntries((current) => {
-        const next = current.map((item) => (item.id === id ? entry : item));
-        return next;
-      });
-      return entry;
-    },
-    [isSignedIn],
+    (id: string, term: string, aliases: string[]) =>
+      dictionaryRepository.update(owner, id, term, aliases),
+    [owner],
   );
 
   const removeEntry = useCallback(
-    async (id: string) => {
-      setError(null);
-      if (isSignedIn && !id.startsWith("local-")) {
-        const res = await fetch(`/api/transcription-dictionary/${id}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error(`dictionary_delete_${res.status}`);
-      }
-      setEntries((current) => {
-        const next = current.filter((entry) => entry.id !== id);
-        return next;
-      });
-    },
-    [isSignedIn],
+    (id: string) => dictionaryRepository.remove(owner, id),
+    [owner],
   );
 
   const rememberCorrection = useCallback(
     async (heard: string, term: string) => {
-      const existing = entries.find(
+      const existing = snapshot.entries.find(
         (entry) => dictionaryKey(entry.term) === dictionaryKey(term),
       );
       if (!existing) return addEntry(term, [heard]);
       const aliases = cleanDictionaryAliases([...existing.aliases, heard]);
       return updateEntry(existing.id, existing.term, aliases);
     },
-    [entries, addEntry, updateEntry],
+    [snapshot.entries, addEntry, updateEntry],
   );
 
   return {
-    entries,
-    loading,
-    error,
+    entries: snapshot.entries,
+    loading: snapshot.loading,
+    error: snapshot.error,
     addEntry,
     updateEntry,
     removeEntry,
     rememberCorrection,
-    clearError: () => setError(null),
+    clearError: () => dictionaryRepository.clearError(owner),
   };
 }

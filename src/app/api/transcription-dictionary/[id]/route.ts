@@ -9,6 +9,7 @@ import {
   cleanDictionaryValue,
   dictionaryKey,
 } from "@/lib/studio/transcription-dictionary";
+import { hasExpectedDictionaryOwner } from "@/lib/studio/transcription-dictionary-owner";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,9 @@ type Params = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasExpectedDictionaryOwner(req, userId)) {
+    return Response.json({ error: "account_changed" }, { status: 409 });
+  }
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const term = cleanDictionaryValue(
@@ -50,9 +54,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: Request, { params }: Params) {
+export async function DELETE(req: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasExpectedDictionaryOwner(req, userId)) {
+    return Response.json({ error: "account_changed" }, { status: 409 });
+  }
   const { id } = await params;
   const deleted = await deleteDictionaryEntry(userId, id);
   if (!deleted) return Response.json({ error: "not_found" }, { status: 404 });
