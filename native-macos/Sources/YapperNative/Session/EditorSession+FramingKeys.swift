@@ -43,31 +43,29 @@ extension EditorSession {
     func toggleFramingKey() {
         guard let clip = framingClip else { return }
         let time = framingSourceTime
-        let undoSnapshot = prepareUndoSnapshot()
         let updated: TimelineClip
+        let successStatus: String
         if VideoFramingTrack.key(of: clip, atSource: time) != nil {
             updated = VideoFramingTrack.removingKey(atSource: time, in: clip)
-            setStatus("Keyframe removed")
+            successStatus = "Keyframe removed"
         } else {
             updated = VideoFramingTrack.setting(
                 displayedFraming,
                 atSource: time,
                 in: clip
             )
-            setStatus("Keyframe added at \(formatTime(currentTime))")
+            successStatus = "Keyframe added at \(formatTime(currentTime))"
         }
-        replaceFramingClip(updated, undoSnapshot: undoSnapshot)
+        replaceFramingClip(updated, successStatus: successStatus)
     }
 
     /// Drops every key on this clip, leaving it framed as it is right now.
     func clearFramingKeys() {
         guard let clip = framingClip, VideoFramingTrack.isKeyed(clip) else { return }
-        let undoSnapshot = prepareUndoSnapshot()
         replaceFramingClip(
             VideoFramingTrack.clearingKeys(atSource: framingSourceTime, in: clip),
-            undoSnapshot: undoSnapshot
+            successStatus: "Keyframes cleared"
         )
-        setStatus("Keyframes cleared")
     }
 
     // MARK: - The arrows
@@ -123,25 +121,29 @@ extension EditorSession {
         var updated = clip
         updated.framingKeys = keys.sorted { $0.at < $1.at }
         guard updated != clip else { return }
-        replaceFramingClip(updated, undoSnapshot: prepareUndoSnapshot())
+        replaceFramingClip(updated)
     }
 
     func removeFramingKey(in clip: TimelineClip, atSource time: Double) {
         let updated = VideoFramingTrack.removingKey(atSource: time, in: clip)
         guard updated != clip else { return }
-        replaceFramingClip(updated, undoSnapshot: prepareUndoSnapshot())
-        setStatus("Keyframe removed")
+        replaceFramingClip(updated, successStatus: "Keyframe removed")
     }
 
     // MARK: - Writing
 
     /// Saves a clip that only differs in how it is framed.
-    func replaceFramingClip(_ clip: TimelineClip, undoSnapshot: EditorProject) {
-        guard let index = project.clips.firstIndex(where: { $0.id == clip.id }) else { return }
-        updateProject { project in
-            project.clips[index] = clip
-            project.updatedAt = Date()
+    func replaceFramingClip(_ clip: TimelineClip, successStatus: String = "Ready") {
+        scheduleCompositionCommit(
+            settleFor: .milliseconds(50),
+            successStatus: successStatus
+        ) { [self] in
+            guard let index = project.clips.firstIndex(where: { $0.id == clip.id }) else { return false }
+            updateProject { project in
+                project.clips[index] = clip
+                project.updatedAt = Date()
+            }
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
     }
 }

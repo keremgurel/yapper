@@ -1,5 +1,16 @@
 import Foundation
 
+protocol OverlayPlacementPlanning: Sendable {
+    func plan(
+        instruction: String,
+        words: [String],
+        files: [OverlayPlacementService.File],
+        frameAspect: Double,
+        speaker: [SpeakerSample],
+        placed: [OverlayPlacementService.Placed]
+    ) async throws -> OverlayPlacementService.Plan
+}
+
 /// Asks the backend which stretch of speech each named file belongs over, and
 /// roughly where on the frame it should sit.
 ///
@@ -9,7 +20,7 @@ import Foundation
 /// and the timeline never leave it either. What comes back is quotes and a
 /// proposed box, and the app alone decides what seconds and what pixels those
 /// mean.
-actor OverlayPlacementService {
+actor OverlayPlacementService: OverlayPlacementPlanning {
     struct File: Encodable, Sendable {
         let name: String
         /// `video` or `image`, which is all the model needs to know.

@@ -27,17 +27,20 @@ extension EditorSession {
 
     /// The end of a drag or a trim on the caption track.
     func retimeCaption(_ id: UUID, timelineStart: Double, end: Double) {
-        let undoSnapshot = project
-        var moved = false
-        updateProject { moved = $0.retimeCaption(id, toTimelineStart: timelineStart, end: end) }
-        guard moved else {
-            setStatus("A caption cannot be moved onto footage it was not spoken over")
-            return
-        }
-        setSelectedCaptionIDs([id])
+        let canMove = project.caption(withID: id) != nil
+        guard canMove else { return }
         // Cards are drawn by the canvas and burned in at export, so a retime
         // never has to rebuild the composition.
-        scheduleVisualCommit(undoSnapshot: undoSnapshot)
+        scheduleVisualCommit { [self] in
+            var moved = false
+            updateProject { moved = $0.retimeCaption(id, toTimelineStart: timelineStart, end: end) }
+            guard moved else {
+                setStatus("A caption cannot be moved onto footage it was not spoken over")
+                return false
+            }
+            setSelectedCaptionIDs([id])
+            return true
+        }
     }
 
     /// Moves a card by a number of seconds, keeping its length. What a group

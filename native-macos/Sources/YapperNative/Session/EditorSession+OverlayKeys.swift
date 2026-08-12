@@ -97,19 +97,22 @@ extension EditorSession {
     func removeOverlayKey(_ overlay: ProjectOverlay, at time: Double) {
         let updated = OverlayKeyTrack.removingKey(at: time, in: overlay)
         guard updated != overlay else { return }
-        writeOverlay(updated)
-        setStatus("Keyframe removed")
+        writeOverlay(updated, successStatus: "Keyframe removed")
     }
 
-    private func writeOverlay(_ updated: ProjectOverlay) {
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id })
-            else { return }
-            project.overlays?[index] = updated
-            project.updatedAt = Date()
+    private func writeOverlay(_ updated: ProjectOverlay, successStatus: String = "Ready") {
+        scheduleCompositionCommit(
+            settleFor: .milliseconds(50),
+            successStatus: successStatus
+        ) { [self] in
+            updateProject { project in
+                guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id })
+                else { return }
+                project.overlays?[index] = updated
+                project.updatedAt = Date()
+            }
+            selectedOverlayID = updated.id
+            return true
         }
-        selectedOverlayID = updated.id
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
     }
 }

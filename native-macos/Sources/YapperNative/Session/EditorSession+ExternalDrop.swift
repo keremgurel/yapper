@@ -16,7 +16,8 @@ extension EditorSession {
     ///     what lands is what the ghost promised.
     func importDropped(_ urls: [URL], onto target: TimelineDropTarget, at time: Double) async {
         guard !urls.isEmpty else { return }
-        let undoSnapshot = prepareUndoSnapshot()
+        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
         setBusy(true)
         clearError()
         setStatus("Reading media…")
@@ -44,9 +45,19 @@ extension EditorSession {
                 case .unsupported:
                     refused += 1
                 case let .audio(start):
-                    // Audio has its own importer, which knows about source
-                    // durations and the mix.
-                    await importAudio([canonical], startingAt: start)
+                    let sourceDuration = try await soundEffectService.duration(of: canonical)
+                    let layerDuration = min(sourceDuration, max(0.02, duration - start))
+                    guard layerDuration > 0 else { continue }
+                    let layer = ProjectAudioLayer(
+                        url: canonical,
+                        name: canonical.deletingPathExtension().lastPathComponent,
+                        timelineStart: start,
+                        duration: layerDuration,
+                        sourceDuration: sourceDuration
+                    )
+                    updateProject { $0.audioLayers = ($0.audioLayers ?? []) + [layer] }
+                    selectTimelineItem(.audio(layer.id))
+                    cursor = start + layerDuration
                     landed.append(canonical.lastPathComponent)
                 case let .overlay(lane, start):
                     let media = try await ingest(canonical)
@@ -82,10 +93,13 @@ extension EditorSession {
                 setStatus("That is not a video, an image or a sound this editor can open")
                 return
             }
-            await commitTimelineEdit(undoSnapshot: undoSnapshot)
-            setStatus(dropSummary(landed: landed, refused: refused))
+            let success = await commitPreparedTimelineEdit(
+                rollbackState: rollbackState,
+                successStatus: dropSummary(landed: landed, refused: refused)
+            )
+            guard success else { return }
         } catch {
-            show(error)
+            await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
         }
     }
 

@@ -81,16 +81,14 @@ extension EditorSession {
     /// Grouping is a property of the cards, so changing it rebuilds them.
     func setCaptionWordsPerCard(_ value: Int) {
         guard value != project.wordsPerCaptionCard else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { $0.setCaptionWordsPerCard(value) }
-        setSelectedCaptionIDs([])
-        Task {
-            await persistChange(
-                undoSnapshot: undoSnapshot,
-                successStatus: value == CaptionWordsPerCard.auto
-                    ? "Captions grouped by phrase"
-                    : "Captions set to \(value) word\(value == 1 ? "" : "s") per card"
-            )
+        scheduleVisualCommit(
+            successStatus: value == CaptionWordsPerCard.auto
+                ? "Captions grouped by phrase"
+                : "Captions set to \(value) word\(value == 1 ? "" : "s") per card"
+        ) { [self] in
+            updateProject { $0.setCaptionWordsPerCard(value) }
+            setSelectedCaptionIDs([])
+            return true
         }
     }
 
@@ -110,15 +108,19 @@ extension EditorSession {
     ) {
         let targets = layoutTarget.map { Set([$0]) } ?? selectedCaptionIDs
         guard captionApplyToAll || !targets.isEmpty else { return }
-        let undoSnapshot = coalescing ? project : prepareUndoSnapshot()
-        updateProject {
-            $0.applyCaptionStyle(patch, applyToAll: captionApplyToAll, selection: targets)
-        }
         if coalescing {
-            scheduleVisualCommit(undoSnapshot: undoSnapshot)
+            scheduleVisualCommit { [self] in
+                updateProject {
+                    $0.applyCaptionStyle(patch, applyToAll: captionApplyToAll, selection: targets)
+                }
+                return true
+            }
         } else {
-            Task {
-                await persistChange(undoSnapshot: undoSnapshot)
+            scheduleVisualCommit { [self] in
+                updateProject {
+                    $0.applyCaptionStyle(patch, applyToAll: captionApplyToAll, selection: targets)
+                }
+                return true
             }
         }
     }

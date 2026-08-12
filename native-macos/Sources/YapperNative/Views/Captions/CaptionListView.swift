@@ -46,7 +46,7 @@ struct CaptionListView: View {
                         .font(.studioCaption)
                         .foregroundStyle(.secondary)
                     Spacer(minLength: 8)
-                    Button("Clear all") { session.clearAllCaptions() }
+                    Button("Clear all") { Task { await session.clearAllCaptions() } }
                         .buttonStyle(.link)
                         .font(.studioCaption)
                 }
@@ -57,7 +57,7 @@ struct CaptionListView: View {
     private var actions: some View {
         HStack(spacing: 8) {
             Button {
-                session.addCaptionAtPlayhead()
+                Task { await session.addCaptionAtPlayhead() }
             } label: {
                 Label("Add caption", systemImage: "plus")
             }
@@ -67,7 +67,7 @@ struct CaptionListView: View {
 
             if session.canMergeSelectedCaptions {
                 Button {
-                    session.mergeSelectedCaptions()
+                    Task { await session.mergeSelectedCaptions() }
                 } label: {
                     Label("Merge \(session.selectedCaptionIDs.count)", systemImage: "arrow.triangle.merge")
                 }
@@ -122,20 +122,24 @@ struct CaptionListView: View {
                     if focusedCaptionID == caption.id { focusedCaptionID = nil }
                 },
                 onSplit: { wordsBefore in
-                    session.splitCaption(caption.id, afterWords: wordsBefore)
-                    focusedCaptionID = session.selectedCaptionIDs.first
+                    Task {
+                        focusedCaptionID = await session.splitCaption(
+                            caption.id,
+                            afterWords: wordsBefore
+                        )
+                    }
                 },
                 onAddAfter: {
-                    focusedCaptionID = session.addCaption(after: caption.id)
+                    Task { focusedCaptionID = await session.addCaption(after: caption.id) }
                 },
                 onMergeUp: {
-                    focusedCaptionID = session.mergeCaptionIntoPrevious(caption.id)
+                    Task { focusedCaptionID = await session.mergeCaptionIntoPrevious(caption.id) }
                 },
                 onStep: { step in step < 0 ? focusPrevious(of: caption.id) : focusNext(of: caption.id) }
             )
 
             Button {
-                session.removeCaption(caption.id)
+                Task { await session.removeCaption(caption.id) }
             } label: {
                 Image(systemName: "trash")
                     .font(.system(size: 10))

@@ -66,14 +66,15 @@ extension EditorSession {
                 targets.contains($0.id) && $0.resolvedCrop != clamped
             })
         else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            for index in project.overlays?.indices ?? (0 ..< 0).indices {
-                guard let id = project.overlays?[index].id, targets.contains(id) else { continue }
-                project.overlays?[index].crop = clamped.isFull ? nil : clamped
+        scheduleCompositionCommit { [self] in
+            updateProject { project in
+                for index in project.overlays?.indices ?? (0 ..< 0).indices {
+                    guard let id = project.overlays?[index].id, targets.contains(id) else { continue }
+                    project.overlays?[index].crop = clamped.isFull ? nil : clamped
+                }
+                project.updatedAt = Date()
             }
-            project.updatedAt = Date()
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
     }
 }
