@@ -11,6 +11,7 @@ import {
   dictionaryKey,
   MAX_DICTIONARY_ENTRIES,
 } from "@/lib/studio/transcription-dictionary";
+import { hasExpectedDictionaryOwner } from "@/lib/studio/transcription-dictionary-owner";
 
 export const runtime = "nodejs";
 
@@ -28,9 +29,12 @@ function parseInput(body: Record<string, unknown>) {
   return { term, aliases };
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasExpectedDictionaryOwner(req, userId)) {
+    return Response.json({ error: "account_changed" }, { status: 409 });
+  }
   const entries = await listDictionaryEntries(userId);
   return Response.json({ entries });
 }
@@ -38,6 +42,9 @@ export async function GET(): Promise<Response> {
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!hasExpectedDictionaryOwner(req, userId)) {
+    return Response.json({ error: "account_changed" }, { status: 409 });
+  }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const input = parseInput(body);
