@@ -117,28 +117,30 @@ extension EditorSession {
         if VideoFramingTrack.isKeyed(clip) {
             let time = framingSourceTime
             guard VideoFramingTrack.framing(of: clip, atSource: time) != framing else { return }
-            let undoSnapshot = prepareUndoSnapshot()
             replaceFramingClip(
                 VideoFramingTrack.setting(framing, atSource: time, in: clip),
-                undoSnapshot: undoSnapshot
+                successStatus: "Keyframe at \(formatTime(currentTime)) · \(framing.percent)%"
             )
-            setStatus("Keyframe at \(formatTime(currentTime)) · \(framing.percent)%")
             return
         }
 
         guard clip.resolvedFraming != framing else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            project.clips[index].framing = framing.isIdentity ? nil : framing
-            project.updatedAt = Date()
-        }
         // Barely a wait at all. The debounce is there to coalesce a gesture's
         // worth of edits, and framing commits once the gesture is already over;
         // all a longer settle does here is hold the picture at the wrong size
         // for another fifth of a second. Enough remains to catch the stepper
         // being clicked repeatedly.
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
-        setStatus(framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%")
+        scheduleCompositionCommit(
+            settleFor: .milliseconds(50),
+            successStatus: framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%"
+        ) { [self] in
+            guard let index = project.clips.firstIndex(where: { $0.id == clipID }) else { return false }
+            updateProject { project in
+                project.clips[index].framing = framing.isIdentity ? nil : framing
+                project.updatedAt = Date()
+            }
+            return true
+        }
     }
 
     /// Slides the picture from the inspector, keeping the zoom.
@@ -180,14 +182,14 @@ extension EditorSession {
         guard let clip = framingClip else { return }
         let framing = clip.resolvedFraming
         guard project.clips.contains(where: { $0.resolvedFraming != framing }) else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            for index in project.clips.indices {
-                project.clips[index].framing = framing.isIdentity ? nil : framing
+        scheduleCompositionCommit(successStatus: "Framing applied to \(project.clips.count) clips") { [self] in
+            updateProject { project in
+                for index in project.clips.indices {
+                    project.clips[index].framing = framing.isIdentity ? nil : framing
+                }
+                project.updatedAt = Date()
             }
-            project.updatedAt = Date()
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
-        setStatus("Framing applied to \(project.clips.count) clips")
     }
 }

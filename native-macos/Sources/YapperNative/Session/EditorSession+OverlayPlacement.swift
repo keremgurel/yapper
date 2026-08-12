@@ -40,6 +40,7 @@ extension EditorSession {
 
     func placeOverlaysWithAI(instruction: String) async {
         guard !project.clips.isEmpty, !isAIEditing else { return }
+        clearError()
 
         // Answered here when the sentence has nothing in it to decide: which
         // sounds, and on every one of what. The model is never told what is
@@ -52,10 +53,11 @@ extension EditorSession {
         // "Make all the pops 80%": which sounds, and how loud. Nothing to
         // decide, so nothing to ask.
         if let level = SoundLevelCommand.parse(instruction) {
-            let notes = applyLevelCommand(level)
+            setOverlayPlacement(.working)
+            let notes = await applyLevelCommand(level)
             setOverlayPlacement(
                 notes.isEmpty
-                    ? .failed(levelCommandEmptyReason(level))
+                    ? .failed(errorMessage ?? levelCommandEmptyReason(level))
                     : .placed(notes: notes)
             )
             return
@@ -90,6 +92,8 @@ extension EditorSession {
         setOverlayPlacement(.working)
         setBusy(true)
         defer { setBusy(false) }
+        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
 
         // Found before the model is asked, not after: it can only choose a box
         // that clears the speaker if it knows where the speaker is, and which
@@ -133,7 +137,6 @@ extension EditorSession {
                 instruction: instruction
             )
             let texts = TextPlan.spans(words: words, requests: plan.texts)
-            let undoSnapshot = prepareUndoSnapshot()
             // Each span is looked at again, closely, before its box is settled.
             // That is more frames to decode, so say so rather than sit silent.
             if !spans.isEmpty { setStatus("Fitting each overlay around you…") }
@@ -147,10 +150,17 @@ extension EditorSession {
                 setStatus("Ready")
                 return
             }
-            await commitTimelineEdit(undoSnapshot: undoSnapshot)
+            let success = await commitPreparedTimelineEdit(
+                rollbackState: rollbackState,
+                successStatus: "Placed \(notes.count) change\(notes.count == 1 ? "" : "s") · ⌘Z to undo"
+            )
+            guard success else {
+                setOverlayPlacement(.failed(errorMessage ?? "The edit could not be saved."))
+                return
+            }
             setOverlayPlacement(.placed(notes: notes + unknownNotes(standalone.unknown)))
-            setStatus("Placed \(notes.count) change\(notes.count == 1 ? "" : "s") · ⌘Z to undo")
         } catch {
+            await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
             setOverlayPlacement(
                 .failed((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)
             )
@@ -168,26 +178,37 @@ extension EditorSession {
     /// every time; the reply said they had not.
     private func applySweep(_ sweep: SoundSweep, instruction: String) async {
         setOverlayPlacement(.working)
-        let sounds = applySoundSweep(sweep, instruction: instruction)
-        guard !sounds.isEmpty else {
-            setOverlayPlacement(.failed(sweepEmptyReason(sweep)))
-            return
-        }
-        let undoSnapshot = prepareUndoSnapshot()
-        let before = (project.audioLayers ?? []).count
-        addSounds(sounds)
         // What actually landed, not what was asked for: a sound already sitting
         // on that frame is left alone, and claiming it was added again would be
         // a lie the timeline immediately contradicts.
-        let added = (project.audioLayers ?? []).count - before
-        guard added > 0 else {
-            setOverlayPlacement(.failed("Those moments already have a sound on them."))
+        var added = 0
+        var notes: [String] = []
+        var noChangeReason: String?
+        let success = await commitTimelineEdit(
+            successStatus: "Placed \(added) sound\(added == 1 ? "" : "s") · ⌘Z to undo"
+        ) { [self] in
+            let sounds = applySoundSweep(sweep, instruction: instruction)
+            guard !sounds.isEmpty else {
+                noChangeReason = sweepEmptyReason(sweep)
+                return false
+            }
+            let before = (project.audioLayers ?? []).count
+            addSounds(sounds)
+            added = (project.audioLayers ?? []).count - before
+            guard added > 0 else {
+                noChangeReason = "Those moments already have a sound on them."
+                return false
+            }
+            notes = soundNotes(Array(sounds.suffix(added)))
+            return true
+        }
+        guard success else {
+            if errorMessage == nil, let noChangeReason {
+                setOverlayPlacement(.failed(noChangeReason))
+            }
             return
         }
-        let notes = soundNotes(Array(sounds.suffix(added)))
-        await commitTimelineEdit(undoSnapshot: undoSnapshot)
         setOverlayPlacement(.placed(notes: notes))
-        setStatus("Placed \(added) sound\(added == 1 ? "" : "s") · ⌘Z to undo")
     }
 
     /// What the pass has to say when it changed nothing at all.

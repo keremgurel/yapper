@@ -88,20 +88,20 @@ extension EditorSession {
     /// The eye on the rail belongs to the whole lane: one overlay showing means
     /// the lane is showing, and the toggle turns all of them off together.
     func toggleOverlayTrackHidden(_ track: Int) {
-        let lane = OverlayTracks.on(track, in: overlays)
-        guard !lane.isEmpty else { return }
-        let hidden = !lane.allSatisfy { !$0.isVisible }
-        let undoSnapshot = project
-        updateProject { project in
-            guard var overlays = project.overlays else { return }
-            for index in overlays.indices where overlays[index].lane == track {
-                overlays[index].isHidden = hidden ? true : nil
+        scheduleCompositionCommitResolvingStatus { [self] in
+            let lane = OverlayTracks.on(track, in: overlays)
+            guard !lane.isEmpty else { return nil }
+            let hidden = !lane.allSatisfy { !$0.isVisible }
+            updateProject { project in
+                guard var overlays = project.overlays else { return }
+                for index in overlays.indices where overlays[index].lane == track {
+                    overlays[index].isHidden = hidden ? true : nil
+                }
+                project.overlays = overlays
+                project.updatedAt = Date()
             }
-            project.overlays = overlays
-            project.updatedAt = Date()
+            return hidden ? "Overlay track hidden" : "Overlay track shown"
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
-        setStatus(hidden ? "Overlay track hidden" : "Overlay track shown")
     }
 
     /// Deleting a lane is the one edit that closes the stack up: the lane is
@@ -109,14 +109,14 @@ extension EditorSession {
     func removeOverlayTrack(_ track: Int) async {
         let lane = OverlayTracks.on(track, in: overlays)
         guard !lane.isEmpty else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            let kept = (project.overlays ?? []).filter { $0.lane != track }
-            project.overlays = OverlayTracks.compacted(kept)
+        await commitTimelineEdit(successStatus: "Overlay track deleted · ⌘Z to undo") {
+            updateProject { project in
+                let kept = (project.overlays ?? []).filter { $0.lane != track }
+                project.overlays = OverlayTracks.compacted(kept)
+            }
+            reconcileTimelineSelection()
+            return true
         }
-        reconcileTimelineSelection()
-        await commitTimelineEdit(undoSnapshot: undoSnapshot)
-        setStatus("Overlay track deleted · ⌘Z to undo")
     }
 
     /// The shape of what the overlay shows, and the shape of the frame it is
@@ -165,14 +165,15 @@ extension EditorSession {
     /// Live during a drag: saved, but the composition is left alone.
     func updateOverlay(_ updated: ProjectOverlay) {
         guard overlays.contains(where: { $0.id == updated.id }) else { return }
-        let undoSnapshot = project
-        updateProject { project in
-            guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
-            project.overlays?[index] = updated
-            project.updatedAt = Date()
+        scheduleVisualCommit { [self] in
+            updateProject { project in
+                guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
+                project.overlays?[index] = updated
+                project.updatedAt = Date()
+            }
+            if selectedOverlayID != updated.id { selectedOverlayID = updated.id }
+            return true
         }
-        if selectedOverlayID != updated.id { selectedOverlayID = updated.id }
-        scheduleVisualCommit(undoSnapshot: undoSnapshot)
     }
 
     /// At the end of a gesture, or from the inspector. Every edit to an overlay
@@ -223,16 +224,17 @@ extension EditorSession {
                 height: updated.height
             )
             guard OverlayKeyTrack.box(of: existing, at: time) != box else { return }
-            let undoSnapshot = project
             let keyed = OverlayKeyTrack.setting(box, at: time, in: existing)
-            updateProject { project in
-                guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id })
-                else { return }
-                project.overlays?[index] = keyed
-                project.updatedAt = Date()
+            scheduleCompositionCommit(settleFor: .milliseconds(50)) { [self] in
+                updateProject { project in
+                    guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id })
+                    else { return }
+                    project.overlays?[index] = keyed
+                    project.updatedAt = Date()
+                }
+                selectedOverlayID = updated.id
+                return true
             }
-            selectedOverlayID = updated.id
-            scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
             return
         }
 
@@ -240,14 +242,15 @@ extension EditorSession {
             updateOverlay(updated)
             return
         }
-        let undoSnapshot = project
-        updateProject { project in
-            guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
-            project.overlays?[index] = updated
-            project.updatedAt = Date()
+        scheduleCompositionCommit { [self] in
+            updateProject { project in
+                guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
+                project.overlays?[index] = updated
+                project.updatedAt = Date()
+            }
+            selectedOverlayID = updated.id
+            return true
         }
-        selectedOverlayID = updated.id
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
     }
 
     /// Grows or shrinks the overlay around its own centre.
@@ -286,57 +289,56 @@ extension EditorSession {
     func deleteOverlay(_ id: UUID) async {
         guard overlays.contains(where: { $0.id == id }) else { return }
         selectTimelineItem(.overlay(id))
-        await deleteTimelineSelection()
-        setStatus("Overlay removed · ⌘Z to undo")
+        await deleteTimelineSelection(successStatus: "Overlay removed · ⌘Z to undo")
     }
 
     /// Grades the whole project. The look reaches the preview through the
     /// composition, so this rebuilds it rather than only saving.
     func setVisualFilter(_ filter: VisualFilter) {
         guard filter != project.resolvedVisualFilter else { return }
-        let undoSnapshot = project
-        updateProject { project in
-            project.visualFilter = filter.isNeutral && filter.id == .original ? nil : filter
-            project.updatedAt = Date()
+        scheduleCompositionCommit(successStatus: filter.id == .original ? "Filter cleared" : "\(filter.id.title) filter applied") { [self] in
+            updateProject { project in
+                project.visualFilter = filter.isNeutral && filter.id == .original ? nil : filter
+                project.updatedAt = Date()
+            }
+            gradedOverlayImages.removeAll()
+            return true
         }
-        gradedOverlayImages.removeAll()
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
-        setStatus(filter.id == .original ? "Filter cleared" : "\(filter.id.title) filter applied")
     }
 
     /// The speaker's own track, hidden or silenced. Both keep every clip
     /// exactly where it is.
     func toggleVideoTrackHidden() {
-        let undoSnapshot = project
-        let hidden = !project.isVideoTrackHidden
-        updateProject { project in
-            project.videoTrackHidden = hidden ? true : nil
-            project.updatedAt = Date()
+        scheduleCompositionCommitResolvingStatus { [self] in
+            let hidden = !project.isVideoTrackHidden
+            updateProject { project in
+                project.videoTrackHidden = hidden ? true : nil
+                project.updatedAt = Date()
+            }
+            return hidden ? "Video track hidden" : "Video track shown"
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
-        setStatus(hidden ? "Video track hidden" : "Video track shown")
     }
 
     func toggleVideoTrackMuted() {
-        let undoSnapshot = project
-        let muted = !project.isVideoTrackMuted
-        updateProject { project in
-            project.videoTrackMuted = muted ? true : nil
-            project.updatedAt = Date()
+        scheduleCompositionCommitResolvingStatus { [self] in
+            let muted = !project.isVideoTrackMuted
+            updateProject { project in
+                project.videoTrackMuted = muted ? true : nil
+                project.updatedAt = Date()
+            }
+            return muted ? "Video track muted" : "Video track unmuted"
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot)
-        setStatus(muted ? "Video track muted" : "Video track unmuted")
     }
 
     /// Empties the video track. The recordings stay in the media list, so the
     /// footage can be laid back down, and ⌘Z brings the cut back as it was.
     func clearVideoTrack() async {
         guard !project.clips.isEmpty else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { $0.clips = [] }
-        reconcileTimelineSelection()
-        await commitTimelineEdit(undoSnapshot: undoSnapshot)
-        setStatus("Video track cleared · ⌘Z to undo")
+        await commitTimelineEdit(successStatus: "Video track cleared · ⌘Z to undo") {
+            updateProject { $0.clips = [] }
+            reconcileTimelineSelection()
+            return true
+        }
     }
 
     /// Moves the playhead to an overlay so it can be seen while it is edited.

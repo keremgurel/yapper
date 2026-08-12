@@ -9,7 +9,6 @@ extension EditorSession {
     /// same bed used in ten projects is one file on disk.
     func addSavedAudio(_ item: SavedAudio, at url: URL) async {
         guard duration > 0 else { return }
-        let undoSnapshot = prepareUndoSnapshot()
         let start = min(currentTime, max(0, duration - 0.02))
         let layerDuration = min(item.duration, max(0.02, duration - start))
         let layer = ProjectAudioLayer(
@@ -19,11 +18,13 @@ extension EditorSession {
             duration: layerDuration,
             sourceDuration: item.duration
         )
-        updateProject { project in
-            project.audioLayers = (project.audioLayers ?? []) + [layer]
-            project.updatedAt = Date()
+        await commitTimelineEdit {
+            updateProject { project in
+                project.audioLayers = (project.audioLayers ?? []) + [layer]
+                project.updatedAt = Date()
+            }
+            selectTimelineItem(.audio(layer.id))
+            return true
         }
-        selectTimelineItem(.audio(layer.id))
-        await commitTimelineEdit(undoSnapshot: undoSnapshot)
     }
 }

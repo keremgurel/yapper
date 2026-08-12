@@ -2,6 +2,11 @@ import Foundation
 import Testing
 @testable import YapperNative
 
+private actor SoundLevelTestStore: ProjectPersisting {
+    func load() async throws -> EditorProject? { nil }
+    func save(_: EditorProject) async throws {}
+}
+
 /// "Make all the pops 80%." Which sounds, and how loud.
 struct SoundLevelCommandTests {
     @Test func aNamedEffectIsSetOnItsOwn() {
@@ -66,22 +71,9 @@ struct SoundLevelCommandTests {
 @MainActor
 struct SoundLevelCommandApplyTests {
     private func session() -> EditorSession {
-        let mediaID = UUID()
-        let session = EditorSession()
+        let session = EditorSession(store: SoundLevelTestStore())
         session.updateProject { project in
             project = EditorProject(
-                media: [
-                    ProjectMedia(
-                        id: mediaID,
-                        url: URL(filePath: "/tmp/a.mov"),
-                        name: "a",
-                        duration: 60,
-                        width: 1_080,
-                        height: 1_920,
-                        hasAudio: true
-                    ),
-                ],
-                clips: [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 60)],
                 audioLayers: [
                     ProjectAudioLayer(
                         url: URL(filePath: "/tmp/pop.wav"),
@@ -110,12 +102,12 @@ struct SoundLevelCommandApplyTests {
         return session
     }
 
-    @Test func onlyTheNamedEffectIsChanged() {
+    @Test func onlyTheNamedEffectIsChanged() async {
         let session = session()
         let command = try! #require(
             SoundLevelCommand.parse("make all pop sound effects have 80% volume")
         )
-        let notes = session.applyLevelCommand(command)
+        let notes = await session.applyLevelCommand(command)
 
         let layers = session.project.audioLayers ?? []
         #expect(layers.filter { $0.builtInID == "pop" }.allSatisfy { $0.volume == 0.8 })
@@ -123,21 +115,21 @@ struct SoundLevelCommandApplyTests {
         #expect(notes.count == 1)
     }
 
-    @Test func everySoundIsChangedTogether() {
+    @Test func everySoundIsChangedTogether() async {
         let session = session()
         let command = try! #require(
             SoundLevelCommand.parse("make all sound effects 50% volume")
         )
-        session.applyLevelCommand(command)
+        await session.applyLevelCommand(command)
         #expect((session.project.audioLayers ?? []).allSatisfy { $0.volume == 0.5 })
     }
 
-    @Test func namingASoundThisTimelineDoesNotHaveChangesNothingAndSaysSo() {
+    @Test func namingASoundThisTimelineDoesNotHaveChangesNothingAndSaysSo() async {
         let session = session()
         let command = try! #require(
             SoundLevelCommand.parse("make every drum roll 30% volume")
         )
-        #expect(session.applyLevelCommand(command).isEmpty)
+        #expect(await session.applyLevelCommand(command).isEmpty)
         #expect(session.levelCommandEmptyReason(command).contains("Drum roll"))
         #expect((session.project.audioLayers ?? []).allSatisfy { $0.volume == 1 })
     }

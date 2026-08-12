@@ -20,6 +20,8 @@ extension EditorSession {
     /// are almost certainly beside it, and asking for each of them one at a
     /// time would be a chore for something the answer is already known to.
     func relinkMedia(_ media: ProjectMedia, to url: URL) async {
+        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
         let canonical = url.resolvingSymlinksInPath()
         let folder = canonical.deletingLastPathComponent()
         var relinked: [(id: UUID, url: URL)] = [(media.id, canonical)]
@@ -30,7 +32,6 @@ extension EditorSession {
             relinked.append((other.id, candidate))
         }
 
-        let undoSnapshot = prepareUndoSnapshot()
         updateProject { project in
             for (id, url) in relinked {
                 guard let index = project.media.firstIndex(where: { $0.id == id }) else { continue }
@@ -62,14 +63,15 @@ extension EditorSession {
         refreshMediaAvailability()
         do {
             try await reloadAfterRecovery()
-            recordHistory(before: undoSnapshot)
+            recordHistory(before: rollbackState.project)
             setStatus(
                 relinked.count == 1
                     ? "Reconnected \(media.name)"
                     : "Reconnected \(relinked.count) files"
             )
         } catch {
-            show(error)
+            await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
+            refreshMediaAvailability()
         }
     }
 

@@ -33,16 +33,19 @@ extension EditorSession {
     func commitLayerVolume() {
         guard
             let finished = audioLevels.endLayer(),
-            let index = project.audioLayers?.firstIndex(where: { $0.id == finished.id }),
-            project.audioLayers?[index].volume != finished.volume
+            project.audioLayers?.first(where: { $0.id == finished.id })?.volume != finished.volume
         else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            project.audioLayers?[index].volume = finished.volume
-            project.updatedAt = Date()
+        scheduleCompositionCommit(
+            settleFor: .milliseconds(50),
+            successStatus: "Volume \(AudioLevel.percent(finished.volume))%"
+        ) { [self] in
+            guard let index = project.audioLayers?.firstIndex(where: { $0.id == finished.id }) else { return false }
+            updateProject { project in
+                project.audioLayers?[index].volume = finished.volume
+                project.updatedAt = Date()
+            }
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
-        setStatus("Volume \(AudioLevel.percent(finished.volume))%")
     }
 
     func commitVideoTrackVolume() {
@@ -50,17 +53,20 @@ extension EditorSession {
             let volume = audioLevels.endMainTrack(),
             project.resolvedVideoTrackVolume != volume
         else { return }
-        let undoSnapshot = prepareUndoSnapshot()
-        updateProject { project in
-            project.videoTrackVolume = volume
-            // Pulling a fader off zero is asking to hear it, so the mute that
-            // was silencing it stands down. Leaving both on means a fader that
-            // visibly moves and changes nothing.
-            if volume > 0, project.videoTrackMuted == true { project.videoTrackMuted = nil }
-            project.updatedAt = Date()
+        scheduleCompositionCommit(
+            settleFor: .milliseconds(50),
+            successStatus: "Video volume \(AudioLevel.percent(volume))%"
+        ) { [self] in
+            updateProject { project in
+                project.videoTrackVolume = volume
+                // Pulling a fader off zero is asking to hear it, so the mute that
+                // was silencing it stands down. Leaving both on means a fader that
+                // visibly moves and changes nothing.
+                if volume > 0, project.videoTrackMuted == true { project.videoTrackMuted = nil }
+                project.updatedAt = Date()
+            }
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
-        setStatus("Video volume \(AudioLevel.percent(volume))%")
     }
 
     /// Runs "make all the pops 80%": the layers it names, in one edit.
@@ -69,28 +75,33 @@ extension EditorSession {
     /// it the way the placement pass reports a cutaway. Empty when the sentence
     /// named sounds this timeline does not have.
     @discardableResult
-    func applyLevelCommand(_ command: SoundLevelCommand) -> [String] {
-        if command.target == .videoTrack {
-            guard project.resolvedVideoTrackVolume != command.volume else { return [] }
-            setVideoTrackVolume(command.volume)
-            return [command.summary]
-        }
-
-        let wanted = (project.audioLayers ?? []).filter { matches($0, command.target) }
-        guard !wanted.isEmpty else { return [] }
-        guard wanted.contains(where: { $0.volume != command.volume }) else { return [] }
-
-        let undoSnapshot = prepareUndoSnapshot()
-        let ids = Set(wanted.map(\.id))
-        updateProject { project in
-            for index in project.audioLayers?.indices ?? (0 ..< 0).indices {
-                guard let id = project.audioLayers?[index].id, ids.contains(id) else { continue }
-                project.audioLayers?[index].volume = command.volume
+    func applyLevelCommand(_ command: SoundLevelCommand) async -> [String] {
+        var notes: [String] = []
+        let success = await commitTimelineEdit(successStatus: command.summary) { [self] in
+            if command.target == .videoTrack {
+                guard project.resolvedVideoTrackVolume != command.volume else { return false }
+                updateProject { project in
+                    project.videoTrackVolume = command.volume == 1 ? nil : command.volume
+                    project.updatedAt = Date()
+                }
+                notes = [command.summary]
+                return true
             }
-            project.updatedAt = Date()
+
+            let wanted = (project.audioLayers ?? []).filter { matches($0, command.target) }
+            guard wanted.contains(where: { $0.volume != command.volume }) else { return false }
+            let ids = Set(wanted.map(\.id))
+            updateProject { project in
+                for index in project.audioLayers?.indices ?? (0 ..< 0).indices {
+                    guard let id = project.audioLayers?[index].id, ids.contains(id) else { continue }
+                    project.audioLayers?[index].volume = command.volume
+                }
+                project.updatedAt = Date()
+            }
+            notes = [command.summary + " (\(wanted.count) sound\(wanted.count == 1 ? "" : "s"))"]
+            return true
         }
-        scheduleCompositionCommit(undoSnapshot: undoSnapshot, settleFor: .milliseconds(50))
-        return [command.summary + " (\(wanted.count) sound\(wanted.count == 1 ? "" : "s"))"]
+        return success ? notes : []
     }
 
     /// What a sentence naming an effect could not find, for the reply that has
