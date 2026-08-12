@@ -27,3 +27,6 @@ next-env.d.ts
 # workspace agent docs (leave formatting to authors)
 AGENTS.md
 CLAUDE.md
+
+# shell scripts (Prettier has no parser for them)
+*.sh
