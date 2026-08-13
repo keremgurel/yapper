@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -11,6 +12,10 @@ import {
   CLEAN_TRANSCRIPT_CRITIC_PROMPT,
   CLEAN_TRANSCRIPT_SYSTEM_PROMPT,
 } from "@/lib/studio/clean-transcript-prompt";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +30,8 @@ export const maxDuration = 60;
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const key = process.env.SURPLUS_API_KEY;
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
@@ -38,6 +45,17 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const rawText = words.map((w) => w.text).join(" ");
+  const billing = await preflightPaidActionOrResponse(
+    userId,
+    "clean_transcript",
+  );
+  if (billing) return billing;
+  const spendLimited = await guardProviderSpend(
+    req,
+    userId,
+    "clean-transcript",
+  );
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "clean_transcript");
   if (access.response) return access.response;
   const { reservation } = access;

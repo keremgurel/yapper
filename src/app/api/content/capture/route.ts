@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -8,6 +9,10 @@ import { createContentItem } from "@/lib/db/content";
 import { captureIdea, capturedIdeaToBlocks } from "@/lib/content/capture";
 import { normalizeHooks } from "@/lib/content/normalize";
 import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -25,6 +30,8 @@ const strArr = (v: unknown, max: number): string[] =>
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const text = typeof body.text === "string" ? body.text.trim() : "";
@@ -34,7 +41,14 @@ export async function POST(req: NextRequest): Promise<Response> {
   const pillars = context.pillarNames.length
     ? context.pillarNames
     : strArr(body.pillars, 12);
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(userId, "capture_idea");
+  if (billing) return billing;
 
+  const spendLimited = await guardProviderSpend(req, userId, "content-capture");
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "capture_idea");
   if (access.response) return access.response;
   const { reservation } = access;

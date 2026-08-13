@@ -1,10 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
 import type { RawWord } from "@/lib/studio/transcribe-remote";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -29,6 +34,8 @@ interface AsrResult {
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const deepgram = process.env.DEEPGRAM_API_KEY;
   const groq = process.env.GROQ_API_KEY;
@@ -78,6 +85,12 @@ export async function POST(req: Request): Promise<Response> {
   if (providers.length === 0) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
+
+  const billing = await preflightPaidActionOrResponse(userId, "transcribe");
+  if (billing) return billing;
+
+  const spendLimited = await guardProviderSpend(req, userId, "transcribe");
+  if (spendLimited) return spendLimited;
 
   const access = await reservePaidActionOrResponse(userId, "transcribe");
   if (access.response) return access.response;

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -23,6 +24,10 @@ import type {
   ReferenceContentType,
   ResolvedLink,
 } from "@/lib/inspiration/types";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -39,6 +44,8 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   let url: string;
   try {
@@ -56,6 +63,27 @@ export async function POST(req: Request) {
   const kind = detectKind(url);
   const handle = extractHandle(url) ?? undefined;
   const isWebResource = platform === "unknown";
+  if (isWebResource && !process.env.SURPLUS_API_KEY) {
+    return NextResponse.json({ error: "no_provider" }, { status: 501 });
+  }
+  if (
+    kind === "video" &&
+    (platform === "instagram" || platform === "tiktok") &&
+    (!process.env.APIFY_TOKEN || !process.env.DEEPGRAM_API_KEY)
+  ) {
+    return NextResponse.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(
+    userId,
+    "reference_analysis",
+  );
+  if (billing) return billing;
+  const spendLimited = await guardProviderSpend(
+    req,
+    userId,
+    "inspiration-resolve",
+  );
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(
     userId,
     "reference_analysis",

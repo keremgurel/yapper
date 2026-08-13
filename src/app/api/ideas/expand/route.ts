@@ -1,12 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { getProjectContextSafe } from "@/lib/content/project-context-server";
 import { expandIdea } from "@/lib/ideas/expand";
 import type { IdeaInput } from "@/lib/ideas/types";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -19,6 +24,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const body = (await req.json().catch(() => ({}))) as {
     input?: IdeaInput;
@@ -35,7 +42,14 @@ export async function POST(req: NextRequest): Promise<Response> {
   // The creator's standing context is read server-side rather than trusted from
   // the client, so a request cannot claim someone else's pillars or voice.
   const context = await getProjectContextSafe(userId);
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(userId, "expand_idea");
+  if (billing) return billing;
 
+  const spendLimited = await guardProviderSpend(req, userId, "ideas-expand");
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "expand_idea");
   if (access.response) return access.response;
   const { reservation } = access;

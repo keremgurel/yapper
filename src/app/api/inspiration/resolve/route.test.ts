@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   resolveInstagramMedia: vi.fn(),
@@ -9,12 +9,16 @@ const mocks = vi.hoisted(() => ({
   fetchYoutubeTranscript: vi.fn(),
   refundCreditReservation: vi.fn(),
   getBalance: vi.fn().mockResolvedValue(100),
+  guardProviderSpend: vi.fn().mockResolvedValue(null),
+  guardProviderIngress: vi.fn().mockResolvedValue(null),
+  preflightPaidActionOrResponse: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "user_test" }),
 }));
 vi.mock("@/lib/billing/actions", () => ({
+  preflightPaidActionOrResponse: mocks.preflightPaidActionOrResponse,
   reservePaidActionOrResponse: vi.fn().mockResolvedValue({
     reservation: {
       action: "reference_analysis",
@@ -26,6 +30,10 @@ vi.mock("@/lib/billing/actions", () => ({
   refundCreditReservation: mocks.refundCreditReservation,
 }));
 vi.mock("@/lib/db/credits", () => ({ getBalance: mocks.getBalance }));
+vi.mock("@/lib/provider-rate-limit", () => ({
+  guardProviderIngress: mocks.guardProviderIngress,
+  guardProviderSpend: mocks.guardProviderSpend,
+}));
 vi.mock("@/lib/inspiration/apify", () => ({
   resolveInstagramMedia: mocks.resolveInstagramMedia,
   resolveTikTokMedia: mocks.resolveTikTokMedia,
@@ -55,13 +63,65 @@ const post = (url: string) =>
     }),
   );
 
+beforeEach(() => {
+  vi.stubEnv("APIFY_TOKEN", "apify_test");
+  vi.stubEnv("DEEPGRAM_API_KEY", "dg_test");
+  vi.stubEnv("SURPLUS_API_KEY", "surplus_test");
+});
+
 afterEach(() => {
+  vi.unstubAllEnvs();
   vi.clearAllMocks();
   vi.restoreAllMocks();
   mocks.getBalance.mockResolvedValue(100);
+  mocks.preflightPaidActionOrResponse.mockResolvedValue(null);
 });
 
 describe("POST /api/inspiration/resolve", () => {
+  it("does not consume provider spend for an invalid URL", async () => {
+    const response = await post("not-a-url");
+
+    expect(response.status).toBe(400);
+    expect(mocks.guardProviderIngress).toHaveBeenCalledOnce();
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(mocks.resolveMetadata).not.toHaveBeenCalled();
+  });
+
+  it("does not reach a provider when provider spend is denied", async () => {
+    mocks.guardProviderSpend.mockResolvedValueOnce(
+      Response.json({ error: "rate_limited" }, { status: 429 }),
+    );
+
+    const response = await post(REEL);
+
+    expect(response.status).toBe(429);
+    expect(mocks.resolveMetadata).not.toHaveBeenCalled();
+    expect(mocks.resolveInstagramMedia).not.toHaveBeenCalled();
+  });
+
+  it("does not consume provider spend when billing preflight rejects", async () => {
+    mocks.preflightPaidActionOrResponse.mockResolvedValueOnce(
+      Response.json({ error: "not_entitled" }, { status: 402 }),
+    );
+
+    const response = await post(REEL);
+
+    expect(response.status).toBe(402);
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(mocks.resolveMetadata).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unavailable social-video provider before billing or spend", async () => {
+    vi.stubEnv("APIFY_TOKEN", "");
+
+    const response = await post(REEL);
+
+    expect(response.status).toBe(501);
+    expect(mocks.preflightPaidActionOrResponse).not.toHaveBeenCalled();
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(mocks.resolveInstagramMedia).not.toHaveBeenCalled();
+  });
+
   /**
    * The reference-transcript honesty rule. A Reel we could not hear must not
    * come back dressed as an article: the expansion prompt reads `summary` as

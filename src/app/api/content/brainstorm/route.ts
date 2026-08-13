@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -10,6 +11,10 @@ import {
   type ClipContext,
 } from "@/lib/content/brainstorm";
 import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -32,6 +37,8 @@ const asMessages = (v: unknown): ChatMessage[] =>
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const clip = body.clip as ClipContext | undefined;
@@ -46,7 +53,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     : [];
   // Read server-side: a client must not be able to claim a different voice.
   const context = await getProjectContextSafe(userId);
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(userId, "brainstorm");
+  if (billing) return billing;
 
+  const spendLimited = await guardProviderSpend(
+    req,
+    userId,
+    "content-brainstorm",
+  );
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "brainstorm");
   if (access.response) return access.response;
   const { reservation } = access;

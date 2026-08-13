@@ -55,3 +55,40 @@ jobs:
 
       - name: Build release executable
         run: swift build --configuration release
+
+  postgres-integration:
+    name: PostgreSQL integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: yapper
+          POSTGRES_PASSWORD: yapper
+          POSTGRES_DB: yapper_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U yapper -d yapper_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://yapper:yapper@localhost:5432/yapper_test
+      DATABASE_URL_UNPOOLED: postgres://yapper:yapper@localhost:5432/yapper_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Test PostgreSQL protocols
+        run: npm run test:integration

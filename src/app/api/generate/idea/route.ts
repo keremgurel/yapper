@@ -10,6 +10,10 @@ import {
 import { ensureUser } from "@/lib/db/users";
 import { canUsePremium } from "@/lib/billing/gate";
 import { generateIdea, type IdeaInput } from "@/lib/generate/idea";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 // Clamp client-supplied fields so a signed-in user can't amplify token cost
 // (the in-app client never sends `transcript`).
@@ -27,6 +31,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const cost = GENERATE_CREDITS.idea;
   await ensureUser(userId);
@@ -44,6 +50,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     transcript: str(body.transcript, 8000),
     context: (await getProjectContextSafe(userId)).block,
   };
+  if (!input.topic && !input.sourceTitle && !input.transcript) {
+    return Response.json(
+      { error: "generate_failed", detail: "no_input" },
+      { status: 400 },
+    );
+  }
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+
+  const spendLimited = await guardProviderSpend(req, userId, "generate-idea");
+  if (spendLimited) return spendLimited;
 
   let idea;
   try {

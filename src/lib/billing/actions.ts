@@ -1,6 +1,7 @@
 import { canUsePremium } from "@/lib/billing/gate";
 import {
   deductCredits,
+  getBalance,
   grantCredits,
   InsufficientCreditsError,
 } from "@/lib/db/credits";
@@ -19,6 +20,22 @@ export const PAID_ACTIONS = {
 } as const;
 
 export type PaidAction = keyof typeof PAID_ACTIONS;
+
+/** Cheap read-only access check used before consuming provider-spend budget.
+ * The reservation immediately before provider work remains the atomic guard. */
+export async function preflightPaidActionOrResponse(
+  userId: string,
+  action: PaidAction,
+): Promise<Response | null> {
+  await ensureUser(userId);
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
+  if ((await getBalance(userId)) < PAID_ACTIONS[action].credits) {
+    return Response.json({ error: "insufficient_credits" }, { status: 402 });
+  }
+  return null;
+}
 
 export class BillingAccessError extends Error {
   constructor(public readonly code: "not_entitled" | "insufficient_credits") {

@@ -25,6 +25,8 @@ const mocks = vi.hoisted(() => {
     ensureUser: vi.fn(),
     fetchInstagramMediaForImport: vi.fn(),
     getFreshAccessToken: vi.fn(),
+    guardProviderSpend: vi.fn(),
+    guardProviderIngress: vi.fn(),
     getStorageBytes: vi.fn(),
     getStorageQuota: vi.fn(),
     headObjectBytes: vi.fn(),
@@ -44,6 +46,10 @@ vi.mock("@/lib/billing/gate", () => ({
 }));
 vi.mock("@/lib/db/billing", () => ({
   getStorageQuota: mocks.getStorageQuota,
+}));
+vi.mock("@/lib/provider-rate-limit", () => ({
+  guardProviderIngress: mocks.guardProviderIngress,
+  guardProviderSpend: mocks.guardProviderSpend,
 }));
 vi.mock("@/lib/db/r2-lifecycle", () => ({
   allocatePendingObject: mocks.allocatePendingObject,
@@ -93,6 +99,8 @@ const request = (mediaId = "ig_123") =>
   });
 
 beforeEach(() => {
+  mocks.guardProviderSpend.mockResolvedValue(null);
+  mocks.guardProviderIngress.mockResolvedValue(null);
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.canUsePremium.mockResolvedValue(true);
   mocks.r2Configured.mockReturnValue(true);

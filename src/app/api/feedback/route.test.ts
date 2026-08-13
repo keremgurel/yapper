@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => {
     getObjectBytes: vi.fn(),
     getStorageBytes: vi.fn(),
     getStorageQuota: vi.fn(),
+    guardProviderSpend: vi.fn(),
+    guardProviderIngress: vi.fn(),
     ownsKey: vi.fn(),
     protectPendingObject: vi.fn(),
     uploadBytesToGemini: vi.fn(),
@@ -32,6 +34,10 @@ vi.mock("@/lib/billing/gate", () => ({
 }));
 vi.mock("@/lib/db/billing", () => ({
   getStorageQuota: mocks.getStorageQuota,
+}));
+vi.mock("@/lib/provider-rate-limit", () => ({
+  guardProviderIngress: mocks.guardProviderIngress,
+  guardProviderSpend: mocks.guardProviderSpend,
 }));
 vi.mock("@/lib/db/r2-lifecycle", () => ({
   activateObjectWithinTx: mocks.activateObjectWithinTx,
@@ -99,6 +105,9 @@ function videoRequest(): NextRequest {
 }
 
 beforeEach(() => {
+  vi.stubEnv("SURPLUS_API_KEY", "surplus_test");
+  vi.stubEnv("GEMINI_API_KEY", "gemini_test");
+  vi.stubEnv("DEEPGRAM_API_KEY", "deepgram_test");
   state.balance = 100;
   state.completed = false;
   state.failed = false;
@@ -119,6 +128,8 @@ beforeEach(() => {
   });
   mocks.countMediaOnceWithinTx.mockResolvedValue(undefined);
   mocks.activateObjectWithinTx.mockResolvedValue(undefined);
+  mocks.guardProviderSpend.mockResolvedValue(null);
+  mocks.guardProviderIngress.mockResolvedValue(null);
   mocks.protectPendingObject.mockResolvedValue(true);
 
   db.insert.mockReturnValue({
@@ -159,6 +170,36 @@ afterEach(() => {
 });
 
 describe("POST /api/feedback atomic completion", () => {
+  it("does not consume provider spend for a non-entitled user", async () => {
+    mocks.canUsePremium.mockResolvedValue(false);
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(402);
+    expect(mocks.guardProviderIngress).toHaveBeenCalledOnce();
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(mocks.coachOnCamera).not.toHaveBeenCalled();
+  });
+
+  it("does not consume provider spend when required providers are absent", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "");
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(501);
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(mocks.coachOnCamera).not.toHaveBeenCalled();
+  });
+
+  it("allows video feedback without Surplus when Gemini is configured", async () => {
+    vi.stubEnv("SURPLUS_API_KEY", "");
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(200);
+    expect(mocks.guardProviderSpend).toHaveBeenCalledOnce();
+  });
+
   it("rejects unavailable media before creating a processing submission", async () => {
     mocks.protectPendingObject.mockResolvedValue(false);
 
