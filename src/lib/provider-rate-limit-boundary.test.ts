@@ -64,6 +64,8 @@ describe("provider-spend route boundary", () => {
       const bodyReaders = [
         source.indexOf("req.json()"),
         source.indexOf("req.arrayBuffer()"),
+        source.indexOf("readBoundedJson(req"),
+        source.indexOf("readBoundedBody(req"),
       ].filter((index) => index >= 0);
       const firstBodyRead = bodyReaders.length
         ? Math.min(...bodyReaders)
@@ -88,8 +90,17 @@ describe("provider-spend route boundary", () => {
       const preflight = source.lastIndexOf("preflightPaidActionOrResponse(");
       const spend = source.lastIndexOf("guardProviderSpend(");
       const reservation = source.lastIndexOf("reservePaidActionOrResponse(");
+      const bodyReaders = [
+        source.indexOf("req.json()"),
+        source.indexOf("req.arrayBuffer()"),
+        source.indexOf("readBoundedJson(req"),
+        source.indexOf("readBoundedBody(req"),
+      ].filter((index) => index >= 0);
+      const firstBodyRead = bodyReaders.length
+        ? Math.min(...bodyReaders)
+        : Infinity;
 
-      expect(preflight).toBeGreaterThan(source.indexOf("req.json()"));
+      expect(preflight).toBeGreaterThan(firstBodyRead);
       expect(preflight).toBeLessThan(spend);
       expect(reservation).toBeGreaterThan(spend);
       expect(source.slice(spend, reservation)).not.toContain("await fetch(");

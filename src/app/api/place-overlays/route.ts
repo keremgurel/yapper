@@ -13,49 +13,15 @@ import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import {
+  readBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/http/bounded-body";
+import { parseOverlayInput } from "@/lib/studio/overlay-input";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-interface Body {
-  /** What the user asked for, in their own words. */
-  instruction?: string;
-  /** The transcript, in order. Only the text is sent; timings stay client-side. */
-  words?: { text: string }[];
-  /** The media they @mentioned, by file name. `aspect` is width over height. */
-  files?: {
-    name: string;
-    kind: "video" | "image";
-    duration: number;
-    aspect?: number;
-  }[];
-  /** Width over height of the finished video. */
-  frameAspect?: number;
-  /**
-   * Where the speaker's face is over the course of the video, as fractions of
-   * the frame from its top left. Found on the client; no frame is ever sent.
-   * Absent from the web Studio, which has no detector.
-   */
-  speaker?: {
-    at: number;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }[];
-  /**
-   * The sound effects the client ships. The model may only name one of these,
-   * so the list has to travel with the question. Absent from the web Studio,
-   * which has no sound library, and then no sounds are asked for.
-   */
-  effects?: { id: string; name: string; detail: string }[];
-  /**
-   * The cutaways already on the timeline, so a sentence about "the overlays we
-   * have" is about something the model can see. Without this it read that as a
-   * request to place them, and placed every one of them a second time.
-   */
-  placed?: { name: string; at: number }[];
-}
+const MAX_JSON_BYTES = 256 * 1024;
 
 const SYSTEM =
   "You are the editor of a talking-head video. The user names some media and " +
@@ -188,9 +154,21 @@ export async function POST(req: Request): Promise<Response> {
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   const model = process.env.AI_PLACE_MODEL ?? "gpt-5.4-mini";
 
+  let rawBody: unknown;
+  try {
+    rawBody = await readBoundedJson(req, { maxBytes: MAX_JSON_BYTES });
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+  const body = parseOverlayInput(rawBody);
+  if (!body) {
+    return Response.json({ error: "bad_request" }, { status: 400 });
+  }
   const { instruction, words, files, frameAspect, speaker, effects, placed } =
-    (await req.json()) as Body;
-  if (!Array.isArray(words) || words.length === 0) {
+    body;
+  if (words.length === 0) {
     return Response.json({ error: "no_transcript" }, { status: 400 });
   }
   // Nothing to place and nothing to play means there is no question to ask.

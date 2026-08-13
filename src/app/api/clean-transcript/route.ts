@@ -16,9 +16,15 @@ import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import {
+  readBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/http/bounded-body";
+import { parseCleanTranscriptWords } from "@/lib/studio/clean-transcript-input";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+const MAX_JSON_BYTES = 256 * 1024;
 
 /**
  * AI "remove mistakes" pass. The model is given the transcript as plain speech
@@ -39,10 +45,23 @@ export async function POST(req: Request): Promise<Response> {
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   const model = process.env.AI_CLEAN_MODEL ?? "gpt-5.4";
 
-  const { words } = (await req.json()) as { words?: { text: string }[] };
-  if (!Array.isArray(words) || words.length === 0) {
+  let rawBody: unknown;
+  try {
+    rawBody = await readBoundedJson(req, { maxBytes: MAX_JSON_BYTES });
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+  if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
+    return Response.json({ error: "bad_request" }, { status: 400 });
+  }
+  const body = rawBody as Record<string, unknown>;
+  if (Array.isArray(body.words) && body.words.length === 0) {
     return Response.json({ cuts: [] });
   }
+  const words = parseCleanTranscriptWords(body.words);
+  if (!words) return Response.json({ error: "bad_request" }, { status: 400 });
 
   const rawText = words.map((w) => w.text).join(" ");
   const billing = await preflightPaidActionOrResponse(
