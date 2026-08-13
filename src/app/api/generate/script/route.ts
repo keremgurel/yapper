@@ -12,6 +12,10 @@ import { canUsePremium } from "@/lib/billing/gate";
 import { generateScript, type ScriptInput } from "@/lib/generate/script";
 import { parseSections } from "@/lib/ideas/expand-prompt";
 import { sectionsToBlocks } from "@/lib/ideas/expansion-patch";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 // Clamp client-supplied fields so a signed-in user can't amplify token cost.
 const str = (v: unknown, max: number): string | undefined =>
@@ -35,6 +39,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const cost = GENERATE_CREDITS.script;
   await ensureUser(userId);
@@ -53,8 +59,25 @@ export async function POST(req: NextRequest): Promise<Response> {
     // client-supplied, so it is also the biggest lever on token cost here.
     blocks: sectionsToBlocks(parseSections(body.blocks)).slice(0, 8),
     originalNote: str(body.originalNote, 4000),
-    context: (await getProjectContextSafe(userId)).block,
   };
+  if (
+    !input.title &&
+    !input.hooks?.length &&
+    !input.blocks?.length &&
+    !input.originalNote
+  ) {
+    return Response.json(
+      { error: "generate_failed", detail: "no_input" },
+      { status: 400 },
+    );
+  }
+  input.context = (await getProjectContextSafe(userId)).block;
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+
+  const spendLimited = await guardProviderSpend(req, userId, "generate-script");
+  if (spendLimited) return spendLimited;
 
   let script: string;
   try {

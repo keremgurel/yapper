@@ -31,6 +31,10 @@ import { transcribeForFeedback } from "@/lib/feedback/transcribe";
 import { coachOnCamera } from "@/lib/feedback/video";
 import { getObjectBytes, ownsKey } from "@/lib/r2";
 import { canUsePremium } from "@/lib/billing/gate";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -57,6 +61,8 @@ interface FeedbackResult {
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const params = new URL(req.url).searchParams;
   const tier = (params.get("tier") ?? "audio") as FeedbackTier;
@@ -98,6 +104,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   ) {
     return Response.json({ error: "media_unavailable" }, { status: 409 });
   }
+  const providerConfigured =
+    tier === "audio"
+      ? !!process.env.SURPLUS_API_KEY && !!process.env.DEEPGRAM_API_KEY
+      : !!process.env.GEMINI_API_KEY;
+  if (!providerConfigured) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const spendLimited = await guardProviderSpend(req, userId, "feedback");
+  if (spendLimited) return spendLimited;
 
   const db = getDb();
   const [submission] = await db

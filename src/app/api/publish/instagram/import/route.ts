@@ -36,6 +36,10 @@ import {
   putObjectFile,
   r2Configured,
 } from "@/lib/r2";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -78,6 +82,8 @@ function importedResponse(row: ImportedMediaRecord): Response {
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const body = (await req.json().catch(() => ({}))) as { mediaId?: unknown };
   const mediaId = typeof body.mediaId === "string" ? body.mediaId.trim() : "";
@@ -94,6 +100,12 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const quotaBytes = await getStorageQuota(userId);
+  const spendLimited = await guardProviderSpend(
+    req,
+    userId,
+    "instagram-import",
+  );
+  if (spendLimited) return spendLimited;
   const deadline = AbortSignal.any([
     req.signal,
     AbortSignal.timeout(OVERALL_TIMEOUT_MS),

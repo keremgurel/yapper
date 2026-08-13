@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { processR2LifecycleBatch } from "@/lib/db/r2-lifecycle";
+import { cleanupExpiredRateLimitBuckets } from "@/lib/db/rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -7,6 +8,7 @@ export const maxDuration = 60;
 const ROUTE_BUDGET_MS = 45_000;
 const DEFAULT_BATCH_SIZE = 10;
 const MAX_BATCH_SIZE = 25;
+const RATE_LIMIT_CLEANUP_BATCH_SIZE = 500;
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -36,7 +38,20 @@ export async function GET(request: Request): Promise<Response> {
     limit: batchSize(request),
     deadlineAt: Date.now() + ROUTE_BUDGET_MS,
   });
-  return Response.json(result, {
-    headers: { "Cache-Control": "no-store" },
-  });
+  let rateLimitBucketsDeleted = 0;
+  let rateLimitCleanupFailed = false;
+  try {
+    rateLimitBucketsDeleted = await cleanupExpiredRateLimitBuckets(
+      RATE_LIMIT_CLEANUP_BATCH_SIZE,
+    );
+  } catch (error) {
+    rateLimitCleanupFailed = true;
+    console.error("[maintenance] rate-limit cleanup failed", error);
+  }
+  return Response.json(
+    { ...result, rateLimitBucketsDeleted, rateLimitCleanupFailed },
+    {
+      headers: { "Cache-Control": "no-store" },
+    },
+  );
 }

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -10,6 +11,10 @@ import {
   fetchCreatorFeed,
 } from "@/lib/inspiration/creator-feed";
 import { rankByOutlier } from "@/lib/inspiration/outliers";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -23,6 +28,8 @@ export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId)
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   let url: string;
   try {
@@ -38,6 +45,29 @@ export async function POST(req: Request) {
 
   const platform = detectPlatform(url);
   const handle = extractHandle(url) ?? undefined;
+  if (platform === "unknown") {
+    return NextResponse.json(
+      { videos: [], error: "unsupported_platform" },
+      { status: 200 },
+    );
+  }
+  if (platform !== "youtube" && !process.env.APIFY_TOKEN) {
+    return NextResponse.json(
+      { videos: [], error: "no_apify_token" },
+      { status: 200 },
+    );
+  }
+  const billing = await preflightPaidActionOrResponse(
+    userId,
+    "creator_analysis",
+  );
+  if (billing) return billing;
+  const spendLimited = await guardProviderSpend(
+    req,
+    userId,
+    "inspiration-creator",
+  );
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "creator_analysis");
   if (access.response) return access.response;
   const { reservation } = access;

@@ -3,10 +3,12 @@ import {
   bigint,
   boolean,
   check,
+  doublePrecision,
   index,
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -664,6 +666,36 @@ export const r2Objects = pgTable(
       "r2_objects_upload_expiry_check",
       sql`${t.state} <> 'pending_upload' or ${t.uploadExpiresAt} is not null`,
     ),
+  ],
+);
+
+/** Cross-instance token buckets. Subjects are opaque HMACs rather than raw
+ * user ids, email addresses, or network addresses. There is deliberately no
+ * user FK: public subjects have no user row and short-lived abuse protection
+ * should survive account deletion until expiry. */
+export const rateLimitBuckets = pgTable(
+  "rate_limit_buckets",
+  {
+    scope: text("scope").notNull(),
+    subjectHash: text("subject_hash").notNull(),
+    tokens: doublePrecision("tokens").notNull(),
+    capacity: integer("capacity").notNull(),
+    refillPerSecond: doublePrecision("refill_per_second").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.scope, t.subjectHash] }),
+    index("rate_limit_buckets_expiry_idx").on(t.expiresAt),
+    check("rate_limit_buckets_tokens_check", sql`${t.tokens} >= 0`),
+    check(
+      "rate_limit_buckets_token_capacity_check",
+      sql`${t.tokens} <= ${t.capacity}`,
+    ),
+    check("rate_limit_buckets_capacity_check", sql`${t.capacity} > 0`),
+    check("rate_limit_buckets_refill_check", sql`${t.refillPerSecond} > 0`),
   ],
 );
 

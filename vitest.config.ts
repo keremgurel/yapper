@@ -8,7 +8,14 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    include:
+      process.env.RUN_INTEGRATION_TESTS === "1"
+        ? ["src/**/*.integration.test.ts"]
+        : ["src/**/*.test.ts"],
+    exclude:
+      process.env.RUN_INTEGRATION_TESTS === "1"
+        ? []
+        : ["src/**/*.integration.test.ts"],
     environment: "node",
   },
 });

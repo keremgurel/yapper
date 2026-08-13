@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -12,6 +13,10 @@ import { listContentItems } from "@/lib/db/content";
 import { listBrainBlocks } from "@/lib/db/project-brain";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,6 +31,8 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   await ensureUser(userId);
   const project = await getActiveProject(userId);
@@ -48,7 +55,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     pillars: heldPillar ? [heldPillar] : pillars,
     formats: formatsIn(blocks),
   });
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(userId, "capture_idea");
+  if (billing) return billing;
 
+  const spendLimited = await guardProviderSpend(req, userId, "brain-spin");
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "capture_idea");
   if (access.response) return access.response;
   const { reservation } = access;

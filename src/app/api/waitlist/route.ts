@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getPostHogClient } from "@/lib/posthog-server";
+import { guardWaitlistEmail, guardWaitlistIp } from "@/lib/public-rate-limit";
 
 export const runtime = "nodejs";
 
@@ -9,6 +10,9 @@ const DESKTOP_WAITLIST_SEGMENT_ID =
   "5cdf81a1-e3ed-45b7-a456-fda91b191fa8";
 
 export async function POST(req: Request) {
+  const ipLimited = await guardWaitlistIp(req);
+  if (ipLimited) return ipLimited;
+
   let email: unknown;
   try {
     const body = await req.json();
@@ -34,6 +38,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
+  const emailLimited = await guardWaitlistEmail(trimmed);
+  if (emailLimited) return emailLimited;
 
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {

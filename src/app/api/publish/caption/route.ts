@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import {
+  preflightPaidActionOrResponse,
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
@@ -9,6 +10,10 @@ import { hookTexts, normalizeBody } from "@/lib/content/normalize";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 import { generateCaptions } from "@/lib/publish/caption";
 import { collectStyleSamples } from "@/lib/publish/caption-style";
+import {
+  guardProviderIngress,
+  guardProviderSpend,
+} from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,6 +45,8 @@ function platformsOf(value: unknown): PublishPlatform[] {
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const ingressLimited = await guardProviderIngress(req);
+  if (ingressLimited) return ingressLimited;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const title = str(body.title, 300);
@@ -47,7 +54,17 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
   const platforms = platformsOf(body.platforms);
+  if (!process.env.SURPLUS_API_KEY) {
+    return Response.json({ error: "no_provider" }, { status: 501 });
+  }
+  const billing = await preflightPaidActionOrResponse(
+    userId,
+    "publish_caption",
+  );
+  if (billing) return billing;
 
+  const spendLimited = await guardProviderSpend(req, userId, "publish-caption");
+  if (spendLimited) return spendLimited;
   const access = await reservePaidActionOrResponse(userId, "publish_caption");
   if (access.response) return access.response;
   const { reservation } = access;
