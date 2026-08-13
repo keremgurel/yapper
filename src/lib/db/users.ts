@@ -2,7 +2,13 @@ import { and, eq, isNotNull, sql } from "drizzle-orm";
 import { deleteObject } from "@/lib/r2";
 import { getDb } from "./client";
 import { WELCOME_CREDITS } from "./constants";
-import { creditLedger, submissions, users } from "./schema";
+import { lockStorageUserWithinTx } from "./storage-accounting";
+import {
+  creditLedger,
+  importedPlatformMedia,
+  submissions,
+  users,
+} from "./schema";
 
 /**
  * Create the user row on first sight (idempotent — safe for duplicate Clerk
@@ -40,12 +46,39 @@ export async function ensureUser(
  * deletion (their keys are gone once the submission rows cascade). */
 export async function deleteUser(id: string): Promise<void> {
   const db = getDb();
-  const rows = await db
-    .select({ key: submissions.mediaKey })
-    .from(submissions)
-    .where(and(eq(submissions.userId, id), isNotNull(submissions.mediaKey)));
-  await db.delete(users).where(eq(users.id, id));
-  for (const { key } of rows) {
+  const keys = await db.transaction(async (tx) => {
+    await lockStorageUserWithinTx(tx, id);
+    // Lock the account before taking the cleanup snapshot. Imported-media
+    // registration updates this same row, so it either commits first and is
+    // included here, or observes the deleted user and rolls back its attempt.
+    const [user] = await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, id))
+      .for("update")
+      .limit(1);
+    if (!user) return new Set<string>();
+
+    const [submissionRows, importedRows] = await Promise.all([
+      tx
+        .select({ key: submissions.mediaKey })
+        .from(submissions)
+        .where(
+          and(eq(submissions.userId, id), isNotNull(submissions.mediaKey)),
+        ),
+      tx
+        .select({ key: importedPlatformMedia.mediaKey })
+        .from(importedPlatformMedia)
+        .where(eq(importedPlatformMedia.userId, id)),
+    ]);
+    await tx.delete(users).where(eq(users.id, id));
+    return new Set(
+      [...submissionRows, ...importedRows]
+        .map(({ key }) => key)
+        .filter((key): key is string => !!key),
+    );
+  });
+  for (const key of keys) {
     if (!key) continue;
     try {
       await deleteObject(key);

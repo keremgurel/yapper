@@ -26,6 +26,7 @@ const RUN_BASE = "https://api.apify.com/v2/acts";
 async function runActor(
   actorId: string,
   input: Record<string, unknown>,
+  signal?: AbortSignal,
 ): Promise<unknown[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("no_apify_token");
@@ -36,6 +37,7 @@ async function runActor(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
+      signal,
     },
   );
   if (!res.ok) throw new Error(`apify_${actorId}_${res.status}`);
@@ -65,12 +67,17 @@ async function scrapeInstagram(
  */
 export async function resolveInstagramMedia(
   url: string,
+  signal?: AbortSignal,
 ): Promise<InstagramMedia> {
-  const items = await runActor("apify~instagram-scraper", {
-    directUrls: [url],
-    resultsType: "posts",
-    resultsLimit: 1,
-  });
+  const items = await runActor(
+    "apify~instagram-scraper",
+    {
+      directUrls: [url],
+      resultsType: "posts",
+      resultsLimit: 1,
+    },
+    signal,
+  );
   return instagramMedia(items[0]);
 }
 

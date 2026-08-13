@@ -38,6 +38,23 @@ describe("resolveInstagramSourceFile", () => {
     ).rejects.toThrow("no_source_file");
   });
 
+  it("propagates the route deadline through the permalink fallback", async () => {
+    const controller = new AbortController();
+    resolveInstagramMedia.mockResolvedValue({
+      mediaUrl: "https://scontent.cdninstagram.com/scraped.mp4",
+    });
+
+    await resolveInstagramSourceFile(
+      { ...media, mediaUrl: null },
+      controller.signal,
+    );
+
+    expect(resolveInstagramMedia).toHaveBeenCalledWith(
+      media.permalink,
+      controller.signal,
+    );
+  });
+
   it("does not scrape without a permalink", async () => {
     await expect(
       resolveInstagramSourceFile({ ...media, mediaUrl: null, permalink: "" }),

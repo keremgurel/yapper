@@ -1,8 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
-import { submissions } from "@/lib/db/schema";
-import { addStorageBytes } from "@/lib/db/users";
+import { importedPlatformMedia, submissions, users } from "@/lib/db/schema";
+import {
+  lockMediaReferenceWithinTx,
+  lockStorageUserWithinTx,
+} from "@/lib/db/storage-accounting";
 import { deleteObject } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -38,33 +41,93 @@ export async function DELETE(
 
   const { id } = await params;
   const db = getDb();
-  const [row] = await db
-    .select({ key: submissions.mediaKey, bytes: submissions.mediaBytes })
-    .from(submissions)
-    .where(and(eq(submissions.id, id), eq(submissions.userId, userId)))
-    .limit(1);
-  if (!row) return Response.json({ error: "not_found" }, { status: 404 });
+  const outcome = await db.transaction(async (tx) => {
+    await lockStorageUserWithinTx(tx, userId);
+    const [candidate] = await tx
+      .select({ key: submissions.mediaKey, bytes: submissions.mediaBytes })
+      .from(submissions)
+      .where(and(eq(submissions.id, id), eq(submissions.userId, userId)))
+      .limit(1);
+    if (!candidate) return null;
 
-  await db
-    .delete(submissions)
-    .where(and(eq(submissions.id, id), eq(submissions.userId, userId)));
+    if (candidate.key) {
+      await lockMediaReferenceWithinTx(tx, userId, candidate.key);
+    }
 
-  if (row.key) {
-    // Only decrement / delete the object if no *other* row still references it
-    // (the counter is charged once per object; deleting a duplicate must not
-    // double-refund the quota or delete a still-referenced object).
-    const [other] = await db
+    // Waiting for the advisory lock may have allowed another request to delete
+    // this row. Re-read it under the lock so stale bytes cannot be refunded or
+    // the same object deleted twice.
+    const [row] = await tx
+      .select({ key: submissions.mediaKey, bytes: submissions.mediaBytes })
+      .from(submissions)
+      .where(and(eq(submissions.id, id), eq(submissions.userId, userId)))
+      .limit(1);
+    if (!row) return null;
+    if (row.key !== candidate.key) {
+      throw new Error("submission media changed during deletion");
+    }
+
+    await tx
+      .delete(submissions)
+      .where(and(eq(submissions.id, id), eq(submissions.userId, userId)));
+
+    if (!row.key) return { deleteKey: null };
+    const [otherSubmission] = await tx
       .select({ id: submissions.id })
       .from(submissions)
-      .where(and(eq(submissions.mediaKey, row.key), ne(submissions.id, id)))
+      .where(
+        and(
+          eq(submissions.userId, userId),
+          eq(submissions.mediaKey, row.key),
+          ne(submissions.id, id),
+        ),
+      )
       .limit(1);
-    if (!other) {
-      if (row.bytes) await addStorageBytes(userId, -row.bytes);
-      try {
-        await deleteObject(row.key);
-      } catch {
-        // a lifecycle sweep can reclaim it later
+    const [imported] = await tx
+      .select({
+        id: importedPlatformMedia.id,
+        mediaBytes: importedPlatformMedia.mediaBytes,
+      })
+      .from(importedPlatformMedia)
+      .where(
+        and(
+          eq(importedPlatformMedia.userId, userId),
+          eq(importedPlatformMedia.mediaKey, row.key),
+        ),
+      )
+      .limit(1);
+    if (otherSubmission) return { deleteKey: null };
+    if (imported) {
+      // Migration gives old import rows a zero byte count. When their last
+      // submission disappears, transfer accounting ownership to the import row
+      // without touching the already-counted user total; otherwise a later
+      // cache reconciliation would add the same bytes a second time.
+      if (imported.mediaBytes === 0 && row.bytes > 0) {
+        await tx
+          .update(importedPlatformMedia)
+          .set({ mediaBytes: row.bytes })
+          .where(eq(importedPlatformMedia.id, imported.id));
       }
+      return { deleteKey: null };
+    }
+
+    if (row.bytes > 0) {
+      await tx
+        .update(users)
+        .set({
+          storageBytes: sql`greatest(0, ${users.storageBytes} - ${row.bytes})`,
+        })
+        .where(eq(users.id, userId));
+    }
+    return { deleteKey: row.key };
+  });
+  if (!outcome) return Response.json({ error: "not_found" }, { status: 404 });
+
+  if (outcome.deleteKey) {
+    try {
+      await deleteObject(outcome.deleteKey);
+    } catch {
+      // a lifecycle sweep can reclaim it later
     }
   }
 

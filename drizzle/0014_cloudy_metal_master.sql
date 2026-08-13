@@ -1,0 +1,1 @@
+ALTER TABLE "imported_platform_media" ADD COLUMN "media_bytes" bigint DEFAULT 0 NOT NULL;

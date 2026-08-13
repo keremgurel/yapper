@@ -16,11 +16,14 @@ import type { ImportedInstagramMedia } from "./instagram-import";
  */
 export async function resolveInstagramSourceFile(
   media: ImportedInstagramMedia,
+  signal?: AbortSignal,
 ): Promise<string> {
   if (media.mediaUrl) return media.mediaUrl;
   if (!media.permalink) throw new Error("no_source_file");
 
-  const scraped = await resolveInstagramMedia(media.permalink);
+  const scraped = signal
+    ? await resolveInstagramMedia(media.permalink, signal)
+    : await resolveInstagramMedia(media.permalink);
   if (!scraped.mediaUrl) throw new Error("no_source_file");
   return scraped.mediaUrl;
 }

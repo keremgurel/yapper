@@ -6,6 +6,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { createReadStream } from "node:fs";
 
 // Cloudflare R2 (S3-compatible). Media (recordings) live here so /history can
 // replay them; $0 egress makes replays free. Lazily constructed so importing
@@ -103,6 +104,35 @@ export async function putObjectBytes(
       ContentType: contentType,
     }),
   );
+}
+
+/** Upload a bounded temporary file without materializing it in application
+ * memory. The caller supplies the verified byte length and owns file cleanup. */
+export async function putObjectFile(
+  key: string,
+  filePath: string,
+  bytes: number,
+  contentType: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const body = createReadStream(filePath);
+  const abort = () => body.destroy(new DOMException("aborted", "AbortError"));
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: bucket(),
+        Key: key,
+        Body: body,
+        ContentLength: bytes,
+        ContentType: contentType,
+      }),
+      signal ? { abortSignal: signal } : undefined,
+    );
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    body.destroy();
+  }
 }
 
 export async function deleteObject(key: string): Promise<void> {
