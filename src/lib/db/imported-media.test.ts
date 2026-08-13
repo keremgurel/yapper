@@ -8,6 +8,12 @@ import {
 } from "./imported-media";
 
 const events: string[] = [];
+const activateObjectWithinTx = vi.hoisted(() => vi.fn());
+const markObjectMissingWithinTx = vi.hoisted(() => vi.fn());
+vi.mock("./r2-lifecycle", () => ({
+  activateObjectWithinTx,
+  markObjectMissingWithinTx,
+}));
 const existingRows: unknown[][] = [];
 let quotaRows: unknown[] = [{ id: "user_test" }];
 
@@ -60,6 +66,10 @@ beforeEach(() => {
   existingRows.length = 0;
   quotaRows = [{ id: "user_test" }];
   vi.clearAllMocks();
+  activateObjectWithinTx.mockImplementation(async () => {
+    events.push("activate");
+  });
+  markObjectMissingWithinTx.mockResolvedValue(undefined);
 });
 
 describe("registerImportedMedia", () => {
@@ -79,7 +89,7 @@ describe("registerImportedMedia", () => {
       mediaKey: "u/user_test/attempt.mp4",
       mediaBytes: 128,
     });
-    expect(events).toEqual(["lock", "quota", "insert"]);
+    expect(events).toEqual(["lock", "quota", "insert", "activate"]);
     expect(transaction).toHaveBeenCalledOnce();
     expect(values).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -87,6 +97,13 @@ describe("registerImportedMedia", () => {
         externalPostId: "post_1",
         mediaBytes: 128,
       }),
+    );
+    expect(activateObjectWithinTx).toHaveBeenCalledWith(
+      tx,
+      "user_test",
+      "u/user_test/attempt.mp4",
+      128,
+      "import",
     );
   });
 
@@ -181,6 +198,12 @@ describe("invalidateMissingImportedMedia", () => {
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({ mediaKey: null, mediaBytes: 0 }),
     );
+    expect(markObjectMissingWithinTx).toHaveBeenCalledWith(
+      tx,
+      "user_test",
+      "u/user_test/missing.mp4",
+      "head_object_missing",
+    );
   });
 
   it("does nothing when the exact cache row changed before invalidation", async () => {
@@ -222,7 +245,7 @@ describe("reconcileImportedMediaBytes", () => {
       ),
     ).resolves.toMatchObject({ mediaBytes: 128, title: "Verified" });
 
-    expect(events).toEqual(["lock", "lock"]);
+    expect(events).toEqual(["lock", "lock", "activate"]);
     expect(update).not.toHaveBeenCalled();
   });
 

@@ -53,6 +53,7 @@ export function ownsKey(userId: string, key: string): boolean {
 export function presignUpload(
   key: string,
   contentType: string,
+  contentLength: number,
   expiresIn = 600,
 ): Promise<string> {
   return getSignedUrl(
@@ -61,6 +62,10 @@ export function presignUpload(
       Bucket: bucket(),
       Key: key,
       ContentType: contentType,
+      // Bind the browser's automatic Content-Length header into SigV4. A
+      // caller cannot claim one byte for quota purposes and then PUT a much
+      // larger body through the same URL; R2 rejects the signature mismatch.
+      ContentLength: contentLength,
     }),
     { expiresIn },
   );
@@ -135,8 +140,14 @@ export async function putObjectFile(
   }
 }
 
-export async function deleteObject(key: string): Promise<void> {
-  await s3().send(new DeleteObjectCommand({ Bucket: bucket(), Key: key }));
+export async function deleteObject(
+  key: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  await s3().send(
+    new DeleteObjectCommand({ Bucket: bucket(), Key: key }),
+    signal ? { abortSignal: signal } : undefined,
+  );
 }
 
 /** Actual size of an uploaded object, or null if it doesn't exist. Used to

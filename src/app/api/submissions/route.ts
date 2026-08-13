@@ -4,6 +4,7 @@ import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { MAX_CLIP_BYTES } from "@/lib/db/constants";
 import { importedPlatformMedia, submissions } from "@/lib/db/schema";
+import { activateObjectWithinTx } from "@/lib/db/r2-lifecycle";
 import {
   countMediaOnceWithinTx,
   lockMediaReferenceWithinTx,
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           mediaKey: submissions.mediaKey,
           createdAt: submissions.createdAt,
         });
+      await activateObjectWithinTx(tx, userId, mediaKey, bytes, "recording");
       await countMediaOnceWithinTx(
         tx,
         userId,

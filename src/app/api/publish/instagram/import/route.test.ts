@@ -5,15 +5,22 @@ const mocks = vi.hoisted(() => {
   class ImportedMediaQuotaError extends Error {}
   class InstagramClipTooLargeError extends Error {}
   class InstagramDownloadTimeoutError extends Error {}
+  class R2PendingAllocationLimitError extends Error {}
+  class R2PendingStorageQuotaError extends Error {}
+  class R2ObjectOwnerMissingError extends Error {}
   return {
     NoConnectionError,
     ImportedMediaQuotaError,
     InstagramClipTooLargeError,
     InstagramDownloadTimeoutError,
+    R2PendingAllocationLimitError,
+    R2PendingStorageQuotaError,
+    R2ObjectOwnerMissingError,
     auth: vi.fn(),
     canUsePremium: vi.fn(),
     clipCleanup: vi.fn(),
-    deleteObject: vi.fn(),
+    allocatePendingObject: vi.fn(),
+    enqueueObjectDeletion: vi.fn(),
     downloadInstagramClip: vi.fn(),
     ensureUser: vi.fn(),
     fetchInstagramMediaForImport: vi.fn(),
@@ -37,6 +44,13 @@ vi.mock("@/lib/billing/gate", () => ({
 }));
 vi.mock("@/lib/db/billing", () => ({
   getStorageQuota: mocks.getStorageQuota,
+}));
+vi.mock("@/lib/db/r2-lifecycle", () => ({
+  allocatePendingObject: mocks.allocatePendingObject,
+  enqueueObjectDeletion: mocks.enqueueObjectDeletion,
+  R2ObjectOwnerMissingError: mocks.R2ObjectOwnerMissingError,
+  R2PendingAllocationLimitError: mocks.R2PendingAllocationLimitError,
+  R2PendingStorageQuotaError: mocks.R2PendingStorageQuotaError,
 }));
 vi.mock("@/lib/db/imported-media", () => ({
   ImportedMediaQuotaError: mocks.ImportedMediaQuotaError,
@@ -63,7 +77,6 @@ vi.mock("@/lib/publish/instagram-source-file", () => ({
   resolveInstagramSourceFile: mocks.resolveInstagramSourceFile,
 }));
 vi.mock("@/lib/r2", () => ({
-  deleteObject: mocks.deleteObject,
   headObjectBytes: mocks.headObjectBytes,
   mediaKey: (userId: string, id: string, ext: string) =>
     `u/${userId}/${id}.${ext}`,
@@ -103,6 +116,8 @@ beforeEach(() => {
   });
   mocks.clipCleanup.mockResolvedValue(undefined);
   mocks.putObjectFile.mockResolvedValue(undefined);
+  mocks.allocatePendingObject.mockResolvedValue(true);
+  mocks.enqueueObjectDeletion.mockResolvedValue(undefined);
   mocks.registerImportedMedia.mockImplementation(
     async (
       _userId: string,
@@ -113,7 +128,6 @@ beforeEach(() => {
       title: string,
     ) => ({ kind: "inserted", mediaKey, mediaBytes, title }),
   );
-  mocks.deleteObject.mockResolvedValue(undefined);
   mocks.invalidateMissingImportedMedia.mockResolvedValue(true);
 });
 
@@ -235,6 +249,75 @@ describe("POST /api/publish/instagram/import", () => {
     });
     expect(mocks.clipCleanup).toHaveBeenCalledOnce();
     expect(mocks.registerImportedMedia).not.toHaveBeenCalled();
+    const key = mocks.putObjectFile.mock.calls[0]?.[0] as string;
+    expect(mocks.allocatePendingObject).toHaveBeenCalledWith(
+      "user_test",
+      key,
+      "import",
+      100,
+      1_000,
+      expect.any(Date),
+    );
+    expect(mocks.enqueueObjectDeletion).toHaveBeenCalledWith(
+      "user_test",
+      key,
+      "import_upload_failed",
+      undefined,
+      "import",
+    );
+    expect(
+      mocks.allocatePendingObject.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.putObjectFile.mock.invocationCallOrder[0]);
+  });
+
+  it("rate-limits when the durable pending allocation cap is reached", async () => {
+    mocks.allocatePendingObject.mockRejectedValue(
+      new mocks.R2PendingAllocationLimitError(),
+    );
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({
+      error: "too_many_pending_uploads",
+    });
+    expect(mocks.putObjectFile).not.toHaveBeenCalled();
+    expect(mocks.registerImportedMedia).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletion).not.toHaveBeenCalled();
+    expect(mocks.clipCleanup).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [mocks.R2PendingStorageQuotaError, 402, "storage_full"],
+    [mocks.R2ObjectOwnerMissingError, 409, "user_not_ready"],
+  ])(
+    "maps atomic import allocation failures",
+    async (ErrorType, status, code) => {
+      mocks.allocatePendingObject.mockRejectedValue(new ErrorType());
+
+      const response = await POST(request());
+
+      expect(response.status).toBe(status);
+      await expect(response.json()).resolves.toEqual({ error: code });
+      expect(mocks.putObjectFile).not.toHaveBeenCalled();
+      expect(mocks.enqueueObjectDeletion).not.toHaveBeenCalled();
+      expect(mocks.clipCleanup).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("retries key collisions and never uploads an unallocated key", async () => {
+    mocks.allocatePendingObject
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(409);
+    expect(mocks.allocatePendingObject).toHaveBeenCalledTimes(3);
+    expect(mocks.putObjectFile).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletion).not.toHaveBeenCalled();
+    expect(mocks.clipCleanup).toHaveBeenCalledOnce();
   });
 
   it("returns storage_full when cached byte reconciliation exceeds quota", async () => {
@@ -279,7 +362,13 @@ describe("POST /api/publish/instagram/import", () => {
     expect(response.status).toBe(402);
     const uploadedKey = mocks.putObjectFile.mock.calls[0]?.[0] as string;
     expect(uploadedKey).toMatch(/^u\/user_test\/ig-import-[0-9a-f-]+\.mp4$/);
-    expect(mocks.deleteObject).toHaveBeenCalledWith(uploadedKey);
+    expect(mocks.enqueueObjectDeletion).toHaveBeenCalledWith(
+      "user_test",
+      uploadedKey,
+      "import_quota_rejected",
+      undefined,
+      "import",
+    );
   });
 
   it("isolates concurrent attempt keys and cleans only the losing object", async () => {
@@ -322,9 +411,13 @@ describe("POST /api/publish/instagram/import", () => {
     expect(new Set(uploadedKeys).size).toBe(2);
     expect(firstJson.mediaKey).toBe(winner);
     expect(secondJson.mediaKey).toBe(winner);
-    expect(mocks.deleteObject).toHaveBeenCalledOnce();
-    expect(mocks.deleteObject).toHaveBeenCalledWith(
+    expect(mocks.enqueueObjectDeletion).toHaveBeenCalledOnce();
+    expect(mocks.enqueueObjectDeletion).toHaveBeenCalledWith(
+      "user_test",
       uploadedKeys.find((key) => key !== winner),
+      "import_race_loser",
+      undefined,
+      "import",
     );
   });
 
@@ -348,7 +441,7 @@ describe("POST /api/publish/instagram/import", () => {
     await expect(response.json()).resolves.toMatchObject({
       mediaKey: uploadedKey,
     });
-    expect(mocks.deleteObject).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletion).not.toHaveBeenCalled();
   });
 
   it("does not delete an attempt when ambiguous-commit reconciliation also fails", async () => {
@@ -361,7 +454,7 @@ describe("POST /api/publish/instagram/import", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(502);
-    expect(mocks.deleteObject).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletion).not.toHaveBeenCalled();
   });
 
   it("cleans an attempt after a confirmed registration rollback", async () => {
@@ -375,6 +468,12 @@ describe("POST /api/publish/instagram/import", () => {
 
     expect(response.status).toBe(502);
     const uploadedKey = mocks.putObjectFile.mock.calls[0]?.[0] as string;
-    expect(mocks.deleteObject).toHaveBeenCalledWith(uploadedKey);
+    expect(mocks.enqueueObjectDeletion).toHaveBeenCalledWith(
+      "user_test",
+      uploadedKey,
+      "import_registration_failed",
+      undefined,
+      "import",
+    );
   });
 });

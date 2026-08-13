@@ -5,6 +5,7 @@ import {
   failPublishJob,
   getConnectionRow,
 } from "@/lib/db/publish";
+import { protectPendingThumbnail } from "@/lib/db/r2-lifecycle";
 import {
   getFreshAccessToken,
   NoConnectionError,
@@ -41,6 +42,16 @@ export async function POST(req: Request): Promise<Response> {
   if (!media.ok) {
     return Response.json({ error: media.error }, { status: media.status });
   }
+  const thumbnailKey =
+    body.thumbnailKey &&
+    ownsKey(userId, body.thumbnailKey) &&
+    (await protectPendingThumbnail(
+      userId,
+      body.thumbnailKey,
+      new Date(Date.now() + 2 * 60 * 60 * 1_000),
+    ))
+      ? body.thumbnailKey
+      : undefined;
 
   let accessToken: string;
   let igUserId: string | null;
@@ -67,14 +78,16 @@ export async function POST(req: Request): Promise<Response> {
     caption: body.caption ?? null,
     contentItemId: body.contentItemId ?? null,
   });
+  if (!jobId) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
+  }
 
   try {
     const videoUrl = await presignView(media.mediaKey, 3600);
     // A custom cover, if the client uploaded one under the user's own prefix.
-    const coverUrl =
-      body.thumbnailKey && ownsKey(userId, body.thumbnailKey)
-        ? await presignView(body.thumbnailKey, 3600)
-        : undefined;
+    const coverUrl = thumbnailKey
+      ? await presignView(thumbnailKey, 3600)
+      : undefined;
     const result = await postInstagramReel({
       accessToken,
       igUserId,

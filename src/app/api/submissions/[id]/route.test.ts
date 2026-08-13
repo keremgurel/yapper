@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
-  deleteObject: vi.fn(),
+  enqueueObjectDeletionWithinTx: vi.fn(),
   lockMediaReferenceWithinTx: vi.fn(),
   lockStorageUserWithinTx: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
-vi.mock("@/lib/r2", () => ({ deleteObject: mocks.deleteObject }));
+vi.mock("@/lib/db/r2-lifecycle", () => ({
+  enqueueObjectDeletionWithinTx: mocks.enqueueObjectDeletionWithinTx,
+}));
 vi.mock("@/lib/db/storage-accounting", () => ({
   lockMediaReferenceWithinTx: mocks.lockMediaReferenceWithinTx,
   lockStorageUserWithinTx: mocks.lockStorageUserWithinTx,
@@ -42,7 +44,7 @@ beforeEach(() => {
   queryResults.length = 0;
   vi.clearAllMocks();
   mocks.auth.mockResolvedValue({ userId: "user_test" });
-  mocks.deleteObject.mockResolvedValue(undefined);
+  mocks.enqueueObjectDeletionWithinTx.mockResolvedValue(undefined);
 });
 
 describe("DELETE /api/submissions/[id] storage references", () => {
@@ -64,7 +66,7 @@ describe("DELETE /api/submissions/[id] storage references", () => {
     );
     expect(mocks.lockStorageUserWithinTx).toHaveBeenCalledWith(tx, "user_test");
     expect(update).not.toHaveBeenCalled();
-    expect(mocks.deleteObject).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletionWithinTx).not.toHaveBeenCalled();
   });
 
   it("transfers legacy zero-byte accounting to the import row", async () => {
@@ -80,7 +82,7 @@ describe("DELETE /api/submissions/[id] storage references", () => {
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledOnce();
     expect(set).toHaveBeenCalledWith({ mediaBytes: 128 });
-    expect(mocks.deleteObject).not.toHaveBeenCalled();
+    expect(mocks.enqueueObjectDeletionWithinTx).not.toHaveBeenCalled();
   });
 
   it("refunds and deletes only after the last reference is removed", async () => {
@@ -95,8 +97,28 @@ describe("DELETE /api/submissions/[id] storage references", () => {
 
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledOnce();
-    expect(mocks.deleteObject).toHaveBeenCalledWith(
+    expect(mocks.enqueueObjectDeletionWithinTx).toHaveBeenCalledWith(
+      tx,
+      "user_test",
       "u/user_test/recording.mp4",
+      "last_reference_removed",
     );
+  });
+
+  it("does not return success when durable deletion enqueue fails", async () => {
+    queryResults.push(
+      [{ key: "u/user_test/recording.mp4", bytes: 128 }],
+      [{ key: "u/user_test/recording.mp4", bytes: 128 }],
+      [],
+      [],
+    );
+    mocks.enqueueObjectDeletionWithinTx.mockRejectedValue(
+      new Error("enqueue_failed"),
+    );
+
+    await expect(
+      DELETE(new Request("https://ypr.app"), context),
+    ).rejects.toThrow("enqueue_failed");
+    expect(mocks.enqueueObjectDeletionWithinTx).toHaveBeenCalledOnce();
   });
 });

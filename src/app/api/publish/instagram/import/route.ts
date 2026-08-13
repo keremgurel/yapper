@@ -13,6 +13,13 @@ import {
 } from "@/lib/db/imported-media";
 import { ensureUser, getStorageBytes } from "@/lib/db/users";
 import {
+  allocatePendingObject,
+  enqueueObjectDeletion,
+  R2ObjectOwnerMissingError,
+  R2PendingAllocationLimitError,
+  R2PendingStorageQuotaError,
+} from "@/lib/db/r2-lifecycle";
+import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
@@ -24,7 +31,6 @@ import {
 } from "@/lib/publish/instagram-import";
 import { resolveInstagramSourceFile } from "@/lib/publish/instagram-source-file";
 import {
-  deleteObject,
   headObjectBytes,
   mediaKey,
   putObjectFile,
@@ -37,6 +43,7 @@ export const maxDuration = 120;
 const PLATFORM = "instagram" as const;
 const LOOKUP_TIMEOUT_MS = 45_000;
 const OVERALL_TIMEOUT_MS = 105_000;
+const FAILED_IMPORT_RETENTION_MS = 15 * 60 * 1_000;
 
 function importAttemptKey(userId: string): string {
   // Never reuse the post id as an object key. Every request owns exactly one
@@ -44,12 +51,17 @@ function importAttemptKey(userId: string): string {
   return mediaKey(userId, `ig-import-${randomUUID()}`, "mp4");
 }
 
-async function deleteAttempt(key: string): Promise<void> {
+async function enqueueAttemptDeletion(
+  userId: string,
+  key: string,
+  reason: string,
+): Promise<void> {
   try {
-    await deleteObject(key);
-  } catch {
-    // The key is unique and unreferenced. A bucket lifecycle sweep is the safe
-    // fallback; never turn cleanup failure into deletion of another object.
+    await enqueueObjectDeletion(userId, key, reason, undefined, "import");
+  } catch (error) {
+    // The pending allocation remains durable and will become eligible for the
+    // lifecycle sweeper even if this eager transition could not be recorded.
+    console.error("[publish] instagram import cleanup enqueue failed", error);
   }
 }
 
@@ -186,8 +198,26 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "download_failed" }, { status: 502 });
   }
 
-  const key = importAttemptKey(userId);
+  let key = "";
   try {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const candidate = importAttemptKey(userId);
+      const allocated = await allocatePendingObject(
+        userId,
+        candidate,
+        "import",
+        clip.byteLength,
+        quotaBytes,
+        new Date(Date.now() + FAILED_IMPORT_RETENTION_MS),
+      );
+      if (allocated) {
+        key = candidate;
+        break;
+      }
+    }
+    if (!key) {
+      return Response.json({ error: "upload_key_collision" }, { status: 409 });
+    }
     await putObjectFile(
       key,
       clip.filePath,
@@ -196,7 +226,21 @@ export async function POST(req: Request): Promise<Response> {
       deadline,
     );
   } catch (error) {
-    await deleteAttempt(key);
+    if (error instanceof R2PendingAllocationLimitError) {
+      return Response.json(
+        { error: "too_many_pending_uploads" },
+        { status: 429 },
+      );
+    }
+    if (error instanceof R2PendingStorageQuotaError) {
+      return Response.json({ error: "storage_full" }, { status: 402 });
+    }
+    if (error instanceof R2ObjectOwnerMissingError) {
+      return Response.json({ error: "user_not_ready" }, { status: 409 });
+    }
+    if (key) {
+      await enqueueAttemptDeletion(userId, key, "import_upload_failed");
+    }
     console.error("[publish] instagram import upload failed", error);
     return Response.json({ error: "storage_unavailable" }, { status: 502 });
   } finally {
@@ -215,11 +259,13 @@ export async function POST(req: Request): Promise<Response> {
       media.title,
       quotaBytes,
     );
-    if (registration.kind === "existing") await deleteAttempt(key);
+    if (registration.kind === "existing") {
+      await enqueueAttemptDeletion(userId, key, "import_race_loser");
+    }
     return importedResponse(registration);
   } catch (error) {
     if (error instanceof ImportedMediaQuotaError) {
-      await deleteAttempt(key);
+      await enqueueAttemptDeletion(userId, key, "import_quota_rejected");
       return Response.json({ error: "storage_full" }, { status: 402 });
     }
 
@@ -231,7 +277,7 @@ export async function POST(req: Request): Promise<Response> {
     try {
       const durable = await importedMediaForPost(userId, PLATFORM, mediaId);
       if (durable?.mediaKey === key) return importedResponse(durable);
-      await deleteAttempt(key);
+      await enqueueAttemptDeletion(userId, key, "import_registration_failed");
       if (durable) return importedResponse(durable);
     } catch (reconciliationError) {
       console.error(

@@ -5,6 +5,10 @@ import {
   lockStorageUserWithinTx,
 } from "./storage-accounting";
 import {
+  activateObjectWithinTx,
+  markObjectMissingWithinTx,
+} from "./r2-lifecycle";
+import {
   importedPlatformMedia,
   submissions,
   users,
@@ -126,6 +130,7 @@ export async function registerImportedMedia(
       mediaBytes,
       title,
     });
+    await activateObjectWithinTx(tx, userId, mediaKey, mediaBytes, "import");
     return {
       kind: "inserted",
       mediaKey,
@@ -216,6 +221,12 @@ export async function invalidateMissingImportedMedia(
         })
         .where(eq(users.id, userId));
     }
+    await markObjectMissingWithinTx(
+      tx,
+      userId,
+      mediaKey,
+      "head_object_missing",
+    );
     return true;
   });
 }
@@ -254,7 +265,10 @@ export async function reconcileImportedMediaBytes(
       )
       .limit(1);
     if (!row) return null;
-    if (row.mediaBytes === mediaBytes) return row;
+    if (row.mediaBytes === mediaBytes) {
+      await activateObjectWithinTx(tx, userId, mediaKey, mediaBytes, "import");
+      return row;
+    }
 
     const [submission] = await tx
       .select({ id: submissions.id })
@@ -297,6 +311,7 @@ export async function reconcileImportedMediaBytes(
       .update(importedPlatformMedia)
       .set({ mediaBytes })
       .where(eq(importedPlatformMedia.id, row.id));
+    await activateObjectWithinTx(tx, userId, mediaKey, mediaBytes, "import");
     return { mediaKey, mediaBytes, title: row.title };
   });
 }

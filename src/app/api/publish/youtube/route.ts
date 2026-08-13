@@ -4,6 +4,7 @@ import {
   createPublishJob,
   failPublishJob,
 } from "@/lib/db/publish";
+import { protectPendingThumbnail } from "@/lib/db/r2-lifecycle";
 import {
   getFreshAccessToken,
   NoConnectionError,
@@ -46,6 +47,16 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: media.error }, { status: media.status });
   }
   const mediaKey = media.mediaKey;
+  const thumbnailKey =
+    body.thumbnailKey &&
+    ownsKey(userId, body.thumbnailKey) &&
+    (await protectPendingThumbnail(
+      userId,
+      body.thumbnailKey,
+      new Date(Date.now() + 2 * 60 * 60 * 1_000),
+    ))
+      ? body.thumbnailKey
+      : undefined;
 
   let accessToken: string;
   try {
@@ -63,6 +74,9 @@ export async function POST(req: Request): Promise<Response> {
     title,
     contentItemId: body.contentItemId ?? null,
   });
+  if (!jobId) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
+  }
 
   try {
     const bytes = await getObjectBytes(mediaKey);
@@ -80,12 +94,10 @@ export async function POST(req: Request): Promise<Response> {
     });
     // Custom thumbnail is best-effort: it needs a verified channel, so a failure
     // must not fail the post that already succeeded.
-    if (body.thumbnailKey && ownsKey(userId, body.thumbnailKey)) {
+    if (thumbnailKey) {
       try {
-        const thumb = await getObjectBytes(body.thumbnailKey);
-        const mime = body.thumbnailKey.endsWith(".png")
-          ? "image/png"
-          : "image/jpeg";
+        const thumb = await getObjectBytes(thumbnailKey);
+        const mime = thumbnailKey.endsWith(".png") ? "image/png" : "image/jpeg";
         await setYouTubeThumbnail(accessToken, result.videoId, thumb, mime);
       } catch (err) {
         console.error("[publish] youtube thumbnail failed", err);

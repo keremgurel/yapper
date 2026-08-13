@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
     StorageQuotaError,
     auth: vi.fn(),
     canUsePremium: vi.fn(),
+    activateObjectWithinTx: vi.fn(),
     coachOnCamera: vi.fn(),
     countMediaOnceWithinTx: vi.fn(),
     deleteObject: vi.fn(),
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => {
     getStorageBytes: vi.fn(),
     getStorageQuota: vi.fn(),
     ownsKey: vi.fn(),
+    protectPendingObject: vi.fn(),
     uploadBytesToGemini: vi.fn(),
   };
 });
@@ -30,6 +32,10 @@ vi.mock("@/lib/billing/gate", () => ({
 }));
 vi.mock("@/lib/db/billing", () => ({
   getStorageQuota: mocks.getStorageQuota,
+}));
+vi.mock("@/lib/db/r2-lifecycle", () => ({
+  activateObjectWithinTx: mocks.activateObjectWithinTx,
+  protectPendingObject: mocks.protectPendingObject,
 }));
 vi.mock("@/lib/db/credits", () => ({
   deductWithinTx: mocks.deductWithinTx,
@@ -112,6 +118,8 @@ beforeEach(() => {
     return state.balance;
   });
   mocks.countMediaOnceWithinTx.mockResolvedValue(undefined);
+  mocks.activateObjectWithinTx.mockResolvedValue(undefined);
+  mocks.protectPendingObject.mockResolvedValue(true);
 
   db.insert.mockReturnValue({
     values: vi.fn().mockReturnValue({
@@ -151,6 +159,19 @@ afterEach(() => {
 });
 
 describe("POST /api/feedback atomic completion", () => {
+  it("rejects unavailable media before creating a processing submission", async () => {
+    mocks.protectPendingObject.mockResolvedValue(false);
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "media_unavailable",
+    });
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(mocks.coachOnCamera).not.toHaveBeenCalled();
+  });
+
   it("preserves caller-owned media when provider processing fails", async () => {
     mocks.coachOnCamera.mockRejectedValue(new Error("provider_down"));
 
@@ -185,6 +206,21 @@ describe("POST /api/feedback atomic completion", () => {
       1_000_000,
     );
     expect(mocks.deleteObject).not.toHaveBeenCalled();
+  });
+
+  it("rolls completion back when lifecycle activation fails", async () => {
+    mocks.activateObjectWithinTx.mockRejectedValue(
+      new Error("r2_object_not_attachable"),
+    );
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(502);
+    expect(state.completed).toBe(false);
+    expect(state.failed).toBe(true);
+    expect(state.balance).toBe(100);
+    expect(mocks.countMediaOnceWithinTx).not.toHaveBeenCalled();
+    expect(mocks.deductWithinTx).not.toHaveBeenCalled();
   });
 
   it("rolls the debit and ledger back when completion cannot be claimed", async () => {

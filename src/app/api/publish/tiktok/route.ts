@@ -56,6 +56,9 @@ export async function POST(req: Request): Promise<Response> {
     caption: body.caption ?? null,
     contentItemId: body.contentItemId ?? null,
   });
+  if (!jobId) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
+  }
 
   try {
     const bytes = await getObjectBytes(media.mediaKey);

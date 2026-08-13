@@ -1,14 +1,9 @@
-import { and, eq, isNotNull, sql } from "drizzle-orm";
-import { deleteObject } from "@/lib/r2";
+import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { WELCOME_CREDITS } from "./constants";
+import { enqueueAllUserObjectsWithinTx } from "./r2-lifecycle";
 import { lockStorageUserWithinTx } from "./storage-accounting";
-import {
-  creditLedger,
-  importedPlatformMedia,
-  submissions,
-  users,
-} from "./schema";
+import { creditLedger, users } from "./schema";
 
 /**
  * Create the user row on first sight (idempotent — safe for duplicate Clerk
@@ -41,12 +36,12 @@ export async function ensureUser(
   });
 }
 
-/** Remove a user (and, via cascade, their ledger + submissions). Best-effort
- * deletes the user's R2 recordings first so no media is orphaned on account
- * deletion (their keys are gone once the submission rows cascade). */
+/** Remove a user (and, via cascade, their ledger + submissions). Every owned
+ * R2 object is first queued for durable deletion in the same transaction, so
+ * account rows can disappear without losing the cleanup work. */
 export async function deleteUser(id: string): Promise<void> {
   const db = getDb();
-  const keys = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await lockStorageUserWithinTx(tx, id);
     // Lock the account before taking the cleanup snapshot. Imported-media
     // registration updates this same row, so it either commits first and is
@@ -57,35 +52,11 @@ export async function deleteUser(id: string): Promise<void> {
       .where(eq(users.id, id))
       .for("update")
       .limit(1);
-    if (!user) return new Set<string>();
+    if (!user) return;
 
-    const [submissionRows, importedRows] = await Promise.all([
-      tx
-        .select({ key: submissions.mediaKey })
-        .from(submissions)
-        .where(
-          and(eq(submissions.userId, id), isNotNull(submissions.mediaKey)),
-        ),
-      tx
-        .select({ key: importedPlatformMedia.mediaKey })
-        .from(importedPlatformMedia)
-        .where(eq(importedPlatformMedia.userId, id)),
-    ]);
+    await enqueueAllUserObjectsWithinTx(tx, id, "account_deleted");
     await tx.delete(users).where(eq(users.id, id));
-    return new Set(
-      [...submissionRows, ...importedRows]
-        .map(({ key }) => key)
-        .filter((key): key is string => !!key),
-    );
   });
-  for (const key of keys) {
-    if (!key) continue;
-    try {
-      await deleteObject(key);
-    } catch {
-      // orphaned object; a lifecycle sweep can reclaim it later
-    }
-  }
 }
 
 /** Adjust a user's running media-storage counter (clamped at 0). */
