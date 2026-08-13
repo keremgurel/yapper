@@ -22,39 +22,67 @@ final class MediaAvailabilityWatcher: ObservableObject {
     /// Called when files that were missing have come back, which is the cue to
     /// rebuild the composition that could not be built without them.
     private var onRestored: (() -> Void)?
+    private var onResourcesChanged: (() -> Void)?
+    private var identityMismatches: Set<UUID> = []
     private var observers: [NSObjectProtocol] = []
 
     var isEverythingAvailable: Bool { offline.isEmpty }
 
     func start(
         supplying media: @escaping () -> [ProjectMedia],
-        onRestored: @escaping () -> Void
+        onRestored: @escaping () -> Void,
+        onResourcesChanged: @escaping () -> Void
     ) {
         supply = media
         self.onRestored = onRestored
+        self.onResourcesChanged = onResourcesChanged
         observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didMountNotification)
         observe(NSWorkspace.shared.notificationCenter, NSWorkspace.didUnmountNotification)
-        observe(NotificationCenter.default, NSApplication.didBecomeActiveNotification)
+        observe(NotificationCenter.default, NSApplication.didBecomeActiveNotification, checkResources: true)
         refresh()
     }
 
     /// Re-checks now. Cheap: a handful of stats against the file system.
-    func refresh() {
+    func refresh(notifyRestored: Bool = true) {
         guard let supply else { return }
-        let next = MediaAvailability.missing(in: supply())
+        let supplied = supply()
+        let missing = MediaAvailability.missing(in: supplied)
+        let forced = supplied.filter { identityMismatches.contains($0.id) }
+        let next = missing + forced.filter { forcedMedia in
+            !missing.contains(where: { $0.id == forcedMedia.id })
+        }
         guard next.map(\.id) != offline.map(\.id) else { return }
         let cameBack = !offline.isEmpty && next.isEmpty
         offline = next
-        if cameBack { onRestored?() }
+        if cameBack, notifyRestored { onRestored?() }
     }
 
-    private func observe(_ center: NotificationCenter, _ name: Notification.Name) {
+    /// A path can come back holding different bytes. Keep that source in the
+    /// recovery UI until the creator explicitly resolves the identity mismatch.
+    func markOffline(_ media: ProjectMedia) {
+        identityMismatches.insert(media.id)
+        guard !offline.contains(where: { $0.id == media.id }) else { return }
+        offline.append(media)
+    }
+
+    func clearIdentityMismatch(_ mediaID: UUID) {
+        identityMismatches.remove(mediaID)
+    }
+
+    private func observe(
+        _ center: NotificationCenter,
+        _ name: Notification.Name,
+        checkResources: Bool = false
+    ) {
         let observer = center.addObserver(
             forName: name,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+            MainActor.assumeIsolated {
+                self?.refresh()
+                if checkResources { self?.onResourcesChanged?() }
+            }
         }
         observers.append(observer)
     }

@@ -179,6 +179,10 @@ final class EditorSession: ObservableObject {
     private var nextEditRevision = 0
     private var snapGuideClearTask: Task<Void, Never>?
     private var transientCache: [UUID: (peakCount: Int, times: [Double])] = [:]
+    private var derivedGenerationFence = DerivedMediaGenerationFence()
+    private var thumbnailTasksByMedia: [UUID: Task<Void, Never>] = [:]
+    private var waveformTasksByMedia: [UUID: Task<Void, Never>] = [:]
+    var validatedMediaRevisions: [UUID: MediaResourceRevision] = [:]
     /// Overlay stills with the project's grade already applied, keyed by the
     /// image they came from. Regrading one on every frame of playback would be
     /// the most expensive thing the canvas does.
@@ -205,14 +209,43 @@ final class EditorSession: ObservableObject {
                 // composition that could not be built without those files is
                 // built now, without anybody being asked to do anything.
                 Task {
-                    do {
-                        try await self?.reloadAfterRecovery()
-                    } catch {
-                        self?.show(error)
-                    }
+                    await self?.recoverRestoredMedia()
                 }
+            },
+            onResourcesChanged: { [weak self] in
+                Task { await self?.verifyMediaResourcesChangedOnDisk() }
             }
         )
+    }
+
+    /// Automatic volume/path recovery participates in the same commit queue as
+    /// imports, relinks, undo, and gestures, so it cannot save an older model
+    /// over a newer user edit.
+    func recoverRestoredMedia() async {
+        guard let rollback = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
+        do {
+            try await reloadAfterRecovery()
+        } catch {
+            await restoreEditState(rollback, rebuildPlayer: true, preserving: error)
+        }
+    }
+
+    func verifyMediaResourcesChangedOnDisk() async {
+        guard let rollback = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
+        validatedMediaRevisions.removeAll()
+        do {
+            try await validateAvailableMediaIdentity()
+        } catch {
+            // The current AVAsset may lazily read the path after it has been
+            // overwritten. Do not leave rejected bytes reachable by playback.
+            pausePlayback()
+            player.replaceCurrentItem(with: nil)
+            builtProject = nil
+            renderedFraming.record([])
+            await restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+        }
     }
 
     var duration: Double { project.duration }
@@ -601,7 +634,6 @@ final class EditorSession: ObservableObject {
                 } else {
                     media = try await MediaProbe.inspect(url: canonical)
                     project.media.append(media)
-                    beginDerivedMedia(for: media)
                 }
                 // The first video is the thing being edited, so it goes down on
                 // the main track. Everything imported after that is B-roll
@@ -629,6 +661,7 @@ final class EditorSession: ObservableObject {
             project.updatedAt = Date()
             try await rebuildComposition(preserveTime: false)
             try await persist()
+            await reconcileDerivedMedia(from: rollbackState.project)
             recordHistory(before: rollbackState.project)
             statusMessage = landedInBin.isEmpty
                 ? "Ready"
@@ -1089,14 +1122,12 @@ final class EditorSession: ObservableObject {
         let doomed = project.media.filter { wanted.contains($0.id) }
         guard !doomed.isEmpty else { return }
         var removed: [String] = []
-        var removedIDs: Set<UUID> = []
         let success = await commitTimelineEdit(
             successStatus: "Removed \(removed.count == 1 ? removed[0] : "\(removed.count) files") from this project · \(removed.count == 1 ? "source file kept" : "source files kept") · ⌘Z to undo"
         ) {
             for media in doomed {
                 guard project.removeImportedMedia(media.id) else { continue }
                 removed.append(media.name)
-                removedIDs.insert(media.id)
             }
             guard !removed.isEmpty else { return false }
             mediaSelection = mediaSelection.reconciled(against: project.media.map(\.id))
@@ -1105,11 +1136,6 @@ final class EditorSession: ObservableObject {
             return true
         }
         guard success else { return }
-        for media in doomed where removedIDs.contains(media.id) {
-            waveformByMedia.removeValue(forKey: media.id)
-            waveformProgressByMedia.removeValue(forKey: media.id)
-            thumbnailsByMedia.removeValue(forKey: media.id)
-        }
     }
 
     func addOverlay(_ mediaID: UUID) async {
@@ -1679,6 +1705,7 @@ final class EditorSession: ObservableObject {
         do {
             try await rebuildComposition(preserveTime: true)
             try await persist()
+            await reconcileDerivedMedia(from: current)
             statusMessage = direction == .undo ? "Undo" : "Redo"
         } catch {
             switch direction {
@@ -1716,6 +1743,7 @@ final class EditorSession: ObservableObject {
                 try await rebuildComposition(preserveTime: true)
             }
             try await persist()
+            await reconcileDerivedMedia(from: rollback.project)
             recordHistory(before: rollback.project)
             statusMessage = successStatus()
             return true
@@ -1740,6 +1768,7 @@ final class EditorSession: ObservableObject {
                 try await rebuildComposition(preserveTime: true)
             }
             try await persist()
+            await reconcileDerivedMedia(from: rollbackState.project)
             recordHistory(before: rollbackState.project)
             statusMessage = successStatus
             return true
@@ -2043,6 +2072,11 @@ final class EditorSession: ObservableObject {
         syncHistoryAvailability()
     }
 
+    func rewriteHistoryMedia(_ replacements: [ProjectMedia]) {
+        history.rewriteMedia(Dictionary(uniqueKeysWithValues: replacements.map { ($0.id, $0) }))
+        syncHistoryAvailability()
+    }
+
     private func syncHistoryAvailability() {
         canUndo = history.canUndo
         canRedo = history.canRedo
@@ -2095,6 +2129,7 @@ final class EditorSession: ObservableObject {
             currentTime = 0
             return
         }
+        try await validateAvailableMediaIdentity()
         // Edits arrive in bursts: a drop lands, the undo snapshot commits, a
         // trim follows. Only the newest of them is worth building, so a request
         // that has been overtaken while waiting its turn simply stands down.
@@ -2277,11 +2312,13 @@ final class EditorSession: ObservableObject {
 
     /// Has another go at the thumbnails and the waveform, for media whose first
     /// attempt had no file to read.
-    func restartDerivedMedia(for media: ProjectMedia) {
-        beginDerivedMedia(for: media)
+    func restartDerivedMedia(for media: ProjectMedia) async {
+        await invalidateDerivedMedia(media.id)
+        await beginDerivedMedia(for: media)
     }
 
-    private func beginDerivedMedia(for media: ProjectMedia) {
+    private func beginDerivedMedia(for media: ProjectMedia) async {
+        let generation = derivedGenerationFence.advance(media.id)
         if media.isImage {
             if let image = NSImage(contentsOf: media.url),
                let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -2292,25 +2329,72 @@ final class EditorSession: ObservableObject {
             waveformProgressByMedia[media.id] = 1
             return
         }
-        Task {
+        thumbnailTasksByMedia[media.id] = Task { [weak self] in
+            guard let self else { return }
             do {
                 _ = try await thumbnailService.thumbnails(for: media) { [weak self] images in
-                    self?.thumbnailsByMedia[media.id] = images
+                    guard let self, self.acceptsDerivedMedia(media, generation: generation) else { return }
+                    self.thumbnailsByMedia[media.id] = images
                 }
+            } catch is CancellationError {
+                return
             } catch {
                 // The editor is usable without a thumbnail.
             }
         }
-        Task {
+        waveformTasksByMedia[media.id] = Task { [weak self] in
+            guard let self else { return }
             do {
                 _ = try await waveformService.peaks(for: WaveformSource(media: media)) { [weak self] peaks, fraction in
-                    self?.waveformByMedia[media.id] = peaks
-                    self?.waveformProgressByMedia[media.id] = fraction
+                    guard let self, self.acceptsDerivedMedia(media, generation: generation) else { return }
+                    self.waveformByMedia[media.id] = peaks
+                    self.waveformProgressByMedia[media.id] = fraction
                 }
+            } catch is CancellationError {
+                return
             } catch {
+                guard acceptsDerivedMedia(media, generation: generation) else { return }
                 waveformProgressByMedia[media.id] = 1
             }
         }
+    }
+
+    private func acceptsDerivedMedia(_ media: ProjectMedia, generation: Int) -> Bool {
+        derivedGenerationFence.accepts(media.id, generation: generation) &&
+            project.media.first(where: { $0.id == media.id }) == media
+    }
+
+    private func invalidateDerivedMedia(_ mediaID: UUID) async {
+        _ = derivedGenerationFence.advance(mediaID)
+        validatedMediaRevisions.removeValue(forKey: mediaID)
+        thumbnailTasksByMedia.removeValue(forKey: mediaID)?.cancel()
+        waveformTasksByMedia.removeValue(forKey: mediaID)?.cancel()
+        thumbnailsByMedia.removeValue(forKey: mediaID)
+        waveformByMedia.removeValue(forKey: mediaID)
+        waveformProgressByMedia.removeValue(forKey: mediaID)
+        await thumbnailService.invalidate(mediaID: mediaID)
+    }
+
+    /// Keeps ephemeral derived data aligned with the project only after the
+    /// project transition has crossed its durable save boundary.
+    private func reconcileDerivedMedia(from previous: EditorProject) async {
+        let before = Dictionary(uniqueKeysWithValues: previous.media.map { ($0.id, $0) })
+        let after = Dictionary(uniqueKeysWithValues: project.media.map { ($0.id, $0) })
+        for (id, oldMedia) in before where after[id] != oldMedia {
+            await invalidateDerivedMedia(id)
+        }
+        for (id, media) in after where before[id] != media {
+            // A changed id was invalidated above; a newly introduced id has no
+            // work to cancel but still needs any service-level stale cache gone.
+            if before[id] == nil { await invalidateDerivedMedia(id) }
+            await beginDerivedMedia(for: media)
+        }
+        let retainedURLs = Set(project.media.map(\.url) + (project.audioLayers ?? []).map(\.url))
+        CompositionSourceCache.shared.keepOnly(retainedURLs)
+    }
+
+    func reconcileDerivedMediaAfterDurableChange(from previous: EditorProject) async {
+        await reconcileDerivedMedia(from: previous)
     }
 
     private func restoreProject() async {
@@ -2334,7 +2418,7 @@ final class EditorSession: ObservableObject {
             timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
             mediaAvailability.refresh()
             for media in project.media where !offlineMedia.contains(where: { $0.id == media.id }) {
-                beginDerivedMedia(for: media)
+                await beginDerivedMedia(for: media)
             }
             guard offlineMedia.isEmpty else {
                 statusMessage = "Media offline"
@@ -2392,10 +2476,19 @@ final class EditorSession: ObservableObject {
         rebuildPlayer: Bool,
         preserving error: Error
     ) async {
+        let failedProject = project
         restoreEditStateWithoutRebuild(state)
         if rebuildPlayer {
-            try? await rebuildComposition(preserveTime: true)
+            do {
+                try await rebuildComposition(preserveTime: true)
+            } catch {
+                // Never leave the player holding the rejected composition when
+                // the durable snapshot itself is currently offline.
+                player.replaceCurrentItem(with: nil)
+                builtProject = nil
+            }
         }
+        await reconcileDerivedMedia(from: failedProject)
         show(error)
     }
 

@@ -11,6 +11,9 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
     var height: Int
     var hasAudio: Bool
     var kind: Kind?
+    /// SHA-256 of the source bytes when the media was imported by a version
+    /// that records identity. Optional keeps older project files readable.
+    var sourceFingerprint: String?
 
     init(
         id: UUID = UUID(),
@@ -20,7 +23,8 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         width: Int,
         height: Int,
         hasAudio: Bool,
-        kind: Kind = .video
+        kind: Kind = .video,
+        sourceFingerprint: String? = nil
     ) {
         self.id = id
         self.url = url
@@ -30,6 +34,7 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         self.height = height
         self.hasAudio = hasAudio
         self.kind = kind
+        self.sourceFingerprint = sourceFingerprint
     }
 
     var isImage: Bool { kind == .image }

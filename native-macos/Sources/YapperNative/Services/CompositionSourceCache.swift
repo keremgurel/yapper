@@ -108,6 +108,10 @@ final class CompositionSourceCache: @unchecked Sendable {
         }
     }
 
+    var cachedEntryCount: Int {
+        lock.withLock { videoSources.count + audioSources.count }
+    }
+
     private func read<Value>(
         from keyPath: KeyPath<CompositionSourceCache, [URL: Entry<Value>]>,
         url: URL,

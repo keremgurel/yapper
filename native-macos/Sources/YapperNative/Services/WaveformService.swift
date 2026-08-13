@@ -58,6 +58,9 @@ actor WaveformService {
         guard reader.startReading() else {
             throw reader.error ?? NativeEditorError.exportFailed("Waveform decoding did not start.")
         }
+        defer {
+            if reader.status == .reading { reader.cancelReading() }
+        }
 
         let expectedSamples = max(1, Int(source.duration * sampleRate))
         let samplesPerBin = max(1, expectedSamples / max(1, targetBins))
@@ -69,6 +72,7 @@ actor WaveformService {
         var inBin = 0
 
         while reader.status == .reading, let sampleBuffer = output.copyNextSampleBuffer() {
+            try Task.checkCancellation()
             guard let block = CMSampleBufferGetDataBuffer(sampleBuffer) else { continue }
             let byteCount = CMBlockBufferGetDataLength(block)
             var bytes = Data(count: byteCount)
@@ -104,6 +108,7 @@ actor WaveformService {
                 )
             }
         }
+        try Task.checkCancellation()
         if inBin > 0 { peaks.append(peak) }
         if reader.status == .failed {
             throw reader.error ?? NativeEditorError.exportFailed("Waveform decoding failed.")
