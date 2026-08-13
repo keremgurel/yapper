@@ -7,14 +7,19 @@ import {
 } from "@/lib/billing/actions";
 import { getProjectContextSafe } from "@/lib/content/project-context-server";
 import { expandIdea } from "@/lib/ideas/expand";
-import type { IdeaInput } from "@/lib/ideas/types";
+import { parseExpandIdeaInput } from "@/lib/ideas/expand-input";
 import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import {
+  readBoundedJson,
+  requestBodyErrorResponse,
+} from "@/lib/http/bounded-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+const MAX_JSON_BYTES = 256 * 1024;
 
 /**
  * Expand a raw idea into a reference-specific creative dossier. The creator's
@@ -27,16 +32,20 @@ export async function POST(req: NextRequest): Promise<Response> {
   const ingressLimited = await guardProviderIngress(req);
   if (ingressLimited) return ingressLimited;
 
-  const body = (await req.json().catch(() => ({}))) as {
-    input?: IdeaInput;
-  };
-  const input = body.input;
-  const hasMaterial =
-    !!input &&
-    (!!input.transcript?.trim() ||
-      !!input.url?.trim() ||
-      !!input.source?.url?.trim());
-  if (!hasMaterial) {
+  let rawBody: unknown;
+  try {
+    rawBody = await readBoundedJson(req, { maxBytes: MAX_JSON_BYTES });
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
+  const body =
+    rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
+      ? (rawBody as Record<string, unknown>)
+      : {};
+  const input = parseExpandIdeaInput(body.input);
+  if (!input) {
     return Response.json({ error: "no_input" }, { status: 400 });
   }
   // The creator's standing context is read server-side rather than trusted from

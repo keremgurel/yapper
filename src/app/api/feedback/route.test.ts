@@ -104,6 +104,17 @@ function videoRequest(): NextRequest {
   ) as NextRequest;
 }
 
+function audioRequest(
+  headers: HeadersInit,
+  body: BodyInit = new Uint8Array([1]),
+): NextRequest {
+  return new Request("https://ypr.app/api/feedback?tier=audio", {
+    method: "POST",
+    headers,
+    body,
+  }) as NextRequest;
+}
+
 beforeEach(() => {
   vi.stubEnv("SURPLUS_API_KEY", "surplus_test");
   vi.stubEnv("GEMINI_API_KEY", "gemini_test");
@@ -170,6 +181,40 @@ afterEach(() => {
 });
 
 describe("POST /api/feedback atomic completion", () => {
+  it("rejects oversized audio before billing or provider spend", async () => {
+    const response = await POST(
+      audioRequest({
+        "content-type": "audio/wav",
+        "content-length": "4000001",
+      }),
+    );
+
+    expect(response.status).toBe(413);
+    await expect(response.json()).resolves.toEqual({
+      error: "payload_too_large",
+      limitBytes: 4_000_000,
+    });
+    expect(mocks.ensureUser).not.toHaveBeenCalled();
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("requires canonical WAV for feedback audio before billing", async () => {
+    const response = await POST(audioRequest({ "content-type": "audio/webm" }));
+
+    expect(response.status).toBe(415);
+    expect(mocks.ensureUser).not.toHaveBeenCalled();
+    expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it("does not read or require a body for video-only feedback", async () => {
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(200);
+    expect(mocks.guardProviderSpend).toHaveBeenCalledOnce();
+  });
+
   it("does not consume provider spend for a non-entitled user", async () => {
     mocks.canUsePremium.mockResolvedValue(false);
 

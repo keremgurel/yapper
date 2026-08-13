@@ -35,11 +35,16 @@ import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import {
+  readBoundedBody,
+  requestBodyErrorResponse,
+} from "@/lib/http/bounded-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TIERS: FeedbackTier[] = ["audio", "video", "full"];
+const MAX_AUDIO_BYTES = 4_000_000;
 
 interface FeedbackResult {
   metrics?: DeliveryMetrics;
@@ -79,7 +84,21 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   // Read the audio body up front (audio + full need it).
-  const audio = tier === "video" ? new ArrayBuffer(0) : await req.arrayBuffer();
+  let audio = new ArrayBuffer(0);
+  if (tier !== "video") {
+    try {
+      const body = await readBoundedBody(req, {
+        maxBytes: MAX_AUDIO_BYTES,
+        allowedMediaTypes: ["audio/wav"],
+        requireContentType: true,
+      });
+      audio = body.bytes.buffer;
+    } catch (error) {
+      const response = requestBodyErrorResponse(error);
+      if (response) return response;
+      throw error;
+    }
+  }
   if ((tier === "audio" || tier === "full") && audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }

@@ -109,7 +109,7 @@ const strArr = (v: unknown, max: number): string[] =>
   Array.isArray(v)
     ? v
         .filter((x): x is string => typeof x === "string")
-        .map((s) => s.trim())
+        .map((s) => s.trim().slice(0, 500))
         .filter(Boolean)
         .slice(0, max)
     : [];
@@ -128,31 +128,36 @@ const SECTION_KINDS = new Set<IdeaSectionKind>([
  */
 export function parseSections(v: unknown): IdeaExpansionSection[] {
   if (!Array.isArray(v)) return [];
-  return v
-    .flatMap((entry): IdeaExpansionSection[] => {
-      if (!entry || typeof entry !== "object") return [];
-      const value = entry as Record<string, unknown>;
-      const label =
-        typeof value.label === "string" ? value.label.trim().slice(0, 80) : "";
-      const kind =
-        typeof value.kind === "string" &&
-        SECTION_KINDS.has(value.kind as IdeaSectionKind)
-          ? (value.kind as IdeaSectionKind)
-          : null;
-      const text =
-        typeof value.text === "string" ? value.text.trim().slice(0, 12000) : "";
-      const items = strArr(value.items, 12);
-      if (!label || !kind || (!text && items.length === 0)) return [];
-      return [
-        {
-          label,
-          kind,
-          text: text || undefined,
-          items: items.length ? items : undefined,
-        },
-      ];
-    })
-    .slice(0, 8);
+  let material = 0;
+  return v.slice(0, 8).flatMap((entry): IdeaExpansionSection[] => {
+    if (!entry || typeof entry !== "object") return [];
+    const value = entry as Record<string, unknown>;
+    const label =
+      typeof value.label === "string" ? value.label.trim().slice(0, 80) : "";
+    const kind =
+      typeof value.kind === "string" &&
+      SECTION_KINDS.has(value.kind as IdeaSectionKind)
+        ? (value.kind as IdeaSectionKind)
+        : null;
+    const text =
+      typeof value.text === "string" ? value.text.trim().slice(0, 2_000) : "";
+    const items = strArr(value.items, 12);
+    if (!label || !kind || (!text && items.length === 0)) return [];
+    const nextMaterial =
+      label.length +
+      text.length +
+      items.reduce((sum, item) => sum + item.length, 0);
+    if (material + nextMaterial > 12_000) return [];
+    material += nextMaterial;
+    return [
+      {
+        label,
+        kind,
+        text: text || undefined,
+        items: items.length ? items : undefined,
+      },
+    ];
+  });
 }
 
 /** Strip accidental ```json fences the model sometimes adds despite the rule. */

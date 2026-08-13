@@ -10,6 +10,10 @@ import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import {
+  readBoundedBody,
+  requestBodyErrorResponse,
+} from "@/lib/http/bounded-body";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -17,6 +21,22 @@ export const maxDuration = 120;
 // Core product vocabulary should be correct on a brand-new install, before a
 // creator has had a chance to build their personal transcription dictionary.
 const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
+const MAX_AUDIO_BYTES = 4_000_000;
+const MAX_AUDIO_DURATION_SECONDS = 600;
+const AUDIO_MEDIA_TYPES = [
+  "audio/wav",
+  "audio/x-wav",
+  "audio/aac",
+  "audio/mp4",
+  "audio/x-m4a",
+  "audio/webm",
+  "audio/ogg",
+  "audio/mpeg",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+  "application/octet-stream",
+] as const;
 
 /** An ASR result plus how many seconds of audio the provider actually heard. */
 interface AsrResult {
@@ -48,7 +68,35 @@ export async function POST(req: Request): Promise<Response> {
     .filter((term, index, all) => all.indexOf(term) === index)
     .slice(0, 100);
 
-  const audio = await req.arrayBuffer();
+  // Voice capture cannot measure duration, so the header remains optional. A
+  // chunked Studio request that does supply it must stay inside the supported
+  // ten-minute provider window.
+  const durationHeader = req.headers.get("x-audio-duration");
+  const expectedDuration = durationHeader === null ? 0 : Number(durationHeader);
+  if (
+    durationHeader !== null &&
+    (!Number.isFinite(expectedDuration) ||
+      expectedDuration <= 0 ||
+      expectedDuration > MAX_AUDIO_DURATION_SECONDS)
+  ) {
+    return Response.json({ error: "invalid_audio_duration" }, { status: 400 });
+  }
+
+  let audio: ArrayBuffer;
+  let contentType: string;
+  try {
+    const body = await readBoundedBody(req, {
+      maxBytes: MAX_AUDIO_BYTES,
+      allowedMediaTypes: AUDIO_MEDIA_TYPES,
+      requireContentType: true,
+    });
+    audio = body.bytes.buffer;
+    contentType = body.mediaType as string;
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   if (audio.byteLength === 0) {
     return Response.json({ error: "empty_audio" }, { status: 400 });
   }
@@ -56,11 +104,6 @@ export async function POST(req: Request): Promise<Response> {
   // a body before this route runs, and some proxies truncate bodies silently.
   // The client now sends upload-safe chunks; this duration check remains a
   // final guard against ever accepting a chunk whose tail went missing.
-  const expectedDuration = Number(req.headers.get("x-audio-duration") ?? 0);
-  // Forward the payload's own type (audio/aac for native AAC, audio/wav for
-  // decoded PCM) so Deepgram parses the container correctly.
-  const contentType = req.headers.get("content-type") || "audio/wav";
-
   const providers: { name: string; run: () => Promise<AsrResult> }[] = [];
   if (deepgram) {
     providers.push({
