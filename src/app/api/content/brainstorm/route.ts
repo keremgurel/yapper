@@ -70,12 +70,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { reservation } = access;
 
   try {
-    const reply = await brainstorm({
-      messages: asMessages(body.messages),
-      clip,
-      pillars: context.pillarNames.length ? context.pillarNames : pillars,
-      context: context.block,
-    });
+    const reply = await brainstorm(
+      {
+        messages: asMessages(body.messages),
+        clip,
+        pillars: context.pillarNames.length ? context.pillarNames : pillars,
+        context: context.block,
+      },
+      req.signal,
+    );
     return Response.json({ reply, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "brainstorm_failed";

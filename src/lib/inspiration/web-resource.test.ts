@@ -7,6 +7,8 @@ import {
 } from "./web-resource";
 
 afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
@@ -61,34 +63,28 @@ describe("resolveWebResource", () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            code: 200,
-            data: {
-              title: "The Pause Study",
-              content: "Participants who paused deliberately retained more.",
-            },
-          }),
-          { status: 200 },
-        ),
+        Response.json({
+          code: 200,
+          data: {
+            title: "The Pause Study",
+            content: "Participants who paused deliberately retained more.",
+          },
+        }),
       )
       .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            choices: [
-              {
-                message: {
-                  content: JSON.stringify({
-                    summary:
-                      "The study reports that deliberate pauses improved recall.",
-                    resourceType: "research-paper",
-                  }),
-                },
+        Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  summary:
+                    "The study reports that deliberate pauses improved recall.",
+                  resourceType: "research-paper",
+                }),
               },
-            ],
-          }),
-          { status: 200 },
-        ),
+            },
+          ],
+        }),
       );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -105,5 +101,84 @@ describe("resolveWebResource", () => {
     expect(fetchMock.mock.calls[1]?.[1]?.body).toContain(
       "Participants who paused deliberately retained more.",
     );
+  });
+
+  it("times out a stalled Reader response without starting summarization", async () => {
+    const timeoutController = new AbortController();
+    vi.spyOn(AbortSignal, "timeout").mockReturnValue(timeoutController.signal);
+    const fetchMock = vi.fn().mockImplementation(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true },
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = resolveWebResource("https://example.com/article");
+    timeoutController.abort(new DOMException("timed out", "TimeoutError"));
+
+    await expect(pending).rejects.toMatchObject({ code: "timeout" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an oversized Reader response before summarization", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      new Response(new Uint8Array(2 * 1024 * 1024 + 1), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      resolveWebResource("https://example.com/article"),
+    ).rejects.toMatchObject({ code: "response_too_large" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("propagates caller abort during Reader without starting summarization", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.fn().mockImplementation(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener(
+            "abort",
+            () => reject(init.signal?.reason),
+            { once: true },
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const pending = resolveWebResource(
+      "https://example.com/article",
+      controller.signal,
+    );
+    controller.abort("client_disconnected");
+
+    await expect(pending).rejects.toMatchObject({ code: "aborted" });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
+  it("does not start summarization after the overall workflow deadline", async () => {
+    vi.stubEnv("SURPLUS_API_KEY", "provider-secret");
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      Response.json({
+        data: { title: "Slow source", content: "Useful evidence." },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(Date, "now")
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(91_001);
+
+    await expect(
+      resolveWebResource("https://example.com/article"),
+    ).rejects.toMatchObject({ code: "timeout" });
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

@@ -20,16 +20,17 @@ export interface AudioFeedback {
  */
 export async function runAudioFeedback(
   audio: ArrayBuffer,
+  signal?: AbortSignal,
 ): Promise<AudioFeedback> {
   const deepgramKey = process.env.DEEPGRAM_API_KEY;
   if (!deepgramKey) throw new Error("no_provider");
 
-  const words = await transcribeForFeedback(audio, deepgramKey);
+  const words = await transcribeForFeedback(audio, deepgramKey, signal);
   if (words.length === 0) throw new Error("no_speech");
 
   const transcript = words.map((w) => w.text).join(" ");
   const metrics = computeMetrics(words);
-  const coaching = await coachDelivery(transcript, metrics);
+  const coaching = await coachDelivery(transcript, metrics, signal);
 
   return { transcript, words, metrics, coaching };
 }

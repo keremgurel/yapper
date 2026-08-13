@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     // Card metadata and source analysis are independent, so start both together.
     // Instagram needs a direct media URL before Deepgram can hear the Reel.
     const sourceDetailsPromise: Promise<SourceDetails> = isWebResource
-      ? resolveWrittenReference(url)
+      ? resolveWrittenReference(url, req.signal)
       : kind === "video" && platform === "youtube"
         ? resolveYouTubeReference(url)
         : kind === "video" && platform === "instagram"
@@ -221,8 +221,11 @@ const resolveInstagramReference = (url: string) =>
 const resolveTikTokReference = (url: string) =>
   resolveSocialVideo(url, () => resolveTikTokMedia(url), "TikTok");
 
-async function resolveWrittenReference(url: string): Promise<SourceDetails> {
-  const resource = await resolveWebResource(url);
+async function resolveWrittenReference(
+  url: string,
+  signal?: AbortSignal,
+): Promise<SourceDetails> {
+  const resource = await resolveWebResource(url, signal);
   return { ...resource, transcript: null };
 }
 

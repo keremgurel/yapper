@@ -16,6 +16,7 @@ interface DeepgramWord {
 export async function transcribeForFeedback(
   audio: ArrayBuffer,
   key: string,
+  signal?: AbortSignal,
 ): Promise<FeedbackWord[]> {
   const res = await fetch(
     "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
@@ -23,6 +24,7 @@ export async function transcribeForFeedback(
       method: "POST",
       headers: { Authorization: `Token ${key}`, "Content-Type": "audio/wav" },
       body: audio,
+      signal,
     },
   );
   if (!res.ok) throw new Error(`deepgram_${res.status}`);

@@ -1,5 +1,13 @@
 import { projectContextSection } from "@/lib/content/project-context";
 import type { ContentBlock } from "@/lib/db/schema";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 1_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 /** Turn a rough, spoken-or-typed idea into a structured content-library entry.
  * The API route meters this lightweight AI pass at one credit. */
@@ -96,7 +104,10 @@ export function capturedIdeaToBlocks(idea: CapturedIdea): ContentBlock[] {
   return blocks;
 }
 
-export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {
+export async function captureIdea(
+  input: CaptureInput,
+  signal?: AbortSignal,
+): Promise<CapturedIdea> {
   const text = input.text.trim();
   if (!text) throw new Error("no_input");
 
@@ -119,26 +130,34 @@ export async function captureIdea(input: CaptureInput): Promise<CapturedIdea> {
     .filter(Boolean)
     .join("\n\n");
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.7,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userMsg },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: userMsg },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`capture_${res.status}`);
-  const json = await res.json();
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`capture_${response.status}`);
   return parseCapturedIdea(
-    json?.choices?.[0]?.message?.content ?? "{}",
+    data.choices?.[0]?.message?.content ?? "{}",
     pillars,
   );
 }

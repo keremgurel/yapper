@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
+  preflight: vi.fn(),
+  reserve: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
@@ -12,9 +14,9 @@ vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderSpend: mocks.guardProviderSpend,
 }));
 vi.mock("@/lib/billing/actions", () => ({
-  preflightPaidActionOrResponse: vi.fn(),
+  preflightPaidActionOrResponse: mocks.preflight,
   refundCreditReservation: vi.fn(),
-  reservePaidActionOrResponse: vi.fn(),
+  reservePaidActionOrResponse: mocks.reserve,
 }));
 
 import { POST } from "./route";
@@ -28,9 +30,20 @@ const request = (body: unknown) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   vi.stubEnv("SURPLUS_API_KEY", "test_key");
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.guardProviderIngress.mockResolvedValue(null);
+  mocks.guardProviderSpend.mockResolvedValue(null);
+  mocks.preflight.mockResolvedValue(null);
+  mocks.reserve.mockResolvedValue({
+    reservation: {
+      action: "place_overlays",
+      cost: 1,
+      balance: 9,
+      usageId: "usage_test",
+    },
+  });
 });
 
 describe("POST /api/place-overlays payload limits", () => {
@@ -58,5 +71,34 @@ describe("POST /api/place-overlays payload limits", () => {
     );
     expect(response.status).toBe(413);
     expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+  });
+
+  it("sets an explicit output budget and abortable provider deadline", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: '{"placements":[],"sounds":[],"texts":[]}',
+            },
+          },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      request({
+        words: [{ text: "hello" }],
+        files: [{ name: "clip.mp4", kind: "video", duration: 1 }],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      max_completion_tokens: 2_500,
+    });
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 });

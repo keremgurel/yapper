@@ -21,10 +21,18 @@ import {
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
 import { parseCleanTranscriptWords } from "@/lib/studio/clean-transcript-input";
+import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 const MAX_JSON_BYTES = 256 * 1024;
+const PROVIDER_TIMEOUT_MS = 50_000;
+const MAX_COMPLETION_TOKENS = 8_192;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 /**
  * AI "remove mistakes" pass. The model is given the transcript as plain speech
@@ -78,25 +86,38 @@ export async function POST(req: Request): Promise<Response> {
   const access = await reservePaidActionOrResponse(userId, "clean_transcript");
   if (access.response) return access.response;
   const { reservation } = access;
+  // One wall-clock budget covers both model passes, so the critic cannot start
+  // a fresh full window after a slow draft.
+  const providerDeadline = Date.now() + PROVIDER_TIMEOUT_MS;
   const complete = async (system: string, user: string): Promise<string> => {
-    const res = await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
+    const remainingMs = providerDeadline - Date.now();
+    if (remainingMs <= 0) throw new OutboundHttpError("timeout");
+    const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+      `${base}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          max_completion_tokens: MAX_COMPLETION_TOKENS,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-      }),
-    });
-    if (!res.ok) throw new Error(`ai_${res.status}`);
-    const json = await res.json();
-    return json?.choices?.[0]?.message?.content ?? "";
+      {
+        timeoutMs: remainingMs,
+        maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+        signal: req.signal,
+      },
+    );
+    if (!response.ok) throw new Error(`ai_${response.status}`);
+    return data.choices?.[0]?.message?.content ?? "";
   };
 
   try {

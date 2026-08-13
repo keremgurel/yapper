@@ -56,11 +56,14 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { reservation } = access;
 
   try {
-    const answer = await askBrain({
-      messages,
-      context: context.block,
-      pillars: context.pillarNames,
-    });
+    const answer = await askBrain(
+      {
+        messages,
+        context: context.block,
+        pillars: context.pillarNames,
+      },
+      req.signal,
+    );
     return Response.json(answer);
   } catch (error) {
     await refundCreditReservation(userId, reservation, "ask_failed");

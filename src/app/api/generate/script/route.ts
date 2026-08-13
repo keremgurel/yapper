@@ -81,7 +81,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let script: string;
   try {
-    script = await generateScript(input);
+    script = await generateScript(input, req.signal);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "generate_failed";
     const status = detail === "no_input" ? 400 : 502;

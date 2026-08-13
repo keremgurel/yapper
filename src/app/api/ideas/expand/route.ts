@@ -64,7 +64,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { reservation } = access;
 
   try {
-    const expansion = await expandIdea(input, context);
+    const expansion = await expandIdea(input, context, req.signal);
     return Response.json({ expansion, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "expand_failed";

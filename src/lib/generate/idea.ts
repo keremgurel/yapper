@@ -1,6 +1,14 @@
 import { projectContextSection } from "@/lib/content/project-context";
 import { parseSections } from "@/lib/ideas/expand-prompt";
 import type { IdeaExpansionSection } from "@/lib/ideas/types";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 1_800;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export interface GeneratedIdea {
   hooks: string[];
@@ -65,7 +73,10 @@ export function parseIdea(content: string): GeneratedIdea {
 }
 
 /** Generate a video idea (hooks plus an adaptive body) via the Surplus gateway. */
-export async function generateIdea(input: IdeaInput): Promise<GeneratedIdea> {
+export async function generateIdea(
+  input: IdeaInput,
+  signal?: AbortSignal,
+): Promise<GeneratedIdea> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
@@ -79,29 +90,37 @@ export async function generateIdea(input: IdeaInput): Promise<GeneratedIdea> {
   ].filter(Boolean);
   if (parts.length === 0) throw new Error("no_input");
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.8,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM + projectContextSection(input.context ?? ""),
+          },
+          {
+            role: "user",
+            content: `${parts.join("\n\n")}\n\nGenerate the idea.`,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.8,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM + projectContextSection(input.context ?? ""),
-        },
-        {
-          role: "user",
-          content: `${parts.join("\n\n")}\n\nGenerate the idea.`,
-        },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`generate_${res.status}`);
-  const json = await res.json();
-  return parseIdea(json?.choices?.[0]?.message?.content ?? "{}");
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`generate_${response.status}`);
+  return parseIdea(data.choices?.[0]?.message?.content ?? "{}");
 }

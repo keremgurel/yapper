@@ -1,4 +1,12 @@
 import type { DeliveryMetrics } from "./metrics";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 1_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export interface Coaching {
   score: number; // 0-100 overall delivery
@@ -73,6 +81,7 @@ export function parseCoaching(content: string): Coaching {
 export async function coachDelivery(
   transcript: string,
   metrics: DeliveryMetrics,
+  signal?: AbortSignal,
 ): Promise<Coaching> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
@@ -85,23 +94,31 @@ export async function coachDelivery(
     `Metrics (pre-computed, do not recompute):\n${JSON.stringify(metrics)}\n\n` +
     `Coach this delivery. Return the JSON described in the system prompt.`;
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.4,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: user },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: SYSTEM },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`coach_${res.status}`);
-  const json = await res.json();
-  return parseCoaching(json?.choices?.[0]?.message?.content ?? "{}");
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`coach_${response.status}`);
+  return parseCoaching(data.choices?.[0]?.message?.content ?? "{}");
 }

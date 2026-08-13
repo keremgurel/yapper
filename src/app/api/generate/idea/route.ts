@@ -65,7 +65,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let idea;
   try {
-    idea = await generateIdea(input);
+    idea = await generateIdea(input, req.signal);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "generate_failed";
     const status = detail === "no_input" ? 400 : 502;
