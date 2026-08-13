@@ -14,8 +14,11 @@ import {
   InsufficientCreditsError,
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
-import { ensureUser, getStorageBytes } from "@/lib/db/users";
-import { countMediaOnceWithinTx } from "@/lib/db/storage-accounting";
+import { ensureUser } from "@/lib/db/users";
+import {
+  countMediaOnceWithinTx,
+  StorageQuotaError,
+} from "@/lib/db/storage-accounting";
 import { runAudioFeedback } from "@/lib/feedback/audio";
 import type { Coaching } from "@/lib/feedback/coach";
 import { uploadBytesToGemini } from "@/lib/feedback/gemini";
@@ -94,7 +97,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let result: FeedbackResult;
   try {
-    result = await runTier(tier, audio, mediaKey, mimeType, userId);
+    result = await runTier(tier, audio, mediaKey, mimeType);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
     await markSubmissionFailed(db, submission.id, userId, detail);
@@ -102,6 +105,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   try {
+    const quotaBytes = await getStorageQuota(userId);
     // Charge and mark complete in one transaction: a crash before commit rolls
     // back the debit, result, and storage counter together.
     const balance = await db.transaction(async (tx) => {
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest): Promise<Response> {
           mediaKey,
           result.mediaBytes,
           submission.id,
+          quotaBytes,
         );
       }
       const bal = await deductWithinTx(tx, userId, cost, {
@@ -155,15 +160,20 @@ export async function POST(req: NextRequest): Promise<Response> {
     // update committed. This route did not create the caller-supplied R2 object
     // and must never delete it on a processing failure.
     const insufficient = e instanceof InsufficientCreditsError;
+    const storageFull = e instanceof StorageQuotaError;
     const detail = insufficient
       ? "insufficient_credits"
-      : e instanceof Error
-        ? e.message
-        : "feedback_failed";
+      : storageFull
+        ? "storage_full"
+        : e instanceof Error
+          ? e.message
+          : "feedback_failed";
     await markSubmissionFailed(db, submission.id, userId, detail);
     return insufficient
       ? Response.json({ error: "insufficient_credits" }, { status: 402 })
-      : Response.json({ error: "feedback_failed", detail }, { status: 502 });
+      : storageFull
+        ? Response.json({ error: "storage_full" }, { status: 402 })
+        : Response.json({ error: "feedback_failed", detail }, { status: 502 });
   }
 }
 
@@ -193,7 +203,6 @@ async function runTier(
   audio: ArrayBuffer,
   mediaKey: string | undefined,
   mimeType: string,
-  userId: string,
 ): Promise<FeedbackResult> {
   if (tier === "audio") {
     const r = await runAudioFeedback(audio);
@@ -205,13 +214,6 @@ async function runTier(
   // Enforce on the *actual* object size, presigned PUTs can't cap upload size,
   // so the client's claimed sizeBytes at upload-url time is only advisory.
   if (bytes.byteLength > MAX_CLIP_BYTES) throw new Error("clip_too_large");
-  const [used, quota] = await Promise.all([
-    getStorageBytes(userId),
-    getStorageQuota(userId),
-  ]);
-  if (used + bytes.byteLength > quota) {
-    throw new Error("storage_full");
-  }
   const uri = await uploadBytesToGemini(bytes, mimeType);
   const coaching = await coachOnCamera(uri, mimeType);
   const mediaBytes = bytes.byteLength;

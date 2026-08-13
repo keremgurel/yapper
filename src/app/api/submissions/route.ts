@@ -1,10 +1,15 @@
 import { auth } from "@clerk/nextjs/server";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { MAX_CLIP_BYTES } from "@/lib/db/constants";
-import { submissions } from "@/lib/db/schema";
-import { countMediaOnce } from "@/lib/db/storage-accounting";
+import { importedPlatformMedia, submissions } from "@/lib/db/schema";
+import {
+  countMediaOnceWithinTx,
+  lockMediaReferenceWithinTx,
+  lockStorageUserWithinTx,
+  StorageQuotaError,
+} from "@/lib/db/storage-accounting";
 import { ensureUser, getStorageBytes } from "@/lib/db/users";
 import { canUsePremium } from "@/lib/billing/gate";
 import { getStorageQuota } from "@/lib/db/billing";
@@ -77,12 +82,26 @@ export async function POST(req: NextRequest): Promise<Response> {
   const db = getDb();
   // If another submission already references this object it's already counted,
   // so it neither re-checks the quota nor double-counts.
-  const [existing] = await db
-    .select({ id: submissions.id })
-    .from(submissions)
-    .where(eq(submissions.mediaKey, mediaKey))
-    .limit(1);
-  if (!existing) {
+  const [[existingSubmission], [existingImport]] = await Promise.all([
+    db
+      .select({ id: submissions.id })
+      .from(submissions)
+      .where(
+        and(eq(submissions.userId, userId), eq(submissions.mediaKey, mediaKey)),
+      )
+      .limit(1),
+    db
+      .select({ id: importedPlatformMedia.id })
+      .from(importedPlatformMedia)
+      .where(
+        and(
+          eq(importedPlatformMedia.userId, userId),
+          eq(importedPlatformMedia.mediaKey, mediaKey),
+        ),
+      )
+      .limit(1),
+  ]);
+  if (!existingSubmission && !existingImport) {
     const [used, quota] = await Promise.all([
       getStorageBytes(userId),
       getStorageQuota(userId),
@@ -92,24 +111,50 @@ export async function POST(req: NextRequest): Promise<Response> {
     }
   }
 
-  const [submission] = await db
-    .insert(submissions)
-    .values({
-      userId,
-      kind: "video",
-      status: "complete", // saved, no analysis; feedback/scores stay null
-      title,
-      mediaKey,
-      mediaBytes: bytes,
-      durationSec,
-    })
-    .returning({
-      id: submissions.id,
-      mediaKey: submissions.mediaKey,
-      createdAt: submissions.createdAt,
+  // Keep the durable reference and its accounting in one transaction. If two
+  // saves race on the same key, the per-object advisory lock lets the first
+  // transaction count it and the second observe that committed reference.
+  const quota = await getStorageQuota(userId);
+  let submission;
+  try {
+    submission = await db.transaction(async (tx) => {
+      // Acquire the object lock before publishing the new reference. Otherwise
+      // a concurrent last-reference deletion can remove the R2 object while
+      // this transaction is still inserting a row that will point at it.
+      await lockStorageUserWithinTx(tx, userId);
+      await lockMediaReferenceWithinTx(tx, userId, mediaKey);
+      const [inserted] = await tx
+        .insert(submissions)
+        .values({
+          userId,
+          kind: "video",
+          status: "complete", // saved, no analysis; feedback/scores stay null
+          title,
+          mediaKey,
+          mediaBytes: bytes,
+          durationSec,
+        })
+        .returning({
+          id: submissions.id,
+          mediaKey: submissions.mediaKey,
+          createdAt: submissions.createdAt,
+        });
+      await countMediaOnceWithinTx(
+        tx,
+        userId,
+        mediaKey,
+        bytes,
+        inserted.id,
+        quota,
+      );
+      return inserted;
     });
-
-  await countMediaOnce(userId, mediaKey, bytes, submission.id);
+  } catch (error) {
+    if (error instanceof StorageQuotaError) {
+      return Response.json({ error: "storage_full" }, { status: 402 });
+    }
+    throw error;
+  }
 
   return Response.json({ submission }, { status: 201 });
 }

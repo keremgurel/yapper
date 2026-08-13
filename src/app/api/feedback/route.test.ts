@@ -3,9 +3,11 @@ import type { NextRequest } from "next/server";
 
 const mocks = vi.hoisted(() => {
   class InsufficientCreditsError extends Error {}
+  class StorageQuotaError extends Error {}
 
   return {
     InsufficientCreditsError,
+    StorageQuotaError,
     auth: vi.fn(),
     canUsePremium: vi.fn(),
     coachOnCamera: vi.fn(),
@@ -35,6 +37,7 @@ vi.mock("@/lib/db/credits", () => ({
   InsufficientCreditsError: mocks.InsufficientCreditsError,
 }));
 vi.mock("@/lib/db/storage-accounting", () => ({
+  StorageQuotaError: mocks.StorageQuotaError,
   countMediaOnceWithinTx: mocks.countMediaOnceWithinTx,
 }));
 vi.mock("@/lib/db/users", () => ({
@@ -179,6 +182,7 @@ describe("POST /api/feedback atomic completion", () => {
       "user_test/clip.webm",
       128,
       "submission_test",
+      1_000_000,
     );
     expect(mocks.deleteObject).not.toHaveBeenCalled();
   });
@@ -240,6 +244,7 @@ describe("POST /api/feedback atomic completion", () => {
       "user_test/clip.webm",
       128,
       "submission_test",
+      1_000_000,
     );
   });
 });

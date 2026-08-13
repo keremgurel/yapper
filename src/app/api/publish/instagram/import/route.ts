@@ -1,85 +1,245 @@
+import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
+import { canUsePremium } from "@/lib/billing/gate";
+import { getStorageQuota } from "@/lib/db/billing";
+import { MAX_CLIP_BYTES } from "@/lib/db/constants";
 import {
+  ImportedMediaQuotaError,
   importedMediaForPost,
-  recordImportedMedia,
+  reconcileImportedMediaBytes,
+  registerImportedMedia,
+  invalidateMissingImportedMedia,
+  type ImportedMediaRecord,
 } from "@/lib/db/imported-media";
+import { ensureUser, getStorageBytes } from "@/lib/db/users";
 import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
-import { fetchInstagramMediaForImport } from "@/lib/publish/instagram-import";
+import {
+  downloadInstagramClip,
+  fetchInstagramMediaForImport,
+  InstagramClipTooLargeError,
+  InstagramDownloadTimeoutError,
+} from "@/lib/publish/instagram-import";
 import { resolveInstagramSourceFile } from "@/lib/publish/instagram-source-file";
-import { mediaKey, putObjectBytes, r2Configured } from "@/lib/r2";
+import {
+  deleteObject,
+  headObjectBytes,
+  mediaKey,
+  putObjectFile,
+  r2Configured,
+} from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
+const PLATFORM = "instagram" as const;
+const LOOKUP_TIMEOUT_MS = 45_000;
+const OVERALL_TIMEOUT_MS = 105_000;
+
+function importAttemptKey(userId: string): string {
+  // Never reuse the post id as an object key. Every request owns exactly one
+  // random object, so a losing request can clean up without deleting a winner.
+  return mediaKey(userId, `ig-import-${randomUUID()}`, "mp4");
+}
+
+async function deleteAttempt(key: string): Promise<void> {
+  try {
+    await deleteObject(key);
+  } catch {
+    // The key is unique and unreferenced. A bucket lifecycle sweep is the safe
+    // fallback; never turn cleanup failure into deletion of another object.
+  }
+}
+
+function importedResponse(row: ImportedMediaRecord): Response {
+  return Response.json({ mediaKey: row.mediaKey, title: row.title ?? "" });
+}
+
 /**
  * Pull one of the user's own Instagram videos into their R2 storage so the
- * normal publish path can cross-post it elsewhere. Takes a media id, looks up
- * the file URL server-side under the user's token, downloads it, and stores it
- * under the user's prefix. Returns the resulting mediaKey and a suggested title.
- *
- * Reels with licensed audio come back from Graph without a file URL, so the
- * lookup falls back to the permalink; that path is slower, which is why this
- * route runs long.
+ * normal publish path can cross-post it elsewhere. Entitlement is checked
+ * before cache/provider work, remote bytes are streamed under a hard limit,
+ * and the object becomes visible only after atomic quota registration.
  */
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+
+  const body = (await req.json().catch(() => ({}))) as { mediaId?: unknown };
+  const mediaId = typeof body.mediaId === "string" ? body.mediaId.trim() : "";
+  if (!mediaId || mediaId.length > 200 || !/^[A-Za-z0-9_-]+$/.test(mediaId)) {
+    return Response.json({ error: "bad_request" }, { status: 400 });
+  }
+
+  await ensureUser(userId);
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
   if (!r2Configured()) {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as { mediaId?: string };
-  const mediaId = body.mediaId?.trim();
-  if (!mediaId) return Response.json({ error: "bad_request" }, { status: 400 });
+  const quotaBytes = await getStorageQuota(userId);
+  const deadline = AbortSignal.any([
+    req.signal,
+    AbortSignal.timeout(OVERALL_TIMEOUT_MS),
+  ]);
 
-  // Already pulled this post back once. The file is in storage, so re-posting
-  // it must not pay for the lookup and the transfer a second time.
-  const cached = await importedMediaForPost(userId, "instagram", mediaId);
+  // A cache row is usable only while its object still exists. Legacy rows have
+  // zero bytes after migration; reconcile them against HeadObject before they
+  // can bypass accounting.
+  const cached = await importedMediaForPost(userId, PLATFORM, mediaId);
   if (cached) {
-    return Response.json({
-      mediaKey: cached.mediaKey,
-      title: cached.title ?? "",
-    });
+    const actualBytes = await headObjectBytes(cached.mediaKey);
+    if (actualBytes === null) {
+      await invalidateMissingImportedMedia(
+        userId,
+        PLATFORM,
+        mediaId,
+        cached.mediaKey,
+      );
+    } else {
+      if (actualBytes <= 0) {
+        return Response.json({ error: "download_failed" }, { status: 502 });
+      }
+      if (actualBytes > MAX_CLIP_BYTES) {
+        return Response.json({ error: "clip_too_large" }, { status: 413 });
+      }
+      try {
+        const reconciled = await reconcileImportedMediaBytes(
+          userId,
+          PLATFORM,
+          mediaId,
+          cached.mediaKey,
+          actualBytes,
+          quotaBytes,
+        );
+        if (reconciled) return importedResponse(reconciled);
+      } catch (error) {
+        if (error instanceof ImportedMediaQuotaError) {
+          return Response.json({ error: "storage_full" }, { status: 402 });
+        }
+        throw error;
+      }
+      // The row changed between lookup and reconciliation; continue as a fresh
+      // attempt rather than returning a key we no longer own in the database.
+    }
+  }
+
+  // A cached object remains usable at the cap because it consumes no new
+  // bytes. A genuinely fresh import cannot fit when the account is already
+  // full, so avoid paid provider work and a doomed transfer in that case.
+  if ((await getStorageBytes(userId)) >= quotaBytes) {
+    return Response.json({ error: "storage_full" }, { status: 402 });
   }
 
   let accessToken: string;
   try {
-    accessToken = await getFreshAccessToken(userId, "instagram");
-  } catch (e) {
-    if (e instanceof NoConnectionError) {
+    accessToken = await getFreshAccessToken(userId, PLATFORM);
+  } catch (error) {
+    if (error instanceof NoConnectionError) {
       return Response.json({ error: "not_connected" }, { status: 409 });
     }
-    throw e;
+    throw error;
   }
 
-  let media;
+  let media: Awaited<ReturnType<typeof fetchInstagramMediaForImport>>;
   let sourceFileUrl: string;
   try {
-    media = await fetchInstagramMediaForImport(accessToken, mediaId);
-    sourceFileUrl = await resolveInstagramSourceFile(media);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg === "not_a_video") {
+    const lookupSignal = AbortSignal.any([
+      deadline,
+      AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+    ]);
+    media = await fetchInstagramMediaForImport(
+      accessToken,
+      mediaId,
+      lookupSignal,
+    );
+    sourceFileUrl = await resolveInstagramSourceFile(media, lookupSignal);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "not_a_video") {
       return Response.json({ error: "not_a_video" }, { status: 422 });
     }
-    if (msg === "no_source_file") {
+    if (message === "no_source_file") {
       return Response.json({ error: "no_source_file" }, { status: 422 });
     }
-    console.error("[publish] instagram import lookup failed", e);
+    if ((error as { name?: string }).name === "TimeoutError") {
+      return Response.json({ error: "import_timeout" }, { status: 504 });
+    }
+    console.error("[publish] instagram import lookup failed", error);
     return Response.json({ error: "import_failed" }, { status: 502 });
   }
 
-  const fileRes = await fetch(sourceFileUrl);
-  if (!fileRes.ok) {
+  let clip: Awaited<ReturnType<typeof downloadInstagramClip>>;
+  try {
+    clip = await downloadInstagramClip(sourceFileUrl, { signal: deadline });
+  } catch (error) {
+    if (error instanceof InstagramClipTooLargeError) {
+      return Response.json({ error: "clip_too_large" }, { status: 413 });
+    }
+    if (error instanceof InstagramDownloadTimeoutError) {
+      return Response.json({ error: "download_timeout" }, { status: 504 });
+    }
     return Response.json({ error: "download_failed" }, { status: 502 });
   }
-  const bytes = await fileRes.arrayBuffer();
-  const key = mediaKey(userId, `ig-${mediaId}`, "mp4");
-  await putObjectBytes(key, bytes, "video/mp4");
-  await recordImportedMedia(userId, "instagram", mediaId, key, media.title);
 
-  return Response.json({ mediaKey: key, title: media.title });
+  const key = importAttemptKey(userId);
+  try {
+    await putObjectFile(
+      key,
+      clip.filePath,
+      clip.byteLength,
+      clip.contentType,
+      deadline,
+    );
+  } catch (error) {
+    await deleteAttempt(key);
+    console.error("[publish] instagram import upload failed", error);
+    return Response.json({ error: "storage_unavailable" }, { status: 502 });
+  } finally {
+    await clip.cleanup().catch((error) => {
+      console.error("[publish] instagram temp cleanup failed", error);
+    });
+  }
+
+  try {
+    const registration = await registerImportedMedia(
+      userId,
+      PLATFORM,
+      mediaId,
+      key,
+      clip.byteLength,
+      media.title,
+      quotaBytes,
+    );
+    if (registration.kind === "existing") await deleteAttempt(key);
+    return importedResponse(registration);
+  } catch (error) {
+    if (error instanceof ImportedMediaQuotaError) {
+      await deleteAttempt(key);
+      return Response.json({ error: "storage_full" }, { status: 402 });
+    }
+
+    // A connection can fail after PostgreSQL committed. Read the unique row
+    // back before cleanup: delete only when a successful reconciliation proves
+    // this exact attempt did not become durable. If the read also fails, retain
+    // the unique object for a lifecycle/reconciliation sweep rather than break
+    // a row that may have committed.
+    try {
+      const durable = await importedMediaForPost(userId, PLATFORM, mediaId);
+      if (durable?.mediaKey === key) return importedResponse(durable);
+      await deleteAttempt(key);
+      if (durable) return importedResponse(durable);
+    } catch (reconciliationError) {
+      console.error(
+        "[publish] instagram import commit reconciliation failed",
+        reconciliationError,
+      );
+    }
+    console.error("[publish] instagram import registration failed", error);
+    return Response.json({ error: "import_failed" }, { status: 502 });
+  }
 }

@@ -572,6 +572,10 @@ export const importedPlatformMedia = pgTable(
     /** The platform's own id for the post the file came from. */
     externalPostId: text("external_post_id").notNull(),
     mediaKey: text("media_key").notNull(),
+    /** Actual object size at registration time. Imported media participates in
+     * the same storage counter as recordings, so every durable reference keeps
+     * the byte value needed for deletion and reconciliation. */
+    mediaBytes: bigint("media_bytes", { mode: "number" }).notNull().default(0),
     title: text("title"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

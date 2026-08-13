@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DbTx } from "./client";
-import { countMediaOnceWithinTx } from "./storage-accounting";
+import {
+  countMediaOnceWithinTx,
+  StorageQuotaError,
+} from "./storage-accounting";
 
 const events: string[] = [];
 const execute = vi.fn(async () => {
@@ -38,10 +41,11 @@ describe("countMediaOnceWithinTx", () => {
       "user_test/clip.webm",
       128,
       "submission_test",
+      1_000,
     );
 
-    expect(events).toEqual(["lock", "lookup", "increment"]);
-    expect(execute).toHaveBeenCalledOnce();
+    expect(events).toEqual(["lock", "lock", "lookup", "lookup", "increment"]);
+    expect(execute).toHaveBeenCalledTimes(2);
     expect(update).toHaveBeenCalledOnce();
   });
 
@@ -57,10 +61,54 @@ describe("countMediaOnceWithinTx", () => {
       "user_test/clip.webm",
       128,
       "submission_test",
+      1_000,
     );
 
-    expect(events).toEqual(["lock", "lookup"]);
+    expect(events).toEqual(["lock", "lock", "lookup"]);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not increment when an imported-media row already counted the object", async () => {
+    let lookup = 0;
+    limit.mockImplementation(async () => {
+      events.push("lookup");
+      lookup += 1;
+      return lookup === 2 ? [{ id: "import_existing", mediaBytes: 128 }] : [];
+    });
+
+    await countMediaOnceWithinTx(
+      tx,
+      "user_test",
+      "user_test/imported.mp4",
+      128,
+      "submission_test",
+      1_000,
+    );
+
+    expect(events).toEqual(["lock", "lock", "lookup", "lookup"]);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("claims and marks a legacy zero-byte import when no submission counted it", async () => {
+    let lookup = 0;
+    limit.mockImplementation(async () => {
+      events.push("lookup");
+      lookup += 1;
+      return lookup === 2 ? [{ id: "import_legacy", mediaBytes: 0 }] : [];
+    });
+
+    await countMediaOnceWithinTx(
+      tx,
+      "user_test",
+      "user_test/imported.mp4",
+      128,
+      "submission_test",
+      1_000,
+    );
+
+    expect(events).toEqual(["lock", "lock", "lookup", "lookup", "increment"]);
+    expect(update).toHaveBeenCalledTimes(2);
+    expect(set).toHaveBeenLastCalledWith({ mediaBytes: 128 });
   });
 
   it("does no database work for an empty object", async () => {
@@ -70,6 +118,7 @@ describe("countMediaOnceWithinTx", () => {
       "user_test/empty.webm",
       0,
       "submission_test",
+      1_000,
     );
 
     expect(execute).not.toHaveBeenCalled();
@@ -87,7 +136,8 @@ describe("countMediaOnceWithinTx", () => {
         "missing_user/clip.webm",
         128,
         "submission_test",
+        1_000,
       ),
-    ).rejects.toThrow("user not found");
+    ).rejects.toBeInstanceOf(StorageQuotaError);
   });
 });
