@@ -1,5 +1,13 @@
 import { projectContextSection } from "@/lib/content/project-context";
 import type { SpinCombination } from "@/lib/brain/reels";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 600;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 /**
  * One idea, dealt by the slot machine.
@@ -83,7 +91,10 @@ export function parseSpunIdea(
   };
 }
 
-export async function spinIdea(input: SpinInput): Promise<SpunIdea> {
+export async function spinIdea(
+  input: SpinInput,
+  signal?: AbortSignal,
+): Promise<SpunIdea> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
@@ -111,31 +122,39 @@ export async function spinIdea(input: SpinInput): Promise<SpunIdea> {
     .filter(Boolean)
     .join("\n\n");
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        // High, on purpose: the reels already fixed what the idea is about, so
+        // the spread here buys variety in the writing rather than in the topic.
+        temperature: 0.95,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM + projectContextSection(input.context ?? ""),
+          },
+          { role: "user", content: userMsg },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      // High, on purpose: the reels already fixed what the idea is about, so
-      // the spread here buys variety in the writing rather than in the topic.
-      temperature: 0.95,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM + projectContextSection(input.context ?? ""),
-        },
-        { role: "user", content: userMsg },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`spin_${res.status}`);
-  const json = await res.json();
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`spin_${response.status}`);
   return parseSpunIdea(
-    json?.choices?.[0]?.message?.content ?? "{}",
+    data.choices?.[0]?.message?.content ?? "{}",
     combination,
     input.pillars,
   );

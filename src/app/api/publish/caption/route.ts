@@ -91,18 +91,21 @@ export async function POST(req: Request): Promise<Response> {
     : undefined;
 
   try {
-    const captions = await generateCaptions({
-      title,
-      context: (await getProjectContextSafe(userId)).block,
-      hook,
-      script,
-      // The item's own words win; the client's free-text context is the
-      // fallback for a video with no library row behind it.
-      originalNote: originalNote ?? str(body.context, 2000),
-      pillar,
-      platforms,
-      styleSamples,
-    });
+    const captions = await generateCaptions(
+      {
+        title,
+        context: (await getProjectContextSafe(userId)).block,
+        hook,
+        script,
+        // The item's own words win; the client's free-text context is the
+        // fallback for a video with no library row behind it.
+        originalNote: originalNote ?? str(body.context, 2000),
+        pillar,
+        platforms,
+        styleSamples,
+      },
+      req.signal,
+    );
     return Response.json({ captions, balance: reservation.balance });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "generate_failed";

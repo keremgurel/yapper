@@ -68,12 +68,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { reservation } = access;
 
   try {
-    const idea = await spinIdea({
-      combination,
-      context: context.block,
-      pillars,
-      avoid: recentTitles(items.map((item) => item.title ?? "")),
-    });
+    const idea = await spinIdea(
+      {
+        combination,
+        context: context.block,
+        pillars,
+        avoid: recentTitles(items.map((item) => item.title ?? "")),
+      },
+      req.signal,
+    );
     return Response.json({ idea });
   } catch (error) {
     await refundCreditReservation(userId, reservation, "spin_failed");

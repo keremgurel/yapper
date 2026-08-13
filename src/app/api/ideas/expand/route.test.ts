@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   getProjectContextSafe: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
+  expandIdea: vi.fn(),
+  preflight: vi.fn(),
+  reserve: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
@@ -16,11 +19,11 @@ vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderSpend: mocks.guardProviderSpend,
 }));
 vi.mock("@/lib/billing/actions", () => ({
-  preflightPaidActionOrResponse: vi.fn(),
+  preflightPaidActionOrResponse: mocks.preflight,
   refundCreditReservation: vi.fn(),
-  reservePaidActionOrResponse: vi.fn(),
+  reservePaidActionOrResponse: mocks.reserve,
 }));
-vi.mock("@/lib/ideas/expand", () => ({ expandIdea: vi.fn() }));
+vi.mock("@/lib/ideas/expand", () => ({ expandIdea: mocks.expandIdea }));
 
 import { POST } from "./route";
 
@@ -36,6 +39,15 @@ beforeEach(() => {
   vi.stubEnv("SURPLUS_API_KEY", "test_key");
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.guardProviderIngress.mockResolvedValue(null);
+  mocks.preflight.mockResolvedValue(null);
+  mocks.reserve.mockResolvedValue({
+    reservation: {
+      action: "expand_idea",
+      cost: 2,
+      balance: 8,
+      usageId: "usage_test",
+    },
+  });
 });
 
 describe("POST /api/ideas/expand payload limits", () => {
@@ -79,5 +91,24 @@ describe("POST /api/ideas/expand payload limits", () => {
     );
     expect(response.status).toBe(413);
     expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
+  });
+
+  it("passes the request abort signal into expansion provider work", async () => {
+    mocks.getProjectContextSafe.mockResolvedValue({
+      block: "",
+      pillarNames: [],
+    });
+    mocks.guardProviderSpend.mockResolvedValue(null);
+    mocks.expandIdea.mockResolvedValue({ title: "Idea", pillar: null });
+    const response = await POST(
+      request({ input: { transcript: "A bounded idea" } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.expandIdea).toHaveBeenCalledWith(
+      expect.objectContaining({ transcript: "A bounded idea" }),
+      expect.objectContaining({ block: "" }),
+      expect.any(AbortSignal),
+    );
   });
 });

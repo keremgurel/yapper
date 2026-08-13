@@ -6,6 +6,14 @@ import {
 } from "@/lib/publish/caption-prompt";
 import { captionSpec } from "@/lib/publish/caption-specs";
 import type { PublishPlatform } from "@/lib/db/schema";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 3_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export type { CaptionInput, PlatformCaption };
 
@@ -15,6 +23,7 @@ export type { CaptionInput, PlatformCaption };
  */
 export async function generateCaptions(
   input: CaptionInput,
+  signal?: AbortSignal,
 ): Promise<PlatformCaption[]> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
@@ -27,25 +36,33 @@ export async function generateCaptions(
     : ["youtube"];
   const { system, user } = buildCaptionMessages({ ...input, platforms });
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.8,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.8,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`caption_${res.status}`);
-  const json = await res.json();
-  return parseCaptions(json?.choices?.[0]?.message?.content ?? "{}", platforms);
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`caption_${response.status}`);
+  return parseCaptions(data.choices?.[0]?.message?.content ?? "{}", platforms);
 }
 
 /**

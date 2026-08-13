@@ -1,5 +1,13 @@
 import { projectContextSection } from "@/lib/content/project-context";
 import type { ContentBlock } from "@/lib/db/schema";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 800;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export interface ScriptInput {
   /** The creator's compiled standing context. */
@@ -39,7 +47,10 @@ function parseScript(content: string): string {
 /** Generate a full spoken-word script from an idea via the Surplus gateway.
  * This is the "expensive side" of generation (long output) — a separate,
  * opt-in call from idea generation, so users only pay for it when they want it. */
-export async function generateScript(input: ScriptInput): Promise<string> {
+export async function generateScript(
+  input: ScriptInput,
+  signal?: AbortSignal,
+): Promise<string> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
@@ -65,29 +76,37 @@ export async function generateScript(input: ScriptInput): Promise<string> {
   ].filter(Boolean);
   if (parts.length === 0) throw new Error("no_input");
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.7,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM + projectContextSection(input.context ?? ""),
+          },
+          {
+            role: "user",
+            content: `${parts.join("\n\n")}\n\nWrite the script.`,
+          },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.7,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM + projectContextSection(input.context ?? ""),
-        },
-        {
-          role: "user",
-          content: `${parts.join("\n\n")}\n\nWrite the script.`,
-        },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`generate_${res.status}`);
-  const json = await res.json();
-  return parseScript(json?.choices?.[0]?.message?.content ?? "{}");
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`generate_${response.status}`);
+  return parseScript(data.choices?.[0]?.message?.content ?? "{}");
 }

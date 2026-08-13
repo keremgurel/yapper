@@ -1,6 +1,14 @@
 import { projectContextSection } from "@/lib/content/project-context";
 import { hookPattern, hookPatternBlock } from "@/lib/content/hook-patterns";
 import type { ContentBlock, ContentHook } from "@/lib/db/schema";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 900;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export interface HooksInput {
   /** The creator's compiled standing context. */
@@ -112,7 +120,10 @@ export function parseHooks(
 }
 
 /** Generate tagged hook variations via the Surplus gateway. */
-export async function generateHooks(input: HooksInput): Promise<ContentHook[]> {
+export async function generateHooks(
+  input: HooksInput,
+  signal?: AbortSignal,
+): Promise<ContentHook[]> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   if (!input.title?.trim() && !input.originalNote?.trim()) {
@@ -123,28 +134,36 @@ export async function generateHooks(input: HooksInput): Promise<ContentHook[]> {
   const model = process.env.GENERATE_MODEL ?? "gpt-5.4-mini";
 
   const { system, user } = buildHooksMessages(input);
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        // Higher than the other calls: hooks should vary between runs, because
+        // "give me three more" is the whole interaction.
+        temperature: 0.9,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      // Higher than the other calls: hooks should vary between runs, because
-      // "give me three more" is the whole interaction.
-      temperature: 0.9,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`generate_${res.status}`);
-  const json = await res.json();
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`generate_${response.status}`);
   return parseHooks(
-    json?.choices?.[0]?.message?.content ?? "{}",
+    data.choices?.[0]?.message?.content ?? "{}",
     input.patternId ?? null,
   );
 }

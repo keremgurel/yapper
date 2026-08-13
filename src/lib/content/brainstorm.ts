@@ -1,4 +1,12 @@
 import { projectContextSection } from "@/lib/content/project-context";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 1_500;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 /** The conversational "make your own banger from this clip" assistant. Each
  * reply is metered by the API route. Non-streaming for simplicity. */
@@ -71,7 +79,10 @@ function clipBlock(clip: ClipContext): string {
     .join("\n");
 }
 
-export async function brainstorm(input: BrainstormInput): Promise<string> {
+export async function brainstorm(
+  input: BrainstormInput,
+  signal?: AbortSignal,
+): Promise<string> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
@@ -90,28 +101,36 @@ export async function brainstorm(input: BrainstormInput): Promise<string> {
     .slice(-12)
     .map((m) => ({ role: m.role, content: m.content.slice(0, 4000) }));
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.8,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        messages: [
+          { role: "system", content: system },
+          {
+            role: "user",
+            content: `${clipBlock(input.clip)}${pillarsLine}`,
+          },
+          ...history,
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.8,
-      messages: [
-        { role: "system", content: system },
-        {
-          role: "user",
-          content: `${clipBlock(input.clip)}${pillarsLine}`,
-        },
-        ...history,
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`brainstorm_${res.status}`);
-  const json = await res.json();
-  const reply = json?.choices?.[0]?.message?.content;
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`brainstorm_${response.status}`);
+  const reply = data.choices?.[0]?.message?.content;
   if (typeof reply !== "string" || !reply.trim()) {
     throw new Error("brainstorm_empty");
   }

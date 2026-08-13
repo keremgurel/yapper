@@ -54,7 +54,10 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { reservation } = access;
 
   try {
-    const idea = await captureIdea({ text, pillars, context: context.block });
+    const idea = await captureIdea(
+      { text, pillars, context: context.block },
+      req.signal,
+    );
     const item = await createContentItem(userId, {
       title: idea.title,
       // The capture prompt returns bare hook lines; they carry no pattern

@@ -146,7 +146,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let result: FeedbackResult;
   try {
-    result = await runTier(tier, audio, mediaKey, mimeType);
+    result = await runTier(tier, audio, mediaKey, mimeType, req.signal);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
     await markSubmissionFailed(db, submission.id, userId, detail);
@@ -259,9 +259,10 @@ async function runTier(
   audio: ArrayBuffer,
   mediaKey: string | undefined,
   mimeType: string,
+  signal: AbortSignal,
 ): Promise<FeedbackResult> {
   if (tier === "audio") {
-    const r = await runAudioFeedback(audio);
+    const r = await runAudioFeedback(audio, signal);
     return { metrics: r.metrics, coaching: r.coaching, words: r.words };
   }
   // video + full: pull the clip from R2 (server-side, no browser CORS), push it

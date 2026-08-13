@@ -80,7 +80,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let hooks;
   try {
-    hooks = await generateHooks(input);
+    hooks = await generateHooks(input, req.signal);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "generate_failed";
     const status = detail === "no_input" ? 400 : 502;

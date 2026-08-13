@@ -1,4 +1,12 @@
 import { projectContextSection } from "@/lib/content/project-context";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 35_000;
+const MAX_COMPLETION_TOKENS = 1_500;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 export interface AskMessage {
   role: "user" | "assistant";
@@ -94,7 +102,10 @@ export function parseAskReply(content: string): AskReply {
   return { reply, suggestions };
 }
 
-export async function askBrain(input: AskInput): Promise<AskReply> {
+export async function askBrain(
+  input: AskInput,
+  signal?: AbortSignal,
+): Promise<AskReply> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
   const base =
@@ -106,26 +117,34 @@ export async function askBrain(input: AskInput): Promise<AskReply> {
     content: message.content.slice(0, 4000),
   }));
 
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.6,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM + projectContextSection(input.context ?? ""),
+          },
+          ...history,
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.6,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM + projectContextSection(input.context ?? ""),
-        },
-        ...history,
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`ask_${res.status}`);
-  const json = await res.json();
-  return parseAskReply(json?.choices?.[0]?.message?.content ?? "{}");
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal,
+    },
+  );
+  if (!response.ok) throw new Error(`ask_${response.status}`);
+  return parseAskReply(data.choices?.[0]?.message?.content ?? "{}");
 }

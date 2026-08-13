@@ -13,6 +13,7 @@ import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
+import { fetchBoundedJson } from "@/lib/http/outbound";
 import {
   readBoundedJson,
   requestBodyErrorResponse,
@@ -21,6 +22,13 @@ import { parseOverlayInput } from "@/lib/studio/overlay-input";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
+const PROVIDER_TIMEOUT_MS = 30_000;
+const MAX_COMPLETION_TOKENS = 2_500;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 const MAX_JSON_BYTES = 256 * 1024;
 
 const SYSTEM =
@@ -240,29 +248,36 @@ export async function POST(req: Request): Promise<Response> {
   const access = await reservePaidActionOrResponse(userId, "place_overlays");
   if (access.response) return access.response;
   const { reservation } = access;
-
   try {
-    const res = await fetch(`${base}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
+    const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+      `${base}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          temperature: 0,
+          max_completion_tokens: MAX_COMPLETION_TOKENS,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: SYSTEM },
+            { role: "user", content: user },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: SYSTEM },
-          { role: "user", content: user },
-        ],
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(`ai_${res.status}`);
+      {
+        timeoutMs: PROVIDER_TIMEOUT_MS,
+        maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+        signal: req.signal,
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`ai_${response.status}`);
     }
-    const json = await res.json();
-    const reply: string = json?.choices?.[0]?.message?.content ?? "";
+    const reply = data.choices?.[0]?.message?.content ?? "";
     return Response.json({
       placements: parsePlacements(reply),
       sounds: parseSounds(reply, effects?.map((e) => e.id) ?? []),

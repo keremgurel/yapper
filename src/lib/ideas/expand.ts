@@ -6,6 +6,15 @@ import {
   type PromptContext,
 } from "@/lib/ideas/expand-prompt";
 import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const PROVIDER_TIMEOUT_MS = 45_000;
+const MAX_COMPLETION_TOKENS = 3_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+
+interface ChatCompletionResponse {
+  choices?: { message?: { content?: string } }[];
+}
 
 /**
  * Turn a raw idea into an adaptive reference dossier via the AI provider.
@@ -19,6 +28,7 @@ import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
 export async function expandIdea(
   input: IdeaInput,
   context: PromptContext = EMPTY_PROMPT_CONTEXT,
+  requestSignal?: AbortSignal,
 ): Promise<IdeaExpansion> {
   const key = process.env.SURPLUS_API_KEY;
   if (!key) throw new Error("no_provider");
@@ -29,25 +39,32 @@ export async function expandIdea(
 
   const type = deriveIdeaType(input);
   const { system, user } = buildExpandMessages(input, type, context);
-
-  const res = await fetch(`${base}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+    `${base}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.5,
+        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.5,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-  if (!res.ok) throw new Error(`expand_${res.status}`);
-  const json = await res.json();
-  const content: string = json?.choices?.[0]?.message?.content ?? "";
+    {
+      timeoutMs: PROVIDER_TIMEOUT_MS,
+      maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+      signal: requestSignal,
+    },
+  );
+  if (!response.ok) throw new Error(`expand_${response.status}`);
+  const content = data.choices?.[0]?.message?.content ?? "";
   const parsed = parseExpansion(content);
   if (!parsed) throw new Error("expand_unparseable");
   return parsed;
