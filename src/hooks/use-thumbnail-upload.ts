@@ -11,7 +11,12 @@ export async function uploadThumbnailFile(
   const presign = await fetch("/api/media/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sizeBytes: file.size, mimeType, ext }),
+    body: JSON.stringify({
+      sizeBytes: file.size,
+      mimeType,
+      ext,
+      purpose: "thumbnail",
+    }),
   });
   if (!presign.ok) throw new Error("failed");
   const { url, key } = (await presign.json()) as {

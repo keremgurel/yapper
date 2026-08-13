@@ -1,4 +1,5 @@
 import { getOwnedMediaKey } from "@/lib/db/submissions";
+import { isActiveR2Object } from "@/lib/db/r2-lifecycle";
 import { ownsKey } from "@/lib/r2";
 
 /**
@@ -21,6 +22,9 @@ export async function resolveOwnedMediaKey(
   if (!mediaKey) return { ok: false, error: "media_not_found", status: 404 };
   if (!ownsKey(userId, mediaKey)) {
     return { ok: false, error: "forbidden", status: 403 };
+  }
+  if (!(await isActiveR2Object(userId, mediaKey))) {
+    return { ok: false, error: "media_unavailable", status: 409 };
   }
   return { ok: true, mediaKey };
 }

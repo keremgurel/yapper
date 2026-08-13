@@ -31,7 +31,12 @@ export function useAddVideo(onAdded: (item: ContentDetail) => void) {
       const presign = await fetch("/api/media/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sizeBytes: file.size, mimeType, ext }),
+        body: JSON.stringify({
+          sizeBytes: file.size,
+          mimeType,
+          ext,
+          purpose: "recording",
+        }),
       });
       if (presign.status === 402) throw new Error("storage_full");
       if (!presign.ok) throw new Error("failed");

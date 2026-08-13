@@ -1,24 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { importedPlatformMedia, submissions } from "./schema";
+import { users } from "./schema";
 
-const deleteObject = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/r2", () => ({ deleteObject }));
+const enqueueAllUserObjectsWithinTx = vi.hoisted(() => vi.fn());
+vi.mock("./r2-lifecycle", () => ({ enqueueAllUserObjectsWithinTx }));
 
 const select = vi.fn(() => ({
   from: (table: unknown) => ({
     where: vi.fn(() => {
-      const rows =
-        table === submissions
-          ? [
-              { key: "u/user_test/shared.mp4" },
-              { key: "u/user_test/submission.mp4" },
-            ]
-          : table === importedPlatformMedia
-            ? [
-                { key: "u/user_test/shared.mp4" },
-                { key: "u/user_test/imported.mp4" },
-              ]
-            : [{ id: "user_test" }];
+      const rows = table === users ? [{ id: "user_test" }] : [];
       return {
         for: vi.fn(() => ({ limit: vi.fn(async () => rows) })),
         then: (resolve: (value: unknown[]) => unknown) => resolve(rows),
@@ -41,18 +30,27 @@ import { deleteUser } from "./users";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  deleteObject.mockResolvedValue(undefined);
+  enqueueAllUserObjectsWithinTx.mockResolvedValue(undefined);
 });
 
-describe("deleteUser imported media cleanup", () => {
-  it("deletes imported and submission objects once before rows cascade", async () => {
+describe("deleteUser object lifecycle cleanup", () => {
+  it("durably enqueues all account objects before rows cascade", async () => {
     await deleteUser("user_test");
 
-    expect(deleteObject.mock.calls.map(([key]) => key).sort()).toEqual([
-      "u/user_test/imported.mp4",
-      "u/user_test/shared.mp4",
-      "u/user_test/submission.mp4",
-    ]);
+    expect(enqueueAllUserObjectsWithinTx).toHaveBeenCalledWith(
+      expect.any(Object),
+      "user_test",
+      "account_deleted",
+    );
     expect(deleteFrom).toHaveBeenCalledOnce();
+  });
+
+  it("does not delete the account when cleanup enqueue fails", async () => {
+    enqueueAllUserObjectsWithinTx.mockRejectedValue(
+      new Error("enqueue_failed"),
+    );
+
+    await expect(deleteUser("user_test")).rejects.toThrow("enqueue_failed");
+    expect(deleteFrom).not.toHaveBeenCalled();
   });
 });

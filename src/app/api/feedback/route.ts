@@ -14,6 +14,10 @@ import {
   InsufficientCreditsError,
 } from "@/lib/db/credits";
 import { submissions } from "@/lib/db/schema";
+import {
+  activateObjectWithinTx,
+  protectPendingObject,
+} from "@/lib/db/r2-lifecycle";
 import { ensureUser } from "@/lib/db/users";
 import {
   countMediaOnceWithinTx,
@@ -83,6 +87,17 @@ export async function POST(req: NextRequest): Promise<Response> {
   if ((await getBalance(userId)) < cost) {
     return Response.json({ error: "insufficient_credits" }, { status: 402 });
   }
+  if (
+    mediaKey &&
+    !(await protectPendingObject(
+      userId,
+      mediaKey,
+      "recording",
+      new Date(Date.now() + 10 * 60 * 1_000),
+    ))
+  ) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
+  }
 
   const db = getDb();
   const [submission] = await db
@@ -113,6 +128,13 @@ export async function POST(req: NextRequest): Promise<Response> {
         // All storage registration paths acquire the per-object advisory lock
         // before the user row. Keep this ordering ahead of the credit debit to
         // prevent an advisory-lock ↔ user-row deadlock.
+        await activateObjectWithinTx(
+          tx,
+          userId,
+          mediaKey,
+          result.mediaBytes,
+          "recording",
+        );
         await countMediaOnceWithinTx(
           tx,
           userId,

@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
+import { isActiveR2Object } from "@/lib/db/r2-lifecycle";
 import { ownsKey, presignView, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   const key = new URL(req.url).searchParams.get("key") ?? "";
   if (!key || !ownsKey(userId, key)) {
     return Response.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (!(await isActiveR2Object(userId, key))) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
   }
   const url = await presignView(key);
   return Response.json({ url });

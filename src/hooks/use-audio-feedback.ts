@@ -47,7 +47,12 @@ async function uploadVideo(
   const res = await fetch("/api/media/upload-url", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sizeBytes: blob.size, mimeType, ext }),
+    body: JSON.stringify({
+      sizeBytes: blob.size,
+      mimeType,
+      ext,
+      purpose: "recording",
+    }),
   });
   if (res.status === 402) throw new Error("storage_full");
   if (!res.ok) throw new Error("upload_start_failed");

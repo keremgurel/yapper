@@ -1,12 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { enqueueObjectDeletionWithinTx } from "@/lib/db/r2-lifecycle";
 import { importedPlatformMedia, submissions, users } from "@/lib/db/schema";
 import {
   lockMediaReferenceWithinTx,
   lockStorageUserWithinTx,
 } from "@/lib/db/storage-accounting";
-import { deleteObject } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
@@ -71,7 +71,7 @@ export async function DELETE(
       .delete(submissions)
       .where(and(eq(submissions.id, id), eq(submissions.userId, userId)));
 
-    if (!row.key) return { deleteKey: null };
+    if (!row.key) return { deleted: true };
     const [otherSubmission] = await tx
       .select({ id: submissions.id })
       .from(submissions)
@@ -96,7 +96,7 @@ export async function DELETE(
         ),
       )
       .limit(1);
-    if (otherSubmission) return { deleteKey: null };
+    if (otherSubmission) return { deleted: true };
     if (imported) {
       // Migration gives old import rows a zero byte count. When their last
       // submission disappears, transfer accounting ownership to the import row
@@ -108,7 +108,7 @@ export async function DELETE(
           .set({ mediaBytes: row.bytes })
           .where(eq(importedPlatformMedia.id, imported.id));
       }
-      return { deleteKey: null };
+      return { deleted: true };
     }
 
     if (row.bytes > 0) {
@@ -119,17 +119,15 @@ export async function DELETE(
         })
         .where(eq(users.id, userId));
     }
-    return { deleteKey: row.key };
+    await enqueueObjectDeletionWithinTx(
+      tx,
+      userId,
+      row.key,
+      "last_reference_removed",
+    );
+    return { deleted: true };
   });
   if (!outcome) return Response.json({ error: "not_found" }, { status: 404 });
-
-  if (outcome.deleteKey) {
-    try {
-      await deleteObject(outcome.deleteKey);
-    } catch {
-      // a lifecycle sweep can reclaim it later
-    }
-  }
 
   return Response.json({ ok: true });
 }

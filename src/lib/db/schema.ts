@@ -594,6 +594,79 @@ export const importedPlatformMedia = pgTable(
   ],
 );
 
+export const r2ObjectPurposes = ["recording", "import", "thumbnail"] as const;
+export type R2ObjectPurpose = (typeof r2ObjectPurposes)[number];
+
+export const r2ObjectStates = [
+  "pending_upload",
+  "active",
+  "delete_pending",
+  "deleting",
+  "deleted",
+] as const;
+export type R2ObjectState = (typeof r2ObjectStates)[number];
+
+/**
+ * Durable lifecycle state for every R2 object Yapper knows about.
+ *
+ * `userId` intentionally has no foreign key: account deletion removes the
+ * owner row before the asynchronous R2 delete is guaranteed to finish, and the
+ * deletion record must survive that cascade. `mediaKey` is the identity of the
+ * physical object and therefore the primary key rather than an incidental
+ * surrogate id.
+ */
+export const r2Objects = pgTable(
+  "r2_objects",
+  {
+    mediaKey: text("media_key").primaryKey(),
+    userId: text("user_id").notNull(),
+    purpose: text("purpose", { enum: r2ObjectPurposes }).notNull(),
+    state: text("state", { enum: r2ObjectStates }).notNull(),
+    mediaBytes: bigint("media_bytes", { mode: "number" }).notNull().default(0),
+    uploadExpiresAt: timestamp("upload_expires_at", { withTimezone: true }),
+    deleteNotBefore: timestamp("delete_not_before", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    deleteReason: text("delete_reason"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("r2_objects_state_attempt_idx").on(t.state, t.nextAttemptAt),
+    index("r2_objects_user_state_idx").on(t.userId, t.state),
+    check(
+      "r2_objects_purpose_check",
+      sql`${t.purpose} in ('recording','import','thumbnail')`,
+    ),
+    check(
+      "r2_objects_state_check",
+      sql`${t.state} in ('pending_upload','active','delete_pending','deleting','deleted')`,
+    ),
+    check("r2_objects_media_bytes_check", sql`${t.mediaBytes} >= 0`),
+    check("r2_objects_attempts_check", sql`${t.attempts} >= 0`),
+    check(
+      "r2_objects_lease_check",
+      sql`(${t.state} = 'deleting' and ${t.leaseToken} is not null and ${t.leaseExpiresAt} is not null) or (${t.state} <> 'deleting' and ${t.leaseToken} is null and ${t.leaseExpiresAt} is null)`,
+    ),
+    check(
+      "r2_objects_deleted_at_check",
+      sql`(${t.state} = 'deleted' and ${t.deletedAt} is not null) or (${t.state} <> 'deleted' and ${t.deletedAt} is null)`,
+    ),
+    check(
+      "r2_objects_upload_expiry_check",
+      sql`${t.state} <> 'pending_upload' or ${t.uploadExpiresAt} is not null`,
+    ),
+  ],
+);
+
 /** How a saved view renders its rows. */
 export const libraryViewKinds = ["table", "board"] as const;
 export type LibraryViewKind = (typeof libraryViewKinds)[number];

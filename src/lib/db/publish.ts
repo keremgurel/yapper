@@ -4,8 +4,13 @@ import { getDb } from "./client";
 import {
   platformConnections,
   publishJobs,
+  r2Objects,
   type PublishPlatform,
 } from "./schema";
+import {
+  lockMediaReferenceWithinTx,
+  lockStorageUserWithinTx,
+} from "./storage-accounting";
 
 /** The OAuth result to persist for a (user, platform), tokens still plaintext. */
 export interface ConnectionInput {
@@ -131,20 +136,44 @@ export async function createPublishJob(
     caption?: string | null;
     contentItemId?: string | null;
   },
-): Promise<string> {
-  const [row] = await getDb()
-    .insert(publishJobs)
-    .values({
-      userId,
-      platform: input.platform,
-      mediaKey: input.mediaKey,
-      status: "uploading",
-      title: input.title ?? null,
-      caption: input.caption ?? null,
-      contentItemId: input.contentItemId ?? null,
-    })
-    .returning({ id: publishJobs.id });
-  return row.id;
+): Promise<string | null> {
+  return getDb().transaction(async (tx) => {
+    await lockStorageUserWithinTx(tx, userId);
+    await lockMediaReferenceWithinTx(tx, userId, input.mediaKey);
+
+    const [object] = await tx
+      .select({ state: r2Objects.state })
+      .from(r2Objects)
+      .where(
+        and(
+          eq(r2Objects.mediaKey, input.mediaKey),
+          eq(r2Objects.userId, userId),
+        ),
+      )
+      .for("update")
+      .limit(1);
+    // `delete_pending` is still physically present. Keeping that state while
+    // the job is active lets the worker defer deletion and resume it as soon
+    // as the upload reaches a terminal state. Once a worker has claimed the
+    // object, no new platform upload may start.
+    if (!object || !["active", "delete_pending"].includes(object.state)) {
+      return null;
+    }
+
+    const [row] = await tx
+      .insert(publishJobs)
+      .values({
+        userId,
+        platform: input.platform,
+        mediaKey: input.mediaKey,
+        status: "uploading",
+        title: input.title ?? null,
+        caption: input.caption ?? null,
+        contentItemId: input.contentItemId ?? null,
+      })
+      .returning({ id: publishJobs.id });
+    return row.id;
+  });
 }
 
 export async function completePublishJob(
