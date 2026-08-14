@@ -14,8 +14,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed scopes
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.scopes.outputs.web }}
+      native: ${{ steps.scopes.outputs.native }}
+      postgres: ${{ steps.scopes.outputs.postgres }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Classify changed paths
+        id: scopes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if [[ "$BASE_SHA" =~ ^0+$ ]]; then
+            git diff-tree --no-commit-id --name-only -r "$HEAD_SHA" > "$RUNNER_TEMP/changed-files"
+          else
+            git diff --name-only "$BASE_SHA" "$HEAD_SHA" > "$RUNNER_TEMP/changed-files"
+          fi
+          node src/lib/ci/changed-scopes.mjs < "$RUNNER_TEMP/changed-files" >> "$GITHUB_OUTPUT"
+
   quality:
     name: Web
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -39,6 +70,8 @@ jobs:
       - run: npm run build
 
   native-macos:
+    needs: changes
+    if: needs.changes.outputs.native == 'true'
     runs-on: macos-26
     timeout-minutes: 20
     defaults:
@@ -58,6 +91,8 @@ jobs:
 
   postgres-integration:
     name: PostgreSQL integration
+    needs: changes
+    if: needs.changes.outputs.postgres == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
