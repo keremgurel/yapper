@@ -47,4 +47,22 @@ struct EditorHistory: Sendable {
         undoStack.removeAll(keepingCapacity: true)
         redoStack.removeAll(keepingCapacity: true)
     }
+
+    /// Recovery changes where an identity lives, not the edit itself. Carry
+    /// that new location through both stacks so older creative edits remain
+    /// undoable without resurrecting an offline path.
+    mutating func rewriteMedia(_ replacements: [UUID: ProjectMedia]) {
+        guard !replacements.isEmpty else { return }
+        func rewritten(_ snapshot: EditorProject) -> EditorProject {
+            var result = snapshot
+            for index in result.media.indices {
+                if let replacement = replacements[result.media[index].id] {
+                    result.media[index] = replacement
+                }
+            }
+            return result
+        }
+        undoStack = undoStack.map(rewritten)
+        redoStack = redoStack.map(rewritten)
+    }
 }

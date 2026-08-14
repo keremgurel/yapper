@@ -109,7 +109,6 @@ extension EditorSession {
         if let existing = project.media.first(where: { $0.url == url }) { return existing }
         let media = try await MediaProbe.inspect(url: url)
         updateProject { $0.media.append(media) }
-        restartDerivedMedia(for: media)
         return media
     }
 
