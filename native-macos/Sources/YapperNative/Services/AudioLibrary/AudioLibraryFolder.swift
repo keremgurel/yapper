@@ -15,6 +15,22 @@ enum AudioLibraryFolder {
         directory.appending(path: "index.json")
     }
 
+    static var importCandidateURL: URL {
+        directory.appending(path: "import-candidate.json")
+    }
+
+    static var stagingDirectory: URL {
+        directory.appending(path: ".staging", directoryHint: .isDirectory)
+    }
+
+    static var trashDirectory: URL {
+        directory.appending(path: ".trash", directoryHint: .isDirectory)
+    }
+
+    static var recoveredDirectory: URL {
+        directory.appending(path: "Recovered", directoryHint: .isDirectory)
+    }
+
     static func fileURL(named fileName: String) -> URL {
         directory.appending(path: fileName)
     }
@@ -31,5 +47,29 @@ enum AudioLibraryFolder {
             withIntermediateDirectories: true
         )
         return directory
+    }
+
+    static func ensureTransactionDirectories() {
+        _ = ensureExists()
+        try? FileManager.default.createDirectory(
+            at: stagingDirectory,
+            withIntermediateDirectories: true
+        )
+        try? FileManager.default.createDirectory(
+            at: trashDirectory,
+            withIntermediateDirectories: true
+        )
+        try? FileManager.default.createDirectory(
+            at: recoveredDirectory,
+            withIntermediateDirectories: true
+        )
+    }
+
+    static func stagedURL(fileName: String, id: UUID = UUID()) -> URL {
+        stagingDirectory.appending(path: "\(id.uuidString)--\(fileName)")
+    }
+
+    static func tombstoneURL(for item: SavedAudio) -> URL {
+        trashDirectory.appending(path: "\(item.id.uuidString)--\(item.fileName)")
     }
 }
