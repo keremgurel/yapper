@@ -6,11 +6,12 @@ import {
   parseSounds,
   parseTexts,
   placementsToSpans,
+  type OverlayPlanClip,
+  type OverlayPlanWord,
 } from "@/lib/studio/overlay-plan";
-import type { Clip, Word } from "@/lib/studio/types";
 
 /** One word per second, so a span's seconds read straight off its indices. */
-const transcribe = (text: string): Word[] =>
+const transcribe = (text: string): OverlayPlanWord[] =>
   text
     .split(" ")
     .map((t, i) => ({ id: `w-${i}`, text: t, start: i, end: i + 1 }));
@@ -281,7 +282,7 @@ describe("keptWords", () => {
 
   it("keeps the words a viewer would still hear", () => {
     // The clip keeps 1..3, so words two and three survive.
-    const clips: Clip[] = [{ id: "a", start: 1, end: 3 }];
+    const clips: OverlayPlanClip[] = [{ start: 1, end: 3 }];
     expect(keptWords(spoken, clips).map((w) => w.text)).toEqual([
       "two",
       "three",
@@ -289,9 +290,9 @@ describe("keptWords", () => {
   });
 
   it("keeps words from every clip, in transcript order", () => {
-    const clips: Clip[] = [
-      { id: "a", start: 0, end: 1 },
-      { id: "b", start: 3, end: 5 },
+    const clips: OverlayPlanClip[] = [
+      { start: 0, end: 1 },
+      { start: 3, end: 5 },
     ];
     expect(keptWords(spoken, clips).map((w) => w.text)).toEqual([
       "one",
@@ -301,8 +302,7 @@ describe("keptWords", () => {
   });
 
   it("does not count an appended clip's own seconds as the recording's", () => {
-    const appended: Clip = {
-      id: "b",
+    const appended: OverlayPlanClip = {
       start: 0,
       end: 5,
       src: { url: "b.mp4", kind: "video", name: "b.mp4", duration: 9 },

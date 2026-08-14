@@ -128,17 +128,17 @@ export default function ItemCell({
       );
 
     case "actions":
-      // Only a row with a recording can be edited or posted; the rest of the
-      // pipeline has nothing to act on yet.
+      // Only a row with a recording can be opened in the native editor or
+      // posted; the rest of the pipeline has nothing to act on yet.
       if (!row.submissionId) return null;
       return (
         <span className="flex items-center gap-1 justify-self-end">
           <Link
-            href={`/studio/editor?item=${row.id}`}
+            href="/studio/editor"
             onClick={(e) => e.stopPropagation()}
             className="text-muted-foreground hover:text-foreground block p-1"
-            title="Edit this recording"
-            aria-label="Edit this recording"
+            title="Open the native editor"
+            aria-label="Open the native editor"
           >
             <Film className="h-4 w-4" />
           </Link>

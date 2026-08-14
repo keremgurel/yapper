@@ -21,12 +21,7 @@ function toError(e: unknown): CrossPostError {
   return "failed";
 }
 
-/**
- * The post state machine behind a compose body. Platform-agnostic: the caller
- * passes a thunk that performs the actual post (crossPostToYouTube,
- * crossPostToInstagram, ...), so each per-platform body reuses this without
- * this hook knowing any platform specifics.
- */
+/** Shared state machine for the active per-platform publish forms. */
 export function useCrossPost() {
   const [state, setState] = useState<CrossPostState>("idle");
   const [error, setError] = useState<CrossPostError | null>(null);

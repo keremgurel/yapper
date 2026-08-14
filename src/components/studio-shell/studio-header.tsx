@@ -3,35 +3,15 @@
 import { useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Show } from "@clerk/nextjs";
-import {
-  ChevronDown,
-  Columns2,
-  Expand,
-  LayoutPanelTop,
-  Moon,
-  RotateCcw,
-  Sun,
-} from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { studioNav } from "@/data/studio-nav";
-import { useOptionalEditorLayout } from "@/components/studio/editor-layout-context";
 import UserMenu from "@/components/account/user-menu";
 import BillingStatusButton from "@/components/billing/billing-status-button";
 import ProjectBrainButton from "@/components/project/project-brain-button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 function currentTitle(pathname: string): string {
   const match = studioNav.find(
@@ -40,11 +20,11 @@ function currentTitle(pathname: string): string {
   return match?.title ?? "Studio";
 }
 
-/** Universal app header: navigation context on the left, persistent display
- * controls on the right, plus editor-only workspace presets when available. */
+/** Universal app header: navigation context on the left and persistent
+ * account/display controls on the right. Video editing lives in the native
+ * app, so the web shell never carries editor workspace state. */
 export default function StudioHeader() {
   const pathname = usePathname();
-  const editorLayout = useOptionalEditorLayout();
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(
     () => () => undefined,
@@ -52,12 +32,6 @@ export default function StudioHeader() {
     () => false,
   );
   const dark = mounted && resolvedTheme === "dark";
-  const layoutLabel =
-    editorLayout?.mode === "focus"
-      ? "Preview only"
-      : editorLayout?.mode === "cinema"
-        ? "Tall preview"
-        : "Standard layout";
 
   return (
     <div className="bg-background/80 sticky top-[var(--site-header,3.5rem)] z-20 flex h-12 shrink-0 items-center gap-2 border-b px-4 backdrop-blur-md">
@@ -70,55 +44,6 @@ export default function StudioHeader() {
         {currentTitle(pathname)}
       </span>
       <div className="ml-auto flex items-center gap-1.5">
-        {editorLayout && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-label="Editor layout"
-                title={`Editor layout: ${layoutLabel}`}
-                className="text-muted-foreground hover:text-foreground h-8 gap-1.5 px-2.5"
-              >
-                {editorLayout.mode === "focus" ? (
-                  <Expand className="h-4 w-4" />
-                ) : editorLayout.mode === "cinema" ? (
-                  <Columns2 className="h-4 w-4" />
-                ) : (
-                  <LayoutPanelTop className="h-4 w-4" />
-                )}
-                <span className="hidden text-xs font-semibold lg:inline">
-                  {layoutLabel}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Workspace</DropdownMenuLabel>
-              <DropdownMenuRadioGroup
-                value={editorLayout.mode}
-                onValueChange={(value) =>
-                  editorLayout.setMode(value as typeof editorLayout.mode)
-                }
-              >
-                <DropdownMenuRadioItem value="classic">
-                  <LayoutPanelTop /> Standard · preview above timeline
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="cinema">
-                  <Columns2 /> Tall preview · full height
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="focus">
-                  <Expand /> Preview only
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={editorLayout.resetLayout}>
-                <RotateCcw /> Reset layout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
         <Show when="signed-in">
           <ProjectBrainButton />
           <BillingStatusButton />

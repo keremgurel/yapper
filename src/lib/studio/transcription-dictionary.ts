@@ -1,4 +1,8 @@
-import type { RawWord } from "@/lib/studio/transcribe-remote";
+export interface RawWord {
+  text: string;
+  start: number;
+  end: number;
+}
 
 export const MAX_DICTIONARY_ENTRIES = 100;
 export const MAX_DICTIONARY_TERM_LENGTH = 80;

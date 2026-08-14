@@ -5,7 +5,7 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
-import type { RawWord } from "@/lib/studio/transcribe-remote";
+import type { RawWord } from "@/lib/studio/transcription-dictionary";
 import {
   guardProviderIngress,
   guardProviderSpend,

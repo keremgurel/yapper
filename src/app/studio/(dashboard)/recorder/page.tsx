@@ -4,7 +4,7 @@ import RecordClient from "@/components/teleprompter/record-client";
 export const metadata: Metadata = {
   title: "Record with teleprompter",
   description:
-    "Record your take with a scrolling teleprompter of your script or key points, then edit and get AI feedback.",
+    "Record your take with a scrolling teleprompter, then download it or save it to your content library.",
   alternates: { canonical: "https://ypr.app/studio/recorder" },
 };
 

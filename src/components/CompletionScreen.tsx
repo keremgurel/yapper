@@ -1,20 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-
-import {
-  Download,
-  Pause,
-  Play,
-  RotateCcw,
-  Scissors,
-  Share2,
-  Sparkles,
-} from "lucide-react";
-import { Show, SignInButton } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import { setPendingVideo } from "@/lib/studio/handoff";
+import { Download, Pause, Play, RotateCcw, Share2 } from "lucide-react";
 import {
   AudioPlayerProvider,
   useAudioPlayer,
@@ -44,40 +31,6 @@ const glass =
 
 const iconBtn = `flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-white/84 transition-all duration-200 hover:text-white active:scale-95 ${glass}`;
 
-/**
- * The "Get AI feedback" entry point. Signed out shows the combined Clerk
- * sign-in-or-up gate; signed in runs the handoff to the studio's Feedback tab.
- */
-function FeedbackButton({ onFeedback }: { onFeedback: () => void }) {
-  return (
-    <>
-      <Show when="signed-in">
-        <Button
-          type="button"
-          onClick={onFeedback}
-          className="h-11 text-[13px]"
-          title="Get AI feedback on this take"
-        >
-          <Sparkles className="h-4 w-4" strokeWidth={2.2} />
-          AI feedback
-        </Button>
-      </Show>
-      <Show when="signed-out">
-        <SignInButton mode="modal" withSignUp>
-          <Button
-            type="button"
-            className="h-11 text-[13px]"
-            title="Sign in for AI feedback"
-          >
-            <Sparkles className="h-4 w-4" strokeWidth={2.2} />
-            AI feedback
-          </Button>
-        </SignInButton>
-      </Show>
-    </>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /*  Video player – full-bleed with overlay                            */
 /* ------------------------------------------------------------------ */
@@ -87,8 +40,6 @@ function VideoPlayer({
   prompt,
   onShare,
   onDownload,
-  onEdit,
-  onFeedback,
   onNewSession,
   canDownload,
   isPreparingDownload,
@@ -97,8 +48,6 @@ function VideoPlayer({
   prompt: string;
   onShare: () => void;
   onDownload: () => void;
-  onEdit?: () => void;
-  onFeedback?: () => void;
   onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
@@ -334,17 +283,6 @@ function VideoPlayer({
           </span>
 
           <div className="flex items-center gap-2">
-            {onFeedback && <FeedbackButton onFeedback={onFeedback} />}
-            {onEdit && (
-              <button
-                type="button"
-                onClick={onEdit}
-                className={iconBtn}
-                title="Edit this take in Studio"
-              >
-                <Scissors className="h-4 w-4" strokeWidth={2.2} />
-              </button>
-            )}
             {canDownload && (
               <button
                 type="button"
@@ -387,7 +325,6 @@ function AudioReplayControls({
   src,
   onShare,
   onDownload,
-  onFeedback,
   onNewSession,
   canDownload,
   isPreparingDownload,
@@ -395,7 +332,6 @@ function AudioReplayControls({
   src: string;
   onShare: () => void;
   onDownload: () => void;
-  onFeedback?: () => void;
   onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
@@ -421,7 +357,6 @@ function AudioReplayControls({
 
       {/* Controls */}
       <div className="flex items-center gap-3">
-        {onFeedback && <FeedbackButton onFeedback={onFeedback} />}
         {canDownload && (
           <button
             type="button"
@@ -486,7 +421,6 @@ export default function CompletionScreen() {
     generateTopic,
   } = usePracticeSession();
 
-  const router = useRouter();
   const isFreestyle = mode === "freestyle";
   const prompt = isFreestyle
     ? "Freestyle session"
@@ -494,18 +428,6 @@ export default function CompletionScreen() {
   const onDownload = () => {
     downloadRecording();
     trackRecordingDownloaded({ hasVideo: cameraOn });
-  };
-  const onEdit = () => {
-    if (!recordedBlob) return;
-    setPendingVideo(recordedBlob);
-    router.push("/studio/editor");
-  };
-  // Hand the take to the studio and open the Feedback tab (where the user gives
-  // explicit credit consent before running).
-  const onGetFeedback = () => {
-    if (!recordedBlob) return;
-    setPendingVideo(recordedBlob);
-    router.push("/studio/editor?tab=feedback");
   };
   const onNewSession = () => {
     resetTimer();
@@ -558,8 +480,6 @@ export default function CompletionScreen() {
             prompt={prompt}
             onShare={handleShare}
             onDownload={onDownload}
-            onEdit={recordedBlob ? onEdit : undefined}
-            onFeedback={recordedBlob ? onGetFeedback : undefined}
             onNewSession={onNewSession}
             canDownload={canDownload}
             isPreparingDownload={isPreparingDownload}
@@ -577,7 +497,6 @@ export default function CompletionScreen() {
                 src={recordedUrl}
                 onShare={handleShare}
                 onDownload={onDownload}
-                onFeedback={recordedBlob ? onGetFeedback : undefined}
                 onNewSession={onNewSession}
                 canDownload={canDownload}
                 isPreparingDownload={isPreparingDownload}
