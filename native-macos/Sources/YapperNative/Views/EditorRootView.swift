@@ -366,6 +366,7 @@ private struct EditorHeader: View {
                 Label("Import", systemImage: "plus")
             }
             .buttonStyle(EditorSecondaryButtonStyle())
+            .disabled(session.isBusy)
 
             Button {
                 ImportPanels.saveExport(for: session)
@@ -373,7 +374,7 @@ private struct EditorHeader: View {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
             .buttonStyle(EditorPrimaryButtonStyle())
-            .disabled(session.project.clips.isEmpty || session.isExporting)
+            .disabled(session.project.clips.isEmpty || session.isBusy)
         }
         .padding(.horizontal, 16)
         .frame(height: 52)

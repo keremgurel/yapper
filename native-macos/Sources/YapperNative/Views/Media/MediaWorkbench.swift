@@ -57,6 +57,7 @@ struct MediaWorkbench: View {
             Spacer()
             Button("Import") { ImportPanels.openMedia(for: session) }
                 .buttonStyle(EditorSecondaryButtonStyle())
+                .disabled(session.isBusy)
         }
     }
 
@@ -122,6 +123,7 @@ struct MediaEmptyState: View {
                 Label("Import media", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(EditorPrimaryButtonStyle())
+            .disabled(session.isBusy)
         }
         .padding(16)
         .frame(maxWidth: 440, alignment: .leading)

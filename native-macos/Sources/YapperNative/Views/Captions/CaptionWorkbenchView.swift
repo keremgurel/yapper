@@ -65,6 +65,7 @@ struct CaptionWorkbenchView: View {
                     )
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
+                .disabled(session.isBusy)
                 .help(
                     isOn
                         ? "Hide captions in the preview and the export. Every card is kept."
@@ -81,7 +82,7 @@ struct CaptionWorkbenchView: View {
                 )
             }
             .buttonStyle(EditorPrimaryButtonStyle(size: .mini))
-            .disabled(session.project.clips.isEmpty || session.isAIEditing)
+            .disabled(session.project.clips.isEmpty || session.isBusy)
             .help(
                 session.hasCaptions
                     ? "Rebuild every card from the transcript. Replaces hand-edited text."

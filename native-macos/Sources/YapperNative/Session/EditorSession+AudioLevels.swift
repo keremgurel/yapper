@@ -75,9 +75,12 @@ extension EditorSession {
     /// it the way the placement pass reports a cutaway. Empty when the sentence
     /// named sounds this timeline does not have.
     @discardableResult
-    func applyLevelCommand(_ command: SoundLevelCommand) async -> [String] {
+    func applyLevelCommand(
+        _ command: SoundLevelCommand,
+        owner: LongOperationLease? = nil
+    ) async -> [String] {
         var notes: [String] = []
-        let success = await commitTimelineEdit(successStatus: command.summary) { [self] in
+        let success = await commitTimelineEdit(successStatus: command.summary, owner: owner) { [self] in
             if command.target == .videoTrack {
                 guard project.resolvedVideoTrackVolume != command.volume else { return false }
                 updateProject { project in

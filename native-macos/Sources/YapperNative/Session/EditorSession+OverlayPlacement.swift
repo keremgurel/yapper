@@ -39,7 +39,9 @@ extension EditorSession {
     }
 
     func placeOverlaysWithAI(instruction: String) async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        guard let operation = beginLongOperation(.overlayAI) else { return }
+        defer { endLongOperation(operation) }
         clearError()
 
         // Answered here when the sentence has nothing in it to decide: which
@@ -47,14 +49,14 @@ extension EditorSession {
         // already on the timeline, so it reads "on every overlay we have" as a
         // request to place those overlays, and places them all over again.
         if let sweep = SoundSweep.parse(instruction) {
-            await applySweep(sweep, instruction: instruction)
+            await applySweep(sweep, instruction: instruction, owner: operation)
             return
         }
         // "Make all the pops 80%": which sounds, and how loud. Nothing to
         // decide, so nothing to ask.
         if let level = SoundLevelCommand.parse(instruction) {
             setOverlayPlacement(.working)
-            let notes = await applyLevelCommand(level)
+            let notes = await applyLevelCommand(level, owner: operation)
             setOverlayPlacement(
                 notes.isEmpty
                     ? .failed(errorMessage ?? levelCommandEmptyReason(level))
@@ -73,7 +75,17 @@ extension EditorSession {
         }
 
         if placeableWords.isEmpty {
-            await transcribeProject()
+            guard let rollbackState = await beginPreparedTimelineEdit() else { return }
+            defer { endPreparedTimelineEdit() }
+            do {
+                try await transcribeMissingProjectMediaWithinOperation()
+                try await persist()
+                recordHistory(before: rollbackState.project)
+            } catch {
+                await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
+                setOverlayPlacement(.failed(error.localizedDescription))
+                return
+            }
             guard !placeableWords.isEmpty else {
                 setOverlayPlacement(.failed("This video has no transcript to place overlays against."))
                 return
@@ -90,8 +102,6 @@ extension EditorSession {
             : placeableMedia.filter { named.contains($0.name) }
 
         setOverlayPlacement(.working)
-        setBusy(true)
-        defer { setBusy(false) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
 
@@ -176,7 +186,11 @@ extension EditorSession {
     /// status still saying `working` when the assistant read it a moment later
     /// — and `working` is reported as "that did not finish". The sounds landed
     /// every time; the reply said they had not.
-    private func applySweep(_ sweep: SoundSweep, instruction: String) async {
+    private func applySweep(
+        _ sweep: SoundSweep,
+        instruction: String,
+        owner: LongOperationLease
+    ) async {
         setOverlayPlacement(.working)
         // What actually landed, not what was asked for: a sound already sitting
         // on that frame is left alone, and claiming it was added again would be
@@ -185,7 +199,8 @@ extension EditorSession {
         var notes: [String] = []
         var noChangeReason: String?
         let success = await commitTimelineEdit(
-            successStatus: "Placed \(added) sound\(added == 1 ? "" : "s") · ⌘Z to undo"
+            successStatus: "Placed \(added) sound\(added == 1 ? "" : "s") · ⌘Z to undo",
+            owner: owner
         ) { [self] in
             let sounds = applySoundSweep(sweep, instruction: instruction)
             guard !sounds.isEmpty else {

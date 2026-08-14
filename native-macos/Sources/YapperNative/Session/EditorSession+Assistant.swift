@@ -7,6 +7,9 @@ import Foundation
 /// of the same name calls, so a sentence and a click can never drift apart.
 extension EditorSession {
     func runAssistant(instruction: String) async {
+        guard !assistantRunInFlight else { return }
+        assistantRunInFlight = true
+        defer { assistantRunInFlight = false }
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
         let intent = AssistantRouter.route(
             text,
@@ -15,6 +18,16 @@ extension EditorSession {
                 names: placeableMedia.map(\.name)
             ).isEmpty
         )
+
+        let requiresLongOperation: Bool = switch intent {
+        case .transcribe, .oneClickEdit, .trimSilences, .generateCaptions,
+             .hideCaptions, .showCaptions, .placeOverlays, .addSounds,
+             .placeText, .setLevels, .addHook:
+            true
+        default:
+            false
+        }
+        guard !requiresLongOperation || activeOperation == nil else { return }
 
         conversation.ask(text)
         guard intent != .unknown else {

@@ -16,12 +16,12 @@ extension EditorSession {
     ///     what lands is what the ghost promised.
     func importDropped(_ urls: [URL], onto target: TimelineDropTarget, at time: Double) async {
         guard !urls.isEmpty else { return }
+        guard let operation = beginLongOperation(.importingMedia) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
-        setBusy(true)
         clearError()
         setStatus("Reading media…")
-        defer { setBusy(false) }
 
         var landed: [String] = []
         var refused = 0

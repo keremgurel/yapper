@@ -368,13 +368,14 @@ private struct StudioTopBar: View {
                     Label("Import", systemImage: "plus")
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                .disabled(session.isBusy)
                 Button {
                     ImportPanels.saveExport(for: session)
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
                 .buttonStyle(EditorPrimaryButtonStyle(size: .small))
-                .disabled(session.project.clips.isEmpty || session.isExporting)
+                .disabled(session.project.clips.isEmpty || session.isBusy)
             }
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
