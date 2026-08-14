@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NextRequest } from "next/server";
+import { TemporaryFileTooLargeError } from "@/lib/http/bounded-temp-file";
 
 const mocks = vi.hoisted(() => {
   class InsufficientCreditsError extends Error {}
@@ -17,14 +18,14 @@ const mocks = vi.hoisted(() => {
     deductWithinTx: vi.fn(),
     ensureUser: vi.fn(),
     getBalance: vi.fn(),
-    getObjectBytes: vi.fn(),
+    getObjectFile: vi.fn(),
     getStorageBytes: vi.fn(),
     getStorageQuota: vi.fn(),
     guardProviderSpend: vi.fn(),
     guardProviderIngress: vi.fn(),
     ownsKey: vi.fn(),
     protectPendingObject: vi.fn(),
-    uploadBytesToGemini: vi.fn(),
+    uploadFileToGemini: vi.fn(),
   };
 });
 
@@ -57,14 +58,14 @@ vi.mock("@/lib/db/users", () => ({
   getStorageBytes: mocks.getStorageBytes,
 }));
 vi.mock("@/lib/feedback/gemini", () => ({
-  uploadBytesToGemini: mocks.uploadBytesToGemini,
+  uploadFileToGemini: mocks.uploadFileToGemini,
 }));
 vi.mock("@/lib/feedback/video", () => ({
   coachOnCamera: mocks.coachOnCamera,
 }));
 vi.mock("@/lib/r2", () => ({
   deleteObject: mocks.deleteObject,
-  getObjectBytes: mocks.getObjectBytes,
+  getObjectFile: mocks.getObjectFile,
   ownsKey: mocks.ownsKey,
 }));
 vi.mock("@/lib/feedback/audio", () => ({ runAudioFeedback: vi.fn() }));
@@ -97,11 +98,17 @@ vi.mock("@/lib/db/client", () => ({ getDb: () => db }));
 
 import { POST } from "./route";
 
-function videoRequest(): NextRequest {
+function videoRequest(signal?: AbortSignal): NextRequest {
   return new Request(
     "https://ypr.app/api/feedback?tier=video&mediaKey=user_test/clip.webm",
-    { method: "POST" },
+    { method: "POST", signal },
   ) as NextRequest;
+}
+
+function videoRequestWith(query: string): NextRequest {
+  return new Request(`https://ypr.app/api/feedback?tier=video&${query}`, {
+    method: "POST",
+  }) as NextRequest;
 }
 
 function audioRequest(
@@ -127,10 +134,15 @@ beforeEach(() => {
   mocks.canUsePremium.mockResolvedValue(true);
   mocks.getBalance.mockResolvedValue(100);
   mocks.ownsKey.mockReturnValue(true);
-  mocks.getObjectBytes.mockResolvedValue(new Uint8Array(128).buffer);
+  mocks.getObjectFile.mockResolvedValue({
+    filePath: "/tmp/feedback-video.webm",
+    byteLength: 128,
+    contentType: "video/webm",
+    cleanup: vi.fn().mockResolvedValue(undefined),
+  });
   mocks.getStorageBytes.mockResolvedValue(0);
   mocks.getStorageQuota.mockResolvedValue(1_000_000);
-  mocks.uploadBytesToGemini.mockResolvedValue("gemini://clip");
+  mocks.uploadFileToGemini.mockResolvedValue("gemini://clip");
   mocks.coachOnCamera.mockResolvedValue({ score: 8 });
   mocks.deductWithinTx.mockImplementation(async () => {
     state.balance -= 5;
@@ -178,6 +190,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe("POST /api/feedback atomic completion", () => {
@@ -213,6 +226,59 @@ describe("POST /api/feedback atomic completion", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.guardProviderSpend).toHaveBeenCalledOnce();
+  });
+
+  it("captures the workflow deadline before auth and preflight work", async () => {
+    vi.spyOn(Date, "now").mockReturnValueOnce(1_000).mockReturnValue(101_000);
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(200);
+    const workflow = mocks.uploadFileToGemini.mock.calls[0][3] as {
+      deadlineAt: number;
+    };
+    expect(workflow.deadlineAt).toBe(271_000);
+  });
+
+  it("does not create a submission when preflight exhausts the route budget", async () => {
+    vi.spyOn(Date, "now").mockReturnValueOnce(1_000).mockReturnValue(271_000);
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(504);
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(mocks.getObjectFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects an overlong media key before database or provider work", async () => {
+    const response = await POST(
+      videoRequestWith(`mediaKey=${"a".repeat(513)}`),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.ensureUser).not.toHaveBeenCalled();
+    expect(mocks.getObjectFile).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unsupported video MIME before database or provider work", async () => {
+    const response = await POST(
+      videoRequestWith("mediaKey=user_test%2Fclip.bin&mimeType=text%2Fplain"),
+    );
+
+    expect(response.status).toBe(415);
+    expect(mocks.ensureUser).not.toHaveBeenCalled();
+    expect(mocks.getObjectFile).not.toHaveBeenCalled();
+  });
+
+  it("accepts a supported video MIME with codec parameters", async () => {
+    const response = await POST(
+      videoRequestWith(
+        "mediaKey=user_test%2Fclip.webm&mimeType=video%2Fwebm%3Bcodecs%3Dvp9%2Copus",
+      ),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.uploadFileToGemini.mock.calls[0][2]).toBe("video/webm");
   });
 
   it("does not consume provider spend for a non-entitled user", async () => {
@@ -268,6 +334,61 @@ describe("POST /api/feedback atomic completion", () => {
     expect(db.transaction).not.toHaveBeenCalled();
     expect(mocks.deductWithinTx).not.toHaveBeenCalled();
     expect(mocks.deleteObject).not.toHaveBeenCalled();
+    const file = await mocks.getObjectFile.mock.results[0]?.value;
+    expect(file.cleanup).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an oversized R2 object by actual streamed bytes without charging", async () => {
+    mocks.getObjectFile.mockRejectedValueOnce(
+      new TemporaryFileTooLargeError(250 * 1024 * 1024),
+    );
+
+    const response = await POST(videoRequest());
+
+    expect(response.status).toBe(413);
+    expect(mocks.uploadFileToGemini).not.toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(mocks.deductWithinTx).not.toHaveBeenCalled();
+    expect(state.failed).toBe(true);
+  });
+
+  it("treats caller abort as terminal and never charges", async () => {
+    const controller = new AbortController();
+    mocks.getObjectFile.mockImplementationOnce(async () => {
+      controller.abort(new DOMException("gone", "AbortError"));
+      throw new Error("r2_aborted");
+    });
+
+    const response = await POST(videoRequest(controller.signal));
+
+    expect(response.status).toBe(499);
+    expect(mocks.uploadFileToGemini).not.toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(mocks.deductWithinTx).not.toHaveBeenCalled();
+    expect(state.failed).toBe(true);
+  });
+
+  it("rechecks cancellation after the provider resolves and before charging", async () => {
+    const controller = new AbortController();
+    mocks.coachOnCamera.mockImplementationOnce(async () => {
+      controller.abort(new DOMException("gone", "AbortError"));
+      return { score: 8 };
+    });
+
+    const response = await POST(videoRequest(controller.signal));
+
+    expect(response.status).toBe(499);
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(mocks.deductWithinTx).not.toHaveBeenCalled();
+    expect(state.failed).toBe(true);
+  });
+
+  it("cleans the bounded temporary file after successful processing", async () => {
+    const response = await POST(videoRequest());
+    const downloaded = await mocks.getObjectFile.mock.results[0]?.value;
+
+    expect(response.status).toBe(200);
+    expect(downloaded.cleanup).toHaveBeenCalledOnce();
   });
 
   it("rolls completion back when storage accounting fails", async () => {

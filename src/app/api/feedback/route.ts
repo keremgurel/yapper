@@ -25,11 +25,17 @@ import {
 } from "@/lib/db/storage-accounting";
 import { runAudioFeedback } from "@/lib/feedback/audio";
 import type { Coaching } from "@/lib/feedback/coach";
-import { uploadBytesToGemini } from "@/lib/feedback/gemini";
+import { uploadFileToGemini } from "@/lib/feedback/gemini";
 import { computeMetrics, type DeliveryMetrics } from "@/lib/feedback/metrics";
 import { transcribeForFeedback } from "@/lib/feedback/transcribe";
 import { coachOnCamera } from "@/lib/feedback/video";
-import { getObjectBytes, ownsKey } from "@/lib/r2";
+import {
+  createFeedbackWorkflow,
+  feedbackFailureStatus,
+  type FeedbackWorkflow,
+  remainingFeedbackMs,
+} from "@/lib/feedback/workflow";
+import { getObjectFile, ownsKey } from "@/lib/r2";
 import { canUsePremium } from "@/lib/billing/gate";
 import {
   guardProviderIngress,
@@ -39,12 +45,19 @@ import {
   readBoundedBody,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
+import { TemporaryFileTooLargeError } from "@/lib/http/bounded-temp-file";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
 const TIERS: FeedbackTier[] = ["audio", "video", "full"];
 const MAX_AUDIO_BYTES = 4_000_000;
+const MAX_MEDIA_KEY_LENGTH = 512;
+const VIDEO_MEDIA_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
 
 interface FeedbackResult {
   metrics?: DeliveryMetrics;
@@ -56,14 +69,15 @@ interface FeedbackResult {
 /**
  * Get AI feedback on a recording. Auth required (the credit action).
  * - audio: POST body = 16 kHz WAV → Deepgram meters + LLM coaching.
- * - video: ?fileUri=… (video already uploaded to Gemini) → on-camera coaching.
- * - full:  ?fileUri=… + WAV body → Deepgram meters + Gemini video coaching.
+ * - video: ?mediaKey=… (caller-owned R2 clip) → on-camera coaching.
+ * - full:  ?mediaKey=… + WAV body → Deepgram meters + Gemini video coaching.
  *
  * Run the work first, then charge and store the result in one transaction, so a
  * crash before commit leaves the user uncharged (we absorb the compute) rather
  * than charged-without-result. No refund path, no reconcile sweep.
  */
 export async function POST(req: NextRequest): Promise<Response> {
+  const workflow = createFeedbackWorkflow(req.signal);
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -77,10 +91,20 @@ export async function POST(req: NextRequest): Promise<Response> {
   const cost = FEEDBACK_CREDITS[tier];
   const rawKey = params.get("mediaKey") ?? undefined;
   // Video/full read the clip from the caller's own R2 prefix.
-  const mediaKey = rawKey && ownsKey(userId, rawKey) ? rawKey : undefined;
-  const mimeType = params.get("mimeType") ?? "video/webm";
+  const mediaKey =
+    rawKey && rawKey.length <= MAX_MEDIA_KEY_LENGTH && ownsKey(userId, rawKey)
+      ? rawKey
+      : undefined;
+  const rawMimeType = params.get("mimeType") ?? "video/webm";
+  const mimeType = rawMimeType.split(";", 1)[0]?.trim().toLowerCase() ?? "";
   if ((tier === "video" || tier === "full") && !mediaKey) {
     return Response.json({ error: "missing_file" }, { status: 400 });
+  }
+  if (
+    (tier === "video" || tier === "full") &&
+    (rawMimeType.length > 100 || !VIDEO_MEDIA_TYPES.has(mimeType))
+  ) {
+    return Response.json({ error: "unsupported_media_type" }, { status: 415 });
   }
 
   // Read the audio body up front (audio + full need it).
@@ -133,6 +157,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   const spendLimited = await guardProviderSpend(req, userId, "feedback");
   if (spendLimited) return spendLimited;
 
+  try {
+    remainingFeedbackMs(workflow);
+  } catch (error) {
+    return Response.json(
+      { error: "feedback_failed", detail: "feedback_deadline_expired" },
+      { status: feedbackFailureStatus(error, workflow) },
+    );
+  }
+
   const db = getDb();
   const [submission] = await db
     .insert(submissions)
@@ -146,14 +179,21 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let result: FeedbackResult;
   try {
-    result = await runTier(tier, audio, mediaKey, mimeType, req.signal);
+    result = await runTier(tier, audio, mediaKey, mimeType, workflow);
   } catch (e) {
     const detail = e instanceof Error ? e.message : "feedback_failed";
     await markSubmissionFailed(db, submission.id, userId, detail);
-    return Response.json({ error: "feedback_failed", detail }, { status: 502 });
+    const status =
+      e instanceof TemporaryFileTooLargeError
+        ? 413
+        : feedbackFailureStatus(e, workflow);
+    return Response.json({ error: "feedback_failed", detail }, { status });
   }
 
   try {
+    // Do not charge/store a result if the request disappeared or exhausted the
+    // route budget in the race immediately after the provider resolved.
+    remainingFeedbackMs(workflow);
     const quotaBytes = await getStorageQuota(userId);
     // Charge and mark complete in one transaction: a crash before commit rolls
     // back the debit, result, and storage counter together.
@@ -229,7 +269,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       ? Response.json({ error: "insufficient_credits" }, { status: 402 })
       : storageFull
         ? Response.json({ error: "storage_full" }, { status: 402 })
-        : Response.json({ error: "feedback_failed", detail }, { status: 502 });
+        : Response.json(
+            { error: "feedback_failed", detail },
+            { status: feedbackFailureStatus(e, workflow) },
+          );
   }
 }
 
@@ -259,26 +302,44 @@ async function runTier(
   audio: ArrayBuffer,
   mediaKey: string | undefined,
   mimeType: string,
-  signal: AbortSignal,
+  workflow: FeedbackWorkflow,
 ): Promise<FeedbackResult> {
   if (tier === "audio") {
-    const r = await runAudioFeedback(audio, signal);
+    const r = await runAudioFeedback(audio, workflow);
     return { metrics: r.metrics, coaching: r.coaching, words: r.words };
   }
   // video + full: pull the clip from R2 (server-side, no browser CORS), push it
   // to Gemini, and coach on the native video + audio.
-  const bytes = await getObjectBytes(mediaKey as string);
-  // Enforce on the *actual* object size, presigned PUTs can't cap upload size,
-  // so the client's claimed sizeBytes at upload-url time is only advisory.
-  if (bytes.byteLength > MAX_CLIP_BYTES) throw new Error("clip_too_large");
-  const uri = await uploadBytesToGemini(bytes, mimeType);
-  const coaching = await coachOnCamera(uri, mimeType);
-  const mediaBytes = bytes.byteLength;
+  const file = await getObjectFile(mediaKey as string, {
+    maxBytes: MAX_CLIP_BYTES,
+    signal: workflow.signal,
+  });
+  const mediaBytes = file.byteLength;
+  let coaching: Coaching;
+  try {
+    const uri = await uploadFileToGemini(
+      file.filePath,
+      file.byteLength,
+      mimeType,
+      workflow,
+    );
+    remainingFeedbackMs(workflow);
+    coaching = await coachOnCamera(uri, mimeType, workflow);
+    remainingFeedbackMs(workflow);
+  } finally {
+    await file.cleanup().catch(() => undefined);
+  }
   if (tier === "video") return { coaching, mediaBytes };
   // full: add precise deterministic meters from Deepgram on the audio.
   const key = process.env.DEEPGRAM_API_KEY;
   if (!key) return { coaching, mediaBytes };
-  const words = await transcribeForFeedback(audio, key);
+  const words = await transcribeForFeedback(
+    audio,
+    key,
+    workflow.signal,
+    remainingFeedbackMs(workflow, 60_000),
+  );
+  remainingFeedbackMs(workflow);
   const metrics = words.length ? computeMetrics(words) : undefined;
   return { metrics, coaching, words, mediaBytes };
 }
