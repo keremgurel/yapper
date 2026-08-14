@@ -6,11 +6,13 @@ import type { Word } from "@/lib/studio/types";
  */
 export async function cleanTranscriptRemote(
   words: Word[],
+  signal?: AbortSignal,
 ): Promise<[number, number][] | null> {
   const res = await fetch("/api/clean-transcript", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ words: words.map((w) => ({ text: w.text })) }),
+    signal,
   });
   if (res.status === 501) return null;
   if (!res.ok) throw new Error(`clean_${res.status}`);

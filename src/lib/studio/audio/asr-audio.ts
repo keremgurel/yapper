@@ -21,6 +21,7 @@ export interface AsrAudio {
 // published ceiling exactly.
 export const MAX_ASR_CHUNK_BYTES = 3_500_000;
 export const ASR_CHUNK_OVERLAP_SEC = 5;
+const MAX_ASR_CHUNK_DURATION_SEC = 590;
 
 interface ByteSizedChunk {
   data: Uint8Array;
@@ -97,19 +98,33 @@ function chunkAac(
     let bytes = 0;
     while (end < demuxed.chunks.length) {
       const frameBytes = 7 + demuxed.chunks[end].data.length;
-      if (end > start && bytes + frameBytes > maxBytes) break;
+      const nextDuration =
+        starts[end] - starts[start] + demuxed.chunks[end].duration / 1_000_000;
+      if (
+        end > start &&
+        (bytes + frameBytes > maxBytes ||
+          nextDuration > MAX_ASR_CHUNK_DURATION_SEC)
+      ) {
+        break;
+      }
       bytes += frameBytes;
       end++;
     }
 
     const selected = demuxed.chunks.slice(start, end);
-    const data = aacToAdts(demuxed, selected);
-    if (!data) return null;
     const durationSec = selected.reduce(
       (sum, chunk) => sum + chunk.duration / 1_000_000,
       0,
     );
-    result.push({ data, durationSec, offsetSec: starts[start] ?? 0 });
+    result.push({
+      get data() {
+        const data = aacToAdts(demuxed, selected);
+        if (!data) throw new Error("AAC chunk encoding failed");
+        return data;
+      },
+      durationSec,
+      offsetSec: starts[start] ?? 0,
+    });
     if (end >= demuxed.chunks.length) break;
 
     // Walk back from the next new frame until the requested overlap is met.
@@ -132,12 +147,21 @@ function chunkPcm(
   overlapSec: number,
 ): AsrAudio[] {
   return planPcmChunks(samples.length, sampleRate, maxBytes, overlapSec).map(
-    ({ start, end }) => ({
-      blob: encodeWav(samples.slice(start, end), sampleRate),
-      via: sampleRate <= 16000 ? "wav16" : "wav48",
-      durationSec: (end - start) / sampleRate,
-      offsetSec: start / sampleRate,
-    }),
+    ({ start, end }) => {
+      const planned = {
+        via: (sampleRate <= 16000 ? "wav16" : "wav48") as "wav16" | "wav48",
+        durationSec: (end - start) / sampleRate,
+        offsetSec: start / sampleRate,
+      };
+      return {
+        ...planned,
+        // A getter keeps every WAV allocation behind the two-worker admission
+        // gate in transcribeAsrChunks. Planning a long take is metadata-only.
+        get blob() {
+          return encodeWav(samples.subarray(start, end), sampleRate);
+        },
+      };
+    },
   );
 }
 
@@ -169,24 +193,48 @@ export async function buildAsrAudioChunks(
   url: string,
   maxBytes = MAX_ASR_CHUNK_BYTES,
   overlapSec = ASR_CHUNK_OVERLAP_SEC,
+  signal?: AbortSignal,
 ): Promise<AsrAudio[]> {
-  const demuxed = await demuxAudioTrackCached(url);
+  signal?.throwIfAborted();
+  const demuxed = await demuxAudioTrackCached(url, signal);
+  signal?.throwIfAborted();
 
-  const aac = chunkAac(demuxed, maxBytes, overlapSec);
-  if (aac) {
-    return aac.map(({ data, durationSec, offsetSec }) => ({
-      blob: new Blob([data as BlobPart], { type: "audio/aac" }),
-      via: "aac" as const,
-      durationSec,
-      offsetSec,
-    }));
-  }
+  return buildAsrAudioChunksFromDemux(demuxed, maxBytes, overlapSec, signal);
+}
+
+export async function buildAsrAudioChunksFromDemux(
+  demuxed: Awaited<ReturnType<typeof demuxAudioTrackCached>>,
+  maxBytes = MAX_ASR_CHUNK_BYTES,
+  overlapSec = ASR_CHUNK_OVERLAP_SEC,
+  signal?: AbortSignal,
+): Promise<AsrAudio[]> {
+  signal?.throwIfAborted();
+
+  const aac = buildAacAsrChunksFromDemux(demuxed, maxBytes, overlapSec);
+  if (aac) return aac;
 
   // Non-AAC track that mp4box could still demux: decode and send native-rate
   // mono WAV so we never run the accuracy-killing 16 kHz resample.
-  const { channels, sampleRate } = await decodeAudioChunks(demuxed);
+  const { channels, sampleRate } = await decodeAudioChunks(demuxed, signal);
   const mono = downmixMono(channels);
   return chunkPcm(mono, sampleRate, maxBytes, overlapSec);
+}
+
+export function buildAacAsrChunksFromDemux(
+  demuxed: Awaited<ReturnType<typeof demuxAudioTrackCached>>,
+  maxBytes = MAX_ASR_CHUNK_BYTES,
+  overlapSec = ASR_CHUNK_OVERLAP_SEC,
+): AsrAudio[] | null {
+  const aac = chunkAac(demuxed, maxBytes, overlapSec);
+  if (!aac) return null;
+  return aac.map((chunk) => ({
+    get blob() {
+      return new Blob([chunk.data as BlobPart], { type: "audio/aac" });
+    },
+    via: "aac" as const,
+    durationSec: chunk.durationSec,
+    offsetSec: chunk.offsetSec,
+  }));
 }
 
 /** Build upload-safe chunks for the 16 kHz last-resort decode path. */

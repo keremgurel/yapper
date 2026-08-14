@@ -31,8 +31,15 @@ export interface RawWord {
 export async function transcribeUrl(
   url: string,
   dictionary: TranscriptionDictionaryEntry[] = [],
+  signal?: AbortSignal,
+  preparedChunks?: AsrAudio[],
 ): Promise<RawWord[]> {
   const keyterms = dictionaryKeyterms(dictionary);
+
+  if (preparedChunks) {
+    signal?.throwIfAborted();
+    return transcribeAsrChunks(preparedChunks, keyterms, signal);
+  }
 
   // Desktop: ffmpeg has already decoded clean lossless PCM for VAD/waveforms.
   // Upload bounded overlapping WAV chunks from that same PCM. The previous
@@ -43,12 +50,14 @@ export async function transcribeUrl(
   const native = isNative() ? nativeMediaForUrl(url) : undefined;
   if (native) {
     try {
-      const pcm = await decodeToMono16k(url);
+      const pcm = await decodeToMono16k(url, signal);
       return await transcribeAsrChunks(
         chunkMono16k(pcm, NATIVE_ASR_CHUNK_BYTES, NATIVE_ASR_OVERLAP_SEC),
         keyterms,
+        signal,
       );
     } catch (e) {
+      signal?.throwIfAborted();
       console.warn(
         "[transcribe] native PCM chunks failed, falling back to media demux",
         e,
@@ -58,19 +67,25 @@ export async function transcribeUrl(
 
   let chunks: AsrAudio[];
   try {
-    chunks = await buildAsrAudioChunks(url);
+    chunks = await buildAsrAudioChunks(url, undefined, undefined, signal);
   } catch (e) {
+    signal?.throwIfAborted();
     console.warn(
       "[transcribe] native audio path failed, falling back to 16kHz WAV",
       e,
     );
-    const pcm = await decodeToMono16k(url);
+    const pcm = await decodeToMono16k(url, signal);
     chunks = chunkMono16k(pcm);
   }
-  return transcribeAsrChunks(chunks, keyterms);
+  return transcribeAsrChunks(chunks, keyterms, signal);
 }
 
-interface TranscribedChunk extends AsrAudio {
+interface TranscribedChunk {
+  /** Accepted by merge fixtures; transport deliberately never retains it. */
+  blob?: Blob;
+  via: AsrAudio["via"];
+  durationSec: number;
+  offsetSec: number;
   words: RawWord[];
 }
 
@@ -197,29 +212,57 @@ export function mergeTranscribedChunks(chunks: TranscribedChunk[]): RawWord[] {
 export async function transcribeAsrChunks(
   chunks: AsrAudio[],
   keyterms: string[],
+  signal?: AbortSignal,
+  transport: typeof transcribeRemote = transcribeRemote,
 ): Promise<RawWord[]> {
-  const completed: TranscribedChunk[] = [];
+  signal?.throwIfAborted();
+  const controller = new AbortController();
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+  const completed: (TranscribedChunk | undefined)[] = Array(chunks.length);
   // Two concurrent uploads keep long recordings responsive without flooding
   // the provider or making all chunks fail together on a transient rate limit.
   // Promise.all is deliberately fail-closed: returning words around a missing
   // chunk would look successful but give one-click editing an incomplete source
   // of truth, which is more dangerous than asking the user to retry.
-  for (let i = 0; i < chunks.length; i += 2) {
-    const batch = chunks.slice(i, i + 2);
-    completed.push(
-      ...(await Promise.all(
-        batch.map(async (chunk) => ({
-          ...chunk,
-          words: await transcribeRemote(
-            chunk.blob,
-            chunk.durationSec,
-            keyterms,
-          ),
-        })),
-      )),
+  let next = 0;
+  const worker = async () => {
+    while (true) {
+      combinedSignal.throwIfAborted();
+      const index = next++;
+      if (index >= chunks.length) return;
+      const chunk = chunks[index];
+      // `blob` is a lazy getter for PCM/AAC plans. It is not materialized until
+      // this bounded worker admits the chunk.
+      const words = await transport(
+        chunk.blob,
+        chunk.durationSec,
+        keyterms,
+        combinedSignal,
+      );
+      // Never spread the chunk: `blob` may be a lazy getter, and retaining it
+      // would recreate every payload and keep O(recording) bytes alive until
+      // the final seam merge.
+      completed[index] = {
+        via: chunk.via,
+        durationSec: chunk.durationSec,
+        offsetSec: chunk.offsetSec,
+        words,
+      };
+    }
+  };
+  try {
+    await Promise.all(
+      Array.from({ length: Math.min(2, chunks.length) }, () => worker()),
     );
+  } catch (error) {
+    controller.abort(error);
+    throw error;
   }
-  return mergeTranscribedChunks(completed);
+  return mergeTranscribedChunks(
+    completed.filter((chunk): chunk is TranscribedChunk => chunk !== undefined),
+  );
 }
 
 /**
@@ -236,46 +279,70 @@ export async function transcribeRemote(
   audio: Blob,
   durationSec = 0,
   keyterms: string[] = [],
+  signal?: AbortSignal,
 ): Promise<RawWord[]> {
-  let lastErr: unknown;
+  const params = new URLSearchParams();
+  for (const term of keyterms) params.append("keyterm", term);
+  const endpoint = `/api/transcribe${params.size ? `?${params}` : ""}`;
+  let lastError: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
+    signal?.throwIfAborted();
     try {
-      const params = new URLSearchParams();
-      for (const term of keyterms) params.append("keyterm", term);
-      const endpoint = `/api/transcribe${params.size ? `?${params}` : ""}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": audio.type || "application/octet-stream",
-          // Lets the backend detect a body truncated in transit by the
-          // proxy/middleware size cap (it hears less than we sent).
           ...(durationSec > 0
             ? { "x-audio-duration": String(durationSec) }
             : {}),
         },
         body: audio,
+        signal,
       });
-      if (res.status === 501) {
-        throw new Error("transcribe_no_provider");
+      if (res.status === 501) throw new Error("transcribe_no_provider");
+      if (res.status === 413) throw new Error("transcribe_audio_truncated");
+      if (!res.ok) {
+        const error = new Error(`remote_transcribe_${res.status}`);
+        if (
+          res.status !== 408 &&
+          res.status !== 429 &&
+          (res.status < 500 || res.status > 599)
+        ) {
+          throw Object.assign(error, { terminal: true });
+        }
+        throw error;
       }
-      if (res.status === 413) {
-        throw new Error("transcribe_audio_truncated");
-      }
-      if (!res.ok) throw new Error(`remote_transcribe_${res.status}`);
       const data = (await res.json()) as { words?: RawWord[] };
       return data.words ?? [];
-    } catch (e) {
-      lastErr = e;
-      // Neither a missing provider nor a truncated upload fixes itself on a
-      // retry — fail fast so the caller can surface it.
+    } catch (error) {
+      signal?.throwIfAborted();
+      if ((error as { terminal?: boolean }).terminal) throw error;
       if (
-        e instanceof Error &&
-        (e.message === "transcribe_no_provider" ||
-          e.message === "transcribe_audio_truncated")
+        error instanceof Error &&
+        (error.message === "transcribe_no_provider" ||
+          error.message === "transcribe_audio_truncated")
       ) {
-        throw e;
+        throw error;
       }
+      lastError = error;
+      if (attempt === 0) await abortableDelay(250, signal);
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error("remote_transcribe");
+  throw lastError instanceof Error ? lastError : new Error("remote_transcribe");
+}
+
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
 }

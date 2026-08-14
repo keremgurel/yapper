@@ -1,8 +1,57 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { chunkMono16k, planPcmChunks } from "@/lib/studio/audio/asr-audio";
-import { mergeTranscribedChunks } from "@/lib/studio/transcribe-remote";
+import {
+  mergeTranscribedChunks,
+  transcribeAsrChunks,
+  transcribeRemote,
+} from "@/lib/studio/transcribe-remote";
 
 describe("transcription chunk transport", () => {
+  it("materializes at most two lazy payloads and cancels a sibling on failure", async () => {
+    const controllers: AbortSignal[] = [];
+    const materialized: number[] = [];
+    const chunks = Array.from({ length: 6 }, (_, index) => ({
+      get blob() {
+        materialized.push(index);
+        return new Blob([String(index)]);
+      },
+      via: "wav16" as const,
+      durationSec: 1,
+      offsetSec: index,
+    }));
+    const transport = vi.fn(async (_blob, _duration, _terms, signal) => {
+      controllers.push(signal!);
+      if (controllers.length === 1) throw new Error("failed");
+      await new Promise<void>((_resolve, reject) =>
+        signal!.addEventListener("abort", () => reject(signal!.reason), {
+          once: true,
+        }),
+      );
+      return [];
+    });
+
+    await expect(
+      transcribeAsrChunks(chunks, [], undefined, transport),
+    ).rejects.toThrow("failed");
+    expect(materialized.sort()).toEqual([0, 1]);
+    expect(transport).toHaveBeenCalledTimes(2);
+    expect(controllers[1]?.aborted).toBe(true);
+  });
+
+  it("retries transient failures once and aborts during backoff", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(null, { status: 503 }));
+    const controller = new AbortController();
+    const pending = transcribeRemote(new Blob(), 1, [], controller.signal);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    controller.abort();
+    await expect(pending).rejects.toBeDefined();
+    await vi.runAllTimersAsync();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
   it("keeps every fallback upload under the byte limit with overlap", () => {
     const chunks = chunkMono16k(new Float32Array(16000 * 12), 100_000, 1);
 

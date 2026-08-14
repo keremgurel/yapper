@@ -1,8 +1,33 @@
 import { clipDuration, clipTimelineStart } from "@/lib/studio/clips";
-import { downmixMono } from "@/lib/studio/audio/downmix";
-import { extractPcm } from "@/lib/studio/audio/extract-pcm";
+import { extractAdmittedMonoPcm } from "@/lib/studio/audio-decode";
 import { newWordId, type Clip, type Word } from "@/lib/studio/types";
 import type { RawWord } from "@/lib/studio/transcribe-remote";
+
+export const MAX_RECAPTION_DURATION_SECONDS = 600;
+
+export function plannedRecaptionSamples(
+  clips: Clip[],
+  sampleRate: number,
+): number {
+  if (!Number.isFinite(sampleRate) || sampleRate <= 0) {
+    throw new Error("recaption_invalid_audio");
+  }
+  let total = 0;
+  for (const clip of clips) {
+    const duration = clipDuration(clip);
+    if (!Number.isFinite(duration) || duration < 0) {
+      throw new Error("recaption_invalid_audio");
+    }
+    total += Math.round(duration * sampleRate);
+    if (
+      !Number.isSafeInteger(total) ||
+      total / sampleRate > MAX_RECAPTION_DURATION_SECONDS
+    ) {
+      throw new Error("recaption_audio_too_large");
+    }
+  }
+  return total;
+}
 
 /**
  * Rebuild only the audible main-track sequence at its native sample rate. The
@@ -11,20 +36,22 @@ import type { RawWord } from "@/lib/studio/transcribe-remote";
 export async function renderCurrentCutAudio(
   sourceUrl: string,
   clips: Clip[],
+  signal?: AbortSignal,
 ): Promise<{ samples: Float32Array; sampleRate: number }> {
+  signal?.throwIfAborted();
   if (clips.some((clip) => clip.src)) {
     throw new Error("recaption_appended_media_unsupported");
   }
-  const { channels, sampleRate } = await extractPcm(sourceUrl);
-  const source = downmixMono(channels);
-  const totalSamples = clips.reduce(
-    (sum, clip) =>
-      sum + Math.max(0, Math.round(clipDuration(clip) * sampleRate)),
-    0,
+  const { samples: source, sampleRate } = await extractAdmittedMonoPcm(
+    sourceUrl,
+    signal,
   );
+  signal?.throwIfAborted();
+  const totalSamples = plannedRecaptionSamples(clips, sampleRate);
   const samples = new Float32Array(totalSamples);
   let writeAt = 0;
   for (const clip of clips) {
+    signal?.throwIfAborted();
     const from = Math.max(0, Math.round(clip.start * sampleRate));
     const length = Math.max(0, Math.round(clipDuration(clip) * sampleRate));
     const slice = source.subarray(from, Math.min(source.length, from + length));

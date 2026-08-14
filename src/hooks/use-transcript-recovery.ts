@@ -9,6 +9,33 @@ export type RecoveryError =
   | "transcribe_failed"
   | "empty";
 
+export const MAX_TRANSCRIPT_RECOVERY_BYTES = 4_000_000;
+const RECOVERY_MEDIA_TYPES =
+  /^(audio\/(wav|x-wav|aac|mp4|x-m4a|webm|ogg|mpeg)|video\/(mp4|webm|quicktime))$/i;
+const RECOVERY_EXTENSION_TYPES: Record<string, string> = {
+  wav: "audio/wav",
+  m4a: "audio/x-m4a",
+  mp4: "video/mp4",
+  webm: "video/webm",
+  mov: "video/quicktime",
+  mp3: "audio/mpeg",
+  aac: "audio/aac",
+  ogg: "audio/ogg",
+};
+
+export function transcriptRecoveryMediaType(file: File): string | null {
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mediaType = file.type || RECOVERY_EXTENSION_TYPES[extension] || "";
+  if (
+    file.size === 0 ||
+    file.size > MAX_TRANSCRIPT_RECOVERY_BYTES ||
+    !RECOVERY_MEDIA_TYPES.test(mediaType)
+  ) {
+    return null;
+  }
+  return mediaType;
+}
+
 /**
  * The three ways to get a transcript onto a reference the app could not hear.
  *
@@ -71,10 +98,16 @@ export function useTranscriptRecovery(
 
   const attach = (file: File) =>
     run("attach", async () => {
+      const mediaType = transcriptRecoveryMediaType(file);
+      // Reject from metadata before reading a byte. Passing the Blob directly
+      // also avoids the previous File -> ArrayBuffer -> request-body copy.
+      if (!mediaType) {
+        return "transcribe_failed";
+      }
       const res = await fetch("/api/transcribe", {
         method: "POST",
-        headers: { "Content-Type": file.type || "audio/wav" },
-        body: await file.arrayBuffer(),
+        headers: { "Content-Type": mediaType },
+        body: file,
       });
       if (!res.ok) return "transcribe_failed";
       // `/api/transcribe` returns RawWord, whose field is `text`. Reading

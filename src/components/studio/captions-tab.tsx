@@ -20,6 +20,9 @@ export default function CaptionsTab({
     retranscribeCurrentCut,
     recaptioning,
     recaptionError,
+    cancelTranscription,
+    transcribeStatus,
+    autoEditing,
   } = useStudio();
 
   const retranscribeControl = (
@@ -27,7 +30,9 @@ export default function CaptionsTab({
       <Button
         type="button"
         onClick={() => void retranscribeCurrentCut()}
-        disabled={recaptioning}
+        disabled={
+          recaptioning || transcribeStatus === "transcribing" || autoEditing
+        }
         variant="outline"
         size="sm"
         className="w-full disabled:cursor-wait"
@@ -42,6 +47,17 @@ export default function CaptionsTab({
           ? "Retranscribing current cut…"
           : "Retranscribe current cut"}
       </Button>
+      {recaptioning && (
+        <Button
+          type="button"
+          onClick={cancelTranscription}
+          variant="ghost"
+          size="sm"
+          className="w-full"
+        >
+          Cancel retranscription
+        </Button>
+      )}
 
       <p className="text-foreground/50 text-xs leading-5">
         Use this after manual cuts. It listens to the edited main track, not the

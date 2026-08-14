@@ -6,6 +6,7 @@ import {
   applyTranscriptionDictionary,
   type TranscriptionDictionaryEntry,
 } from "@/lib/studio/transcription-dictionary";
+import type { AsrAudio } from "@/lib/studio/audio/asr-audio";
 
 /**
  * Decoded audio plus its source url, in: timed words, out.
@@ -22,9 +23,11 @@ export async function transcribeToWords(
   audio: Float32Array,
   url: string,
   dictionary: TranscriptionDictionaryEntry[] = [],
+  signal?: AbortSignal,
+  preparedChunks?: AsrAudio[],
 ): Promise<Word[]> {
   const raw = applyTranscriptionDictionary(
-    await transcribeUrl(url, dictionary),
+    await transcribeUrl(url, dictionary, signal, preparedChunks),
     dictionary,
   );
   const segments = detectSpeechSegments(audio);
