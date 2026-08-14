@@ -51,7 +51,10 @@ import {
   trimClipsToSpeech as trimToSpeech,
   type PauseCutOptions,
 } from "@/lib/studio/auto-edit";
-import { decodeToMono16k } from "@/lib/studio/audio-decode";
+import {
+  decodeToMono16k,
+  prepareTranscriptionSource,
+} from "@/lib/studio/audio-decode";
 import { chunkMonoPcm } from "@/lib/studio/audio/asr-audio";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { loadVideoSource } from "@/lib/studio/load-source";
@@ -71,6 +74,7 @@ import {
   dictionaryKeyterms,
 } from "@/lib/studio/transcription-dictionary";
 import { projectDuration } from "@/lib/studio/project-duration";
+import { StudioTranscriptionGate } from "@/lib/studio/transcription-operation";
 import { type PlacedSpan } from "@/lib/studio/overlay-plan";
 import {
   clampStartToTrack,
@@ -161,6 +165,7 @@ interface StudioContextValue {
   removePauses: () => number;
   trimClipsToSpeech: () => Promise<number>;
   transcribe: () => Promise<void>;
+  cancelTranscription: () => void;
   deleteWords: (ids: string[]) => void;
   restoreWords: (ids: string[]) => void;
   cutRange: (from: number, to: number) => void;
@@ -345,8 +350,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     errorMessage: transcribeError,
     run: runTranscribe,
     runOn: transcribeAudio,
+    cancel: cancelTrackedTranscription,
     reset: resetWords,
   } = useTranscript(transcriptionDictionary);
+  const [studioTranscriptionGate] = useState(
+    () => new StudioTranscriptionGate(),
+  );
+  const cancelTranscription = useCallback(() => {
+    cancelTrackedTranscription();
+    studioTranscriptionGate.cancel();
+  }, [cancelTrackedTranscription, studioTranscriptionGate]);
+  useEffect(() => cancelTranscription, [cancelTranscription]);
   const [detecting, setDetecting] = useState(false);
   const [aiCleaning, setAiCleaning] = useState(false);
   const [aiCleanupUnavailable, setAiCleanupUnavailable] = useState(false);
@@ -385,30 +399,37 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const retranscribeCurrentCut = useCallback(async (): Promise<void> => {
     if (!source || source.kind === "image" || clips.length === 0) return;
+    const controller = studioTranscriptionGate.begin();
+    if (!controller) return;
     setRecaptioning(true);
     setRecaptionError(null);
     try {
       const { samples, sampleRate } = await renderCurrentCutAudio(
         source.url,
         clips,
+        controller.signal,
       );
       const raw = applyTranscriptionDictionary(
         await transcribeAsrChunks(
           chunkMonoPcm(samples, sampleRate),
           dictionaryKeyterms(transcriptionDictionary),
+          controller.signal,
         ),
         transcriptionDictionary,
       );
       const currentWords = editedWordsToSourceWords(raw, clips);
+      controller.signal.throwIfAborted();
       const generated = generateCaptions(currentWords, clips, {
         maxChars: captionLines * 30,
         maxWords: captionWords || undefined,
       });
+      if (!studioTranscriptionGate.owns(controller)) return;
       setCaptions((prev) => [
         ...prev.filter((caption) => caption.kind === "hook"),
         ...generated,
       ]);
     } catch (error) {
+      if (controller.signal.aborted) return;
       console.error("[studio] current-cut recaption failed", error);
       setRecaptionError(
         error instanceof Error &&
@@ -417,7 +438,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           : "Couldn't retranscribe the current cut. Please try again.",
       );
     } finally {
-      setRecaptioning(false);
+      if (studioTranscriptionGate.owns(controller)) {
+        studioTranscriptionGate.release(controller);
+        setRecaptioning(false);
+      }
     }
   }, [
     source,
@@ -426,6 +450,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     captionLines,
     captionWords,
     setCaptions,
+    studioTranscriptionGate,
   ]);
 
   const autoBreakCaptions = useCallback(
@@ -1060,6 +1085,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const loadSource = useCallback(
     (next: StudioSource) => {
+      cancelTranscription();
       setSource((prev) => {
         if (prev?.url.startsWith("blob:")) URL.revokeObjectURL(prev.url);
         return next;
@@ -1070,12 +1096,9 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       sel.clearClips();
       sel.clearOverlays();
       resetTranscript();
-      // Warm the audio decode now (it's the slow first step and dedupes by URL),
-      // so by the time the user hits 1-Click or Transcribe it's already cached.
-      if (next.kind !== "image") void decodeToMono16k(next.url).catch(() => {});
       registerSource(next);
     },
-    [resetEditor, resetTranscript, registerSource, sel],
+    [cancelTranscription, resetEditor, resetTranscript, registerSource, sel],
   );
 
   /** Start a project from a picked sequence. The first file owns the base
@@ -1090,11 +1113,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         ...prev,
         ...rest.map((next) => clipFromAsset(assetFromSource(next))),
       ]);
-      for (const next of rest) {
-        addMediaSource(next);
-        if (next.kind !== "image")
-          void decodeToMono16k(next.url).catch(() => {});
-      }
+      for (const next of rest) addMediaSource(next);
     },
     [loadSource, setClips, addMediaSource],
   );
@@ -1397,8 +1416,16 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const transcribe = useCallback(async (): Promise<void> => {
     if (!source || source.kind === "image") return;
-    await runTranscribe(source.url, (audio) => coverFullAudio(audio.length));
-  }, [source, runTranscribe, coverFullAudio]);
+    const controller = studioTranscriptionGate.begin();
+    if (!controller) return;
+    try {
+      await runTranscribe(source.url, (audio) => coverFullAudio(audio.length));
+    } finally {
+      if (studioTranscriptionGate.owns(controller)) {
+        studioTranscriptionGate.release(controller);
+      }
+    }
+  }, [source, runTranscribe, coverFullAudio, studioTranscriptionGate]);
 
   const deleteWords = useCallback(
     (ids: string[]) => {
@@ -1454,6 +1481,8 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const autoEdit = useCallback(
     async (withCaptions = true): Promise<void> => {
       if (!source || source.kind === "image") return;
+      const controller = studioTranscriptionGate.begin();
+      if (!controller) return;
       setAutoEditCaptions(withCaptions);
       setAutoEditing(true);
       setAiCleanupUnavailable(false);
@@ -1461,12 +1490,22 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         // Decoding is the slow part for a long or 4K take: the audio has to be
         // pulled out of the video in-browser before anything else can happen.
         setAutoEditStep(AUTO_EDIT_STEPS.PREPARE);
-        const audio = await decodeToMono16k(source.url);
+        const prepared = await prepareTranscriptionSource(
+          source.url,
+          controller.signal,
+          { includeAsrChunks: words.length === 0 },
+        );
+        const audio = prepared.mono16k;
 
         setAutoEditStep(AUTO_EDIT_STEPS.TRANSCRIPT);
         let w = words; // reuse an existing transcript when there is one
         if (w.length === 0) {
-          const transcribed = await transcribeAudio(audio, source.url);
+          const transcribed = await transcribeAudio(
+            audio,
+            source.url,
+            prepared.chunks,
+          );
+          controller.signal.throwIfAborted();
           // One-click editing is transcript-driven. Continuing after an upload
           // or ASR failure used to make the feature look successful while only
           // trimming silence, and could leave users with an unexplained result.
@@ -1490,19 +1529,24 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           // response, network error) is surfaced instead of silently
           // degrading, so the edit never looks "done" while barely cutting.
           try {
-            aiCuts = await cleanTranscriptRemote(w);
+            aiCuts = await cleanTranscriptRemote(w, controller.signal);
+            controller.signal.throwIfAborted();
           } catch (e) {
+            if (controller.signal.aborted) throw e;
             console.error("[studio] AI retake cleanup failed", e);
             setAiCleanupUnavailable(true);
           }
         }
 
+        const analysis = await analysisPromise;
+        controller.signal.throwIfAborted();
+        if (!studioTranscriptionGate.owns(controller)) return;
         const plan = planAutoEdit({
           clips,
           words: w,
           sourceDuration: source.duration,
           audioDuration: audio.length / 16000, // decode target rate
-          analysis: await analysisPromise,
+          analysis,
           aiCuts,
           onStep: setAutoEditStep,
         });
@@ -1535,8 +1579,11 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
           ]);
         }
       } finally {
-        setAutoEditing(false);
-        setAutoEditStep(-1);
+        if (studioTranscriptionGate.owns(controller)) {
+          studioTranscriptionGate.release(controller);
+          setAutoEditing(false);
+          setAutoEditStep(-1);
+        }
       }
     },
     [
@@ -1547,6 +1594,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       setCaptions,
       transcribeAudio,
       captionLines,
+      studioTranscriptionGate,
     ],
   );
 
@@ -1618,6 +1666,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       audioTracks,
       transcribeStatus,
       transcribeError,
+      cancelTranscription,
       loadSource,
       loadSources,
       clearSource,
@@ -1740,6 +1789,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
       audioTracks,
       transcribeStatus,
       transcribeError,
+      cancelTranscription,
       loadSource,
       loadSources,
       clearSource,

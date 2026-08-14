@@ -13,8 +13,10 @@ const ACTION =
  * and the bar becomes a command box the moment one of them finishes.
  */
 export default function AiTranscribePrompt() {
-  const { transcribe, transcribeStatus, autoEdit, autoEditing } = useStudio();
-  const busy = transcribeStatus === "transcribing" || autoEditing;
+  const { transcribe, transcribeStatus, autoEdit, autoEditing, recaptioning } =
+    useStudio();
+  const busy =
+    transcribeStatus === "transcribing" || autoEditing || recaptioning;
 
   if (busy) {
     return (

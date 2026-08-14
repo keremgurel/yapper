@@ -14,6 +14,7 @@ import {
   readBoundedBody,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
+import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -23,6 +24,8 @@ export const maxDuration = 120;
 const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
 const MAX_AUDIO_BYTES = 4_000_000;
 const MAX_AUDIO_DURATION_SECONDS = 600;
+const PROVIDER_DEADLINE_MS = 108_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 4_000_000;
 const AUDIO_MEDIA_TYPES = [
   "audio/wav",
   "audio/x-wav",
@@ -52,6 +55,9 @@ interface AsrResult {
  * Responds 501 when no provider key is configured.
  */
 export async function POST(req: Request): Promise<Response> {
+  // Includes auth, bounded ingress read, rate limits, and billing. Provider
+  // work receives only what remains of the route's single wall-clock budget.
+  const providerDeadline = Date.now() + PROVIDER_DEADLINE_MS;
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const ingressLimited = await guardProviderIngress(req);
@@ -104,17 +110,28 @@ export async function POST(req: Request): Promise<Response> {
   // a body before this route runs, and some proxies truncate bodies silently.
   // The client now sends upload-safe chunks; this duration check remains a
   // final guard against ever accepting a chunk whose tail went missing.
-  const providers: { name: string; run: () => Promise<AsrResult> }[] = [];
+  const providers: {
+    name: string;
+    run: (timeoutMs: number) => Promise<AsrResult>;
+  }[] = [];
   if (deepgram) {
     providers.push({
       name: "deepgram",
-      run: () => viaDeepgram(audio, deepgram, contentType, keyterms),
+      run: (timeoutMs) =>
+        viaDeepgram(
+          audio,
+          deepgram,
+          contentType,
+          keyterms,
+          req.signal,
+          timeoutMs,
+        ),
     });
   }
   if (groq) {
     providers.push({
       name: "groq",
-      run: () =>
+      run: (timeoutMs) =>
         viaOpenAiCompatible(
           audio,
           groq,
@@ -122,6 +139,8 @@ export async function POST(req: Request): Promise<Response> {
           "whisper-large-v3",
           contentType,
           keyterms,
+          req.signal,
+          timeoutMs,
         ),
     });
   }
@@ -141,8 +160,21 @@ export async function POST(req: Request): Promise<Response> {
 
   let lastError: unknown;
   for (const provider of providers) {
+    const remainingMs = providerDeadline - Date.now();
+    if (remainingMs <= 0 || req.signal.aborted) {
+      lastError = new OutboundHttpError(
+        req.signal.aborted ? "aborted" : "timeout",
+      );
+      break;
+    }
     try {
-      const { words, heardSec } = await provider.run();
+      const { words, heardSec } = await provider.run(remainingMs);
+      if (req.signal.aborted) {
+        throw new OutboundHttpError("aborted", { cause: req.signal.reason });
+      }
+      if (Date.now() >= providerDeadline) {
+        throw new OutboundHttpError("timeout");
+      }
       if (isAudioTruncated(expectedDuration, heardSec)) {
         // The ASR heard less than the client sent: the body was truncated in
         // transit. Refuse rather than return a transcript missing its tail.
@@ -160,6 +192,15 @@ export async function POST(req: Request): Promise<Response> {
     } catch (e) {
       lastError = e;
       console.error(`[transcribe] ${provider.name} failed`, e);
+      // Cancellation and expiry are terminal. Falling through would start
+      // another provider after the caller left or the route budget elapsed.
+      if (
+        req.signal.aborted ||
+        (e instanceof OutboundHttpError &&
+          (e.code === "aborted" || e.code === "timeout"))
+      ) {
+        break;
+      }
     }
   }
   await refundCreditReservation(
@@ -172,7 +213,15 @@ export async function POST(req: Request): Promise<Response> {
       error:
         lastError instanceof Error ? lastError.message : "transcribe_failed",
     },
-    { status: 502 },
+    {
+      status:
+        lastError instanceof OutboundHttpError && lastError.code === "timeout"
+          ? 504
+          : lastError instanceof OutboundHttpError &&
+              lastError.code === "aborted"
+            ? 499
+            : 502,
+    },
   );
 }
 
@@ -188,6 +237,8 @@ async function viaDeepgram(
   key: string,
   contentType: string,
   keyterms: string[],
+  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<AsrResult> {
   const endpoint = new URL("https://api.deepgram.com/v1/listen");
   endpoint.searchParams.set("model", "nova-3");
@@ -199,13 +250,19 @@ async function viaDeepgram(
   // a real hesitation or sentence onset.
   endpoint.searchParams.set("filler_words", "true");
   for (const term of keyterms) endpoint.searchParams.append("keyterm", term);
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
-    body: audio,
-  });
-  if (!res.ok) throw new Error(`deepgram_${res.status}`);
-  const json = await res.json();
+  const { response, data: json } = await fetchBoundedJson<{
+    metadata?: { duration?: unknown };
+    results?: { channels?: { alternatives?: { words?: DeepgramWord[] }[] }[] };
+  }>(
+    endpoint,
+    {
+      method: "POST",
+      headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
+      body: audio,
+    },
+    { timeoutMs, maxBytes: MAX_PROVIDER_RESPONSE_BYTES, signal },
+  );
+  if (!response.ok) throw new Error(`deepgram_${response.status}`);
   const words: DeepgramWord[] =
     json?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
   return {
@@ -233,6 +290,8 @@ async function viaOpenAiCompatible(
   model: string,
   contentType: string,
   keyterms: string[],
+  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<AsrResult> {
   const ext = contentType.includes("aac") ? "aac" : "wav";
   const form = new FormData();
@@ -243,13 +302,19 @@ async function viaOpenAiCompatible(
   if (keyterms.length > 0) {
     form.append("prompt", `Preferred vocabulary: ${keyterms.join(", ")}`);
   }
-  const res = await fetch(`${base}/audio/transcriptions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${key}` },
-    body: form,
-  });
-  if (!res.ok) throw new Error(`asr_${res.status}`);
-  const json = await res.json();
+  const { response, data: json } = await fetchBoundedJson<{
+    duration?: unknown;
+    words?: OpenAiWord[];
+  }>(
+    `${base}/audio/transcriptions`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}` },
+      body: form,
+    },
+    { timeoutMs, maxBytes: MAX_PROVIDER_RESPONSE_BYTES, signal },
+  );
+  if (!response.ok) throw new Error(`asr_${response.status}`);
   const words: OpenAiWord[] = json?.words ?? [];
   return {
     heardSec: Number(json?.duration ?? 0),

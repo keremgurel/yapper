@@ -29,8 +29,10 @@ export default function QuickEditPanel({
     captions,
     transcribe,
     transcribeStatus,
+    cancelTranscription,
     autoEdit,
     autoEditing,
+    recaptioning,
     generateCaptionsFromTranscript,
     addTextHook,
     updateTextHook,
@@ -76,7 +78,8 @@ export default function QuickEditPanel({
   const runTranscription = () => {
     void transcribe().then(() => onOpenTranscript?.());
   };
-  const busy = autoEditing || transcribeStatus === "transcribing";
+  const busy =
+    autoEditing || recaptioning || transcribeStatus === "transcribing";
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto">
@@ -103,6 +106,15 @@ export default function QuickEditPanel({
         </div>
 
         <div className="border-border overflow-hidden rounded-lg border">
+          {busy && (
+            <button
+              type="button"
+              className="border-border text-foreground/70 w-full border-b px-3 py-2 text-xs font-bold"
+              onClick={cancelTranscription}
+            >
+              Cancel current operation
+            </button>
+          )}
           <QuickRow
             icon={transcribeStatus === "transcribing" ? Loader2 : FileText}
             spinning={transcribeStatus === "transcribing"}

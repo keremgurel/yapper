@@ -272,16 +272,26 @@ export async function nativeAudioBlob(path: string): Promise<Blob> {
 }
 
 /** Native mono 16 kHz float PCM for VAD and trim analysis. */
-export async function nativePcm16k(path: string): Promise<Float32Array> {
+export async function nativePcm16k(
+  path: string,
+  signal?: AbortSignal,
+): Promise<Float32Array> {
+  signal?.throwIfAborted();
   const { byteLength } = await invoke<{ byteLength: number }>("prepare_pcm", {
     path,
   });
-  if (byteLength <= 0 || byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
+  signal?.throwIfAborted();
+  if (
+    byteLength <= 0 ||
+    byteLength > 64 * 1024 * 1024 ||
+    byteLength % Float32Array.BYTES_PER_ELEMENT !== 0
+  ) {
     throw new Error("invalid native PCM byte length");
   }
   const output = new Uint8Array(byteLength);
   const chunkSize = 2 * 1024 * 1024;
   for (let offset = 0; offset < byteLength; offset += chunkSize) {
+    signal?.throwIfAborted();
     const length = Math.min(chunkSize, byteLength - offset);
     const response = await invoke<NativeBytes>("extract_pcm_chunk", {
       path,
@@ -289,6 +299,7 @@ export async function nativePcm16k(path: string): Promise<Float32Array> {
       length,
     });
     const chunk = nativeBytes(response, "PCM chunk");
+    signal?.throwIfAborted();
     if (chunk.byteLength !== length) {
       throw new Error(
         `invalid native PCM chunk length (${chunk.byteLength}/${length})`,

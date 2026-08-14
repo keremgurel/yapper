@@ -1,15 +1,33 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { decodeToMono16k } from "@/lib/studio/audio-decode";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { prepareTranscriptionSource } from "@/lib/studio/audio-decode";
 import { transcribeToWords } from "@/lib/studio/transcribe";
 import { newWordId, type Word } from "@/lib/studio/types";
 import {
   applyTranscriptionDictionary,
   type TranscriptionDictionaryEntry,
 } from "@/lib/studio/transcription-dictionary";
+import type { AsrAudio } from "@/lib/studio/audio/asr-audio";
 
 export type TranscribeStatus = "idle" | "transcribing" | "done" | "error";
+
+export class TranscriptionRunFence {
+  current: AbortController | null = null;
+  begin(): AbortController {
+    this.current?.abort("superseded");
+    const controller = new AbortController();
+    this.current = controller;
+    return controller;
+  }
+  cancel(reason = "canceled"): void {
+    this.current?.abort(reason);
+    this.current = null;
+  }
+  owns(controller: AbortController): boolean {
+    return this.current === controller && !controller.signal.aborted;
+  }
+}
 
 export function correctWordSpellings(
   current: Word[],
@@ -56,6 +74,11 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
   const [rawWords, setRawWords] = useState<Word[]>([]);
   const [status, setStatus] = useState<TranscribeStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fence] = useState(() => new TranscriptionRunFence());
+  useEffect(() => () => fence.cancel("unmounted"), [fence]);
+  const begin = useCallback(() => {
+    return fence.begin();
+  }, [fence]);
   // A word remembered after transcription also fixes this open project, so
   // regenerating captions cannot bring the old misspelling back.
   const words = useMemo(
@@ -68,15 +91,32 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
    * backend fails, in which case the previous transcript is left alone.
    */
   const runOn = useCallback(
-    async (audio: Float32Array, url: string): Promise<Word[] | null> => {
+    async (
+      audio: Float32Array,
+      url: string,
+      preparedChunks?: AsrAudio[],
+    ): Promise<Word[] | null> => {
+      const controller = begin();
       setStatus("transcribing");
       setErrorMessage(null);
       try {
-        const next = await transcribeToWords(audio, url, dictionary);
+        const next = await transcribeToWords(
+          audio,
+          url,
+          dictionary,
+          controller.signal,
+          preparedChunks,
+        );
+        controller.signal.throwIfAborted();
+        if (!fence.owns(controller)) return null;
         setRawWords(next);
         setStatus("done");
         return next;
       } catch (e) {
+        if (controller.signal.aborted) {
+          if (fence.current === controller) setStatus("idle");
+          return null;
+        }
         console.error("[studio] transcription failed", e);
         setErrorMessage(
           e instanceof Error
@@ -87,7 +127,7 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
         return null;
       }
     },
-    [dictionary],
+    [begin, dictionary, fence],
   );
 
   /**
@@ -104,10 +144,21 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
     ): Promise<Word[] | null> => {
       setStatus("transcribing");
       setErrorMessage(null);
+      const controller = begin();
       let audio: Float32Array;
+      let chunks;
       try {
-        audio = await decodeToMono16k(url);
+        const prepared = await prepareTranscriptionSource(
+          url,
+          controller.signal,
+        );
+        audio = prepared.mono16k;
+        chunks = prepared.chunks;
       } catch (e) {
+        if (controller.signal.aborted) {
+          if (fence.current === controller) setStatus("idle");
+          return null;
+        }
         console.error("[studio] transcription failed", e);
         setErrorMessage(
           e instanceof Error ? e.message : "The audio could not be prepared.",
@@ -115,17 +166,51 @@ export function useTranscript(dictionary: TranscriptionDictionaryEntry[] = []) {
         setStatus("error");
         return null;
       }
+      if (controller.signal.aborted) return null;
       onDecoded?.(audio);
-      return runOn(audio, url);
+      try {
+        const next = await transcribeToWords(
+          audio,
+          url,
+          dictionary,
+          controller.signal,
+          chunks,
+        );
+        controller.signal.throwIfAborted();
+        if (!fence.owns(controller)) return null;
+        setRawWords(next);
+        setStatus("done");
+        return next;
+      } catch (e) {
+        if (controller.signal.aborted) {
+          if (fence.current === controller) setStatus("idle");
+          return null;
+        }
+        console.error("[studio] transcription failed", e);
+        setErrorMessage(
+          e instanceof Error
+            ? e.message
+            : "An unexpected transcription error occurred.",
+        );
+        setStatus("error");
+        return null;
+      }
     },
-    [runOn],
+    [begin, dictionary, fence],
   );
 
+  const cancel = useCallback(() => {
+    fence.cancel();
+    setErrorMessage(null);
+    setStatus("idle");
+  }, [fence]);
+
   const reset = useCallback(() => {
+    fence.cancel("reset");
     setRawWords([]);
     setStatus("idle");
     setErrorMessage(null);
-  }, []);
+  }, [fence]);
 
-  return { words, status, errorMessage, run, runOn, reset };
+  return { words, status, errorMessage, run, runOn, cancel, reset };
 }

@@ -1,4 +1,4 @@
-import { createFile, MP4BoxBuffer, type Sample, type Track } from "mp4box";
+import { createFile, type MP4BoxBuffer, type Sample, type Track } from "mp4box";
 
 /**
  * The compressed audio track pulled out of a media file, ready to hand to a
@@ -52,7 +52,65 @@ function findAudioConfig(trak: unknown): Uint8Array | undefined {
 }
 
 /** Demux the first audio track of `url` into ordered encoded AAC chunks. */
-export async function demuxAudioTrack(url: string): Promise<DemuxedAudio> {
+export const MAX_BROWSER_DEMUX_BYTES = 256 * 1024 * 1024;
+
+export async function streamBoundedMedia(
+  url: string,
+  append: (buffer: ArrayBuffer) => void,
+  signal?: AbortSignal,
+  maxBytes = MAX_BROWSER_DEMUX_BYTES,
+): Promise<void> {
+  signal?.throwIfAborted();
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error(`media_fetch_${response.status}`);
+  const declared = Number(response.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    void response.body?.cancel("media_too_large").catch(() => undefined);
+    throw new Error("media_too_large_for_browser_transcription");
+  }
+  if (!response.body) return;
+  const reader = response.body.getReader();
+  let total = 0;
+  let rejectAbort: ((reason: unknown) => void) | undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    rejectAbort = reject;
+  });
+  const onAbort = () =>
+    rejectAbort?.(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+  signal?.addEventListener("abort", onAbort, { once: true });
+  try {
+    while (true) {
+      signal?.throwIfAborted();
+      const { done, value } = await Promise.race([reader.read(), aborted]);
+      if (done) break;
+      if (value.byteLength > maxBytes - total) {
+        throw new Error("media_too_large_for_browser_transcription");
+      }
+      // Copy only the current network chunk into an exact transferable buffer.
+      // mp4box consumes it synchronously, so memory stays bounded by the
+      // network chunk + parser state instead of a second whole-video copy.
+      const exact = value.slice().buffer;
+      Object.assign(exact, { fileStart: total });
+      append(exact);
+      total += value.byteLength;
+    }
+  } catch (error) {
+    void reader.cancel(error).catch(() => undefined);
+    throw error;
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    try {
+      reader.releaseLock();
+    } catch {
+      /* cancellation cleanup */
+    }
+  }
+}
+
+export async function demuxAudioTrack(
+  url: string,
+  signal?: AbortSignal,
+): Promise<DemuxedAudio> {
   const file = createFile();
   const chunks: DemuxedAudio["chunks"] = [];
   let audioTrackId: number | undefined;
@@ -87,10 +145,12 @@ export async function demuxAudioTrack(url: string): Promise<DemuxedAudio> {
     }
   };
 
-  // The whole file is buffered in one shot; appendBuffer + flush parse it and
-  // drive onReady/onSamples synchronously, so chunks are complete afterward.
-  const buf = await (await fetch(url)).arrayBuffer();
-  file.appendBuffer(MP4BoxBuffer.fromArrayBuffer(buf, 0));
+  await streamBoundedMedia(
+    url,
+    (buffer) => file.appendBuffer(buffer as MP4BoxBuffer),
+    signal,
+  );
+  signal?.throwIfAborted();
   file.flush();
 
   if (error) throw error;

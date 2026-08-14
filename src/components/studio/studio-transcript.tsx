@@ -29,10 +29,12 @@ export default function StudioTranscript({
     source,
     words,
     transcribeStatus,
+    cancelTranscription,
     transcribeError,
     transcribe,
     autoEdit,
     autoEditing,
+    recaptioning,
     autoEditCaptions,
   } = useStudio();
   const hasTranscript = transcribeStatus === "done" && words.length > 0;
@@ -135,7 +137,7 @@ export default function StudioTranscript({
                 <Button
                   type="button"
                   onClick={() => void autoEdit(true)}
-                  disabled={autoEditing}
+                  disabled={autoEditing || recaptioning}
                   className="w-full"
                   title="Clean the cut and add captions"
                 >
@@ -152,7 +154,7 @@ export default function StudioTranscript({
                   type="button"
                   variant="outline"
                   onClick={() => void autoEdit(false)}
-                  disabled={autoEditing}
+                  disabled={autoEditing || recaptioning}
                   className="w-full"
                   title="Clean the cut without adding captions"
                 >
@@ -169,6 +171,7 @@ export default function StudioTranscript({
                   type="button"
                   variant="outline"
                   onClick={() => void transcribe()}
+                  disabled={autoEditing || recaptioning}
                   className="w-full"
                 >
                   <Sparkles className="h-4 w-4" />
@@ -184,10 +187,19 @@ export default function StudioTranscript({
           )}
 
           {transcribeStatus === "transcribing" && (
-            <p className="text-foreground/70 inline-flex items-center gap-2 text-sm font-bold">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Transcribing…
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-foreground/70 inline-flex items-center gap-2 text-sm font-bold">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Transcribing…
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={cancelTranscription}
+              >
+                Cancel
+              </Button>
+            </div>
           )}
 
           {transcribeStatus === "error" && (

@@ -41,6 +41,7 @@ export default function TranscriptWords({
     aiCleaning,
     autoEdit,
     autoEditing,
+    recaptioning,
     transcribe,
     transcribeStatus,
   } = useStudio();
@@ -137,7 +138,7 @@ export default function TranscriptWords({
           type="button"
           size="sm"
           onClick={() => void autoEdit(true)}
-          disabled={autoEditing}
+          disabled={autoEditing || recaptioning}
           className="text-xs font-bold"
           title="Trim silence, remove mistakes, cut pauses, and add captions — in one click"
         >
@@ -151,7 +152,7 @@ export default function TranscriptWords({
         <button
           type="button"
           onClick={() => void autoEdit(false)}
-          disabled={autoEditing}
+          disabled={autoEditing || recaptioning}
           className={toolBtn}
           title="Trim silence, remove mistakes, and cut pauses — without captions"
         >

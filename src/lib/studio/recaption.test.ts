@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { editedWordsToSourceWords } from "@/lib/studio/recaption";
+import {
+  editedWordsToSourceWords,
+  plannedRecaptionSamples,
+  MAX_RECAPTION_DURATION_SECONDS,
+} from "@/lib/studio/recaption";
 import type { Clip } from "@/lib/studio/types";
+
+const clip = (start: number, end: number): Clip => ({
+  id: `${start}-${end}`,
+  start,
+  end,
+});
 
 describe("editedWordsToSourceWords", () => {
   it("maps a retranscribed edited timeline back across removed source ranges", () => {
@@ -38,5 +48,28 @@ describe("editedWordsToSourceWords", () => {
     );
 
     expect(words.map((word) => word.start)).toEqual([20.2, 2.2]);
+  });
+});
+
+describe("recaption render budget", () => {
+  it("accepts the server-compatible duration boundary", () => {
+    expect(
+      plannedRecaptionSamples(
+        [clip(0, MAX_RECAPTION_DURATION_SECONDS)],
+        48_000,
+      ),
+    ).toBe(28_800_000);
+  });
+
+  it("rejects repeated cuts beyond the cap before allocation", () => {
+    expect(() =>
+      plannedRecaptionSamples([clip(0, 400), clip(0, 400)], 48_000),
+    ).toThrow("recaption_audio_too_large");
+  });
+
+  it("rejects invalid sample metadata", () => {
+    expect(() => plannedRecaptionSamples([clip(0, 1)], Number.NaN)).toThrow(
+      "recaption_invalid_audio",
+    );
   });
 });
