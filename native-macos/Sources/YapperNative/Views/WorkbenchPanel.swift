@@ -660,7 +660,7 @@ private struct QuickEditWorkbench: View {
                     icon: "doc.text",
                     busy: session.isBusy
                 ) {
-                    Task { await session.transcribeProject() }
+                    session.startTranscription()
                 }
                 QuickAction(
                     title: session.isAIEditing ? "Editing…" : "1-Click Edit + Captions",
@@ -695,6 +695,10 @@ private struct QuickEditWorkbench: View {
                 Text(session.statusMessage)
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
+                if session.activeOperation?.operation == .transcribing {
+                    Button("Cancel transcription") { session.cancelCurrentTranscription() }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                }
             }
 
             Spacer()
@@ -985,7 +989,7 @@ private struct TranscriptWorkbench: View {
                 }
                 Spacer()
                 Button(words.isEmpty ? "Transcribe" : "Transcribe Again") {
-                    Task { await session.transcribeProject() }
+                    session.startTranscription()
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 .disabled(session.isBusy || session.project.clips.isEmpty)
@@ -1000,6 +1004,10 @@ private struct TranscriptWorkbench: View {
             if session.isAIEditing {
                 ProgressView(value: session.aiProgress).tint(Color.yapperOrange)
                 Text(session.statusMessage).font(.studioCaption).foregroundStyle(.secondary)
+                if session.activeOperation?.operation == .transcribing {
+                    Button("Cancel transcription") { session.cancelCurrentTranscription() }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                }
             }
 
             if words.isEmpty {

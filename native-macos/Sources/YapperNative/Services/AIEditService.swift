@@ -13,7 +13,102 @@ enum TranscriptionPCM {
     }
 }
 
+struct TranscriptionChunkPlan: Equatable, Sendable {
+    let start: Int
+    let length: Int
+    let offset: Double
+    let duration: Double
+
+    static func make(
+        byteCount: Int,
+        sampleRate: Int,
+        chunkBytes: Int,
+        overlapSeconds: Double
+    ) -> [Self] {
+        let usableByteCount = byteCount - max(0, byteCount % 2)
+        let usableChunkBytes = chunkBytes - max(0, chunkBytes % 2)
+        guard usableByteCount > 0, sampleRate > 0, usableChunkBytes >= 2 else { return [] }
+        let bytesPerSecond = sampleRate * 2
+        let requestedOverlap = max(0, Int(overlapSeconds * Double(bytesPerSecond)))
+        let overlap = min(usableChunkBytes - 2, requestedOverlap - requestedOverlap % 2)
+        let advance = max(2, usableChunkBytes - overlap)
+        var plans: [Self] = []
+        var start = 0
+        while start < usableByteCount {
+            let length = min(usableChunkBytes, usableByteCount - start)
+            plans.append(.init(
+                start: start,
+                length: length,
+                offset: Double(start) / Double(bytesPerSecond),
+                duration: Double(length) / Double(bytesPerSecond)
+            ))
+            if start + length == usableByteCount { break }
+            start += advance
+        }
+        return plans
+    }
+}
+
+enum BoundedTranscriptionWork {
+    static func run<Result: Sendable>(
+        count: Int,
+        limit: Int,
+        operation: @escaping @Sendable (Int) async throws -> Result,
+        completed: @escaping @Sendable (Int, Result) async -> Void = { _, _ in }
+    ) async throws -> [Result] {
+        guard count > 0 else { return [] }
+        return try await withThrowingTaskGroup(of: (Int, Result).self) { group in
+            var next = 0
+            var results: [Result?] = Array(repeating: nil, count: count)
+            func enqueue(_ index: Int) { group.addTask { (index, try await operation(index)) } }
+            while next < min(max(1, limit), count) { enqueue(next); next += 1 }
+            do {
+                while let (index, result) = try await group.next() {
+                    results[index] = result
+                    await completed(index, result)
+                    if next < count { enqueue(next); next += 1 }
+                }
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+            return results.compactMap { $0 }
+        }
+    }
+}
+
+enum TranscriptionTemporaryFile {
+    static func withPCMFile<Result: Sendable>(
+        isolation _: isolated (any Actor)? = #isolation,
+        _ operation: (URL) async throws -> Result
+    ) async throws -> Result {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "yapper-transcription-\(UUID().uuidString).pcm")
+        guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
+            throw NativeEditorError.aiFailed("The audio decoder could not create its temporary file.")
+        }
+        defer { try? FileManager.default.removeItem(at: url) }
+        return try await operation(url)
+    }
+}
+
+private actor TranscriptionCompletionCounter {
+    private var value = 0
+    func increment() -> Int { value += 1; return value }
+}
+
 actor AIEditService {
+    private static func purgeStaleTranscriptionFiles() {
+        let directory = FileManager.default.temporaryDirectory
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.contentModificationDateKey]
+        ) else { return }
+        let cutoff = Date().addingTimeInterval(-24 * 60 * 60)
+        for file in files where file.lastPathComponent.hasPrefix("yapper-transcription-") && file.pathExtension == "pcm" {
+            let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            if modified.map({ $0 < cutoff }) != false { try? FileManager.default.removeItem(at: file) }
+        }
+    }
     private struct RemoteWord: Codable {
         let text: String
         let start: Double
@@ -35,13 +130,15 @@ actor AIEditService {
     }
 
     private struct AudioChunk {
-        let data: Data
+        let start: Int
+        let length: Int
         let offset: Double
         let duration: Double
     }
 
     private struct DecodedAudio {
-        let pcm: Data
+        let url: URL
+        let byteCount: Int
         let sampleRate: Int
     }
 
@@ -49,49 +146,50 @@ actor AIEditService {
     // path could smear quiet sentence onsets before ASR heard them.
     private let chunkBytes = 3_000_000
     private let overlapSeconds = 5.0
-    private let maximumConcurrentChunks = 4
+    private let maximumConcurrentChunks = 2
 
     func transcribe(
         media: ProjectMedia,
-        dictionary: [DictionaryEntry] = []
+        dictionary: [DictionaryEntry] = [],
+        progress: (@MainActor @Sendable (Double) -> Void)? = nil
     ) async throws -> [TranscriptWord] {
         // Before the decode, not after the upload: a signed-out account should
         // cost a sentence, not a minute of chunking and sending.
         try await Self.requireSession()
+        Self.purgeStaleTranscriptionFiles()
         let keyterms = TranscriptionDictionary.keyterms(dictionary)
-        let decoded = try await decodeAudio(url: media.url)
-        let chunks = makeChunks(decoded.pcm, sampleRate: decoded.sampleRate)
-        var completed = Array(repeating: [RemoteWord](), count: chunks.count)
-
-        try await withThrowingTaskGroup(of: (Int, [RemoteWord]).self) { group in
-            var next = 0
-            func enqueue(_ index: Int) {
-                let chunk = chunks[index]
-                group.addTask {
-                    let words = try await Self.transcribeChunk(
-                        data: chunk.data,
-                        duration: chunk.duration,
-                        keyterms: keyterms,
+        return try await TranscriptionTemporaryFile.withPCMFile { temporaryURL in
+            let decoded = try await decodeAudio(
+                url: media.url, output: temporaryURL, progress: progress
+            )
+            let chunks = makeChunks(byteCount: decoded.byteCount, sampleRate: decoded.sampleRate)
+            let completionCounter = TranscriptionCompletionCounter()
+            let completed = try await BoundedTranscriptionWork.run(
+                count: chunks.count,
+                limit: maximumConcurrentChunks,
+                operation: { index in
+                    let chunk = chunks[index]
+                    let payload = try Self.wavChunk(
+                        at: decoded.url, start: chunk.start, length: chunk.length,
+                        sampleRate: decoded.sampleRate
+                    )
+                    return try await Self.transcribeChunk(
+                        data: payload, duration: chunk.duration, keyterms: keyterms,
                         baseURL: YapperAPI.baseURL
                     )
-                    return (index, words)
+                },
+                completed: { _, _ in
+                    let completedCount = await completionCounter.increment()
+                    await progress?(0.35 + 0.65 * Double(completedCount) / Double(max(1, chunks.count)))
                 }
-            }
-            while next < min(maximumConcurrentChunks, chunks.count) {
-                enqueue(next)
-                next += 1
-            }
-            while let (index, words) = try await group.next() {
-                completed[index] = words
-                if next < chunks.count { enqueue(next); next += 1 }
-            }
-        }
+            )
 
-        let heard = mergeTranscribedChunks(chunks: chunks, completed: completed).map {
-            TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
+            let heard = mergeTranscribedChunks(chunks: chunks, completed: completed).map {
+                TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
+            }
+            // The creator's own spellings win over what the transcriber heard.
+            return TranscriptionDictionary.applied(to: heard, entries: dictionary)
         }
-        // The creator's own spellings win over what the transcriber heard.
-        return TranscriptionDictionary.applied(to: heard, entries: dictionary)
     }
 
     /// Fails before the work starts when nobody is signed in.
@@ -252,7 +350,11 @@ actor AIEditService {
         return merge(ranges)
     }
 
-    private func decodeAudio(url: URL) async throws -> DecodedAudio {
+    private func decodeAudio(
+        url: URL,
+        output: URL,
+        progress: (@MainActor @Sendable (Double) -> Void)?
+    ) async throws -> DecodedAudio {
         let file: AVAudioFile
         do {
             file = try AVAudioFile(
@@ -272,9 +374,12 @@ actor AIEditService {
             throw NativeEditorError.aiFailed("The audio decoder could not allocate a buffer.")
         }
 
-        var pcm = Data()
-        pcm.reserveCapacity(Int(file.length) * MemoryLayout<Int16>.stride)
+        let handle = try FileHandle(forWritingTo: output)
+        var byteCount = 0
+        var lastProgress = 0.0
+        defer { try? handle.close() }
         while file.framePosition < file.length {
+            try Task.checkCancellation()
             buffer.frameLength = 0
             try file.read(into: buffer, frameCount: buffer.frameCapacity)
             let frameCount = Int(buffer.frameLength)
@@ -288,35 +393,26 @@ actor AIEditService {
                     channelCount: channelCount
                 ).littleEndian
             }
-            mono.withUnsafeBytes { pcm.append(contentsOf: $0) }
+            let bytes = mono.withUnsafeBytes { Data($0) }
+            try handle.write(contentsOf: bytes)
+            byteCount += bytes.count
+            let fraction = 0.35 * Double(file.framePosition) / Double(max(1, file.length))
+            if fraction - lastProgress >= 0.01 {
+                lastProgress = fraction
+                await progress?(fraction)
+            }
         }
-        guard !pcm.isEmpty else {
+        guard byteCount > 0 else {
             throw NativeEditorError.aiFailed("Audio decoding returned no samples.")
         }
-        return DecodedAudio(pcm: pcm, sampleRate: Int(format.sampleRate.rounded()))
+        return DecodedAudio(url: output, byteCount: byteCount, sampleRate: Int(format.sampleRate.rounded()))
     }
 
-    private func makeChunks(_ pcm: Data, sampleRate: Int) -> [AudioChunk] {
-        guard !pcm.isEmpty else { return [] }
-        let bytesPerSecond = sampleRate * 2
-        let overlap = Int(overlapSeconds * Double(bytesPerSecond))
-        let advance = max(2, chunkBytes - overlap)
-        var result: [AudioChunk] = []
-        var start = 0
-        while start < pcm.count {
-            let end = min(pcm.count, start + chunkBytes)
-            let payload = Data(pcm[start ..< end])
-            result.append(
-                AudioChunk(
-                    data: Self.wav(pcm: payload, sampleRate: sampleRate),
-                    offset: Double(start) / Double(bytesPerSecond),
-                    duration: Double(payload.count) / Double(bytesPerSecond)
-                )
-            )
-            if end == pcm.count { break }
-            start += advance
-        }
-        return result
+    private func makeChunks(byteCount: Int, sampleRate: Int) -> [AudioChunk] {
+        TranscriptionChunkPlan.make(
+            byteCount: byteCount, sampleRate: sampleRate, chunkBytes: chunkBytes,
+            overlapSeconds: overlapSeconds
+        ).map { .init(start: $0.start, length: $0.length, offset: $0.offset, duration: $0.duration) }
     }
 
     private static func transcribeChunk(
@@ -327,6 +423,7 @@ actor AIEditService {
     ) async throws -> [RemoteWord] {
         var lastError: Error?
         for attempt in 0 ..< 3 {
+            try Task.checkCancellation()
             do {
                 var request = await YapperAPI.authenticatedRequest(
                     url: transcribeURL(baseURL: baseURL, keyterms: keyterms)
@@ -339,17 +436,31 @@ actor AIEditService {
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
                     let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-                    throw YapperAPI.failure(status: code, body: data, action: "Transcription")
+                    let failure = YapperAPI.failure(status: code, body: data, action: "Transcription")
+                    guard isRetryableTranscriptionStatus(code) else { throw NonRetryableFailure(error: failure) }
+                    throw failure
                 }
                 return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
             } catch {
+                try Task.checkCancellation()
+                if let failure = error as? NonRetryableFailure { throw failure.error }
+                if error is CancellationError || (error as? URLError)?.code == .cancelled {
+                    throw CancellationError()
+                }
                 lastError = error
                 if attempt < 2 {
-                    try? await Task.sleep(for: .milliseconds(attempt == 0 ? 350 : 900))
+                    try await Task.sleep(for: .milliseconds(attempt == 0 ? 350 : 900))
                 }
             }
         }
         throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
+    }
+
+    private struct NonRetryableFailure: Error { let error: Error }
+
+    static func isRetryableTranscriptionStatus(_ status: Int) -> Bool {
+        status == 0 || status == 408 || status == 429 ||
+            ((500 ... 599).contains(status) && status != 501)
     }
 
     /// The transcribe route takes the creator's terms up front, one query item
@@ -500,8 +611,15 @@ actor AIEditService {
         text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
     }
 
-    private static func wav(pcm: Data, sampleRate: Int) -> Data {
+    private static func wavChunk(at url: URL, start: Int, length: Int, sampleRate: Int) throws -> Data {
+        try Task.checkCancellation()
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+        try handle.seek(toOffset: UInt64(start))
+        let pcm = try handle.read(upToCount: length) ?? Data()
+        guard pcm.count == length else { throw NativeEditorError.aiFailed("Decoded audio ended unexpectedly.") }
         var data = Data()
+        data.reserveCapacity(44 + pcm.count)
         func append<T: FixedWidthInteger>(_ value: T) {
             var little = value.littleEndian
             withUnsafeBytes(of: &little) { data.append(contentsOf: $0) }

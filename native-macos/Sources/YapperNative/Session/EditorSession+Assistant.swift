@@ -71,10 +71,13 @@ extension EditorSession {
             // The overlay pass already says what it did, line by line.
             conversation.answer(AssistantReply.toPlacement(overlayPlacement))
         default:
+            let canceled = intent == .transcribe && lastTranscriptionWasCanceled
             conversation.answer(
                 AssistantReply.toCommand(
                     intent,
-                    failure: errorMessage == failureBefore ? nil : errorMessage
+                    failure: canceled
+                        ? "Transcription was canceled."
+                        : (errorMessage == failureBefore ? nil : errorMessage)
                 )
             )
         }
