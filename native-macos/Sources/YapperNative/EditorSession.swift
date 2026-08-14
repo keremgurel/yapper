@@ -29,6 +29,12 @@ enum OneClickEditStage: Int, CaseIterable, Sendable {
     }
 }
 
+typealias TranscriptionRunner = @Sendable (
+    ProjectMedia,
+    [DictionaryEntry],
+    (@MainActor @Sendable (Double) -> Void)?
+) async throws -> [TranscriptWord]
+
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject() {
@@ -149,6 +155,7 @@ final class EditorSession: ObservableObject {
     let waveformService = WaveformService()
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
+    private let transcriptionRunner: TranscriptionRunner?
     let overlayPlacementService: any OverlayPlacementPlanning
     /// Where the speaker is on screen, found on this machine so a cutaway can
     /// be put somewhere else.
@@ -175,6 +182,9 @@ final class EditorSession: ObservableObject {
     /// `differsOnlyInFraming`. `nil` when the player is holding nothing.
     private var builtProject: EditorProject?
     private var restorationTask: Task<Void, Never>?
+    private var transcriptionTask: Task<Void, Never>?
+    private var transcriptionToken: UUID?
+    private(set) var lastTranscriptionWasCanceled = false
     private var editCommitTask: Task<Void, Never>?
     private var history = EditorHistory()
     private var pendingEdit: PendingEdit?
@@ -196,10 +206,12 @@ final class EditorSession: ObservableObject {
 
     init(
         store: any ProjectPersisting = ProjectStore.shared,
-        overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService()
+        overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService(),
+        transcriptionRunner: TranscriptionRunner? = nil
     ) {
         self.store = store
         self.overlayPlacementService = overlayPlacementService
+        self.transcriptionRunner = transcriptionRunner
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
@@ -1504,19 +1516,54 @@ final class EditorSession: ObservableObject {
     }
 
     func transcribeProject() async {
+        if let transcriptionTask {
+            await transcriptionTask.value
+            return
+        }
+        lastTranscriptionWasCanceled = false
+        let token = UUID()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.performTranscription()
+        }
+        transcriptionTask = task
+        transcriptionToken = token
+        await task.value
+        if transcriptionToken == token {
+            transcriptionTask = nil
+            transcriptionToken = nil
+        }
+    }
+
+    private func performTranscription() async {
         guard !project.clips.isEmpty else { return }
         guard let operation = beginLongOperation(.transcribing) else { return }
         defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         aiProgress = 0
+        lastTranscriptionWasCanceled = false
         errorMessage = nil
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 statusMessage = "Transcribing \(media.name)…"
-                let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+                let mediaBase = Double(index) / Double(max(1, mediaIDs.count))
+                let mediaShare = 1 / Double(max(1, mediaIDs.count))
+                let reportProgress: @MainActor @Sendable (Double) -> Void = { [weak self] fraction in
+                    guard let self, self.activeOperation?.operation == .transcribing else { return }
+                    self.aiProgress = max(self.aiProgress, mediaBase + mediaShare * fraction)
+                }
+                let words = if let transcriptionRunner {
+                    try await transcriptionRunner(media, dictionaryEntries, reportProgress)
+                } else {
+                    try await aiEditService.transcribe(
+                        media: media,
+                        dictionary: dictionaryEntries,
+                        progress: reportProgress
+                    )
+                }
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
@@ -1528,9 +1575,37 @@ final class EditorSession: ObservableObject {
             recordHistory(before: rollbackState.project)
             statusMessage = "Transcript ready · \(project.timelineTranscript.count) words"
         } catch {
-            await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
+            if error is CancellationError {
+                project = rollbackState.project
+                aiProgress = 0
+                lastTranscriptionWasCanceled = true
+                statusMessage = "Transcription canceled"
+            } else {
+                await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
+            }
         }
     }
+
+    func startTranscription() {
+        guard transcriptionTask == nil, activeOperation == nil else { return }
+        lastTranscriptionWasCanceled = false
+        let token = UUID()
+        transcriptionToken = token
+        transcriptionTask = Task { [weak self] in
+            await self?.performTranscription()
+            if self?.transcriptionToken == token {
+                self?.transcriptionTask = nil
+                self?.transcriptionToken = nil
+            }
+        }
+    }
+
+    func cancelCurrentTranscription() {
+        guard activeOperation?.operation == .transcribing else { return }
+        transcriptionTask?.cancel()
+    }
+
+    var hasTrackedTranscription: Bool { transcriptionTask != nil }
 
     func transcribeMissingProjectMediaWithinOperation() async throws {
         for mediaID in Set(project.clips.map(\.mediaID)) {

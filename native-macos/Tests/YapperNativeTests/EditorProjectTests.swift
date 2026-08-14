@@ -144,6 +144,122 @@ struct EditorProjectTests {
         #expect(TranscriptionPCM.monoSample(sum: -1, channelCount: 2) == -8_192)
     }
 
+    @Test func transcriptionChunkPlanningIsLazyCompleteAndOverlapping() {
+        #expect(TranscriptionChunkPlan.make(
+            byteCount: 0, sampleRate: 48_000, chunkBytes: 3_000_000, overlapSeconds: 5
+        ).isEmpty)
+        let plans = TranscriptionChunkPlan.make(
+            byteCount: 10_000_000,
+            sampleRate: 48_000,
+            chunkBytes: 3_000_000,
+            overlapSeconds: 5
+        )
+        #expect(plans.count == 4)
+        #expect(plans.allSatisfy { $0.length <= 3_000_000 })
+        #expect(plans.first?.start == 0)
+        #expect(plans.last.map { $0.start + $0.length } == 10_000_000)
+        #expect(plans[1].start < plans[0].start + plans[0].length)
+        #expect(plans[1].offset > plans[0].offset)
+        #expect(plans.allSatisfy { $0.start.isMultiple(of: 2) && $0.length.isMultiple(of: 2) })
+
+        let exact = TranscriptionChunkPlan.make(
+            byteCount: 3_000_000, sampleRate: 48_000,
+            chunkBytes: 3_000_000, overlapSeconds: 5
+        )
+        #expect(exact.count == 1)
+        let oneFrameOver = TranscriptionChunkPlan.make(
+            byteCount: 3_000_002, sampleRate: 48_000,
+            chunkBytes: 3_000_000, overlapSeconds: 5
+        )
+        #expect(oneFrameOver.count == 2)
+        #expect(oneFrameOver.last.map { $0.start + $0.length } == 3_000_002)
+
+        let oddInput = TranscriptionChunkPlan.make(
+            byteCount: 3_000_003, sampleRate: 48_000,
+            chunkBytes: 3_000_001, overlapSeconds: 5
+        )
+        #expect(oddInput.allSatisfy { $0.start.isMultiple(of: 2) && $0.length.isMultiple(of: 2) })
+        #expect(oddInput.last.map { $0.start + $0.length } == 3_000_002)
+    }
+
+    @Test func transcriptionRetriesOnlyTransientStatuses() {
+        for status in [0, 408, 429, 500, 503, 599] {
+            #expect(AIEditService.isRetryableTranscriptionStatus(status))
+        }
+        for status in [400, 401, 402, 403, 404, 413, 422, 501] {
+            #expect(!AIEditService.isRetryableTranscriptionStatus(status))
+        }
+    }
+
+    @Test func boundedTranscriptionIsLazyCancelsSiblingsAndRemovesItsSpool() async {
+        actor Probe {
+            var active = 0
+            var maximum = 0
+            var started: [Int] = []
+            var canceled: [Int] = []
+            var pairWaiters: [CheckedContinuation<Void, Never>] = []
+            var temporaryURL: URL?
+            func setTemporaryURL(_ url: URL) { temporaryURL = url }
+            func begin(_ index: Int) async {
+                active += 1
+                maximum = max(maximum, active)
+                started.append(index)
+                if active == 2 {
+                    let waiters = pairWaiters
+                    pairWaiters.removeAll()
+                    waiters.forEach { $0.resume() }
+                } else {
+                    await withCheckedContinuation { pairWaiters.append($0) }
+                }
+            }
+            func end() { active -= 1 }
+            func markCanceled(_ index: Int) { canceled.append(index) }
+            func snapshot() -> (Int, [Int], [Int], URL?) {
+                (maximum, started, canceled, temporaryURL)
+            }
+        }
+        enum Failure: Error { case deliberate }
+        let probe = Probe()
+        do {
+            _ = try await TranscriptionTemporaryFile.withPCMFile { url in
+                await probe.setTemporaryURL(url)
+                try Data(repeating: 7, count: 8).write(to: url)
+                return try await BoundedTranscriptionWork.run(count: 8, limit: 2) { index in
+                    await probe.begin(index)
+                    defer { Task { await probe.end() } }
+                    // The range load happens only once the bounded scheduler admits
+                    // this chunk. Parked chunks therefore allocate and read nothing.
+                    let handle = try FileHandle(forReadingFrom: url)
+                    defer { try? handle.close() }
+                    try handle.seek(toOffset: UInt64(index))
+                    _ = try handle.read(upToCount: 1)
+                    if index == 0 { throw Failure.deliberate }
+                    do {
+                        try await Task.sleep(for: .seconds(10))
+                    } catch is CancellationError {
+                        await probe.markCanceled(index)
+                        throw CancellationError()
+                    }
+                    return index
+                }
+            }
+            Issue.record("Failing chunk unexpectedly succeeded")
+        } catch is Failure {
+            // Expected: its sibling is canceled and parked work never starts.
+        } catch {
+            Issue.record("Unexpected failure: \(error)")
+        }
+        let snapshot = await probe.snapshot()
+        #expect(snapshot.0 <= 2)
+        #expect(Set(snapshot.1).isSubset(of: [0, 1]))
+        #expect(snapshot.2 == [1])
+        if let temporaryURL = snapshot.3 {
+            #expect(!FileManager.default.fileExists(atPath: temporaryURL.path))
+        } else {
+            Issue.record("The transcription spool was never created")
+        }
+    }
+
     @Test func splitPreservesTotalDurationAndSourceContinuity() {
         let mediaID = UUID()
         let original = TimelineClip(

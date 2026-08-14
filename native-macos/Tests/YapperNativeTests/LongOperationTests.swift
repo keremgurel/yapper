@@ -121,4 +121,55 @@ struct LongOperationTests {
         }
         #expect(session.activeOperation == nil)
     }
+
+    @Test("Tracked assistant transcription cancels without mutation or a false success")
+    @MainActor
+    func trackedAssistantTranscriptionCancellation() async throws {
+        let session = EditorSession(
+            store: OperationTestStore(),
+            transcriptionRunner: { _, _, progress in
+                await progress?(0.25)
+                try await Task.sleep(for: .seconds(60))
+                return []
+            }
+        )
+        // Let the empty test store finish restoring before installing the fixture.
+        await Task.yield()
+        let mediaID = UUID()
+        let originalWord = TranscriptWord(
+            mediaID: mediaID, text: "original", start: 0, end: 0.4
+        )
+        session.updateProject { project in
+            project.media = [ProjectMedia(
+                id: mediaID,
+                url: URL(fileURLWithPath: "/tmp/cancellable-transcription.mov"),
+                name: "Interview",
+                duration: 1,
+                width: 1920,
+                height: 1080,
+                hasAudio: true
+            )]
+            project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
+            project.transcript = [originalWord]
+        }
+
+        let request = Task { @MainActor in
+            await session.runAssistant(instruction: "transcribe my video")
+        }
+        for _ in 0 ..< 100 where session.activeOperation?.operation != .transcribing {
+            await Task.yield()
+        }
+        #expect(session.hasTrackedTranscription)
+        #expect(session.activeOperation?.operation == .transcribing)
+        session.cancelCurrentTranscription()
+        await request.value
+
+        #expect(session.project.transcript == [originalWord])
+        #expect(session.activeOperation == nil)
+        #expect(!session.hasTrackedTranscription)
+        #expect(session.errorMessage == nil)
+        #expect(session.statusMessage == "Transcription canceled")
+        #expect(session.conversation.messages.last?.tone == .trouble)
+        #expect(session.conversation.messages.last?.text == "Transcription was canceled.")
+    }
 }
