@@ -58,6 +58,7 @@ import {
 import { chunkMonoPcm } from "@/lib/studio/audio/asr-audio";
 import { cleanTranscriptRemote } from "@/lib/studio/clean-transcript";
 import { loadVideoSource } from "@/lib/studio/load-source";
+import { revokeStudioObjectUrl } from "@/lib/studio/source-blob";
 import { useEditorHistory } from "@/hooks/use-editor-history";
 import { useTranscript, type TranscribeStatus } from "@/hooks/use-transcript";
 import { useEditorSelection } from "@/hooks/use-editor-selection";
@@ -1087,7 +1088,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     (next: StudioSource) => {
       cancelTranscription();
       setSource((prev) => {
-        if (prev?.url.startsWith("blob:")) URL.revokeObjectURL(prev.url);
+        if (prev?.url.startsWith("blob:")) revokeStudioObjectUrl(prev.url);
         return next;
       });
       // One reset clears every layer and its history: clips, captions, overlays,
@@ -1221,7 +1222,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const clearSource = useCallback(() => {
     setSource((prev) => {
-      if (prev?.url.startsWith("blob:")) URL.revokeObjectURL(prev.url);
+      if (prev?.url.startsWith("blob:")) revokeStudioObjectUrl(prev.url);
       return null;
     });
     // Empties every layer and drops the undo stack along with them.

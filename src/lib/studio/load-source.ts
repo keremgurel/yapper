@@ -1,4 +1,8 @@
 import type { StudioSource } from "@/lib/studio/types";
+import {
+  registerSourceBlob,
+  revokeStudioObjectUrl,
+} from "@/lib/studio/source-blob";
 
 /**
  * Create a StudioSource from a video Blob/File, probing duration robustly.
@@ -11,6 +15,7 @@ export function loadVideoSource(
 ): Promise<StudioSource> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
+    registerSourceBlob(url, file);
     const v = document.createElement("video");
     v.preload = "metadata";
 
@@ -37,7 +42,7 @@ export function loadVideoSource(
       }
     };
     v.onerror = () => {
-      URL.revokeObjectURL(url);
+      revokeStudioObjectUrl(url);
       reject(new Error("Could not read that video file."));
     };
     v.src = url;

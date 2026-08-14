@@ -1,7 +1,7 @@
 "use client";
 
 import { Show, SignInButton } from "@clerk/nextjs";
-import { Loader2, Mic, Sparkles, Video } from "lucide-react";
+import { Loader2, Mic, Sparkles, Video, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/components/studio/studio-context";
 import { useFeedback, type FeedbackTier } from "@/hooks/use-audio-feedback";
@@ -42,7 +42,7 @@ const TIERS: {
 
 export default function FeedbackTab() {
   const { source } = useStudio();
-  const { status, data, error, run, reset } = useFeedback(source?.url);
+  const { status, data, error, run, cancel, reset } = useFeedback(source);
   const busy =
     status === "preparing" || status === "uploading" || status === "analyzing";
   const hasVideo = !!source && source.kind !== "image";
@@ -79,9 +79,15 @@ export default function FeedbackTab() {
             </button>
           </div>
         ) : busy ? (
-          <div className="text-foreground/70 flex items-center gap-2 text-sm font-bold">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {busyLabel}
+          <div className="space-y-3">
+            <div className="text-foreground/70 flex items-center gap-2 text-sm font-bold">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {busyLabel}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={cancel}>
+              <X className="h-4 w-4" />
+              Cancel
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
