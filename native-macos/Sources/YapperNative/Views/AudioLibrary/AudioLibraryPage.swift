@@ -59,10 +59,17 @@ struct AudioLibraryPage: View {
         }
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted) { providers in
             Task {
-                let added = await store.add(await DroppedFiles.urls(from: providers))
-                // Land the creator on what they just dropped rather than on
-                // whichever shelf they happened to be looking at.
-                if let first = added.first { section = .savedKind(first.kind) }
+                do {
+                    let added = try await store.add(await DroppedFiles.urls(from: providers))
+                    try Task.checkCancellation()
+                    // Land the creator on what they just dropped rather than on
+                    // whichever shelf they happened to be looking at.
+                    if let first = added.first { section = .savedKind(first.kind) }
+                } catch is CancellationError {
+                    return
+                } catch {
+                    store.errorMessage = error.localizedDescription
+                }
             }
             return true
         }
@@ -89,6 +96,7 @@ struct AudioLibraryPage: View {
                 Label("Import audio", systemImage: "square.and.arrow.down")
             }
             .buttonStyle(EditorSecondaryButtonStyle())
+            .disabled(store.isRecovering)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
@@ -132,6 +140,15 @@ struct AudioLibraryPage: View {
                     banner(message)
                 }
 
+                if store.isRecovering {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Checking your audio library…")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 if let name = store.importingName {
                     HStack(spacing: 8) {
                         ProgressView().controlSize(.small)
@@ -153,11 +170,11 @@ struct AudioLibraryPage: View {
                         onAdd: add,
                         onRename: { entry, name in
                             guard let item = entry.saved else { return }
-                            store.rename(item.id, to: name)
+                            Task { await store.rename(item.id, to: name) }
                         },
                         onSetKind: { entry, kind in
                             guard let item = entry.saved else { return }
-                            store.setKind(kind, for: item.id)
+                            Task { await store.setKind(kind, for: item.id) }
                         },
                         onDelete: delete
                     )
@@ -226,7 +243,7 @@ struct AudioLibraryPage: View {
         Task {
             switch entry.source {
             case let .saved(item):
-                await session.addSavedAudio(item, at: store.url(for: item))
+                await session.addSavedAudio(item, from: store)
             case let .bundled(effect):
                 await session.addSoundEffect(effect)
             }
@@ -236,7 +253,9 @@ struct AudioLibraryPage: View {
 
     private func delete(_ entry: AudioEntry) {
         guard let item = entry.saved else { return }
-        if preview.playingID == entry.id { preview.stop() }
-        store.remove(item.id)
+        Task {
+            let removed = await session.removeSavedAudio(item, from: store)
+            if removed, preview.playingID == entry.id { preview.stop() }
+        }
     }
 }

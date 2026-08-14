@@ -47,6 +47,6 @@ enum ImportPanels {
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK else { return }
         let urls = panel.urls
-        Task { await store.add(urls) }
+        Task { _ = try? await store.add(urls) }
     }
 }

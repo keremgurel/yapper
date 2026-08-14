@@ -1172,6 +1172,16 @@ final class EditorSession: ObservableObject {
         selectTimelineItem(.clip(clipID))
     }
 
+    func referencesSavedAudio(_ item: SavedAudio, at url: URL) -> Bool {
+        let canonical = url.resolvingSymlinksInPath()
+        let current = project.audioLayers?.contains(where: {
+            $0.savedAudioID == item.id ||
+                $0.savedAudioHash == item.contentHash ||
+                $0.url.resolvingSymlinksInPath() == canonical
+        }) == true
+        return current || history.referencesSavedAudio(item, url: canonical)
+    }
+
     func commitClipTrim(_ updated: TimelineClip) async {
         await commitTimelineEdit {
             guard let index = project.clips.firstIndex(where: { $0.id == updated.id }) else { return false }

@@ -89,4 +89,14 @@ struct EditorHistory: Sendable {
             snapshot.audioLayers?.first(where: { $0.id == id }).map { $0.sourceStart + $0.duration }
         }.max() ?? 0
     }
+
+    func referencesSavedAudio(_ item: SavedAudio, url: URL) -> Bool {
+        (undoStack + redoStack).contains { snapshot in
+            snapshot.audioLayers?.contains(where: {
+                $0.savedAudioID == item.id ||
+                    $0.savedAudioHash == item.contentHash ||
+                    $0.url.resolvingSymlinksInPath() == url
+            }) == true
+        }
+    }
 }
