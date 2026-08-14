@@ -1,5 +1,13 @@
+import { createReadStream } from "node:fs";
+import { Readable } from "node:stream";
+import { fetchBoundedJson, fetchBoundedResponse } from "@/lib/http/outbound";
+import { type FeedbackWorkflow, remainingFeedbackMs } from "./workflow";
+
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 const UPLOAD_BASE = "https://generativelanguage.googleapis.com/upload/v1beta";
+const MAX_CONTROL_RESPONSE_BYTES = 512 * 1024;
+const MAX_GENERATE_RESPONSE_BYTES = 1024 * 1024;
+const MAX_OUTPUT_TOKENS = 2_000;
 
 function key(): string {
   const k = process.env.GEMINI_API_KEY;
@@ -12,53 +20,87 @@ export const VIDEO_MODEL =
   process.env.GEMINI_VIDEO_MODEL ?? "gemini-flash-latest";
 
 /**
- * Start a resumable upload session and return the client-usable upload URL.
- * The client PUTs the bytes to this URL directly (no API key needed on that
- * request), so large videos never pass through our serverless function.
+ * Start a resumable upload session for a bounded server-side file stream.
  */
 export async function startResumableUpload(
   sizeBytes: number,
   mimeType: string,
+  workflow: FeedbackWorkflow,
 ): Promise<string> {
-  const res = await fetch(`${UPLOAD_BASE}/files`, {
-    method: "POST",
-    headers: {
-      "X-goog-api-key": key(),
-      "X-Goog-Upload-Protocol": "resumable",
-      "X-Goog-Upload-Command": "start",
-      "X-Goog-Upload-Header-Content-Length": String(sizeBytes),
-      "X-Goog-Upload-Header-Content-Type": mimeType,
-      "Content-Type": "application/json",
+  const { response } = await fetchBoundedResponse(
+    `${UPLOAD_BASE}/files`,
+    {
+      method: "POST",
+      headers: {
+        "X-goog-api-key": key(),
+        "X-Goog-Upload-Protocol": "resumable",
+        "X-Goog-Upload-Command": "start",
+        "X-Goog-Upload-Header-Content-Length": String(sizeBytes),
+        "X-Goog-Upload-Header-Content-Type": mimeType,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ file: { display_name: "yapper-take" } }),
     },
-    body: JSON.stringify({ file: { display_name: "yapper-take" } }),
-  });
-  if (!res.ok) throw new Error(`gemini_upload_start_${res.status}`);
-  const url = res.headers.get("x-goog-upload-url");
+    {
+      timeoutMs: remainingFeedbackMs(workflow, 20_000),
+      maxBytes: MAX_CONTROL_RESPONSE_BYTES,
+      signal: workflow.signal,
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`gemini_upload_start_${response.status}`);
+  }
+  const url = response.headers.get("x-goog-upload-url");
   if (!url) throw new Error("gemini_no_upload_url");
   return url;
 }
 
 /**
- * Server-side upload of raw bytes to the Gemini Files API. Starts a resumable
- * session, PUTs the bytes, and polls until the file is ACTIVE (video needs
- * processing). Returns the file uri to reference in generateContent.
+ * Server-side streaming upload to the Gemini Files API. Starts a resumable
+ * session, streams the owned temporary file, and polls until the file is ACTIVE
+ * (video needs processing). Returns the URI used by generateContent.
  */
-export async function uploadBytesToGemini(
-  bytes: ArrayBuffer,
+export async function uploadFileToGemini(
+  filePath: string,
+  byteLength: number,
   mimeType: string,
+  workflow: FeedbackWorkflow,
 ): Promise<string> {
-  const uploadUrl = await startResumableUpload(bytes.byteLength, mimeType);
-  const put = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      "Content-Length": String(bytes.byteLength),
-      "X-Goog-Upload-Offset": "0",
-      "X-Goog-Upload-Command": "upload, finalize",
-    },
-    body: bytes,
-  });
-  if (!put.ok) throw new Error(`gemini_upload_${put.status}`);
-  const file = (await put.json())?.file as
+  const uploadUrl = await startResumableUpload(byteLength, mimeType, workflow);
+  const stream = createReadStream(filePath);
+  const abort = () => stream.destroy(new DOMException("aborted", "AbortError"));
+  workflow.signal.addEventListener("abort", abort, { once: true });
+  let upload: {
+    response: Response;
+    data: { file?: { name?: string; uri?: string; state?: string } };
+  };
+  try {
+    upload = await fetchBoundedJson(
+      uploadUrl,
+      {
+        method: "POST",
+        headers: {
+          "Content-Length": String(byteLength),
+          "X-Goog-Upload-Offset": "0",
+          "X-Goog-Upload-Command": "upload, finalize",
+        },
+        body: Readable.toWeb(stream) as unknown as BodyInit,
+        duplex: "half",
+      } as RequestInit & { duplex: "half" },
+      {
+        timeoutMs: remainingFeedbackMs(workflow, 180_000),
+        maxBytes: MAX_CONTROL_RESPONSE_BYTES,
+        signal: workflow.signal,
+      },
+    );
+  } finally {
+    workflow.signal.removeEventListener("abort", abort);
+    stream.destroy();
+  }
+  if (!upload.response.ok) {
+    throw new Error(`gemini_upload_${upload.response.status}`);
+  }
+  const file = upload.data.file as
     | { name?: string; uri?: string; state?: string }
     | undefined;
   if (!file?.uri || !file.name) throw new Error("gemini_upload_no_uri");
@@ -68,17 +110,44 @@ export async function uploadBytesToGemini(
   // "done" — so a 429/401 can't sneak a PROCESSING file through to generate.
   let state = file.state;
   for (let i = 0; i < 30 && state !== "ACTIVE"; i++) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const res = await fetch(`${BASE}/${file.name}`, {
-      headers: { "X-goog-api-key": key() },
-    });
-    if (!res.ok) continue;
-    const j = await res.json();
-    state = j?.state;
+    await sleep(1_500, workflow);
+    const { response, data } = await fetchBoundedJson<{ state?: unknown }>(
+      `${BASE}/${file.name}`,
+      { headers: { "X-goog-api-key": key() } },
+      {
+        timeoutMs: remainingFeedbackMs(workflow, 15_000),
+        maxBytes: MAX_CONTROL_RESPONSE_BYTES,
+        signal: workflow.signal,
+      },
+    );
+    if (!response.ok) {
+      if (response.status === 429 || response.status >= 500) continue;
+      throw new Error(`gemini_file_${response.status}`);
+    }
+    state = typeof data.state === "string" ? data.state : undefined;
     if (state === "FAILED") throw new Error("gemini_file_failed");
   }
   if (state !== "ACTIVE") throw new Error("gemini_processing_timeout");
+  remainingFeedbackMs(workflow);
   return file.uri;
+}
+
+async function sleep(ms: number, workflow: FeedbackWorkflow): Promise<void> {
+  const delay = Math.min(ms, remainingFeedbackMs(workflow));
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(done, delay);
+    const abort = () =>
+      done(workflow.signal.reason ?? new DOMException("aborted", "AbortError"));
+    function done(error?: unknown) {
+      clearTimeout(timer);
+      workflow.signal.removeEventListener("abort", abort);
+      if (error !== undefined) reject(error);
+      else resolve();
+    }
+    workflow.signal.addEventListener("abort", abort, { once: true });
+    if (workflow.signal.aborted) abort();
+  });
+  remainingFeedbackMs(workflow);
 }
 
 interface GeminiPart {
@@ -93,23 +162,38 @@ interface GeminiPart {
 export async function geminiGenerate(
   parts: GeminiPart[],
   system: string,
+  workflow: FeedbackWorkflow,
   model = VIDEO_MODEL,
 ): Promise<string> {
-  const res = await fetch(`${BASE}/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "X-goog-api-key": key(), "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts }],
-      generationConfig: {
-        temperature: 0.4,
-        responseMimeType: "application/json",
+  const { response, data } = await fetchBoundedJson<{
+    candidates?: { content?: { parts?: { text?: string }[] } }[];
+  }>(
+    `${BASE}/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "X-goog-api-key": key(),
+        "Content-Type": "application/json",
       },
-    }),
-  });
-  if (!res.ok) throw new Error(`gemini_${res.status}`);
-  const json = await res.json();
-  const out = json?.candidates?.[0]?.content?.parts
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts }],
+        generationConfig: {
+          temperature: 0.4,
+          responseMimeType: "application/json",
+          maxOutputTokens: MAX_OUTPUT_TOKENS,
+        },
+      }),
+    },
+    {
+      timeoutMs: remainingFeedbackMs(workflow, 60_000),
+      maxBytes: MAX_GENERATE_RESPONSE_BYTES,
+      signal: workflow.signal,
+    },
+  );
+  if (!response.ok) throw new Error(`gemini_${response.status}`);
+  remainingFeedbackMs(workflow);
+  const out = data.candidates?.[0]?.content?.parts
     ?.map((p: { text?: string }) => p.text ?? "")
     .join("");
   return typeof out === "string" ? out : "";

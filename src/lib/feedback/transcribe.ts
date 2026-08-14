@@ -1,4 +1,7 @@
 import type { FeedbackWord } from "./metrics";
+import { fetchBoundedJson } from "@/lib/http/outbound";
+
+const MAX_DEEPGRAM_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface DeepgramWord {
   word: string;
@@ -16,9 +19,14 @@ interface DeepgramWord {
 export async function transcribeForFeedback(
   audio: ArrayBuffer,
   key: string,
-  signal?: AbortSignal,
+  signal: AbortSignal,
+  timeoutMs: number,
 ): Promise<FeedbackWord[]> {
-  const res = await fetch(
+  const { response, data } = await fetchBoundedJson<{
+    results?: {
+      channels?: { alternatives?: { words?: DeepgramWord[] }[] }[];
+    };
+  }>(
     "https://api.deepgram.com/v1/listen?model=nova-3&smart_format=true&punctuate=true",
     {
       method: "POST",
@@ -26,11 +34,15 @@ export async function transcribeForFeedback(
       body: audio,
       signal,
     },
+    {
+      timeoutMs,
+      maxBytes: MAX_DEEPGRAM_RESPONSE_BYTES,
+      signal,
+    },
   );
-  if (!res.ok) throw new Error(`deepgram_${res.status}`);
-  const json = await res.json();
+  if (!response.ok) throw new Error(`deepgram_${response.status}`);
   const words: DeepgramWord[] =
-    json?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
+    data.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
   return words.map((w) => ({
     text: w.punctuated_word ?? w.word,
     start: w.start,

@@ -1,5 +1,6 @@
 import { sanitizeCoaching, type Coaching } from "./coach";
 import { geminiGenerate, VIDEO_MODEL } from "./gemini";
+import type { FeedbackWorkflow } from "./workflow";
 
 const SYSTEM =
   "You are an on-camera delivery coach for short-form video creators. You are " +
@@ -33,6 +34,7 @@ export function parseVideoCoaching(content: string): Coaching {
 export async function coachOnCamera(
   fileUri: string,
   mimeType: string,
+  workflow: FeedbackWorkflow,
 ): Promise<Coaching> {
   const text = await geminiGenerate(
     [
@@ -42,6 +44,7 @@ export async function coachOnCamera(
       },
     ],
     SYSTEM,
+    workflow,
     VIDEO_MODEL,
   );
   return parseVideoCoaching(text);
