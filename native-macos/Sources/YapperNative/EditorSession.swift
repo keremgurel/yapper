@@ -2776,6 +2776,7 @@ final class EditorSession: ObservableObject {
     private func restoreProject() async {
         do {
             guard let saved = try await store.load() else { return }
+            let recoveryNotice = await store.takeRecoveryNotice()
             history.clear()
             pendingEdit = nil
             syncHistoryAvailability()
@@ -2798,12 +2799,14 @@ final class EditorSession: ObservableObject {
                 await beginDerivedMedia(for: media)
             }
             guard mediaAvailability.requiredOffline.isEmpty else {
-                statusMessage = "Media offline"
+                statusMessage = recoveryNotice.map { "\($0) · media offline" } ?? "Media offline"
                 return
             }
             if !project.clips.isEmpty {
                 try await rebuildComposition(preserveTime: false)
-                statusMessage = "Restored \(project.name)"
+                statusMessage = recoveryNotice ?? "Restored \(project.name)"
+            } else if let recoveryNotice {
+                statusMessage = recoveryNotice
             }
         } catch {
             show(error)

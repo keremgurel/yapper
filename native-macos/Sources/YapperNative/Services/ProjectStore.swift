@@ -3,10 +3,22 @@ import Foundation
 protocol ProjectPersisting: Sendable {
     func load() async throws -> EditorProject?
     func save(_ project: EditorProject) async throws
+    func takeRecoveryNotice() async -> String?
+}
+
+extension ProjectPersisting {
+    func takeRecoveryNotice() async -> String? { nil }
 }
 
 actor ProjectStore: ProjectPersisting {
     static let shared = ProjectStore()
+
+    private let directoryURL: URL
+    private var pendingRecoveryNotice: String?
+
+    init(directory: URL = ProjectStore.directory) {
+        directoryURL = directory
+    }
 
     private let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
@@ -30,8 +42,13 @@ actor ProjectStore: ProjectPersisting {
     /// project being written over an afternoon's editing. Tests get their own
     /// file, per process, and are welcome to do whatever they like to it.
     private var projectURL: URL {
-        Self.directory
+        directoryURL
             .appending(path: "CurrentProject.json", directoryHint: .notDirectory)
+    }
+
+    private var backupURL: URL {
+        directoryURL
+            .appending(path: "CurrentProject.backup.json", directoryHint: .notDirectory)
     }
 
     /// True while a test bundle is what is running. Read from the environment
@@ -61,24 +78,68 @@ actor ProjectStore: ProjectPersisting {
     }
 
     func load() async throws -> EditorProject? {
-        guard FileManager.default.fileExists(atPath: projectURL.path) else {
+        pendingRecoveryNotice = nil
+        var primaryFailure: Error?
+        if FileManager.default.fileExists(atPath: projectURL.path) {
+            do {
+                return try decodeProject(at: projectURL).project
+            } catch {
+                primaryFailure = error
+            }
+        }
+
+        guard FileManager.default.fileExists(atPath: backupURL.path) else {
+            if let primaryFailure { throw primaryFailure }
             return nil
         }
-        return try decoder.decode(EditorProject.self, from: Data(contentsOf: projectURL))
+        do {
+            let recovered = try decodeProject(at: backupURL)
+            // Repair is best-effort: the creator can still work from the valid
+            // in-memory copy if the disk has become read-only or full.
+            try? install(recovered.data, at: projectURL)
+            pendingRecoveryNotice = "Recovered the project from its last known-good copy"
+            return recovered.project
+        } catch {
+            // Prefer the primary error when both copies exist and are damaged;
+            // it describes the file the app normally opens.
+            throw primaryFailure ?? error
+        }
     }
 
     func save(_ project: EditorProject) async throws {
-        let directory = projectURL.deletingLastPathComponent()
+        let directory = directoryURL
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true
         )
-        let temporary = directory.appending(path: "CurrentProject.next.json")
-        try encoder.encode(project).write(to: temporary, options: .atomic)
-        if FileManager.default.fileExists(atPath: projectURL.path) {
-            _ = try FileManager.default.replaceItemAt(projectURL, withItemAt: temporary)
-        } else {
-            try FileManager.default.moveItem(at: temporary, to: projectURL)
-        }
+        let next = try encoder.encode(project)
+        _ = try decoder.decode(EditorProject.self, from: next)
+
+        // Only a decodable primary is allowed to become the backup. Corrupt
+        // primary bytes must never overwrite the one copy known to be good.
+        let backup = validData(at: projectURL)
+            ?? validData(at: backupURL)
+            ?? next
+        try install(backup, at: backupURL)
+        try install(next, at: projectURL)
+    }
+
+    func takeRecoveryNotice() async -> String? {
+        defer { pendingRecoveryNotice = nil }
+        return pendingRecoveryNotice
+    }
+
+    private func decodeProject(at url: URL) throws -> (project: EditorProject, data: Data) {
+        let data = try Data(contentsOf: url)
+        return (try decoder.decode(EditorProject.self, from: data), data)
+    }
+
+    private func validData(at url: URL) -> Data? {
+        guard let decoded = try? decodeProject(at: url) else { return nil }
+        return decoded.data
+    }
+
+    private func install(_ data: Data, at url: URL) throws {
+        try data.write(to: url, options: .atomic)
     }
 }
