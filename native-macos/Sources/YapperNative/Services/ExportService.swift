@@ -15,9 +15,12 @@ private final class ExportSessionCancellation: @unchecked Sendable {
 
 enum ExportService {
     static func export(project: EditorProject, to outputURL: URL) async throws {
+        let snapshot = try await ExportSourceSnapshot.create(project: project)
+        defer { snapshot.discard() }
+
         // Everything, including the captions and the text: this is the one that
         // has to look like the finished video, because it is.
-        let built = try await CompositionBuilder.build(project: project, for: .export)
+        let built = try await CompositionBuilder.build(project: snapshot.project, for: .export)
         guard let session = AVAssetExportSession(
             asset: built.asset,
             presetName: AVAssetExportPresetHighestQuality
