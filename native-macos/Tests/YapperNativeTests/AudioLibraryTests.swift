@@ -174,6 +174,14 @@ struct AudioLibraryTests {
         return copy
     }
 
+    @Test("A brand-new library does not schedule recovery work")
+    func newLibrarySkipsRecovery() {
+        let store = freshStore()
+
+        #expect(!store.isRecovering)
+        #expect(store.items.isEmpty)
+    }
+
     @Test("An imported file is copied into the library and probed")
     func importsAndCopies() async throws {
         let store = freshStore()
@@ -776,6 +784,7 @@ struct AudioLibraryTests {
 
         #expect(store.items == [item])
         #expect(manifest.index?.items == [item])
+        #expect(manifest.saveAttempts == 1, "recovery must publish its result exactly once")
         #expect(FileManager.default.fileExists(atPath: store.url(for: item).path))
         #expect(!FileManager.default.fileExists(atPath: staged.path))
         #expect(!FileManager.default.fileExists(atPath: AudioLibraryFolder.importCandidateURL.path))
@@ -801,6 +810,7 @@ struct AudioLibraryTests {
 
         #expect(store.items == [item])
         #expect(manifest.index?.items == [item])
+        #expect(manifest.saveAttempts == 1, "recovery must publish its result exactly once")
         #expect(FileManager.default.fileExists(atPath: store.url(for: item).path))
         #expect(!FileManager.default.fileExists(atPath: AudioLibraryFolder.importCandidateURL.path))
     }

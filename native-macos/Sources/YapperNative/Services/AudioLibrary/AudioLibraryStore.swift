@@ -186,10 +186,21 @@ final class AudioLibraryStore: ObservableObject {
             let index = try manifest.load() ?? AudioLibraryIndex()
             try AudioLibraryValidation.validate(index)
             items = index.items
+            // A brand-new library has no transactions to reconcile. Avoid
+            // making the first import wait behind detached recovery work—on a
+            // saturated executor that is an unnecessary priority inversion.
+            guard files.exists(AudioLibraryFolder.directory) else {
+                missingIDs = []
+                isRecovering = false
+                return
+            }
             let fileOperations = files
             let candidateStore = candidateStore
             isRecovering = true
-            recoveryTask = Task.detached(priority: .utility) {
+            // Import, rename and delete all wait for this task. Use an
+            // interactive priority so recovery cannot be starved behind the
+            // work that is waiting for it to finish.
+            recoveryTask = Task.detached(priority: .userInitiated) {
                 Self.reconcileTransactions(
                     index: index,
                     files: fileOperations,
@@ -208,6 +219,10 @@ final class AudioLibraryStore: ObservableObject {
     private func finishRecovery() async {
         guard let recoveryTask else { return }
         let result = await recoveryTask.value
+        // The automatic finisher and a user mutation may await the same task.
+        // Whichever resumes first owns publication; every later waiter only
+        // needed to observe completion.
+        guard self.recoveryTask != nil else { return }
         if result.candidateUnreadable {
             manifestIsReadable = false
             errorMessage = "An unfinished audio import could not be recovered. Nothing was changed."
