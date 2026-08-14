@@ -1,9 +1,35 @@
+import AppKit
 import SwiftUI
+
+@MainActor
+final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
+    weak var session: EditorSession?
+    private var terminationTask: Task<Void, Never>?
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard terminationTask == nil else { return .terminateLater }
+        guard let session else { return .terminateNow }
+
+        terminationTask = Task { @MainActor [weak self] in
+            let shouldTerminate = await session.prepareForTermination()
+            self?.terminationTask = nil
+            sender.reply(toApplicationShouldTerminate: shouldTerminate)
+        }
+        return .terminateLater
+    }
+}
 
 @main
 struct YapperNativeApp: App {
-    @StateObject private var session = EditorSession()
+    @NSApplicationDelegateAdaptor(YapperNativeAppDelegate.self) private var appDelegate
+    @StateObject private var session: EditorSession
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
+
+    init() {
+        let session = EditorSession()
+        _session = StateObject(wrappedValue: session)
+        appDelegate.session = session
+    }
 
     private var theme: StudioTheme {
         StudioTheme(rawValue: themeRaw) ?? .dark
