@@ -54,7 +54,7 @@ export default function StudioDashboard() {
             </Button>
             <Button asChild>
               <Link href="/studio/editor">
-                <Plus className="h-4 w-4" /> New video
+                <Plus className="h-4 w-4" /> Open editor
               </Link>
             </Button>
           </>

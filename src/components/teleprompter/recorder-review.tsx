@@ -1,21 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  Check,
-  Download,
-  Library,
-  Loader2,
-  RotateCcw,
-  Scissors,
-} from "lucide-react";
-import { setPendingVideo } from "@/lib/studio/handoff";
+import { Check, Download, Library, Loader2, RotateCcw } from "lucide-react";
 import { recordingFileName } from "@/lib/studio/recording-file";
 import { useSaveTake } from "@/hooks/use-save-take";
 
-/** After a take: play it back, then retake, edit in the studio, or download.
- * "Edit this take" hands the blob to the editor via the in-memory handoff.
+/** After a take: play it back, then retake, save, or download.
  * When the take was recorded for a Content Library item, "Save to library"
  * uploads it and links it on that item (durable, editable later). */
 export default function RecorderReview({
@@ -31,13 +21,7 @@ export default function RecorderReview({
   title?: string;
   onRetake: () => void;
 }) {
-  const router = useRouter();
   const { state, error, save } = useSaveTake(itemId);
-
-  const edit = () => {
-    setPendingVideo(blob);
-    router.push("/studio/editor");
-  };
 
   const download = () => {
     const a = document.createElement("a");
@@ -100,18 +84,6 @@ export default function RecorderReview({
           </p>
         )}
 
-        <button
-          type="button"
-          onClick={edit}
-          className={`flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-black transition-colors ${
-            itemId
-              ? "border-border hover:bg-muted/40 border"
-              : "bg-cyan-500 text-white hover:bg-cyan-600"
-          }`}
-        >
-          <Scissors className="h-4 w-4" />
-          Edit this take
-        </button>
         <div className="flex gap-2">
           <button
             type="button"

@@ -1,5 +1,27 @@
-import { clipIndexAtSource } from "@/lib/studio/clips";
-import type { Clip, Word } from "@/lib/studio/types";
+/** Minimal transcript shapes used by the server-side overlay planner. */
+export interface OverlayPlanWord {
+  text: string;
+  start: number;
+  end: number;
+}
+
+export interface OverlayPlanClip {
+  start: number;
+  end: number;
+  /** Present for appended media, whose timestamps are not transcript time. */
+  src?: unknown;
+}
+
+const CLIP_EPSILON = 0.02;
+
+function clipIndexAtSource(clips: OverlayPlanClip[], time: number): number {
+  return clips.findIndex(
+    (clip) =>
+      clip.src == null &&
+      time >= clip.start - CLIP_EPSILON &&
+      time <= clip.end + CLIP_EPSILON,
+  );
+}
 
 /**
  * Where the model asked for an overlay to sit, as fractions of the frame from
@@ -242,7 +264,10 @@ export function parsePlacements(reply: string): Placement[] {
  * from a sentence that is no longer in the video, which then maps onto a cut
  * point and lands nowhere. It only ever sees what a viewer would hear.
  */
-export function keptWords(words: Word[], clips: Clip[]): Word[] {
+export function keptWords(
+  words: OverlayPlanWord[],
+  clips: OverlayPlanClip[],
+): OverlayPlanWord[] {
   return words.filter(
     (w) => clipIndexAtSource(clips, (w.start + w.end) / 2) >= 0,
   );
@@ -268,7 +293,7 @@ function norm(s: string): string {
  * asking for an off-by-one that lands a cutaway over the wrong sentence.
  */
 export function findQuoteSpan(
-  words: Word[],
+  words: OverlayPlanWord[],
   quote: string,
 ): { start: number; end: number } | null {
   // Punctuation-only tokens can't be matched against, but they can be spanned.
@@ -308,7 +333,7 @@ export function findQuoteSpan(
  * short to see. Nothing reaches the timeline that the transcript doesn't back.
  */
 export function placementsToSpans(
-  words: Word[],
+  words: OverlayPlanWord[],
   placements: Placement[],
   knownFiles: string[],
 ): PlacedSpan[] {

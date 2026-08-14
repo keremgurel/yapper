@@ -34,12 +34,12 @@ export const tools: Tool[] = [
   },
   {
     slug: "editor",
-    title: "Edit video by editing the transcript",
+    title: "Native transcript-based video editor",
     tagline: "Cut words, remove silences, add captions",
     description:
-      "The in-browser editor: trim by deleting words, auto-remove pauses, one-click clean up, and burn in captions. Runs entirely on your device.",
+      "Open Yapper Studio for Mac to trim by deleting words, remove pauses, run 1-Click Edit, and burn in captions without uploading your source media.",
     href: "/studio/editor",
     category: "Editing",
-    cta: "Open the editor",
+    cta: "Open native editor",
   },
 ];

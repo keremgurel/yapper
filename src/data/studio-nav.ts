@@ -65,7 +65,7 @@ const recorder: StudioNavItem = {
 const editor: StudioNavItem = {
   title: "Editor",
   href: "/studio/editor",
-  description: "Cut words, fillers, and silences by editing the transcript.",
+  description: "Open the native Mac editor for fast, local video editing.",
   icon: "scissors",
 };
 
