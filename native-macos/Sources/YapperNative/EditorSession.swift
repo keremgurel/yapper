@@ -2199,6 +2199,17 @@ final class EditorSession: ObservableObject {
         return await commitPendingEdit(revision: pendingEdit.revision)
     }
 
+    /// Makes the latest coalesced canvas gesture durable before macOS allows
+    /// the process to terminate. Acquiring the regular edit slot also waits
+    /// for an in-flight save and applies gestures queued behind it in their
+    /// original order. A storage failure returns false so the app can cancel
+    /// termination instead of silently discarding the creator's last edit.
+    func prepareForTermination() async -> Bool {
+        await acquireEditCommitSlot()
+        defer { releaseEditCommitSlot() }
+        return await flushPendingEdit()
+    }
+
     private func commitPendingEdit(revision: Int) async -> Bool {
         guard let pending = pendingEdit, pending.revision == revision else { return true }
         do {

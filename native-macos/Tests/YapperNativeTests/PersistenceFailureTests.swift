@@ -709,6 +709,77 @@ struct PersistenceFailureTests {
         #expect(saved.projects.isEmpty)
     }
 
+    @Test("Termination flushes the latest debounced gesture without waiting")
+    func terminationFlushesPendingGesture() async {
+        let store = TestProjectStore()
+        let session = EditorSession(store: store)
+
+        session.scheduleVisualCommit {
+            session.updateProject { $0.name = "Last gesture" }
+            return true
+        }
+        let shouldTerminate = await session.prepareForTermination()
+
+        #expect(shouldTerminate)
+        #expect(session.project.name == "Last gesture")
+        #expect(session.canUndo)
+        let saved = await store.snapshot()
+        #expect(saved.attempts == 1)
+        #expect(saved.projects.map(\.name) == ["Last gesture"])
+    }
+
+    @Test("Termination is cancelled when the latest gesture cannot be saved")
+    func terminationCancelsOnSaveFailure() async {
+        let store = TestProjectStore(saveFailure: .diskFull)
+        let session = EditorSession(store: store)
+        let before = session.project
+
+        session.scheduleVisualCommit {
+            session.updateProject { $0.name = "Unsaved last gesture" }
+            return true
+        }
+        let shouldTerminate = await session.prepareForTermination()
+
+        #expect(!shouldTerminate)
+        #expect(session.project == before)
+        #expect(session.statusMessage == "Needs attention")
+        #expect(session.errorMessage == "The test disk is full.")
+        let saved = await store.snapshot()
+        #expect(saved.attempts == 1)
+        #expect(saved.projects.isEmpty)
+    }
+
+    @Test("Termination waits for an in-flight save and then flushes its queued gesture")
+    func terminationPreservesQueuedGestureOrder() async {
+        let store = TestProjectStore()
+        let session = EditorSession(store: store)
+        await store.blockNextSave()
+
+        let first = Task { @MainActor in
+            await session.commitTimelineEdit(requiresRebuild: false) {
+                session.updateProject { $0.name = "A" }
+                return true
+            }
+        }
+        await store.waitForSaveAttempt(1)
+        session.scheduleVisualCommit {
+            session.updateProject { $0.name += "B" }
+            return true
+        }
+        let termination = Task { @MainActor in
+            await session.prepareForTermination()
+        }
+
+        await store.releaseBlockedSave()
+        _ = await first.value
+        let shouldTerminate = await termination.value
+
+        #expect(shouldTerminate)
+        #expect(session.project.name == "AB")
+        let saved = await store.snapshot()
+        #expect(saved.projects.map(\.name) == ["A", "AB"])
+    }
+
     @Test("Recovery still persists a project with no timeline clips")
     func emptyTimelineRecoveryPropagatesSaveFailure() async {
         let store = TestProjectStore(saveFailure: .diskFull)
