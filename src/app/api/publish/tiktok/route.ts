@@ -4,6 +4,7 @@ import {
   claimPublishJob,
   failPublishJob,
   findPublishJobClaim,
+  notePublishJobPending,
 } from "@/lib/db/publish";
 import {
   getFreshAccessToken,
@@ -15,7 +16,15 @@ import {
   publishIdempotencyKey,
 } from "@/lib/publish/idempotency";
 import { uploadTikTokDraft } from "@/lib/publish/tiktok";
-import { getObjectBytes, r2Configured } from "@/lib/r2";
+import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
+import { readTikTokPublishRequest } from "@/lib/publish/request";
+import {
+  createPublishWorkflow,
+  persistPublishCompletion,
+  publishFailureStatus,
+  PublishOutcomeUnknownError,
+} from "@/lib/publish/workflow";
+import { getObjectFile, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -27,6 +36,7 @@ export const maxDuration = 300;
  * the user writes it in the app when they complete the post.
  */
 export async function POST(req: Request): Promise<Response> {
+  const workflow = createPublishWorkflow(req.signal);
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const idempotencyKey = publishIdempotencyKey(req);
@@ -39,12 +49,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    submissionId?: string;
-    mediaKey?: string;
-    caption?: string;
-    contentItemId?: string;
-  };
+  let body;
+  try {
+    body = await readTikTokPublishRequest(req);
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
 
   const media = await resolveOwnedMediaKey(userId, body);
   if (!media.ok) {
@@ -76,19 +88,72 @@ export async function POST(req: Request): Promise<Response> {
   }
   const jobId = claim.jobId;
 
+  let result: Awaited<ReturnType<typeof uploadTikTokDraft>>;
   try {
-    const bytes = await getObjectBytes(media.mediaKey);
-    const result = await uploadTikTokDraft({ accessToken, bytes });
-    // A draft has no public URL yet — the user finishes posting in the app.
-    await completePublishJob(jobId, {
-      externalPostId: result.publishId,
-      externalUrl: "",
+    const file = await getObjectFile(media.mediaKey, {
+      signal: workflow.signal,
     });
-    return Response.json({ jobId, publishId: result.publishId, draft: true });
+    try {
+      result = await uploadTikTokDraft(
+        {
+          accessToken,
+          filePath: file.filePath,
+          byteLength: file.byteLength,
+          contentType: file.contentType,
+        },
+        workflow,
+      );
+    } finally {
+      await file
+        .cleanup()
+        .catch((error) =>
+          console.error(
+            "[publish] tiktok temporary file cleanup failed",
+            error,
+          ),
+        );
+    }
   } catch (e) {
+    if (e instanceof PublishOutcomeUnknownError) {
+      await notePublishJobPending(jobId, e.message).catch((failure) =>
+        console.error("[publish] tiktok pending state write failed", failure),
+      );
+      console.error("[publish] tiktok outcome requires reconciliation", e);
+      return Response.json(
+        { error: "publish_state_pending", jobId },
+        { status: 503 },
+      );
+    }
     const message = e instanceof Error ? e.message : "upload_failed";
-    await failPublishJob(jobId, message);
+    await failPublishJob(jobId, message).catch((failure) =>
+      console.error("[publish] tiktok failure state write failed", failure),
+    );
     console.error("[publish] tiktok upload failed", message);
-    return Response.json({ error: "upload_failed", jobId }, { status: 502 });
+    return Response.json(
+      { error: "upload_failed", jobId },
+      { status: publishFailureStatus(e, workflow) },
+    );
   }
+
+  try {
+    // A draft has no public URL yet — the user finishes posting in the app.
+    await persistPublishCompletion(() =>
+      completePublishJob(jobId, {
+        externalPostId: result.publishId,
+        externalUrl: "",
+      }),
+    );
+  } catch (e) {
+    // TikTok accepted the media. Never rewrite this job to failed: a new key
+    // could create a duplicate draft. The existing claim remains in progress.
+    await notePublishJobPending(jobId, "completion_state_write_failed").catch(
+      () => undefined,
+    );
+    console.error("[publish] tiktok completion state write failed", e);
+    return Response.json(
+      { error: "publish_state_pending", jobId },
+      { status: 503 },
+    );
+  }
+  return Response.json({ jobId, publishId: result.publishId, draft: true });
 }

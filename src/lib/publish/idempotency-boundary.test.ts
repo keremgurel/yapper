@@ -13,9 +13,10 @@ describe("irreversible publish route boundary", () => {
       );
       const handler = source.indexOf("export async function POST");
       const replay = source.indexOf("await findPublishJobClaim", handler);
+      const bodyRead = source.indexOf("PublishRequest(req)", replay);
 
       expect(replay).toBeGreaterThan(handler);
-      expect(replay).toBeLessThan(source.indexOf("await req.json", handler));
+      expect(bodyRead).toBeGreaterThan(replay);
       expect(replay).toBeLessThan(
         source.indexOf("await resolveOwnedMediaKey", handler),
       );

@@ -151,7 +151,10 @@ async function publishError(response: Response): Promise<Error> {
   ) {
     return new Error("not_connected");
   }
-  if (data.error === "publish_in_progress") {
+  if (
+    data.error === "publish_in_progress" ||
+    data.error === "publish_state_pending"
+  ) {
     return new Error("publish_in_progress");
   }
   if (data.error === "publish_attempt_failed") {
@@ -241,7 +244,10 @@ export async function crossPostToInstagram(
     ) {
       throw new Error("not_connected");
     }
-    if (data.error === "publish_in_progress") {
+    if (
+      data.error === "publish_in_progress" ||
+      data.error === "publish_state_pending"
+    ) {
       throw new Error("publish_in_progress");
     }
     if (data.error === "publish_attempt_failed") {

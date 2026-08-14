@@ -7,6 +7,11 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createReadStream } from "node:fs";
+import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import {
+  spoolBoundedTemporaryFile,
+  type BoundedTemporaryFile,
+} from "@/lib/http/bounded-temp-file";
 
 // Cloudflare R2 (S3-compatible). Media (recordings) live here so /history can
 // replay them; $0 egress makes replays free. Lazily constructed so importing
@@ -91,6 +96,39 @@ export async function getObjectBytes(key: string): Promise<ArrayBuffer> {
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,
   ) as ArrayBuffer;
+}
+
+export interface R2ObjectFile extends BoundedTemporaryFile {
+  contentType: string;
+}
+
+/** Download an R2 object into an owned temporary file under a hard actual-byte
+ * cap. Provider upload routes use this instead of retaining/copying the entire
+ * object in serverless memory. */
+export async function getObjectFile(
+  key: string,
+  options: { maxBytes?: number; signal?: AbortSignal } = {},
+): Promise<R2ObjectFile> {
+  const response = await s3().send(
+    new GetObjectCommand({ Bucket: bucket(), Key: key }),
+    options.signal ? { abortSignal: options.signal } : undefined,
+  );
+  const body = response.Body;
+  if (!body || !(Symbol.asyncIterator in body)) throw new Error("r2_empty");
+  const file = await spoolBoundedTemporaryFile(
+    body as AsyncIterable<Uint8Array>,
+    {
+      maxBytes: options.maxBytes ?? MAX_CLIP_BYTES,
+      declaredBytes: response.ContentLength,
+      signal: options.signal,
+      prefix: "yapper-r2-",
+      fileName: "media.bin",
+    },
+  );
+  return {
+    ...file,
+    contentType: response.ContentType?.split(";", 1)[0]?.trim() || "video/mp4",
+  };
 }
 
 /** Server-side write of raw bytes to a key. Used to stash a video pulled from

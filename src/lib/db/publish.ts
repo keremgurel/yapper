@@ -274,6 +274,19 @@ export async function failPublishJob(id: string, error: string): Promise<void> {
     .where(eq(publishJobs.id, id));
 }
 
+/** Record why an irreversible provider attempt remains unresolved without
+ * making it retryable. The uploading status preserves the idempotency claim;
+ * the diagnostic gives reconciliation work a durable selector. */
+export async function notePublishJobPending(
+  id: string,
+  error: string,
+): Promise<void> {
+  await getDb()
+    .update(publishJobs)
+    .set({ error: error.slice(0, 500), updatedAt: new Date() })
+    .where(eq(publishJobs.id, id));
+}
+
 /**
  * Recover the original R2 source for platform posts Yapper published earlier.
  * Platform list APIs expose metadata and thumbnails, not the uploaded bytes;
