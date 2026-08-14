@@ -522,6 +522,10 @@ export const publishJobs = pgTable(
     }),
     platform: text("platform", { enum: publishPlatforms }).notNull(),
     mediaKey: text("media_key").notNull(),
+    // One browser-created intent maps to exactly one platform operation. A
+    // nullable column keeps historical jobs decodable while every new route
+    // claim supplies a key.
+    idempotencyKey: text("idempotency_key"),
     status: text("status", { enum: publishJobStatuses })
       .notNull()
       .default("queued"),
@@ -539,6 +543,11 @@ export const publishJobs = pgTable(
   },
   (t) => [
     index("publish_jobs_user_idx").on(t.userId, t.createdAt),
+    uniqueIndex("publish_jobs_user_platform_idempotency_unique").on(
+      t.userId,
+      t.platform,
+      t.idempotencyKey,
+    ),
     check(
       "publish_jobs_platform_check",
       sql`${t.platform} in ('youtube','tiktok','instagram')`,

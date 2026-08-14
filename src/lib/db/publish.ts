@@ -126,21 +126,96 @@ export async function listConnections(
     .where(eq(platformConnections.userId, userId));
 }
 
-/** Open a publish job in the `uploading` state; returns its id to complete/fail. */
-export async function createPublishJob(
+export type PublishJobClaim =
+  | { kind: "created"; jobId: string }
+  | {
+      kind: "existing";
+      jobId: string;
+      status: (typeof publishJobs.$inferSelect)["status"];
+      externalPostId: string | null;
+      externalUrl: string | null;
+    }
+  | { kind: "unavailable" };
+
+export async function findPublishJobClaim(
+  userId: string,
+  platform: PublishPlatform,
+  idempotencyKey: string,
+): Promise<Extract<PublishJobClaim, { kind: "existing" }> | null> {
+  const [row] = await getDb()
+    .select({
+      id: publishJobs.id,
+      status: publishJobs.status,
+      externalPostId: publishJobs.externalPostId,
+      externalUrl: publishJobs.externalUrl,
+    })
+    .from(publishJobs)
+    .where(
+      and(
+        eq(publishJobs.userId, userId),
+        eq(publishJobs.platform, platform),
+        eq(publishJobs.idempotencyKey, idempotencyKey),
+      ),
+    )
+    .limit(1);
+  return row
+    ? {
+        kind: "existing",
+        jobId: row.id,
+        status: row.status,
+        externalPostId: row.externalPostId,
+        externalUrl: row.externalUrl,
+      }
+    : null;
+}
+
+/**
+ * Atomically admit one irreversible platform operation. The per-user storage
+ * lock serializes competing requests, so the same browser intent can create at
+ * most one job even before the database unique index is consulted. A repeated
+ * request receives the durable prior state and must never call the provider.
+ */
+export async function claimPublishJob(
   userId: string,
   input: {
     platform: PublishPlatform;
     mediaKey: string;
+    idempotencyKey: string;
     title?: string | null;
     caption?: string | null;
     contentItemId?: string | null;
   },
-): Promise<string | null> {
+): Promise<PublishJobClaim> {
   return getDb().transaction(async (tx) => {
     await lockStorageUserWithinTx(tx, userId);
-    await lockMediaReferenceWithinTx(tx, userId, input.mediaKey);
 
+    const [existing] = await tx
+      .select({
+        id: publishJobs.id,
+        status: publishJobs.status,
+        externalPostId: publishJobs.externalPostId,
+        externalUrl: publishJobs.externalUrl,
+      })
+      .from(publishJobs)
+      .where(
+        and(
+          eq(publishJobs.userId, userId),
+          eq(publishJobs.platform, input.platform),
+          eq(publishJobs.idempotencyKey, input.idempotencyKey),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      return {
+        kind: "existing",
+        jobId: existing.id,
+        status: existing.status,
+        externalPostId: existing.externalPostId,
+        externalUrl: existing.externalUrl,
+      };
+    }
+
+    await lockMediaReferenceWithinTx(tx, userId, input.mediaKey);
     const [object] = await tx
       .select({ state: r2Objects.state })
       .from(r2Objects)
@@ -152,12 +227,8 @@ export async function createPublishJob(
       )
       .for("update")
       .limit(1);
-    // `delete_pending` is still physically present. Keeping that state while
-    // the job is active lets the worker defer deletion and resume it as soon
-    // as the upload reaches a terminal state. Once a worker has claimed the
-    // object, no new platform upload may start.
     if (!object || !["active", "delete_pending"].includes(object.state)) {
-      return null;
+      return { kind: "unavailable" };
     }
 
     const [row] = await tx
@@ -166,13 +237,14 @@ export async function createPublishJob(
         userId,
         platform: input.platform,
         mediaKey: input.mediaKey,
+        idempotencyKey: input.idempotencyKey,
         status: "uploading",
         title: input.title ?? null,
         caption: input.caption ?? null,
         contentItemId: input.contentItemId ?? null,
       })
       .returning({ id: publishJobs.id });
-    return row.id;
+    return { kind: "created", jobId: row.id };
   });
 }
 

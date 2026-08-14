@@ -63,16 +63,19 @@ export default function YouTubeCompose({
 
   const onPost = () => {
     if (!title.trim() || busy) return;
-    void post(() =>
-      crossPostToYouTube({
-        submissionId: item.submissionId,
-        mediaKey: item.mediaKey,
-        title: title.trim(),
-        description: description.trim() || undefined,
-        contentItemId: item.contentItemId,
-        thumbnailKey: thumb.thumbnailKey ?? undefined,
-        privacyStatus: "public",
-      }),
+    void post((idempotencyKey) =>
+      crossPostToYouTube(
+        {
+          submissionId: item.submissionId,
+          mediaKey: item.mediaKey,
+          title: title.trim(),
+          description: description.trim() || undefined,
+          contentItemId: item.contentItemId,
+          thumbnailKey: thumb.thumbnailKey ?? undefined,
+          privacyStatus: "public",
+        },
+        idempotencyKey,
+      ),
     );
   };
 

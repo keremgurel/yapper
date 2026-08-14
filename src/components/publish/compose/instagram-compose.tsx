@@ -28,14 +28,17 @@ export default function InstagramCompose({
 
   const onPost = () => {
     if (busy) return;
-    void post(() =>
-      crossPostToInstagram({
-        submissionId: item.submissionId,
-        mediaKey: item.mediaKey,
-        caption: caption.trim() || undefined,
-        contentItemId: item.contentItemId,
-        thumbnailKey: thumb.thumbnailKey ?? undefined,
-      }),
+    void post((idempotencyKey) =>
+      crossPostToInstagram(
+        {
+          submissionId: item.submissionId,
+          mediaKey: item.mediaKey,
+          caption: caption.trim() || undefined,
+          contentItemId: item.contentItemId,
+          thumbnailKey: thumb.thumbnailKey ?? undefined,
+        },
+        idempotencyKey,
+      ),
     );
   };
 

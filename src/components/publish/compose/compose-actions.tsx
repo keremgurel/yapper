@@ -11,6 +11,9 @@ import ProfessionalAccountHelp from "./professional-account-help";
 const ERROR_COPY: Record<CrossPostError, string> = {
   not_connected: "Connect this platform first, from Connections.",
   not_professional: "Your Instagram needs to be a Professional account",
+  in_progress: "This publish attempt is still running. Check again shortly.",
+  attempt_failed:
+    "This attempt stopped and won't be sent again automatically. Close and start a new publish if you want to retry.",
   failed: "Couldn't post. Try again.",
 };
 
