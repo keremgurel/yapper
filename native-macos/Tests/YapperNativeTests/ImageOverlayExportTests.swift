@@ -19,6 +19,36 @@ struct ImageOverlayExportTests {
         filePath: "/Volumes/G MicroSD/DCIM/DJI_001/DJI_20260801210742_0340_D.MP4"
     )
 
+    @Test("A readable corrupt required image fails composition instead of disappearing")
+    func corruptRequiredImageFailsClosed() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let videoURL = directory.appending(path: "base.mov")
+        let imageURL = directory.appending(path: "corrupt.png")
+        try await SyntheticVideo.write(
+            color: NSColor.black.cgColor, size: CGSize(width: 160, height: 90), seconds: 1,
+            to: videoURL
+        )
+        try Data("not an image".utf8).write(to: imageURL)
+        let video = try await MediaProbe.inspect(url: videoURL)
+        let fakeImage = ProjectMedia(
+            url: imageURL, name: "corrupt.png", duration: 1, width: 32, height: 18,
+            hasAudio: false, kind: .image
+        )
+        let project = EditorProject(
+            media: [video, fakeImage],
+            clips: [TimelineClip(mediaID: video.id, sourceStart: 0, sourceEnd: 1)],
+            overlays: [ProjectOverlay(mediaID: fakeImage.id, timelineStart: 0, duration: 1)]
+        )
+        do {
+            _ = try await CompositionBuilder.build(project: project)
+            Issue.record("Corrupt required image was silently omitted")
+        } catch {
+            #expect(error.localizedDescription.contains("same source media"))
+        }
+    }
+
     @Test(
         "An image overlay is burned in where it was placed",
         .enabled(if: FileManager.default.fileExists(atPath: referenceURL.path))

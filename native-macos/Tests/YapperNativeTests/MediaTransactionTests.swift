@@ -17,9 +17,62 @@ private actor MediaTransactionStore: ProjectPersisting {
     func snapshot() -> [EditorProject] { projects }
 }
 
+private final class HashReadGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var started = false
+    private var released = false
+
+    func block() {
+        lock.lock(); started = true; lock.unlock()
+        while true {
+            lock.lock(); let shouldRelease = released; lock.unlock()
+            if shouldRelease { return }
+            Thread.sleep(forTimeInterval: 0.001)
+        }
+    }
+
+    func hasStarted() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return started
+    }
+
+    func release() {
+        lock.lock(); released = true; lock.unlock()
+    }
+}
+
 @Suite(.serialized)
 @MainActor
 struct MediaTransactionTests {
+    private func bundledAudio(_ id: String) throws -> URL {
+        let effect = try #require(SoundEffectDescriptor.library.first(where: { $0.id == id }))
+        return try #require(SoundEffectService.shared.bundledURL(for: effect))
+    }
+
+    private func prepareAudioSession(
+        directory: URL,
+        audioNames: [String],
+        store: MediaTransactionStore
+    ) async throws -> (EditorSession, [URL]) {
+        let video = directory.appending(path: "base.mov")
+        try await SyntheticVideo.write(
+            color: NSColor.black.cgColor,
+            size: CGSize(width: 160, height: 90),
+            seconds: 3,
+            to: video
+        )
+        var audioURLs: [URL] = []
+        for (index, id) in audioNames.enumerated() {
+            let destination = directory.appending(path: "audio-\(index).m4a")
+            try FileManager.default.copyItem(at: bundledAudio(id), to: destination)
+            audioURLs.append(destination)
+        }
+        let session = EditorSession(store: store)
+        await session.importMedia([video])
+        await session.importAudio(audioURLs)
+        return (session, audioURLs)
+    }
+
     @Test("Failed import leaves no derived-media residue")
     func failedImportHasNoDerivedResidue() async throws {
         let directory = try temporaryDirectory()
@@ -285,12 +338,24 @@ struct MediaTransactionTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let source = directory.appending(path: "source.png")
         let exactCopy = directory.appending(path: "exact-copy.png")
+        let base = directory.appending(path: "base.mov")
         try writePNG(.red, to: source)
         try FileManager.default.copyItem(at: source, to: exactCopy)
+        try await SyntheticVideo.write(color: NSColor.black.cgColor, size: CGSize(width: 160, height: 90), to: base)
         let store = MediaTransactionStore()
         let session = EditorSession(store: store)
-        await session.importMedia([source])
+        await session.importMedia([base, source])
+        let baseMedia = try #require(session.project.media.first(where: { $0.url == base.resolvingSymlinksInPath() }))
+        let imageMedia = try #require(session.project.media.first(where: { $0.url == source.resolvingSymlinksInPath() }))
+        await session.commitTimelineEdit {
+            session.updateProject { project in
+                project.clips = [TimelineClip(mediaID: baseMedia.id, sourceStart: 0, sourceEnd: baseMedia.duration)]
+                project.overlays = [ProjectOverlay(mediaID: imageMedia.id, timelineStart: 0, duration: baseMedia.duration)]
+            }
+            return true
+        }
         let saved = try #require(await store.snapshot().last)
+        let savesBefore = await store.snapshot().count
         try FileManager.default.removeItem(at: source)
         session.refreshMediaAvailability(notifyRestored: false)
         try writePNG(.blue, to: source)
@@ -303,18 +368,18 @@ struct MediaTransactionTests {
         }
 
         #expect(session.project == saved)
-        #expect(await store.snapshot().count == 1)
-        #expect(session.offlineMedia.map(\.id) == saved.media.map(\.id))
+        #expect(await store.snapshot().count == savesBefore)
+        #expect(session.offlineMedia.map(\.id) == [imageMedia.id])
 
         session.refreshMediaAvailability()
         session.refreshMediaAvailability()
         try await Task.sleep(for: .milliseconds(25))
-        #expect(await store.snapshot().count == 1)
-        #expect(session.offlineMedia.map(\.id) == saved.media.map(\.id))
+        #expect(await store.snapshot().count == savesBefore)
+        #expect(session.offlineMedia.map(\.id) == [imageMedia.id])
 
-        await session.relinkMedia(saved.media[0], to: exactCopy)
+        await session.relinkMedia(imageMedia, to: exactCopy)
         #expect(session.offlineMedia.isEmpty)
-        #expect(session.project.media[0].url == exactCopy.resolvingSymlinksInPath())
+        #expect(session.project.media.first(where: { $0.id == imageMedia.id })?.url == exactCopy.resolvingSymlinksInPath())
     }
 
     @Test("A same-path overwrite is rejected before the next composition rebuild")
@@ -326,16 +391,243 @@ struct MediaTransactionTests {
         let store = MediaTransactionStore()
         let session = EditorSession(store: store)
         await session.importMedia([source])
+        let imported = try #require(session.project.media.first)
+        await session.commitTimelineEdit {
+            session.updateProject { project in
+                project.clips = [TimelineClip(mediaID: imported.id, sourceStart: 0, sourceEnd: imported.duration)]
+            }
+            return true
+        }
         let durable = try #require(await store.snapshot().last)
         try await SyntheticVideo.write(color: NSColor.blue.cgColor, size: CGSize(width: 160, height: 90), to: source)
 
         await session.recoverRestoredMedia()
 
         #expect(session.project == durable)
-        #expect(await store.snapshot().count == 1)
+        #expect(await store.snapshot().count == 2)
         #expect(session.offlineMedia.map(\.id) == durable.media.map(\.id))
         #expect(session.errorMessage?.contains("same source media") == true)
         #expect(session.player.currentItem == nil)
+    }
+
+    @Test("Audio relink persists exact identity and preserves historical edit fields")
+    func audioRelinkPreservesHistoryFields() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, originals) = try await prepareAudioSession(
+            directory: directory, audioNames: ["keyboard-typing"], store: store
+        )
+        var edited = try #require(session.project.audioLayers?.first)
+        edited.volume = 0.35
+        edited.timelineStart = 0.4
+        edited.duration = min(1.5, edited.duration)
+        await session.updateAudioLayer(edited)
+        let replacement = directory.appending(path: "moved.m4a")
+        try FileManager.default.copyItem(at: originals[0], to: replacement)
+        try FileManager.default.removeItem(at: originals[0])
+        session.refreshMediaAvailability(notifyRestored: false)
+
+        await session.relinkAudio(edited, to: replacement)
+
+        let relinked = try #require(session.project.audioLayers?.first)
+        #expect(relinked.url == replacement.resolvingSymlinksInPath())
+        #expect(relinked.volume == 0.35)
+        #expect(relinked.timelineStart == 0.4)
+        #expect(relinked.sourceFingerprint == edited.sourceFingerprint)
+        #expect(session.mediaAvailability.requiredOffline.isEmpty)
+
+        await session.undo()
+        let undone = try #require(session.project.audioLayers?.first)
+        #expect(undone.url == replacement.resolvingSymlinksInPath())
+        #expect(undone.volume == 1)
+        #expect(undone.timelineStart == 0)
+        await session.redo()
+        #expect(session.project.audioLayers?.first?.url == replacement.resolvingSymlinksInPath())
+        #expect(session.project.audioLayers?.first?.volume == 0.35)
+    }
+
+    @Test("Audio relink rejects different bytes before mutation")
+    func audioRelinkRejectsIdentityMismatch() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, _) = try await prepareAudioSession(
+            directory: directory, audioNames: ["keyboard-typing"], store: store
+        )
+        let original = try #require(session.project.audioLayers?.first)
+        let wrong = directory.appending(path: "wrong.m4a")
+        try FileManager.default.copyItem(at: bundledAudio("meme-outro"), to: wrong)
+        let savesBefore = await store.snapshot().count
+
+        await session.relinkAudio(original, to: wrong)
+
+        #expect(session.project.audioLayers?.first == original)
+        #expect(await store.snapshot().count == savesBefore)
+        #expect(session.errorMessage?.contains("same source media") == true)
+    }
+
+    @Test("Failed audio relink restores the prior offline identity state")
+    func failedAudioRelinkRestoresOfflineState() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, originals) = try await prepareAudioSession(
+            directory: directory, audioNames: ["keyboard-typing"], store: store
+        )
+        let original = try #require(session.project.audioLayers?.first)
+        let replacement = directory.appending(path: "moved.m4a")
+        try FileManager.default.copyItem(at: originals[0], to: replacement)
+        try FileManager.default.removeItem(at: originals[0])
+        session.refreshMediaAvailability(notifyRestored: false)
+        #expect(session.mediaAvailability.requiredOffline.map(\.id) == [.audio(original.id)])
+        await store.failSaves()
+
+        await session.relinkAudio(original, to: replacement)
+
+        #expect(session.project.audioLayers?.first == original)
+        #expect(session.mediaAvailability.requiredOffline.map(\.id) == [.audio(original.id)])
+    }
+
+    @Test("Failed audio relink preserves a forced same-path identity mismatch")
+    func failedAudioRelinkPreservesForcedMismatch() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, originals) = try await prepareAudioSession(
+            directory: directory, audioNames: ["keyboard-typing"], store: store
+        )
+        let original = try #require(session.project.audioLayers?.first)
+        let exact = directory.appending(path: "exact.m4a")
+        try FileManager.default.copyItem(at: originals[0], to: exact)
+        try FileManager.default.removeItem(at: originals[0])
+        try FileManager.default.copyItem(at: bundledAudio("meme-outro"), to: originals[0])
+        await session.verifyMediaResourcesChangedOnDisk()
+        #expect(session.mediaAvailability.requiredOffline.map(\.id) == [.audio(original.id)])
+        await store.failSaves()
+
+        await session.relinkAudio(original, to: exact)
+        session.refreshMediaAvailability(notifyRestored: false)
+
+        #expect(session.project.audioLayers?.first == original)
+        #expect(session.mediaAvailability.requiredOffline.map(\.id) == [.audio(original.id)])
+    }
+
+    @Test("One audio source can relink durably while another remains offline")
+    func partialAudioRelinkPersistsThenFinishesRecovery() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, originals) = try await prepareAudioSession(
+            directory: directory,
+            audioNames: ["keyboard-typing", "meme-outro"],
+            store: store
+        )
+        await session.commitTimelineEdit {
+            session.updateProject { project in
+                for index in project.audioLayers?.indices ?? 0..<0 {
+                    project.audioLayers?[index].timelineStart = 0
+                    project.audioLayers?[index].duration = 1
+                }
+            }
+            return true
+        }
+        let layers = try #require(session.project.audioLayers)
+        let replacements = [
+            directory.appending(path: "moved-a.m4a"),
+            directory.appending(path: "moved-b.m4a"),
+        ]
+        for index in originals.indices {
+            try FileManager.default.copyItem(at: originals[index], to: replacements[index])
+            try FileManager.default.removeItem(at: originals[index])
+        }
+        session.refreshMediaAvailability(notifyRestored: false)
+        #expect(session.mediaAvailability.requiredOffline.count == 2)
+        let before = await store.snapshot().count
+
+        await session.relinkAudio(layers[0], to: replacements[0])
+
+        #expect(await store.snapshot().count == before + 1)
+        #expect(session.project.audioLayers?[0].url == replacements[0].resolvingSymlinksInPath())
+        #expect(session.mediaAvailability.requiredOffline.map(\.id) == [.audio(layers[1].id)])
+
+        await session.relinkAudio(layers[1], to: replacements[1])
+        #expect(session.mediaAvailability.requiredOffline.isEmpty)
+        #expect(session.project.audioLayers?[1].url == replacements[1].resolvingSymlinksInPath())
+        #expect(session.player.currentItem != nil)
+    }
+
+    @Test("Legacy audio recovery honors source windows retained by history")
+    func legacyAudioHistoryRequiresLongestSourceWindow() {
+        let id = UUID()
+        let url = URL(filePath: "/tmp/legacy.m4a")
+        var history = EditorHistory()
+        let long = ProjectAudioLayer(
+            id: id, url: url, name: "Legacy", timelineStart: 0, duration: 8,
+            sourceStart: 2, sourceDuration: 10
+        )
+        let short = ProjectAudioLayer(
+            id: id, url: url, name: "Legacy", timelineStart: 0, duration: 2,
+            sourceStart: 0, sourceDuration: 10
+        )
+        history.record(
+            before: EditorProject(audioLayers: [long]),
+            after: EditorProject(audioLayers: [short])
+        )
+        #expect(history.requiredAudioSourceEnd(for: id) == 10)
+    }
+
+    @Test("Saved audio relink rejects changes outside sampled fingerprint windows")
+    func savedAudioRelinkUsesFullIdentity() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = MediaTransactionStore()
+        let (session, originals) = try await prepareAudioSession(
+            directory: directory, audioNames: ["crowd-cheer"], store: store
+        )
+        var layer = try #require(session.project.audioLayers?.first)
+        layer.sourceKind = .saved
+        layer.savedAudioHash = try AudioContentHash.compute(url: originals[0])
+        await session.updateAudioLayer(layer)
+        let candidate = directory.appending(path: "changed-middle.m4a")
+        try FileManager.default.copyItem(at: originals[0], to: candidate)
+        let handle = try FileHandle(forUpdating: candidate)
+        try handle.seek(toOffset: 100 * 1024)
+        let originalByte = try #require(try handle.read(upToCount: 1)?.first)
+        try handle.seek(toOffset: 100 * 1024)
+        try handle.write(contentsOf: Data([originalByte ^ 0xff]))
+        try handle.close()
+        #expect(try await MediaSourceFingerprint.compute(url: candidate) == layer.sourceFingerprint)
+        let savesBefore = await store.snapshot().count
+
+        await session.relinkAudio(layer, to: candidate)
+
+        #expect(session.project.audioLayers?.first == layer)
+        #expect(await store.snapshot().count == savesBefore)
+        #expect(session.errorMessage?.contains("same source media") == true)
+    }
+
+    @Test("Cancelling exact audio hashing stops the detached reader")
+    func exactAudioHashCancellationStopsRead() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appending(path: "large.bin")
+        try Data(repeating: 7, count: 3 << 20).write(to: file)
+        let gate = HashReadGate()
+        let task = Task {
+            try await AudioContentHash.computeAsync(url: file) {
+                gate.block()
+            }
+        }
+        while !gate.hasStarted() { try await Task.sleep(for: .milliseconds(1)) }
+        task.cancel()
+        gate.release()
+        do {
+            _ = try await task.value
+            Issue.record("Cancelled exact hash unexpectedly completed")
+        } catch is CancellationError {
+            // Expected: parent cancellation reaches the detached file reader.
+        }
     }
 
     private func writePNG(_ color: NSColor, to url: URL) throws {

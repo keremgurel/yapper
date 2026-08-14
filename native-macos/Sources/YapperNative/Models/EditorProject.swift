@@ -390,6 +390,12 @@ extension ProjectTextLayer: Codable {
 }
 
 struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
+    enum SourceKind: String, Codable, Sendable {
+        case external
+        case saved
+        case builtIn
+    }
+
     var id: UUID
     var url: URL
     var name: String
@@ -399,6 +405,12 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
     var sourceDuration: Double?
     var volume: Double
     var builtInID: String?
+    /// Optional because projects created before source recovery shipped have
+    /// only a URL. New layers retain enough provenance to recover safely.
+    var sourceKind: SourceKind?
+    var sourceFingerprint: String?
+    var savedAudioID: UUID?
+    var savedAudioHash: String?
 
     init(
         id: UUID = UUID(),
@@ -409,7 +421,11 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         sourceStart: Double = 0,
         sourceDuration: Double? = nil,
         volume: Double = 1,
-        builtInID: String? = nil
+        builtInID: String? = nil,
+        sourceKind: SourceKind? = nil,
+        sourceFingerprint: String? = nil,
+        savedAudioID: UUID? = nil,
+        savedAudioHash: String? = nil
     ) {
         self.id = id
         self.url = url
@@ -420,6 +436,10 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         self.sourceDuration = sourceDuration
         self.volume = volume
         self.builtInID = builtInID
+        self.sourceKind = sourceKind
+        self.sourceFingerprint = sourceFingerprint
+        self.savedAudioID = savedAudioID
+        self.savedAudioHash = savedAudioHash
     }
 }
 
