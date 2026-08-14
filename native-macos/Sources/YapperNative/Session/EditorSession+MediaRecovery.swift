@@ -24,6 +24,8 @@ extension EditorSession {
         to url: URL,
         allowUnverifiedPrimary: Bool = false
     ) async {
+        guard let operation = beginLongOperation(.relinkingMedia) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         clearError()

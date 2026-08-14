@@ -77,9 +77,14 @@ final class EditorSession: ObservableObject {
         }
     }
     @Published private(set) var isPlaying = false
-    @Published private(set) var isBusy = false
-    @Published private(set) var isExporting = false
-    @Published private(set) var isAIEditing = false
+    @Published private(set) var activeOperation: LongOperationLease?
+    private var longOperationCoordinator = LongOperationCoordinator()
+    private var pendingMediaRecovery: PendingMediaRecovery?
+    var assistantRunInFlight = false
+    private var captionOperationWaiters: [CheckedContinuation<Void, Never>] = []
+    var isBusy: Bool { activeOperation != nil }
+    var isExporting: Bool { activeOperation?.operation.isExport == true }
+    var isAIEditing: Bool { activeOperation?.operation.isAI == true }
     @Published private(set) var canUndo = false
     @Published private(set) var canRedo = false
     @Published private(set) var aiProgress = 0.0
@@ -218,10 +223,50 @@ final class EditorSession: ObservableObject {
         )
     }
 
+    func beginLongOperation(_ operation: LongOperation) -> LongOperationLease? {
+        guard let lease = longOperationCoordinator.acquire(operation) else { return nil }
+        activeOperation = lease
+        return lease
+    }
+
+    func endLongOperation(_ lease: LongOperationLease) {
+        guard longOperationCoordinator.release(lease) else { return }
+        activeOperation = nil
+        drainPendingLongWork()
+    }
+
+    private func drainPendingLongWork() {
+        if !captionOperationWaiters.isEmpty,
+           let captionLease = beginLongOperation(.captions)
+        {
+            let waiter = captionOperationWaiters.removeFirst()
+            Task {
+                await performCaptionToggle(owner: captionLease)
+                endLongOperation(captionLease)
+                waiter.resume()
+            }
+            return
+        }
+        guard let pendingMediaRecovery else { return }
+        self.pendingMediaRecovery = nil
+        Task {
+            switch pendingMediaRecovery {
+            case .restored: await recoverRestoredMedia()
+            case .verify: await verifyMediaResourcesChangedOnDisk()
+            }
+        }
+    }
+
     /// Automatic volume/path recovery participates in the same commit queue as
     /// imports, relinks, undo, and gestures, so it cannot save an older model
     /// over a newer user edit.
     func recoverRestoredMedia() async {
+        guard let operation = beginLongOperation(.recoveringMedia) else {
+            if pendingMediaRecovery == nil { pendingMediaRecovery = .restored }
+            else { pendingMediaRecovery?.merge(.restored) }
+            return
+        }
+        defer { endLongOperation(operation) }
         guard let rollback = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         do {
@@ -232,6 +277,12 @@ final class EditorSession: ObservableObject {
     }
 
     func verifyMediaResourcesChangedOnDisk() async {
+        guard let operation = beginLongOperation(.recoveringMedia) else {
+            if pendingMediaRecovery == nil { pendingMediaRecovery = .verify }
+            else { pendingMediaRecovery?.merge(.verify) }
+            return
+        }
+        defer { endLongOperation(operation) }
         guard let rollback = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         validatedMediaRevisions.removeAll()
@@ -612,13 +663,13 @@ final class EditorSession: ObservableObject {
 
     func importMedia(_ urls: [URL]) async {
         guard !urls.isEmpty else { return }
+        guard let operation = beginLongOperation(.importingMedia) else { return }
+        defer { endLongOperation(operation) }
         await restorationTask?.value
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
-        isBusy = true
         errorMessage = nil
         statusMessage = "Reading media…"
-        defer { isBusy = false }
 
         // Named back to the creator, because a video that does not appear on
         // the timeline it was just dropped into looks like an import that
@@ -1056,12 +1107,15 @@ final class EditorSession: ObservableObject {
 
     func export(to url: URL) async {
         guard !project.clips.isEmpty else { return }
-        isExporting = true
+        guard let operation = beginLongOperation(.exporting) else { return }
+        defer { endLongOperation(operation) }
+        guard await beginPreparedTimelineEdit() != nil else { return }
+        let exportProject = project
+        endPreparedTimelineEdit()
         errorMessage = nil
         statusMessage = "Exporting native composition…"
-        defer { isExporting = false }
         do {
-            try await ExportService.export(project: project, to: url)
+            try await ExportService.export(project: exportProject, to: url)
             statusMessage = "Exported \(url.lastPathComponent) with audio verified"
             NSWorkspace.shared.activateFileViewerSelecting([url])
         } catch {
@@ -1319,13 +1373,15 @@ final class EditorSession: ObservableObject {
     ///   button means.
     func importAudio(_ urls: [URL], startingAt: Double? = nil) async {
         guard duration > 0, !urls.isEmpty else { return }
+        guard let operation = beginLongOperation(.importingAudio) else { return }
+        defer { endLongOperation(operation) }
         do {
             var sources: [(URL, Double)] = []
             for rawURL in urls {
                 let url = rawURL.resolvingSymlinksInPath()
                 sources.append((url, try await soundEffectService.duration(of: url)))
             }
-            await commitTimelineEdit {
+            await commitTimelineEdit(owner: operation) {
                 var insertionTime = min(startingAt ?? currentTime, max(0, duration - 0.02))
                 var layers = project.audioLayers ?? []
                 for (url, sourceDuration) in sources {
@@ -1410,17 +1466,13 @@ final class EditorSession: ObservableObject {
     }
 
     func transcribeProject() async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        guard let operation = beginLongOperation(.transcribing) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
-        isAIEditing = true
-        isBusy = true
         aiProgress = 0
         errorMessage = nil
-        defer {
-            isAIEditing = false
-            isBusy = false
-        }
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
@@ -1442,20 +1494,34 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    func transcribeMissingProjectMediaWithinOperation() async throws {
+        for mediaID in Set(project.clips.map(\.mediaID)) {
+            guard
+                !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
+                let media = project.media.first(where: { $0.id == mediaID })
+            else { continue }
+            let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+            updateProject { project in
+                var transcript = project.transcript ?? []
+                transcript.removeAll { $0.mediaID == mediaID }
+                transcript.append(contentsOf: words)
+                project.transcript = transcript
+            }
+        }
+    }
+
     func runOneClickEdit() async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        guard let operation = beginLongOperation(.oneClickEdit) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         let original = rollbackState.project
-        isAIEditing = true
-        isBusy = true
         aiProgress = 0
         oneClickEditStage = .preparing
         errorMessage = nil
         defer {
             oneClickEditStage = nil
-            isAIEditing = false
-            isBusy = false
         }
 
         do {
@@ -1509,16 +1575,19 @@ final class EditorSession: ObservableObject {
     /// The Captions on/off switch. Turning them off keeps the cards so the
     /// creator's text edits and restyling survive turning them back on.
     func toggleCaptions() async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        if activeOperation?.operation == .captions {
+            await withCheckedContinuation { captionOperationWaiters.append($0) }
+            return
+        }
+        guard let operation = beginLongOperation(.captions) else { return }
+        await performCaptionToggle(owner: operation)
+        endLongOperation(operation)
+    }
+
+    private func performCaptionToggle(owner _: LongOperationLease) async {
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
-        var isGenerating = false
-        defer {
-            if isGenerating {
-                isAIEditing = false
-                isBusy = false
-            }
-        }
         do {
             let successStatus: String
             if project.captionsEnabled == true {
@@ -1530,9 +1599,6 @@ final class EditorSession: ObservableObject {
                 let count = project.captionEntries.count
                 successStatus = "Captions shown · \(count) card\(count == 1 ? "" : "s")"
             } else {
-                isGenerating = true
-                isAIEditing = true
-                isBusy = true
                 errorMessage = nil
                 let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
                 for mediaID in mediaIDs {
@@ -1572,15 +1638,13 @@ final class EditorSession: ObservableObject {
     /// first if the project has never been listened to. Regeneration is always
     /// explicit, so hand-edited text is never silently thrown away.
     func generateCaptions() async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        guard let operation = beginLongOperation(.captions) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
-        isAIEditing = true
-        isBusy = true
         errorMessage = nil
         defer {
-            isAIEditing = false
-            isBusy = false
         }
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
@@ -1611,17 +1675,15 @@ final class EditorSession: ObservableObject {
     }
 
     func autoTrimSilences() async {
-        guard !project.clips.isEmpty, !isAIEditing else { return }
+        guard !project.clips.isEmpty else { return }
+        guard let operation = beginLongOperation(.autoTrim) else { return }
+        defer { endLongOperation(operation) }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         let original = rollbackState.project
-        isAIEditing = true
-        isBusy = true
         aiProgress = 0
         errorMessage = nil
         defer {
-            isAIEditing = false
-            isBusy = false
         }
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
@@ -1726,8 +1788,10 @@ final class EditorSession: ObservableObject {
     func commitTimelineEdit(
         requiresRebuild: Bool = true,
         successStatus: @autoclosure () -> String = "Ready",
+        owner: LongOperationLease? = nil,
         _ mutation: () -> Bool
     ) async -> Bool {
+        guard activeOperation == nil || activeOperation?.token == owner?.token else { return false }
         await acquireEditCommitSlot()
         defer { releaseEditCommitSlot() }
 
@@ -1814,10 +1878,6 @@ final class EditorSession: ObservableObject {
 
     func setStatus(_ message: String) {
         statusMessage = message
-    }
-
-    func setBusy(_ busy: Bool) {
-        isBusy = busy
     }
 
     func setOverlayPlacement(_ status: OverlayPlacementStatus) {
@@ -1930,6 +1990,7 @@ final class EditorSession: ObservableObject {
         successStatus: String,
         _ mutation: @escaping @MainActor () -> Bool
     ) {
+        guard activeOperation == nil else { return }
         let edit = ScheduledEdit(
             requiresRebuild: requiresRebuild,
             delay: delay,
@@ -1947,6 +2008,7 @@ final class EditorSession: ObservableObject {
         settleFor delay: Duration,
         _ mutation: @escaping @MainActor () -> String?
     ) {
+        guard activeOperation == nil else { return }
         let edit = ScheduledEdit(
             requiresRebuild: requiresRebuild,
             delay: delay,

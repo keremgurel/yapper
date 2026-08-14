@@ -658,7 +658,7 @@ private struct QuickEditWorkbench: View {
                     title: session.project.hasTimelineTranscript ? "Transcribe Again" : "Transcribe",
                     detail: "Accurate timed words",
                     icon: "doc.text",
-                    busy: session.isAIEditing
+                    busy: session.isBusy
                 ) {
                     Task { await session.transcribeProject() }
                 }
@@ -666,7 +666,7 @@ private struct QuickEditWorkbench: View {
                     title: session.isAIEditing ? "Editing…" : "1-Click Edit + Captions",
                     detail: "Retakes, pauses + captions",
                     icon: "wand.and.stars",
-                    busy: session.isAIEditing
+                    busy: session.isBusy
                 ) {
                     Task { await session.runOneClickEdit() }
                 }
@@ -676,7 +676,7 @@ private struct QuickEditWorkbench: View {
                         ? "Keeps every card for later"
                         : (session.hasCaptions ? "Bring back your cards" : "Generate from transcript"),
                     icon: "captions.bubble",
-                    busy: session.isAIEditing
+                    busy: session.isBusy
                 ) {
                     Task { await session.toggleCaptions() }
                 }
@@ -687,7 +687,7 @@ private struct QuickEditWorkbench: View {
                     disabled: session.project.clips.isEmpty
                 ) { session.addTextLayer(asHook: true) }
             }
-            .disabled(session.project.clips.isEmpty)
+            .disabled(session.project.clips.isEmpty || session.isBusy)
 
             if session.isAIEditing {
                 ProgressView(value: session.aiProgress)
@@ -736,7 +736,7 @@ private struct TextWorkbench: View {
                         }
                         .buttonStyle(EditorPrimaryButtonStyle())
                     }
-                    .disabled(session.project.clips.isEmpty)
+                    .disabled(session.project.clips.isEmpty || session.isBusy)
                 }
 
                 if layers.isEmpty {
@@ -988,7 +988,7 @@ private struct TranscriptWorkbench: View {
                     Task { await session.transcribeProject() }
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
-                .disabled(session.isAIEditing || session.project.clips.isEmpty)
+                .disabled(session.isBusy || session.project.clips.isEmpty)
             }
 
             if !words.isEmpty {

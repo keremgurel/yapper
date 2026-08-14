@@ -92,7 +92,7 @@ struct TimelinePanel: View {
                 ) {
                     Task { await session.autoTrimSilences() }
                 }
-                .disabled(session.project.clips.isEmpty || session.isAIEditing)
+                .disabled(session.project.clips.isEmpty || session.isBusy)
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
                     .foregroundStyle(.secondary)

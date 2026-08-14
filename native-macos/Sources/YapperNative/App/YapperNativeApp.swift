@@ -47,28 +47,35 @@ struct YapperNativeApp: App {
             CommandGroup(after: .newItem) {
                 Button("Import Media…") { ImportPanels.openMedia(for: session) }
                     .keyboardShortcut("i")
+                    .disabled(session.isBusy)
                 Button("Export…") { ImportPanels.saveExport(for: session) }
                     .keyboardShortcut("e")
+                    .disabled(session.project.clips.isEmpty || session.isBusy)
             }
             CommandMenu("Timeline") {
                 Button("Split at Playhead") {
                     Task { await session.splitAtPlayhead() }
                 }
+                .disabled(session.isBusy)
                 Button("Delete Selected Items") {
                     Task { await session.deleteTimelineSelection() }
                 }
+                .disabled(session.isBusy)
                 Divider()
                 Button("Trim Left Edge to Playhead") {
                     Task { await session.trimTimelineSelection(toPlayhead: .leading) }
                 }
+                .disabled(session.isBusy)
                 Button("Trim Right Edge to Playhead") {
                     Task { await session.trimTimelineSelection(toPlayhead: .trailing) }
                 }
+                .disabled(session.isBusy)
                 Divider()
                 Button("Auto-trim Silent Gaps") {
                     Task { await session.autoTrimSilences() }
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
+                .disabled(session.isBusy)
             }
             CommandMenu("Playback") {
                 // No key equivalent on purpose. Space is handled by the
