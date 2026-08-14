@@ -1416,14 +1416,14 @@ struct EditorProjectTests {
     /// be measured. They are tighter than they were: a take that keeps 100ms of
     /// room tone at every cut still sounds slack, and the creator asked for
     /// less of it. 30ms before a word, 40ms after.
-    @Test func silenceDetectionLeavesTightSpeechHandles() async {
+    @Test func silenceDetectionLeavesTightSpeechHandles() async throws {
         let mediaID = UUID()
         let words = [
             TranscriptWord(mediaID: mediaID, text: "First", start: 0.5, end: 0.8),
             TranscriptWord(mediaID: mediaID, text: "Second", start: 1.6, end: 2.0),
         ]
 
-        let ranges = await AIEditService().silenceRanges(words: words, duration: 3)
+        let ranges = try await AIEditService().silenceRanges(words: words, duration: 3)
 
         #expect(ranges.count == 3)
         #expect(abs(ranges[0].0 - 0) < 0.000_001)

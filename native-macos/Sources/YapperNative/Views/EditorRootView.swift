@@ -360,6 +360,12 @@ private struct EditorHeader: View {
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
 
+            if session.canCancelCurrentOperation,
+               let operation = session.activeOperation?.operation {
+                Button(operation.cancelLabel) { session.cancelCurrentOperation() }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            }
+
             Button {
                 ImportPanels.openMedia(for: session)
             } label: {

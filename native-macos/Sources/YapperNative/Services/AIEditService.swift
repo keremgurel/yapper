@@ -253,7 +253,8 @@ actor AIEditService {
         duration: Double,
         aiCuts: [(Int, Int)],
         url: URL? = nil
-    ) -> [(Double, Double)] {
+    ) throws -> [(Double, Double)] {
+        try Task.checkCancellation()
         var ranges = aiCuts.map { (words[$0.0].start, words[$0.1].end) }
         let retakeRanges = merge(ranges)
         let kept = words.filter { word in
@@ -265,7 +266,15 @@ actor AIEditService {
         // word's end is where it stops being a word, not where the room goes
         // quiet, and a second of flat waveform routinely reads as a 0.2s gap.
         let spoken = kept.map { ($0.start, $0.end) }
-        let measured = (url.flatMap { try? LoudnessEnvelope.measure(url: $0) })
+        let envelope: LoudnessEnvelope.Envelope?
+        do {
+            envelope = try url.map { try LoudnessEnvelope.measure(url: $0) }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            envelope = nil
+        }
+        let measured = envelope
             .map { envelope in
                 SilenceScan.absorbingIslands(
                     SilenceScan.avoiding(
@@ -306,12 +315,17 @@ actor AIEditService {
         duration: Double,
         minimumPause: Double = 0.20,
         url: URL? = nil
-    ) -> [(Double, Double)] {
-        if
-            let url,
-            let envelope = try? LoudnessEnvelope.measure(url: url),
-            !envelope.loudness.isEmpty
-        {
+    ) throws -> [(Double, Double)] {
+        try Task.checkCancellation()
+        let envelope: LoudnessEnvelope.Envelope?
+        do {
+            envelope = try url.map { try LoudnessEnvelope.measure(url: $0) }
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            envelope = nil
+        }
+        if let envelope, !envelope.loudness.isEmpty {
             let spoken = words.map { ($0.start, $0.end) }
             var ranges = SilenceScan.absorbingIslands(
                 SilenceScan.avoiding(

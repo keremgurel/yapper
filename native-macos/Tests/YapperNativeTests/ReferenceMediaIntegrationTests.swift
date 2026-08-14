@@ -41,7 +41,7 @@ struct ReferenceMediaIntegrationTests {
         let service = AIEditService()
         let words = try await service.transcribe(media: media)
         let cuts = try await service.cleanCuts(words: words)
-        let ranges = await service.autoEditRanges(
+        let ranges = try await service.autoEditRanges(
             words: words,
             duration: media.duration,
             aiCuts: cuts

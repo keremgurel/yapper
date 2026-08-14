@@ -38,6 +38,7 @@ enum LoudnessEnvelope {
         var counted = 0
 
         while file.framePosition < file.length {
+            try Task.checkCancellation()
             buffer.frameLength = 0
             try file.read(into: buffer, frameCount: buffer.frameCapacity)
             let frames = Int(buffer.frameLength)

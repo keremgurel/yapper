@@ -42,28 +42,42 @@ extension EditorSession {
         clearError()
         let failureBefore = errorMessage
 
+        var canceled = false
         switch intent {
         case .transcribe:
             await transcribeProject()
+            canceled = lastTranscriptionWasCanceled
         case .oneClickEdit:
-            await runOneClickEdit()
+            canceled = await runOneClickEdit()
         case .trimSilences:
-            await autoTrimSilences()
+            canceled = await autoTrimSilences()
         case .generateCaptions:
-            await generateCaptions()
+            canceled = await generateCaptions()
         case .hideCaptions:
-            if captionsVisible { await toggleCaptions() }
+            if captionsVisible { canceled = await toggleCaptions() }
         case .showCaptions:
-            if !captionsVisible { await toggleCaptions() }
+            if !captionsVisible { canceled = await toggleCaptions() }
         case .addHook:
             addTextLayer(asHook: true)
         case .placeOverlays, .addSounds, .placeText, .setLevels:
             // One pass whichever it is: the reply carries the media over words,
             // the sounds that belong to no media and the words to draw over the
             // video, so asking for any of them reaches the same place.
-            await placeOverlaysWithAI(instruction: text)
+            canceled = await placeOverlaysWithAI(instruction: text)
         case .unknown:
             break
+        }
+
+        if canceled {
+            conversation.answer(
+                AssistantReply.toCommand(
+                    intent,
+                    failure: intent == .transcribe
+                        ? "Transcription was canceled."
+                        : "The operation was canceled."
+                )
+            )
+            return
         }
 
         switch intent {
@@ -71,13 +85,10 @@ extension EditorSession {
             // The overlay pass already says what it did, line by line.
             conversation.answer(AssistantReply.toPlacement(overlayPlacement))
         default:
-            let canceled = intent == .transcribe && lastTranscriptionWasCanceled
             conversation.answer(
                 AssistantReply.toCommand(
                     intent,
-                    failure: canceled
-                        ? "Transcription was canceled."
-                        : (errorMessage == failureBefore ? nil : errorMessage)
+                    failure: errorMessage == failureBefore ? nil : errorMessage
                 )
             )
         }
