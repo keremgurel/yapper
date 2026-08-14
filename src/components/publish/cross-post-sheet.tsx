@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   Sheet,
@@ -19,6 +19,7 @@ import {
 import { connectedInOrder } from "@/lib/publish/connected-order";
 import { crossPostTargets } from "@/lib/publish/cross-post-plan";
 import { runCrossPost } from "@/lib/publish/run-cross-post";
+import { PublishAttemptRegistry } from "@/lib/publish/attempt";
 import PreparedCaptions from "@/components/publish/captions/prepared-captions";
 import {
   hasPreparedCaptions,
@@ -41,35 +42,45 @@ function postSource(
   source: CrossPostTarget,
   platform: PublishPlatform,
   override: CopyOverride | null,
+  idempotencyKey: string,
 ) {
   const { title, body } = outgoingCopy(source, platform, override);
   if (platform === "youtube") {
-    return crossPostToYouTube({
-      submissionId: source.submissionId,
-      mediaKey: source.mediaKey,
-      title,
-      description: body || undefined,
-      contentItemId: source.contentItemId,
-      thumbnailKey: source.thumbnailKey,
-      privacyStatus: "public",
-    });
+    return crossPostToYouTube(
+      {
+        submissionId: source.submissionId,
+        mediaKey: source.mediaKey,
+        title,
+        description: body || undefined,
+        contentItemId: source.contentItemId,
+        thumbnailKey: source.thumbnailKey,
+        privacyStatus: "public",
+      },
+      idempotencyKey,
+    );
   }
   if (platform === "instagram") {
-    return crossPostToInstagram({
-      submissionId: source.submissionId,
-      mediaKey: source.mediaKey,
-      caption: body || title || undefined,
-      contentItemId: source.contentItemId,
-      thumbnailKey: source.thumbnailKey,
-    });
+    return crossPostToInstagram(
+      {
+        submissionId: source.submissionId,
+        mediaKey: source.mediaKey,
+        caption: body || title || undefined,
+        contentItemId: source.contentItemId,
+        thumbnailKey: source.thumbnailKey,
+      },
+      idempotencyKey,
+    );
   }
   // TikTok's inbox endpoint takes no caption at all: the video lands in the
   // creator's drafts and they paste the caption in the app.
-  return crossPostToTikTok({
-    submissionId: source.submissionId,
-    mediaKey: source.mediaKey,
-    contentItemId: source.contentItemId,
-  });
+  return crossPostToTikTok(
+    {
+      submissionId: source.submissionId,
+      mediaKey: source.mediaKey,
+      contentItemId: source.contentItemId,
+    },
+    idempotencyKey,
+  );
 }
 
 /**
@@ -111,6 +122,8 @@ export default function CrossPostSheet({
   const [caption, setCaption] = useState(single?.initialDescription ?? "");
   const [posting, setPosting] = useState(false);
   const [outcomes, setOutcomes] = useState<SourceOutcome[]>([]);
+  const attemptKeys = useRef<PublishAttemptRegistry | null>(null);
+  attemptKeys.current ??= new PublishAttemptRegistry();
   const { connections } = useConnections(open);
 
   const close = (next: boolean) => {
@@ -148,7 +161,12 @@ export default function CrossPostSheet({
     // parallel and independently through runCrossPost.
     for (const source of sources) {
       const sourceResults = await runCrossPost(targets, (platform) =>
-        postSource(source, platform, editable),
+        postSource(
+          source,
+          platform,
+          editable,
+          attemptKeys.current!.forTarget(`${source.id}:${platform}`),
+        ),
       );
       finished.push(
         ...sourceResults.map((result) => ({

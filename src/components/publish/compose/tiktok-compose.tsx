@@ -20,12 +20,15 @@ export default function TikTokCompose({
 
   const onPost = () => {
     if (busy) return;
-    void post(() =>
-      crossPostToTikTok({
-        submissionId: item.submissionId,
-        mediaKey: item.mediaKey,
-        contentItemId: item.contentItemId,
-      }),
+    void post((idempotencyKey) =>
+      crossPostToTikTok(
+        {
+          submissionId: item.submissionId,
+          mediaKey: item.mediaKey,
+          contentItemId: item.contentItemId,
+        },
+        idempotencyKey,
+      ),
     );
   };
 

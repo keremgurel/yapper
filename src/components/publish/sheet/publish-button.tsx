@@ -37,7 +37,7 @@ export default function PublishButton({
       {posting
         ? `Publishing ${postedSoFar + 1} of ${videos * platforms}…`
         : done
-          ? "Publish again"
+          ? "Check publish status"
           : `Publish ${plural(videos, "video")} to ${plural(platforms, "platform")}`}
     </Button>
   );

@@ -142,6 +142,24 @@ export interface CrossPostResult {
   draft?: boolean;
 }
 
+async function publishError(response: Response): Promise<Error> {
+  const data = (await response.json().catch(() => ({}))) as { error?: string };
+  if (
+    response.status === 409 &&
+    (data.error?.endsWith("_not_connected") ||
+      data.error?.endsWith("_reauth_required"))
+  ) {
+    return new Error("not_connected");
+  }
+  if (data.error === "publish_in_progress") {
+    return new Error("publish_in_progress");
+  }
+  if (data.error === "publish_attempt_failed") {
+    return new Error("publish_attempt_failed");
+  }
+  return new Error("post_failed");
+}
+
 /** Draft one caption per platform. `contentItemId` is what lets the server
  * read the video's own script, which is the difference between a caption about
  * this video and a caption about its title. */
@@ -186,45 +204,66 @@ export async function generateCaption(input: {
 
 export async function crossPostToYouTube(
   input: CrossPostInput,
+  idempotencyKey: string,
 ): Promise<CrossPostResult> {
   const res = await fetch("/api/publish/youtube", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
     body: JSON.stringify(input),
   });
-  if (res.status === 409) throw new Error("not_connected");
-  if (!res.ok) throw new Error("post_failed");
+  if (!res.ok) throw await publishError(res);
   return (await res.json()) as CrossPostResult;
 }
 
 export async function crossPostToInstagram(
   input: InstagramPostInput,
+  idempotencyKey: string,
 ): Promise<CrossPostResult> {
   const res = await fetch("/api/publish/instagram", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
     body: JSON.stringify(input),
   });
-  if (res.status === 409) throw new Error("not_connected");
   if (!res.ok) {
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     // A personal account OAuths fine but the publish call rejects it.
-    throw new Error(
-      data.error === "not_professional" ? "not_professional" : "post_failed",
-    );
+    if (data.error === "not_professional") throw new Error("not_professional");
+    if (
+      res.status === 409 &&
+      (data.error?.endsWith("_not_connected") ||
+        data.error?.endsWith("_reauth_required"))
+    ) {
+      throw new Error("not_connected");
+    }
+    if (data.error === "publish_in_progress") {
+      throw new Error("publish_in_progress");
+    }
+    if (data.error === "publish_attempt_failed") {
+      throw new Error("publish_attempt_failed");
+    }
+    throw new Error("post_failed");
   }
   return (await res.json()) as CrossPostResult;
 }
 
 export async function crossPostToTikTok(
   input: TikTokPostInput,
+  idempotencyKey: string,
 ): Promise<CrossPostResult> {
   const res = await fetch("/api/publish/tiktok", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
     body: JSON.stringify(input),
   });
-  if (res.status === 409) throw new Error("not_connected");
-  if (!res.ok) throw new Error("post_failed");
+  if (!res.ok) throw await publishError(res);
   return (await res.json()) as CrossPostResult;
 }

@@ -15,26 +15,47 @@ vi.mock("@/lib/publish/tokens", () => ({
   encryptToken: vi.fn((value: string) => value),
 }));
 
-import { createPublishJob } from "./publish";
+import { claimPublishJob } from "./publish";
 
-function fakeDatabase(state: string | undefined) {
+function fakeClaimDatabase(options: {
+  existing?: {
+    id: string;
+    status: "uploading" | "published" | "failed";
+    externalPostId: string | null;
+    externalUrl: string | null;
+  };
+  objectState?: string;
+}) {
   const inserted: Array<Record<string, unknown>> = [];
   const tx = {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => ({
-          for: vi.fn(() => ({
-            limit: vi.fn().mockResolvedValue(state ? [{ state }] : []),
-          })),
-        })),
+    select: vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({
+            limit: vi
+              .fn()
+              .mockResolvedValue(options.existing ? [options.existing] : []),
+          }),
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({
+            for: () => ({
+              limit: vi
+                .fn()
+                .mockResolvedValue(
+                  options.objectState ? [{ state: options.objectState }] : [],
+                ),
+            }),
+          }),
+        }),
       })),
-    })),
     insert: vi.fn(() => ({
       values: vi.fn((value: Record<string, unknown>) => {
         inserted.push(value);
-        return {
-          returning: vi.fn().mockResolvedValue([{ id: "job-id" }]),
-        };
+        return { returning: vi.fn().mockResolvedValue([{ id: "job-new" }]) };
       }),
     })),
   };
@@ -44,43 +65,75 @@ function fakeDatabase(state: string | undefined) {
   return { tx, inserted };
 }
 
-describe("createPublishJob lifecycle fencing", () => {
+describe("claimPublishJob idempotency", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("returns the durable prior state without touching media or inserting", async () => {
+    const { tx, inserted } = fakeClaimDatabase({
+      existing: {
+        id: "job-existing",
+        status: "published",
+        externalPostId: "post_1",
+        externalUrl: "https://platform/post_1",
+      },
+    });
+
+    await expect(
+      claimPublishJob("user_a", {
+        platform: "youtube",
+        mediaKey: "u/user_a/video.mp4",
+        idempotencyKey: "attempt_1234",
+      }),
+    ).resolves.toEqual({
+      kind: "existing",
+      jobId: "job-existing",
+      status: "published",
+      externalPostId: "post_1",
+      externalUrl: "https://platform/post_1",
+    });
+    expect(mocks.lockMediaReferenceWithinTx).not.toHaveBeenCalled();
+    expect(tx.insert).not.toHaveBeenCalled();
+    expect(inserted).toHaveLength(0);
+  });
+
   it.each(["active", "delete_pending"])(
-    "creates a strong publish reference while the object is %s",
-    async (state) => {
-      const { tx, inserted } = fakeDatabase(state);
+    "persists the key while the object is %s",
+    async (objectState) => {
+      const { tx, inserted } = fakeClaimDatabase({ objectState });
 
       await expect(
-        createPublishJob("user_a", {
-          platform: "youtube",
+        claimPublishJob("user_a", {
+          platform: "instagram",
           mediaKey: "u/user_a/video.mp4",
+          idempotencyKey: "attempt_1234",
         }),
-      ).resolves.toBe("job-id");
-
+      ).resolves.toEqual({ kind: "created", jobId: "job-new" });
       expect(mocks.lockStorageUserWithinTx).toHaveBeenCalledWith(tx, "user_a");
       expect(mocks.lockMediaReferenceWithinTx).toHaveBeenCalledWith(
         tx,
         "user_a",
         "u/user_a/video.mp4",
       );
-      expect(inserted).toHaveLength(1);
+      expect(inserted[0]).toMatchObject({
+        platform: "instagram",
+        idempotencyKey: "attempt_1234",
+        status: "uploading",
+      });
     },
   );
 
   it.each([undefined, "pending_upload", "deleting", "deleted"])(
-    "refuses to publish an unavailable lifecycle state (%s)",
-    async (state) => {
-      const { tx, inserted } = fakeDatabase(state);
+    "refuses an unavailable lifecycle state (%s)",
+    async (objectState) => {
+      const { inserted } = fakeClaimDatabase({ objectState });
 
       await expect(
-        createPublishJob("user_a", {
+        claimPublishJob("user_a", {
           platform: "youtube",
           mediaKey: "u/user_a/video.mp4",
+          idempotencyKey: "attempt_1234",
         }),
-      ).resolves.toBeNull();
-      expect(mocks.lockStorageUserWithinTx).toHaveBeenCalledWith(tx, "user_a");
+      ).resolves.toEqual({ kind: "unavailable" });
       expect(inserted).toHaveLength(0);
     },
   );
