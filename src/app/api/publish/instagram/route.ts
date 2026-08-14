@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
+import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
 import {
   completePublishJob,
   claimPublishJob,
   failPublishJob,
   findPublishJobClaim,
   getConnectionRow,
+  notePublishJobPending,
 } from "@/lib/db/publish";
 import { protectPendingThumbnail } from "@/lib/db/r2-lifecycle";
 import {
@@ -17,6 +19,13 @@ import {
   publishIdempotencyKey,
 } from "@/lib/publish/idempotency";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
+import { readInstagramPublishRequest } from "@/lib/publish/request";
+import {
+  createPublishWorkflow,
+  persistPublishCompletion,
+  publishFailureStatus,
+  PublishOutcomeUnknownError,
+} from "@/lib/publish/workflow";
 import { ownsKey, presignView, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -29,6 +38,7 @@ export const maxDuration = 300;
  * Creator); a personal account fails at the container step with a clear error.
  */
 export async function POST(req: Request): Promise<Response> {
+  const workflow = createPublishWorkflow(req.signal);
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const idempotencyKey = publishIdempotencyKey(req);
@@ -41,13 +51,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    submissionId?: string;
-    mediaKey?: string;
-    caption?: string;
-    contentItemId?: string;
-    thumbnailKey?: string;
-  };
+  let body;
+  try {
+    body = await readInstagramPublishRequest(req);
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
 
   const media = await resolveOwnedMediaKey(userId, body);
   if (!media.ok) {
@@ -98,27 +109,41 @@ export async function POST(req: Request): Promise<Response> {
   }
   const jobId = claim.jobId;
 
+  let result: Awaited<ReturnType<typeof postInstagramReel>>;
   try {
     const videoUrl = await presignView(media.mediaKey, 3600);
     // A custom cover, if the client uploaded one under the user's own prefix.
     const coverUrl = thumbnailKey
       ? await presignView(thumbnailKey, 3600)
       : undefined;
-    const result = await postInstagramReel({
-      accessToken,
-      igUserId,
-      videoUrl,
-      caption: body.caption,
-      coverUrl,
-    });
-    await completePublishJob(jobId, {
-      externalPostId: result.mediaId,
-      externalUrl: result.url,
-    });
-    return Response.json({ jobId, ...result });
+    result = await postInstagramReel(
+      {
+        accessToken,
+        igUserId,
+        videoUrl,
+        caption: body.caption,
+        coverUrl,
+      },
+      workflow,
+    );
   } catch (e) {
+    if (e instanceof PublishOutcomeUnknownError) {
+      await notePublishJobPending(jobId, e.message).catch((failure) =>
+        console.error(
+          "[publish] instagram pending state write failed",
+          failure,
+        ),
+      );
+      console.error("[publish] instagram outcome requires reconciliation", e);
+      return Response.json(
+        { error: "publish_state_pending", jobId },
+        { status: 503 },
+      );
+    }
     const message = e instanceof Error ? e.message : "publish_failed";
-    await failPublishJob(jobId, message);
+    await failPublishJob(jobId, message).catch((failure) =>
+      console.error("[publish] instagram failure state write failed", failure),
+    );
     console.error("[publish] instagram publish failed", message);
     const professional = message.includes("instagram_container_");
     return Response.json(
@@ -126,7 +151,26 @@ export async function POST(req: Request): Promise<Response> {
         error: professional ? "not_professional" : "publish_failed",
         jobId,
       },
-      { status: 502 },
+      { status: publishFailureStatus(e, workflow) },
     );
   }
+
+  try {
+    await persistPublishCompletion(() =>
+      completePublishJob(jobId, {
+        externalPostId: result.mediaId,
+        externalUrl: result.url,
+      }),
+    );
+  } catch (e) {
+    await notePublishJobPending(jobId, "completion_state_write_failed").catch(
+      () => undefined,
+    );
+    console.error("[publish] instagram completion state write failed", e);
+    return Response.json(
+      { error: "publish_state_pending", jobId },
+      { status: 503 },
+    );
+  }
+  return Response.json({ jobId, ...result });
 }

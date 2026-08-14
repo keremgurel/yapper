@@ -65,4 +65,27 @@ describe("publish client idempotency", () => {
       crossPostToYouTube({ mediaKey: "video", title: "Title" }, "attempt_3"),
     ).rejects.toThrow("publish_attempt_failed");
   });
+
+  it("treats an unresolved provider outcome as still in progress", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockImplementation(() =>
+          Promise.resolve(
+            Response.json({ error: "publish_state_pending" }, { status: 503 }),
+          ),
+        ),
+    );
+
+    await expect(
+      crossPostToYouTube(
+        { mediaKey: "video", title: "Title" },
+        "attempt_pending",
+      ),
+    ).rejects.toThrow("publish_in_progress");
+    await expect(
+      crossPostToInstagram({ mediaKey: "video" }, "instagram_pending"),
+    ).rejects.toThrow("publish_in_progress");
+  });
 });

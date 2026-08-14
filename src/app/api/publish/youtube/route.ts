@@ -4,6 +4,7 @@ import {
   claimPublishJob,
   failPublishJob,
   findPublishJobClaim,
+  notePublishJobPending,
 } from "@/lib/db/publish";
 import { protectPendingThumbnail } from "@/lib/db/r2-lifecycle";
 import {
@@ -16,7 +17,15 @@ import {
   publishIdempotencyKey,
 } from "@/lib/publish/idempotency";
 import { setYouTubeThumbnail, uploadYouTubeVideo } from "@/lib/publish/youtube";
-import { getObjectBytes, ownsKey, r2Configured } from "@/lib/r2";
+import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
+import { readYouTubePublishRequest } from "@/lib/publish/request";
+import {
+  createPublishWorkflow,
+  persistPublishCompletion,
+  publishFailureStatus,
+  PublishOutcomeUnknownError,
+} from "@/lib/publish/workflow";
+import { getObjectFile, ownsKey, r2Configured } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -26,6 +35,7 @@ export const maxDuration = 300;
  * Records a publish_job either way, so a failure is inspectable rather than lost.
  */
 export async function POST(req: Request): Promise<Response> {
+  const workflow = createPublishWorkflow(req.signal);
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const idempotencyKey = publishIdempotencyKey(req);
@@ -38,16 +48,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }
 
-  const body = (await req.json().catch(() => ({}))) as {
-    submissionId?: string;
-    mediaKey?: string;
-    title?: string;
-    description?: string;
-    tags?: string[];
-    privacyStatus?: "private" | "unlisted" | "public";
-    contentItemId?: string;
-    thumbnailKey?: string;
-  };
+  let body;
+  try {
+    body = await readYouTubePublishRequest(req);
+  } catch (error) {
+    const response = requestBodyErrorResponse(error);
+    if (response) return response;
+    throw error;
+  }
   const { title } = body;
   if (!title?.trim()) {
     return Response.json({ error: "bad_request" }, { status: 400 });
@@ -94,36 +102,99 @@ export async function POST(req: Request): Promise<Response> {
   }
   const jobId = claim.jobId;
 
+  let result: Awaited<ReturnType<typeof uploadYouTubeVideo>>;
   try {
-    const bytes = await getObjectBytes(mediaKey);
-    const result = await uploadYouTubeVideo({
-      accessToken,
-      bytes,
-      title,
-      description: body.description,
-      tags: body.tags,
-      privacyStatus: body.privacyStatus ?? "public",
-    });
-    await completePublishJob(jobId, {
-      externalPostId: result.videoId,
-      externalUrl: result.url,
-    });
-    // Custom thumbnail is best-effort: it needs a verified channel, so a failure
-    // must not fail the post that already succeeded.
-    if (thumbnailKey) {
-      try {
-        const thumb = await getObjectBytes(thumbnailKey);
-        const mime = thumbnailKey.endsWith(".png") ? "image/png" : "image/jpeg";
-        await setYouTubeThumbnail(accessToken, result.videoId, thumb, mime);
-      } catch (err) {
-        console.error("[publish] youtube thumbnail failed", err);
-      }
+    const file = await getObjectFile(mediaKey, { signal: workflow.signal });
+    try {
+      result = await uploadYouTubeVideo(
+        {
+          accessToken,
+          filePath: file.filePath,
+          byteLength: file.byteLength,
+          contentType: file.contentType,
+          title,
+          description: body.description,
+          tags: body.tags,
+          privacyStatus: body.privacyStatus ?? "public",
+        },
+        workflow,
+      );
+    } finally {
+      await file
+        .cleanup()
+        .catch((error) =>
+          console.error(
+            "[publish] youtube temporary file cleanup failed",
+            error,
+          ),
+        );
     }
-    return Response.json({ jobId, ...result });
   } catch (e) {
+    if (e instanceof PublishOutcomeUnknownError) {
+      await notePublishJobPending(jobId, e.message).catch((failure) =>
+        console.error("[publish] youtube pending state write failed", failure),
+      );
+      console.error("[publish] youtube outcome requires reconciliation", e);
+      return Response.json(
+        { error: "publish_state_pending", jobId },
+        { status: 503 },
+      );
+    }
     const message = e instanceof Error ? e.message : "upload_failed";
-    await failPublishJob(jobId, message);
+    await failPublishJob(jobId, message).catch((failure) =>
+      console.error("[publish] youtube failure state write failed", failure),
+    );
     console.error("[publish] youtube upload failed", message);
-    return Response.json({ error: "upload_failed", jobId }, { status: 502 });
+    return Response.json(
+      { error: "upload_failed", jobId },
+      { status: publishFailureStatus(e, workflow) },
+    );
   }
+
+  try {
+    await persistPublishCompletion(() =>
+      completePublishJob(jobId, {
+        externalPostId: result.videoId,
+        externalUrl: result.url,
+      }),
+    );
+  } catch (e) {
+    await notePublishJobPending(jobId, "completion_state_write_failed").catch(
+      () => undefined,
+    );
+    console.error("[publish] youtube completion state write failed", e);
+    return Response.json(
+      { error: "publish_state_pending", jobId },
+      { status: 503 },
+    );
+  }
+
+  // Custom thumbnail is best-effort: it needs a verified channel, so a failure
+  // must not fail the post that already succeeded.
+  if (thumbnailKey) {
+    try {
+      const thumb = await getObjectFile(thumbnailKey, {
+        maxBytes: 20 * 1024 * 1024,
+        signal: workflow.signal,
+      });
+      const mime = thumbnailKey.endsWith(".png") ? "image/png" : "image/jpeg";
+      try {
+        await setYouTubeThumbnail(
+          {
+            accessToken,
+            videoId: result.videoId,
+            filePath: thumb.filePath,
+            byteLength: thumb.byteLength,
+            mimeType: mime,
+          },
+          workflow,
+        );
+      } finally {
+        await thumb.cleanup();
+      }
+    } catch (err) {
+      console.error("[publish] youtube thumbnail failed", err);
+    }
+  }
+  return Response.json({ jobId, ...result });
 }
