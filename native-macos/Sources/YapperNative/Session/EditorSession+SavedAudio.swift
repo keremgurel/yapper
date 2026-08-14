@@ -9,6 +9,10 @@ extension EditorSession {
     /// same bed used in ten projects is one file on disk.
     func addSavedAudio(_ item: SavedAudio, at url: URL) async {
         guard duration > 0 else { return }
+        guard let fingerprint = try? await MediaSourceFingerprint.compute(url: url) else {
+            show(NativeEditorError.noAudioTrack(item.name))
+            return
+        }
         let start = min(currentTime, max(0, duration - 0.02))
         let layerDuration = min(item.duration, max(0.02, duration - start))
         let layer = ProjectAudioLayer(
@@ -16,7 +20,11 @@ extension EditorSession {
             name: item.name,
             timelineStart: start,
             duration: layerDuration,
-            sourceDuration: item.duration
+            sourceDuration: item.duration,
+            sourceKind: .saved,
+            sourceFingerprint: fingerprint,
+            savedAudioID: item.id,
+            savedAudioHash: item.contentHash
         )
         await commitTimelineEdit {
             updateProject { project in

@@ -28,7 +28,7 @@ actor AudioLibraryImporter {
         existingHashes: Set<String>
     ) async throws -> SavedAudio? {
         let source = source.resolvingSymlinksInPath()
-        let hash = try contentHash(of: source)
+        let hash = try AudioContentHash.compute(url: source)
         // Re-importing the same file is something people do constantly, by
         // dragging the same folder in twice. It is not an error and it must not
         // make a second copy.
@@ -61,15 +61,35 @@ actor AudioLibraryImporter {
         )
     }
 
+}
+
+enum AudioContentHash {
     /// SHA-256 of the bytes, read in chunks so importing an hour of music does
     /// not put an hour of music in memory.
-    private func contentHash(of url: URL) throws -> String {
+    static func compute(
+        url: URL,
+        beforeRead: (@Sendable () throws -> Void)? = nil
+    ) throws -> String {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var hasher = SHA256()
         while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            try Task.checkCancellation()
+            try beforeRead?()
             hasher.update(data: chunk)
         }
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func computeAsync(
+        url: URL,
+        beforeRead: (@Sendable () throws -> Void)? = nil
+    ) async throws -> String {
+        let work = Task.detached { try compute(url: url, beforeRead: beforeRead) }
+        return try await withTaskCancellationHandler {
+            try await work.value
+        } onCancel: {
+            work.cancel()
+        }
     }
 }

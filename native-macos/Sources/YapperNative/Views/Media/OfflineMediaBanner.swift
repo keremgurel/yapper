@@ -17,7 +17,7 @@ struct OfflineMediaBanner: View {
     @ObservedObject var availability: MediaAvailabilityWatcher
 
     var body: some View {
-        if let summary = session.offlineMediaSummary, let first = availability.offline.first {
+        if let summary = session.offlineMediaSummary, let first = availability.offlineAssets.first {
             VStack(spacing: 10) {
                 Image(systemName: "externaldrive.badge.questionmark")
                     .font(.system(size: 26, weight: .light))
@@ -38,11 +38,26 @@ struct OfflineMediaBanner: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Button("Locate \(first.name)…") {
-                    RelinkPanel.locate(first, for: session)
+                Button(first.policy == .builtInAudio ? "Built-in audio unavailable" : "Locate \(first.name)…") {
+                    if let media = first.media {
+                        RelinkPanel.locate(media, for: session)
+                    } else if let layer = first.audioLayer {
+                        AudioRelinkPanel.locate(layer, for: session)
+                    }
                 }
+                .disabled(first.policy == .builtInAudio || session.isBusy)
                 .buttonStyle(EditorSecondaryButtonStyle(size: .regular))
                 .help("Point the project at where the file is now")
+
+                if availability.offlineAssets.count > 1 {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(availability.offlineAssets.prefix(5)) { asset in
+                            Text("• \(asset.name)\(asset.isRequired ? "" : " (unused)")")
+                        }
+                    }
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 18)

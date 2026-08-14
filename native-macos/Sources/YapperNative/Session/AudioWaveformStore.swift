@@ -46,7 +46,13 @@ final class AudioWaveformStore: ObservableObject {
         } catch {
             // A cell without a waveform is still a cell you can drag; there is
             // nothing here worth interrupting an edit for.
-            peaksByFile[source.key] = []
+            peaksByFile.removeValue(forKey: source.key)
         }
+    }
+
+    func invalidate(_ layer: ProjectAudioLayer) async {
+        let source = WaveformSource(audio: layer)
+        peaksByFile.removeValue(forKey: source.key)
+        await service.invalidate(source)
     }
 }

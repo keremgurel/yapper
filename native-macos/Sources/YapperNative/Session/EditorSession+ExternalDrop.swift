@@ -46,6 +46,7 @@ extension EditorSession {
                     refused += 1
                 case let .audio(start):
                     let sourceDuration = try await soundEffectService.duration(of: canonical)
+                    let fingerprint = try await MediaSourceFingerprint.compute(url: canonical)
                     let layerDuration = min(sourceDuration, max(0.02, duration - start))
                     guard layerDuration > 0 else { continue }
                     let layer = ProjectAudioLayer(
@@ -53,7 +54,9 @@ extension EditorSession {
                         name: canonical.deletingPathExtension().lastPathComponent,
                         timelineStart: start,
                         duration: layerDuration,
-                        sourceDuration: sourceDuration
+                        sourceDuration: sourceDuration,
+                        sourceKind: .external,
+                        sourceFingerprint: fingerprint
                     )
                     updateProject { $0.audioLayers = ($0.audioLayers ?? []) + [layer] }
                     selectTimelineItem(.audio(layer.id))

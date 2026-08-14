@@ -11,6 +11,11 @@ actor WaveformService {
 
     private var memoryCache: [String: [Float]] = [:]
 
+    func invalidate(_ source: WaveformSource) {
+        memoryCache = memoryCache.filter { !$0.key.hasPrefix(source.url.path + "|") }
+        if let url = cacheURL(for: source) { try? FileManager.default.removeItem(at: url) }
+    }
+
     func peaks(
         for source: WaveformSource,
         targetBins requestedBins: Int? = nil,

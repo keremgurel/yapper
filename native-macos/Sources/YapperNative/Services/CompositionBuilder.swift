@@ -268,7 +268,7 @@ enum CompositionBuilder {
         }
         playbackVideoComposition.instructions = instructions
         if purpose.needsVisualLayers {
-            applyVisualLayers(
+            try applyVisualLayers(
                 overlays,
                 textLayers: project.textLayers ?? [],
                 captions: project.captionCues,
@@ -284,7 +284,7 @@ enum CompositionBuilder {
             composition.removeTrack(compositionAudio)
         }
         let audioMix = try await addAudioLayers(
-            project.audioLayers ?? [],
+            (project.audioLayers ?? []).filter { MediaAvailability.isRequired($0, in: project) },
             to: composition,
             compositionDuration: cursor,
             mainTrack: mainTrackHasAudio ? compositionAudio : nil,
@@ -571,6 +571,15 @@ enum CompositionBuilder {
         guard !layers.isEmpty || !parameters.isEmpty else { return nil }
 
         for layer in layers {
+            let sourceURL: URL
+            if let id = layer.builtInID {
+                guard let effect = SoundEffectDescriptor.library.first(where: { $0.id == id }),
+                      let bundled = SoundEffectService.shared.bundledURL(for: effect)
+                else { throw NativeEditorError.missingSoundEffect(layer.name) }
+                sourceURL = bundled
+            } else {
+                sourceURL = layer.url
+            }
             let destinationStart = CMTime(
                 seconds: max(0, layer.timelineStart),
                 preferredTimescale: timeScale
@@ -578,7 +587,7 @@ enum CompositionBuilder {
             guard destinationStart < compositionDuration else { continue }
 
             let loaded = try await CompositionSourceCache.shared.audioSource(
-                for: layer.url,
+                for: sourceURL,
                 name: layer.name
             )
             let sourceTrack = loaded.track
@@ -626,16 +635,21 @@ enum CompositionBuilder {
         renderSize: CGSize,
         duration: Double,
         to videoComposition: AVMutableVideoComposition
-    ) {
-        let imageOverlays = OverlayTracks.backToFront(overlays).compactMap { overlay -> (ProjectOverlay, ProjectMedia, CGImage)? in
-            guard
-                overlay.isVisible,
-                let media = project.media.first(where: { $0.id == overlay.mediaID }),
-                media.isImage,
-                let image = NSImage(contentsOf: media.url),
-                let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
-            else { return nil }
-            return (overlay, media, cgImage)
+    ) throws {
+        var imageOverlays: [(ProjectOverlay, ProjectMedia, CGImage)] = []
+        for overlay in OverlayTracks.backToFront(overlays) where
+            overlay.isVisible && overlay.duration > 0 && overlay.timelineStart < duration &&
+                overlay.timelineStart + overlay.duration > 0
+        {
+            guard let media = project.media.first(where: { $0.id == overlay.mediaID }) else {
+                throw NativeEditorError.missingMedia(overlay.mediaID)
+            }
+            guard media.isImage else { continue }
+            guard MediaAvailability.isRegularReadableFile(media.url),
+                  let image = NSImage(contentsOf: media.url),
+                  let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+            else { throw NativeEditorError.incompatibleMedia(media.name) }
+            imageOverlays.append((overlay, media, cgImage))
         }
         guard (!imageOverlays.isEmpty || !textLayers.isEmpty || !captions.isEmpty), duration > 0 else { return }
 

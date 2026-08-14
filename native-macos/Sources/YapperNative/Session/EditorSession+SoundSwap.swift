@@ -28,6 +28,10 @@ extension EditorSession {
                     project.audioLayers?[index].url = url
                     project.audioLayers?[index].name = effect.name
                     project.audioLayers?[index].builtInID = effect.id
+                    project.audioLayers?[index].sourceKind = .builtIn
+                    project.audioLayers?[index].sourceFingerprint = nil
+                    project.audioLayers?[index].savedAudioID = nil
+                    project.audioLayers?[index].savedAudioHash = nil
                     project.audioLayers?[index].sourceDuration = effect.duration
                 // Back to the whole of the new sound, and no further than the
                 // end of the video. A trim measured against the old file means

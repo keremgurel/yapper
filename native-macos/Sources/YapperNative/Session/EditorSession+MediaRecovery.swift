@@ -11,6 +11,92 @@ import Foundation
 extension EditorSession {
     /// The media the editor cannot currently read.
     var offlineMedia: [ProjectMedia] { mediaAvailability.offline }
+    var offlineAssets: [MediaAvailability.OfflineAsset] { mediaAvailability.offlineAssets }
+
+    func repairBuiltInAudioURLs() {
+        var replacements: [UUID: URL] = [:]
+        for layer in project.audioLayers ?? [] {
+            guard let id = layer.builtInID,
+                  let effect = SoundEffectDescriptor.library.first(where: { $0.id == id }),
+                  let canonical = soundEffectService.bundledURL(for: effect),
+                  MediaAvailability.isRegularReadableFile(canonical), layer.url != canonical
+            else { continue }
+            replacements[layer.id] = canonical
+        }
+        guard !replacements.isEmpty else { return }
+        updateProject { project in
+            guard var layers = project.audioLayers else { return }
+            for index in layers.indices {
+                guard let url = replacements[layers[index].id] else { continue }
+                layers[index].url = url
+                layers[index].sourceKind = .builtIn
+            }
+            project.audioLayers = layers
+        }
+    }
+
+    func relinkAudio(_ layer: ProjectAudioLayer, to rawURL: URL, allowUnverified: Bool = false) async {
+        guard layer.builtInID == nil, let operation = beginLongOperation(.relinkingMedia) else { return }
+        defer { endLongOperation(operation) }
+        guard let rollback = await beginPreparedTimelineEdit() else { return }
+        defer { endPreparedTimelineEdit() }
+        let url = rawURL.resolvingSymlinksInPath()
+        let wasIdentityMismatch = mediaAvailability.hasAudioIdentityMismatch(layer.id)
+        var didMutate = false
+        do {
+            guard let current = rollback.project.audioLayers?.first(where: { $0.id == layer.id }) else {
+                throw NativeEditorError.noAudioTrack(layer.name)
+            }
+            guard MediaAvailability.isRegularReadableFile(url) else {
+                throw NativeEditorError.noAudioTrack(url.lastPathComponent)
+            }
+            let duration = try await soundEffectService.duration(of: url)
+            let requiredEnd = max(current.sourceStart + current.duration, requiredHistoryAudioSourceEnd(current.id))
+            guard duration + 0.05 >= requiredEnd else {
+                throw NativeEditorError.incompatibleMedia(url.lastPathComponent)
+            }
+            let fingerprint = try await MediaSourceFingerprint.compute(url: url)
+            if current.sourceKind == .saved, let exact = current.savedAudioHash {
+                guard try await AudioContentHash.computeAsync(url: url) == exact else {
+                    throw NativeEditorError.incompatibleMedia(url.lastPathComponent)
+                }
+            }
+            if let expected = current.sourceFingerprint, expected != fingerprint {
+                throw NativeEditorError.incompatibleMedia(url.lastPathComponent)
+            }
+            guard current.sourceFingerprint != nil || allowUnverified else {
+                throw NativeEditorError.incompatibleMedia(url.lastPathComponent)
+            }
+            guard var layers = project.audioLayers,
+                  let index = layers.firstIndex(where: { $0.id == layer.id })
+            else { throw NativeEditorError.noAudioTrack(layer.name) }
+            CompositionSourceCache.shared.forget(layers[index].url)
+            layers[index].url = url
+            layers[index].sourceDuration = duration
+            layers[index].sourceFingerprint = fingerprint
+            layers[index].sourceKind = .external
+            layers[index].savedAudioID = nil
+            layers[index].savedAudioHash = nil
+            updateProject { $0.audioLayers = layers; $0.updatedAt = Date() }
+            didMutate = true
+            mediaAvailability.clearAudioIdentityMismatch(current.id)
+            mediaAvailability.refresh(notifyRestored: false)
+            if mediaAvailability.requiredOffline.isEmpty {
+                try await rebuildComposition(preserveTime: true)
+            }
+            try await persist()
+            rewriteHistoryAudio(layers[index])
+            await audioWaveforms.invalidate(layer)
+            mediaAvailability.refresh(notifyRestored: false)
+            setStatus("Reconnected \(layer.name)")
+        } catch {
+            if didMutate {
+                await restoreEditState(rollback, rebuildPlayer: true, preserving: error)
+                if wasIdentityMismatch { mediaAvailability.markAudioOffline(layer) }
+                mediaAvailability.refresh(notifyRestored: false)
+            } else { show(error) }
+        }
+    }
 
     /// Points a piece of media at the file it has become, and takes everything
     /// else that moved with it.
@@ -30,6 +116,7 @@ extension EditorSession {
         defer { endPreparedTimelineEdit() }
         clearError()
         let canonical = url.resolvingSymlinksInPath()
+        let wasIdentityMismatch = mediaAvailability.hasIdentityMismatch(media.id)
         let folder = canonical.deletingLastPathComponent()
         var didMutate = false
         do {
@@ -66,11 +153,16 @@ extension EditorSession {
                 project.updatedAt = Date()
             }
             didMutate = true
-            try await reloadAfterRecovery(restartDerived: false)
+            for replacement in staged { mediaAvailability.clearIdentityMismatch(replacement.id) }
+            refreshMediaAvailability(notifyRestored: false)
+            if mediaAvailability.requiredOffline.isEmpty {
+                try await reloadAfterRecovery(restartDerived: false)
+            } else {
+                try await persist()
+            }
             await reconcileDerivedMediaAfterDurableChange(from: rollbackState.project)
             // Update the banner without firing the automatic recovery callback:
             // this transaction already rebuilt and saved exactly once.
-            for replacement in staged { mediaAvailability.clearIdentityMismatch(replacement.id) }
             refreshMediaAvailability(notifyRestored: false)
             rewriteHistoryMedia(staged)
             setStatus(
@@ -81,6 +173,7 @@ extension EditorSession {
         } catch {
             if didMutate {
                 await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
+                if wasIdentityMismatch { mediaAvailability.markOffline(media) }
                 refreshMediaAvailability(notifyRestored: false)
             } else {
                 show(error)
@@ -171,7 +264,8 @@ extension EditorSession {
     }
 
     func validateAvailableMediaIdentity() async throws {
-        for media in project.media where FileManager.default.fileExists(atPath: media.url.path) {
+        let requiredMedia = MediaAvailability.requiredMediaIDs(in: project)
+        for media in project.media where requiredMedia.contains(media.id) && MediaAvailability.isRegularReadableFile(media.url) {
             guard let expected = media.sourceFingerprint else { continue }
             let revision = try MediaResourceRevision(url: media.url, fingerprint: expected)
             if validatedMediaRevisions[media.id] == revision { continue }
@@ -182,11 +276,37 @@ extension EditorSession {
             }
             validatedMediaRevisions[media.id] = revision
         }
+        for layer in project.audioLayers ?? [] where MediaAvailability.isRequired(layer, in: project) {
+            guard layer.builtInID == nil, MediaAvailability.isRegularReadableFile(layer.url),
+                  let expected = layer.sourceFingerprint else { continue }
+            let identity = layer.sourceKind == .saved && layer.savedAudioHash != nil
+                ? "saved:\(layer.savedAudioHash!)"
+                : "sampled:\(expected)"
+            let key = layer.url.resolvingSymlinksInPath().path + "|" + identity
+            let revision = try MediaResourceRevision(url: layer.url, fingerprint: identity)
+            if validatedAudioRevisions[key] == revision { continue }
+            let actual: String
+            if layer.sourceKind == .saved, let exact = layer.savedAudioHash {
+                let hash = try await AudioContentHash.computeAsync(url: layer.url)
+                guard hash == exact else {
+                    mediaAvailability.markAudioOffline(layer)
+                    throw NativeEditorError.incompatibleMedia(layer.name)
+                }
+                actual = expected
+            } else {
+                actual = try await MediaSourceFingerprint.compute(url: layer.url)
+            }
+            guard actual == expected else {
+                mediaAvailability.markAudioOffline(layer)
+                throw NativeEditorError.incompatibleMedia(layer.name)
+            }
+            validatedAudioRevisions[key] = revision
+        }
     }
 
     /// What the creator is told, and what they can do about it.
     var offlineMediaSummary: String? {
-        let offline = offlineMedia
+        let offline = offlineAssets
         guard let first = offline.first else { return nil }
         let what = offline.count == 1
             ? first.name
@@ -194,7 +314,9 @@ extension EditorSession {
         if let volume = MediaAvailability.volumeName(of: first.url) {
             return "\(what) is on “\(volume)”, which is not connected."
         }
-        return "\(what) is not where it was. It may have been moved or renamed."
+        let required = offline.filter(\.isRequired).count
+        let suffix = required == 0 ? " It is unused and will not block export." : ""
+        return "\(what) is not where it was. It may have been moved or renamed.\(suffix)"
     }
 }
 
@@ -260,5 +382,29 @@ enum RelinkPanel {
                 allowUnverifiedPrimary: media.sourceFingerprint == nil
             )
         }
+    }
+}
+
+@MainActor
+enum AudioRelinkPanel {
+    static func locate(_ layer: ProjectAudioLayer, for session: EditorSession) {
+        let panel = NSOpenPanel()
+        panel.title = "Locate \(layer.name)"
+        panel.prompt = "Reconnect"
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = layer.url.deletingLastPathComponent()
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        var allowUnverified = false
+        if layer.sourceFingerprint == nil {
+            let warning = NSAlert()
+            warning.messageText = "Confirm the original audio"
+            warning.informativeText = "This older project cannot verify the file exactly. Confirm this is the same recording, not replacement audio."
+            warning.addButton(withTitle: "Reconnect")
+            warning.addButton(withTitle: "Cancel")
+            guard warning.runModal() == .alertFirstButtonReturn else { return }
+            allowUnverified = true
+        }
+        Task { await session.relinkAudio(layer, to: url, allowUnverified: allowUnverified) }
     }
 }

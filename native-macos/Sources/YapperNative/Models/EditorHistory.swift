@@ -65,4 +65,28 @@ struct EditorHistory: Sendable {
         undoStack = undoStack.map(rewritten)
         redoStack = redoStack.map(rewritten)
     }
+
+    mutating func rewriteAudio(_ replacement: ProjectAudioLayer) {
+        func rewritten(_ snapshot: EditorProject) -> EditorProject {
+            var result = snapshot
+            guard let index = result.audioLayers?.firstIndex(where: { $0.id == replacement.id }) else { return result }
+            result.audioLayers?[index].url = replacement.url
+            result.audioLayers?[index].name = replacement.name
+            result.audioLayers?[index].sourceDuration = replacement.sourceDuration
+            result.audioLayers?[index].builtInID = replacement.builtInID
+            result.audioLayers?[index].sourceKind = replacement.sourceKind
+            result.audioLayers?[index].sourceFingerprint = replacement.sourceFingerprint
+            result.audioLayers?[index].savedAudioID = replacement.savedAudioID
+            result.audioLayers?[index].savedAudioHash = replacement.savedAudioHash
+            return result
+        }
+        undoStack = undoStack.map(rewritten)
+        redoStack = redoStack.map(rewritten)
+    }
+
+    func requiredAudioSourceEnd(for id: UUID) -> Double {
+        (undoStack + redoStack).compactMap { snapshot in
+            snapshot.audioLayers?.first(where: { $0.id == id }).map { $0.sourceStart + $0.duration }
+        }.max() ?? 0
+    }
 }

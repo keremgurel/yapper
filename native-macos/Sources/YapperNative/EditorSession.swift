@@ -188,6 +188,7 @@ final class EditorSession: ObservableObject {
     private var thumbnailTasksByMedia: [UUID: Task<Void, Never>] = [:]
     private var waveformTasksByMedia: [UUID: Task<Void, Never>] = [:]
     var validatedMediaRevisions: [UUID: MediaResourceRevision] = [:]
+    var validatedAudioRevisions: [String: MediaResourceRevision] = [:]
     /// Overlay stills with the project's grade already applied, keyed by the
     /// image they came from. Regrading one on every frame of playback would be
     /// the most expensive thing the canvas does.
@@ -208,7 +209,7 @@ final class EditorSession: ObservableObject {
             await self?.loadDictionary()
         }
         mediaAvailability.start(
-            supplying: { [weak self] in self?.project.media ?? [] },
+            supplying: { [weak self] in self?.project ?? EditorProject() },
             onRestored: { [weak self] in
                 // Plugging the card back in is a fix, so it should be one: the
                 // composition that could not be built without those files is
@@ -270,6 +271,18 @@ final class EditorSession: ObservableObject {
         guard let rollback = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         do {
+            repairBuiltInAudioURLs()
+            mediaAvailability.refresh(notifyRestored: false)
+            try await validateAvailableMediaIdentity()
+            mediaAvailability.refresh(notifyRestored: false)
+            guard mediaAvailability.requiredOffline.isEmpty else {
+                let offlineIDs = Set(mediaAvailability.offline.map(\.id))
+                for media in project.media where !offlineIDs.contains(media.id) {
+                    await restartDerivedMedia(for: media)
+                }
+                statusMessage = "Some media is still offline"
+                return
+            }
             try await reloadAfterRecovery()
         } catch {
             await restoreEditState(rollback, rebuildPlayer: true, preserving: error)
@@ -286,6 +299,7 @@ final class EditorSession: ObservableObject {
         guard let rollback = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         validatedMediaRevisions.removeAll()
+        validatedAudioRevisions.removeAll()
         do {
             try await validateAvailableMediaIdentity()
         } catch {
@@ -964,7 +978,11 @@ final class EditorSession: ObservableObject {
                     sourceStart: layer.sourceStart + elapsed,
                     sourceDuration: layer.sourceDuration,
                     volume: layer.volume,
-                    builtInID: layer.builtInID
+                    builtInID: layer.builtInID,
+                    sourceKind: layer.sourceKind,
+                    sourceFingerprint: layer.sourceFingerprint,
+                    savedAudioID: layer.savedAudioID,
+                    savedAudioHash: layer.savedAudioHash
                 )
                 project.audioLayers?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.audio(right.id))
@@ -1110,6 +1128,21 @@ final class EditorSession: ObservableObject {
         guard let operation = beginLongOperation(.exporting) else { return }
         defer { endLongOperation(operation) }
         guard await beginPreparedTimelineEdit() != nil else { return }
+        repairBuiltInAudioURLs()
+        mediaAvailability.refresh(notifyRestored: false)
+        guard mediaAvailability.requiredOffline.isEmpty else {
+            endPreparedTimelineEdit()
+            errorMessage = "Reconnect the required offline media before exporting."
+            return
+        }
+        do {
+            try await validateAvailableMediaIdentity()
+        } catch {
+            mediaAvailability.refresh(notifyRestored: false)
+            endPreparedTimelineEdit()
+            show(error)
+            return
+        }
         let exportProject = project
         endPreparedTimelineEdit()
         errorMessage = nil
@@ -1355,7 +1388,8 @@ final class EditorSession: ObservableObject {
                     timelineStart: start,
                     duration: min(effect.duration, max(0.02, duration - start)),
                     sourceDuration: effect.duration,
-                    builtInID: effect.id
+                    builtInID: effect.id,
+                    sourceKind: .builtIn
                 )
                 project.audioLayers = (project.audioLayers ?? []) + [layer]
                 selectedAudioLayerID = layer.id
@@ -1376,15 +1410,17 @@ final class EditorSession: ObservableObject {
         guard let operation = beginLongOperation(.importingAudio) else { return }
         defer { endLongOperation(operation) }
         do {
-            var sources: [(URL, Double)] = []
+            var sources: [(URL, Double, String)] = []
             for rawURL in urls {
                 let url = rawURL.resolvingSymlinksInPath()
-                sources.append((url, try await soundEffectService.duration(of: url)))
+                let sourceDuration = try await soundEffectService.duration(of: url)
+                let fingerprint = try await MediaSourceFingerprint.compute(url: url)
+                sources.append((url, sourceDuration, fingerprint))
             }
             await commitTimelineEdit(owner: operation) {
                 var insertionTime = min(startingAt ?? currentTime, max(0, duration - 0.02))
                 var layers = project.audioLayers ?? []
-                for (url, sourceDuration) in sources {
+                for (url, sourceDuration, fingerprint) in sources {
                     let layerDuration = min(sourceDuration, max(0.02, duration - insertionTime))
                     guard layerDuration > 0 else { continue }
                     let layer = ProjectAudioLayer(
@@ -1392,7 +1428,9 @@ final class EditorSession: ObservableObject {
                         name: url.deletingPathExtension().lastPathComponent,
                         timelineStart: insertionTime,
                         duration: layerDuration,
-                        sourceDuration: sourceDuration
+                        sourceDuration: sourceDuration,
+                        sourceKind: .external,
+                        sourceFingerprint: fingerprint
                     )
                     layers.append(layer)
                     selectedAudioLayerID = layer.id
@@ -2139,6 +2177,15 @@ final class EditorSession: ObservableObject {
         syncHistoryAvailability()
     }
 
+    func rewriteHistoryAudio(_ replacement: ProjectAudioLayer) {
+        history.rewriteAudio(replacement)
+        syncHistoryAvailability()
+    }
+
+    func requiredHistoryAudioSourceEnd(_ id: UUID) -> Double {
+        history.requiredAudioSourceEnd(for: id)
+    }
+
     private func syncHistoryAvailability() {
         canUndo = history.canUndo
         canRedo = history.canRedo
@@ -2473,6 +2520,7 @@ final class EditorSession: ObservableObject {
             // that is not there right now is a file to reconnect, and every cut
             // made against it is still exactly right. See MediaAvailability.
             project = saved
+            repairBuiltInAudioURLs()
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
             selectedAudioLayerID = project.audioLayers?.first?.id
@@ -2482,7 +2530,7 @@ final class EditorSession: ObservableObject {
             for media in project.media where !offlineMedia.contains(where: { $0.id == media.id }) {
                 await beginDerivedMedia(for: media)
             }
-            guard offlineMedia.isEmpty else {
+            guard mediaAvailability.requiredOffline.isEmpty else {
                 statusMessage = "Media offline"
                 return
             }
