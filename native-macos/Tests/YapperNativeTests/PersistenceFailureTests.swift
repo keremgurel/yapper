@@ -307,8 +307,8 @@ struct PersistenceFailureTests {
         let second = Task { @MainActor in await session.toggleCaptions() }
         await store.releaseBlockedSave()
         _ = await blocker.value
-        await first.value
-        await second.value
+        _ = await first.value
+        _ = await second.value
 
         #expect(session.project.captionsEnabled == true)
         #expect(session.project.storedCaptions.count == 1)
@@ -344,8 +344,8 @@ struct PersistenceFailureTests {
         let second = Task { @MainActor in await session.toggleCaptions() }
         await store.releaseBlockedSave()
         _ = await blocker.value
-        await first.value
-        await second.value
+        _ = await first.value
+        _ = await second.value
 
         #expect(session.project.captionsEnabled == false)
         #expect(session.project.storedCaptions.count == 1)
@@ -453,7 +453,7 @@ struct PersistenceFailureTests {
         }
         await store.releaseBlockedSave()
         _ = await blocker.value
-        await sweep.value
+        _ = await sweep.value
 
         #expect(session.project.clips.count == 2)
         #expect(session.project.audioLayers?.count == 1)

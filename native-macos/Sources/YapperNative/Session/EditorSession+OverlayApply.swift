@@ -42,6 +42,7 @@ extension EditorSession {
         var sounds: [ResolvedSound] = []
 
         for unit in units(of: timed) {
+            guard !Task.isCancelled else { return .empty }
             // Each unit has to see the ones before it, or a whole batch would
             // pile onto the same lane and onto the same corner.
             let alongside = (project.overlays ?? []) + placed
@@ -78,7 +79,7 @@ extension EditorSession {
             }
         }
 
-        guard !placed.isEmpty else { return .empty }
+        guard !Task.isCancelled, !placed.isEmpty else { return .empty }
         updateProject { project in
             project.overlays = (project.overlays ?? []) + placed
         }

@@ -695,8 +695,9 @@ private struct QuickEditWorkbench: View {
                 Text(session.statusMessage)
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
-                if session.activeOperation?.operation == .transcribing {
-                    Button("Cancel transcription") { session.cancelCurrentTranscription() }
+                if session.canCancelCurrentOperation,
+                   let operation = session.activeOperation?.operation {
+                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 }
             }
@@ -1004,8 +1005,9 @@ private struct TranscriptWorkbench: View {
             if session.isAIEditing {
                 ProgressView(value: session.aiProgress).tint(Color.yapperOrange)
                 Text(session.statusMessage).font(.studioCaption).foregroundStyle(.secondary)
-                if session.activeOperation?.operation == .transcribing {
-                    Button("Cancel transcription") { session.cancelCurrentTranscription() }
+                if session.canCancelCurrentOperation,
+                   let operation = session.activeOperation?.operation {
+                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 }
             }

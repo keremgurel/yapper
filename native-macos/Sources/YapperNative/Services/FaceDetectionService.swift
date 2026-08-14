@@ -44,6 +44,7 @@ actor FaceDetectionService {
         var generator: AVAssetImageGenerator?
 
         for time in sourceTimes {
+            guard !Task.isCancelled else { return found }
             let key = Key(media: media.id, tick: Int((time / Self.cacheStep).rounded()))
             if let cached = cache[key] {
                 if !cached.isEmpty { found[time] = cached }
@@ -52,6 +53,7 @@ actor FaceDetectionService {
             if generator == nil { generator = Self.makeGenerator(for: media) }
             guard let generator else { break }
             let rects = await Self.faces(from: generator, at: time)
+            guard !Task.isCancelled else { return found }
             cache[key] = rects
             if !rects.isEmpty { found[time] = rects }
         }

@@ -38,10 +38,24 @@ extension EditorSession {
         return project.media.filter { !onTimeline.contains($0.id) }
     }
 
-    func placeOverlaysWithAI(instruction: String) async {
-        guard !project.clips.isEmpty else { return }
-        guard let operation = beginLongOperation(.overlayAI) else { return }
-        defer { endLongOperation(operation) }
+    @discardableResult
+    func placeOverlaysWithAI(instruction: String) async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.overlayAI) { [weak self] operation in
+            await self?.performOverlayPlacement(instruction: instruction, owner: operation)
+        }
+    }
+
+    private func performOverlayPlacement(
+        instruction: String,
+        owner operation: LongOperationLease
+    ) async {
+        guard !Task.isCancelled else {
+            markCurrentLongOperationCanceled()
+            setOverlayPlacement(.idle)
+            setStatus("Overlay placement canceled")
+            return
+        }
         clearError()
 
         // Answered here when the sentence has nothing in it to decide: which
@@ -79,8 +93,18 @@ extension EditorSession {
             defer { endPreparedTimelineEdit() }
             do {
                 try await transcribeMissingProjectMediaWithinOperation()
+                try Task.checkCancellation()
                 try await persist()
                 recordHistory(before: rollbackState.project)
+            } catch is CancellationError {
+                markCurrentLongOperationCanceled()
+                await restoreCanceledEditState(
+                    rollbackState,
+                    rebuildPlayer: false,
+                    status: "Overlay placement canceled"
+                )
+                setOverlayPlacement(.idle)
+                return
             } catch {
                 await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
                 setOverlayPlacement(.failed(error.localizedDescription))
@@ -105,15 +129,15 @@ extension EditorSession {
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
 
-        // Found before the model is asked, not after: it can only choose a box
-        // that clears the speaker if it knows where the speaker is, and which
-        // moments matter is decided by the same reply this feeds.
-        setStatus("Looking at where you are in frame…")
-        let speaker = await speakerTrack()
-
-        setStatus("Deciding where each overlay belongs…")
-        let words = placeableWords
         do {
+            // Found before the model is asked, not after: it can only choose a
+            // box that clears the speaker if it knows where the speaker is.
+            setStatus("Looking at where you are in frame…")
+            let speaker = await speakerTrack()
+            try Task.checkCancellation()
+
+            setStatus("Deciding where each overlay belongs…")
+            let words = placeableWords
             let plan = try await overlayPlacementService.plan(
                 instruction: instruction,
                 words: words.map(\.text),
@@ -151,6 +175,7 @@ extension EditorSession {
             // That is more frames to decode, so say so rather than sit silent.
             if !spans.isEmpty { setStatus("Fitting each overlay around you…") }
             let placed = await applyPlacedSpans(spans, words: words, files: files)
+            try Task.checkCancellation()
             let textNotes = applyPlacedTexts(texts, words: words)
 
             addSounds(placed.sounds + standalone.sounds)
@@ -160,6 +185,7 @@ extension EditorSession {
                 setStatus("Ready")
                 return
             }
+            try Task.checkCancellation()
             let success = await commitPreparedTimelineEdit(
                 rollbackState: rollbackState,
                 successStatus: "Placed \(notes.count) change\(notes.count == 1 ? "" : "s") · ⌘Z to undo"
@@ -169,6 +195,14 @@ extension EditorSession {
                 return
             }
             setOverlayPlacement(.placed(notes: notes + unknownNotes(standalone.unknown)))
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            await restoreCanceledEditState(
+                rollbackState,
+                rebuildPlayer: true,
+                status: "Overlay placement canceled"
+            )
+            setOverlayPlacement(.idle)
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
             setOverlayPlacement(

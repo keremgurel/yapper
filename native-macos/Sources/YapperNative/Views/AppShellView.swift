@@ -362,6 +362,11 @@ private struct StudioTopBar: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .frame(maxWidth: 150, alignment: .trailing)
+                if session.canCancelCurrentOperation,
+                   let operation = session.activeOperation?.operation {
+                    Button(operation.cancelLabel) { session.cancelCurrentOperation() }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                }
                 Button {
                     ImportPanels.openMedia(for: session)
                 } label: {

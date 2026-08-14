@@ -20,6 +20,18 @@ enum LongOperation: Equatable, Sendable {
     }
 
     var isExport: Bool { self == .exporting }
+
+    var cancelLabel: String {
+        switch self {
+        case .transcribing: "Cancel transcription"
+        case .oneClickEdit: "Cancel 1-Click Edit"
+        case .captions: "Cancel captions"
+        case .autoTrim: "Cancel auto-trim"
+        case .overlayAI: "Cancel overlay placement"
+        case .exporting: "Cancel export"
+        default: "Cancel operation"
+        }
+    }
 }
 
 struct LongOperationLease: Equatable, Sendable {

@@ -3,8 +3,56 @@ import Testing
 @testable import YapperNative
 
 private actor OperationTestStore: ProjectPersisting {
+    private(set) var saveAttempts = 0
     func load() async throws -> EditorProject? { nil }
-    func save(_: EditorProject) async throws {}
+    func save(_: EditorProject) async throws { saveAttempts += 1 }
+    func saves() -> Int { saveAttempts }
+}
+
+private actor SuspendedExportRunner {
+    private(set) var attempts = 0
+    private(set) var cancellations = 0
+
+    func run(project _: EditorProject, url _: URL) async throws {
+        attempts += 1
+        do {
+            try await Task.sleep(for: .seconds(60))
+        } catch is CancellationError {
+            cancellations += 1
+            throw CancellationError()
+        }
+    }
+
+    func counts() -> (attempts: Int, cancellations: Int) {
+        (attempts, cancellations)
+    }
+}
+
+private actor SuspendedOverlayPlanner: OverlayPlacementPlanning {
+    private(set) var attempts = 0
+    private(set) var cancellations = 0
+
+    func plan(
+        instruction _: String,
+        words _: [String],
+        files _: [OverlayPlacementService.File],
+        frameAspect _: Double,
+        speaker _: [SpeakerSample],
+        placed _: [OverlayPlacementService.Placed]
+    ) async throws -> OverlayPlacementService.Plan {
+        attempts += 1
+        do {
+            try await Task.sleep(for: .seconds(60))
+        } catch is CancellationError {
+            cancellations += 1
+            throw CancellationError()
+        }
+        return .init(placements: [], sounds: [], texts: [])
+    }
+
+    func counts() -> (attempts: Int, cancellations: Int) {
+        (attempts, cancellations)
+    }
 }
 
 @Suite
@@ -38,6 +86,7 @@ struct LongOperationTests {
         #expect(!LongOperation.importingAudio.isAI)
         #expect(LongOperation.exporting.isExport)
         #expect(!LongOperation.relinkingMedia.isExport)
+        #expect(LongOperation.exporting.cancelLabel == "Cancel export")
     }
 
     @Test("Restoration dominates verification while events are coalesced")
@@ -113,7 +162,7 @@ struct LongOperationTests {
         await Task.yield()
 
         session.endLongOperation(held)
-        await queuedToggle.value
+        _ = await queuedToggle.value
         #expect(session.project.captionsEnabled == false)
 
         for _ in 0 ..< 50 where session.activeOperation != nil {
@@ -152,6 +201,7 @@ struct LongOperationTests {
             project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
             project.transcript = [originalWord]
         }
+        session.toggleAssistant()
 
         let request = Task { @MainActor in
             await session.runAssistant(instruction: "transcribe my video")
@@ -161,7 +211,7 @@ struct LongOperationTests {
         }
         #expect(session.hasTrackedTranscription)
         #expect(session.activeOperation?.operation == .transcribing)
-        session.cancelCurrentTranscription()
+        #expect(session.closeAssistant())
         await request.value
 
         #expect(session.project.transcript == [originalWord])
@@ -171,5 +221,127 @@ struct LongOperationTests {
         #expect(session.statusMessage == "Transcription canceled")
         #expect(session.conversation.messages.last?.tone == .trouble)
         #expect(session.conversation.messages.last?.text == "Transcription was canceled.")
+    }
+
+    @Test("Tracked export cancellation reaches work, preserves destination, and releases the lease")
+    @MainActor
+    func trackedExportCancellation() async throws {
+        let runner = SuspendedExportRunner()
+        let session = EditorSession(
+            store: OperationTestStore(),
+            exportRunner: { project, url in
+                try await runner.run(project: project, url: url)
+            }
+        )
+        await Task.yield()
+
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "yapper-operation-export-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appending(path: "source.mov")
+        let destination = directory.appending(path: "existing.mp4")
+        try Data("source".utf8).write(to: source)
+        try Data("keep me".utf8).write(to: destination)
+        let mediaID = UUID()
+        session.updateProject { project in
+            project.media = [ProjectMedia(
+                id: mediaID,
+                url: source,
+                name: "Source",
+                duration: 1,
+                width: 1920,
+                height: 1080,
+                hasAudio: true
+            )]
+            project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
+        }
+
+        let export = Task { @MainActor in await session.export(to: destination) }
+        for _ in 0 ..< 100 {
+            if await runner.counts().attempts > 0 { break }
+            await Task.yield()
+        }
+        #expect(session.activeOperation?.operation == .exporting)
+        #expect(session.canCancelCurrentOperation)
+        session.cancelCurrentOperation()
+        let exportWasCanceled = await export.value
+
+        let counts = await runner.counts()
+        let delivered = try Data(contentsOf: destination)
+        #expect(counts.attempts == 1)
+        #expect(counts.cancellations == 1)
+        #expect(exportWasCanceled)
+        #expect(delivered == Data("keep me".utf8))
+        #expect(session.statusMessage == "Export canceled")
+        #expect(session.errorMessage == nil)
+        #expect(session.activeOperation == nil)
+        #expect(!session.canCancelCurrentOperation)
+
+        let next = try #require(session.beginLongOperation(.autoTrim))
+        session.endLongOperation(next)
+    }
+
+    @Test("Tracked overlay cancellation rolls back without save or false success")
+    @MainActor
+    func trackedOverlayCancellation() async throws {
+        let store = OperationTestStore()
+        let planner = SuspendedOverlayPlanner()
+        let session = EditorSession(store: store, overlayPlacementService: planner)
+        await Task.yield()
+        let mediaID = UUID()
+        let overlayID = UUID()
+        let originalWord = TranscriptWord(
+            mediaID: mediaID, text: "hello", start: 0, end: 0.4
+        )
+        session.updateProject { project in
+            project.media = [
+                ProjectMedia(
+                    id: mediaID,
+                    url: URL(fileURLWithPath: "/tmp/operation-main.png"),
+                    name: "Main",
+                    duration: 1,
+                    width: 1920,
+                    height: 1080,
+                    hasAudio: true
+                ),
+                ProjectMedia(
+                    id: overlayID,
+                    url: URL(fileURLWithPath: "/tmp/operation-overlay.png"),
+                    name: "overlay.png",
+                    duration: 1,
+                    width: 320,
+                    height: 180,
+                    hasAudio: false
+                ),
+            ]
+            project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
+            project.transcript = [originalWord]
+        }
+
+        let placement = Task { @MainActor in
+            await session.placeOverlaysWithAI(instruction: "place overlay.png over hello")
+        }
+        for _ in 0 ..< 100 {
+            if await planner.counts().attempts > 0 { break }
+            try await Task.sleep(for: .milliseconds(5))
+        }
+        #expect(session.activeOperation?.operation == .overlayAI)
+        #expect(session.canCancelCurrentOperation)
+        session.cancelCurrentOperation()
+        let placementWasCanceled = await placement.value
+
+        let counts = await planner.counts()
+        let saveAttempts = await store.saves()
+        #expect(counts.attempts == 1)
+        #expect(counts.cancellations == 1)
+        #expect(placementWasCanceled)
+        #expect(saveAttempts == 0)
+        #expect(session.project.transcript == [originalWord])
+        #expect((session.project.overlays ?? []).isEmpty)
+        #expect(session.overlayPlacement == .idle)
+        #expect(session.statusMessage == "Overlay placement canceled")
+        #expect(session.errorMessage == nil)
+        #expect(session.activeOperation == nil)
     }
 }

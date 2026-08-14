@@ -35,6 +35,8 @@ typealias TranscriptionRunner = @Sendable (
     (@MainActor @Sendable (Double) -> Void)?
 ) async throws -> [TranscriptWord]
 
+typealias NativeExportRunner = @Sendable (EditorProject, URL) async throws -> Void
+
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject() {
@@ -87,7 +89,7 @@ final class EditorSession: ObservableObject {
     private var longOperationCoordinator = LongOperationCoordinator()
     private var pendingMediaRecovery: PendingMediaRecovery?
     var assistantRunInFlight = false
-    private var captionOperationWaiters: [CheckedContinuation<Void, Never>] = []
+    private var captionOperationWaiters: [CheckedContinuation<Bool, Never>] = []
     var isBusy: Bool { activeOperation != nil }
     var isExporting: Bool { activeOperation?.operation.isExport == true }
     var isAIEditing: Bool { activeOperation?.operation.isAI == true }
@@ -156,6 +158,7 @@ final class EditorSession: ObservableObject {
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
     private let transcriptionRunner: TranscriptionRunner?
+    private let exportRunner: NativeExportRunner
     let overlayPlacementService: any OverlayPlacementPlanning
     /// Where the speaker is on screen, found on this machine so a cutaway can
     /// be put somewhere else.
@@ -185,6 +188,10 @@ final class EditorSession: ObservableObject {
     private var transcriptionTask: Task<Void, Never>?
     private var transcriptionToken: UUID?
     private(set) var lastTranscriptionWasCanceled = false
+    private var trackedOperationTask: Task<Void, Never>?
+    private var trackedOperationToken: UUID?
+    private var trackedOperationReportedCancellation = false
+    private var trackedOperationCancellationResults: [UUID: Bool] = [:]
     private var editCommitTask: Task<Void, Never>?
     private var history = EditorHistory()
     private var pendingEdit: PendingEdit?
@@ -207,11 +214,13 @@ final class EditorSession: ObservableObject {
     init(
         store: any ProjectPersisting = ProjectStore.shared,
         overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService(),
-        transcriptionRunner: TranscriptionRunner? = nil
+        transcriptionRunner: TranscriptionRunner? = nil,
+        exportRunner: @escaping NativeExportRunner = ExportService.export
     ) {
         self.store = store
         self.overlayPlacementService = overlayPlacementService
         self.transcriptionRunner = transcriptionRunner
+        self.exportRunner = exportRunner
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
@@ -248,15 +257,84 @@ final class EditorSession: ObservableObject {
         drainPendingLongWork()
     }
 
+    /// Owns the task as well as the operation lease, so a visible Cancel action
+    /// can stop the actual export/provider work rather than merely changing UI.
+    @discardableResult
+    func runTrackedLongOperation(
+        _ operation: LongOperation,
+        perform: @escaping @MainActor (LongOperationLease) async -> Void
+    ) async -> Bool {
+        guard trackedOperationTask == nil, let lease = beginLongOperation(operation) else { return false }
+        let task = startTrackedLongOperation(lease, perform: perform)
+        await withTaskCancellationHandler {
+            await task.value
+        } onCancel: {
+            task.cancel()
+        }
+        return takeTrackedCancellationResult(for: lease.token)
+    }
+
+    private func startTrackedLongOperation(
+        _ lease: LongOperationLease,
+        perform: @escaping @MainActor (LongOperationLease) async -> Void
+    ) -> Task<Void, Never> {
+        let token = lease.token
+        trackedOperationReportedCancellation = false
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await perform(lease)
+            finishTrackedLongOperation(lease, token: token)
+        }
+        trackedOperationToken = token
+        trackedOperationTask = task
+        return task
+    }
+
+    private func finishTrackedLongOperation(
+        _ lease: LongOperationLease,
+        token: UUID
+    ) {
+        guard trackedOperationToken == token else { return }
+        trackedOperationTask = nil
+        trackedOperationToken = nil
+        trackedOperationCancellationResults[token] = trackedOperationReportedCancellation
+        trackedOperationReportedCancellation = false
+        endLongOperation(lease)
+    }
+
+    private func takeTrackedCancellationResult(for token: UUID) -> Bool {
+        trackedOperationCancellationResults.removeValue(forKey: token) ?? false
+    }
+
+    func markCurrentLongOperationCanceled() {
+        guard activeOperation?.token == trackedOperationToken else { return }
+        trackedOperationReportedCancellation = true
+    }
+
+    var canCancelCurrentOperation: Bool {
+        if activeOperation?.operation == .transcribing { return transcriptionTask != nil }
+        return activeOperation?.token == trackedOperationToken && trackedOperationTask != nil
+    }
+
+    func cancelCurrentOperation() {
+        if activeOperation?.operation == .transcribing {
+            cancelCurrentTranscription()
+        } else {
+            trackedOperationTask?.cancel()
+        }
+    }
+
     private func drainPendingLongWork() {
         if !captionOperationWaiters.isEmpty,
            let captionLease = beginLongOperation(.captions)
         {
             let waiter = captionOperationWaiters.removeFirst()
-            Task {
-                await performCaptionToggle(owner: captionLease)
-                endLongOperation(captionLease)
-                waiter.resume()
+            let task = startTrackedLongOperation(captionLease) { [weak self] owner in
+                await self?.performCaptionToggle(owner: owner)
+            }
+            Task { @MainActor in
+                await task.value
+                waiter.resume(returning: takeTrackedCancellationResult(for: captionLease.token))
             }
             return
         }
@@ -314,6 +392,12 @@ final class EditorSession: ObservableObject {
         validatedAudioRevisions.removeAll()
         do {
             try await validateAvailableMediaIdentity()
+        } catch is CancellationError {
+            endPreparedTimelineEdit()
+            markCurrentLongOperationCanceled()
+            errorMessage = nil
+            statusMessage = "Export canceled"
+            return
         } catch {
             // The current AVAsset may lazily read the path after it has been
             // overwritten. Do not leave rejected bytes reachable by playback.
@@ -1135,11 +1219,22 @@ final class EditorSession: ObservableObject {
         return []
     }
 
-    func export(to url: URL) async {
-        guard !project.clips.isEmpty else { return }
-        guard let operation = beginLongOperation(.exporting) else { return }
-        defer { endLongOperation(operation) }
+    @discardableResult
+    func export(to url: URL) async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.exporting) { [weak self] operation in
+            await self?.performExport(to: url, owner: operation)
+        }
+    }
+
+    private func performExport(to url: URL, owner _: LongOperationLease) async {
         guard await beginPreparedTimelineEdit() != nil else { return }
+        guard !Task.isCancelled else {
+            endPreparedTimelineEdit()
+            markCurrentLongOperationCanceled()
+            statusMessage = "Export canceled"
+            return
+        }
         repairBuiltInAudioURLs()
         mediaAvailability.refresh(notifyRestored: false)
         guard mediaAvailability.requiredOffline.isEmpty else {
@@ -1160,9 +1255,13 @@ final class EditorSession: ObservableObject {
         errorMessage = nil
         statusMessage = "Exporting native composition…"
         do {
-            try await ExportService.export(project: exportProject, to: url)
+            try await exportRunner(exportProject, url)
             statusMessage = "Exported \(url.lastPathComponent) with audio verified"
             NSWorkspace.shared.activateFileViewerSelecting([url])
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            errorMessage = nil
+            statusMessage = "Export canceled"
         } catch {
             show(error)
         }
@@ -1557,6 +1656,7 @@ final class EditorSession: ObservableObject {
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
+                try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 statusMessage = "Transcribing \(media.name)…"
                 let mediaBase = Double(index) / Double(max(1, mediaIDs.count))
@@ -1633,10 +1733,20 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func runOneClickEdit() async {
-        guard !project.clips.isEmpty else { return }
-        guard let operation = beginLongOperation(.oneClickEdit) else { return }
-        defer { endLongOperation(operation) }
+    @discardableResult
+    func runOneClickEdit() async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.oneClickEdit) { [weak self] operation in
+            await self?.performOneClickEdit(owner: operation)
+        }
+    }
+
+    private func performOneClickEdit(owner _: LongOperationLease) async {
+        guard !Task.isCancelled else {
+            markCurrentLongOperationCanceled()
+            statusMessage = "1-Click Edit canceled"
+            return
+        }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         let original = rollbackState.project
@@ -1650,6 +1760,7 @@ final class EditorSession: ObservableObject {
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
+                try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
@@ -1667,12 +1778,13 @@ final class EditorSession: ObservableObject {
                 setOneClickEditStage(.removingRetakes)
                 let cuts = try await aiEditService.cleanCuts(words: words)
                 setOneClickEditStage(.cuttingPauses)
-                let ranges = await aiEditService.autoEditRanges(
+                let ranges = try await aiEditService.autoEditRanges(
                     words: words,
                     duration: media.duration,
                     aiCuts: cuts,
                     url: media.url
                 )
+                try Task.checkCancellation()
                 project.removeSourceRanges(ranges, for: mediaID)
                 setOneClickEditStage(.trimmingSilence)
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
@@ -1686,10 +1798,19 @@ final class EditorSession: ObservableObject {
             setSelectedCaptionIDs([])
             selectedClipID = project.clips.first?.id
             currentTime = 0
+            try Task.checkCancellation()
             try await rebuildComposition(preserveTime: false)
+            try Task.checkCancellation()
             try await persist()
             recordHistory(before: original)
             statusMessage = "1-Click Edit + captions complete · \(project.clips.count) clips"
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            await restoreCanceledEditState(
+                rollbackState,
+                rebuildPlayer: true,
+                status: "1-Click Edit canceled"
+            )
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
         }
@@ -1697,21 +1818,22 @@ final class EditorSession: ObservableObject {
 
     /// The Captions on/off switch. Turning them off keeps the cards so the
     /// creator's text edits and restyling survive turning them back on.
-    func toggleCaptions() async {
-        guard !project.clips.isEmpty else { return }
+    @discardableResult
+    func toggleCaptions() async -> Bool {
+        guard !project.clips.isEmpty else { return false }
         if activeOperation?.operation == .captions {
-            await withCheckedContinuation { captionOperationWaiters.append($0) }
-            return
+            return await withCheckedContinuation { captionOperationWaiters.append($0) }
         }
-        guard let operation = beginLongOperation(.captions) else { return }
-        await performCaptionToggle(owner: operation)
-        endLongOperation(operation)
+        return await runTrackedLongOperation(.captions) { [weak self] operation in
+            await self?.performCaptionToggle(owner: operation)
+        }
     }
 
     private func performCaptionToggle(owner _: LongOperationLease) async {
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         do {
+            try Task.checkCancellation()
             let successStatus: String
             if project.captionsEnabled == true {
                 project.setCaptionsVisible(false)
@@ -1725,6 +1847,7 @@ final class EditorSession: ObservableObject {
                 errorMessage = nil
                 let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
                 for mediaID in mediaIDs {
+                    try Task.checkCancellation()
                     guard
                         !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
                         let media = project.media.first(where: { $0.id == mediaID })
@@ -1747,10 +1870,18 @@ final class EditorSession: ObservableObject {
                 let count = project.captionEntries.count
                 successStatus = "Captions ready · \(count) card\(count == 1 ? "" : "s")"
             }
+            try Task.checkCancellation()
             _ = await commitPreparedTimelineEdit(
                 rollbackState: rollbackState,
                 requiresRebuild: false,
                 successStatus: successStatus
+            )
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            await restoreCanceledEditState(
+                rollbackState,
+                rebuildPlayer: false,
+                status: "Caption update canceled"
             )
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
@@ -1760,10 +1891,20 @@ final class EditorSession: ObservableObject {
     /// Rebuilds every card from the current transcript and cut, transcribing
     /// first if the project has never been listened to. Regeneration is always
     /// explicit, so hand-edited text is never silently thrown away.
-    func generateCaptions() async {
-        guard !project.clips.isEmpty else { return }
-        guard let operation = beginLongOperation(.captions) else { return }
-        defer { endLongOperation(operation) }
+    @discardableResult
+    func generateCaptions() async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.captions) { [weak self] operation in
+            await self?.performCaptionGeneration(owner: operation)
+        }
+    }
+
+    private func performCaptionGeneration(owner _: LongOperationLease) async {
+        guard !Task.isCancelled else {
+            markCurrentLongOperationCanceled()
+            statusMessage = "Caption generation canceled"
+            return
+        }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         errorMessage = nil
@@ -1772,6 +1913,7 @@ final class EditorSession: ObservableObject {
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for mediaID in mediaIDs {
+                try Task.checkCancellation()
                 guard
                     !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
                     let media = project.media.first(where: { $0.id == mediaID })
@@ -1788,19 +1930,37 @@ final class EditorSession: ObservableObject {
             }
             project.regenerateCaptions()
             setSelectedCaptionIDs([])
+            try Task.checkCancellation()
             try await persist()
             recordHistory(before: rollbackState.project)
             let count = project.captionEntries.count
             statusMessage = "Captions ready · \(count) card\(count == 1 ? "" : "s")"
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            await restoreCanceledEditState(
+                rollbackState,
+                rebuildPlayer: false,
+                status: "Caption generation canceled"
+            )
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
         }
     }
 
-    func autoTrimSilences() async {
-        guard !project.clips.isEmpty else { return }
-        guard let operation = beginLongOperation(.autoTrim) else { return }
-        defer { endLongOperation(operation) }
+    @discardableResult
+    func autoTrimSilences() async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.autoTrim) { [weak self] operation in
+            await self?.performAutoTrim(owner: operation)
+        }
+    }
+
+    private func performAutoTrim(owner _: LongOperationLease) async {
+        guard !Task.isCancelled else {
+            markCurrentLongOperationCanceled()
+            statusMessage = "Auto-trim canceled"
+            return
+        }
         guard let rollbackState = await beginPreparedTimelineEdit() else { return }
         defer { endPreparedTimelineEdit() }
         let original = rollbackState.project
@@ -1811,6 +1971,7 @@ final class EditorSession: ObservableObject {
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
+                try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
@@ -1823,11 +1984,12 @@ final class EditorSession: ObservableObject {
                 }
                 guard !words.isEmpty else { continue }
                 statusMessage = "Trimming silent gaps…"
-                let ranges = await aiEditService.silenceRanges(
+                let ranges = try await aiEditService.silenceRanges(
                     words: words,
                     duration: media.duration,
                     url: media.url
                 )
+                try Task.checkCancellation()
                 project.removeSourceRanges(ranges, for: mediaID)
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
             }
@@ -1838,10 +2000,19 @@ final class EditorSession: ObservableObject {
             selectedClipID = project.clips.first?.id
             timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
             currentTime = 0
+            try Task.checkCancellation()
             try await rebuildComposition(preserveTime: false)
+            try Task.checkCancellation()
             try await persist()
             recordHistory(before: original)
             statusMessage = "Auto-trim complete · \(project.clips.count) clips"
+        } catch is CancellationError {
+            markCurrentLongOperationCanceled()
+            await restoreCanceledEditState(
+                rollbackState,
+                rebuildPlayer: true,
+                status: "Auto-trim canceled"
+            )
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
         }
@@ -2698,6 +2869,35 @@ final class EditorSession: ObservableObject {
         show(error)
     }
 
+    /// Cancellation is an expected user action, not an editor failure. Restore
+    /// the exact pre-operation model/player state without surfacing a red error.
+    func restoreCanceledEditState(
+        _ state: RebuiltProjectRollbackState,
+        rebuildPlayer: Bool,
+        status: String
+    ) async {
+        // Rollback must outlive the canceled worker. Running it in a fresh task
+        // prevents cancellation from immediately aborting the player rebuild.
+        let cleanup = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let failedProject = self.project
+            self.restoreEditStateWithoutRebuild(state)
+            if rebuildPlayer {
+                do {
+                    try await self.rebuildComposition(preserveTime: true)
+                } catch {
+                    self.player.replaceCurrentItem(with: nil)
+                    self.builtProject = nil
+                }
+            }
+            await self.reconcileDerivedMedia(from: failedProject)
+            self.aiProgress = 0
+            self.errorMessage = nil
+            self.statusMessage = status
+        }
+        await cleanup.value
+    }
+
     private func restoreEditStateWithoutRebuild(_ state: RebuiltProjectRollbackState) {
         project = state.project
         selectedClipID = state.selectedClipID
@@ -2733,6 +2933,7 @@ final class EditorSession: ObservableObject {
     func closeAssistant() -> Bool {
         guard isAssistantOpen else { return false }
         isAssistantOpen = false
+        if assistantRunInFlight { cancelCurrentOperation() }
         return true
     }
 }

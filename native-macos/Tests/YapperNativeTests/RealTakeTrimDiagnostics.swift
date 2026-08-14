@@ -44,7 +44,7 @@ struct RealTakeTrimDiagnostics {
         }
         let url = URL(fileURLWithPath: mediaPath)
 
-        let ranges = await AIEditService().autoEditRanges(
+        let ranges = try await AIEditService().autoEditRanges(
             words: words,
             duration: media.duration,
             aiCuts: [],
