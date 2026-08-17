@@ -51,15 +51,32 @@ actor ProjectStore: ProjectPersisting {
             .appending(path: "CurrentProject.backup.json", directoryHint: .notDirectory)
     }
 
-    /// True while a test bundle is what is running. Read from the environment
-    /// XCTest sets up rather than from a compile-time flag, because the app and
-    /// the tests are built from the same target.
+    /// True while a test bundle is what is running, however it was started.
+    ///
+    /// This guard existed and did not work, which is worse than not having it.
+    /// It looked for the environment XCTest sets and for an argument ending in
+    /// ".xctest", and swift-testing sets none of that: it runs through
+    /// swiftpm-testing-helper and passes the executable *inside* the bundle,
+    /// ".../YapperNativePackageTests.xctest/Contents/MacOS/YapperNativePackageTests",
+    /// which ends in neither. So every `swift test` wrote a two-clip fixture
+    /// over the creator's open project, and the guard reported nothing because
+    /// nothing ever asked it whether it worked. `ProjectStoreGuardTests` asks
+    /// now.
     static var isTesting: Bool {
-        let environment = ProcessInfo.processInfo.environment
-        return environment["XCTestConfigurationFilePath"] != nil
+        let process = ProcessInfo.processInfo
+        let environment = process.environment
+        if environment["XCTestConfigurationFilePath"] != nil
             || environment["XCTestBundlePath"] != nil
             || environment["SWIFT_TESTING_ENABLED"] != nil
-            || ProcessInfo.processInfo.arguments.contains { $0.hasSuffix(".xctest") }
+        {
+            return true
+        }
+        if Bundle.main.bundlePath.contains(".xctest") { return true }
+        return process.arguments.contains { argument in
+            argument.contains(".xctest")
+                || argument.contains("swiftpm-testing-helper")
+                || argument == "--testing-library"
+        }
     }
 
     static var directory: URL {
