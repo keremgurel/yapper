@@ -22,10 +22,21 @@ enum EditFinishing {
             let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: settled)
             let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
             let whole = SentenceSeamRepair.repaired(words: words, cuts: unstuttered)
-            if same(whole, settled) { return whole }
+            if same(whole, settled) { break }
             settled = whole
         }
-        return settled
+        // Then, once: keeping one run at a line is the point, dropping all of
+        // them is not.
+        let restored = LostLineRepair.restoringLostLines(words: words, cuts: settled)
+        guard !same(restored, settled) else {
+            return SentenceSeamRepair.repaired(words: words, cuts: settled)
+        }
+        // What came back has to answer to the same passes as everything else.
+        // Restoring last and stopping meant a line put back beside one already
+        // there was heard twice.
+        let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: restored)
+        let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
+        return SentenceSeamRepair.repaired(words: words, cuts: unstuttered)
     }
 
     private static func same(_ a: [(Int, Int)], _ b: [(Int, Int)]) -> Bool {

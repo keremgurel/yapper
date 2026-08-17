@@ -146,10 +146,23 @@ enum KeptStreamRepair {
         String(token.prefix(5))
     }
 
-    /// How much a run stumbles over itself: "and 200 and and $295 of the…".
-    /// Between two runs at one line this is what says which one to keep.
+    /// How much a run stumbles over itself.
+    ///
+    /// Counting a word said twice in a row catches "and 200 and and $295 of
+    /// the…" but not "but I also broke the product but I also broke the
+    /// product twice this week", which is the same phrase started twice and
+    /// reads far worse. Both count here: a word repeated on the spot, and a
+    /// pair of words the run comes back to.
     static func stumbles(_ tokens: [String]) -> Int {
-        zip(tokens, tokens.dropFirst()).count { $0 == $1 }
+        let doubled = zip(tokens, tokens.dropFirst()).count { $0 == $1 }
+        guard tokens.count > 2 else { return doubled }
+        var seen: Set<[String]> = []
+        var restarts = 0
+        for index in 0 ..< (tokens.count - 1) {
+            let pair = [tokens[index], tokens[index + 1]]
+            if seen.contains(pair) { restarts += 1 } else { seen.insert(pair) }
+        }
+        return doubled + restarts
     }
 
     /// Words the two have in common, counting each one once.
