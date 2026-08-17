@@ -1151,7 +1151,7 @@ private struct TranscriptWorkbench: View {
     }
 
     private func transcriptWordButton(_ word: TranscriptWord, playbackWordID: UUID?) -> some View {
-        let kept = session.project.isWordKept(word)
+        let kept = session.transcriptFlowCache.keptWordIDs.contains(word.id)
         let active = playbackWordID == word.id
         return Button {
             select(word, kept: kept)

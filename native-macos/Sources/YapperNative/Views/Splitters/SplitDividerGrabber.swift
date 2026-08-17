@@ -76,10 +76,26 @@ final class SplitDividerGrabber: CursorRegionView {
         let start = splitView.convert(event.locationInWindow, from: nil)
         let grabOffset = isVertical ? start.x - leading.maxX : start.y - leading.maxY
 
+        var lastPosition: CGFloat?
         while let next = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
             if next.type == .leftMouseUp { break }
-            let point = splitView.convert(next.locationInWindow, from: nil)
-            let position = (isVertical ? point.x : point.y) - grabOffset
+            // Laying both panes out takes longer than the gap between two drag
+            // events, so they pile up and every one of them is paid for even
+            // though only the newest says where the divider is now. Sampled
+            // during a drag, this loop was a quarter of everything the app did.
+            var latest = next
+            while let queued = window?.nextEvent(
+                matching: .leftMouseDragged,
+                until: .distantPast,
+                inMode: .eventTracking,
+                dequeue: true
+            ) {
+                latest = queued
+            }
+            let point = splitView.convert(latest.locationInWindow, from: nil)
+            let position = ((isVertical ? point.x : point.y) - grabOffset).rounded()
+            guard position != lastPosition else { continue }
+            lastPosition = position
             splitView.setPosition(position, ofDividerAt: 0)
         }
     }

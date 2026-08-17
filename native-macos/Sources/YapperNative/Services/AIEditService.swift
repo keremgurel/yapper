@@ -237,7 +237,13 @@ actor AIEditService {
             throw NativeEditorError.aiFailed("The AI service returned no response.")
         }
         if http.statusCode == 501 {
-            return RetakeCutBoundaryRepair.repaired(words: words, cuts: deterministicRetakeCuts(words))
+            return finished(
+                cuts: RetakeCutBoundaryRepair.repaired(
+                    words: words,
+                    cuts: deterministicRetakeCuts(words)
+                ),
+                words: words
+            )
         }
         guard (200 ..< 300).contains(http.statusCode) else {
             // Through the one place that knows what a status means to a
@@ -257,10 +263,19 @@ actor AIEditService {
             }
             return (pair[0], pair[1])
         }
-        return RetakeCutBoundaryRepair.repaired(
-            words: words,
-            cuts: cuts.isEmpty ? deterministicRetakeCuts(words) : cuts
+        return finished(
+            cuts: RetakeCutBoundaryRepair.repaired(
+                words: words,
+                cuts: cuts.isEmpty ? deterministicRetakeCuts(words) : cuts
+            ),
+            words: words
         )
+    }
+
+    /// The last word on a set of cuts: read as the viewer will hear it, not as
+    /// a set of takes. See `KeptStreamRepair`.
+    private func finished(cuts: [(Int, Int)], words: [TranscriptWord]) -> [(Int, Int)] {
+        KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: cuts)
     }
 
     /// What to remove for a one-click edit: the retakes, the fillers, and the
