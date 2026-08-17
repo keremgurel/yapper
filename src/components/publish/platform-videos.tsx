@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { importFailureMessage } from "@/lib/publish/import-failure";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -122,9 +123,11 @@ export default function PlatformVideos() {
         return;
       }
       setTargets(prepared);
-    } catch {
+    } catch (error) {
       setPrepareError(
-        "One of those originals could not be prepared. Your selection is still here.",
+        importFailureMessage(
+          error instanceof Error ? error.message : undefined,
+        ),
       );
     } finally {
       setPreparing(false);

@@ -241,7 +241,15 @@ enum CompositionBuilder {
             duration: cursor.seconds
         )
 
+        // Stated, not inferred: see CompositionColorSpace. Taken from the take
+        // the timeline opens on, so a cutaway joining the composition is
+        // converted into that instead of moving it.
+        let outputColor = await CompositionColorSpace.tags(
+            of: sourceCache[project.clips[0].mediaID]?.video
+        )
+
         let videoComposition = AVMutableVideoComposition()
+        CompositionColorSpace.apply(outputColor, to: videoComposition)
         videoComposition.renderSize = renderSize
         videoComposition.frameDuration = CMTime(
             value: 1,
@@ -261,6 +269,7 @@ enum CompositionBuilder {
         // resample. Measured on 4K footage, pulling frames through a correctly
         // scaled 1080p preview ran at 130 fps against 185 fps at full size.
         let playbackVideoComposition = AVMutableVideoComposition()
+        CompositionColorSpace.apply(outputColor, to: playbackVideoComposition)
         playbackVideoComposition.renderSize = videoComposition.renderSize
         playbackVideoComposition.frameDuration = videoComposition.frameDuration
         if !filter.isNeutral {

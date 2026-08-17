@@ -54,7 +54,10 @@ const ENDPOINT_POLICIES: Record<
   "inspiration-creator": { capacity: 2, refillPerSecond: 10 / HOUR },
   "inspiration-resolve": { capacity: 3, refillPerSecond: 20 / HOUR },
   "publish-caption": { capacity: 3, refillPerSecond: 20 / HOUR },
-  "instagram-import": { capacity: 2, refillPerSecond: 10 / DAY },
+  // Two at a time refilling ten a day was set as a guard on someone else's
+  // API, but it is also the ceiling on cross-posting a week of clips, and a
+  // creator who hits it waits two and a half hours for the next one.
+  "instagram-import": { capacity: 8, refillPerSecond: 40 / DAY },
 };
 
 /** High-ceiling pre-body flood protection. This is deliberately distinct from
