@@ -29,6 +29,51 @@ struct TransformInspector: View {
                 positionRow
                 if session.isFramingKeyed { keyframeSummary }
             }
+            Divider().opacity(0.45)
+            InspectorSection("Background", id: "video.background") {
+                backgroundRow
+                if session.removesBackground { backdropRow }
+            }
+        }
+    }
+
+    /// Keeping or throwing away the room behind the speaker.
+    private var backgroundRow: some View {
+        InspectorRow("Room") {
+            InspectorSegmentedControl(
+                options: [
+                    .init(value: BackgroundChoice.keep, label: "Keep"),
+                    .init(value: BackgroundChoice.remove, label: "Remove"),
+                ],
+                selection: session.removesBackground ? .remove : .keep
+            ) { choice in
+                session.setBackgroundRemoved(choice == .remove)
+            }
+
+            Text(session.removesBackground ? "Only you are kept" : "The whole picture")
+                .font(.studioCaption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            ApplyToAllButton(what: "background", count: session.otherClipCount) {
+                session.applyBackgroundToAllClips()
+            }
+        }
+    }
+
+    /// What shows once the room is gone. A colour and nothing else: a
+    /// photograph or a video behind the speaker is a full-frame overlay set to
+    /// sit behind them, which is a control that already exists.
+    private var backdropRow: some View {
+        InspectorRow("Behind") {
+            InspectorColorWell(color: session.backdrop) { color, _ in
+                session.setBackdrop(color)
+            }
+
+            Text("Or put a full-frame overlay behind you")
+                .font(.studioCaption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
     }
 
@@ -78,6 +123,13 @@ struct TransformInspector: View {
                     decimals: 0
                 ) { percent in
                     session.setFramingOffset(x: framing.x, y: percent / 100)
+                }
+
+                ApplyToAllButton(
+                    what: "scale and position",
+                    count: session.otherClipCount
+                ) {
+                    session.applyFramingToAllClips()
                 }
             }
         }
@@ -151,4 +203,10 @@ private struct KeyframeControls: View {
         .buttonStyle(.studioPlain)
         .disabled(!enabled)
     }
+}
+
+/// Whether the room behind the speaker is kept or thrown away.
+private enum BackgroundChoice: Hashable {
+    case keep
+    case remove
 }

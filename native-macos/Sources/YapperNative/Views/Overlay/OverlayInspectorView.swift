@@ -62,6 +62,15 @@ struct OverlayInspectorView: View {
                         ) { percent in
                             commit { $0.y = OverlayCanvasGeometry.clampedOrigin(percent / 100, extent: overlay.height) }
                         }
+
+                        OverlayApplyMenu(
+                            what: "size and position",
+                            lane: overlay.lane + 1,
+                            laneCount: session.overlayTargetCount(from: overlay, scope: .lane),
+                            projectCount: session.overlayTargetCount(from: overlay, scope: .project)
+                        ) { scope in
+                            session.applyOverlayFrame(of: overlay, scope: scope)
+                        }
                     }
                 }
             }
@@ -159,6 +168,23 @@ struct OverlayInspectorView: View {
                     .lineLimit(1)
             }
 
+            InspectorRow("Depth") {
+                InspectorSegmentedControl(
+                    options: [
+                        .init(value: OverlayDepth.inFront, label: "In front"),
+                        .init(value: OverlayDepth.behind, label: "Behind me"),
+                    ],
+                    selection: overlay.isBehindSpeaker ? .behind : .inFront
+                ) { depth in
+                    session.setOverlayBehindSpeaker(overlay, behind: depth == .behind)
+                }
+
+                Text(depthSummary)
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
             InspectorRow("Crop") {
                 HStack(spacing: 8) {
                     Button("Crop…") { session.beginCropping(overlayID: overlay.id) }
@@ -188,6 +214,12 @@ struct OverlayInspectorView: View {
         }
     }
 
+    private var depthSummary: String {
+        overlay.isBehindSpeaker
+            ? "You are cut out and drawn over it"
+            : "Sits over the picture"
+    }
+
     private var cropReadout: String {
         let crop = overlay.resolvedCrop
         guard !crop.isFull else { return "Whole picture" }
@@ -204,4 +236,10 @@ struct OverlayInspectorView: View {
 private enum OverlayFit: Hashable {
     case card
     case full
+}
+
+/// Whether the overlay covers the speaker or hides behind them.
+private enum OverlayDepth: Hashable {
+    case inFront
+    case behind
 }

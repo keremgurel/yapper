@@ -48,10 +48,11 @@ struct VideoFrameControlBar: View {
                 .disabled(framing.isIdentity)
                 .help("Put the picture back to fitted and centred")
 
-            if session.project.clips.count > 1 {
-                Button("All clips") { session.applyFramingToAllClips() }
-                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                    .help("Give every clip on the main track this framing")
+            ApplyToAllButton(
+                what: "scale and position",
+                count: session.otherClipCount
+            ) {
+                session.applyFramingToAllClips()
             }
         }
         .padding(.horizontal, 8)

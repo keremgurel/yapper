@@ -21,6 +21,17 @@ struct OverlayCanvasItem: View {
     private var media: ProjectMedia? { session.media(for: overlay) }
     private var isImage: Bool { media?.isImage ?? false }
 
+    /// True when this overlay's picture is drawn here, over the player, rather
+    /// than composited into it.
+    ///
+    /// A still is normally drawn here, because the player's composition does
+    /// not carry stills. One that has to sit under the speaker is carried by
+    /// the composition instead, and drawing it again here would put it straight
+    /// back on top of the speaker it was meant to go behind.
+    private var drawsItsOwnPicture: Bool {
+        isImage && !session.project.compositedOverlayIDs.contains(overlay.id)
+    }
+
     private var box: CGRect {
         OverlayFrame.fitted(
             OverlayFrame.box(displayed, in: canvasSize),
@@ -71,7 +82,7 @@ struct OverlayCanvasItem: View {
 
     @ViewBuilder
     private var content: some View {
-        if isImage, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
+        if drawsItsOwnPicture, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
             let full = OverlayFrame.isFullFrame(displayed)
             let frame = box
             CroppedOverlayImage(
@@ -92,8 +103,8 @@ struct OverlayCanvasItem: View {
                     y: full ? 0 : 3
                 )
         } else {
-            // A cutaway is already playing underneath. Anything drawn here
-            // would be a second, staler copy of the same picture.
+            // A cutaway, or a composited still, is already playing underneath.
+            // Anything drawn here would be a second, staler copy of it.
             Color.clear
         }
     }
@@ -105,8 +116,10 @@ struct OverlayCanvasItem: View {
                 .stroke(Color.yapperOrange, style: StrokeStyle(lineWidth: 1.25, dash: [5, 3]))
                 .padding(-2)
         } else if !isImage {
-            // Without this a video cutaway would be invisible until it is
-            // selected, and there would be nothing to aim at.
+            // Only cutaways. A still is a solid picture wherever it is drawn
+            // from, so it needs no hint about where it is, and a permanent
+            // rectangle over one is a line drawn across whatever is behind it:
+            // over the speaker's chin, in the case this was found in.
             RoundedRectangle(cornerRadius: 5, style: .continuous)
                 .stroke(Color.white.opacity(0.22), lineWidth: 1)
                 .padding(-2)

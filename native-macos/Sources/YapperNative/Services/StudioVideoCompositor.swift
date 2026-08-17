@@ -10,8 +10,22 @@ import Foundation
 /// apply. A graded composition needs a pass of its own after those, so it
 /// carries its own instructions instead.
 final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructionProtocol, @unchecked Sendable {
-    struct Layer: Sendable {
-        let trackID: CMPersistentTrackID
+    struct Layer: @unchecked Sendable {
+        /// Where a layer's picture comes from.
+        enum Source: @unchecked Sendable {
+            /// A frame of one of the composition's own tracks.
+            case track(CMPersistentTrackID)
+            /// A still, decoded once when the composition was built.
+            ///
+            /// Stills are normally burned in afterwards by Core Animation,
+            /// which is cheaper and needs no track. They come through here only
+            /// when the project has a cut-out in it, because Core Animation
+            /// draws over the finished video and a card that has to sit *under*
+            /// the speaker cannot be drawn on top of them.
+            case still(CIImage)
+        }
+
+        let source: Source
         /// Where the source goes in the finished frame, measured from the top
         /// left the way AVFoundation measures. At the start of the
         /// instruction's time range, when the layer moves.
@@ -28,19 +42,42 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         /// The part of the source that is kept, in its own pixels.
         let cropRect: CGRect?
         let opacity: Float
+        /// True when only the person in this layer is drawn and the rest of the
+        /// frame is thrown away.
+        ///
+        /// This is the whole of both effects. A cutaway that sits behind the
+        /// speaker is the speaker's own clip listed twice, whole underneath and
+        /// matted on top with the cutaway between them. A clip with its
+        /// background removed is the same clip listed once, matted, with
+        /// whatever is beneath it showing through.
+        let matte: Bool
+        /// The rounding and shadow that make a still read as a card sitting on
+        /// the picture. `nil` on tracks, and on a still cut to the whole frame,
+        /// which is a graphic rather than a card.
+        let card: OverlayCardStyle?
+
+        /// The track this layer draws, when it draws one.
+        var trackID: CMPersistentTrackID? {
+            guard case let .track(id) = source else { return nil }
+            return id
+        }
 
         init(
-            trackID: CMPersistentTrackID,
+            source: Source,
             transform: CGAffineTransform,
             endTransform: CGAffineTransform? = nil,
             cropRect: CGRect? = nil,
-            opacity: Float = 1
+            opacity: Float = 1,
+            matte: Bool = false,
+            card: OverlayCardStyle? = nil
         ) {
-            self.trackID = trackID
+            self.source = source
             self.transform = transform
             self.endTransform = endTransform
             self.cropRect = cropRect
             self.opacity = opacity
+            self.matte = matte
+            self.card = card
         }
 
         /// The transform this layer has at `progress` through the instruction,
@@ -70,24 +107,58 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
     /// Front to back, the way the layer instructions are ordered.
     let layers: [Layer]
     let colorMatrix: ColorMatrix
+    /// How carefully the matted layers, if any, are cut out.
+    let matteQuality: MatteQuality
+    /// What the frame is filled with before anything is drawn on it: behind a
+    /// clip with its background removed, and in any letterboxing.
+    let backdrop: CIColor
 
-    init(timeRange: CMTimeRange, layers: [Layer], colorMatrix: ColorMatrix) {
+    init(
+        timeRange: CMTimeRange,
+        layers: [Layer],
+        colorMatrix: ColorMatrix,
+        matteQuality: MatteQuality = .accurate,
+        backdrop: CIColor = .black
+    ) {
         self.timeRange = timeRange
         self.layers = layers
         self.colorMatrix = colorMatrix
-        containsTweening = layers.contains { $0.endTransform != nil }
-        requiredSourceTrackIDs = layers.map { NSNumber(value: $0.trackID) }
+        self.matteQuality = matteQuality
+        self.backdrop = backdrop
+        // A matted layer is a different shape on every frame even when nothing
+        // in the edit moves, so an instruction carrying one is never a still.
+        containsTweening = layers.contains { $0.endTransform != nil || $0.matte }
+        // A track drawn both whole and cut out is named twice, and asking
+        // AVFoundation for the same source twice is not a request it honours.
+        // Stills are not sources at all: they are already decoded.
+        var seen = Set<CMPersistentTrackID>()
+        requiredSourceTrackIDs = layers
+            .compactMap(\.trackID)
+            .filter { seen.insert($0).inserted }
+            .map { NSNumber(value: $0) }
     }
 }
 
-/// Composites the editor's own instructions and grades the result.
+extension StudioColor {
+    /// The same colour, as Core Image wants it. Kept here rather than on the
+    /// model, which stays clear of rendering types on purpose.
+    var ciColor: CIColor {
+        CIColor(red: red, green: green, blue: blue, alpha: opacity)
+    }
+}
+
+/// Composites the editor's own instructions: places the layers, cuts the
+/// speaker out of the ones asking for it, and grades the result.
 ///
-/// Only used when a project has a filter on it. Without one the composition
-/// stays on AVFoundation's built-in compositor, so nothing about an ungraded
-/// project changes.
+/// Only used for what AVFoundation's own compositor cannot express, which is a
+/// grade, a cut-out, or a frame filled with anything but black. A project with
+/// none of those stays on the built-in compositor and is unchanged by any of
+/// this. See `EditorProject.needsStudioCompositor`.
 final class StudioVideoCompositor: NSObject, AVVideoCompositing {
     private let context = CIContext(options: [.cacheIntermediates: false])
     private let queue = DispatchQueue(label: "yapper.compositor", qos: .userInitiated)
+    /// Only ever touched from `queue`.
+    private let mattes = PersonMatteService()
 
     let sourcePixelBufferAttributes: [String: any Sendable]? = [
         kCVPixelBufferPixelFormatTypeKey as String: [kCVPixelFormatType_32BGRA],
@@ -114,7 +185,7 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
 
             let size = request.renderContext.size
             let frame = CGRect(origin: .zero, size: size)
-            var output = CIImage(color: .black).cropped(to: frame)
+            var output = CIImage(color: instruction.backdrop).cropped(to: frame)
 
             // How far into this instruction the frame being asked for is, which
             // is what a moving layer is drawn from.
@@ -125,11 +196,36 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
 
             // Back to front, so the speaker goes down before the cutaways.
             for layer in instruction.layers.reversed() {
-                guard
-                    layer.opacity > 0,
-                    let source = request.sourceFrame(byTrackID: layer.trackID)
-                else { continue }
-                var image = CIImage(cvPixelBuffer: source)
+                guard layer.opacity > 0 else { continue }
+
+                var image: CIImage
+                switch layer.source {
+                case let .still(still):
+                    image = still
+                case let .track(trackID):
+                    guard let source = request.sourceFrame(byTrackID: trackID) else { continue }
+                    image = CIImage(cvPixelBuffer: source)
+                    if layer.matte {
+                        // Cut out before the crop and the transform, so the
+                        // mask is measured in the same pixels it was worked out
+                        // from. A frame with nobody in it leaves this layer
+                        // undrawn.
+                        guard let mask = self.mattes.mask(
+                            for: source,
+                            trackID: trackID,
+                            at: request.compositionTime,
+                            quality: instruction.matteQuality
+                        ) else { continue }
+                        image = image.applyingFilter(
+                            "CIBlendWithMask",
+                            parameters: [
+                                kCIInputBackgroundImageKey: CIImage(color: .clear)
+                                    .cropped(to: image.extent),
+                                kCIInputMaskImageKey: mask,
+                            ]
+                        )
+                    }
+                }
                 let sourceHeight = image.extent.height
 
                 if let cropRect = layer.cropRect {
@@ -153,6 +249,14 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                         .concatenating(layer.transform(at: progress))
                         .concatenating(backToBottomLeft)
                 )
+
+                // Rounded and shadowed once the card is at the size it will be
+                // seen at, not before: a radius worked out on the source would
+                // be scaled along with the picture, and a small screenshot
+                // blown up would come out with balloon corners.
+                if let card = layer.card {
+                    image = OverlayCard.drawn(image, style: card)
+                }
 
                 if layer.opacity < 1 {
                     image = image.applyingFilter(

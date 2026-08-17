@@ -174,22 +174,4 @@ extension EditorSession {
         guard let clip = framingClip, let scale = framingFillScale else { return }
         commitFraming(VideoFraming(scale: scale, x: 0, y: 0), clipID: clip.id)
     }
-
-    /// Gives every clip the framing this one has. Framing is per clip because
-    /// punching in on one moment and not the next is the point, but a whole
-    /// project shot on one camera wants the same answer throughout.
-    func applyFramingToAllClips() {
-        guard let clip = framingClip else { return }
-        let framing = clip.resolvedFraming
-        guard project.clips.contains(where: { $0.resolvedFraming != framing }) else { return }
-        scheduleCompositionCommit(successStatus: "Framing applied to \(project.clips.count) clips") { [self] in
-            updateProject { project in
-                for index in project.clips.indices {
-                    project.clips[index].framing = framing.isIdentity ? nil : framing
-                }
-                project.updatedAt = Date()
-            }
-            return true
-        }
-    }
 }

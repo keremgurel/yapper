@@ -55,8 +55,12 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     /// The framings the picture moves through over this clip, in the media's
     /// own seconds. `nil` or empty means it does not move. See `FramingKey`.
     var framingKeys: [FramingKey]?
+    /// True when only the speaker is kept and the room behind them is thrown
+    /// away, leaving the project's backdrop showing. `nil` reads as off.
+    var backgroundRemoved: Bool?
 
     var duration: Double { max(0, sourceEnd - sourceStart) }
+    var removesBackground: Bool { backgroundRemoved == true }
 
     init(
         id: UUID = UUID(),
@@ -64,7 +68,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         sourceStart: Double,
         sourceEnd: Double,
         framing: VideoFraming? = nil,
-        framingKeys: [FramingKey]? = nil
+        framingKeys: [FramingKey]? = nil,
+        backgroundRemoved: Bool? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -72,6 +77,7 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         self.sourceEnd = sourceEnd
         self.framing = framing
         self.framingKeys = framingKeys
+        self.backgroundRemoved = backgroundRemoved
     }
 }
 
@@ -236,6 +242,15 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     /// Hidden overlays keep their place on the timeline and draw nothing, which
     /// is what the eye on the track rail toggles.
     var isHidden: Bool?
+    /// True when the speaker is cut out of their own clip and drawn again over
+    /// this overlay, so the overlay appears to sit behind them.
+    ///
+    /// The long way round, which is what other editors leave creators to do, is
+    /// to duplicate the clip, erase the background from the copy, and sandwich
+    /// the overlay between the two. That is three steps to keep in sync every
+    /// time the clip is trimmed, and it is the same picture as this flag.
+    /// `nil` reads as off.
+    var behindSpeaker: Bool?
     /// The boxes this cutaway moves through, in seconds from its own start.
     /// `nil` or empty means it holds still. See `OverlayKey`.
     var keys: [OverlayKey]?
@@ -253,6 +268,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         crop: OverlayCrop? = nil,
         track: Int? = nil,
         isHidden: Bool? = nil,
+        behindSpeaker: Bool? = nil,
         keys: [OverlayKey]? = nil
     ) {
         self.id = id
@@ -267,12 +283,14 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.crop = crop
         self.track = track
         self.isHidden = isHidden
+        self.behindSpeaker = behindSpeaker
         self.keys = keys
     }
 
     var resolvedCrop: OverlayCrop { crop ?? .full }
     var lane: Int { max(0, track ?? 0) }
     var isVisible: Bool { isHidden != true }
+    var isBehindSpeaker: Bool { behindSpeaker == true }
 }
 
 /// The three-way look captions and text layers shipped with before colour,
@@ -508,6 +526,15 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// The look the whole video is graded with, in the preview and the export
     /// alike. `nil` on projects saved before filters.
     var visualFilter: VisualFilter?
+    /// What shows where there is no picture: behind a clip with its background
+    /// removed, and in any letterboxing. `nil` reads as black, which is what
+    /// the frame was filled with before a backdrop could be chosen.
+    ///
+    /// A flat colour and nothing else. A photograph or a video behind the
+    /// speaker is the same picture as a full-frame overlay set to sit behind
+    /// them, and that already works, so putting a second way to do it here
+    /// would be two controls for one result.
+    var backdrop: StudioColor?
 
     init(
         id: UUID = UUID(),
@@ -528,7 +555,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         videoTrackHidden: Bool? = nil,
         videoTrackMuted: Bool? = nil,
         videoTrackVolume: Double? = nil,
-        visualFilter: VisualFilter? = nil
+        visualFilter: VisualFilter? = nil,
+        backdrop: StudioColor? = nil
     ) {
         self.id = id
         self.name = name
@@ -549,12 +577,66 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.videoTrackMuted = videoTrackMuted
         self.videoTrackVolume = videoTrackVolume
         self.visualFilter = visualFilter
+        self.backdrop = backdrop
     }
 
     var resolvedVisualFilter: VisualFilter { visualFilter ?? .none }
+    var resolvedBackdrop: StudioColor { backdrop ?? .black }
 
     var isVideoTrackHidden: Bool { videoTrackHidden == true }
     var isVideoTrackMuted: Bool { videoTrackMuted == true }
+
+    /// True when something on screen is meant to sit behind the speaker.
+    ///
+    /// The editor then composites the project itself, because a mask is not
+    /// something AVFoundation's layer instructions can express.
+    var cutsOutTheSpeaker: Bool {
+        !isVideoTrackHidden && (overlays ?? []).contains { $0.isVisible && $0.isBehindSpeaker }
+    }
+
+    /// The overlays the compositor draws, rather than Core Animation painting
+    /// them on at the end.
+    ///
+    /// Stills are normally painted on last, which is cheap and means they are
+    /// always on top. One marked to sit behind the speaker cannot be, so it has
+    /// to come down into the composition, and so does anything already behind
+    /// it: a card painted on at the end would cover the cards below it that had
+    /// moved down.
+    ///
+    /// Anything in *front* of the marked one stays exactly where it was. That
+    /// is the whole point of drawing the line here rather than promoting every
+    /// still in the project: turning the switch on for one card is not a reason
+    /// to change how any other card is drawn.
+    ///
+    /// Asked here so the compositor, the export and the canvas cannot come to
+    /// different answers about who is drawing what.
+    var compositedOverlayIDs: Set<UUID> {
+        guard !isVideoTrackHidden else { return [] }
+        let ordered = OverlayTracks.backToFront((overlays ?? []).filter { $0.isVisible })
+        guard let frontmost = ordered.lastIndex(where: { $0.isBehindSpeaker }) else { return [] }
+        return Set(ordered[...frontmost].map(\.id))
+    }
+
+    /// True when any clip keeps only the speaker and throws the room away.
+    var removesAnyBackground: Bool {
+        !isVideoTrackHidden && clips.contains { $0.removesBackground }
+    }
+
+    /// True when the frame behind the picture is not the plain black
+    /// AVFoundation would fill it with anyway.
+    var hasBackdrop: Bool { resolvedBackdrop != .black }
+
+    /// True when the editor has to composite this project itself.
+    ///
+    /// AVFoundation's own compositor places and ramps layers and does nothing
+    /// else, so anything that is not a placement lands here: a colour pass, a
+    /// mask, or a frame filled with something other than black.
+    var needsStudioCompositor: Bool {
+        !resolvedVisualFilter.isNeutral
+            || cutsOutTheSpeaker
+            || removesAnyBackground
+            || hasBackdrop
+    }
 
     /// What the main track actually plays at: the fader, or nothing at all when
     /// it is muted. Muting and a fader at zero sound the same and mean

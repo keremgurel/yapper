@@ -101,20 +101,32 @@ private struct OverlayMotion {
     }
 }
 
-/// A track of video overlays and the transform each of them is drawn with.
-/// Lanes are ordered back to front, so a later lane covers an earlier one.
-private struct CutawayLane {
-    let track: AVMutableCompositionTrack
+/// A row of overlays and the transform each of them is drawn with. Lanes are
+/// ordered back to front, so a later lane covers an earlier one.
+///
+/// A lane holds whatever the creator stacked there, which may be cutaways,
+/// stills, or both. The two are drawn from different places and share
+/// everything else: a still is already decoded and needs no track, a cutaway is
+/// a frame of one.
+private struct OverlayLane {
+    /// `nil` when nothing on this lane is a video, which needs no track and
+    /// does not count against how many the decoder will run at once.
+    let track: AVMutableCompositionTrack?
     let overlays: [ProjectOverlay]
     let transforms: [UUID: CGAffineTransform]
     /// What it takes to work an overlay's transform out again at any moment,
     /// for the ones that move. Empty for a lane where nothing is keyed, which
     /// builds exactly the composition it always did.
     var motion: [UUID: OverlayMotion] = [:]
-    /// The part of each cutaway's own picture that survives, in the source's
-    /// pixels. AVFoundation applies this before the transform, so it is the
-    /// crop expressed where the crop was drawn: on the media itself.
+    /// The part of each overlay's own picture that survives, in the source's
+    /// pixels. It is applied before the transform, so it is the crop expressed
+    /// where the crop was drawn: on the media itself.
     let cropRects: [UUID: CGRect]
+    /// The stills on this lane, decoded once. Empty unless the project has a
+    /// cut-out in it; see `addOverlayLanes`.
+    var stills: [UUID: CIImage] = [:]
+    /// How each still is rounded and shadowed. Cutaways are not cards.
+    var cards: [UUID: OverlayCardStyle] = [:]
 }
 
 /// What a composition is being built for, which decides how much of it there is
@@ -223,22 +235,30 @@ enum CompositionBuilder {
         }
 
         let overlays = project.overlays ?? []
-        let cutaways = try await addVideoOverlays(
+        let cutsOutTheSpeaker = project.cutsOutTheSpeaker
+        let composited = project.compositedOverlayIDs
+        let lanes = try await addOverlayLanes(
             overlays,
             project: project,
             to: composition,
             renderSize: renderSize,
             compositionDuration: cursor.seconds,
+            compositedStills: composited,
             sourceCache: &sourceCache
         )
         let filter = project.resolvedVisualFilter
+        let usesCustomCompositor = project.needsStudioCompositor
+        let backdrop = project.resolvedBackdrop.ciColor
         let instructions = instructions(
             segments: segments,
-            cutaways: cutaways,
+            lanes: lanes,
             mainTrack: compositionVideo,
             isMainTrackHidden: project.isVideoTrackHidden,
             filter: filter,
-            duration: cursor.seconds
+            duration: cursor.seconds,
+            usesCustomCompositor: usesCustomCompositor,
+            matteQuality: .accurate,
+            backdrop: backdrop
         )
 
         // Stated, not inferred: see CompositionColorSpace. Taken from the take
@@ -255,10 +275,11 @@ enum CompositionBuilder {
             value: 1,
             timescale: CMTimeScale(maximumFrameRate.rounded())
         )
-        // A graded project is composited by hand, because a colour pass is not
-        // something layer instructions can express. An ungraded one stays on
+        // A graded project, or one with the speaker cut out of it, is
+        // composited by hand: neither a colour pass nor a mask is something
+        // layer instructions can express. A project with neither stays on
         // AVFoundation's own compositor.
-        if !filter.isNeutral {
+        if usesCustomCompositor {
             videoComposition.customVideoCompositorClass = StudioVideoCompositor.self
         }
         videoComposition.instructions = instructions
@@ -272,13 +293,29 @@ enum CompositionBuilder {
         CompositionColorSpace.apply(outputColor, to: playbackVideoComposition)
         playbackVideoComposition.renderSize = videoComposition.renderSize
         playbackVideoComposition.frameDuration = videoComposition.frameDuration
-        if !filter.isNeutral {
+        if usesCustomCompositor {
             playbackVideoComposition.customVideoCompositorClass = StudioVideoCompositor.self
         }
-        playbackVideoComposition.instructions = instructions
+        // The player gets its own instructions only when there is a cut-out to
+        // make, because that is the only thing the two disagree about and
+        // working the boundaries out twice is not free. Everything else, down
+        // to the grade, is identical, so the same instructions serve both.
+        playbackVideoComposition.instructions = (cutsOutTheSpeaker || project.removesAnyBackground)
+            ? self.instructions(
+                segments: segments,
+                lanes: lanes,
+                mainTrack: compositionVideo,
+                isMainTrackHidden: project.isVideoTrackHidden,
+                filter: filter,
+                duration: cursor.seconds,
+                usesCustomCompositor: usesCustomCompositor,
+                matteQuality: .fast,
+                backdrop: backdrop
+            )
+            : instructions
         if purpose.needsVisualLayers {
             try applyVisualLayers(
-                overlays,
+                overlays.filter { !composited.contains($0.id) },
                 textLayers: project.textLayers ?? [],
                 captions: project.captionCues,
                 project: project,
@@ -316,76 +353,125 @@ enum CompositionBuilder {
     private static func track(
         _ trackID: CMPersistentTrackID,
         mainTrack: AVMutableCompositionTrack,
-        cutaways: [CutawayLane]
+        lanes: [OverlayLane]
     ) -> AVMutableCompositionTrack {
-        cutaways.first { $0.track.trackID == trackID }?.track ?? mainTrack
+        lanes.compactMap(\.track).first { $0.trackID == trackID } ?? mainTrack
     }
 
-    /// Lays every video overlay onto its own track so it can play over the
-    /// speaker. Images are not here: they are drawn by `applyVisualLayers`,
-    /// which can round their corners and is not limited to four tracks.
+    /// Lays the overlays out into lanes the compositor can draw back to front.
+    ///
+    /// Videos go onto a track each, because a second picture playing at the
+    /// same time as the speaker is a second track by definition. Stills are
+    /// normally left out and burned in afterwards by `applyVisualLayers`, which
+    /// is cheaper and does not spend a track on something that never moves.
+    ///
+    /// - Parameter compositedStills: the stills to bring in here instead,
+    ///   because they have to sit under something the compositor draws. See
+    ///   `EditorProject.compositedOverlayIDs`, which decides which those are.
     ///
     /// Overlay audio is deliberately left out. A cutaway is a picture over the
     /// speaker's own voice, and mixing a second dialogue track under it without
     /// being asked would be a surprise, not a feature.
-    private static func addVideoOverlays(
+    private static func addOverlayLanes(
         _ overlays: [ProjectOverlay],
         project: EditorProject,
         to composition: AVMutableComposition,
         renderSize: CGSize,
         compositionDuration: Double,
+        compositedStills: Set<UUID>,
         sourceCache: inout [UUID: LoadedSource]
-    ) async throws -> [CutawayLane] {
-        let cutaways = overlays.filter { overlay in
+    ) async throws -> [OverlayLane] {
+        let drawn = overlays.filter { overlay in
             guard
                 overlay.isVisible,
                 let media = project.media.first(where: { $0.id == overlay.mediaID })
             else { return false }
-            return !media.isImage
+            return !media.isImage || compositedStills.contains(overlay.id)
         }
-        guard !cutaways.isEmpty, compositionDuration > 0 else { return [] }
+        guard !drawn.isEmpty, compositionDuration > 0 else { return [] }
 
-        var lanes: [CutawayLane] = []
-        for lane in OverlayCompositionPlan.lanes(for: cutaways) {
-            guard let track = composition.addMutableTrack(
-                withMediaType: .video,
-                preferredTrackID: kCMPersistentTrackID_Invalid
-            ) else {
-                throw NativeEditorError.cannotCreateTrack("overlay video")
+        var lanes: [OverlayLane] = []
+        for lane in OverlayCompositionPlan.lanes(for: drawn) {
+            let media = lane.compactMap { overlay in
+                project.media.first { $0.id == overlay.mediaID }
+            }
+            // A lane of nothing but stills needs no track, and asking for one
+            // would spend a decoder on a picture that never moves.
+            var track: AVMutableCompositionTrack?
+            if media.contains(where: { !$0.isImage }) {
+                guard let created = composition.addMutableTrack(
+                    withMediaType: .video,
+                    preferredTrackID: kCMPersistentTrackID_Invalid
+                ) else {
+                    throw NativeEditorError.cannotCreateTrack("overlay video")
+                }
+                track = created
             }
 
             var placed: [ProjectOverlay] = []
             var transforms: [UUID: CGAffineTransform] = [:]
             var motion: [UUID: OverlayMotion] = [:]
             var cropRects: [UUID: CGRect] = [:]
+            var stills: [UUID: CIImage] = [:]
+            var cards: [UUID: OverlayCardStyle] = [:]
             for overlay in lane {
                 guard let media = project.media.first(where: { $0.id == overlay.mediaID }) else {
                     continue
                 }
-                let source: LoadedSource
-                if let cached = sourceCache[media.id] {
-                    source = cached
-                } else {
-                    source = try await CompositionSourceCache.shared.source(for: media)
-                    sourceCache[media.id] = source
-                }
 
                 let start = max(0, overlay.timelineStart)
-                let available = min(
-                    max(0, source.duration - max(0, overlay.sourceStart)),
-                    max(0, compositionDuration - start)
-                )
-                let duration = min(overlay.duration, available)
-                guard duration > OverlayCompositionPlan.epsilon else { continue }
+                let naturalSize: CGSize
+                let preferredTransform: CGAffineTransform
+                let duration: Double
 
-                try track.insertTimeRange(
-                    CMTimeRange(
-                        start: CMTime(seconds: max(0, overlay.sourceStart), preferredTimescale: timeScale),
-                        duration: CMTime(seconds: duration, preferredTimescale: timeScale)
-                    ),
-                    of: source.video,
-                    at: CMTime(seconds: start, preferredTimescale: timeScale)
-                )
+                if media.isImage {
+                    guard
+                        let image = CIImage(contentsOf: media.url),
+                        !image.extent.isEmpty
+                    else { continue }
+                    // A still has no source to run out of, so it lasts as long
+                    // as it was given or as long as there is timeline left.
+                    duration = min(overlay.duration, max(0, compositionDuration - start))
+                    guard duration > OverlayCompositionPlan.epsilon else { continue }
+                    naturalSize = image.extent.size
+                    preferredTransform = .identity
+                    stills[overlay.id] = image
+                    if !OverlayFrame.isFullFrame(overlay) {
+                        cards[overlay.id] = .standard(
+                            cornerRadius: OverlayFrame.cornerRadius(in: renderSize)
+                        )
+                    }
+                } else {
+                    guard let track else { continue }
+                    let source: LoadedSource
+                    if let cached = sourceCache[media.id] {
+                        source = cached
+                    } else {
+                        source = try await CompositionSourceCache.shared.source(for: media)
+                        sourceCache[media.id] = source
+                    }
+
+                    let available = min(
+                        max(0, source.duration - max(0, overlay.sourceStart)),
+                        max(0, compositionDuration - start)
+                    )
+                    duration = min(overlay.duration, available)
+                    guard duration > OverlayCompositionPlan.epsilon else { continue }
+
+                    try track.insertTimeRange(
+                        CMTimeRange(
+                            start: CMTime(
+                                seconds: max(0, overlay.sourceStart),
+                                preferredTimescale: timeScale
+                            ),
+                            duration: CMTime(seconds: duration, preferredTimescale: timeScale)
+                        ),
+                        of: source.video,
+                        at: CMTime(seconds: start, preferredTimescale: timeScale)
+                    )
+                    naturalSize = source.videoSize
+                    preferredTransform = source.videoTransform
+                }
 
                 var clamped = overlay
                 clamped.timelineStart = start
@@ -400,8 +486,8 @@ enum CompositionBuilder {
                 )
                 let crop = overlay.resolvedCrop
                 if !crop.isFull {
-                    let oriented = CGRect(origin: .zero, size: source.videoSize)
-                        .applying(source.videoTransform)
+                    let oriented = CGRect(origin: .zero, size: naturalSize)
+                        .applying(preferredTransform)
                     let orientedSize = CGSize(
                         width: abs(oriented.width),
                         height: abs(oriented.height)
@@ -414,16 +500,16 @@ enum CompositionBuilder {
                     )
                 }
                 transforms[overlay.id] = overlayTransform(
-                    naturalSize: source.videoSize,
-                    preferredTransform: source.videoTransform,
+                    naturalSize: naturalSize,
+                    preferredTransform: preferredTransform,
                     crop: overlay.resolvedCrop,
                     box: box
                 )
                 if OverlayKeyTrack.isKeyed(overlay) {
                     motion[overlay.id] = OverlayMotion(
                         overlay: overlay,
-                        naturalSize: source.videoSize,
-                        preferredTransform: source.videoTransform,
+                        naturalSize: naturalSize,
+                        preferredTransform: preferredTransform,
                         crop: overlay.resolvedCrop,
                         renderSize: renderSize,
                         mediaAspect: aspect(of: media)
@@ -432,12 +518,14 @@ enum CompositionBuilder {
             }
             if !placed.isEmpty {
                 lanes.append(
-                    CutawayLane(
+                    OverlayLane(
                         track: track,
                         overlays: placed,
                         transforms: transforms,
                         motion: motion,
-                        cropRects: cropRects
+                        cropRects: cropRects,
+                        stills: stills,
+                        cards: cards
                     )
                 )
             }
@@ -449,20 +537,30 @@ enum CompositionBuilder {
     /// cut on the main track, or a cutaway arriving or leaving, starts a new
     /// one. Within an instruction the front-most layer comes first, so the
     /// cutaway lanes are listed before the speaker.
+    /// - Parameters:
+    ///   - usesCustomCompositor: whether the editor composites this project
+    ///     itself. AVFoundation's own compositor can place and ramp layers, and
+    ///     that is all, so a graded project or one with a cut-out in it has to
+    ///     be drawn by hand.
+    ///   - matteQuality: how carefully any cut-out is made, which is the one
+    ///     thing the preview and the export disagree about.
     private static func instructions(
         segments: [MainSegment],
-        cutaways: [CutawayLane],
+        lanes: [OverlayLane],
         mainTrack: AVMutableCompositionTrack,
         isMainTrackHidden: Bool,
         filter: VisualFilter,
-        duration: Double
+        duration: Double,
+        usesCustomCompositor: Bool,
+        matteQuality: MatteQuality,
+        backdrop: CIColor
     ) -> [any AVVideoCompositionInstructionProtocol] {
         let boundaries = OverlayCompositionPlan.boundaries(
             clipEnds: segments.map(\.range.end.seconds),
-            overlays: cutaways.flatMap(\.overlays),
+            overlays: lanes.flatMap(\.overlays),
             duration: duration,
             keyframes: segments.flatMap(\.keyframeTimes)
-                + cutaways.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
+                + lanes.flatMap { $0.motion.values.flatMap(\.keyframeTimes) }
         )
         guard boundaries.count > 1 else { return [] }
 
@@ -482,12 +580,32 @@ enum CompositionBuilder {
 
             // Front to back: the cutaways on top of the speaker.
             var placements: [StudioCompositionInstruction.Layer] = []
-            for lane in cutaways.reversed() {
+            /// Where the speaker's cut-out goes, once it is known that one is
+            /// wanted: directly in front of the front-most overlay asking to
+            /// sit behind them.
+            ///
+            /// An overlay on a lower lane that did not ask ends up behind the
+            /// cut-out too, because there is only one speaker to be in front
+            /// of and the stack has one order. Lifting the overlay above the
+            /// one asking to hide is how a creator says otherwise.
+            var matteIndex: Int?
+            for lane in lanes.reversed() {
                 guard
                     let overlay = OverlayCompositionPlan.overlay(in: lane.overlays, from: start, to: end),
                     let transform = lane.transforms[overlay.id]
                 else { continue }
-                // A keyed cutaway is given both ends of this stretch, exactly
+                let source: StudioCompositionInstruction.Layer.Source
+                if let still = lane.stills[overlay.id] {
+                    source = .still(still)
+                } else if let track = lane.track {
+                    source = .track(track.trackID)
+                } else {
+                    continue
+                }
+                if overlay.isBehindSpeaker, matteIndex == nil {
+                    matteIndex = placements.count
+                }
+                // A keyed overlay is given both ends of this stretch, exactly
                 // as the main track is, so a card that slides in or grows is
                 // the same mechanism as a punch-in rather than a second one.
                 let motion = lane.motion[overlay.id]
@@ -495,11 +613,12 @@ enum CompositionBuilder {
                 let to = motion?.transform(atTimeline: end)
                 placements.append(
                     .init(
-                        trackID: lane.track.trackID,
+                        source: source,
                         transform: from,
                         endTransform: to == from ? nil : to,
                         cropRect: lane.cropRects[overlay.id],
-                        opacity: 1
+                        opacity: 1,
+                        card: lane.cards[overlay.id]
                     )
                 )
             }
@@ -511,20 +630,45 @@ enum CompositionBuilder {
             let mainEnd = segment.isKeyed ? segment.transform(atTimeline: end) : nil
             placements.append(
                 .init(
-                    trackID: mainTrack.trackID,
+                    source: .track(mainTrack.trackID),
                     transform: mainStart,
                     endTransform: mainEnd == mainStart ? nil : mainEnd,
                     cropRect: nil,
-                    opacity: isMainTrackHidden ? 0 : 1
+                    opacity: isMainTrackHidden ? 0 : 1,
+                    // The clip with its background thrown away: one copy, cut
+                    // out, with the backdrop showing through what is gone.
+                    matte: segment.clip.removesBackground
                 )
             )
+            // The speaker again, cut out, over the overlays that asked to sit
+            // behind them. The same transform as the copy underneath, or a
+            // punch-in would move the picture and leave the cut-out behind.
+            if let matteIndex, !isMainTrackHidden {
+                placements.insert(
+                    .init(
+                        source: .track(mainTrack.trackID),
+                        transform: mainStart,
+                        endTransform: mainEnd == mainStart ? nil : mainEnd,
+                        cropRect: nil,
+                        opacity: 1,
+                        matte: true
+                    ),
+                    at: matteIndex
+                )
+            }
 
-            if filter.isNeutral {
+            if !usesCustomCompositor {
                 let instruction = AVMutableVideoCompositionInstruction()
                 instruction.timeRange = timeRange
                 instruction.layerInstructions = placements.map { placement in
+                    // Stills never reach here: they force the editor's own
+                    // compositor, and this branch is the other one.
                     let layer = AVMutableVideoCompositionLayerInstruction(
-                        assetTrack: track(placement.trackID, mainTrack: mainTrack, cutaways: cutaways)
+                        assetTrack: track(
+                            placement.trackID ?? mainTrack.trackID,
+                            mainTrack: mainTrack,
+                            lanes: lanes
+                        )
                     )
                     if let endTransform = placement.endTransform {
                         layer.setTransformRamp(
@@ -549,7 +693,9 @@ enum CompositionBuilder {
                     StudioCompositionInstruction(
                         timeRange: timeRange,
                         layers: placements,
-                        colorMatrix: matrix
+                        colorMatrix: matrix,
+                        matteQuality: matteQuality,
+                        backdrop: backdrop
                     )
                 )
             }

@@ -159,6 +159,28 @@ extension EditorSession {
         commitOverlayEdit(updated)
     }
 
+    /// Cuts the speaker out of their own clip and draws them again over this
+    /// overlay, so the overlay reads as sitting behind them.
+    ///
+    /// Committed here rather than through `commitOverlayEdit`, which is the
+    /// path for moving and resizing and treats every edit as one: on a keyed
+    /// overlay it would read this as a new keyframe and drop it, and on a still
+    /// it would save without rebuilding the composition. This changes how the
+    /// whole project is composited, so it always rebuilds.
+    func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
+        guard overlays.contains(where: { $0.id == overlay.id }) else { return }
+        scheduleCompositionCommit { [self] in
+            updateProject { project in
+                guard let index = project.overlays?.firstIndex(where: { $0.id == overlay.id })
+                else { return }
+                project.overlays?[index].behindSpeaker = behind ? true : nil
+                project.updatedAt = Date()
+            }
+            selectedOverlayID = overlay.id
+            return true
+        }
+    }
+
     /// Shows or hides one overlay without disturbing its place on the timeline.
     func setOverlayHidden(_ overlay: ProjectOverlay, hidden: Bool) {
         var updated = overlay
@@ -242,7 +264,14 @@ extension EditorSession {
             return
         }
 
-        guard media(for: updated)?.isImage == false else {
+        // A still the canvas draws itself is already on screen in its new place
+        // by the time this runs, so it is saved without rebuilding anything.
+        // One the composition draws is not: skipping the rebuild there leaves
+        // the picture exactly where it was while its box moves away without it,
+        // which is what dragging an overlay set to sit behind the speaker did.
+        let drawnByTheCanvas = media(for: updated)?.isImage == true
+            && !project.compositedOverlayIDs.contains(updated.id)
+        guard !drawnByTheCanvas else {
             updateOverlay(updated)
             return
         }

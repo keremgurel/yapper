@@ -53,11 +53,6 @@ struct VideoWorkbench: View {
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                     .help("Zoom until the footage covers the whole frame, with no bars")
             }
-            if session.project.clips.count > 1 {
-                Button("Apply to all clips") { session.applyFramingToAllClips() }
-                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                    .help("Give every clip on the main track this framing")
-            }
             Spacer(minLength: 0)
         }
         .padding(.vertical, 10)
