@@ -963,6 +963,8 @@ final class EditorSession: ObservableObject {
                     for: range.mediaID
                 )
             }
+            // The restored line goes back on screen with a caption under it.
+            project.captionRestoredWords()
             currentTime = project.nearestTimelineTime(for: firstWord)
             selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
             return true
@@ -989,6 +991,7 @@ final class EditorSession: ObservableObject {
         let marker = TranscriptWord(mediaID: mediaID, text: "", start: start, end: end)
         await commitTimelineEdit {
             project.restoreSourceRange((start, end), for: mediaID)
+            project.captionRestoredWords()
             currentTime = project.nearestTimelineTime(for: marker)
             selectedClipID = project.clip(at: currentTime).map { project.clips[$0.index].id }
             return true

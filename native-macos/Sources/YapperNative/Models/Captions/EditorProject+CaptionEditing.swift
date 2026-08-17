@@ -27,6 +27,27 @@ extension EditorProject {
         updatedAt = Date()
     }
 
+    /// Captions whatever is now in the cut and has no card over it.
+    ///
+    /// Restoring a line in the transcript brings back words the cards were
+    /// never built over, because they were cut when the cards were made. Those
+    /// words get cards here, in place, so the line is captioned the moment it
+    /// comes back rather than after a regenerate that would cost the creator
+    /// every text edit and restyling in the project.
+    mutating func captionRestoredWords() {
+        guard captionsEnabled == true else { return }
+        let existing = storedCaptions
+        guard !existing.isEmpty else { return }
+        let added = CaptionGapFill.captions(
+            coveringGapsIn: existing,
+            words: captionSourceWords,
+            wordsPerCard: wordsPerCaptionCard
+        )
+        guard !added.isEmpty else { return }
+        captions = (existing + added).sorted { $0.sourceStart < $1.sourceStart }
+        updatedAt = Date()
+    }
+
     mutating func setCaptionWordsPerCard(_ value: Int) {
         let normalized = CaptionWordsPerCard.normalized(value)
         guard normalized != wordsPerCaptionCard else { return }
