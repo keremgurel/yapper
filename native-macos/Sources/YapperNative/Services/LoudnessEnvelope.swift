@@ -15,6 +15,47 @@ enum LoudnessEnvelope {
         let hop: Double
     }
 
+    /// Builds the same envelope out of samples as they go past.
+    ///
+    /// Opening a fifteen minute take off a camera card and decoding its audio
+    /// costs about half a minute, and the AI edit already decodes every sample
+    /// of it on the way to the transcriber. Measuring there means the second
+    /// read never happens.
+    struct Accumulator {
+        private let framesPerHop: Int
+        private let hop: Double
+        private var sumOfSquares = 0.0
+        private var counted = 0
+        private var loudness: [Double] = []
+
+        init(sampleRate: Int, hop: Double = 0.02) {
+            self.hop = hop
+            framesPerHop = max(1, Int(Double(sampleRate) * hop))
+        }
+
+        /// - Parameter samples: mono, as the decoder produced them.
+        mutating func append(_ samples: [Int16]) {
+            for sample in samples {
+                let value = Double(Int16(littleEndian: sample)) / 32_768
+                sumOfSquares += value * value
+                counted += 1
+                if counted == framesPerHop {
+                    loudness.append(decibels(fromMeanSquare: sumOfSquares / Double(counted)))
+                    sumOfSquares = 0
+                    counted = 0
+                }
+            }
+        }
+
+        func finished() -> Envelope {
+            var frames = loudness
+            if counted > 0 {
+                frames.append(decibels(fromMeanSquare: sumOfSquares / Double(counted)))
+            }
+            return Envelope(loudness: frames, hop: hop)
+        }
+    }
+
     /// - Parameter hop: frame length in seconds. 20ms is fine enough to find
     ///   the edge of a word and coarse enough to stay cheap on a long take.
     static func measure(url: URL, hop: Double = 0.02) throws -> Envelope {

@@ -161,6 +161,40 @@ function mapOneCleanThought(
   return [];
 }
 
+/**
+ * The part of a candidate that no better-scoring one has already claimed.
+ *
+ * Sentences the speaker ran together share a word at the seam, and the winning
+ * window for the second one often starts on the last word of the first. Giving
+ * up the whole sentence over that single word is how a finished edit lost the
+ * end of its own final take: "...ended the conversation happy and" played, and
+ * "might even get some reviews out of them. So it ended up working very well."
+ * was dropped, having overlapped the sentence before it by one word.
+ *
+ * Trimming the seam keeps every candidate a single contiguous run, so this
+ * still cannot build a sentence out of two separate attempts. A candidate that
+ * loses most of itself to the trim is a real conflict and still goes.
+ */
+const MINIMUM_SURVIVING_SHARE = 0.5;
+
+function withoutOverlap(
+  candidate: Candidate,
+  chosen: Candidate[],
+): Candidate | null {
+  let { start, end } = candidate;
+  for (const other of chosen) {
+    if (start > other.end || end < other.start) continue;
+    if (start >= other.start && end <= other.end) return null;
+    if (start >= other.start) start = other.end + 1;
+    else end = other.start - 1;
+  }
+  if (start > end) return null;
+  const span = end - start + 1;
+  const original = candidate.end - candidate.start + 1;
+  if (span < Math.ceil(original * MINIMUM_SURVIVING_SHARE)) return null;
+  return { ...candidate, start, end };
+}
+
 export interface ContiguousTakeAlignment {
   /** Inclusive source-word ranges to keep. */
   keep: [number, number][];
@@ -190,14 +224,8 @@ export function alignCleanedToContiguousTakes(
   );
   const chosen: Candidate[] = [];
   for (const candidate of candidates) {
-    if (
-      chosen.some(
-        (other) => candidate.start <= other.end && candidate.end >= other.start,
-      )
-    ) {
-      continue;
-    }
-    chosen.push(candidate);
+    const trimmed = withoutOverlap(candidate, chosen);
+    if (trimmed) chosen.push(trimmed);
   }
   chosen.sort((a, b) => a.start - b.start);
 

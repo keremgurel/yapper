@@ -277,6 +277,24 @@ async function viaDeepgram(
   };
 }
 
+/**
+ * What to call the upload so the fallback transcriber parses it.
+ *
+ * Whisper picks its demuxer partly from the filename, and the editor now sends
+ * AAC in an MPEG-4 container rather than raw PCM, which would have arrived
+ * named audio.wav.
+ */
+function fileExtension(contentType: string): string {
+  const type = contentType.toLowerCase();
+  if (type.includes("mp4") || type.includes("m4a")) return "m4a";
+  if (type.includes("aac")) return "aac";
+  if (type.includes("webm")) return "webm";
+  if (type.includes("ogg")) return "ogg";
+  if (type.includes("mpeg")) return "mp3";
+  if (type.includes("quicktime")) return "mov";
+  return "wav";
+}
+
 interface OpenAiWord {
   word: string;
   start: number;
@@ -293,7 +311,7 @@ async function viaOpenAiCompatible(
   signal: AbortSignal,
   timeoutMs: number,
 ): Promise<AsrResult> {
-  const ext = contentType.includes("aac") ? "aac" : "wav";
+  const ext = fileExtension(contentType);
   const form = new FormData();
   form.append("file", new File([audio], `audio.${ext}`, { type: contentType }));
   form.append("model", model);

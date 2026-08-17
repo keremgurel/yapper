@@ -817,6 +817,16 @@ struct EditorProject: Codable, Equatable, Sendable {
         return nearestDistance <= 0.16 ? nearest : nil
     }
 
+    /// What is left between two cuts has to be long enough to be a shot.
+    ///
+    /// The old floor was 0.08s, which is two frames, and an AI edit that ends
+    /// one cut a word early and starts the next a word late leaves exactly
+    /// that: a sliver of a clip with nobody speaking in it. Measured on a
+    /// fifteen minute take, two of the forty clips were 0.09s and 0.10s long.
+    /// A quarter second is the shortest piece a viewer reads as a shot rather
+    /// than a glitch, and it is well under any real spoken word.
+    static let shortestClipWorthKeeping = 0.25
+
     mutating func removeSourceRanges(_ ranges: [(Double, Double)], for mediaID: UUID) {
         guard !ranges.isEmpty else { return }
         let merged = Self.merge(ranges)
@@ -833,7 +843,7 @@ struct EditorProject: Codable, Equatable, Sendable {
                 }
             }
             return kept.compactMap { start, end in
-                guard end - start >= 0.08 else { return nil }
+                guard end - start >= Self.shortestClipWorthKeeping else { return nil }
                 return TimelineClip(mediaID: clip.mediaID, sourceStart: start, sourceEnd: end)
             }
         }

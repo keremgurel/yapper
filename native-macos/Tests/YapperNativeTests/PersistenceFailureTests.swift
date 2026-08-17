@@ -866,16 +866,20 @@ struct PersistenceFailureTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let store = TestProjectStore()
         let session = EditorSession(store: store)
+        // At a real take's scale. A nine-tenths-of-a-second video leaves
+        // trimmed pieces shorter than `EditorProject.shortestClipWorthKeeping`,
+        // and an edit whose every piece is a sliver is no edit at all.
         let project = try await videoProject(
             in: directory,
             name: "Untrimmed",
-            sourceEnd: 0.9,
-            transcriptRanges: [(0.2, 0.3), (0.7, 0.8)]
+            seconds: 4,
+            sourceEnd: 3.6,
+            transcriptRanges: [(0.8, 1.2), (2.8, 3.2)]
         )
         var splitProject = project
         splitProject.clips = [
-            TimelineClip(mediaID: project.media[0].id, sourceStart: 0, sourceEnd: 0.45),
-            TimelineClip(mediaID: project.media[0].id, sourceStart: 0.45, sourceEnd: 0.9),
+            TimelineClip(mediaID: project.media[0].id, sourceStart: 0, sourceEnd: 1.8),
+            TimelineClip(mediaID: project.media[0].id, sourceStart: 1.8, sourceEnd: 3.6),
         ]
         await session.commitTimelineEdit {
             session.updateProject { $0 = splitProject }
@@ -884,7 +888,7 @@ struct PersistenceFailureTests {
         let before = session.project
         let selected = before.clips[1].id
         session.selectTimelineItem(.clip(selected))
-        session.seekToTimelineTime(0.75)
+        session.seekToTimelineTime(3.0)
         #expect(abs(try await playerDuration(session) - before.duration) < 0.05)
         await store.setSaveFailure(.diskFull)
 
@@ -893,7 +897,7 @@ struct PersistenceFailureTests {
         #expect(session.project == before)
         #expect(session.selectedClipID == selected)
         #expect(session.timelineSelection == [.clip(selected)])
-        #expect(abs(session.currentTime - 0.75) < 0.05)
+        #expect(abs(session.currentTime - 3.0) < 0.05)
         #expect(abs(try await playerDuration(session) - before.duration) < 0.05)
         #expect(session.statusMessage == "Needs attention")
         #expect(session.errorMessage == "The test disk is full.")
@@ -914,6 +918,7 @@ struct PersistenceFailureTests {
     private func videoProject(
         in directory: URL,
         name: String,
+        seconds: Double = 1,
         sourceEnd: Double = 0.9,
         transcriptRanges: [(Double, Double)] = []
     ) async throws -> EditorProject {
@@ -921,6 +926,7 @@ struct PersistenceFailureTests {
         try await SyntheticVideo.write(
             color: CGColor(red: 0.2, green: 0.3, blue: 0.4, alpha: 1),
             size: CGSize(width: 320, height: 180),
+            seconds: seconds,
             to: source
         )
         let media = try await MediaProbe.inspect(url: source)

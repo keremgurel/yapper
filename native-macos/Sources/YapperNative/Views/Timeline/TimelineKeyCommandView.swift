@@ -59,6 +59,35 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             self.onCommand = onCommand
         }
 
+        /// The key press already turned into a command.
+        ///
+        /// One press, one command. AppKit hands the same physical key event to
+        /// a local monitor more than once: measured on a real Backspace, the
+        /// identical event (same timestamp, same monitor, same coordinator)
+        /// arrived twice. The first pass deleted the selected clip, and the
+        /// second found the selection now empty and fell through to whatever
+        /// the playhead had rippled onto, which is how deleting one clip took
+        /// the next one with it. Space had the same shape: play, then pause,
+        /// then nothing playing.
+        ///
+        /// A press is identified by its timestamp, which the window server
+        /// stamps once per event, so a repeat delivery of one press is
+        /// recognisable while two real presses never collide. Shared across
+        /// coordinators so a second monitor could not reintroduce the double
+        /// either.
+        private static var claimedPress: (timestamp: TimeInterval, keyCode: UInt16)?
+
+        static func claim(_ event: NSEvent) -> Bool {
+            if let claimed = claimedPress,
+               claimed.timestamp == event.timestamp,
+               claimed.keyCode == event.keyCode
+            {
+                return false
+            }
+            claimedPress = (event.timestamp, event.keyCode)
+            return true
+        }
+
         func install() {
             guard monitor == nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -87,6 +116,7 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             guard event.modifierFlags.intersection(disallowedModifiers).isEmpty else { return event }
 
             guard let command = command(for: event) else { return event }
+            guard Self.claim(event) else { return nil }
             onCommand(command)
             return nil
         }

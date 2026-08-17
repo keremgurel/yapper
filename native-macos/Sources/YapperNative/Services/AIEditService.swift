@@ -144,9 +144,30 @@ actor AIEditService {
 
     // Keep camera speech detail at its native rate. The previous forced 16 kHz
     // path could smear quiet sentence onsets before ASR heard them.
-    private let chunkBytes = 3_000_000
+    //
+    // Chunks are measured in seconds rather than bytes because what the server
+    // caps is seconds: ten minutes a request, and four megabytes, which
+    // compressed speech reaches nowhere near. Seven minutes leaves room for
+    // both. Most takes are one chunk, which is the point: the transcript route
+    // charges a credit and spends a rate limit token per request, so a take
+    // that arrives in eleven pieces costs eleven times what it should and runs
+    // out of both.
+    private let chunkSeconds = 420.0
     private let overlapSeconds = 5.0
     private let maximumConcurrentChunks = 2
+
+    /// How loud each take was, moment by moment, kept from the decode the
+    /// transcriber already paid for. Reading a fifteen minute take off a camera
+    /// card again costs about half a minute, and the answer would be identical.
+    private var envelopes: [URL: LoudnessEnvelope.Envelope] = [:]
+
+    private func envelope(for url: URL?) -> LoudnessEnvelope.Envelope? {
+        guard let url else { return nil }
+        if let known = envelopes[url] { return known }
+        guard let measured = try? LoudnessEnvelope.measure(url: url) else { return nil }
+        envelopes[url] = measured
+        return measured
+    }
 
     func transcribe(
         media: ProjectMedia,
@@ -169,7 +190,7 @@ actor AIEditService {
                 limit: maximumConcurrentChunks,
                 operation: { index in
                     let chunk = chunks[index]
-                    let payload = try Self.wavChunk(
+                    let payload = try Self.compressedChunk(
                         at: decoded.url, start: chunk.start, length: chunk.length,
                         sampleRate: decoded.sampleRate
                     )
@@ -266,25 +287,8 @@ actor AIEditService {
         // word's end is where it stops being a word, not where the room goes
         // quiet, and a second of flat waveform routinely reads as a 0.2s gap.
         let spoken = kept.map { ($0.start, $0.end) }
-        let envelope: LoudnessEnvelope.Envelope?
-        do {
-            envelope = try url.map { try LoudnessEnvelope.measure(url: $0) }
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            envelope = nil
-        }
-        let measured = envelope
-            .map { envelope in
-                SilenceScan.absorbingIslands(
-                    SilenceScan.avoiding(
-                        SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
-                        words: spoken
-                    ),
-                    words: spoken,
-                    lively: SilenceScan.livelyLine(for: envelope)
-                )
-            }
+        let envelope = envelope(for: url)
+        let measured = envelope.map { MeasuredSilence.ranges(envelope: $0, words: spoken) }
 
         if let measured, !measured.isEmpty {
             ranges.append(contentsOf: measured)
@@ -317,23 +321,11 @@ actor AIEditService {
         url: URL? = nil
     ) throws -> [(Double, Double)] {
         try Task.checkCancellation()
-        let envelope: LoudnessEnvelope.Envelope?
-        do {
-            envelope = try url.map { try LoudnessEnvelope.measure(url: $0) }
-        } catch is CancellationError {
-            throw CancellationError()
-        } catch {
-            envelope = nil
-        }
+        let envelope = envelope(for: url)
         if let envelope, !envelope.loudness.isEmpty {
-            let spoken = words.map { ($0.start, $0.end) }
-            var ranges = SilenceScan.absorbingIslands(
-                SilenceScan.avoiding(
-                    SilenceScan.silentRanges(loudness: envelope.loudness, hop: envelope.hop),
-                    words: spoken
-                ),
-                words: spoken,
-                lively: SilenceScan.livelyLine(for: envelope)
+            var ranges = MeasuredSilence.ranges(
+                envelope: envelope,
+                words: words.map { ($0.start, $0.end) }
             )
             // A take that is silent from end to end is a take with no speech in
             // it, and removing all of it is never what was meant.
@@ -389,6 +381,9 @@ actor AIEditService {
         }
 
         let handle = try FileHandle(forWritingTo: output)
+        var accumulator = LoudnessEnvelope.Accumulator(
+            sampleRate: Int(format.sampleRate.rounded())
+        )
         var byteCount = 0
         var lastProgress = 0.0
         defer { try? handle.close() }
@@ -407,6 +402,7 @@ actor AIEditService {
                     channelCount: channelCount
                 ).littleEndian
             }
+            accumulator.append(mono)
             let bytes = mono.withUnsafeBytes { Data($0) }
             try handle.write(contentsOf: bytes)
             byteCount += bytes.count
@@ -416,6 +412,7 @@ actor AIEditService {
                 await progress?(fraction)
             }
         }
+        envelopes[url] = accumulator.finished()
         guard byteCount > 0 else {
             throw NativeEditorError.aiFailed("Audio decoding returned no samples.")
         }
@@ -424,7 +421,8 @@ actor AIEditService {
 
     private func makeChunks(byteCount: Int, sampleRate: Int) -> [AudioChunk] {
         TranscriptionChunkPlan.make(
-            byteCount: byteCount, sampleRate: sampleRate, chunkBytes: chunkBytes,
+            byteCount: byteCount, sampleRate: sampleRate,
+            chunkBytes: max(sampleRate * 2, Int(chunkSeconds * Double(sampleRate * 2))),
             overlapSeconds: overlapSeconds
         ).map { .init(start: $0.start, length: $0.length, offset: $0.offset, duration: $0.duration) }
     }
@@ -436,22 +434,31 @@ actor AIEditService {
         baseURL: URL
     ) async throws -> [RemoteWord] {
         var lastError: Error?
-        for attempt in 0 ..< 3 {
+        for attempt in 0 ..< UploadRetrySchedule.attempts {
             try Task.checkCancellation()
+            var status = 0
+            var retryAfter: String?
             do {
                 var request = await YapperAPI.authenticatedRequest(
                     url: transcribeURL(baseURL: baseURL, keyterms: keyterms)
                 )
                 request.httpMethod = "POST"
                 request.timeoutInterval = 120
-                request.setValue("audio/wav", forHTTPHeaderField: "Content-Type")
+                request.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
                 request.setValue(String(duration), forHTTPHeaderField: "x-audio-duration")
                 request.httpBody = chunkData
                 let (data, response) = try await URLSession.shared.data(for: request)
-                guard let http = response as? HTTPURLResponse, (200 ..< 300).contains(http.statusCode) else {
-                    let code = (response as? HTTPURLResponse)?.statusCode ?? 0
-                    let failure = YapperAPI.failure(status: code, body: data, action: "Transcription")
-                    guard isRetryableTranscriptionStatus(code) else { throw NonRetryableFailure(error: failure) }
+                let http = response as? HTTPURLResponse
+                status = http?.statusCode ?? 0
+                retryAfter = http?.value(forHTTPHeaderField: "Retry-After")
+                guard let http, (200 ..< 300).contains(status) else {
+                    let failure = YapperAPI.failure(
+                        status: status,
+                        body: data,
+                        action: "Transcription",
+                        note: http.flatMap { EdgeRefusalNote.text(for: $0, body: data) }
+                    )
+                    guard isRetryableTranscriptionStatus(status) else { throw NonRetryableFailure(error: failure) }
                     throw failure
                 }
                 return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
@@ -462,9 +469,14 @@ actor AIEditService {
                     throw CancellationError()
                 }
                 lastError = error
-                if attempt < 2 {
-                    try await Task.sleep(for: .milliseconds(attempt == 0 ? 350 : 900))
-                }
+                guard
+                    let wait = UploadRetrySchedule.wait(
+                        status: status,
+                        retryAfter: retryAfter,
+                        attempt: attempt
+                    )
+                else { break }
+                try await Task.sleep(for: .seconds(wait))
             }
         }
         throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
@@ -625,29 +637,26 @@ actor AIEditService {
         text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
     }
 
-    private static func wavChunk(at url: URL, start: Int, length: Int, sampleRate: Int) throws -> Data {
+    /// One chunk of the decoded take, compressed for the wire.
+    ///
+    /// Raw PCM runs about 96 kB a second, so a five minute take was thirty
+    /// megabytes and a dozen separate requests. The transcript route bills and
+    /// rate limits by the request, so those eleven extra requests cost eleven
+    /// credits and ran the account out of transcriptions halfway through a
+    /// video. The same speech as AAC is around six kilobytes a second.
+    private static func compressedChunk(
+        at url: URL,
+        start: Int,
+        length: Int,
+        sampleRate: Int
+    ) throws -> Data {
         try Task.checkCancellation()
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         try handle.seek(toOffset: UInt64(start))
         let pcm = try handle.read(upToCount: length) ?? Data()
         guard pcm.count == length else { throw NativeEditorError.aiFailed("Decoded audio ended unexpectedly.") }
-        var data = Data()
-        data.reserveCapacity(44 + pcm.count)
-        func append<T: FixedWidthInteger>(_ value: T) {
-            var little = value.littleEndian
-            withUnsafeBytes(of: &little) { data.append(contentsOf: $0) }
-        }
-        data.append(contentsOf: "RIFF".utf8)
-        append(UInt32(36 + pcm.count))
-        data.append(contentsOf: "WAVEfmt ".utf8)
-        append(UInt32(16)); append(UInt16(1)); append(UInt16(1))
-        append(UInt32(sampleRate)); append(UInt32(sampleRate * 2))
-        append(UInt16(2)); append(UInt16(16))
-        data.append(contentsOf: "data".utf8)
-        append(UInt32(pcm.count))
-        data.append(pcm)
-        return data
+        return try TranscriptionAudioEncoder.m4a(pcm: pcm, sampleRate: sampleRate)
     }
 
 }

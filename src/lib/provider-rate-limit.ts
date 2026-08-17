@@ -35,8 +35,13 @@ const ENDPOINT_POLICIES: Record<
   Pick<RateLimitPolicy, "capacity" | "refillPerSecond">
 > = {
   feedback: { capacity: 2, refillPerSecond: 6 / HOUR },
-  transcribe: { capacity: 4, refillPerSecond: 20 / HOUR },
-  "clean-transcript": { capacity: 2, refillPerSecond: 10 / HOUR },
+  // An edit is one transcription and one cleanup, and a creator working
+  // through a shoot runs several in a row. These were set when the editor sent
+  // a take as a dozen separate chunked requests, so four transcriptions meant
+  // one video; now four would mean four videos and a three minute wait for the
+  // fifth.
+  transcribe: { capacity: 12, refillPerSecond: 60 / HOUR },
+  "clean-transcript": { capacity: 12, refillPerSecond: 60 / HOUR },
   "place-overlays": { capacity: 2, refillPerSecond: 15 / HOUR },
   "generate-hooks": { capacity: 3, refillPerSecond: 20 / HOUR },
   "generate-idea": { capacity: 3, refillPerSecond: 20 / HOUR },
@@ -105,8 +110,8 @@ export async function guardProviderSpend(
         subjectHash: userSubject,
         policy: {
           scope: "user:provider-spend",
-          capacity: 12,
-          refillPerSecond: 100 / DAY,
+          capacity: 40,
+          refillPerSecond: 400 / DAY,
         },
       },
       {

@@ -105,3 +105,41 @@ describe("alignCleanedToContiguousTakes", () => {
     ]);
   });
 });
+
+describe("short thoughts the cleaner reworded slightly", () => {
+  // From a real recording. The speaker ran the line several times and the
+  // cleaner returned the last one with "and we" added at the front of its
+  // second sentence. Two words out of nine is 22%, over the proportional
+  // bound, so that sentence found no home and vanished: the finished video
+  // ended mid-phrase on "happy and" and lost the rest of the take.
+  const source = words(
+    "And the two users that messaged me ended the conversation happily " +
+      "and the two users that messaged me ended the conversation happy and " +
+      "might even get some reviews out of them. " +
+      "So it ended up working very well.",
+  );
+
+  it("keeps a sentence the cleaner opened with a couple of small words", () => {
+    const result = alignCleanedToContiguousTakes(
+      source,
+      "And the two users that messaged me ended the conversation happy and, " +
+        "and we might even get some reviews out of them. " +
+        "So it ended up working very well.",
+    );
+    const kept = result.keep
+      .flatMap(([start, end]) => source.slice(start, end + 1))
+      .map(({ text }) => text)
+      .join(" ");
+    expect(kept).toContain("might even get some reviews out of them.");
+    expect(kept).toContain("So it ended up working very well.");
+    expect(result.coverage).toBeGreaterThanOrEqual(0.92);
+  });
+
+  it("still refuses a short generic phrase it cannot really place", () => {
+    const result = alignCleanedToContiguousTakes(
+      words("So it ended up working very well."),
+      "Totally different.",
+    );
+    expect(result.keep).toEqual([]);
+  });
+});

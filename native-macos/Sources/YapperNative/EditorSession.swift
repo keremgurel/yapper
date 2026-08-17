@@ -1096,8 +1096,23 @@ final class EditorSession: ObservableObject {
     }
 
     @discardableResult
+    /// What Delete acts on: what is actually picked, and nothing else.
+    ///
+    /// Trimming and splitting aim at the playhead, and asking those to work on
+    /// the clip it sits in is what a creator means. Delete is not like that.
+    /// The Delete button is disabled with nothing selected, and the key has to
+    /// mean the same thing, because falling through to the clip under the
+    /// playhead removes something nobody pointed at. Paired with a repeated
+    /// delivery of one Backspace, that is what deleted a clip and then the clip
+    /// after it.
+    private func deletableSelection() -> Set<TimelineSelectionItem> {
+        if !timelineSelection.isEmpty { return timelineSelection }
+        if let selectedClipID { return [.clip(selectedClipID)] }
+        return []
+    }
+
     func deleteTimelineSelection(successStatus: String = "Ready") async -> Bool {
-        let selection = commandTimelineSelection()
+        let selection = deletableSelection()
         guard !selection.isEmpty else { return false }
         let clipIDs = Set(selection.compactMap { if case let .clip(id) = $0 { id } else { nil } })
         let textIDs = Set(selection.compactMap { if case let .text(id) = $0 { id } else { nil } })

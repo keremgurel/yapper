@@ -39,6 +39,10 @@ enum YapperAPI {
         for (header, value) in HTTPCookie.requestHeaderFields(with: applicableCookies) {
             request.setValue(value, forHTTPHeaderField: header)
         }
+        // The same name the web session uses. An unnamed URLSession posting
+        // megabytes of audio is exactly the traffic an edge bot filter is built
+        // to stop, and the server already knows this client by this token.
+        request.setValue(NativeUserAgent.token, forHTTPHeaderField: "User-Agent")
         return request
     }
 
@@ -69,7 +73,22 @@ enum YapperAPI {
     /// What a failed call means to a creator, in their terms. The routes answer
     /// 501 when the server has no model configured and 402 when the account
     /// cannot pay for the pass, and neither is worth showing as a status code.
-    static func failure(status: Int, body: Data, action: String) -> NativeEditorError {
+    ///
+    /// - Parameter note: what the edge said about the refusal, when the refusal
+    ///   came from in front of the routes. Carried through because "HTTP 429"
+    ///   alone cannot tell a rate limit from a bot challenge.
+    static func failure(
+        status: Int,
+        body: Data,
+        action: String,
+        note: String? = nil
+    ) -> NativeEditorError {
+        let detail = note.map { " (\($0))" } ?? ""
+        if status == 429 {
+            return .aiFailed(
+                "\(action) was rate limited by the server. Wait a minute, then try again.\(detail)"
+            )
+        }
         if status == 501 {
             return .aiFailed("The AI editor is not configured on the server.")
         }
@@ -89,6 +108,6 @@ enum YapperAPI {
         if status == 401 || status == 403 || status == 404 {
             return .aiFailed("Sign in from the Cloud Studio tab, then try \(action.lowercased()) again.")
         }
-        return .aiFailed("\(action) failed (HTTP \(status)).")
+        return .aiFailed("\(action) failed (HTTP \(status)).\(detail)")
     }
 }
