@@ -68,8 +68,8 @@ enum OverlayCanvasGeometry {
             horizontalGuide = settledY.guide
         }
 
-        moved.x = clampedOrigin(x, extent: overlay.width)
-        moved.y = clampedOrigin(y, extent: overlay.height)
+        moved.x = placedOrigin(x, extent: overlay.width)
+        moved.y = placedOrigin(y, extent: overlay.height)
 
         // A line is only drawn when the snap survived being kept on the frame.
         // An overlay wider than the frame is centred whatever the drag says, and
@@ -141,8 +141,8 @@ enum OverlayCanvasGeometry {
         if corner.ySign < 0 {
             resized.y = overlay.y + overlay.height - resized.height
         }
-        resized.x = clampedOrigin(resized.x, extent: resized.width)
-        resized.y = clampedOrigin(resized.y, extent: resized.height)
+        resized.x = placedOrigin(resized.x, extent: resized.width)
+        resized.y = placedOrigin(resized.y, extent: resized.height)
         return resized
     }
 
@@ -161,11 +161,11 @@ enum OverlayCanvasGeometry {
             mediaAspect: mediaAspect,
             frameAspect: frameAspect
         )
-        scaled.x = clampedOrigin(
+        scaled.x = placedOrigin(
             overlay.x + (overlay.width - scaled.width) / 2,
             extent: scaled.width
         )
-        scaled.y = clampedOrigin(
+        scaled.y = placedOrigin(
             overlay.y + (overlay.height - scaled.height) / 2,
             extent: scaled.height
         )
@@ -184,8 +184,31 @@ enum OverlayCanvasGeometry {
 
     /// Keeps a box on the frame. An overlay wider than the frame is centred
     /// rather than pinned to one edge, which is what a deliberate blow-up wants.
+    ///
+    /// This is the rule for a box the app is placing itself, from a layout or a
+    /// preset. A box the creator is dragging follows `placedOrigin`.
     static func clampedOrigin(_ value: Double, extent: Double) -> Double {
         guard extent < 1 else { return (1 - extent) / 2 }
         return min(1 - extent, max(0, value))
+    }
+
+    /// How much of the frame an overlay has to keep covered, so one pushed off
+    /// the side can still be caught and brought back.
+    static let smallestVisibleShare = 0.1
+
+    /// Where a hand may leave a box.
+    ///
+    /// Running a card off the edge is a real composition: a banner bleeding off
+    /// the top, a phone half in shot. Keeping every box wholly inside the frame
+    /// made that impossible, and an overlay as tall as the frame had it worse,
+    /// because the rule for those centres them: every drag put it straight back
+    /// in the middle, so it could not be moved at all.
+    ///
+    /// What stays is a tenth of the frame, or the whole overlay when it is
+    /// smaller than that. Enough to grab.
+    static func placedOrigin(_ value: Double, extent: Double) -> Double {
+        guard extent > 0 else { return value }
+        let visible = min(extent, smallestVisibleShare)
+        return min(1 - visible, max(visible - extent, value))
     }
 }

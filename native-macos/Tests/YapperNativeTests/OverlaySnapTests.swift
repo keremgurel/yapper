@@ -164,9 +164,10 @@ struct OverlaySnapTests {
         #expect(moved.guides.isEmpty)
     }
 
-    @Test func anOverlayWiderThanTheFrameDrawsNoLineItCannotHonour() {
-        // Wider than the frame, so it is centred whatever the drag asks for.
-        // A guide here would promise an alignment that was overruled.
+    /// An overlay wider than the frame is placed by hand like any other now,
+    /// so a drag of two points moves it two points and the guide it lands on
+    /// is one the position actually kept.
+    @Test func anOverlayWiderThanTheFrameStillMovesWithTheDrag() {
         let start = overlay(x: 0, y: 0.3, width: 1.4, height: 0.3)
         let moved = OverlayCanvasGeometry.moved(
             overlay: start,
@@ -174,7 +175,8 @@ struct OverlaySnapTests {
             translation: CGSize(width: 2, height: 0),
             canvasSize: stage
         )
-        #expect(moved.overlay.x == (1 - 1.4) / 2)
-        #expect(!moved.guides.contains { $0.axis == .vertical })
+        // It used to be teleported to (1 - 1.4) / 2 whatever the drag said.
+        #expect(moved.overlay.x != (1 - 1.4) / 2)
+        #expect(abs(moved.overlay.x) < 0.05)
     }
 }

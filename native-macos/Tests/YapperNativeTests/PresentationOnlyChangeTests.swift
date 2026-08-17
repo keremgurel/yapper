@@ -35,6 +35,71 @@ struct PresentationOnlyChangeTests {
 
     private func project() -> EditorProject { base }
 
+    private func withOverlay() -> EditorProject {
+        var project = base
+        project.overlays = [
+            ProjectOverlay(
+                mediaID: mediaID,
+                timelineStart: 1,
+                duration: 3,
+                sourceStart: 0,
+                x: 0.1,
+                y: 0.1,
+                width: 0.5,
+                height: 0.3
+            ),
+        ]
+        return project
+    }
+
+    /// Moving a card is a transform, the same as framing a clip, and tearing
+    /// the player item down for it is what made placing overlays feel like
+    /// wading. 142 of 167 rebuilds on a real session were this.
+    @Test func movingAnOverlayIsPresentationOnly() {
+        let before = withOverlay()
+        var after = before
+        after.overlays?[0].y = -0.05
+        after.overlays?[0].x = 0.4
+        #expect(after.differsOnlyInPresentation(from: before))
+    }
+
+    @Test func croppingAnOverlayIsPresentationOnly() {
+        let before = withOverlay()
+        var after = before
+        after.overlays?[0].crop = OverlayCrop(x: 0, y: 0.2, width: 1, height: 0.6)
+        after.overlays?[0].height = 0.18
+        #expect(after.differsOnlyInPresentation(from: before))
+    }
+
+    @Test func movingAnOverlayAlongTheTimelineIsNot() {
+        let before = withOverlay()
+        var after = before
+        after.overlays?[0].timelineStart = 2
+        #expect(!after.differsOnlyInPresentation(from: before))
+    }
+
+    @Test func hidingAnOverlayIsNot() {
+        let before = withOverlay()
+        var after = before
+        after.overlays?[0].isHidden = true
+        #expect(!after.differsOnlyInPresentation(from: before))
+    }
+
+    @Test func addingAnOverlayIsNot() {
+        let before = withOverlay()
+        var after = before
+        let extra = after.overlays![0]
+        after.overlays?.append(extra)
+        #expect(!after.differsOnlyInPresentation(from: before))
+    }
+
+    @Test func changingAnOverlaysLaneIsNot() {
+        let before = withOverlay()
+        var after = before
+        after.overlays?[0].track = 2
+        #expect(!after.differsOnlyInPresentation(from: before))
+    }
+
     @Test func framingOnMoreThanOneClipStillCounts() {
         var changed = project()
         changed.clips[0].framing = VideoFraming(scale: 2, x: 0.1, y: 0)

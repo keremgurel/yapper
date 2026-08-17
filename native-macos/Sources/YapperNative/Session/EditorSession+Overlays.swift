@@ -151,7 +151,11 @@ extension EditorSession {
             mediaAspect: aspects.media,
             frameAspect: aspects.frame
         )
-        updated.y = OverlayCanvasGeometry.clampedOrigin(updated.y, extent: updated.height)
+        // Where the creator put it, not where a crop would rather have it. The
+        // box's height changes to fit what the crop kept, and pulling the box
+        // back inside the frame afterwards dragged the picture down off the top
+        // edge they had just placed it against.
+        updated.y = OverlayCanvasGeometry.placedOrigin(updated.y, extent: updated.height)
         commitOverlayEdit(updated)
     }
 

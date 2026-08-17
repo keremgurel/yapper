@@ -49,7 +49,9 @@ struct OverlayCanvasGeometryTests {
         #expect(moved.guides.count == 2)
     }
 
-    @Test func anOverlayCannotBeDraggedOffTheFrame() {
+    /// Running a card off the edge is a real composition. What is not is
+    /// losing one: a tenth of the frame stays covered, whatever the drag says.
+    @Test func anOverlayCanBeDraggedOffTheFrameButNotAwayEntirely() {
         let moved = OverlayCanvasGeometry.moved(
             overlay: card(x: 0.7, y: 0.7),
             origin: CGPoint(x: 0.7, y: 0.7),
@@ -57,11 +59,25 @@ struct OverlayCanvasGeometryTests {
             canvasSize: stage,
             snapping: false
         )
-        #expect(moved.overlay.x == 0.8)
-        #expect(moved.overlay.y == 0.8)
+        #expect(moved.overlay.x > 0.8)
+        #expect(abs(moved.overlay.x - 0.9) < 0.0001)
+        #expect(abs(moved.overlay.y - 0.9) < 0.0001)
     }
 
-    @Test func anOverlayBiggerThanTheFrameIsCentredRatherThanPinned() {
+    @Test func anOverlayCanBeDraggedPastTheTopEdge() {
+        let moved = OverlayCanvasGeometry.moved(
+            overlay: card(x: 0.2, y: 0.05, width: 0.4, height: 0.2),
+            origin: CGPoint(x: 0.2, y: 0.05),
+            translation: CGSize(width: 0, height: -60),
+            canvasSize: stage,
+            snapping: false
+        )
+        #expect(moved.overlay.y < 0)
+    }
+
+    /// The rule that centred these made them the one kind of overlay nobody
+    /// could move: every drag put it straight back in the middle.
+    @Test func anOverlayBiggerThanTheFrameStillFollowsTheHand() {
         let moved = OverlayCanvasGeometry.moved(
             overlay: card(width: 1.2, height: 1.2),
             origin: CGPoint(x: 0, y: 0),
@@ -69,7 +85,7 @@ struct OverlayCanvasGeometryTests {
             canvasSize: stage,
             snapping: false
         )
-        #expect(abs(moved.overlay.x + 0.1) < 0.0001)
+        #expect(moved.overlay.x > 0)
     }
 
     @Test func resizingKeepsTheMediaShapeAndTheOppositeCorner() {
