@@ -58,9 +58,12 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     /// True when only the speaker is kept and the room behind them is thrown
     /// away, leaving the project's backdrop showing. `nil` reads as off.
     var backgroundRemoved: Bool?
+    /// How much the face on this clip is retouched. `nil` reads as not at all.
+    var retouch: ClipRetouch?
 
     var duration: Double { max(0, sourceEnd - sourceStart) }
     var removesBackground: Bool { backgroundRemoved == true }
+    var resolvedRetouch: ClipRetouch { retouch ?? .none }
 
     init(
         id: UUID = UUID(),
@@ -69,7 +72,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         sourceEnd: Double,
         framing: VideoFraming? = nil,
         framingKeys: [FramingKey]? = nil,
-        backgroundRemoved: Bool? = nil
+        backgroundRemoved: Bool? = nil,
+        retouch: ClipRetouch? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -78,6 +82,7 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         self.framing = framing
         self.framingKeys = framingKeys
         self.backgroundRemoved = backgroundRemoved
+        self.retouch = retouch
     }
 }
 
@@ -636,6 +641,13 @@ struct EditorProject: Codable, Equatable, Sendable {
             || cutsOutTheSpeaker
             || removesAnyBackground
             || hasBackdrop
+            || retouchesAnyClip
+    }
+
+    /// True when any clip is retouched, which the editor has to composite
+    /// because it means finding a face on every frame and painting inside it.
+    var retouchesAnyClip: Bool {
+        !isVideoTrackHidden && clips.contains { !$0.resolvedRetouch.isNeutral }
     }
 
     /// What the main track actually plays at: the fader, or nothing at all when

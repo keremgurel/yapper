@@ -48,6 +48,14 @@ enum ApplyToAll {
         }
     }
 
+    static func retouch(_ settings: ClipRetouch, to clips: [TimelineClip]) -> [TimelineClip] {
+        clips.map { clip in
+            var copy = clip
+            copy.retouch = settings.isNeutral ? nil : settings
+            return copy
+        }
+    }
+
     static func background(removed: Bool, to clips: [TimelineClip]) -> [TimelineClip] {
         clips.map { clip in
             var copy = clip

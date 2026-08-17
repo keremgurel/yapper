@@ -34,6 +34,8 @@ struct TransformInspector: View {
                 backgroundRow
                 if session.removesBackground { backdropRow }
             }
+            Divider().opacity(0.45)
+            RetouchInspector(session: session, clock: clock)
         }
     }
 
