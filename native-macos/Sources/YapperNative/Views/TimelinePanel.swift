@@ -2390,6 +2390,8 @@ struct TimelineRuler: View {
                 }
             }
         }
+        // A drawing of the timeline, not a control. See TimelineThumbnailStrip.
+        .accessibilityHidden(true)
     }
 }
 
@@ -2421,5 +2423,7 @@ struct WaveformShape: View {
             guard !path.isEmpty else { return }
             context.fill(path, with: .color(color))
         }
+        // A drawing of the sound, not a control. See TimelineThumbnailStrip.
+        .accessibilityHidden(true)
     }
 }

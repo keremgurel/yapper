@@ -185,6 +185,13 @@ struct TimelineThumbnailStrip: View {
         }
         .frame(width: width, height: height, alignment: .leading)
         .clipped()
+        // A picture of the clip, not a control. Every tile was its own
+        // accessibility element, and a long timeline is thousands of them:
+        // anything asking the window for its accessibility tree, a screen
+        // recorder or a dictation tool, made SwiftUI rebuild all of it on every
+        // update. Sampled during a pane drag, that was the most expensive thing
+        // in the app.
+        .accessibilityHidden(true)
     }
 
     /// How many frames fit, rounded to the nearest rather than up.

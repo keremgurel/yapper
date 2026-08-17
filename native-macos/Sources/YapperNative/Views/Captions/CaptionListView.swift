@@ -87,17 +87,33 @@ struct CaptionListView: View {
         let isEmptied = text.trimmingCharacters(in: .whitespaces).isEmpty
         return HStack(spacing: 8) {
             Button {
-                session.toggleCaptionSelection(caption.id)
+                toggleAndSeek(caption)
             } label: {
                 Text("\(number)")
                     .font(.studioCaption)
                     .monospacedDigit()
                     .foregroundStyle(isSelected ? Color.yapperOrange : .secondary)
-                    .frame(width: 20, alignment: .trailing)
+                    // Wide enough for a three figure card and never wrapped: at
+                    // twenty points the hundredth caption broke across two
+                    // lines and took the row's height with it.
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                    .frame(width: 26, alignment: .trailing)
             }
             .buttonStyle(.studioPlain)
         .clickableCursor()
-            .help("Select. Click several to restyle or merge them together.")
+            .help("Select and jump here. Click several to restyle or merge them together.")
+
+            Button {
+                seek(to: caption)
+            } label: {
+                Image(systemName: "play.circle")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.studioPlain)
+            .clickableCursor()
+            .help("Jump the playhead here")
 
             CaptionTextField(
                 text: Binding(
@@ -168,10 +184,23 @@ struct CaptionListView: View {
 
     private func selectAndSeek(_ caption: ProjectCaption) {
         session.selectCaption(caption.id)
-        guard let cue = session.captionCue(caption.id) else {
-            return
-        }
+        seek(to: caption)
+    }
+
+    /// Moves the playhead to where the card is spoken, and nothing else, so a
+    /// creator can hear a line without disturbing what they have picked out.
+    private func seek(to caption: ProjectCaption) {
+        guard let cue = session.captionCue(caption.id) else { return }
         onSeek(cue.timelineStart + 0.01)
+    }
+
+    /// Adds the card to the selection, or takes it out, and goes to it when it
+    /// has just been added. Picking a card out of a list is nearly always a
+    /// question about what it says on screen.
+    private func toggleAndSeek(_ caption: ProjectCaption) {
+        session.toggleCaptionSelection(caption.id)
+        guard session.isCaptionSelected(caption.id) else { return }
+        seek(to: caption)
     }
 
     private func focusPrevious(of id: UUID) {
