@@ -426,7 +426,12 @@ export async function enqueueObjectDeletionWithinTx(
     ? new Date(
         Math.max(
           effectiveNotBefore.getTime(),
-          Date.now() + PUBLISH_DEFERRAL_MS,
+          // The instant this transaction is reasoning about, not whatever the
+          // wall clock says while it runs. Everything else here is derived from
+          // `notBefore`, and mixing the two made the deferral depend on the day
+          // the code happened to run: the test for it had been failing on main
+          // for that reason alone.
+          notBefore.getTime() + PUBLISH_DEFERRAL_MS,
         ),
       )
     : effectiveNotBefore;
