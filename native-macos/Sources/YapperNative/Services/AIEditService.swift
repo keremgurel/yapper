@@ -228,6 +228,9 @@ actor AIEditService {
             url: YapperAPI.url(path: "api/clean-transcript")
         )
         request.httpMethod = "POST"
+        // Two model passes over a whole take's transcript. The default minute
+        // gave up on a fifteen minute recording long before the server did.
+        request.timeoutInterval = 300
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(
             CleanRequest(words: words.map { .init(text: $0.text) })
@@ -253,7 +256,8 @@ actor AIEditService {
             throw YapperAPI.failure(
                 status: http.statusCode,
                 body: data,
-                action: "The AI edit"
+                action: "The AI edit",
+                note: EdgeRefusalNote.text(for: http, body: data)
             )
         }
         let decoded = try JSONDecoder().decode(CleanResponse.self, from: data)

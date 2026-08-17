@@ -417,6 +417,9 @@ final class EditorSession: ObservableObject {
     private func refreshPlaybackCursor() {
         captionCueCache.refresh(for: project)
         transcriptFlowCache.refresh(for: project)
+        // A file the project no longer holds has no business still asking to
+        // be located.
+        mediaAvailability.refreshIfSubjectsChanged()
         let end = max(0, project.duration)
         if currentTime > end { currentTime = end }
         syncPlaybackCursor()

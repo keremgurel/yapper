@@ -24,9 +24,14 @@ import { parseCleanTranscriptWords } from "@/lib/studio/clean-transcript-input";
 import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+// Two model passes over a whole recording's transcript. A fifteen minute take
+// is around two thousand words in and a rewritten script out, and asking for
+// that inside a minute simply times out: measured on a real take, the route
+// answered {"error":"timeout"} every time. Functions allow far longer than
+// this default did.
+export const maxDuration = 300;
 const MAX_JSON_BYTES = 256 * 1024;
-const PROVIDER_TIMEOUT_MS = 50_000;
+const PROVIDER_TIMEOUT_MS = 240_000;
 const MAX_COMPLETION_TOKENS = 8_192;
 const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
 

@@ -112,10 +112,12 @@ describe("POST /api/clean-transcript payload limits", () => {
         Response.json({ choices: [{ message: { content: "hello" } }] }),
       );
     vi.stubGlobal("fetch", fetchMock);
+    // Far past any budget the route might be given, so this keeps testing the
+    // deadline rather than the number the deadline happens to be.
     vi.spyOn(Date, "now")
       .mockReturnValueOnce(1_000)
       .mockReturnValueOnce(1_000)
-      .mockReturnValueOnce(51_001);
+      .mockReturnValueOnce(1_000 + 60 * 60 * 1_000);
 
     const response = await POST(request({ words: [{ text: "hello" }] }));
 

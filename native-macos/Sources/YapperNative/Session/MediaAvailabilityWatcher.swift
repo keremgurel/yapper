@@ -46,10 +46,31 @@ final class MediaAvailabilityWatcher: ObservableObject {
         refresh()
     }
 
+    /// What the last check was about, so a project that still holds the same
+    /// files is not stat-ed again after every edit.
+    private var lastSubjects: [URL] = []
+
+    /// Re-checks when the project's files have changed under it.
+    ///
+    /// Removing a clip used to leave its banner on screen: nothing re-checked
+    /// until a disk was mounted or the app was brought forward, so the editor
+    /// went on offering to locate a file the project no longer had.
+    func refreshIfSubjectsChanged() {
+        guard let supply else { return }
+        let subjects = Self.subjects(of: supply())
+        guard subjects != lastSubjects else { return }
+        refresh(notifyRestored: false)
+    }
+
+    private static func subjects(of project: EditorProject) -> [URL] {
+        project.media.map(\.url) + (project.audioLayers ?? []).map(\.url)
+    }
+
     /// Re-checks now. Cheap: a handful of stats against the file system.
     func refresh(notifyRestored: Bool = true) {
         guard let supply else { return }
         let supplied = supply()
+        lastSubjects = Self.subjects(of: supplied)
         let missing = MediaAvailability.offlineAssets(in: supplied)
         let forced = supplied.media.filter { identityMismatches.contains($0.id) }
         var next = missing + forced.compactMap { forcedMedia -> MediaAvailability.OfflineAsset? in

@@ -108,6 +108,33 @@ enum YapperAPI {
         if status == 401 || status == 403 || status == 404 {
             return .aiFailed("Sign in from the Cloud Studio tab, then try \(action.lowercased()) again.")
         }
+        // A bare status tells a creator nothing they can act on. The routes
+        // all answer with a reason; carry it.
+        if let reason = (try? JSONSerialization.jsonObject(with: body) as? [String: Any])?
+            .flatMap({ $0["error"] as? String }),
+            !reason.isEmpty
+        {
+            return .aiFailed("\(action) failed: \(readable(reason)).\(detail)")
+        }
         return .aiFailed("\(action) failed (HTTP \(status)).\(detail)")
+    }
+
+    /// The server's own word for what went wrong, in the creator's language.
+    private static func readable(_ code: String) -> String {
+        switch code {
+        case "unsafe_alignment":
+            return "the cleaned script could not be matched back to the recording safely, "
+                + "so nothing was cut rather than cutting the wrong thing"
+        case "no_provider":
+            return "the AI editor is not configured on the server"
+        case "rate_limited":
+            return "you have run as many AI edits as this hour allows"
+        case "timeout":
+            return "the model took too long"
+        case "aborted":
+            return "the request was cancelled"
+        default:
+            return code.replacingOccurrences(of: "_", with: " ")
+        }
     }
 }
