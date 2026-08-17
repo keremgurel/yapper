@@ -90,6 +90,18 @@ struct PlayerPanel: View {
                             )
                         }
                     }
+                    // Over the picture and under the offline banner: it points
+                    // at something in the picture, so it has to be on top of
+                    // it, and it has nothing to say when there is no picture.
+                    .overlay {
+                        if session.showsFaceIndicator {
+                            SpeakerFaceIndicator(
+                                session: session,
+                                clock: session.playbackClock,
+                                stageSize: stageSize
+                            )
+                        }
+                    }
                     // Over everything on the canvas: when the footage cannot be
                     // read, why that is beats anything drawn on top of it.
                     .overlay {

@@ -76,3 +76,37 @@ struct BlemishReachTests {
         #expect(!BlemishDetector.isOnTheFace(CGPoint(x: 10, y: 10), face: empty))
     }
 }
+
+/// The same region measured from the top left, which is how `FaceDetectionService`
+/// hands its boxes out and therefore how the canvas indicator draws them.
+struct BlemishReachFlippedTests {
+    private static let box = CGRect(x: 200, y: 400, width: 600, height: 600)
+
+    /// Both grow by the same amount, and both leave the chin where it was.
+    /// Measured from the top left the forehead is reached by taking y *back*,
+    /// which is the one line worth a test: adding instead would grow the region
+    /// down the neck while the name still said forehead.
+    @Test("Flipping the coordinates does not flip which end grows")
+    func theForeheadIsStillTheEndThatGrows() {
+        let upright = BlemishDetector.fullFace(Self.box)
+        let flipped = BlemishDetector.fullFaceFromTopLeft(Self.box)
+
+        #expect(upright.height == flipped.height)
+        #expect(upright.width == flipped.width)
+        #expect(upright.minX == flipped.minX)
+
+        // Upright: the chin is the bottom and stays put.
+        #expect(upright.minY == Self.box.minY)
+        // From the top left: the chin is the bottom and stays put too, so it is
+        // the top that moves.
+        #expect(abs(flipped.maxY - Self.box.maxY) < 1e-9)
+        #expect(flipped.minY < Self.box.minY)
+    }
+
+    @Test("The two describe the same distance either side of the box")
+    func theyGrowByTheSameAmount() {
+        let grown = BlemishDetector.fullFace(Self.box).height - Self.box.height
+        let flipped = BlemishDetector.fullFaceFromTopLeft(Self.box)
+        #expect(abs((Self.box.minY - flipped.minY) - grown) < 1e-9)
+    }
+}

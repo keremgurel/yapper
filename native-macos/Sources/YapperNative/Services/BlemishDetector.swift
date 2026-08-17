@@ -84,6 +84,22 @@ final class BlemishDetector: @unchecked Sendable {
         )
     }
 
+    /// The same region, for callers measuring from the top left.
+    ///
+    /// Vision hands its boxes out both ways round depending on which service
+    /// asked, and the difference between the two is a forehead and a chin: get
+    /// it wrong and the region grows downward onto the neck while claiming to
+    /// be the forehead. Two functions rather than a flag so neither caller has
+    /// to remember which way up it is.
+    static func fullFaceFromTopLeft(_ face: CGRect) -> CGRect {
+        CGRect(
+            x: face.minX,
+            y: face.minY - face.height * foreheadReach,
+            width: face.width,
+            height: face.height * (1 + foreheadReach)
+        )
+    }
+
     private struct Key: Hashable {
         let trackID: CMPersistentTrackID
         let value: CMTimeValue
