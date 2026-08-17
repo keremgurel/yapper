@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Pulls the preview back from the panel it fills, and puts it back.
+/// Pulls the preview back from the panel it fills, and pushes it past it.
 ///
-/// The readout is a button rather than a label: at 60% the thing you want next
-/// is almost always 100%, and a click on the number you are already reading is
-/// the shortest way to say so.
+/// The readout is a button rather than a label: at 60% or at 300% the thing you
+/// want next is almost always 100%, and a click on the number you are already
+/// reading is the shortest way to say so.
 struct PreviewZoomControl: View {
     @Binding var zoom: PreviewZoom
 
@@ -12,7 +12,7 @@ struct PreviewZoomControl: View {
         HStack(spacing: 2) {
             stepButton("minus", to: zoom.stepped(by: -PreviewZoom.step))
                 .disabled(zoom.isMinimum)
-                .help("Pull the preview back, for reaching handles outside the frame")
+                .help("Smaller, for reaching handles outside the frame")
 
             Button {
                 zoom = .fit
@@ -28,8 +28,8 @@ struct PreviewZoomControl: View {
             .help("Fit the preview to the panel")
 
             stepButton("plus", to: zoom.stepped(by: PreviewZoom.step))
-                .disabled(zoom.isFit)
-                .help("Bring the preview back towards the panel")
+                .disabled(zoom.isMaximum)
+                .help("Larger, up to \(Int(PreviewZoom.maximumScale * 100))%, for looking at detail. Scroll to move around.")
         }
         .padding(.horizontal, 2)
         .frame(height: 28)

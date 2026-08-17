@@ -120,6 +120,12 @@ struct PlayerPanel: View {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .stroke(Color.previewCanvasBorder, lineWidth: 1)
                     )
+                    // Past the fit the stage is larger than the panel, so it is
+                    // put on a scroller and the rest of it is a scroll away.
+                    // Always a scroller rather than one that appears at 101%,
+                    // so the player view underneath keeps its identity and does
+                    // not tear down and rebuild on the way past.
+                    .modifier(ScrollableStage(size: proxy.size, enabled: zoom.isPastFit))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Handles hanging outside the stage are the point, handles

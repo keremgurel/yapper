@@ -211,10 +211,20 @@ struct VideoFramingTests {
 
     // MARK: - Pulling the preview back
 
-    @Test func thePreviewNeverGrowsPastTheFitOrShrinksToNothing() {
-        #expect(PreviewZoom(scale: 4).isFit)
+    @Test func thePreviewIsHeldBetweenAThumbnailAndActualPixels() {
+        #expect(PreviewZoom(scale: 40).scale == PreviewZoom.maximumScale)
         #expect(PreviewZoom(scale: 0).scale == PreviewZoom.minimumScale)
         #expect(PreviewZoom.fit.isFit)
+    }
+
+    /// Fitted, past fitted and pulled back are three different states, and the
+    /// stage only has somewhere to scroll to in one of them.
+    @Test func onlyAStageLargerThanThePanelHasAnywhereToScroll() {
+        #expect(!PreviewZoom.fit.isPastFit)
+        #expect(!PreviewZoom(scale: 0.5).isPastFit)
+        #expect(PreviewZoom(scale: 2).isPastFit)
+        #expect(!PreviewZoom(scale: 2).isFit)
+        #expect(PreviewZoom(scale: PreviewZoom.maximumScale).isMaximum)
     }
 
     @Test func aPinchIsAppliedToWhereItStarted() {
