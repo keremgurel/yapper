@@ -43,6 +43,18 @@ final class BlemishDetector: @unchecked Sendable {
     /// How far past its own edge a patch is faded, as a fraction of its radius.
     static let feather = 0.6
 
+    /// How much bigger the disc is than the anomaly that found it.
+    ///
+    /// A blob is measured at the detection threshold, so it is the *core* of a
+    /// spot rather than the spot: the raised centre, without the red that
+    /// spreads out around it. A disc cut to that core settles the middle and
+    /// leaves a ring, which is why clearing at full strength used to move 0.02%
+    /// of a face and be impossible to see. Measured on real footage at a
+    /// several values: at 1x the spots survive, at 2.2x they go, and the skin
+    /// either side of that is identical because the mix only ever runs towards
+    /// the neighbouring skin tone.
+    static let radiusGrowth = 2.5
+
     /// How far above Vision's box the face is taken to carry on, as a fraction
     /// of that box's height.
     ///
@@ -263,12 +275,16 @@ final class BlemishDetector: @unchecked Sendable {
     }
 
     /// One soft disc per blemish, all of them together.
+    ///
+    /// Each disc is `radiusGrowth` times the anomaly that found it, so it
+    /// covers the whole spot rather than the core the threshold caught.
     static func discs(
         _ patches: [(centre: CGPoint, radius: Double)],
         in extent: CGRect
     ) -> CIImage? {
         var mask: CIImage?
-        for patch in patches {
+        for found in patches {
+            let patch = (centre: found.centre, radius: found.radius * radiusGrowth)
             let gradient = CIFilter(name: "CIRadialGradient")
             gradient?.setValue(CIVector(cgPoint: patch.centre), forKey: kCIInputCenterKey)
             gradient?.setValue(patch.radius, forKey: "inputRadius0")
