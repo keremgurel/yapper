@@ -1683,15 +1683,7 @@ final class EditorSession: ObservableObject {
                     guard let self, self.activeOperation?.operation == .transcribing else { return }
                     self.aiProgress = max(self.aiProgress, mediaBase + mediaShare * fraction)
                 }
-                let words = if let transcriptionRunner {
-                    try await transcriptionRunner(media, dictionaryEntries, reportProgress)
-                } else {
-                    try await aiEditService.transcribe(
-                        media: media,
-                        dictionary: dictionaryEntries,
-                        progress: reportProgress
-                    )
-                }
+                let words = try await transcribedWords(of: media, progress: reportProgress)
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
@@ -1775,6 +1767,11 @@ final class EditorSession: ObservableObject {
             oneClickEditStage = nil
         }
 
+        // Transcribing is the slow, paid half of this. Whatever it hears is
+        // kept even when the edit that follows fails, so a retry is a retry of
+        // the part that broke rather than another two minutes and another
+        // credit spent hearing the same words again.
+        var heard: [TranscriptWord]?
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
             for (index, mediaID) in mediaIDs.enumerated() {
@@ -1783,11 +1780,12 @@ final class EditorSession: ObservableObject {
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
                     setOneClickEditStage(.transcribing)
-                    words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+                    words = try await transcribedWords(of: media)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
                     project.transcript = transcript
+                    heard = transcript
                 }
                 guard !words.isEmpty else {
                     throw NativeEditorError.aiFailed("No spoken words were found in \(media.name).")
@@ -1831,7 +1829,36 @@ final class EditorSession: ObservableObject {
             )
         } catch {
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
+            await keepTranscript(heard)
         }
+    }
+
+    /// One way to get a take's words, whoever is asking.
+    ///
+    /// The one-click edit used to call the transcriber directly while the
+    /// standalone Transcribe went through the injected runner, so the slowest
+    /// and most expensive path in the app was the one no test could reach.
+    private func transcribedWords(
+        of media: ProjectMedia,
+        progress: (@MainActor @Sendable (Double) -> Void)? = nil
+    ) async throws -> [TranscriptWord] {
+        if let transcriptionRunner {
+            return try await transcriptionRunner(media, dictionaryEntries, progress)
+        }
+        return try await aiEditService.transcribe(
+            media: media,
+            dictionary: dictionaryEntries,
+            progress: progress
+        )
+    }
+
+    /// Puts back what the transcriber heard after a failed edit rolled the
+    /// project away from it. Only the words: the timeline the creator had is
+    /// the one they get back.
+    private func keepTranscript(_ heard: [TranscriptWord]?) async {
+        guard let heard, !heard.isEmpty, (project.transcript ?? []).isEmpty else { return }
+        project.transcript = heard
+        try? await persist()
     }
 
     /// The Captions on/off switch. Turning them off keeps the cards so the
@@ -1994,7 +2021,7 @@ final class EditorSession: ObservableObject {
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
                 if words.isEmpty {
                     statusMessage = "Transcribing before auto-trim…"
-                    words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+                    words = try await transcribedWords(of: media)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)

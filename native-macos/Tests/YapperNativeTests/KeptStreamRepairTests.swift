@@ -66,3 +66,74 @@ struct KeptStreamRepairTests {
         #expect(heard == "And we're at 324 users, which is wild.")
     }
 }
+
+/// Whole runs at a line, not just a stumble inside one.
+@Suite
+struct RepeatedSentenceTests {
+    private let mediaID = UUID()
+
+    private func words(_ text: String) -> [TranscriptWord] {
+        text.split(separator: " ").enumerated().map { index, token in
+            TranscriptWord(
+                mediaID: mediaID,
+                text: String(token),
+                start: Double(index) * 0.3,
+                end: Double(index) * 0.3 + 0.25
+            )
+        }
+    }
+
+    private func kept(_ words: [TranscriptWord], _ cuts: [(Int, Int)]) -> String {
+        var removed = Array(repeating: false, count: words.count)
+        for cut in cuts where cut.0 <= cut.1 {
+            for index in cut.0 ... cut.1 { removed[index] = true }
+        }
+        return words.indices.filter { !removed[$0] }.map { words[$0].text }.joined(separator: " ")
+    }
+
+    /// From a real recording: both runs at the line survived the edit, forty
+    /// words apart, so the video said the whole thing twice.
+    @Test("The take the speaker settled on is the one that stays")
+    func keepsTheLaterRun() {
+        let source = words(
+            "And the two users that messaged me ended the conversation happy and thankful. "
+                + "So it worked out very well. "
+                + "And the two users that messaged me ended the conversation happy and might even get some reviews."
+        )
+        let repaired = KeptStreamRepair.withoutRepeatedSentences(words: source, cuts: [])
+        let heard = kept(source, repaired)
+        #expect(!heard.contains("happy and thankful."))
+        #expect(heard.contains("might even get some reviews."))
+        #expect(heard.contains("So it worked out very well."))
+    }
+
+    @Test("Two different sentences that open alike both stay")
+    func keepsDistinctSentences() {
+        let source = words(
+            "I did it by the book with redirects and a change of address. "
+                + "I did it because the old name was misleading to everybody reading it."
+        )
+        let repaired = KeptStreamRepair.withoutRepeatedSentences(words: source, cuts: [])
+        #expect(repaired.isEmpty)
+    }
+
+    @Test("A short line said twice is left alone")
+    func ignoresShortLines() {
+        let source = words("Alright. Alright. So here is the thing about the numbers this week.")
+        let repaired = KeptStreamRepair.withoutRepeatedSentences(words: source, cuts: [])
+        #expect(repaired.isEmpty)
+    }
+
+    @Test("A callback later in the video is not a repeat")
+    func ignoresDistantRepeats() {
+        let source = words(
+            "We are at 324 users which is absolutely insane. "
+                + "Month one is next week and I will do the full cost breakdown. "
+                + "Traffic held at about ninety visitors a day from Google. "
+                + "Still zero pounds spent on any advertising at all. "
+                + "We are at 324 users which is absolutely insane."
+        )
+        let repaired = KeptStreamRepair.withoutRepeatedSentences(words: source, cuts: [])
+        #expect(repaired.isEmpty)
+    }
+}

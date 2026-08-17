@@ -19,6 +19,100 @@ enum KeptStreamRepair {
     /// this they are two mentions of the same thing, which is fine.
     static let stumbleGap = 12
 
+    /// A sentence has to be at least this long before two of them being alike
+    /// means anything. "Alright." and "So yeah." are not repeats.
+    static let repeatedSentenceWords = 5
+    /// How alike two sentences have to be. A speaker running a line again
+    /// changes a word or two; below this they are two different sentences that
+    /// happen to start the same way.
+    static let sameSentence = 0.75
+    /// How much of the shorter sentence the shared opening has to be.
+    static let sameOpening = 0.7
+    /// How far apart two attempts at a line can be. Beyond this the speaker has
+    /// moved on and come back, which is a callback, not a stumble.
+    static let attemptsApart = 3
+
+    /// The same cuts, with the earlier of two attempts at one sentence gone.
+    ///
+    /// The stumble pass reads a few words at a time and catches a line the
+    /// speaker restarted mid-flow. This reads whole sentences, because the
+    /// cleaner also keeps two complete runs at the same line: measured on a
+    /// real recording, "And the two users that messaged me ended the
+    /// conversation happy and thankful." played and then, forty words later,
+    /// "And the two users that messaged me ended the conversation happy and
+    /// might even get some reviews out of them." The later one is the take the
+    /// speaker settled on, so the earlier one goes.
+    static func withoutRepeatedSentences(
+        words: [TranscriptWord],
+        cuts: [(Int, Int)]
+    ) -> [(Int, Int)] {
+        var removed = removedFlags(count: words.count, cuts: cuts)
+        let kept = words.indices.filter { !removed[$0] }
+        guard kept.count > repeatedSentenceWords else { return cuts }
+
+        var sentences: [[Int]] = []
+        var current: [Int] = []
+        for index in kept {
+            current.append(index)
+            if isSentenceEnd(words[index].text) {
+                sentences.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty { sentences.append(current) }
+
+        for first in sentences.indices {
+            let earlier = tokens(of: sentences[first], in: words)
+            guard earlier.count >= repeatedSentenceWords else { continue }
+            for second in (first + 1) ..< min(first + 1 + attemptsApart, sentences.count) {
+                let later = tokens(of: sentences[second], in: words)
+                guard later.count >= repeatedSentenceWords else { continue }
+                guard isSameLine(earlier, later) else { continue }
+                for index in sentences[first] { removed[index] = true }
+                return withoutRepeatedSentences(words: words, cuts: ranges(from: removed))
+            }
+        }
+        return cuts
+    }
+
+    private static func tokens(of sentence: [Int], in words: [TranscriptWord]) -> [String] {
+        sentence.map { normalize(words[$0].text) }.filter { !$0.isEmpty }
+    }
+
+    /// Whether these are two runs at one line.
+    ///
+    /// A restart is recognisable by its opening: the speaker begins the same
+    /// sentence and finishes it differently. "...ended the conversation happy
+    /// and thankful." against "...ended the conversation happy and might even
+    /// get some reviews out of them." shares twelve opening words and then
+    /// parts, which counting shared words alone scores too low to notice.
+    ///
+    /// Two sentences that merely open alike part almost immediately, so the
+    /// shared opening has to be most of the shorter one.
+    static func isSameLine(_ a: [String], _ b: [String]) -> Bool {
+        guard !a.isEmpty, !b.isEmpty else { return false }
+        let opening = zip(a, b).prefix { $0 == $1 }.count
+        if opening >= repeatedSentenceWords,
+           Double(opening) / Double(min(a.count, b.count)) >= sameOpening
+        {
+            return true
+        }
+        return sharedWords(a, b) >= sameSentence
+    }
+
+    /// How much of the longer sentence the shorter one also says, in any order.
+    static func sharedWords(_ a: [String], _ b: [String]) -> Double {
+        guard !a.isEmpty, !b.isEmpty else { return 0 }
+        var counts: [String: Int] = [:]
+        for token in a { counts[token, default: 0] += 1 }
+        var shared = 0
+        for token in b where (counts[token] ?? 0) > 0 {
+            counts[token]! -= 1
+            shared += 1
+        }
+        return Double(shared) / Double(max(a.count, b.count))
+    }
+
     /// The same cuts, with the first of two consecutive attempts removed.
     static func withoutImmediateRepeats(
         words: [TranscriptWord],

@@ -86,7 +86,9 @@ enum CaptionGenerator {
         // region, it maps to nothing and vanishes from the video entirely.
         let removed = (word.sourceStart - last.sourceEnd) - (word.timelineStart - last.timelineEnd)
         if removed > 0.05 { return true }
-        if wordsPerCard > 0 { return group.count >= wordsPerCard }
+        if wordsPerCard > 0 {
+            return breaksFixedCard(group: group, next: word, wordsPerCard: wordsPerCard)
+        }
 
         if group.count >= maximumWords { return true }
         if closesSentence(last.text) { return true }
@@ -94,6 +96,54 @@ enum CaptionGenerator {
         if joined.count + 1 + word.text.count > maximumCharacters { return true }
         if let first = group.first, word.sourceEnd - first.sourceStart > maximumSeconds { return true }
         return false
+    }
+
+    /// Words that belong to whatever comes after them.
+    ///
+    /// A card counted out in threes lands wherever the third word falls, and on
+    /// a real edit that is regularly mid-phrase: "I'll do the" / "full cost
+    /// versus" / "revenue then." Ending a card on one of these reads as a
+    /// sentence cut in half, and the reader spends the next card catching up.
+    /// Only the words that point at whatever comes next: an article with no
+    /// noun, a preposition with no object. A card may end on a verb or an
+    /// adverb and still read; a card ending on "the" cannot, and at three words
+    /// a card there is not room to be fussier than this.
+    static let clingingWords: Set<String> = [
+        "a", "an", "the", "my", "our", "your", "its", "their", "his", "her",
+        "this", "these", "those", "of", "to", "in", "for", "with", "at", "on",
+        "from", "by", "into", "over", "than", "as", "and", "or", "but",
+    ]
+
+    /// Whether a fixed-size card is finished.
+    ///
+    /// Counted cards keep their count, give or take a word, so the punchy
+    /// short-form look survives. What they no longer do is end on a word that
+    /// belongs to the next phrase: the card takes one more word, or stops one
+    /// earlier, whichever lands somewhere a reader would pause.
+    static func breaksFixedCard(
+        group: [CaptionSourceWord],
+        next: CaptionSourceWord,
+        wordsPerCard: Int
+    ) -> Bool {
+        guard let last = group.last else { return false }
+        if closesSentence(last.text) { return true }
+        if group.count >= wordsPerCard + 1 { return true }
+        if group.count >= wordsPerCard {
+            // Full, but ending here would split a phrase. One more word is
+            // allowed, and only one.
+            return !clings(last.text)
+        }
+        guard wordsPerCard > 1, group.count == wordsPerCard - 1 else { return false }
+        // One short of full: stopping here beats going on when the word that
+        // would fill the card clings to the one after it.
+        return clings(next.text) && !clings(last.text)
+    }
+
+    private static func clings(_ text: String) -> Bool {
+        let word = text.lowercased().filter { $0.isLetter || $0 == "'" }
+        guard !word.isEmpty else { return false }
+        if text.hasSuffix(",") || text.hasSuffix(";") || text.hasSuffix(":") { return false }
+        return clingingWords.contains(word)
     }
 
     private static func closesSentence(_ text: String) -> Bool {
