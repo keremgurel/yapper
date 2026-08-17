@@ -2355,29 +2355,31 @@ enum TimelineTextGeometry {
 struct TimelineRuler: View {
     let duration: Double
     let width: Double
+    /// The stretch of the strip to draw, in points. See `TimelineRulerTicks`:
+    /// the strip is as wide as the zoomed timeline, and drawing all of it costs
+    /// the same whether or not any of it is on screen.
+    let visible: ClosedRange<Double>
 
     var body: some View {
         Canvas { context, size in
-            guard duration > 0 else { return }
-            let approximateStep = max(1, duration / max(2, floor(size.width / 100)))
-            let majorStep = niceStep(approximateStep)
-            let minorStep = majorStep / 5
-            var time = 0.0
-            var tick = 0
-            while time <= duration + 0.001 {
-                let x = TimelineMetrics.x(for: time, duration: duration, width: size.width)
-                let isMajor = tick.isMultiple(of: 5)
+            let ticks = TimelineRulerTicks.ticks(
+                duration: duration,
+                width: size.width,
+                visible: visible
+            )
+            for tick in ticks {
+                let x = TimelineMetrics.x(for: tick.time, duration: duration, width: size.width)
                 var path = Path()
-                path.move(to: CGPoint(x: x, y: isMajor ? 18 : 25))
+                path.move(to: CGPoint(x: x, y: tick.isMajor ? 18 : 25))
                 path.addLine(to: CGPoint(x: x, y: 30))
                 context.stroke(
                     path,
-                    with: .color(Color.primary.opacity(isMajor ? 0.32 : 0.14)),
+                    with: .color(Color.primary.opacity(tick.isMajor ? 0.32 : 0.14)),
                     lineWidth: 1
                 )
-                if isMajor {
+                if tick.isMajor {
                     context.draw(
-                        Text(formatTime(time))
+                        Text(formatTime(tick.time))
                             .font(.system(size: 11.5, weight: .semibold, design: .monospaced))
                             .foregroundStyle(Color.primary.opacity(0.84)),
                         // Keep the ascenders inside the Canvas at every display
@@ -2386,17 +2388,8 @@ struct TimelineRuler: View {
                         anchor: .leading
                     )
                 }
-                tick += 1
-                time += minorStep
             }
         }
-    }
-
-    private func niceStep(_ raw: Double) -> Double {
-        let power = pow(10, floor(log10(raw)))
-        let normalized = raw / power
-        let nice: Double = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10
-        return nice * power
     }
 }
 

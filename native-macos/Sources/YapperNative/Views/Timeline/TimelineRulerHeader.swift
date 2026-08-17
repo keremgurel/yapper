@@ -33,7 +33,14 @@ struct TimelineRulerHeader: View {
     }
 
     private var strip: some View {
-        TimelineRuler(duration: session.duration, width: contentWidth)
+        TimelineRuler(
+            duration: session.duration,
+            width: contentWidth,
+            visible: TimelineRulerTicks.window(
+                scrollX: viewport.scrollX,
+                viewportWidth: layout.viewportWidth
+            )
+        )
             .frame(width: contentWidth, height: TimelineRowLayout.rulerHeight)
             .padding(.leading, layout.leadingInset)
             .padding(.trailing, layout.trailingInset)
