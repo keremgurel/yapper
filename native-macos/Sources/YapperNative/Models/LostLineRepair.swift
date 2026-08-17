@@ -15,6 +15,9 @@ enum LostLineRepair {
     /// Shorter than this and a sentence is a filler the cleaner is entitled to
     /// drop: "Alright.", "So yeah.", "Okay."
     static let worthKeeping = 6
+    /// How much of a removed sentence has to be in the surviving edit before
+    /// its idea counts as already said.
+    static let alreadySaid = 0.55
 
     static func restoringLostLines(
         words: [TranscriptWord],
@@ -33,7 +36,14 @@ enum LostLineRepair {
             guard sentence.allSatisfy({ removed[$0] }) else { continue }
             let spoken = tokens(sentence, in: words)
             guard spoken.count >= worthKeeping else { continue }
-            if keptTokens.contains(where: { KeptStreamRepair.isSameLine(spoken, $0) }) { continue }
+            // Looser than the test the repeat passes use, deliberately. This
+            // is deciding whether an idea survived at all, and a sentence that
+            // shares half its words with one still in the edit has survived
+            // well enough: putting it back would be the same point made twice.
+            if keptTokens.contains(where: {
+                KeptStreamRepair.isSameLine(spoken, $0)
+                    || KeptStreamRepair.sharedWords(spoken, $0) >= alreadySaid
+            }) { continue }
             if let index = groups.firstIndex(where: { group in
                 group.contains { KeptStreamRepair.isSameLine(tokens($0, in: words), spoken) }
             }) {

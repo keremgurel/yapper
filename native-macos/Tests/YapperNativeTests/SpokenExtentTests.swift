@@ -103,3 +103,46 @@ struct SpokenExtentTests {
         #expect(heard > 0.5)
     }
 }
+
+/// A word must survive the silence around it.
+///
+/// Protecting a word up to exactly its midpoint is not protecting it: the
+/// silence begins at that instant, the midpoint sits on the boundary, and the
+/// editor reads the word as cut. Seventeen words went that way on a real
+/// fifteen minute recording, each one taking the sense of its sentence with it.
+@Suite
+struct MidpointSurvivesSilenceTests {
+    private let hop = 0.02
+    private let threshold = -40.0
+
+    @Test("The silence never starts on a word's own midpoint")
+    func leavesRoomAroundTheMidpoint() {
+        // Loud for a moment, then room tone for the rest of the word.
+        var loudness = [Double](repeating: -60, count: 200)
+        for frame in 0 ..< 8 { loudness[frame] = -20 }
+        let word = (0.0, 0.64)
+        let audible = SpokenExtent.audible(
+            word: word,
+            loudness: loudness,
+            hop: hop,
+            threshold: threshold
+        )
+        let midpoint = (word.0 + word.1) / 2
+        #expect(audible.1 > midpoint)
+        #expect(audible.0 < midpoint)
+    }
+
+    @Test("A word shorter than the margin is protected whole")
+    func protectsAVeryShortWord() {
+        let loudness = [Double](repeating: -60, count: 20)
+        let word = (0.10, 0.14)
+        let audible = SpokenExtent.audible(
+            word: word,
+            loudness: loudness,
+            hop: hop,
+            threshold: threshold
+        )
+        #expect(audible.0 <= 0.10)
+        #expect(audible.1 >= 0.14)
+    }
+}

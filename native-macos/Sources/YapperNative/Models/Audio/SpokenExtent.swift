@@ -67,10 +67,17 @@ enum SpokenExtent {
         // decides which words survive a cut by asking where their midpoint
         // landed, so a cut that swallowed one would strike a word off the
         // transcript that is still there in the video.
+        //
+        // With room to spare on either side of it, because protecting up to
+        // exactly the midpoint is not protecting it: the silence then began at
+        // that very instant, the midpoint sat on the boundary, and the word
+        // counted as cut. Seventeen words went that way on a real recording,
+        // each one taking the sense of the sentence around it.
         let midpoint = (word.0 + word.1) / 2
+        let margin = min(max(hop, 0.02), (word.1 - word.0) / 2)
         return (
-            min(max(word.0, Double(first) * hop - padding), midpoint),
-            max(min(word.1, Double(last + 1) * hop + padding), midpoint)
+            min(max(word.0, Double(first) * hop - padding), midpoint - margin),
+            max(min(word.1, Double(last + 1) * hop + padding), midpoint + margin)
         )
     }
 }

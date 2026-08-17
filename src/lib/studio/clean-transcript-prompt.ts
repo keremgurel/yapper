@@ -50,6 +50,14 @@ export const CLEAN_TRANSCRIPT_CRITIC_PROMPT =
   "not separate facts.\n" +
   "- Remove incomplete fragments, verbal mistakes, filler, stutters, and " +
   "duplicated phrases. Never keep a repeated offer, benefit, or call to action.\n" +
+  "- Two neighbouring sentences that make the same point in different words " +
+  "are one idea said twice, not two facts. Observed in a real edit and all " +
+  'wrong: "So all in all, worked out pretty well." next to "Maybe so it ' +
+  'worked out well."; "That is about two thirds of Google" next to ' +
+  '"Bing sent us 237 people, which is more than most of our referrals"; ' +
+  '"It\'s day 19 of posting every day on all socials" next to "It\'s also ' +
+  'day 19 of posting every day across all social media channels". Keep the ' +
+  "last complete one and delete the other.\n" +
   "- Never form a sentence from the beginning of one recorded attempt and the " +
   "ending of another. Never reorder the surviving source ideas.\n" +
   "- Do not paraphrase, fix grammar, or invent words.\n\n" +

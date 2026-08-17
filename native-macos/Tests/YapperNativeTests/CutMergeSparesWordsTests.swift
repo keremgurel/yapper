@@ -54,3 +54,29 @@ struct CutMergeSparesWordsTests {
         #expect(ranges.count <= 2)
     }
 }
+
+/// The same rule where the retake cuts are first joined together. A word lost
+/// there is worse: it is missing from the kept list the silence pass protects,
+/// so nothing downstream knows it was ever spoken.
+@Suite
+struct RetakeMergeSparesWordsTests {
+    private let mediaID = UUID()
+
+    @Test("A short word between two retake cuts survives")
+    func keepsTheWordBetweenTwoCuts() async throws {
+        let words = [
+            TranscriptWord(mediaID: mediaID, text: "Bing.", start: 0.0, end: 0.40),
+            TranscriptWord(mediaID: mediaID, text: "And", start: 0.44, end: 0.48),
+            TranscriptWord(mediaID: mediaID, text: "two", start: 0.52, end: 0.90),
+            TranscriptWord(mediaID: mediaID, text: "buyers.", start: 0.90, end: 1.30),
+        ]
+        let service = AIEditService()
+        let ranges = try await service.autoEditRanges(
+            words: words,
+            duration: 1.6,
+            aiCuts: [(0, 0), (2, 3)]
+        )
+        let midpoint = (words[1].start + words[1].end) / 2
+        #expect(!ranges.contains { $0.0 <= midpoint && midpoint <= $0.1 })
+    }
+}

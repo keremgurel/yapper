@@ -294,7 +294,12 @@ actor AIEditService {
     ) throws -> [(Double, Double)] {
         try Task.checkCancellation()
         var ranges = aiCuts.map { (words[$0.0].start, words[$0.1].end) }
-        let retakeRanges = merge(ranges)
+        // Sparing every word, because none have been cut yet and the words
+        // between two cuts are exactly the ones a creator kept. Joining here
+        // without that swallowed them, and a word swallowed here is worse than
+        // one swallowed later: it is missing from `kept` below, so the silence
+        // pass never learns to protect it either.
+        let retakeRanges = merge(ranges, sparing: words.map(\.midpoint))
         let kept = words.filter { word in
             !retakeRanges.contains { word.midpoint >= $0.0 && word.midpoint <= $0.1 }
         }

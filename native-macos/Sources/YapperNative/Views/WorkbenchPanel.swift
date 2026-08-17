@@ -944,6 +944,18 @@ private struct TranscriptWorkbench: View {
         session.transcriptFlowCache.lines(forWidth: flowWidth)
     }
 
+    /// What a line says, for a reader who is being read to.
+    private func lineText(_ line: TranscriptLine) -> String {
+        let tokens = flowTokens
+        return line.tokens.compactMap { index -> String? in
+            guard index < tokens.count else { return nil }
+            switch tokens[index] {
+            case let .word(word): return word.text
+            case .pause: return nil
+            }
+        }.joined(separator: " ")
+    }
+
 
     @ViewBuilder
     private func tokenView(at index: Int, playbackWordID: UUID?) -> some View {
@@ -1046,6 +1058,18 @@ private struct TranscriptWorkbench: View {
                                         }
                                     }
                                     .frame(height: TranscriptFlow.lineHeight, alignment: .leading)
+                                    // One element a line, not one a word. Every
+                                    // word here is a button, and anything that
+                                    // asks the window for its accessibility
+                                    // tree, a screen recorder or a dictation
+                                    // tool, makes SwiftUI rebuild every node of
+                                    // it on every update: sampled while a
+                                    // creator worked, that walk was the most
+                                    // expensive thing in the app. A line at a
+                                    // time is also how anybody would want the
+                                    // transcript read to them.
+                                    .accessibilityElement(children: .combine)
+                                    .accessibilityLabel(lineText(line))
                                     .id(line.id)
                                 }
                             }
