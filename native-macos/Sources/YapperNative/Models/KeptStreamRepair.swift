@@ -28,6 +28,16 @@ enum KeptStreamRepair {
     static let sameSentence = 0.75
     /// How much of the shorter sentence the shared opening has to be.
     static let sameOpening = 0.7
+    /// A shared ending has to be at least this many words: two sentences can
+    /// both finish "this week" without being the same sentence.
+    static let sameEndingWords = 4
+    /// And has to be most of the shorter one.
+    static let sameEnding = 0.6
+    /// How much of the shorter sentence has to appear in the longer one for it
+    /// to be an earlier run at the same line.
+    static let contained = 0.7
+    /// Below this a sentence is too small for containment to mean anything.
+    static let containedWords = 6
     /// How far apart two attempts at a line can be. Beyond this the speaker has
     /// moved on and come back, which is a callback, not a stumble.
     static let attemptsApart = 3
@@ -68,7 +78,15 @@ enum KeptStreamRepair {
                 let later = tokens(of: sentences[second], in: words)
                 guard later.count >= repeatedSentenceWords else { continue }
                 guard isSameLine(earlier, later) else { continue }
-                for index in sentences[first] { removed[index] = true }
+                // Usually the speaker's last run is the one they meant, but not
+                // when they said it cleanly and then fell over it: "…one refund
+                // that we had in July." followed by "And 200 and and $295 of
+                // the processing fees…". The run that stumbles less wins, and
+                // the later one only wins ties.
+                let dropEarlier = stumbles(earlier) >= stumbles(later)
+                for index in dropEarlier ? sentences[first] : sentences[second] {
+                    removed[index] = true
+                }
                 return withoutRepeatedSentences(words: words, cuts: ranges(from: removed))
             }
         }
@@ -97,7 +115,53 @@ enum KeptStreamRepair {
         {
             return true
         }
-        return sharedWords(a, b) >= sameSentence
+        // A speaker who restarts a line usually lands on the same finish. "It's
+        // crazy because you think, who uses Bing anymore?" and "Like, who uses
+        // Bing anymore?" share nothing but their ending, and it is the ending
+        // that gives them away.
+        let ending = zip(a.reversed(), b.reversed()).prefix { $0 == $1 }.count
+        if ending >= sameEndingWords,
+           Double(ending) / Double(min(a.count, b.count)) >= sameEnding
+        {
+            return true
+        }
+        if sharedWords(a, b) >= sameSentence { return true }
+        // One attempt said inside another: "That puts it at 17 payments total
+        // including renewables since launch." against "That puts us in 17
+        // payments total including renewals since launch, which is $325…".
+        // Almost every word of the shorter is in the longer, in the same order,
+        // which is what a second run at a line looks like when the speaker
+        // carried on further the second time.
+        let shorter = min(a.count, b.count)
+        guard shorter >= containedWords else { return false }
+        // Compared by their openings, because the transcriber does not hear the
+        // same word the same way twice: "renewables" one run and "renewals" the
+        // next, "purchase" and "purchased".
+        let roughA = a.map(rough)
+        let roughB = b.map(rough)
+        return shared(roughA, roughB) >= Double(shorter) * contained
+    }
+
+    private static func rough(_ token: String) -> String {
+        String(token.prefix(5))
+    }
+
+    /// How much a run stumbles over itself: "and 200 and and $295 of the…".
+    /// Between two runs at one line this is what says which one to keep.
+    static func stumbles(_ tokens: [String]) -> Int {
+        zip(tokens, tokens.dropFirst()).count { $0 == $1 }
+    }
+
+    /// Words the two have in common, counting each one once.
+    private static func shared(_ a: [String], _ b: [String]) -> Double {
+        var counts: [String: Int] = [:]
+        for token in a { counts[token, default: 0] += 1 }
+        var total = 0.0
+        for token in b where (counts[token] ?? 0) > 0 {
+            counts[token]! -= 1
+            total += 1
+        }
+        return total
     }
 
     /// How much of the longer sentence the shorter one also says, in any order.

@@ -276,11 +276,8 @@ actor AIEditService {
         )
     }
 
-    /// The last word on a set of cuts: read as the viewer will hear it, not as
-    /// a set of takes. See `KeptStreamRepair`.
     private func finished(cuts: [(Int, Int)], words: [TranscriptWord]) -> [(Int, Int)] {
-        let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: cuts)
-        return KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
+        EditFinishing.cuts(cuts, words: words)
     }
 
     /// What to remove for a one-click edit: the retakes, the fillers, and the
@@ -330,7 +327,7 @@ actor AIEditService {
         // nearly whole, whichever way the silence was found.
         if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
         if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
-        return merge(ranges)
+        return merge(ranges, sparing: kept.map(\.midpoint))
     }
 
     /// The silence-only pass, for the Auto-trim button.
@@ -373,7 +370,7 @@ actor AIEditService {
         }
         if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
         if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
-        return merge(ranges)
+        return merge(ranges, sparing: ordered.map(\.midpoint))
     }
 
     private func decodeAudio(
@@ -641,13 +638,33 @@ actor AIEditService {
         return cuts
     }
 
-    private func merge(_ ranges: [(Double, Double)]) -> [(Double, Double)] {
+    /// Joins cuts that all but touch, so the edit is not littered with
+    /// splices a frame apart.
+    ///
+    /// - Parameter sparing: moments that must survive. Closing a gap of a few
+    ///   hundredths of a second is usually tidying, but a short word is a few
+    ///   hundredths of a second long: "and", "I", "two". Measured on a real
+    ///   edit, this quietly swallowed a hundred spoken words, and each one it
+    ///   took left the sentence around it half said.
+    private func merge(
+        _ ranges: [(Double, Double)],
+        sparing moments: [Double] = []
+    ) -> [(Double, Double)] {
         let sorted = ranges.filter { $0.1 > $0.0 }.sorted { $0.0 < $1.0 }
         guard var current = sorted.first else { return [] }
         var result: [(Double, Double)] = []
         for range in sorted.dropFirst() {
-            if range.0 <= current.1 + 0.06 { current.1 = max(current.1, range.1) }
-            else { result.append(current); current = range }
+            if range.0 <= current.1 {
+                current.1 = max(current.1, range.1)
+                continue
+            }
+            let holdsAWord = moments.contains { $0 > current.1 && $0 < range.0 }
+            if range.0 <= current.1 + 0.06, !holdsAWord {
+                current.1 = max(current.1, range.1)
+            } else {
+                result.append(current)
+                current = range
+            }
         }
         result.append(current)
         return result
