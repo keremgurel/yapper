@@ -324,6 +324,11 @@ struct TimelineContent: View {
 
     @ObservedObject var session: EditorSession
     let contentWidth: Double
+    /// The empty margins the viewport holds either side of the content, so the
+    /// background can reach across them. They are part of the timeline to look
+    /// at, so they have to be part of it to drag on.
+    var leadingInset: Double = 0
+    var trailingInset: Double = 0
     /// The stretch of timeline that gets cells. Everything outside it is off
     /// screen, and a selected item is drawn wherever it is so that carrying one
     /// past the edge never makes it vanish.
@@ -384,6 +389,12 @@ struct TimelineContent: View {
             // nothing at all, which is most of the empty space on a timeline
             // that has one overlay row.
             Color.editorBackground
+                // Out over the margins the viewport pads with, which are empty
+                // background to look at and were dead to the pointer: a marquee
+                // could not be started in the strip before the first clip, the
+                // widest piece of empty timeline there is.
+                .padding(.leading, -leadingInset)
+                .padding(.trailing, -trailingInset)
                 .contentShape(Rectangle())
                 .gesture(timelineTrackGesture(layout: layout))
                 .zIndex(0)

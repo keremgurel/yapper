@@ -553,9 +553,23 @@ final class EditorSession: ObservableObject {
         )
     }
 
-    var draggedClipIDs: Set<UUID> {
+    var draggedClipIDs: Set<UUID> { selectedClipIDs }
+
+    /// The main-track clips the timeline has selected. A change made to one of
+    /// them through the inspector or the canvas lands on all of them: picking
+    /// out twenty clips and framing them one at a time is not an edit anybody
+    /// makes on purpose.
+    var selectedClipIDs: Set<UUID> {
         Set(timelineSelection.compactMap { item -> UUID? in
             if case let .clip(id) = item { return id }
+            return nil
+        })
+    }
+
+    /// The cutaways the timeline has selected, for the same reason.
+    var selectedOverlayIDs: Set<UUID> {
+        Set(timelineSelection.compactMap { item -> UUID? in
+            if case let .overlay(id) = item { return id }
             return nil
         })
     }
@@ -647,7 +661,7 @@ final class EditorSession: ObservableObject {
         case let .clip(id): wasAlreadySelected = selectedClipID == id
         case let .text(id): wasAlreadySelected = selectedTextLayerID == id
         case let .overlay(id): wasAlreadySelected = selectedOverlayID == id
-        case let .caption(id): wasAlreadySelected = selectedCaptionIDs == [id]
+        case let .caption(id): wasAlreadySelected = selectedCaptionIDs == captionIDsSelectedOnTimeline(including: id)
         case let .audio(id): wasAlreadySelected = selectedAudioLayerID == id
         }
 
@@ -659,7 +673,10 @@ final class EditorSession: ObservableObject {
         case let .overlay(id):
             selectedOverlayID = id
         case let .caption(id):
-            setSelectedCaptionIDs([id])
+            // A marquee across the caption track selects a run of cards. The
+            // panel used to hear about one of them, so it reported "1 caption"
+            // and a restyle or a drag landed on that one alone.
+            setSelectedCaptionIDs(captionIDsSelectedOnTimeline(including: id))
         case let .audio(id):
             selectedAudioLayerID = id
         }
@@ -672,6 +689,16 @@ final class EditorSession: ObservableObject {
         case .caption: inspectorRequest = EditorInspectorRequest(tool: "Captions")
         case .audio: inspectorRequest = EditorInspectorRequest(tool: "Audio")
         }
+    }
+
+    /// Every card the timeline has selected, the one the inspector is opening
+    /// for included.
+    private func captionIDsSelectedOnTimeline(including id: UUID) -> Set<UUID> {
+        var ids: Set<UUID> = [id]
+        for item in timelineSelection {
+            if case let .caption(captionID) = item { ids.insert(captionID) }
+        }
+        return ids
     }
 
     private func syncInspectorSelection(preferred item: TimelineSelectionItem?) {

@@ -27,21 +27,32 @@ enum ApplyToAll {
         case lane
         /// Every overlay in the project, whatever lane it sits on.
         case project
+        /// The overlays picked out by hand, which is what a marquee across the
+        /// timeline leaves behind. Moving one of them moves the set.
+        case selection(Set<UUID>)
 
         /// Whether `other` is in reach of a copy from `overlay`.
         func covers(_ other: ProjectOverlay, from overlay: ProjectOverlay) -> Bool {
             switch self {
             case .lane: other.lane == overlay.lane
             case .project: true
+            case let .selection(ids): ids.contains(other.id)
             }
         }
     }
 
     /// Every clip given `framing`, except the ones whose framing is the result
     /// of their own keys.
-    static func framing(_ framing: VideoFraming, to clips: [TimelineClip]) -> [TimelineClip] {
+    ///
+    /// - Parameter ids: the clips to land on, or nil for all of them. A
+    ///   selection is how a creator says "these ones and not the rest".
+    static func framing(
+        _ framing: VideoFraming,
+        to clips: [TimelineClip],
+        ids: Set<UUID>? = nil
+    ) -> [TimelineClip] {
         clips.map { clip in
-            guard !VideoFramingTrack.isKeyed(clip) else { return clip }
+            guard ids?.contains(clip.id) ?? true, !VideoFramingTrack.isKeyed(clip) else { return clip }
             var copy = clip
             copy.framing = framing.isIdentity ? nil : framing
             return copy

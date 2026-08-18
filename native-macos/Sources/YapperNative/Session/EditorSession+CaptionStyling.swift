@@ -69,13 +69,19 @@ extension EditorSession {
     /// A drag on the preview. Moving a card always writes where it was dropped;
     /// with Apply-to-all on that becomes the shared position.
     func moveCaption(_ id: UUID, x: Double, y: Double) {
-        selectCaptionForLayout(id)
-        applyCaptionStyle(TextStylePatch(x: x, y: y), coalescing: true, layoutTarget: id)
+        applyCaptionStyle(
+            TextStylePatch(x: x, y: y),
+            coalescing: true,
+            layoutTargets: layoutTargets(draggedBy: id)
+        )
     }
 
     func resizeCaption(_ id: UUID, width: Double) {
-        selectCaptionForLayout(id)
-        applyCaptionStyle(TextStylePatch(width: width), coalescing: true, layoutTarget: id)
+        applyCaptionStyle(
+            TextStylePatch(width: width),
+            coalescing: true,
+            layoutTargets: layoutTargets(draggedBy: id)
+        )
     }
 
     /// Grouping is a property of the cards, so changing it rebuilds them.
@@ -94,19 +100,27 @@ extension EditorSession {
 
     // MARK: - Routing
 
-    /// A drag has to act on the card under the pointer even when it is not the
-    /// selected one, so it selects first and styles second.
-    private func selectCaptionForLayout(_ id: UUID) {
-        guard !captionApplyToAll, !selectedCaptionIDs.contains(id) else { return }
+    /// Which cards a drag on the preview lands on.
+    ///
+    /// Dragging a card that is part of the selection places every card in it:
+    /// marquee a run on the caption track, move one where you want it, and the
+    /// run follows. Dragging a card outside the selection is how that card gets
+    /// picked up instead, so it becomes the selection and moves alone.
+    private func layoutTargets(draggedBy id: UUID) -> Set<UUID> {
+        // Apply-to-all writes the shared position, so the target set is moot
+        // and the selection is left exactly as the creator set it.
+        if captionApplyToAll { return [id] }
+        if selectedCaptionIDs.contains(id) { return selectedCaptionIDs }
         setSelectedCaptionIDs([id])
+        return [id]
     }
 
     private func applyCaptionStyle(
         _ patch: TextStylePatch,
         coalescing: Bool,
-        layoutTarget: UUID? = nil
+        layoutTargets: Set<UUID>? = nil
     ) {
-        let targets = layoutTarget.map { Set([$0]) } ?? selectedCaptionIDs
+        let targets = layoutTargets ?? selectedCaptionIDs
         guard captionApplyToAll || !targets.isEmpty else { return }
         if coalescing {
             scheduleVisualCommit { [self] in

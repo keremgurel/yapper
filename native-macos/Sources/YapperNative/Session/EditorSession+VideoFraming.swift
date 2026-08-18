@@ -124,23 +124,40 @@ extension EditorSession {
             return
         }
 
-        guard clip.resolvedFraming != framing else { return }
+        // Framing a clip that was marquee-selected with others frames all of
+        // them, so the question is not whether this clip changes but whether
+        // any of them does: typing the position the current clip already has is
+        // how a creator says "and these too".
+        let targets = framingTargets(for: clipID)
+        guard ApplyToAll.changeCount(
+            from: project.clips,
+            to: ApplyToAll.framing(framing, to: project.clips, ids: targets)
+        ) > 0 else { return }
         // Barely a wait at all. The debounce is there to coalesce a gesture's
         // worth of edits, and framing commits once the gesture is already over;
         // all a longer settle does here is hold the picture at the wrong size
         // for another fifth of a second. Enough remains to catch the stepper
         // being clicked repeatedly.
+        let what = framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%"
         scheduleCompositionCommit(
             settleFor: .milliseconds(50),
-            successStatus: framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%"
+            successStatus: targets.count > 1 ? "\(what) on \(targets.count) clips" : what
         ) { [self] in
-            guard let index = project.clips.firstIndex(where: { $0.id == clipID }) else { return false }
+            guard project.clips.contains(where: { $0.id == clipID }) else { return false }
             updateProject { project in
-                project.clips[index].framing = framing.isIdentity ? nil : framing
+                project.clips = ApplyToAll.framing(framing, to: project.clips, ids: targets)
                 project.updatedAt = Date()
             }
             return true
         }
+    }
+
+    /// The clips a framing change lands on: the one being framed, and anything
+    /// selected alongside it on the timeline.
+    private func framingTargets(for clipID: UUID) -> Set<UUID> {
+        let selected = selectedClipIDs
+        guard selected.count > 1, selected.contains(clipID) else { return [clipID] }
+        return selected
     }
 
     /// Slides the picture from the inspector, keeping the zoom.

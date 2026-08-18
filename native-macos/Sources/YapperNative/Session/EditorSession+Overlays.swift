@@ -189,12 +189,22 @@ extension EditorSession {
     }
 
     /// Live during a drag: saved, but the composition is left alone.
-    func updateOverlay(_ updated: ProjectOverlay) {
+    ///
+    /// - Parameter ids: the other cutaways that take this one's box, which is
+    ///   how a marquee-selected run moves together.
+    func updateOverlay(_ updated: ProjectOverlay, spreadingFrameTo ids: Set<UUID> = []) {
         guard overlays.contains(where: { $0.id == updated.id }) else { return }
         scheduleVisualCommit { [self] in
             updateProject { project in
                 guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
                 project.overlays?[index] = updated
+                if !ids.isEmpty {
+                    project.overlays = ApplyToAll.frame(
+                        of: updated,
+                        to: project.overlays ?? [],
+                        scope: .selection(ids)
+                    )
+                }
                 project.updatedAt = Date()
             }
             if selectedOverlayID != updated.id { selectedOverlayID = updated.id }
@@ -234,8 +244,30 @@ extension EditorSession {
         return overlays.first { $0.id == id }
     }
 
+    /// The other cutaways a box change lands on: whatever is selected on the
+    /// timeline alongside this one. Only a change that actually moved or
+    /// resized the box spreads; trimming one of a selected run, or dropping it
+    /// on another lane, is about that one cutaway.
+    private func overlayFrameTargets(
+        _ updated: ProjectOverlay,
+        from existing: ProjectOverlay
+    ) -> Set<UUID> {
+        let movedOrResized = updated.x != existing.x
+            || updated.y != existing.y
+            || updated.width != existing.width
+            || updated.height != existing.height
+        guard movedOrResized else { return [] }
+        var ids = selectedOverlayIDs
+        // Dragging a cutaway that is not part of the selection is how that one
+        // gets picked up, so it moves alone.
+        guard ids.contains(updated.id) else { return [] }
+        ids.remove(updated.id)
+        return ids
+    }
+
     func commitOverlayEdit(_ updated: ProjectOverlay) {
         guard let existing = overlays.first(where: { $0.id == updated.id }) else { return }
+        let spread = overlayFrameTargets(updated, from: existing)
 
         // On a keyed cutaway, moving or resizing it writes a key here instead
         // of moving the whole card, which is the second half of the same
@@ -272,13 +304,20 @@ extension EditorSession {
         let drawnByTheCanvas = media(for: updated)?.isImage == true
             && !project.compositedOverlayIDs.contains(updated.id)
         guard !drawnByTheCanvas else {
-            updateOverlay(updated)
+            updateOverlay(updated, spreadingFrameTo: spread)
             return
         }
         scheduleCompositionCommit { [self] in
             updateProject { project in
                 guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id }) else { return }
                 project.overlays?[index] = updated
+                if !spread.isEmpty {
+                    project.overlays = ApplyToAll.frame(
+                        of: updated,
+                        to: project.overlays ?? [],
+                        scope: .selection(spread)
+                    )
+                }
                 project.updatedAt = Date()
             }
             selectedOverlayID = updated.id
