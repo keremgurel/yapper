@@ -105,7 +105,13 @@ export default function ScrollShowcase({ items }: { items: ShowcaseItem[] }) {
                 }
                 style={{
                   opacity: index === activeIndex ? 1 : 0,
-                  transition: "opacity 240ms var(--sg-ease-out, ease-out)",
+                  // Two panels of dense text cross-fading over each other is
+                  // unreadable mush for the length of the transition, so the
+                  // outgoing one is pulled immediately and only the arriving
+                  // one fades. visibility cannot tween, which is the point.
+                  visibility: index === activeIndex ? "visible" : "hidden",
+                  transition:
+                    "opacity 220ms var(--sg-ease-out, ease-out), visibility 0s",
                 }}
               >
                 {item.media}
