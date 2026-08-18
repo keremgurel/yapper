@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import Waitlist from "@/components/waitlist";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioFlowNav } from "@/data/studio-nav";
@@ -63,21 +64,17 @@ export default function StudioMarketingPage() {
           voice, let AI script them, record with a teleprompter, and edit by
           transcript.
         </p>
-        {/* Studio is not open yet, so the waitlist is the only thing to do
-            here. Linking straight into it would land on a password wall. */}
-        <div id="waitlist" className="mx-auto mt-8 w-full max-w-2xl">
-          <Waitlist variant="hero" />
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Button asChild size="lg" className="sm:px-8">
+            <Link href="/studio/library">
+              Open Studio
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/studio/inspiration">Browse Inspiration</Link>
+          </Button>
         </div>
-        <p className="text-muted-foreground mt-4 text-sm">
-          Have an early access password?{" "}
-          <Link
-            href="/studio-access?next=%2Fstudio%2Fhome"
-            className="text-foreground font-semibold underline underline-offset-4"
-          >
-            Enter it here
-          </Link>
-          .
-        </p>
       </section>
 
       {/* The workflow surfaces */}
@@ -147,21 +144,14 @@ export default function StudioMarketingPage() {
             Start turning ideas into videos worth posting.
           </h2>
           <p className="text-muted-foreground max-w-md text-sm sm:text-base">
-            We will email you the moment Studio opens. Your ideas stay yours.
+            Free to start. Your ideas stay yours.
           </p>
-          <div className="w-full max-w-xl">
-            <Waitlist variant="hero" />
-          </div>
-          <p className="text-muted-foreground text-sm">
-            Want to practise while you wait?{" "}
-            <Link
-              href="/training"
-              className="text-foreground font-semibold underline underline-offset-4"
-            >
-              Begin training
+          <Button asChild size="lg" className="sm:px-8">
+            <Link href="/studio/library">
+              Open Studio
+              <ArrowRight className="h-4 w-4" />
             </Link>
-            .
-          </p>
+          </Button>
         </div>
       </section>
 

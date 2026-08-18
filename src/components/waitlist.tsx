@@ -189,8 +189,10 @@ function WaitlistForm() {
       <div className="pointer-events-none absolute inset-x-[30%] bottom-0 h-[5px] w-[40%] bg-gradient-to-r from-transparent via-sky-500 to-transparent blur-[2px]" />
       <div className="pointer-events-none absolute inset-x-[30%] bottom-0 h-px w-[40%] bg-gradient-to-r from-transparent via-sky-500 to-transparent" />
 
-      {/* Sparkle field below the card */}
-      <div className="absolute right-0 -bottom-[120px] left-0 h-[120px]">
+      {/* Sparkle field below the card. It hangs 120px past the form, so without
+          pointer-events-none it silently swallows clicks on whatever sits
+          underneath it. */}
+      <div className="pointer-events-none absolute right-0 -bottom-[120px] left-0 h-[120px]">
         <div
           className="absolute inset-0"
           style={{

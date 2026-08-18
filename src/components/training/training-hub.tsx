@@ -100,14 +100,17 @@ function SectionHeading({
   title: string;
   sub?: string;
 }) {
+  // Same grammar as the Studio page: an accent eyebrow, one centred heading at
+  // the same size, and an optional line under it. The two marketing surfaces
+  // should read as one product rather than two projects.
   return (
-    <div className="mb-6 max-w-2xl">
-      <p className="sg-label" style={{ color: "var(--sg-label)" }}>
-        {eyebrow}
-      </p>
-      <h2 className="sg-display mt-3 text-3xl sm:text-4xl">{title}</h2>
+    <div className="mx-auto mb-8 max-w-2xl text-center">
+      <p className="sg-field-label text-[color:var(--sg-accent)]">{eyebrow}</p>
+      <h2 className="sg-display text-foreground mt-2 text-2xl font-black sm:text-3xl">
+        {title}
+      </h2>
       {sub && (
-        <p className="mt-3 text-base leading-7" style={muted}>
+        <p className="mt-4 text-sm leading-relaxed sm:text-base" style={muted}>
           {sub}
         </p>
       )}
