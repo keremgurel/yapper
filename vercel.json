@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/internal/r2-lifecycle",
-      "schedule": "*/10 * * * *"
+      "schedule": "17 4 * * *"
     }
   ]
 }

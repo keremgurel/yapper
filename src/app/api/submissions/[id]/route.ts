@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { and, eq, ne, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db/client";
+import { drainR2AfterResponse } from "@/lib/db/r2-drain";
 import { enqueueObjectDeletionWithinTx } from "@/lib/db/r2-lifecycle";
 import { importedPlatformMedia, submissions, users } from "@/lib/db/schema";
 import {
@@ -128,6 +129,11 @@ export async function DELETE(
     return { deleted: true };
   });
   if (!outcome) return Response.json({ error: "not_found" }, { status: 404 });
+
+  // The row is gone and the quota is already back. Push the physical delete
+  // through now rather than leaving it for the next sweep, so "delete" means
+  // the bytes stop costing money within seconds instead of hours.
+  drainR2AfterResponse();
 
   return Response.json({ ok: true });
 }
