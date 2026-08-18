@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Show } from "@clerk/nextjs";
+
 import TrainingLayout from "@/app/training-layout";
-import ProgressSignedOut from "@/components/progress/progress-signed-out";
-import ProgressView from "@/components/progress/progress-view";
+import ProgressGate from "@/components/progress/progress-gate";
 
 export const metadata: Metadata = {
   title: "Your progress",
@@ -12,12 +11,7 @@ export const metadata: Metadata = {
 export default function ProgressPage() {
   return (
     <TrainingLayout>
-      <Show when="signed-in">
-        <ProgressView />
-      </Show>
-      <Show when="signed-out">
-        <ProgressSignedOut />
-      </Show>
+      <ProgressGate />
     </TrainingLayout>
   );
 }

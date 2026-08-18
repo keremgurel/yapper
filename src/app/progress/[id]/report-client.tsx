@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Show, SignInButton } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -140,11 +140,9 @@ export default function SessionReport({ id }: { id: string }) {
             Feedback is private to the account that recorded it.
           </p>
           <div className="mt-5">
-            <Show when="signed-out">
-              <SignInButton mode="modal">
-                <Button type="button">Sign in</Button>
-              </SignInButton>
-            </Show>
+            <SignInButton mode="modal">
+              <Button type="button">Sign in</Button>
+            </SignInButton>
           </div>
         </div>
       )}
