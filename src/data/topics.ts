@@ -32,7 +32,7 @@ export const DIFFICULTIES: readonly Difficulty[] = [
   "Hard",
 ] as const;
 
-const topics: Topic[] = [
+export const topics: Topic[] = [
   // ── General / Easy ──
   {
     id: "g01",

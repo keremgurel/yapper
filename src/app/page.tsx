@@ -7,9 +7,20 @@ import HomeJsonLd from "@/app/home-json-ld";
 import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import Waitlist from "@/components/waitlist";
 import ActSection from "@/components/marketing/act-section";
+import ClosingCta from "@/components/marketing/closing-cta";
+import ProofStrip from "@/components/marketing/proof-strip";
+import Reveal from "@/components/marketing/reveal";
+import ScrollShowcase from "@/components/marketing/scroll-showcase";
+import {
+  CorrectionsMock,
+  PolishedMock,
+  PromptMock,
+  ScoreMock,
+} from "@/components/marketing/training-mocks";
+import { HomeFaq } from "@/components/home-faq";
+import { getJsonLdFaqEntries } from "@/data/faq";
+import { safeJsonLdStringify } from "@/lib/json-ld";
 import StudioLoopStrip from "@/components/marketing/studio-loop-strip";
-import { Card } from "@/components/ui/card";
-import { programFamilies } from "@/data/training";
 import { Button } from "@/components/ui/button";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
@@ -20,22 +31,58 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://ypr.app" },
 };
 
-/** Four practice tools worth naming on the homepage, pulled from the same
- * catalog the training hub and the sitemap read, so they cannot drift. */
-const TRAINING_HIGHLIGHTS = [
-  "random-topic-generator",
-  "interview-prep",
-  "explain-after-reading",
-  "conflict",
-].map((slug) => {
-  const program = programFamilies.find((item) => item.slug === slug)!;
-  return { href: program.href, title: program.title, body: program.prompt };
-});
+/** The four beats of a coached rep, each paired with the screen that shows it.
+ * Ordered the way it actually happens, so the column reads as one pass through
+ * the product rather than a feature list. */
+const TRAINING_SHOWCASE = [
+  {
+    id: "prompt",
+    eyebrow: "Speak",
+    title: "A prompt, a timer, and nothing else in the way",
+    body: "Pull a topic or bring your own, set the clock, and talk. No account, no setup, no limit on how many times you go again.",
+    media: <PromptMock />,
+  },
+  {
+    id: "score",
+    eyebrow: "Score",
+    title: "Find out how it actually landed",
+    body: "Five dimensions, each with the reasoning behind the number and a quote from your own answer. Pace, pauses and filler habits are measured from the recording, not guessed at.",
+    media: <ScoreMock />,
+  },
+  {
+    id: "fix",
+    eyebrow: "Fix",
+    title: "Every slip named, in your own words",
+    body: "Grammar, word choice and phrasing marked in the transcript where they happened, each with the rule behind the correction so it sticks.",
+    media: <CorrectionsMock />,
+  },
+  {
+    id: "polish",
+    eyebrow: "Keep",
+    title: "The version you were reaching for",
+    body: "Your answer rewritten in clean, natural English, built from your ideas and your structure. Not a better answer. The same one, said properly.",
+    media: <PolishedMock />,
+  },
+];
 
 export default function HomePage() {
   return (
     <TrainingLayout>
       <HomeJsonLd />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: safeJsonLdStringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: getJsonLdFaqEntries().map((entry) => ({
+              "@type": "Question",
+              name: entry.name,
+              acceptedAnswer: { "@type": "Answer", text: entry.text },
+            })),
+          }),
+        }}
+      />
 
       <section className="marketing-container pt-16 pb-24 sm:pt-24 sm:pb-32">
         <div className="flex min-h-[560px] flex-col items-center justify-center text-center">
@@ -74,6 +121,10 @@ export default function HomePage() {
         </div>
       </section>
 
+      <Reveal className="marketing-container pb-4">
+        <ProofStrip />
+      </Reveal>
+
       <ActSection
         index="01"
         eyebrow="Free to use today"
@@ -88,23 +139,7 @@ export default function HomePage() {
           </Button>
         }
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          {TRAINING_HIGHLIGHTS.map((item) => (
-            <Card
-              key={item.href}
-              className="gap-0 p-6 transition-colors hover:border-[color:var(--sg-accent)]/40"
-            >
-              <Link href={item.href} className="no-underline">
-                <h3 className="text-foreground text-lg font-black">
-                  {item.title}
-                </h3>
-                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
-                  {item.body}
-                </p>
-              </Link>
-            </Card>
-          ))}
-        </div>
+        <ScrollShowcase items={TRAINING_SHOWCASE} />
       </ActSection>
 
       <ActSection
@@ -143,6 +178,14 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <Reveal>
+        <HomeFaq />
+      </Reveal>
+
+      <Reveal>
+        <ClosingCta />
+      </Reveal>
 
       <Footer />
     </TrainingLayout>
