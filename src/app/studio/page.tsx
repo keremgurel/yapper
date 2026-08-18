@@ -6,6 +6,7 @@ import TrainingLayout from "@/app/training-layout";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import Waitlist from "@/components/waitlist";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioFlowNav } from "@/data/studio-nav";
@@ -64,16 +65,11 @@ export default function StudioMarketingPage() {
           voice, let AI script them, record with a teleprompter, and edit by
           transcript.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild size="lg" className="sm:px-8">
-            <Link href="/studio/library">
-              Open Studio
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="outline">
-            <Link href="/studio/inspiration">Browse Inspiration</Link>
-          </Button>
+        {/* Studio is not open yet, so there is exactly one thing to do here.
+            Anything that opened a Studio surface would land on a password
+            wall, which is not an invitation. */}
+        <div id="waitlist" className="mx-auto mt-8 w-full max-w-2xl">
+          <Waitlist variant="hero" />
         </div>
       </section>
 
@@ -141,17 +137,35 @@ export default function StudioMarketingPage() {
         <div className="sg-panel flex flex-col items-center gap-5 p-10 text-center">
           <ChirpyMark size={40} />
           <h2 className="sg-display text-foreground max-w-lg text-2xl font-black sm:text-3xl">
-            Start turning ideas into videos worth posting.
+            Already an early user?
           </h2>
           <p className="text-muted-foreground max-w-md text-sm sm:text-base">
-            Free to start. Your ideas stay yours.
+            Studio is open to the people testing it. If you have the access
+            password, let yourself in.
           </p>
-          <Button asChild size="lg" className="sm:px-8">
-            <Link href="/studio/library">
-              Open Studio
+          <Button asChild size="lg" variant="outline" className="sm:px-8">
+            <Link href="/studio-access?next=%2Fstudio%2Fhome">
+              Enter your password
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
+          <p className="text-muted-foreground text-sm">
+            Everyone else:{" "}
+            <Link
+              href="#waitlist"
+              className="text-foreground font-semibold underline underline-offset-4"
+            >
+              join the waitlist
+            </Link>{" "}
+            or{" "}
+            <Link
+              href="/training"
+              className="text-foreground font-semibold underline underline-offset-4"
+            >
+              start training free
+            </Link>
+            .
+          </p>
         </div>
       </section>
 
