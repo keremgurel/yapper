@@ -883,6 +883,12 @@ final class EditorSession: ObservableObject {
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart, kind: .audio))
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart + layer.duration, kind: .audio))
         }
+        // A cutaway lines up with what is being said as often as with anything
+        // else. Held to a tighter radius than the rest: see TimelineSnapKind.
+        for cue in captionCues where !moving.contains(cue.id) {
+            anchors.append(TimelineSnapAnchor(time: cue.timelineStart, kind: .card))
+            anchors.append(TimelineSnapAnchor(time: cue.timelineEnd, kind: .card))
+        }
         for second in 0 ... Int(ceil(duration)) {
             anchors.append(TimelineSnapAnchor(time: min(duration, Double(second)), kind: .second))
         }

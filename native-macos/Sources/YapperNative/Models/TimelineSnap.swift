@@ -5,13 +5,19 @@ enum TimelineSnapKind: String, Sendable {
     case playhead
     case boundary
     case audio
+    /// The edges of the caption cards. A captioned edit has hundreds of them,
+    /// so they pull only when a drag is nearly exactly on one and they lose
+    /// every tie: lining a cutaway up with a spoken line is worth having, and
+    /// worth nothing at all if it means the whole track is one long magnet.
+    case card
     case second
 
     var priority: Int {
         switch self {
-        case .playhead: 4
-        case .boundary: 3
-        case .audio: 2
+        case .playhead: 5
+        case .boundary: 4
+        case .audio: 3
+        case .card: 2
         case .second: 1
         }
     }
@@ -21,6 +27,7 @@ enum TimelineSnapKind: String, Sendable {
         case .playhead: "Playhead"
         case .boundary: "Edge"
         case .audio: "Audio"
+        case .card: "Caption"
         case .second: "Second"
         }
     }
@@ -73,6 +80,7 @@ enum TimelineSnapEngine {
             let targetThreshold: Double = switch anchor.kind {
             case .playhead, .boundary: thresholdPixels
             case .audio: min(7, thresholdPixels)
+            case .card: min(5, thresholdPixels)
             case .second: min(4, thresholdPixels)
             }
             guard distance <= targetThreshold else { return nil }
