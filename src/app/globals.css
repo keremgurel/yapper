@@ -270,8 +270,8 @@
 
 .type-display,
 .type-h1 {
-  font-size: clamp(3.25rem, 7vw, 6.5rem);
-  line-height: 0.92;
+  font-size: clamp(2.75rem, 6vw, 5.5rem);
+  line-height: 0.94;
 }
 
 .type-h2 {

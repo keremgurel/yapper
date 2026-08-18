@@ -6,8 +6,8 @@ import TrainingLayout from "@/app/training-layout";
 import HomeJsonLd from "@/app/home-json-ld";
 import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import Waitlist from "@/components/waitlist";
-import StudioWorkflowTour from "@/components/marketing/studio-workflow-tour";
-import FeatureDeck from "@/components/marketing/feature-deck";
+import ActSection from "@/components/marketing/act-section";
+import StudioLoopStrip from "@/components/marketing/studio-loop-strip";
 import { Card } from "@/components/ui/card";
 import { programFamilies } from "@/data/training";
 import { Button } from "@/components/ui/button";
@@ -74,27 +74,21 @@ export default function HomePage() {
         </div>
       </section>
 
-      <StudioWorkflowTour />
-
-      <FeatureDeck />
-
-      {/* Training. The half that is live today, and the reason someone lands
-          here from search in the first place. Same section grammar as the
-          Studio page: accent eyebrow, one centred heading, a card grid. */}
-      <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
-        <p className="sg-field-label text-center text-[color:var(--sg-accent)]">
-          Free to use today
-        </p>
-        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-black sm:text-3xl">
-          Get better on camera before you post
-        </h2>
-        <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed sm:text-base">
-          Pull a prompt, start the timer, and talk. No account needed. When you
-          want to know how it actually landed, AI coaching scores the answer,
-          fixes the grammar and word choices you slipped on, and writes back the
-          version you were reaching for.
-        </p>
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+      <ActSection
+        index="01"
+        eyebrow="Free to use today"
+        title="Get better at speaking"
+        description="Pull a prompt, start the timer, and talk. No account needed. When you want to know how it actually landed, AI coaching scores the answer, corrects the grammar and word choices you slipped on, and writes back the version you were reaching for."
+        action={
+          <Button asChild size="lg" className="sm:px-8">
+            <Link href="/training" className="no-underline">
+              Begin training
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        }
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
           {TRAINING_HIGHLIGHTS.map((item) => (
             <Card
               key={item.href}
@@ -111,15 +105,24 @@ export default function HomePage() {
             </Card>
           ))}
         </div>
-        <div className="mt-8 flex justify-center">
+      </ActSection>
+
+      <ActSection
+        index="02"
+        eyebrow="In the works"
+        title="Then post without the friction"
+        description="Studio is the other half: capture an idea by voice, let AI script it, record off the teleprompter, cut the take by editing its transcript, and send it out. One connected path instead of six disconnected apps."
+        action={
           <Button asChild size="lg" variant="outline" className="sm:px-8">
-            <Link href="/training" className="no-underline">
-              Browse all practice tools
+            <Link href="/studio" className="no-underline">
+              Explore Studio
               <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
-        </div>
-      </section>
+        }
+      >
+        <StudioLoopStrip />
+      </ActSection>
 
       {/* The waitlist, kept below the case rather than in front of it. */}
       <section id="waitlist" className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
