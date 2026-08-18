@@ -79,15 +79,61 @@ extension EditorSession {
     ///
     /// - Parameter ignoring: the item being carried, which cannot collide with
     ///   itself when it is already on that lane.
-    func blocking(_ target: TimelineDropTarget, ignoring itemID: UUID) -> TimelineDropTarget {
+    /// - Parameter reach: how far the item may be slid to sit flush against
+    ///   what it landed on instead of being refused. Worked out from the zoom
+    ///   by the caller, so the pull is the same handful of pixels whatever the
+    ///   timeline is scaled to.
+    func blocking(
+        _ target: TimelineDropTarget,
+        ignoring itemID: UUID,
+        reach: Double = 0
+    ) -> TimelineDropTarget {
         guard case let .overlay(lane, isNew) = target.track, !isNew else { return target }
         var checked = target
-        checked.isBlocked = OverlayTracks.isOccupied(
+        let duration = liftedDuration(of: itemID)
+        guard OverlayTracks.isOccupied(
             lane,
-            by: (id: itemID, start: target.start, duration: liftedDuration(of: itemID)),
+            by: (id: itemID, start: target.start, duration: duration),
             in: overlays
-        )
+        ) else { return checked }
+
+        // Up against its neighbour rather than refused, when that is what the
+        // pointer was nearly asking for anyway.
+        let neighbours = overlays
+            .filter { $0.lane == lane && $0.id != itemID }
+            .map { TimelineLaneNudge.Span(start: $0.timelineStart, duration: $0.duration) }
+        if let landing = TimelineLaneNudge.flush(
+            TimelineLaneNudge.Span(start: target.start, duration: duration),
+            among: neighbours,
+            reach: reach
+        ) {
+            checked.start = landing.start
+            checked.snap = TimelineSnapMatch(
+                time: landing.against,
+                kind: .boundary,
+                distancePixels: 0
+            )
+            return checked
+        }
+        checked.isBlocked = true
         return checked
+    }
+
+    /// Where a cutaway being slid along its own lane should settle: flush
+    /// against the neighbour it is pushing into, if it is pushing into one.
+    /// Nil when it is not, which is most of a drag.
+    func laneLanding(
+        for overlay: ProjectOverlay,
+        reach: Double
+    ) -> (start: Double, against: Double)? {
+        let neighbours = overlays
+            .filter { $0.lane == overlay.lane && $0.id != overlay.id }
+            .map { TimelineLaneNudge.Span(start: $0.timelineStart, duration: $0.duration) }
+        return TimelineLaneNudge.flush(
+            TimelineLaneNudge.Span(start: overlay.timelineStart, duration: overlay.duration),
+            among: neighbours,
+            reach: reach
+        )
     }
 
     /// How long the item being carried is, whichever kind it is.

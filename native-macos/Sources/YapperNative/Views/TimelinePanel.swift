@@ -32,7 +32,10 @@ struct TimelinePanel: View {
                 Button {
                     session.toggleTimelineSnapping()
                 } label: {
-                    Label("Magnet", systemImage: "magnet")
+                    Label(
+                        session.isTimelineSnappingEnabled ? "Snap on" : "Snap off",
+                        systemImage: session.isTimelineSnappingEnabled ? "magnet" : "magnet.slash"
+                    )
                         .font(.studioCaptionStrong)
                         .foregroundStyle(session.isTimelineSnappingEnabled ? Color.yapperOrange : Color.secondary)
                         .padding(.horizontal, 8)
@@ -1220,6 +1223,8 @@ private struct TimelineOverlayItem: View {
     /// guide. The cell floats here while the ghost sits on the landing spot, so
     /// the two are visibly different things — which is the only way to see where
     /// a drag is going while it is still going there.
+    /// The edge a slide has come to rest against on its own lane, when it has.
+    @State private var laneLandingMatch: TimelineSnapMatch?
     @State private var freeMoveStart: Double?
 
     var body: some View {
@@ -1378,6 +1383,30 @@ private struct TimelineOverlayItem: View {
                     freeMoveStart = adjusted.match == nil
                         ? rawDraft.timelineStart
                         : moveDraft?.timelineStart ?? rawDraft.timelineStart
+                    // Pushed into the cutaway next to it on the lane: it comes
+                    // to rest against that one rather than sliding over it,
+                    // which is the whole of "put this straight after that".
+                    if let draft = moveDraft,
+                       let landing = session.laneLanding(
+                           for: draft,
+                           reach: TimelineTrimGeometry.timeDelta(
+                               for: 24,
+                               contentWidth: contentWidth,
+                               projectDuration: projectDuration
+                           )
+                       ) {
+                        moveDraft?.timelineStart = landing.start
+                        freeMoveStart = landing.start
+                        // The guide marks the edge it came to rest against, so
+                        // the reason it stopped is on screen.
+                        laneLandingMatch = TimelineSnapMatch(
+                            time: landing.against,
+                            kind: .boundary,
+                            distancePixels: 0
+                        )
+                    } else {
+                        laneLandingMatch = nil
+                    }
                     // The same proposal the video track uses, so an overlay can
                     // be carried onto a brand new lane on top, or all the way
                     // down onto the speaker's own track.
@@ -1418,7 +1447,7 @@ private struct TimelineOverlayItem: View {
                         )
                         target = proposed
                     }
-                    session.setActiveTimelineSnap(adjusted.match)
+                    session.setActiveTimelineSnap(laneLandingMatch ?? adjusted.match)
 
                     // A move along the overlay's own lane shows exactly one
                     // thing: the cell, sitting on the spot it will land on. The
@@ -1446,12 +1475,21 @@ private struct TimelineOverlayItem: View {
                                 itemID: overlay.id,
                                 title: media.name,
                                 duration: moveDraft?.duration ?? overlay.duration,
-                                target: session.blocking(target, ignoring: overlay.id)
+                                target: session.blocking(
+                                    target,
+                                    ignoring: overlay.id,
+                                    reach: TimelineTrimGeometry.timeDelta(
+                                        for: 24,
+                                        contentWidth: contentWidth,
+                                        projectDuration: projectDuration
+                                    )
+                                )
                             )
                         )
                     }
                 }
                 .onEnded { _ in
+                    laneLandingMatch = nil
                     let lift = session.timelineDrag.lift
                     let wasCancelled = session.isTimelineDragCancelled
                     session.endTimelineDrag()
