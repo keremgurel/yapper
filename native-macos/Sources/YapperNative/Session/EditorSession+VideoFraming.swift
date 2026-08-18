@@ -138,6 +138,10 @@ extension EditorSession {
         // all a longer settle does here is hold the picture at the wrong size
         // for another fifth of a second. Enough remains to catch the stepper
         // being clicked repeatedly.
+        // A slider or a stepper is a burst of these, and the debounce below
+        // holds the composition back until the burst ends. The preview keeps
+        // the cutaways where they belong in the meantime.
+        previewFraming(framing, clipID: clipID)
         let what = framing.isIdentity ? "Framing reset" : "Framing set to \(framing.percent)%"
         scheduleCompositionCommit(
             settleFor: .milliseconds(50),

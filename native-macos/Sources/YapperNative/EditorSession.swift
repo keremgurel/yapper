@@ -188,6 +188,11 @@ final class EditorSession: ObservableObject {
     private var resumePlaybackAfterScrub = false
     private var rebuilding = false
     private var rebuildGeneration = 0
+    /// The framing a gesture is asking for, waiting its turn to be shown in the
+    /// composition. Latest wins: a drag makes far more of these than there is
+    /// any point building.
+    private var pendingFramingPreview: (framing: VideoFraming, clipID: UUID)?
+    private var framingPreviewLoop: Task<Void, Never>?
     /// The project the composition the player is holding was built from.
     ///
     /// What makes it possible to tell a framing change from a real edit: see
@@ -2739,6 +2744,64 @@ final class EditorSession: ObservableObject {
         watchForFailure(of: item)
         seek(to: resumeAt, exact: true, playAfter: resumePlayback)
         run.mark("item swapped in (the slow way)")
+    }
+
+    /// Shows an in-flight framing in the composition itself, rather than only as
+    /// a transform laid over the whole player.
+    ///
+    /// The picture the player draws has the video cutaways in it, so pushing
+    /// the player view around carried them along: the speaker moved and the
+    /// screen recording sitting over them moved too, which is neither what the
+    /// edit says nor what exports. Rebuilding the video composition while the
+    /// gesture runs moves the one layer that is meant to move. Only the
+    /// composition is rebuilt and not the tracks, so the item stays and the
+    /// picture never blacks out, and the transform in `FramedPlayerView` covers
+    /// the gap from one rebuild to the next.
+    func previewFraming(_ framing: VideoFraming, clipID: UUID) {
+        pendingFramingPreview = (framing, clipID)
+        guard framingPreviewLoop == nil else { return }
+        framingPreviewLoop = Task { [weak self] in
+            while let self, let next = self.pendingFramingPreview {
+                self.pendingFramingPreview = nil
+                await self.showFramingPreview(next.framing, clipID: next.clipID)
+                // A ceiling on how often the composition is rebuilt: often
+                // enough that a cutaway never visibly travels, rarely enough
+                // that the drag is not competing with a build for every frame.
+                try? await Task.sleep(for: .milliseconds(60))
+            }
+            self?.framingPreviewLoop = nil
+        }
+    }
+
+    private func showFramingPreview(_ framing: VideoFraming, clipID: UUID) async {
+        guard
+            !rebuilding,
+            activeOperation == nil,
+            let index = project.clips.firstIndex(where: { $0.id == clipID }),
+            // A keyed clip is a different picture every frame and the gesture
+            // writes a key rather than a framing, so it has nothing to preview.
+            !VideoFramingTrack.isKeyed(project.clips[index]),
+            let current = player.currentItem,
+            let builtProject
+        else { return }
+        var snapshot = project
+        snapshot.clips[index].framing = framing.isIdentity ? nil : framing
+        // Only ever the transform: anything else and this is the wrong tool.
+        guard builtProject.differsOnlyInPresentation(from: snapshot) else { return }
+        rebuilding = true
+        defer { rebuilding = false }
+        guard
+            let built = try? await CompositionBuilder.build(project: snapshot, for: .preview),
+            let reframed = built.playbackVideoComposition,
+            player.currentItem === current
+        else { return }
+        current.videoComposition = reframed
+        self.builtProject = snapshot
+        // What the composition is showing now, which is what the preview
+        // transform measures itself against: once it agrees with the gesture,
+        // the transform is nothing and the cutaways are back where they belong.
+        renderedFraming.record(snapshot.clips)
+        if player.timeControlStatus == .paused { refreshPausedFrame() }
     }
 
     /// Re-serves the moment the player is on, so a new mix or composition takes

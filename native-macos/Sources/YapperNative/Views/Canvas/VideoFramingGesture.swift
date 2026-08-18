@@ -35,6 +35,9 @@ struct VideoFramingGesture {
                     snapping: !isSnapBypassed
                 )
                 drag.updateFraming(panned.framing)
+                if let clipID = drag.framingClipID {
+                    session.previewFraming(panned.framing, clipID: clipID)
+                }
                 onGuidesChanged(panned.guides)
             }
             .onEnded { _ in finish() }
@@ -44,14 +47,16 @@ struct VideoFramingGesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.stage))
             .onChanged { value in
                 guard let origin = beginIfNeeded(from: value.startLocation) else { return }
-                drag.updateFraming(
-                    VideoFramingGeometry.zoomed(
-                        framing: origin,
-                        translation: value.translation,
-                        corner: corner,
-                        canvasSize: stageSize
-                    )
+                let zoomed = VideoFramingGeometry.zoomed(
+                    framing: origin,
+                    translation: value.translation,
+                    corner: corner,
+                    canvasSize: stageSize
                 )
+                drag.updateFraming(zoomed)
+                if let clipID = drag.framingClipID {
+                    session.previewFraming(zoomed, clipID: clipID)
+                }
             }
             .onEnded { _ in finish() }
     }
