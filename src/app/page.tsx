@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Download } from "lucide-react";
+import { Download } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
 import HomeJsonLd from "@/app/home-json-ld";
@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 export const metadata: Metadata = {
-  title: "Yapper: Speaking Practice with AI Coaching",
+  title: "Yapper: Content Creation App for Social Media Video",
   description:
-    "Free speaking practice tools with a timer and prompts. Record an answer and get it scored, your grammar and word choices corrected, and a clean version of what you said.",
+    "A content creation app for video creators. Capture ideas, generate scripts, record with a teleprompter, edit video by transcript, add captions, schedule, and publish. Plus free speaking practice tools with AI coaching.",
   alternates: { canonical: "https://ypr.app" },
 };
 
@@ -28,38 +28,40 @@ export default function HomePage() {
           <BirdMascot concept="chirpy" talking size={76} />
           <div className="mt-3 flex w-full max-w-5xl flex-col items-center">
             <p className="text-muted-foreground text-sm font-semibold">
-              The practice tools are free. The coaching is the paid part.
+              Yapper is coming to mobile and desktop
             </p>
             <h1 className="type-display mt-4">
-              Speak for a minute. Find out exactly what to fix.
+              Get better on camera. Turn every spark into a video worth posting.
             </h1>
             <p className="type-description mt-6 max-w-3xl sm:text-xl">
-              Pull a prompt, start the timer, and talk. Your coach scores the
-              answer, corrects the grammar and word choices you slipped on, and
-              writes back the version you were reaching for.
+              Yapper is a content creation app for people who talk to camera.
+              Capture ideas, turn them into video scripts, record with a
+              teleprompter, edit by transcript, add captions, schedule, and
+              publish from one connected studio.
             </p>
-            <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
-              <Button asChild size="lg">
-                <Link
-                  href="/training/random-topic-generator"
-                  className="no-underline"
-                >
-                  Start practicing
+
+            {/* Studio is what we are building and what people are signing up
+                for, so the waitlist stays the conversion and sits above the two
+                ways of looking around. */}
+            <div id="waitlist" className="mt-8 w-full max-w-2xl">
+              <p className="text-muted-foreground mb-3 text-sm font-medium">
+                Be first in line when Yapper is ready to download.
+              </p>
+              <Waitlist variant="hero" />
+            </div>
+
+            <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row">
+              <Button asChild size="lg" variant="outline">
+                <Link href="/studio" className="no-underline">
+                  Explore Studio
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/pricing" className="no-underline">
-                  See what coaching costs
+                <Link href="/training" className="no-underline">
+                  Begin training
                 </Link>
               </Button>
             </div>
-            <Link
-              href="/training"
-              className="text-muted-foreground hover:text-foreground relative z-10 mt-6 inline-flex items-center gap-2 text-sm font-semibold no-underline transition-colors"
-            >
-              Browse all the practice tools
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
         </div>
       </section>
@@ -68,24 +70,21 @@ export default function HomePage() {
 
       <FeatureDeck />
 
-      {/* The full studio app is genuinely unreleased, so the waitlist stays.
-          It just no longer stands in front of the product that is live. */}
-      <section id="waitlist" className="marketing-container pb-20 sm:pb-24">
-        <div className="sg-panel grid gap-7 p-8 sm:p-12 md:grid-cols-[auto_1fr] md:items-center">
+      <section className="marketing-container pb-20 sm:pb-24">
+        <div className="sg-panel grid gap-7 p-8 sm:p-12 md:grid-cols-[auto_1fr_auto] md:items-center">
           <span className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl border">
             <Download className="h-6 w-6 text-[var(--sg-accent)]" />
           </span>
           <div>
-            <h2 className="type-h3">The full studio is still being built.</h2>
-            <p className="type-description mt-2 max-w-[60ch] text-sm">
-              Scripts, a teleprompter recorder, and transcript-based editing for
-              Mac and mobile. Leave your email and we will tell you when it is
-              ready to download.
+            <h2 className="type-h3">Made for mobile and desktop.</h2>
+            <p className="type-description mt-2 text-sm">
+              Capture on your phone. Develop, record, edit, schedule, and
+              publish from whichever screen fits the moment.
             </p>
-            <div className="mt-5 max-w-xl">
-              <Waitlist variant="hero" />
-            </div>
           </div>
+          <Button asChild>
+            <a href="#waitlist">Get early access</a>
+          </Button>
         </div>
       </section>
 
