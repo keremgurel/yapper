@@ -114,6 +114,11 @@ final class EditorSession: ObservableObject {
     @Published private(set) var overlayPlacement: OverlayPlacementStatus = .idle
     /// Caption cards the styling controls act on when Apply-to-all is off.
     @Published private(set) var selectedCaptionIDs: Set<UUID> = []
+    /// The last card picked in the caption list, which is what a shift-click
+    /// there reaches back to.
+    var captionSelectionAnchor: UUID?
+    /// The last thing clicked, which is what a shift-click reaches back to.
+    private var selectionAnchor: TimelineSelectionItem?
     /// The look lifted off one item, waiting to be put onto others. Held for
     /// the session rather than the system pasteboard: it is a value out of this
     /// project, and nothing outside the editor has any use for it.
@@ -475,29 +480,78 @@ final class EditorSession: ObservableObject {
     func selectTimelineItem(
         _ item: TimelineSelectionItem,
         additive: Bool = false,
-        toggling: Bool = false
+        toggling: Bool = false,
+        ranging: Bool = false
     ) {
-        if toggling {
+        if ranging, let run = selectionRun(to: item) {
+            timelineSelection.formUnion(run)
+        } else if toggling {
             if timelineSelection.contains(item) {
                 timelineSelection.remove(item)
             } else {
                 timelineSelection.insert(item)
             }
-        } else if additive {
+            selectionAnchor = item
+        } else if additive || ranging {
+            // Shift with nothing to reach back to adds, which is what it did
+            // before ranging existed.
             timelineSelection.insert(item)
+            selectionAnchor = item
         } else {
             timelineSelection = [item]
+            selectionAnchor = item
         }
         syncInspectorSelection(preferred: timelineSelection.contains(item) ? item : nil)
     }
 
-    func setTimelineSelection(_ selection: Set<TimelineSelectionItem>) {
-        timelineSelection = selection
-        if let preferred = selection.sorted(by: timelineSelectionOrder).last {
-            syncInspectorSelection(preferred: preferred)
-        } else {
-            syncInspectorSelection(preferred: nil)
+    /// Everything of one kind between the last thing clicked and this one, which
+    /// is what shift-click means everywhere else. Nil when there is nothing of
+    /// this kind to reach back to.
+    private func selectionRun(to item: TimelineSelectionItem) -> Set<TimelineSelectionItem>? {
+        guard let anchor = selectionAnchor, anchor.isSameKind(as: item), anchor != item else {
+            return nil
         }
+        let ordered = timelineItems(likeKindOf: item)
+        guard
+            let from = ordered.firstIndex(of: anchor),
+            let to = ordered.firstIndex(of: item)
+        else { return nil }
+        return Set(ordered[min(from, to) ... max(from, to)])
+    }
+
+    /// Every item of one kind, in the order they play. The order a run is read
+    /// in, so a shift-click covers what the eye covers.
+    private func timelineItems(likeKindOf item: TimelineSelectionItem) -> [TimelineSelectionItem] {
+        let items: [TimelineSelectionItem] = switch item {
+        case .clip: project.clips.map { .clip($0.id) }
+        case .caption: captionCues.map { .caption($0.id) }
+        case .overlay: overlays.map { .overlay($0.id) }
+        case .text: (project.textLayers ?? []).map { .text($0.id) }
+        case .audio: (project.audioLayers ?? []).map { .audio($0.id) }
+        }
+        // Clips are already in playing order and carry no span of their own
+        // until they are laid end to end, so they are left as they are.
+        if case .clip = item { return items }
+        return items.sorted { timelineSelectionOrder($0, $1) }
+    }
+
+    /// - Parameter live: true while a marquee is still being dragged. The
+    ///   selection itself is published, because the cells have to show what is
+    ///   caught, and nothing else is: working out which item the inspector
+    ///   should follow means sorting the whole selection, and republishing the
+    ///   five selection properties behind it relaid every panel in the editor
+    ///   out on every pointer move. `settleTimelineSelection()` does that once,
+    ///   when the band is let go.
+    func setTimelineSelection(_ selection: Set<TimelineSelectionItem>, live: Bool = false) {
+        guard selection != timelineSelection else { return }
+        timelineSelection = selection
+        guard !live else { return }
+        settleTimelineSelection()
+    }
+
+    /// Brings the inspector into line with whatever the timeline has selected.
+    func settleTimelineSelection() {
+        syncInspectorSelection(preferred: timelineSelection.sorted(by: timelineSelectionOrder).last)
     }
 
     func ensureTimelineItemSelected(_ item: TimelineSelectionItem) {
@@ -761,7 +815,24 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func timelineSnapAnchors() -> [TimelineSnapAnchor] {
+    /// Everything a drag can settle onto.
+    ///
+    /// - Parameter moving: the items being carried, whose own edges are left
+    ///   out. An item is always exactly on its own edge, so leaving them in
+    ///   pinned every drag to where it started: the cell would not move at all
+    ///   until the pointer had cleared the snap threshold, which reads as a
+    ///   stuck timeline rather than as snapping.
+    /// The anchors for a drag carrying `item`, and everything selected with it
+    /// when it is part of the selection.
+    func timelineSnapAnchors(carrying item: TimelineSelectionItem) -> [TimelineSnapAnchor] {
+        var moving: Set<UUID> = [item.id]
+        if timelineSelection.contains(item) {
+            moving.formUnion(timelineSelection.map(\.id))
+        }
+        return timelineSnapAnchors(moving: moving)
+    }
+
+    func timelineSnapAnchors(moving: Set<UUID> = []) -> [TimelineSnapAnchor] {
         guard duration > 0 else { return [] }
         var anchors: [TimelineSnapAnchor] = [
             TimelineSnapAnchor(time: 0, kind: .boundary),
@@ -795,15 +866,15 @@ final class EditorSession: ObservableObject {
             cursor += clip.duration
             anchors.append(TimelineSnapAnchor(time: cursor, kind: .boundary))
         }
-        for layer in project.textLayers ?? [] {
+        for layer in project.textLayers ?? [] where !moving.contains(layer.id) {
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart, kind: .boundary))
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart + layer.duration, kind: .boundary))
         }
-        for overlay in project.overlays ?? [] {
+        for overlay in project.overlays ?? [] where !moving.contains(overlay.id) {
             anchors.append(TimelineSnapAnchor(time: overlay.timelineStart, kind: .boundary))
             anchors.append(TimelineSnapAnchor(time: overlay.timelineStart + overlay.duration, kind: .boundary))
         }
-        for layer in project.audioLayers ?? [] {
+        for layer in project.audioLayers ?? [] where !moving.contains(layer.id) {
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart, kind: .audio))
             anchors.append(TimelineSnapAnchor(time: layer.timelineStart + layer.duration, kind: .audio))
         }

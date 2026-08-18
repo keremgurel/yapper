@@ -52,3 +52,16 @@ enum TimelineMarqueeGeometry {
         return hits
     }
 }
+
+extension TimelineSelectionItem {
+    /// Whether two picks are the same kind of thing. A run only ever reaches
+    /// across one track: shift-clicking a caption after a clip is a new start,
+    /// not a range from one to the other.
+    func isSameKind(as other: TimelineSelectionItem) -> Bool {
+        switch (self, other) {
+        case (.clip, .clip), (.text, .text), (.overlay, .overlay),
+             (.caption, .caption), (.audio, .audio): true
+        default: false
+        }
+    }
+}

@@ -21,8 +21,10 @@ func selectTimelineItemFromPointer(
     let flags = NSEvent.modifierFlags
     session.selectTimelineItem(
         item,
-        additive: flags.contains(.shift),
-        toggling: flags.contains(.command)
+        toggling: flags.contains(.command),
+        // Shift reaches back to the last thing clicked and takes everything
+        // between, the way a list behaves everywhere else.
+        ranging: flags.contains(.shift)
     )
     // Only a plain click: adding to a selection is about the timeline, and
     // moving the playhead under someone building a multi-selection would be a

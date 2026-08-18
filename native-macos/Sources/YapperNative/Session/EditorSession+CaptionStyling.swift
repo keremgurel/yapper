@@ -33,12 +33,49 @@ extension EditorSession {
 
     func selectCaption(_ id: UUID?) {
         setSelectedCaptionIDs(id.map { [$0] } ?? [])
+        captionSelectionAnchor = id
     }
 
     func toggleCaptionSelection(_ id: UUID) {
         var ids = selectedCaptionIDs
         if ids.contains(id) { ids.remove(id) } else { ids.insert(id) }
         setSelectedCaptionIDs(ids)
+        captionSelectionAnchor = id
+    }
+
+    /// Every card between the last one picked and this one, which is what
+    /// shift-click means in a list. With nothing to reach back to it adds this
+    /// card, so the modifier is never a dead key.
+    func extendCaptionSelection(through id: UUID) {
+        let ordered = captions.map(\.id)
+        guard
+            let anchor = captionSelectionAnchor,
+            anchor != id,
+            let from = ordered.firstIndex(of: anchor),
+            let to = ordered.firstIndex(of: id)
+        else {
+            setSelectedCaptionIDs(selectedCaptionIDs.union([id]))
+            captionSelectionAnchor = id
+            return
+        }
+        // The anchor stays put, so a run can be stretched and shrunk by
+        // shift-clicking further down and back up again.
+        setSelectedCaptionIDs(
+            selectedCaptionIDs.union(ordered[min(from, to) ... max(from, to)])
+        )
+    }
+
+    /// One place the caption list routes a click through, so the modifiers mean
+    /// the same thing there as everywhere else: shift takes a run, command
+    /// picks one out, a plain click starts again.
+    func pickCaption(_ id: UUID, ranging: Bool, toggling: Bool) {
+        if ranging {
+            extendCaptionSelection(through: id)
+        } else if toggling {
+            toggleCaptionSelection(id)
+        } else {
+            selectCaption(id)
+        }
     }
 
     func isCaptionSelected(_ id: UUID) -> Bool {

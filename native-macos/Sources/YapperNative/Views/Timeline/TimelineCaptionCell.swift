@@ -93,7 +93,7 @@ struct TimelineCaptionCell: View {
                 guard activeTrimEdge == nil else { return }
                 if moveOrigin == nil, selectionMoveBounds == nil {
                     session.ensureTimelineItemSelected(.caption(cue.id))
-                    snapAnchors = session.timelineSnapAnchors()
+                    snapAnchors = session.timelineSnapAnchors(carrying: .caption(cue.id))
                     if session.timelineSelection.count > 1 {
                         selectionMoveBounds = session.timelineSelectionBounds()
                     } else {
@@ -175,7 +175,7 @@ struct TimelineCaptionCell: View {
                                 end: cue.timelineEnd
                             )
                             activeTrimEdge = edge
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .caption(cue.id))
                             session.ensureTimelineItemSelected(.caption(cue.id))
                         }
                         guard let trimOrigin else { return }

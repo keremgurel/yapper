@@ -87,7 +87,9 @@ struct CaptionListView: View {
         let isEmptied = text.trimmingCharacters(in: .whitespaces).isEmpty
         return HStack(spacing: 8) {
             Button {
-                toggleAndSeek(caption)
+                // The number is the multi-select handle, so a plain click on it
+                // picks the card out rather than replacing the run.
+                pickAndSeek(caption, toggling: true)
             } label: {
                 Text("\(number)")
                     .font(.studioCaption)
@@ -179,7 +181,7 @@ struct CaptionListView: View {
         // Anywhere in the row that is not the text, the number or the bin still
         // selects the card and seeks to it, so the whole row is a target.
         .contentShape(Rectangle())
-        .onTapGesture { selectAndSeek(caption) }
+        .onTapGesture { pickAndSeek(caption) }
         .contextMenu {
             PropertiesMenuItems(session: session, item: .caption(caption.id))
         }
@@ -190,20 +192,28 @@ struct CaptionListView: View {
         seek(to: caption)
     }
 
+    /// A click in the list, with whatever is being held down. Shift takes every
+    /// card between the last one picked and this one; command picks one out; a
+    /// plain click starts again. Going to the card is left to the clicks that
+    /// land on one card, because seeking through a run being built would move
+    /// the picture out from under the creator.
+    private func pickAndSeek(_ caption: ProjectCaption, toggling: Bool = false) {
+        let flags = NSEvent.modifierFlags
+        let ranging = flags.contains(.shift)
+        session.pickCaption(
+            caption.id,
+            ranging: ranging,
+            toggling: toggling || flags.contains(.command)
+        )
+        guard !ranging, session.isCaptionSelected(caption.id) else { return }
+        seek(to: caption)
+    }
+
     /// Moves the playhead to where the card is spoken, and nothing else, so a
     /// creator can hear a line without disturbing what they have picked out.
     private func seek(to caption: ProjectCaption) {
         guard let cue = session.captionCue(caption.id) else { return }
         onSeek(cue.timelineStart + 0.01)
-    }
-
-    /// Adds the card to the selection, or takes it out, and goes to it when it
-    /// has just been added. Picking a card out of a list is nearly always a
-    /// question about what it says on screen.
-    private func toggleAndSeek(_ caption: ProjectCaption) {
-        session.toggleCaptionSelection(caption.id)
-        guard session.isCaptionSelected(caption.id) else { return }
-        seek(to: caption)
     }
 
     private func focusPrevious(of id: UUID) {

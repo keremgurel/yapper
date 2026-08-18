@@ -333,40 +333,45 @@ struct TimelineContent: View {
     /// screen, and a selected item is drawn wherever it is so that carrying one
     /// past the edge never makes it vanish.
     let visibleRange: ClosedRange<Double>
-    @State private var marqueeStart: CGPoint?
-    @State private var marqueeCurrent: CGPoint?
+    /// The band repaints itself: see TimelineMarqueeState.
+    @StateObject private var marquee = TimelineMarqueeState()
     @State private var marqueeBaseSelection: Set<TimelineSelectionItem> = []
-    @State private var isMarqueeSelecting = false
     /// Where every item sits, built when a marquee starts and dropped when it ends.
     @State private var marqueeItemFrameTable: [TimelineItemFrame] = []
+
+    /// What the cells draw as selected: what the session holds, plus whatever
+    /// the band being dragged has caught so far.
+    private func isSelected(_ item: TimelineSelectionItem) -> Bool {
+        session.isTimelineSelected(item) || marquee.holds(item)
+    }
 
     /// Cells inside the visible stretch, plus anything selected so a drag can
     /// carry it anywhere without it disappearing.
     private var visibleCaptionCues: [ProjectCaptionCue] {
         session.captionCues.filter { cue in
             visibleRange.showsItem(start: cue.timelineStart, duration: cue.duration)
-                || session.isTimelineSelected(.caption(cue.id))
+                || isSelected(.caption(cue.id))
         }
     }
 
     private var visibleTextLayers: [ProjectTextLayer]? {
         session.project.textLayers?.filter { layer in
             visibleRange.showsItem(start: layer.timelineStart, duration: layer.duration)
-                || session.isTimelineSelected(.text(layer.id))
+                || isSelected(.text(layer.id))
         }
     }
 
     private var visibleOverlays: [ProjectOverlay]? {
         session.project.overlays?.filter { overlay in
             visibleRange.showsItem(start: overlay.timelineStart, duration: overlay.duration)
-                || session.isTimelineSelected(.overlay(overlay.id))
+                || isSelected(.overlay(overlay.id))
         }
     }
 
     private var visibleAudioLayers: [ProjectAudioLayer]? {
         session.project.audioLayers?.filter { layer in
             visibleRange.showsItem(start: layer.timelineStart, duration: layer.duration)
-                || session.isTimelineSelected(.audio(layer.id))
+                || isSelected(.audio(layer.id))
         }
     }
 
@@ -401,6 +406,7 @@ struct TimelineContent: View {
             TimelineVideoTrack(
                 session: session,
                 drag: session.timelineDrag,
+                marquee: marquee,
                 contentWidth: contentWidth,
                 visibleRange: visibleRange
             )
@@ -428,7 +434,7 @@ struct TimelineContent: View {
                     contentWidth: contentWidth,
                     projectDuration: session.duration,
                     rowY: captionRowY,
-                    selected: session.isTimelineSelected(.caption(cue.id))
+                    selected: isSelected(.caption(cue.id))
                 )
                     .accessibilityLabel("Caption: \(cue.text)")
                     .zIndex(3)
@@ -443,7 +449,7 @@ struct TimelineContent: View {
                         contentWidth: contentWidth,
                         projectDuration: session.duration,
                         rowY: textRowY,
-                        selected: session.isTimelineSelected(.text(layer.id))
+                        selected: isSelected(.text(layer.id))
                     )
                         .accessibilityLabel("Text layer: \(layer.text)")
                         .zIndex(3)
@@ -463,7 +469,7 @@ struct TimelineContent: View {
                             projectDuration: session.duration,
                             rowY: layout.overlayRowY(track: overlay.lane),
                             layout: layout,
-                            selected: session.isTimelineSelected(.overlay(overlay.id))
+                            selected: isSelected(.overlay(overlay.id))
                         )
                         .opacity(overlay.isVisible ? 1 : 0.45)
                         .zIndex(3)
@@ -482,7 +488,7 @@ struct TimelineContent: View {
                         contentWidth: contentWidth,
                         projectDuration: session.duration,
                         rowY: layout.audioRowY(track: audioLanes[layer.id] ?? 0),
-                        selected: session.isTimelineSelected(.audio(layer.id))
+                        selected: isSelected(.audio(layer.id))
                     )
                     .zIndex(3)
                 }
@@ -510,19 +516,8 @@ struct TimelineContent: View {
                 .zIndex(5)
             }
 
-            if let marqueeStart, let marqueeCurrent, isMarqueeSelecting {
-                let rect = TimelineMarqueeGeometry.rect(from: marqueeStart, to: marqueeCurrent)
-                RoundedRectangle(cornerRadius: 3, style: .continuous)
-                    .fill(Color.yapperOrange.opacity(0.12))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 3, style: .continuous)
-                            .stroke(Color.yapperOrange.opacity(0.92), lineWidth: 1)
-                    }
-                    .frame(width: rect.width, height: rect.height)
-                    .offset(x: rect.minX, y: rect.minY)
-                    .allowsHitTesting(false)
-                    .zIndex(6)
-            }
+            TimelineMarqueeBox(state: marquee)
+                .zIndex(6)
 
         }
         .coordinateSpace(name: Self.coordinateSpaceName)
@@ -542,9 +537,8 @@ struct TimelineContent: View {
     private func timelineTrackGesture(layout: TimelineRowLayout) -> some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
             .onChanged { value in
-                if marqueeStart == nil {
-                    marqueeStart = value.startLocation
-                    marqueeCurrent = value.location
+                if marquee.origin == nil {
+                    marquee.begin(at: value.startLocation, current: value.location)
                     marqueeBaseSelection = session.timelineSelection
                     marqueeItemFrameTable = marqueeItemFrames(layout: layout)
                 }
@@ -552,26 +546,31 @@ struct TimelineContent: View {
                     value.location.x - value.startLocation.x,
                     value.location.y - value.startLocation.y
                 )
-                if distance >= 4 {
-                    isMarqueeSelecting = true
-                    marqueeCurrent = value.location
-                    let flags = NSEvent.modifierFlags
-                    session.setTimelineSelection(
-                        TimelineMarqueeGeometry.selection(
-                            intersecting: TimelineMarqueeGeometry.rect(
-                                from: value.startLocation,
-                                to: value.location
-                            ),
-                            itemFrames: marqueeItemFrameTable,
-                            base: marqueeBaseSelection,
-                            additive: flags.contains(.shift),
-                            toggling: flags.contains(.command)
-                        )
+                guard distance >= 4 else { return }
+                marquee.drag(to: value.location)
+                let flags = NSEvent.modifierFlags
+                // Live: the inspector does not follow a band being dragged.
+                // Syncing it per pointer move republished half the session and
+                // relaid the panels out, which is what made a marquee crawl on
+                // a long project. It catches up once, on let go.
+                marquee.catching(
+                    TimelineMarqueeGeometry.selection(
+                        intersecting: TimelineMarqueeGeometry.rect(
+                            from: value.startLocation,
+                            to: value.location
+                        ),
+                        itemFrames: marqueeItemFrameTable,
+                        base: marqueeBaseSelection,
+                        additive: flags.contains(.shift),
+                        toggling: flags.contains(.command)
                     )
-                }
+                )
             }
             .onEnded { value in
-                if !isMarqueeSelecting {
+                if marquee.isActive {
+                    // The one time the session hears about it.
+                    session.setTimelineSelection(marquee.caught)
+                } else {
                     session.setTimelineSelection([])
                     session.finishScrubbing(
                         at: TimelineMetrics.time(
@@ -581,11 +580,9 @@ struct TimelineContent: View {
                         )
                     )
                 }
-                marqueeStart = nil
-                marqueeCurrent = nil
+                marquee.end()
                 marqueeBaseSelection = []
                 marqueeItemFrameTable = []
-                isMarqueeSelecting = false
             }
     }
 
@@ -663,8 +660,14 @@ struct TimelineContent: View {
 private struct TimelineVideoTrack: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var drag: TimelineDragState
+    /// Watched so a band caught over the clips draws on them, and only on them.
+    @ObservedObject var marquee: TimelineMarqueeState
     let contentWidth: Double
     let visibleRange: ClosedRange<Double>
+
+    private func isSelected(_ item: TimelineSelectionItem) -> Bool {
+        session.isTimelineSelected(item) || marquee.holds(item)
+    }
 
     var body: some View {
         // Every clip keeps its place in this stack for the whole drag and moves
@@ -753,7 +756,7 @@ private struct TimelineVideoTrack: View {
                     start: timelineStart,
                     duration: clip.duration
                 ),
-                selected: session.isTimelineSelected(.clip(clip.id))
+                selected: isSelected(.clip(clip.id))
             )
         }
     }
@@ -930,7 +933,7 @@ private struct TimelineVideoClipItem: View {
                 if selectionMoveBounds == nil {
                     session.ensureTimelineItemSelected(.clip(clip.id))
                     selectionMoveBounds = session.timelineSelectionBounds()
-                    snapAnchors = session.timelineSnapAnchors()
+                    snapAnchors = session.timelineSnapAnchors(carrying: .clip(clip.id))
                     session.beginTimelineDrag(clip.id)
                 }
                 // Escape has already put everything back, so the rest of this
@@ -1033,7 +1036,7 @@ private struct TimelineVideoClipItem: View {
                         if trimOrigin == nil {
                             trimOrigin = clip
                             activeTrimEdge = edge
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .clip(clip.id))
                             session.ensureTimelineItemSelected(.clip(clip.id))
                         }
                         guard let trimOrigin else { return }
@@ -1314,7 +1317,7 @@ private struct TimelineOverlayItem: View {
                     guard activeTrimEdge == nil else { return }
                     if moveOrigin == nil, selectionMoveBounds == nil {
                         session.ensureTimelineItemSelected(.overlay(overlay.id))
-                        snapAnchors = session.timelineSnapAnchors()
+                        snapAnchors = session.timelineSnapAnchors(carrying: .overlay(overlay.id))
                         session.beginTimelineDrag(overlay.id)
                         if session.timelineSelection.count > 1 {
                             selectionMoveBounds = session.timelineSelectionBounds()
@@ -1366,13 +1369,15 @@ private struct TimelineOverlayItem: View {
                         contentWidth: contentWidth,
                         projectDuration: projectDuration
                     )
-                    // The cell rides the raw pointer, always. Putting it on the
-                    // snapped position instead made it stick: with a caption
-                    // every half second the anchors are dense, so small drags
-                    // moved nothing at all and larger ones jumped between
-                    // anchors. It lands on the snapped spot when you let go, and
-                    // the orange guide says which anchor that is.
-                    freeMoveStart = rawDraft.timelineStart
+                    // Pulled onto the snap while one is in reach, so lining a
+                    // cutaway up with a clip edge, a sound or the playhead can
+                    // be felt and not only seen. Nothing is forced: the pull
+                    // reaches exactly as far as the snap threshold, Option
+                    // turns it off, and an item no longer sticks to its own
+                    // edges — see `timelineSnapAnchors(carrying:)`.
+                    freeMoveStart = adjusted.match == nil
+                        ? rawDraft.timelineStart
+                        : moveDraft?.timelineStart ?? rawDraft.timelineStart
                     // The same proposal the video track uses, so an overlay can
                     // be carried onto a brand new lane on top, or all the way
                     // down onto the speaker's own track.
@@ -1579,7 +1584,7 @@ private struct TimelineOverlayItem: View {
                         if trimOrigin == nil {
                             trimOrigin = overlay
                             activeTrimEdge = edge
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .overlay(overlay.id))
                             session.ensureTimelineItemSelected(.overlay(overlay.id))
                         }
                         guard let trimOrigin else { return }
@@ -1765,7 +1770,7 @@ struct TimelineAudioItem: View {
                     guard activeTrimEdge == nil else { return }
                     if moveOrigin == nil, selectionMoveBounds == nil {
                         session.ensureTimelineItemSelected(.audio(layer.id))
-                        snapAnchors = session.timelineSnapAnchors()
+                        snapAnchors = session.timelineSnapAnchors(carrying: .audio(layer.id))
                         session.beginTimelineDrag(layer.id)
                         if session.timelineSelection.count > 1 {
                             selectionMoveBounds = session.timelineSelectionBounds()
@@ -1816,9 +1821,15 @@ struct TimelineAudioItem: View {
                         contentWidth: contentWidth,
                         projectDuration: projectDuration
                     )
-                    // The cell rides the raw pointer and lands on the snapped
-                    // spot when it is let go.
-                    freeMoveStart = rawDraft.timelineStart
+                    // Pulled onto the snap while one is in reach, so lining a
+                    // sound up with a clip edge, a sound or the playhead can
+                    // be felt and not only seen. Nothing is forced: the pull
+                    // reaches exactly as far as the snap threshold, Option
+                    // turns it off, and an item no longer sticks to its own
+                    // edges — see `timelineSnapAnchors(carrying:)`.
+                    freeMoveStart = adjusted.match == nil
+                        ? rawDraft.timelineStart
+                        : moveDraft?.timelineStart ?? rawDraft.timelineStart
                     session.setActiveTimelineSnap(adjusted.match)
                 }
                 .onEnded { _ in
@@ -1889,7 +1900,7 @@ struct TimelineAudioItem: View {
                         if trimOrigin == nil {
                             trimOrigin = layer
                             activeTrimEdge = edge
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .audio(layer.id))
                             session.ensureTimelineItemSelected(.audio(layer.id))
                         }
                         guard let trimOrigin else { return }
@@ -2168,7 +2179,7 @@ private struct TimelineTextLayerCell: View {
                         guard activeTrimEdge == nil else { return }
                         if moveOrigin == nil, selectionMoveBounds == nil {
                             session.ensureTimelineItemSelected(.text(layer.id))
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .text(layer.id))
                             if session.timelineSelection.count > 1 {
                                 selectionMoveBounds = session.timelineSelectionBounds()
                             } else {
@@ -2266,7 +2277,7 @@ private struct TimelineTextLayerCell: View {
                         if trimOrigin == nil {
                             trimOrigin = layer
                             activeTrimEdge = edge
-                            snapAnchors = session.timelineSnapAnchors()
+                            snapAnchors = session.timelineSnapAnchors(carrying: .text(layer.id))
                             session.ensureTimelineItemSelected(.text(layer.id))
                         }
                         guard let trimOrigin else { return }
