@@ -18,7 +18,16 @@ import { headObjectBytes, ownsKey } from "@/lib/r2";
 
 export const runtime = "nodejs";
 
-/** List the signed-in user's submissions for the history view (summaries only). */
+/**
+ * List the signed-in user's Studio submissions for the history view
+ * (summaries only).
+ *
+ * Scoped to `surface = 'studio'` deliberately. Training reps live in the same
+ * table but carry a different feedback shape (five scored dimensions and an
+ * overview, not a single score and a summary), and the history view renders
+ * every row through the Studio feedback component. Training reps have their
+ * own list at /api/training/progress and their own report screen.
+ */
 export async function GET(): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -34,7 +43,9 @@ export async function GET(): Promise<Response> {
       createdAt: submissions.createdAt,
     })
     .from(submissions)
-    .where(eq(submissions.userId, userId))
+    .where(
+      and(eq(submissions.userId, userId), eq(submissions.surface, "studio")),
+    )
     .orderBy(desc(submissions.createdAt))
     .limit(50);
 

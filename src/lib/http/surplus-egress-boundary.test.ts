@@ -16,6 +16,7 @@ const CALLERS = [
   "lib/ideas/expand.ts",
   "lib/inspiration/web-resource.ts",
   "lib/publish/caption.ts",
+  "lib/training-feedback/coach.ts",
 ] as const;
 
 function productionSources(directory: string): string[] {
