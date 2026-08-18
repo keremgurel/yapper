@@ -24,6 +24,9 @@ enum CaptionGenerator {
     /// An edited gap this long reads as a real pause, so the card breaks there
     /// whether or not it is full.
     static let pauseSeconds = 0.48
+    /// A counted card holds its count through the small gaps between phrases,
+    /// so the break has to be a real stop rather than a breath.
+    static let countedPauseSeconds = 0.7
 
     /// Transcriber word starts lag the true onset slightly, so a card anchored
     /// exactly at its first word reads late. Each card takes this much of a
@@ -46,6 +49,8 @@ enum CaptionGenerator {
         var captions: [ProjectCaption] = []
         var group: [CaptionSourceWord] = []
         var previousWordSourceEnd: [UUID: Double] = [:]
+        /// The words a counted card is being cut from, filled a run at a time.
+        var run: [CaptionSourceWord] = []
 
         func flush() {
             guard let first = group.first, let last = group.last else { return }
@@ -62,14 +67,47 @@ enum CaptionGenerator {
             group.removeAll(keepingCapacity: true)
         }
 
-        for word in words {
-            if let last = group.last, shouldBreak(before: word, after: last, group: group, wordsPerCard: wordsPerCard) {
+        /// Cuts a whole run into cards of no more than the count, as evenly as
+        /// the run divides. See CaptionCardSizes.
+        func flushRun() {
+            guard !run.isEmpty else { return }
+            var index = 0
+            for size in CaptionCardSizes.sizes(for: run.map(\.text), perCard: wordsPerCard) {
+                group = Array(run[index ..< min(run.count, index + size)])
+                index += size
                 flush()
             }
-            group.append(word)
+            run.removeAll(keepingCapacity: true)
         }
+
+        for word in words {
+            guard wordsPerCard > 0 else {
+                if let last = group.last,
+                   shouldBreak(before: word, after: last, group: group, wordsPerCard: wordsPerCard) {
+                    flush()
+                }
+                group.append(word)
+                continue
+            }
+            // A counted card is cut from a run, and a run ends only where it
+            // has to: another recording, a real stop, or a cut through the
+            // middle. Anything else and the count stops meaning anything.
+            if let last = run.last, endsRun(before: word, after: last) { flushRun() }
+            run.append(word)
+        }
+        flushRun()
         flush()
         return captions
+    }
+
+    /// Where a counted run has to end, whatever the count says.
+    private static func endsRun(before word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
+        if word.mediaID != last.mediaID { return true }
+        if word.timelineStart - last.timelineEnd > countedPauseSeconds { return true }
+        // A cut removes recording seconds without leaving a timeline gap, so a
+        // card laid across one is anchored to a stretch that is not there any
+        // more and never appears at all.
+        return (word.sourceStart - last.sourceEnd) - (word.timelineStart - last.timelineEnd) > 0.05
     }
 
     private static func shouldBreak(
@@ -79,7 +117,8 @@ enum CaptionGenerator {
         wordsPerCard: Int
     ) -> Bool {
         if word.mediaID != last.mediaID { return true }
-        if word.timelineStart - last.timelineEnd > pauseSeconds { return true }
+        let pause = wordsPerCard > 0 ? countedPauseSeconds : pauseSeconds
+        if word.timelineStart - last.timelineEnd > pause { return true }
         // A cut removes recording seconds without leaving a timeline gap, so
         // two words either side of one look adjacent while their anchors are
         // far apart. A card must never span that: anchored across the removed
@@ -122,21 +161,19 @@ enum CaptionGenerator {
     /// earlier, whichever lands somewhere a reader would pause.
     static func breaksFixedCard(
         group: [CaptionSourceWord],
-        next: CaptionSourceWord,
+        next _: CaptionSourceWord,
         wordsPerCard: Int
     ) -> Bool {
         guard let last = group.last else { return false }
-        if closesSentence(last.text) { return true }
+        // A count is a promise: asking for three words a card and getting a
+        // one, a two and a four is not the look anybody picked. So the count is
+        // what breaks a card, and the only thing allowed to change it is a
+        // word that cannot be left at the end of a line — one more word, once.
+        // Sentence ends do not break a counted card: a real pause between two
+        // words does, and in speech that is where the sentences are anyway.
         if group.count >= wordsPerCard + 1 { return true }
-        if group.count >= wordsPerCard {
-            // Full, but ending here would split a phrase. One more word is
-            // allowed, and only one.
-            return !clings(last.text)
-        }
-        guard wordsPerCard > 1, group.count == wordsPerCard - 1 else { return false }
-        // One short of full: stopping here beats going on when the word that
-        // would fill the card clings to the one after it.
-        return clings(next.text) && !clings(last.text)
+        if group.count >= wordsPerCard { return !clings(last.text) }
+        return false
     }
 
     private static func clings(_ text: String) -> Bool {

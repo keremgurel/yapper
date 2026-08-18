@@ -51,10 +51,16 @@ extension EditorProject {
     mutating func setCaptionWordsPerCard(_ value: Int) {
         let normalized = CaptionWordsPerCard.normalized(value)
         guard normalized != wordsPerCaptionCard else { return }
+        let previous = storedCaptions
         captionWordsPerCard = normalized
         // Grouping is a property of the cards themselves, so changing it has to
-        // rebuild them. Text edits made on the old grouping cannot survive.
-        if !storedCaptions.isEmpty { captions = generatedCaptions() }
+        // rebuild them. Text edits made on the old grouping cannot survive, but
+        // the look does: a card that was recoloured or moved keeps that through
+        // a change that is only about where the words break. See
+        // `CaptionStyleInheritance`.
+        if !previous.isEmpty {
+            captions = CaptionStyleInheritance.inherited(generatedCaptions(), from: previous)
+        }
         updatedAt = Date()
     }
 
