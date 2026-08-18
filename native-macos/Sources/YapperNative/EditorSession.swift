@@ -114,6 +114,10 @@ final class EditorSession: ObservableObject {
     @Published private(set) var overlayPlacement: OverlayPlacementStatus = .idle
     /// Caption cards the styling controls act on when Apply-to-all is off.
     @Published private(set) var selectedCaptionIDs: Set<UUID> = []
+    /// The look lifted off one item, waiting to be put onto others. Held for
+    /// the session rather than the system pasteboard: it is a value out of this
+    /// project, and nothing outside the editor has any use for it.
+    @Published var copiedProperties: CopiedProperties?
     /// Whether caption styling changes go to the shared style or the selection.
     @Published var captionApplyToAll = true
     /// The effect being played to be heard, if any. Published so the card that
@@ -562,6 +566,14 @@ final class EditorSession: ObservableObject {
     var selectedClipIDs: Set<UUID> {
         Set(timelineSelection.compactMap { item -> UUID? in
             if case let .clip(id) = item { return id }
+            return nil
+        })
+    }
+
+    /// The text layers the timeline has selected.
+    var selectedTextLayerIDs: Set<UUID> {
+        Set(timelineSelection.compactMap { item -> UUID? in
+            if case let .text(id) = item { return id }
             return nil
         })
     }

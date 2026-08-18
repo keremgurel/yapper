@@ -75,6 +75,17 @@ struct TextStylePatch: Codable, Equatable, Sendable {
 
     /// Every field the whole appearance covers, for "restyle this card exactly
     /// like this" — picking a template on one selected caption, for instance.
+    /// Every field a whole style covers, layout included: what "make this one
+    /// look exactly like that one" means when it is a card being pasted onto
+    /// rather than a template being picked.
+    static func everything(in style: TextStyle) -> TextStylePatch {
+        var patch = everything(in: style.appearance)
+        patch.x = style.x
+        patch.y = style.y
+        patch.width = style.width
+        return patch
+    }
+
     static func everything(in appearance: TextAppearance) -> TextStylePatch {
         TextStylePatch(
             font: appearance.font,

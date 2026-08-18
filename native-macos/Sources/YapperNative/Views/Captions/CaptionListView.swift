@@ -180,6 +180,9 @@ struct CaptionListView: View {
         // selects the card and seeks to it, so the whole row is a target.
         .contentShape(Rectangle())
         .onTapGesture { selectAndSeek(caption) }
+        .contextMenu {
+            PropertiesMenuItems(session: session, item: .caption(caption.id))
+        }
     }
 
     private func selectAndSeek(_ caption: ProjectCaption) {

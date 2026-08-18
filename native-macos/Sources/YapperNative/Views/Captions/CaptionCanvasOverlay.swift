@@ -90,6 +90,9 @@ private struct CaptionCanvasCard: View {
             // working on every item at once.
             .contentShape(Rectangle())
             .onTapGesture { session.selectCaption(cue.id) }
+            .contextMenu {
+                PropertiesMenuItems(session: session, item: .caption(cue.id))
+            }
             .gesture(moveGesture)
             .overlay {
                 if isSelected {

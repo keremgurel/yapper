@@ -883,6 +883,8 @@ private struct TimelineVideoClipItem: View {
             transaction.disablesAnimations = true
         }
         .contextMenu {
+            PropertiesMenuItems(session: session, item: .clip(clip.id))
+            Divider()
             Button {
                 session.select(clip.id)
                 Task { await session.splitAtPlayhead() }
@@ -1256,6 +1258,8 @@ private struct TimelineOverlayItem: View {
         // A cutaway is the thing people want to crop, and the cell on the
         // timeline is where they are looking at it.
         .contextMenu {
+            PropertiesMenuItems(session: session, item: .overlay(overlay.id))
+            Divider()
             Button {
                 session.beginCropping(overlayID: overlay.id)
             } label: {
@@ -2150,6 +2154,9 @@ private struct TimelineTextLayerCell: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { selectTimelineItemFromPointer(.text(displayed.id), session: session) }
+            .contextMenu {
+                PropertiesMenuItems(session: session, item: .text(displayed.id))
+            }
             .frame(width: width, height: 42)
             .clipped()
             .gesture(

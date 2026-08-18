@@ -68,6 +68,9 @@ struct OverlayCanvasItem: View {
             // working on every item at once.
             .contentShape(Rectangle())
             .onTapGesture { session.selectOverlay(overlay.id) }
+            .contextMenu {
+                PropertiesMenuItems(session: session, item: .overlay(overlay.id))
+            }
             .gesture(moveGesture)
             .overlay { selectionBorder }
             .overlay(alignment: .topLeading) { handle(.topLeading) }

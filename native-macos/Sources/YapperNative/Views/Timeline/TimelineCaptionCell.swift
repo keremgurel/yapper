@@ -59,6 +59,9 @@ struct TimelineCaptionCell: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { selectTimelineItemFromPointer(.caption(cue.id), session: session) }
+            .contextMenu {
+                PropertiesMenuItems(session: session, item: .caption(cue.id))
+            }
             .frame(width: width, height: Self.height)
             .clipped()
             .gesture(moveGesture)
