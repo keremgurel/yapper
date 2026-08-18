@@ -31,8 +31,8 @@ export default function StepShell({
   children: ReactNode;
 }) {
   return (
-    <div className="flex min-h-[540px] flex-col p-6 sm:p-8">
-      <div className="mb-7 flex items-center justify-between">
+    <div className="flex min-h-[440px] flex-col p-6 sm:p-8">
+      <div className="mb-7 flex items-center justify-between pr-9">
         {onBack ? (
           <button
             type="button"

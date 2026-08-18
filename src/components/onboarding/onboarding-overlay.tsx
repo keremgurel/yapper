@@ -53,7 +53,7 @@ export default function OnboardingOverlay({
           type="button"
           onClick={onClose}
           aria-label="Close setup"
-          className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-4 right-4 z-10 flex h-8 w-8 items-center justify-center rounded-md transition-colors"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-3 right-3 z-20 flex h-8 w-8 items-center justify-center rounded-md transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
