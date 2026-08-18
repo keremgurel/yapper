@@ -29,30 +29,46 @@ export default function ScrollShowcase({ items }: { items: ShowcaseItem[] }) {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    const nodes = itemRefs.current.filter(Boolean) as HTMLDivElement[];
-    if (nodes.length === 0 || !("IntersectionObserver" in window)) return;
+    // Deterministic rather than observed: whichever item's midpoint is nearest
+    // the middle of the viewport is the one being read. An IntersectionObserver
+    // was leaving the panel stranded on a fast scroll, because a flick can move
+    // every item out of the observed band between two callbacks and none of
+    // them reports as intersecting.
+    let frame = 0;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // Pick the entry closest to the middle of the band rather than the
-        // first intersecting one, so a tall item does not hold the panel while
-        // the next one is already the thing being read.
-        let best: { index: number; ratio: number } | null = null;
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const index = nodes.indexOf(entry.target as HTMLDivElement);
-          if (index < 0) continue;
-          if (!best || entry.intersectionRatio > best.ratio) {
-            best = { index, ratio: entry.intersectionRatio };
-          }
+    const measure = () => {
+      frame = 0;
+      const nodes = itemRefs.current;
+      const middle = window.innerHeight / 2;
+      let bestIndex = 0;
+      let bestDistance = Number.POSITIVE_INFINITY;
+
+      for (let index = 0; index < nodes.length; index += 1) {
+        const node = nodes[index];
+        if (!node) continue;
+        const rect = node.getBoundingClientRect();
+        const distance = Math.abs(rect.top + rect.height / 2 - middle);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = index;
         }
-        if (best) setActiveIndex(best.index);
-      },
-      { rootMargin: "-40% 0px -40% 0px", threshold: [0, 0.25, 0.5, 1] },
-    );
+      }
+      setActiveIndex(bestIndex);
+    };
 
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(measure);
+    };
+
+    schedule();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, [items.length]);
 
   return (
