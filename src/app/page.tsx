@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { ArrowRight, Download } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
 import HomeJsonLd from "@/app/home-json-ld";
@@ -8,6 +8,8 @@ import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import Waitlist from "@/components/waitlist";
 import StudioWorkflowTour from "@/components/marketing/studio-workflow-tour";
 import FeatureDeck from "@/components/marketing/feature-deck";
+import { Card } from "@/components/ui/card";
+import { programFamilies } from "@/data/training";
 import { Button } from "@/components/ui/button";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 
@@ -17,6 +19,18 @@ export const metadata: Metadata = {
     "A content creation app for video creators. Capture ideas, generate scripts, record with a teleprompter, edit video by transcript, add captions, schedule, and publish. Plus free speaking practice tools with AI coaching.",
   alternates: { canonical: "https://ypr.app" },
 };
+
+/** Four practice tools worth naming on the homepage, pulled from the same
+ * catalog the training hub and the sitemap read, so they cannot drift. */
+const TRAINING_HIGHLIGHTS = [
+  "random-topic-generator",
+  "interview-prep",
+  "explain-after-reading",
+  "conflict",
+].map((slug) => {
+  const program = programFamilies.find((item) => item.slug === slug)!;
+  return { href: program.href, title: program.title, body: program.prompt };
+});
 
 export default function HomePage() {
   return (
@@ -40,23 +54,17 @@ export default function HomePage() {
               publish from one connected studio.
             </p>
 
-            {/* Studio is what we are building and what people are signing up
-                for, so the waitlist stays the conversion and sits above the two
-                ways of looking around. */}
-            <div id="waitlist" className="mt-8 w-full max-w-2xl">
-              <p className="text-muted-foreground mb-3 text-sm font-medium">
-                Be first in line when Yapper is ready to download.
-              </p>
-              <Waitlist variant="hero" />
-            </div>
-
-            <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row">
-              <Button asChild size="lg" variant="outline">
+            {/* Two doors, nothing else. Studio is the product we are building,
+                so it takes the one accent-filled action; training is the half
+                someone can use today. The waitlist lives further down, where it
+                catches people who read the case first. */}
+            <div className="mt-9 flex flex-col items-center gap-3 sm:flex-row">
+              <Button asChild size="lg" className="sm:px-8">
                 <Link href="/studio" className="no-underline">
                   Explore Studio
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline">
+              <Button asChild size="lg" variant="outline" className="sm:px-8">
                 <Link href="/training" className="no-underline">
                   Begin training
                 </Link>
@@ -70,21 +78,66 @@ export default function HomePage() {
 
       <FeatureDeck />
 
-      <section className="marketing-container pb-20 sm:pb-24">
-        <div className="sg-panel grid gap-7 p-8 sm:p-12 md:grid-cols-[auto_1fr_auto] md:items-center">
+      {/* Training. The half that is live today, and the reason someone lands
+          here from search in the first place. Same section grammar as the
+          Studio page: accent eyebrow, one centred heading, a card grid. */}
+      <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+        <p className="sg-field-label text-center text-[color:var(--sg-accent)]">
+          Free to use today
+        </p>
+        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-black sm:text-3xl">
+          Get better on camera before you post
+        </h2>
+        <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed sm:text-base">
+          Pull a prompt, start the timer, and talk. No account needed. When you
+          want to know how it actually landed, AI coaching scores the answer,
+          fixes the grammar and word choices you slipped on, and writes back the
+          version you were reaching for.
+        </p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {TRAINING_HIGHLIGHTS.map((item) => (
+            <Card
+              key={item.href}
+              className="gap-0 p-6 transition-colors hover:border-[color:var(--sg-accent)]/40"
+            >
+              <Link href={item.href} className="no-underline">
+                <h3 className="text-foreground text-lg font-black">
+                  {item.title}
+                </h3>
+                <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+                  {item.body}
+                </p>
+              </Link>
+            </Card>
+          ))}
+        </div>
+        <div className="mt-8 flex justify-center">
+          <Button asChild size="lg" variant="outline" className="sm:px-8">
+            <Link href="/training" className="no-underline">
+              Browse all practice tools
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </section>
+
+      {/* The waitlist, kept below the case rather than in front of it. */}
+      <section id="waitlist" className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
+        <div className="sg-panel flex flex-col items-center gap-5 p-10 text-center">
           <span className="bg-muted flex h-14 w-14 items-center justify-center rounded-2xl border">
             <Download className="h-6 w-6 text-[var(--sg-accent)]" />
           </span>
-          <div>
-            <h2 className="type-h3">Made for mobile and desktop.</h2>
-            <p className="type-description mt-2 text-sm">
-              Capture on your phone. Develop, record, edit, schedule, and
-              publish from whichever screen fits the moment.
-            </p>
+          <h2 className="sg-display text-foreground max-w-lg text-2xl font-black sm:text-3xl">
+            Made for mobile and desktop
+          </h2>
+          <p className="text-muted-foreground max-w-md text-sm sm:text-base">
+            Capture on your phone. Develop, record, edit, schedule, and publish
+            from whichever screen fits the moment. We will email you the moment
+            it is ready to download.
+          </p>
+          <div className="w-full max-w-xl">
+            <Waitlist variant="hero" />
           </div>
-          <Button asChild>
-            <a href="#waitlist">Get early access</a>
-          </Button>
         </div>
       </section>
 
