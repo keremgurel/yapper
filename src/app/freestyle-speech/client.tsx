@@ -36,7 +36,12 @@ export default function FreestyleSpeechClient({
 
       <FreestyleHero onJumpToPractice={handleJumpToPractice} />
 
-      <PracticeSessionProvider initialTopic={initialTopic} mode="freestyle">
+      <PracticeSessionProvider
+        initialTopic={initialTopic}
+        mode="freestyle"
+        drillSlug="freestyle-speech"
+        drillTitle="Freestyle speech"
+      >
         <PracticeStage />
       </PracticeSessionProvider>
 

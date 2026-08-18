@@ -9,6 +9,7 @@ import {
   AudioPlayerTime,
   AudioPlayerDuration,
 } from "@/components/ui/audio-player";
+import TrainingFeedbackCta from "@/components/training/feedback-cta";
 import { usePracticeSession } from "@/contexts/practice-session";
 import {
   trackRecordingDownloaded,
@@ -43,6 +44,7 @@ function VideoPlayer({
   onNewSession,
   canDownload,
   isPreparingDownload,
+  feedbackSlot,
 }: {
   src: string;
   prompt: string;
@@ -51,6 +53,7 @@ function VideoPlayer({
   onNewSession: () => void;
   canDownload: boolean;
   isPreparingDownload: boolean;
+  feedbackSlot: React.ReactNode;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -255,6 +258,10 @@ function VideoPlayer({
       <div
         className={`absolute inset-x-0 bottom-0 z-20 flex flex-col gap-3 p-4 transition-all duration-300 ${show ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"}`}
       >
+        {/* Coaching is the point of the rep, so it sits above the transport
+            controls rather than competing with them. */}
+        <div className="pb-1">{feedbackSlot}</div>
+
         {/* Scrub bar */}
         <div
           ref={trackRef}
@@ -409,12 +416,17 @@ function AudioReplayControls({
 export default function CompletionScreen() {
   const {
     mode,
+    drillSlug,
+    drillTitle,
     topic,
     customPromptText,
     cameraOn,
     micOn,
     recordedBlob,
     recordedUrl,
+    coachAudioBlob,
+    coachAudioPending,
+    timerSeconds,
     isPreparingDownload,
     downloadRecording,
     resetTimer,
@@ -433,6 +445,21 @@ export default function CompletionScreen() {
     resetTimer();
     if (!isFreestyle) generateTopic();
   };
+  // Goals are filled in by the CTA from the signed-in user's onboarding.
+  const feedbackCta = (
+    <TrainingFeedbackCta
+      audio={coachAudioBlob}
+      audioPending={coachAudioPending}
+      context={{
+        drillSlug,
+        drillTitle,
+        prompt,
+        targetSeconds: timerSeconds,
+        goals: [],
+      }}
+    />
+  );
+
   const hasVideo = !!recordedUrl && cameraOn;
   const hasAudioOnly = !!recordedUrl && !cameraOn && micOn;
   const hasRecording = hasVideo || hasAudioOnly;
@@ -483,6 +510,7 @@ export default function CompletionScreen() {
             onNewSession={onNewSession}
             canDownload={canDownload}
             isPreparingDownload={isPreparingDownload}
+            feedbackSlot={feedbackCta}
           />
         )}
 
@@ -502,6 +530,7 @@ export default function CompletionScreen() {
                 isPreparingDownload={isPreparingDownload}
               />
             </AudioPlayerProvider>
+            <div className="mt-8">{feedbackCta}</div>
           </div>
         )}
 
@@ -542,8 +571,9 @@ export default function CompletionScreen() {
                   </p>
                 </div>
 
-                <p className="text-[14px] text-white/30">
-                  Enable camera or mic to save a replay
+                <p className="max-w-[42ch] text-center text-[14px] text-white/35">
+                  Turn on your mic before a rep to save a replay and get AI
+                  feedback on how you spoke.
                 </p>
 
                 <button

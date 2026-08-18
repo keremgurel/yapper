@@ -24,12 +24,16 @@ import { usePromptEditor } from "@/hooks/use-prompt-editor";
 import { useSessionTimer } from "@/hooks/use-session-timer";
 import { useTimerEditor } from "@/hooks/use-timer-editor";
 import { useMediaStream } from "@/hooks/use-media-stream";
+import { useCoachAudio } from "@/hooks/use-coach-audio";
 
 export type PracticeMode = "topic" | "freestyle";
 
 interface PracticeSessionContextValue {
   // Mode
   mode: PracticeMode;
+  /** Which practice tool this session belongs to, for feedback context. */
+  drillSlug: string;
+  drillTitle: string;
 
   // Topic
   topic: Topic;
@@ -78,6 +82,10 @@ interface PracticeSessionContextValue {
   isRecording: boolean;
   recordedBlob: Blob | null;
   recordedUrl: string | null;
+  /** Small mic-only copy of the take, recorded for AI feedback only. */
+  coachAudioBlob: Blob | null;
+  /** True while that copy is still being assembled after the rep ends. */
+  coachAudioPending: boolean;
   isPreparingDownload: boolean;
   mediaError: string | null;
   clearMediaError: () => void;
@@ -104,12 +112,18 @@ const PracticeSessionContext =
 export function PracticeSessionProvider({
   initialTopic,
   mode = "topic",
+  drillSlug,
+  drillTitle,
   topicPool,
   initialGenerated = false,
   children,
 }: {
   initialTopic: Topic;
   mode?: PracticeMode;
+  /** Slug of the practice tool hosting this session. Sent with a feedback
+   * request so the coach knows what kind of rep it is reading. */
+  drillSlug: string;
+  drillTitle: string;
   topicPool?: Topic[];
   initialGenerated?: boolean;
   children: React.ReactNode;
@@ -117,6 +131,7 @@ export function PracticeSessionProvider({
   const isCompactDevice = useCompactDevice();
   const topicGen = useTopicGenerator(initialTopic, topicPool, initialGenerated);
   const media = useMediaStream();
+  const coachAudio = useCoachAudio();
   const sessionStartTimeRef = useRef<number>(0);
   const endSessionRef = useRef<((reason: "auto" | "manual") => void) | null>(
     null,
@@ -125,6 +140,7 @@ export function PracticeSessionProvider({
   const timer = useSessionTimer({
     onTimerExpired: () => {
       media.stopRecording();
+      coachAudio.stop();
       endSessionRef.current?.("auto");
     },
   });
@@ -151,9 +167,11 @@ export function PracticeSessionProvider({
     promptEditor.closeEditor();
     timerEditor.closeEditor();
     media.clearRecordedMedia();
+    coachAudio.reset();
     timer.start();
     playStartRecording();
     media.startRecording();
+    coachAudio.start(media.getStream());
     sessionStartTimeRef.current = Date.now();
     trackSessionStarted({
       mode,
@@ -167,7 +185,7 @@ export function PracticeSessionProvider({
           ? (topicGen.customPromptText ?? topicGen.topic.text)
           : undefined,
     });
-  }, [promptEditor, timerEditor, media, timer, mode, topicGen]);
+  }, [promptEditor, timerEditor, media, coachAudio, timer, mode, topicGen]);
 
   const endSession = useCallback(
     (endReason: "auto" | "manual") => {
@@ -195,9 +213,10 @@ export function PracticeSessionProvider({
   const finishTimer = useCallback(() => {
     timer.finish();
     media.stopRecording();
+    coachAudio.stop();
     playStopRecording();
     endSession("manual");
-  }, [timer, media, endSession]);
+  }, [timer, media, coachAudio, endSession]);
 
   const resetTimer = useCallback(() => {
     if (timer.isRunning || timer.isPaused) {
@@ -213,8 +232,9 @@ export function PracticeSessionProvider({
     timer.reset();
     media.stopRecording();
     media.clearRecordedMedia();
+    coachAudio.reset();
     media.reattachStream(media.cameraOn);
-  }, [timer, media, mode]);
+  }, [timer, media, coachAudio, mode]);
 
   const pauseTimer = useCallback(() => {
     timer.pause();
@@ -238,6 +258,8 @@ export function PracticeSessionProvider({
   const value = useMemo<PracticeSessionContextValue>(
     () => ({
       mode,
+      drillSlug,
+      drillTitle,
       topic: topicGen.topic,
       spinning: topicGen.spinning,
       reelBlurbs: topicGen.reelBlurbs,
@@ -280,6 +302,8 @@ export function PracticeSessionProvider({
       isRecording: media.isRecording,
       recordedBlob: media.recordedBlob,
       recordedUrl: media.recordedUrl,
+      coachAudioBlob: coachAudio.blob,
+      coachAudioPending: coachAudio.pending,
       isPreparingDownload: media.isPreparingDownload,
       mediaError: media.mediaError,
       clearMediaError: media.clearMediaError,
@@ -299,11 +323,15 @@ export function PracticeSessionProvider({
     }),
     [
       mode,
+      drillSlug,
+      drillTitle,
       topicGen,
       promptEditor,
       timer,
       timerEditor,
       media,
+      coachAudio.blob,
+      coachAudio.pending,
       startTimer,
       pauseTimer,
       finishTimer,
