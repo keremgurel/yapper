@@ -155,7 +155,7 @@ export const programFamilies: ProgramFamily[] = [
     duration: "1-5 min",
     status: "Free now",
     accent: "orange",
-    href: "/random-topic-generator",
+    href: "/training/random-topic-generator",
   },
   {
     slug: "freestyle-speech",
@@ -261,7 +261,7 @@ export const trainingNavItems: TrainingNavItem[] = [
     description:
       "Pull a speech prompt, set the timer, and practice an impromptu answer.",
     status: "Free now",
-    href: "/random-topic-generator",
+    href: "/training/random-topic-generator",
     group: "Practice now",
   },
   {
@@ -330,7 +330,7 @@ export const trainingNavItems: TrainingNavItem[] = [
 // tools (no Practice-now / Guided-drills split). These are SEO tools that feed
 // the Creator workflow, not the main app.
 const RESOURCES_ORDER = [
-  "/random-topic-generator",
+  "/training/random-topic-generator",
   "/training/read-aloud",
   "/training/explain-after-reading",
   "/training/interview-prep",
@@ -338,6 +338,6 @@ const RESOURCES_ORDER = [
   "/training/dating",
 ];
 
-export const resourcesNavItems: TrainingNavItem[] = RESOURCES_ORDER.map(
+export const trainingNavDropdownItems: TrainingNavItem[] = RESOURCES_ORDER.map(
   (href) => trainingNavItems.find((item) => item.href === href)!,
 );

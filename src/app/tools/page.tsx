@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import ToolsHub from "@/components/tools/tools-hub";
-import { tools } from "@/data/tools";
+import { publicTools } from "@/data/tools";
 
 export const metadata: Metadata = {
   title: "Free Tools for Talking to Camera",
@@ -13,7 +13,7 @@ const itemList = {
   "@context": "https://schema.org",
   "@type": "ItemList",
   name: "Yapper free creator tools",
-  itemListElement: tools.map((t, i) => ({
+  itemListElement: publicTools.map((t, i) => ({
     "@type": "ListItem",
     position: i + 1,
     name: t.title,

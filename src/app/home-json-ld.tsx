@@ -3,7 +3,8 @@ import { marketingFeatures } from "@/data/marketing-features";
 
 const SITE = getSiteUrl();
 
-const graph = [
+/** Identity of the site itself. Safe on any page. */
+const siteGraph = [
   {
     "@type": "WebSite",
     "@id": `${SITE}/#website`,
@@ -20,6 +21,12 @@ const graph = [
     name: "Yapper",
     url: SITE,
   },
+];
+
+/** The downloadable studio app. Only the homepage may claim this: it is not
+ * released yet and its surfaces sit behind a password, so emitting it on a
+ * practice page would advertise something the visitor cannot get. */
+const appGraph = [
   {
     "@type": "SoftwareApplication",
     "@id": `${SITE}/#software`,
@@ -33,7 +40,7 @@ const graph = [
   },
 ];
 
-export default function HomeJsonLd() {
+function JsonLd({ graph }: { graph: object[] }) {
   return (
     <script
       type="application/ld+json"
@@ -45,4 +52,13 @@ export default function HomeJsonLd() {
       }}
     />
   );
+}
+
+/** Site identity only, for pages that are not the homepage. */
+export function SiteJsonLd() {
+  return <JsonLd graph={siteGraph} />;
+}
+
+export default function HomeJsonLd() {
+  return <JsonLd graph={[...siteGraph, ...appGraph]} />;
 }

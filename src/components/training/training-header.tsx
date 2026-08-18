@@ -1,12 +1,21 @@
 import Link from "next/link";
 
-import ResourcesNavDropdown from "@/components/training/resources-nav-dropdown";
+import SiteAccountControls from "@/components/account/site-account-controls";
+import TrainingNavDropdown from "@/components/training/training-nav-dropdown";
 import MobileNav from "@/components/training/mobile-nav";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
-import { Button } from "@/components/ui/button";
 
-export default function TrainingHeader() {
+/**
+ * The site-wide public navbar. Studio renders it above its own app header,
+ * which already carries the credit meter and account menu, so it passes
+ * `accountControls={false}` to avoid showing the account twice.
+ */
+export default function TrainingHeader({
+  accountControls = true,
+}: {
+  accountControls?: boolean;
+}) {
   return (
     <header
       data-site-nav
@@ -14,7 +23,10 @@ export default function TrainingHeader() {
     >
       {/* Left: logo (Chirpy the mascot + wordmark) */}
       <Link href="/" className="group flex items-center gap-2 no-underline">
-        <span className="shrink-0 transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-6">
+        <span
+          className="shrink-0 transition-transform group-hover:scale-105 group-hover:-rotate-6 motion-reduce:transition-none motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0"
+          style={{ transitionDuration: "var(--sg-dur-base)" }}
+        >
           <ChirpyMark size={30} />
         </span>
         <span className="font-display text-foreground text-[20px] font-semibold tracking-[0.02em] sm:text-[22px]">
@@ -30,7 +42,13 @@ export default function TrainingHeader() {
         >
           Features
         </Link>
-        <ResourcesNavDropdown />
+        <TrainingNavDropdown />
+        <Link
+          href="/pricing"
+          className="text-foreground/80 hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-[14px] font-semibold no-underline transition-colors"
+        >
+          Pricing
+        </Link>
         <Link
           href="/blog"
           className="text-foreground/80 hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-[14px] font-semibold no-underline transition-colors"
@@ -39,16 +57,9 @@ export default function TrainingHeader() {
         </Link>
       </nav>
 
-      {/* Right: waitlist CTA and the original theme switcher. */}
+      {/* Right: account controls and the original theme switcher. */}
       <div className="flex items-center gap-2">
-        <Button
-          asChild
-          type="button"
-          size="sm"
-          className="hidden sm:inline-flex"
-        >
-          <Link href="/#waitlist">Join waitlist</Link>
-        </Button>
+        {accountControls && <SiteAccountControls />}
 
         {/* The switcher is 104x64; box it at the scaled size so it doesn't
             reserve dead space and throw the spacing off. */}

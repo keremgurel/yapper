@@ -431,7 +431,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
               <div className="flex flex-wrap items-start gap-2 text-sm md:flex-col">
                 <Link
                   className="font-medium whitespace-nowrap hover:text-white"
-                  href="/random-topic-generator"
+                  href="/training/random-topic-generator"
                   style={{ color: "rgba(255, 255, 255, 0.4)" }}
                 >
                   Random Topics

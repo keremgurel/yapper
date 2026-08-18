@@ -25,7 +25,7 @@ export default function StudioDashboardLayout({
       {/* Global site navbar — website only. In the native app it's hidden and
           its height reservation (--site-header) collapses to 0. */}
       <div className="marketing-chrome">
-        <TrainingHeader />
+        <TrainingHeader accountControls={false} />
       </div>
       <SidebarProvider className="min-h-[calc(100svh-var(--site-header,3.5rem))] flex-1">
         <AppSidebar />

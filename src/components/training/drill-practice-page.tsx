@@ -13,6 +13,7 @@ import TrainingHeader from "@/components/training/training-header";
 import { Component as Footer } from "@/components/ui/footer-taped-design";
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { DrillContent } from "@/data/drills";
+import { programFamilies } from "@/data/training";
 import type { Topic } from "@/data/topics";
 
 export default function DrillPracticePage({
@@ -22,6 +23,12 @@ export default function DrillPracticePage({
   drill: DrillContent;
   initialTopic: Topic;
 }) {
+  // The drill's public name lives in the program catalog, not in its content
+  // blob, so the feedback context and the marketing card cannot drift apart.
+  const drillTitle =
+    programFamilies.find((program) => program.slug === drill.slug)?.title ??
+    drill.heroEyebrow;
+
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -48,6 +55,8 @@ export default function DrillPracticePage({
 
       <PracticeSessionProvider
         initialTopic={initialTopic}
+        drillSlug={drill.slug}
+        drillTitle={drillTitle}
         topicPool={drill.pool}
         initialGenerated
       >

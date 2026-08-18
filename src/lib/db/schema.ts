@@ -121,6 +121,10 @@ export const creditLedger = pgTable(
 );
 
 export const submissionKinds = ["audio", "video"] as const;
+
+/** Which half of the product a submission came from. */
+export const submissionSurfaces = ["studio", "training"] as const;
+export type SubmissionSurface = (typeof submissionSurfaces)[number];
 export type SubmissionKind = (typeof submissionKinds)[number];
 
 export const submissionStatuses = [
@@ -141,6 +145,18 @@ export const submissions = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     kind: text("kind", { enum: submissionKinds }).notNull(),
+    /**
+     * Which part of the product produced this rep. Studio submissions coach a
+     * clip a creator is about to post; training submissions coach a practice
+     * answer and also judge the English. The progress dashboard and the
+     * Studio history read the same table, so they need to be told apart.
+     */
+    surface: text("surface", { enum: submissionSurfaces })
+      .notNull()
+      .default("studio"),
+    /** What the speaker was answering: drill, prompt, timer. Shape lives in
+     * `TrainingContext` (src/lib/training-feedback/types.ts). */
+    context: jsonb("context"),
     status: text("status", { enum: submissionStatuses })
       .notNull()
       .default("pending"),
@@ -162,7 +178,12 @@ export const submissions = pgTable(
   },
   (t) => [
     index("submissions_user_idx").on(t.userId, t.createdAt),
+    index("submissions_surface_idx").on(t.userId, t.surface, t.createdAt),
     check("submissions_kind_check", sql`${t.kind} in ('audio','video')`),
+    check(
+      "submissions_surface_check",
+      sql`${t.surface} in ('studio','training')`,
+    ),
     check(
       "submissions_status_check",
       sql`${t.status} in ('pending','processing','complete','failed')`,

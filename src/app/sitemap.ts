@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { programFamilies } from "@/data/training";
-import { tools } from "@/data/tools";
+import { publicTools } from "@/data/tools";
 import { getAllBlogPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/json-ld";
 import { marketingFeatures } from "@/data/marketing-features";
@@ -27,7 +27,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Standalone tool landing pages (under /tools/). Product routes referenced by
   // the registry (e.g. /record, /studio) are reached via internal links, not
   // listed here.
-  const toolPages = tools
+  const toolPages = publicTools
     .filter((t) => t.href.startsWith("/tools/"))
     .map((t) => ({
       url: `${SITE_URL}${t.href}`,
@@ -66,6 +66,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${SITE_URL}/blog`,
       lastModified: new Date(),
       changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/pricing`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
       priority: 0.8,
     },
     {

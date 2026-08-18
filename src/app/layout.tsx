@@ -4,6 +4,7 @@ import Script from "next/script";
 import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
 import AppChrome from "@/components/studio-shell/app-chrome";
+import TrainingOnboardingGate from "@/components/training-onboarding/training-onboarding-gate";
 import AppRouteGuard from "@/components/studio-shell/app-route-guard";
 import { Geist_Mono, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -151,6 +152,10 @@ gtag('config', 'G-09JET8C3M0');`}
             <AppChrome />
             <AppRouteGuard />
             {children}
+            {/* Opens once for a signed-in visitor who has not been through the
+                training setup. It excludes itself from Studio and the practice
+                pages; see the gate for why. */}
+            <TrainingOnboardingGate />
           </ClerkThemeProvider>
         </ThemeProvider>
       </body>

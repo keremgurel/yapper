@@ -6,19 +6,22 @@ import {
 } from "@/components/ErrorBoundary";
 import HomeHero from "@/components/home-hero";
 import PracticeStage from "@/components/practice-stage";
-import StudioFlowSection from "@/components/studio-shell/studio-flow-section";
 import { HomeFaq } from "@/components/home-faq";
 import Waitlist from "@/components/waitlist";
-import { Component as Footer } from "@/components/ui/footer-taped-design";
+import TrainingEntryCard from "@/components/training/training-entry-card";
 import TrainingHeader from "@/components/training/training-header";
+import { Component as Footer } from "@/components/ui/footer-taped-design";
+
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
 
-interface LandingClientProps {
+interface RandomTopicClientProps {
   initialTopic: Topic;
 }
 
-export default function LandingClient({ initialTopic }: LandingClientProps) {
+export default function RandomTopicClient({
+  initialTopic,
+}: RandomTopicClientProps) {
   const handleJumpToPractice = () => {
     const practiceElement = document.getElementById("practice");
     if (!practiceElement) return;
@@ -37,7 +40,11 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
 
       <HomeHero onJumpToPractice={handleJumpToPractice} />
 
-      <PracticeSessionProvider initialTopic={initialTopic}>
+      <PracticeSessionProvider
+        initialTopic={initialTopic}
+        drillSlug="random-topic-generator"
+        drillTitle="Random topic generator"
+      >
         <ErrorBoundary
           fallback={({ reset }) => <PracticeErrorFallback reset={reset} />}
         >
@@ -45,12 +52,10 @@ export default function LandingClient({ initialTopic }: LandingClientProps) {
         </ErrorBoundary>
       </PracticeSessionProvider>
 
-      <StudioFlowSection />
+      <TrainingEntryCard />
 
       <Waitlist variant="full" />
-
       <HomeFaq />
-
       <Footer />
     </div>
   );

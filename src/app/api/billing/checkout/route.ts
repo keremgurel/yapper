@@ -65,7 +65,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   const common = {
     customer: customerId,
     client_reference_id: userId,
-    success_url: `${origin}/studio/home?checkout=success`,
+    // Land on the training dashboard, not Studio. Studio sits behind a shared
+    // password while it is unfinished, so sending a customer there at the exact
+    // moment their card clears would greet them with a password prompt for a
+    // product they were never sold.
+    success_url: `${origin}/progress?checkout=success`,
     cancel_url: `${origin}/pricing?checkout=cancel`,
   } as const;
 

@@ -6,10 +6,9 @@ import {
   ChevronDown,
   CreditCard,
   Clock,
-  Layers,
-  Lightbulb,
   LogOut,
   Settings,
+  TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,7 +22,9 @@ const item =
   "flex cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-bold";
 
 /** Signed-in account menu: avatar + name trigger, dropdown for manage account,
- * recorded sessions, the (soon) creator surfaces, and sign out. Uses Clerk's
+ * progress, recorded sessions, and sign out. The Studio surfaces are not
+ * linked here: Studio sits behind a shared password while it is unfinished, so
+ * a link would send most people to a wall. Uses Clerk's
  * useUser/useClerk so it stays a plain component styled to our design system.
  * Shows the user's name when Clerk has it (enable Name at sign-up in the Clerk
  * dashboard), otherwise falls back to the email handle. */
@@ -40,7 +41,7 @@ export default function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="account-shimmer-trigger border-border bg-card hover:bg-muted flex items-center gap-2 rounded-full border py-1 pr-2.5 pl-1 shadow-sm transition-colors"
+          className="account-shimmer-trigger border-border bg-card hover:bg-muted flex items-center gap-2 rounded-full border p-1 shadow-sm transition-colors sm:py-1 sm:pr-2.5 sm:pl-1"
         >
           <span className="account-shimmer block h-7 w-7 shrink-0 rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -50,10 +51,10 @@ export default function UserMenu() {
               className="h-7 w-7 rounded-full object-cover"
             />
           </span>
-          <span className="text-foreground max-w-[130px] truncate text-[13px] font-bold">
+          <span className="text-foreground hidden max-w-[130px] truncate text-[13px] font-bold sm:block">
             {name}
           </span>
-          <ChevronDown className="text-foreground/60 h-3.5 w-3.5" />
+          <ChevronDown className="text-foreground/60 hidden h-3.5 w-3.5 sm:block" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -104,15 +105,9 @@ export default function UserMenu() {
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-          <Link href="/studio/inspiration" className="no-underline">
-            <Lightbulb className="h-4 w-4" />
-            Inspiration
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-          <Link href="/studio/library" className="no-underline">
-            <Layers className="h-4 w-4" />
-            Content Library
+          <Link href="/progress" className="no-underline">
+            <TrendingUp className="h-4 w-4" />
+            Your progress
           </Link>
         </DropdownMenuItem>
 

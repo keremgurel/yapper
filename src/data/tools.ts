@@ -9,6 +9,11 @@ export type Tool = {
   href: string;
   category: "Scripting" | "Delivery" | "Editing";
   cta: string;
+  /** Lives inside Studio, which sits behind a shared password while it is
+   * unfinished. Kept in the catalog so it comes back by deleting one line,
+   * but never listed publicly: advertising "no sign-up" on a page that
+   * answers with a password prompt is worse than not advertising it. */
+  gated?: boolean;
 };
 
 export const tools: Tool[] = [
@@ -31,6 +36,7 @@ export const tools: Tool[] = [
     href: "/studio/recorder",
     category: "Delivery",
     cta: "Start recording",
+    gated: true,
   },
   {
     slug: "editor",
@@ -41,5 +47,9 @@ export const tools: Tool[] = [
     href: "/studio/editor",
     category: "Editing",
     cta: "Open native editor",
+    gated: true,
   },
 ];
+
+/** What the public /tools hub, its structured data, and the sitemap may show. */
+export const publicTools: Tool[] = tools.filter((tool) => !tool.gated);

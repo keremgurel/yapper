@@ -25,9 +25,17 @@ const nextConfig: NextConfig = {
         destination: "/freestyle-speech",
         statusCode: 301,
       },
+      // The topic generator moved under /training so every practice tool lives
+      // in one place. The old top-level URL is the one that ranks and the one
+      // every published blog post links to, so it keeps a permanent redirect.
+      {
+        source: "/random-topic-generator",
+        destination: "/training/random-topic-generator",
+        statusCode: 301,
+      },
       {
         source: "/random-topic-generator/",
-        destination: "/random-topic-generator",
+        destination: "/training/random-topic-generator",
         statusCode: 301,
       },
       {
