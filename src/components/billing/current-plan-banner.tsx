@@ -25,7 +25,7 @@ export default function CurrentPlanBanner() {
         <p className="sg-display text-lg">{label}</p>
         <p className="sg-label mt-0.5">{status.balance} credits available</p>
         {error && (
-          <p role="alert" className="mt-1 text-xs font-bold text-red-500">
+          <p role="alert" className="text-destructive mt-1 text-xs font-bold">
             Could not open the billing portal. Please try again.
           </p>
         )}

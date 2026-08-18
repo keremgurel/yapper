@@ -12,9 +12,11 @@ import { X } from "lucide-react";
 export default function OnboardingOverlay({
   children,
   onClose,
+  label = "Set up your studio",
 }: {
   children: ReactNode;
   onClose: () => void;
+  label?: string;
 }) {
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -37,7 +39,7 @@ export default function OnboardingOverlay({
       className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
       role="dialog"
       aria-modal="true"
-      aria-label="Set up your studio"
+      aria-label={label}
       onClick={onClose}
     >
       <motion.div

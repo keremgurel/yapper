@@ -3,8 +3,9 @@
 import type { ReactNode } from "react";
 import { ChevronLeft } from "lucide-react";
 
-/** The number of dotted progress steps (socials → pillars → inspiration).
- * The welcome screen sits before the dots. */
+/** The number of dotted progress steps in the Studio setup flow (socials →
+ * pillars → inspiration). The welcome screen sits before the dots. Other flows
+ * pass their own `stepCount`. */
 export const STEP_COUNT = 3;
 
 /** Shared frame for an onboarding step: back + progress dots + optional skip on
@@ -12,6 +13,7 @@ export const STEP_COUNT = 3;
  * min height so the card doesn't jump between steps. */
 export default function StepShell({
   stepIndex,
+  stepCount = STEP_COUNT,
   title,
   subtitle,
   onBack,
@@ -20,6 +22,7 @@ export default function StepShell({
   children,
 }: {
   stepIndex: number;
+  stepCount?: number;
   title: string;
   subtitle: string;
   onBack?: () => void;
@@ -44,7 +47,7 @@ export default function StepShell({
         )}
 
         <div className="flex items-center gap-1.5" aria-hidden>
-          {Array.from({ length: STEP_COUNT }).map((_, i) => (
+          {Array.from({ length: stepCount }).map((_, i) => (
             <span
               key={i}
               className={`h-1.5 rounded-full transition-all ${
