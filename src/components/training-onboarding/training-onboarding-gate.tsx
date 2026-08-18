@@ -19,6 +19,10 @@ import { useTrainingOnboarding } from "@/hooks/use-training-onboarding";
  */
 const SILENT_PREFIXES = [
   "/studio",
+  // Not covered by "/studio": the gate matches a path or its subtree, and
+  // "/studio-access" is a sibling. Someone here is being asked for a password
+  // before they can get any further, so a setup modal on top is noise.
+  "/studio-access",
   "/training",
   "/freestyle",
   "/progress",
