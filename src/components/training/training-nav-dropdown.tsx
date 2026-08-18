@@ -13,12 +13,16 @@ import {
   Volume2,
 } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { resourcesNavItems, type TrainingNavItem } from "@/data/training";
+import {
+  trainingNavDropdownItems,
+  type TrainingNavItem,
+} from "@/data/training";
 
 const iconByTitle: Record<string, ComponentType<{ className?: string }>> = {
   "Random topic generator": Shuffle,
@@ -36,14 +40,14 @@ function ResourceLink({ item }: { item: TrainingNavItem }) {
       href={item.href}
       className="group hover:bg-muted flex min-w-0 items-start gap-3 rounded-2xl p-2.5 text-left no-underline transition-colors"
     >
-      <span className="border-border bg-muted text-foreground/75 group-hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors">
+      <span className="bg-muted text-foreground/75 group-hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors">
         <Icon className="h-4 w-4" />
       </span>
       <span className="min-w-0">
         <span className="text-foreground block truncate text-[13px] font-bold">
           {item.title}
         </span>
-        <span className="text-foreground/55 mt-0.5 line-clamp-1 block text-[11.5px] leading-4">
+        <span className="text-foreground/55 mt-0.5 line-clamp-1 block text-[11px] leading-4">
           {item.description}
         </span>
       </span>
@@ -53,7 +57,7 @@ function ResourceLink({ item }: { item: TrainingNavItem }) {
 
 /** Free practice tools (SEO surface). Flat list, no groupings, these feed the
  * Creator workflow, they aren't the main app. */
-export default function ResourcesNavDropdown() {
+export default function TrainingNavDropdown() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -61,7 +65,7 @@ export default function ResourcesNavDropdown() {
           type="button"
           className="text-foreground/80 hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground inline-flex items-center gap-1 rounded-lg px-3 py-2 text-[14px] font-semibold transition-colors"
         >
-          <span>Resources</span>
+          <span>Training</span>
           <ChevronDown className="h-3.5 w-3.5 opacity-60" />
         </button>
       </DropdownMenuTrigger>
@@ -71,21 +75,24 @@ export default function ResourcesNavDropdown() {
         style={{ boxShadow: "var(--sg-shadow-panel)" }}
         className="border-border bg-card no-scrollbar max-h-[min(80vh,640px)] w-[min(92vw,520px)] overflow-y-auto rounded-3xl p-3"
       >
-        <p className="text-foreground/45 px-2.5 pt-1 pb-1.5 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+        <p className="text-muted-foreground px-2.5 pt-1 pb-1.5 text-[11px] font-bold tracking-[0.1em] uppercase">
           Free practice tools
         </p>
         <div className="grid gap-0.5 sm:grid-cols-2">
-          {resourcesNavItems.map((item) => (
+          {trainingNavDropdownItems.map((item) => (
             <ResourceLink key={item.href} item={item} />
           ))}
         </div>
-        <Link
-          href="/training"
-          className="bg-foreground text-background mt-2 flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-[13px] font-black no-underline transition-opacity hover:opacity-90"
+        <Button
+          asChild
+          variant="contrast"
+          className="mt-2 w-full justify-between"
         >
-          Browse all practice tools
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+          <Link href="/training" className="no-underline">
+            Browse all practice tools
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </Button>
       </DropdownMenuContent>
     </DropdownMenu>
   );

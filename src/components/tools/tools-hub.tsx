@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import TrainingLayout from "@/app/training-layout";
-import { tools } from "@/data/tools";
+import { publicTools } from "@/data/tools";
 
 const muted = { color: "var(--sg-text-muted)" };
 
@@ -26,7 +26,7 @@ export default function ToolsHub() {
 
       <section className="px-4 pb-24 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-6xl gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {tools.map((tool) => (
+          {publicTools.map((tool) => (
             <article
               key={tool.slug}
               className="sg-card flex flex-col gap-4 p-6"

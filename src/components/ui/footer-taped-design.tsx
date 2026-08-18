@@ -67,7 +67,7 @@ export const Component = () => {
               <div className="flex flex-wrap items-start gap-2 text-sm text-[var(--sg-text-muted)] md:flex-col">
                 <Link
                   className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
-                  href="/random-topic-generator"
+                  href="/training/random-topic-generator"
                 >
                   Random Topics
                 </Link>
@@ -76,6 +76,18 @@ export const Component = () => {
                   href="/freestyle-speech"
                 >
                   Freestyle
+                </Link>
+                <Link
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
+                  href="/training"
+                >
+                  All practice tools
+                </Link>
+                <Link
+                  className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"
+                  href="/pricing"
+                >
+                  Pricing
                 </Link>
                 <Link
                   className="font-medium whitespace-nowrap text-[var(--sg-text-muted)]"

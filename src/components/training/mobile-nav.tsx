@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ComponentType } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
 import {
   ArrowRight,
   BookOpen,
   BriefcaseBusiness,
+  CreditCard,
   HeartHandshake,
   Library,
   Layers3,
@@ -18,19 +24,13 @@ import {
   X,
 } from "lucide-react";
 
-import { resourcesNavItems } from "@/data/training";
+import { trainingNavDropdownItems } from "@/data/training";
 import { marketingFeatures } from "@/data/marketing-features";
 
-const EASE = [0.16, 1, 0.3, 1] as const;
-
-const listVariants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.025, delayChildren: 0.05 } },
-};
-const itemVariants = {
-  hidden: { opacity: 0, y: 6 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.26, ease: EASE } },
-};
+// Mirrors the motion tokens in globals.css (--sg-ease-out, --sg-dur-base);
+// framer-motion needs numbers, not CSS variables.
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+const DUR_BASE = 0.24;
 
 type Icon = ComponentType<{ className?: string }>;
 
@@ -48,26 +48,28 @@ function Row({
   title,
   icon,
   onNavigate,
+  variants,
 }: {
   href: string;
   title: string;
   icon: React.ReactNode;
   onNavigate: () => void;
+  variants: Variants;
 }) {
   return (
-    <motion.div variants={itemVariants}>
+    <motion.div variants={variants}>
       <Link
         href={href}
         onClick={onNavigate}
         className="group hover:bg-muted flex items-center gap-3 rounded-2xl p-2.5 no-underline transition-colors"
       >
-        <span className="border-border bg-muted text-foreground/75 group-hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border shadow-sm transition-colors">
+        <span className="bg-muted text-foreground/75 group-hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors">
           {icon}
         </span>
         <span className="text-foreground flex-1 text-[14px] font-bold">
           {title}
         </span>
-        <ArrowRight className="text-foreground/25 group-hover:text-foreground h-4 w-4 shrink-0 transition-all group-hover:translate-x-0.5" />
+        <ArrowRight className="text-foreground/25 group-hover:text-foreground h-4 w-4 shrink-0 transition-all group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
       </Link>
     </motion.div>
   );
@@ -75,7 +77,7 @@ function Row({
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-foreground/45 px-2.5 pt-2 pb-1 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+    <p className="text-muted-foreground px-2.5 pt-2 pb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
       {children}
     </p>
   );
@@ -83,12 +85,31 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 /**
  * The mobile navbar IS the menu: the hamburger sits in the header's top row and
- * clicking it morphs the bar downward, a single rounded panel that grows to
- * reveal the Training and Create links, coglyde-style.
+ * clicking it reveals a single rounded panel beneath the bar with the Training
+ * and Create links, coglyde-style. The reveal is transform and opacity only,
+ * and collapses to nothing under prefers-reduced-motion.
  */
 export default function MobileNav() {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
+  const reduceMotion = useReducedMotion();
+
+  const listVariants: Variants = {
+    hidden: {},
+    show: reduceMotion
+      ? {}
+      : { transition: { staggerChildren: 0.025, delayChildren: 0.05 } },
+  };
+  const itemVariants: Variants = reduceMotion
+    ? { hidden: {}, show: {} }
+    : {
+        hidden: { opacity: 0, y: 6 },
+        show: {
+          opacity: 1,
+          y: 0,
+          transition: { duration: DUR_BASE, ease: EASE_OUT },
+        },
+      };
 
   useEffect(() => {
     if (!open) return;
@@ -122,20 +143,23 @@ export default function MobileNav() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: reduceMotion ? 0 : DUR_BASE }}
           />
         ) : null}
       </AnimatePresence>
 
-      {/* Morphing panel, grows out of the header's bottom edge. */}
+      {/* Panel below the header. Slides and fades; never animates layout. */}
       <AnimatePresence initial={false}>
         {open ? (
           <motion.div
             key="panel"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.4, ease: EASE }}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }}
+            transition={{
+              duration: reduceMotion ? 0 : DUR_BASE,
+              ease: EASE_OUT,
+            }}
             style={{ boxShadow: "var(--sg-shadow-panel)" }}
             className="border-border bg-card absolute inset-x-0 top-full z-50 overflow-hidden rounded-b-3xl border-b"
           >
@@ -153,13 +177,14 @@ export default function MobileNav() {
                   title={item.shortTitle}
                   icon={<Layers3 className="h-4 w-4" />}
                   onNavigate={close}
+                  variants={itemVariants}
                 />
               ))}
 
               <div className="border-border/60 my-2 border-t" />
 
-              <SectionLabel>Resources</SectionLabel>
-              {resourcesNavItems.map((item) => (
+              <SectionLabel>Training</SectionLabel>
+              {trainingNavDropdownItems.map((item) => (
                 <Row
                   key={`r-${item.href}`}
                   href={item.href}
@@ -169,13 +194,32 @@ export default function MobileNav() {
                     return <I className="h-4 w-4" />;
                   })()}
                   onNavigate={close}
+                  variants={itemVariants}
                 />
               ))}
+              <Row
+                href="/training"
+                title="All practice tools"
+                icon={<Library className="h-4 w-4" />}
+                onNavigate={close}
+                variants={itemVariants}
+              />
+
+              <div className="border-border/60 my-2 border-t" />
+
+              <Row
+                href="/pricing"
+                title="Pricing"
+                icon={<CreditCard className="h-4 w-4" />}
+                onNavigate={close}
+                variants={itemVariants}
+              />
               <Row
                 href="/blog"
                 title="Blog"
                 icon={<BookOpen className="h-4 w-4" />}
                 onNavigate={close}
+                variants={itemVariants}
               />
             </motion.div>
           </motion.div>
