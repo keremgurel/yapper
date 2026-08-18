@@ -70,3 +70,33 @@ export function guardWaitlistEmail(email: string): Promise<Response | null> {
     "email",
   );
 }
+
+/**
+ * The Studio password is a single shared secret in front of an unfinished
+ * product, so brute force is the only realistic attack on it. Five attempts
+ * with a slow refill makes guessing impractical without inconveniencing a
+ * tester who fat-fingers it twice.
+ */
+export function guardStudioAccessIp(
+  request: Request,
+): Promise<Response | null> {
+  try {
+    const identity = rateLimitClientIdentity(request);
+    return guardPublicSubject(
+      () => identity.subject,
+      { scope: "studio-access:ip", capacity: 5, refillPerSecond: 10 / HOUR },
+      "ip",
+      identity.source === "unknown",
+    );
+  } catch (error) {
+    recordRateLimitTelemetry({
+      outcome: "unavailable",
+      scope: "studio-access:ip",
+      actor: "ip",
+      unknownIp: true,
+    });
+    return Promise.resolve(
+      rateLimitErrorResponse(new RateLimitUnavailableError({ cause: error })),
+    );
+  }
+}
