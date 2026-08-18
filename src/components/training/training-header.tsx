@@ -37,10 +37,10 @@ export default function TrainingHeader({
       {/* Center: marketing product pages + the free SEO resources. */}
       <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 md:flex">
         <Link
-          href="/features"
+          href="/studio"
           className="text-foreground/80 hover:bg-muted hover:text-foreground rounded-lg px-3 py-2 text-[14px] font-semibold no-underline transition-colors"
         >
-          Features
+          Studio
         </Link>
         <TrainingNavDropdown />
         <Link

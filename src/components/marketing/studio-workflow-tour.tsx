@@ -33,7 +33,7 @@ type WorkflowStep = {
     | "publish";
 };
 
-const WORKFLOW: WorkflowStep[] = [
+export const workflowSteps: WorkflowStep[] = [
   {
     number: "01",
     eyebrow: "Collect",
@@ -447,7 +447,7 @@ export default function StudioWorkflowTour() {
         </div>
 
         <div className="relative flex flex-col">
-          {WORKFLOW.map((step, index) => (
+          {workflowSteps.map((step, index) => (
             <article
               key={step.number}
               className="relative flex gap-4 [content-visibility:auto] sm:gap-6 lg:min-h-[78svh]"
@@ -457,7 +457,7 @@ export default function StudioWorkflowTour() {
                 <span className="bg-foreground text-background relative z-10 grid h-8 w-8 place-items-center rounded-full text-[10px] font-black shadow-[0_0_0_6px_var(--background)]">
                   {index + 1}
                 </span>
-                {index < WORKFLOW.length - 1 ? (
+                {index < workflowSteps.length - 1 ? (
                   <span className="border-border h-full w-px border-l border-dashed" />
                 ) : null}
               </div>

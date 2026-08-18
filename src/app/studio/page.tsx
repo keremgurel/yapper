@@ -7,6 +7,8 @@ import { Component as Footer } from "@/components/ui/footer-taped-design";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Waitlist from "@/components/waitlist";
+import StudioWorkflowTour from "@/components/marketing/studio-workflow-tour";
+import FeatureDeck from "@/components/marketing/feature-deck";
 import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
@@ -140,6 +142,10 @@ export default function StudioMarketingPage() {
       </section>
 
       {/* CTA */}
+      <StudioWorkflowTour />
+
+      <FeatureDeck />
+
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
         <div className="sg-panel flex flex-col items-center gap-5 p-10 text-center">
           <ChirpyMark size={40} />
