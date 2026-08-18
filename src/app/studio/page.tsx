@@ -7,12 +7,13 @@ import { Component as Footer } from "@/components/ui/footer-taped-design";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Waitlist from "@/components/waitlist";
+import { BirdMascot } from "@/app/style-guide/mascot/bird-mascot";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioFlowNav } from "@/data/studio-nav";
 
 export const metadata: Metadata = {
-  title: "Yapper Studio — from spoken idea to posted video",
+  title: "Yapper Studio: From a Spoken Idea to a Posted Video",
   description:
     "Studio is the create-to-post loop for creators: capture ideas by voice, script them with AI, record with a teleprompter, and edit by transcript.",
 };
@@ -53,22 +54,28 @@ export default function StudioMarketingPage() {
               "radial-gradient(55% 60% at 50% 0%, color-mix(in srgb, var(--sg-accent) 20%, transparent), transparent 70%)",
           }}
         />
-        <span className="sg-chip mx-auto">
-          <span className="sg-chip-dot" />
-          Yapper Studio
-        </span>
-        <h1 className="sg-display text-foreground mx-auto mt-5 max-w-3xl text-4xl font-black sm:text-5xl">
+        {/* The same hero treatment as the homepage: mascot, a line saying
+            plainly that this is not out yet, one title at the shared display
+            size, then the waitlist. Nothing here should read as a product you
+            can open today, because you cannot. */}
+        <div className="flex justify-center">
+          <BirdMascot concept="chirpy" talking size={76} />
+        </div>
+        <p className="text-muted-foreground mt-3 text-sm font-semibold">
+          Yapper Studio is not out yet
+        </p>
+        <h1 className="type-display mx-auto mt-4 max-w-4xl">
           From a spoken idea to a posted video, without leaving one place.
         </h1>
-        <p className="text-muted-foreground mx-auto mt-5 max-w-xl text-base leading-relaxed sm:text-lg">
+        <p className="type-description mx-auto mt-6 max-w-2xl sm:text-xl">
           Studio is the whole create-to-post loop for creators. Capture ideas by
           voice, let AI script them, record with a teleprompter, and edit by
           transcript.
         </p>
-        {/* Studio is not open yet, so there is exactly one thing to do here.
-            Anything that opened a Studio surface would land on a password
-            wall, which is not an invitation. */}
         <div id="waitlist" className="mx-auto mt-8 w-full max-w-2xl">
+          <p className="text-muted-foreground mb-3 text-sm font-medium">
+            Be first in line when Studio is ready to download.
+          </p>
           <Waitlist variant="hero" />
         </div>
       </section>
