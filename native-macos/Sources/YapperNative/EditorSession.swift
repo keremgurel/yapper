@@ -1916,8 +1916,16 @@ final class EditorSession: ObservableObject {
                 }
 
                 setOneClickEditStage(.removingRetakes)
+                // The silence pass needs this take read end to end and the
+                // model does not, so the reading runs alongside the thinking
+                // instead of behind it.
+                let loudness = Task.detached { [service = aiEditService, url = media.url] in
+                    await service.warmEnvelope(url: url)
+                }
+                defer { loudness.cancel() }
                 let cuts = try await aiEditService.cleanCuts(words: words)
                 setOneClickEditStage(.cuttingPauses)
+                await loudness.value
                 let ranges = try await aiEditService.autoEditRanges(
                     words: words,
                     duration: media.duration,
@@ -1955,6 +1963,15 @@ final class EditorSession: ObservableObject {
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
             await keepTranscript(heard)
         }
+    }
+
+    /// What the progress overlay paces itself by: how much there is to read and
+    /// how long the take runs.
+    var oneClickEditPace: OneClickEditPace {
+        OneClickEditPace(
+            words: (project.transcript ?? []).count,
+            mediaSeconds: project.media.first?.duration ?? 0
+        )
     }
 
     /// One way to get a take's words, whoever is asking.

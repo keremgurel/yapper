@@ -137,11 +137,15 @@ struct EditorProjectTests {
         #expect(history.undo(current: first) == nil)
     }
 
-    @Test func transcriptionDownmixPreservesHeadroomWithoutStereoClipping() {
-        #expect(TranscriptionPCM.monoSample(sum: 2, channelCount: 2) == 16_384)
+    /// The transcriber hears the take at the level it was recorded, because
+    /// quieting it first loses words. Anything past full scale is clamped, so a
+    /// hot mix distorts rather than wrapping into noise.
+    @Test func transcriptionDownmixKeepsTheRecordedLevelAndClampsAboveIt() {
+        #expect(TranscriptionPCM.monoSample(sum: 1, channelCount: 2) == 16_384)
+        #expect(TranscriptionPCM.monoSample(sum: -1, channelCount: 2) == -16_384)
         #expect(TranscriptionPCM.monoSample(sum: 0, channelCount: 2) == 0)
-        #expect(TranscriptionPCM.monoSample(sum: 1, channelCount: 2) == 8_192)
-        #expect(TranscriptionPCM.monoSample(sum: -1, channelCount: 2) == -8_192)
+        #expect(TranscriptionPCM.monoSample(sum: 2, channelCount: 2) == 32_767)
+        #expect(TranscriptionPCM.monoSample(sum: -8, channelCount: 2) == -32_767)
     }
 
     @Test func transcriptionChunkPlanningIsLazyCompleteAndOverlapping() {

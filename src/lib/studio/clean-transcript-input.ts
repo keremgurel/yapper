@@ -1,5 +1,12 @@
 export interface CleanTranscriptWord {
   text: string;
+  /**
+   * Where the word sits in the recording, when the client knows. Only used to
+   * split a long transcript at a real pause rather than mid-retake, so a
+   * transcript without timings still works, it just splits on word count.
+   */
+  start?: number;
+  end?: number;
 }
 
 export const MAX_CLEAN_TRANSCRIPT_WORDS = 5_000;
@@ -27,7 +34,15 @@ export function parseCleanTranscriptWords(
     }
     characters += text.length;
     if (characters > MAX_CLEAN_TRANSCRIPT_CHARS) return null;
-    words.push({ text });
+    const { start, end } = entry as Record<string, unknown>;
+    const timed =
+      typeof start === "number" &&
+      typeof end === "number" &&
+      Number.isFinite(start) &&
+      Number.isFinite(end) &&
+      start >= 0 &&
+      end >= start;
+    words.push(timed ? { text, start, end } : { text });
   }
   return words;
 }

@@ -5,10 +5,15 @@ import Foundation
 enum TranscriptionPCM {
     static func monoSample(sum: Float, channelCount: Int) -> Int16 {
         guard channelCount > 0 else { return 0 }
-        // Apple's AAC decoder can return a camera mix several dB hotter than
-        // the encoded program. Keep 6 dB of headroom before quantizing; ASR
-        // normalizes level, while clipped consonants cannot be recovered.
-        let average = max(-1, min(1, (sum / Float(channelCount)) * 0.5))
+        // At the level it was recorded. The 6 dB of headroom this used to take
+        // was meant to protect against a hot camera mix, and it cost words:
+        // measured on a real take, the same audio transcribed at full level
+        // gave 475 words and attenuated gave 447, and the missing ones were
+        // not quiet asides. A lossy encoder spends its bits relative to the
+        // signal it is given, so quieting the speech first is throwing detail
+        // away before the encoder ever sees it. Even 1.5 dB cost 31 words.
+        // Clipping is still clamped rather than wrapped.
+        let average = max(-1, min(1, sum / Float(channelCount)))
         return Int16((average * Float(Int16.max)).rounded())
     }
 }
@@ -120,7 +125,14 @@ actor AIEditService {
     }
 
     private struct CleanRequest: Codable {
-        struct Word: Codable { let text: String }
+        /// The timings go with the words so the server can split a long take at
+        /// a silence the speaker actually left, rather than at a word count
+        /// that could fall between two attempts at the same line.
+        struct Word: Codable {
+            let text: String
+            let start: Double
+            let end: Double
+        }
         let words: [Word]
     }
 
@@ -146,13 +158,14 @@ actor AIEditService {
     // path could smear quiet sentence onsets before ASR heard them.
     //
     // Chunks are measured in seconds rather than bytes because what the server
-    // caps is seconds: ten minutes a request, and four megabytes, which
-    // compressed speech reaches nowhere near. Seven minutes leaves room for
-    // both. Most takes are one chunk, which is the point: the transcript route
+    // caps is seconds: ten minutes a request, and four megabytes. At the
+    // bitrate speech actually needs, six minutes is what fits the four
+    // megabytes with room to spare, and the platform refuses a body over 4.5 MB
+    // outright. Most takes are still one chunk, which is the point: the
     // charges a credit and spends a rate limit token per request, so a take
     // that arrives in eleven pieces costs eleven times what it should and runs
     // out of both.
-    private let chunkSeconds = 420.0
+    private let chunkSeconds = 360.0
     private let overlapSeconds = 5.0
     private let maximumConcurrentChunks = 2
 
@@ -167,6 +180,29 @@ actor AIEditService {
         guard let measured = try? LoudnessEnvelope.measure(url: url) else { return nil }
         envelopes[url] = measured
         return measured
+    }
+
+    private func knowsEnvelope(for url: URL) -> Bool { envelopes[url] != nil }
+
+    private func remember(_ envelope: LoudnessEnvelope.Envelope, for url: URL) {
+        envelopes[url] = envelope
+    }
+
+    /// Reads how loud the take is, moment by moment, before anything asks.
+    ///
+    /// The silence pass cannot begin until the file has been read end to end,
+    /// which on a take still sitting on a camera card is most of a minute, and
+    /// on a project that was transcribed in an earlier session nothing has read
+    /// it yet. None of that reading depends on what the model decides, so it
+    /// happens while the model is still thinking rather than after.
+    ///
+    /// Deliberately not isolated: the read is a solid block of CPU work, and
+    /// holding the actor through it would stall the very call it is meant to
+    /// run alongside. Only the cache lookup and the write are on the actor.
+    nonisolated func warmEnvelope(url: URL) async {
+        if await knowsEnvelope(for: url) { return }
+        guard !Task.isCancelled, let measured = try? LoudnessEnvelope.measure(url: url) else { return }
+        await remember(measured, for: url)
     }
 
     func transcribe(
@@ -233,20 +269,14 @@ actor AIEditService {
         request.timeoutInterval = 300
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(
-            CleanRequest(words: words.map { .init(text: $0.text) })
+            CleanRequest(words: words.map { .init(text: $0.text, start: $0.start, end: $0.end) })
         )
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw NativeEditorError.aiFailed("The AI service returned no response.")
         }
         if http.statusCode == 501 {
-            return finished(
-                cuts: RetakeCutBoundaryRepair.repaired(
-                    words: words,
-                    cuts: deterministicRetakeCuts(words)
-                ),
-                words: words
-            )
+            return locallyFinished(deterministicRetakeCuts(words), words: words)
         }
         guard (200 ..< 300).contains(http.statusCode) else {
             // Through the one place that knows what a status means to a
@@ -267,17 +297,25 @@ actor AIEditService {
             }
             return (pair[0], pair[1])
         }
-        return finished(
-            cuts: RetakeCutBoundaryRepair.repaired(
-                words: words,
-                cuts: cuts.isEmpty ? deterministicRetakeCuts(words) : cuts
-            ),
-            words: words
-        )
+        guard !cuts.isEmpty else {
+            return locallyFinished(deterministicRetakeCuts(words), words: words)
+        }
+        // Straight through. The cleaner answers in word indices now, so these
+        // are the boundaries it chose rather than the closest text match to a
+        // script it wrote; there is no off-by-one to mend. The pass that used
+        // to mend it read a word abutting the kept take as a clipped lead-in
+        // and glued the tail of an abandoned attempt onto the front: "and go
+        // to practice celpip.ca and click words."
+        return EditFinishing.aiCuts(cuts, words: words)
     }
 
-    private func finished(cuts: [(Int, Int)], words: [TranscriptWord]) -> [(Int, Int)] {
-        EditFinishing.cuts(cuts, words: words)
+    /// The no-provider path: text matching chose these, so every finishing pass
+    /// gets a say, including the two that can put words back.
+    private func locallyFinished(_ cuts: [(Int, Int)], words: [TranscriptWord]) -> [(Int, Int)] {
+        EditFinishing.cuts(
+            RetakeCutBoundaryRepair.repaired(words: words, cuts: cuts),
+            words: words
+        )
     }
 
     /// What to remove for a one-click edit: the retakes, the fillers, and the

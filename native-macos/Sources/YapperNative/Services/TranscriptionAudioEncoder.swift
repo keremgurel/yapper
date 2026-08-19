@@ -14,9 +14,18 @@ import Foundation
 /// onsets, and the resampling that a fixed rate would force is exactly what
 /// used to smear them.
 enum TranscriptionAudioEncoder {
-    /// Bits per second for a single voice. Comfortably transparent for speech
-    /// recognition, and small enough that ten minutes stays under the cap.
-    static let bitRate = 48_000
+    /// Bits per second for a single voice.
+    ///
+    /// Not a size knob. Measured against the untouched camera audio on a real
+    /// take, transcription falls off a cliff below 64 kbps: 48 kbps returned
+    /// 419 words and 56 kbps returned 425, against 476 for the original, and
+    /// the words it loses are ordinary sentences. Worse than losing them, it
+    /// invents: at 48 kbps the transcriber placed the word "go" across 0.8
+    /// seconds of room tone 1.6 seconds before the speaker said it, which read
+    /// downstream as a retake that never happened and cost the edit a real one.
+    /// From 64 kbps up the answer is the original's, so this sits a step above
+    /// the plateau's edge rather than on it.
+    static let bitRate = 72_000
 
     static func m4a(pcm: Data, sampleRate: Int) throws -> Data {
         let url = FileManager.default.temporaryDirectory

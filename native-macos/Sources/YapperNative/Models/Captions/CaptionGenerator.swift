@@ -104,10 +104,26 @@ enum CaptionGenerator {
     private static func endsRun(before word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
         if word.mediaID != last.mediaID { return true }
         if word.timelineStart - last.timelineEnd > countedPauseSeconds { return true }
-        // A cut removes recording seconds without leaving a timeline gap, so a
-        // card laid across one is anchored to a stretch that is not there any
-        // more and never appears at all.
-        return (word.sourceStart - last.sourceEnd) - (word.timelineStart - last.timelineEnd) > 0.05
+        return removedBetween(word, after: last) > 0.05
+    }
+
+    /// The recording seconds taken out between two words that still play
+    /// back to back.
+    ///
+    /// A cut removes recording time without leaving a timeline gap, so the
+    /// difference between the two gaps is what went. What that difference
+    /// cannot be is more than the recording gap held: no seconds were removed
+    /// from between two words the speaker ran together.
+    ///
+    /// Words do overlap on the timeline. The first word of a take starts a
+    /// breath before the clip does, so it has no position of its own and snaps
+    /// to the clip's edge, which puts its end past the next word's start.
+    /// Reading that as a cut is why a real edit opened on a card holding the
+    /// single word "If": three words a card, and the first card was one.
+    private static func removedBetween(_ word: CaptionSourceWord, after last: CaptionSourceWord) -> Double {
+        let inRecording = word.sourceStart - last.sourceEnd
+        let onTimeline = word.timelineStart - last.timelineEnd
+        return min(inRecording, inRecording - onTimeline)
     }
 
     private static func shouldBreak(
@@ -119,12 +135,9 @@ enum CaptionGenerator {
         if word.mediaID != last.mediaID { return true }
         let pause = wordsPerCard > 0 ? countedPauseSeconds : pauseSeconds
         if word.timelineStart - last.timelineEnd > pause { return true }
-        // A cut removes recording seconds without leaving a timeline gap, so
-        // two words either side of one look adjacent while their anchors are
-        // far apart. A card must never span that: anchored across the removed
-        // region, it maps to nothing and vanishes from the video entirely.
-        let removed = (word.sourceStart - last.sourceEnd) - (word.timelineStart - last.timelineEnd)
-        if removed > 0.05 { return true }
+        // A card must never span a cut: anchored across the removed region, it
+        // maps to nothing and vanishes from the video entirely.
+        if removedBetween(word, after: last) > 0.05 { return true }
         if wordsPerCard > 0 {
             return breaksFixedCard(group: group, next: word, wordsPerCard: wordsPerCard)
         }
