@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, EyeOff, Trash2 } from "lucide-react";
-import BrainListEditor from "@/components/brain/brain-list-editor";
+import BrainListEditor from "@/components/brain/blocks/editors/list-editor";
 import { Textarea } from "@/components/ui/textarea";
 import type { BrainBlock, BrainBlockPatch } from "@/lib/brain/client";
 
