@@ -5,13 +5,10 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import {
-  alignCleanedToContiguousTakes,
-  cutsOutsideKeptTakes,
-} from "@/lib/studio/contiguous-take-alignment";
-import {
-  CLEAN_TRANSCRIPT_CRITIC_PROMPT,
-  CLEAN_TRANSCRIPT_SYSTEM_PROMPT,
-} from "@/lib/studio/clean-transcript-prompt";
+  numberedTranscript,
+  RETAKE_CLUSTER_PROMPT,
+  retakeCutsFromResponse,
+} from "@/lib/studio/retake-clusters";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -21,30 +18,43 @@ import {
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
 import { parseCleanTranscriptWords } from "@/lib/studio/clean-transcript-input";
-import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
+import { fetchBoundedJson } from "@/lib/http/outbound";
 
 export const runtime = "nodejs";
-// Two model passes over a whole recording's transcript. A fifteen minute take
-// is around two thousand words in and a rewritten script out, and asking for
-// that inside a minute simply times out: measured on a real take, the route
-// answered {"error":"timeout"} every time. Functions allow far longer than
-// this default did.
+// The model works through every retake cluster before it answers, so this is a
+// reading job measured in minutes, not seconds, and the time grows with the
+// take: 472 words took half a minute, 1,888 took four. The route accepts 5,000,
+// so the budget would need about ten minutes. It gets five, because that is
+// what the Hobby plan allows a function; past roughly 2,200 words the request
+// gives up and refunds rather than returning half an edit.
+//
+// It reads the take whole. Splitting it was the obvious way to keep the wall
+// clock flat, and it was wrong: a boundary has to miss every retake cluster,
+// and the speaker's own silences do not mark them. Measured on a real take,
+// the longest pause in the whole recording, eighteen seconds, sits in the
+// middle of one — he stopped, thought, and ran the line again. Splitting there
+// scored 57 lost words and 58 retakes left in, where reading it whole scored
+// nothing wrong at all.
 export const maxDuration = 300;
 const MAX_JSON_BYTES = 256 * 1024;
-const PROVIDER_TIMEOUT_MS = 240_000;
-const MAX_COMPLETION_TOKENS = 8_192;
-const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
+const PROVIDER_TIMEOUT_MS = 280_000;
+// The answer quotes every attempt it found before deciding between them, which
+// is what makes it accurate, and that scales with the take.
+const MAX_COMPLETION_TOKENS = 32_000;
+const MAX_PROVIDER_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface ChatCompletionResponse {
-  choices?: { message?: { content?: string } }[];
+  choices?: { message?: { content?: string }; finish_reason?: string }[];
 }
 
 /**
- * AI "remove mistakes" pass. The model is given the transcript as plain speech
- * and returns CLEANED speech (final takes only), then a separate audit pass
- * checks the draft for missing unique ideas and semantic duplicates. The final
- * text is mapped back sentence-by-sentence to contiguous source takes. This
- * makes a cross-retake "Frankenstein" sentence structurally impossible.
+ * The AI "remove mistakes" pass.
+ *
+ * The model is given the transcript as numbered words and answers with the word
+ * ranges to delete, grouped by retake cluster. Nothing is matched back by text,
+ * so the failure that used to define this route — a cleaned script that could
+ * not be told apart from the wrong attempt at the same line — cannot happen.
+ * A response that does not describe a coherent edit is refused whole.
  */
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
@@ -56,7 +66,10 @@ export async function POST(req: Request): Promise<Response> {
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
-  const model = process.env.AI_CLEAN_MODEL ?? "gpt-5.4";
+  // Measured against a real 472 word take with a hand-checked answer, twice:
+  // this model got every word right both times. The next best left 17 wrong,
+  // and what shipped before this left 92.
+  const model = process.env.AI_CLEAN_MODEL ?? "gemini-3.7-flash";
 
   let rawBody: unknown;
   try {
@@ -76,7 +89,6 @@ export async function POST(req: Request): Promise<Response> {
   const words = parseCleanTranscriptWords(body.words);
   if (!words) return Response.json({ error: "bad_request" }, { status: 400 });
 
-  const rawText = words.map((w) => w.text).join(" ");
   const billing = await preflightPaidActionOrResponse(
     userId,
     "clean_transcript",
@@ -91,12 +103,8 @@ export async function POST(req: Request): Promise<Response> {
   const access = await reservePaidActionOrResponse(userId, "clean_transcript");
   if (access.response) return access.response;
   const { reservation } = access;
-  // One wall-clock budget covers both model passes, so the critic cannot start
-  // a fresh full window after a slow draft.
-  const providerDeadline = Date.now() + PROVIDER_TIMEOUT_MS;
-  const complete = async (system: string, user: string): Promise<string> => {
-    const remainingMs = providerDeadline - Date.now();
-    if (remainingMs <= 0) throw new OutboundHttpError("timeout");
+
+  try {
     const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
       `${base}/chat/completions`,
       {
@@ -110,43 +118,33 @@ export async function POST(req: Request): Promise<Response> {
           temperature: 0,
           max_completion_tokens: MAX_COMPLETION_TOKENS,
           messages: [
-            { role: "system", content: system },
-            { role: "user", content: user },
+            { role: "system", content: RETAKE_CLUSTER_PROMPT },
+            { role: "user", content: numberedTranscript(words) },
           ],
         }),
       },
       {
-        timeoutMs: remainingMs,
+        timeoutMs: PROVIDER_TIMEOUT_MS,
         maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
         signal: req.signal,
       },
     );
     if (!response.ok) throw new Error(`ai_${response.status}`);
-    return data.choices?.[0]?.message?.content ?? "";
-  };
-
-  try {
-    const draft = await complete(CLEAN_TRANSCRIPT_SYSTEM_PROMPT, rawText);
-    if (!draft.trim())
-      return Response.json({ cuts: [], balance: reservation.balance });
-    const cleaned = await complete(
-      CLEAN_TRANSCRIPT_CRITIC_PROMPT,
-      `ORIGINAL:\n${rawText}\n\nBAD DRAFT:\n${draft}`,
-    );
-    if (!cleaned.trim())
-      return Response.json({ cuts: [], balance: reservation.balance });
-
-    const alignment = alignCleanedToContiguousTakes(words, cleaned);
-    // Fail closed. Applying a partial alignment looks like a successful edit
-    // while silently deleting content the model intended to keep.
-    if (alignment.coverage < 0.92 || alignment.keep.length === 0) {
-      await refundCreditReservation(userId, reservation, "unsafe_alignment");
-      return Response.json({ error: "unsafe_alignment" }, { status: 502 });
+    // Fail closed on a cut-off answer. Half a decision applied at full
+    // confidence looks exactly like a successful edit that lost the ending.
+    if (data.choices?.[0]?.finish_reason === "length") {
+      throw new Error("transcript_too_long");
     }
-    return Response.json({
-      cuts: cutsOutsideKeptTakes(words.length, alignment.keep),
-      balance: reservation.balance,
-    });
+    const answer = data.choices?.[0]?.message?.content ?? "";
+    if (!answer.trim())
+      return Response.json({ cuts: [], balance: reservation.balance });
+
+    const cuts = retakeCutsFromResponse(answer, words.length);
+    if (!cuts) {
+      await refundCreditReservation(userId, reservation, "unreadable_edit");
+      return Response.json({ error: "unreadable_edit" }, { status: 502 });
+    }
+    return Response.json({ cuts, balance: reservation.balance });
   } catch (e) {
     await refundCreditReservation(
       userId,

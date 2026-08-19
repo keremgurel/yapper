@@ -2,13 +2,16 @@
 
 import { useCallback, useRef, type ChangeEvent } from "react";
 import { useAddVideo } from "@/hooks/use-add-video";
+import type { ContentDetail } from "@/lib/content/client";
 
 /**
- * Adding finished videos from disk. Owns the hidden file input so both the
- * header button and the empty state can open the same picker without either
- * of them knowing there is an input at all.
+ * Adding finished videos from disk, by picker or by drop.
+ *
+ * The created item is handed back rather than swallowed, so the caller can put
+ * the creator straight into composing the thing they just dropped instead of
+ * making them find it again in a grid.
  */
-export function useVideoFiles(onAdded: () => void) {
+export function useVideoFiles(onAdded: (item: ContentDetail) => void) {
   const ref = useRef<HTMLInputElement>(null);
   const { state, error, add } = useAddVideo(onAdded);
 
@@ -27,7 +30,16 @@ export function useVideoFiles(onAdded: () => void) {
     [add],
   );
 
+  const addFiles = useCallback(
+    (files: File[]) => {
+      void (async () => {
+        for (const file of files) await add(file);
+      })();
+    },
+    [add],
+  );
+
   const open = useCallback(() => ref.current?.click(), []);
 
-  return { ref, state, error, onChange, open };
+  return { ref, state, error, onChange, addFiles, open };
 }

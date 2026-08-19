@@ -78,57 +78,72 @@ describe("POST /api/clean-transcript payload limits", () => {
     expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
   });
 
-  it("caps both completions and gives them one abortable deadline", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({ choices: [{ message: { content: "hello" } }] }),
-      )
-      .mockResolvedValueOnce(
-        Response.json({ choices: [{ message: { content: "hello" } }] }),
-      );
+  it("asks once, with a bounded budget and an abortable signal", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: '{"clusters":[{"keep":[2,2],"drop":[[1,1]]}]}',
+            },
+          },
+        ],
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
 
-    const response = await POST(request({ words: [{ text: "hello" }] }));
+    const response = await POST(
+      request({ words: [{ text: "a" }, { text: "b" }, { text: "c" }] }),
+    );
 
     expect(response.status).toBe(200);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const firstInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
-    const secondInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
-    expect(JSON.parse(firstInit.body as string)).toMatchObject({
-      max_completion_tokens: 8_192,
+    await expect(response.json()).resolves.toMatchObject({ cuts: [[1, 1]] });
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(init.body as string)).toMatchObject({
+      max_completion_tokens: 32_000,
+      temperature: 0,
     });
-    expect(JSON.parse(secondInit.body as string)).toMatchObject({
-      max_completion_tokens: 8_192,
-    });
-    expect(firstInit.signal).toBeInstanceOf(AbortSignal);
-    expect(secondInit.signal).toBeInstanceOf(AbortSignal);
+    expect(init.signal).toBeInstanceOf(AbortSignal);
   });
 
-  it("does not start the critic after the shared deadline and refunds once", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        Response.json({ choices: [{ message: { content: "hello" } }] }),
-      );
+  it("refuses an edit it cannot read, and refunds the credit", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: "sure, here is the edit!" } }],
+      }),
+    );
     vi.stubGlobal("fetch", fetchMock);
-    // Far past any budget the route might be given, so this keeps testing the
-    // deadline rather than the number the deadline happens to be.
-    vi.spyOn(Date, "now")
-      .mockReturnValueOnce(1_000)
-      .mockReturnValueOnce(1_000)
-      .mockReturnValueOnce(1_000 + 60 * 60 * 1_000);
 
     const response = await POST(request({ words: [{ text: "hello" }] }));
 
     expect(response.status).toBe(502);
-    await expect(response.json()).resolves.toEqual({ error: "timeout" });
-    expect(fetchMock).toHaveBeenCalledOnce();
-    expect(mocks.refund).toHaveBeenCalledOnce();
+    await expect(response.json()).resolves.toEqual({
+      error: "unreadable_edit",
+    });
     expect(mocks.refund).toHaveBeenCalledWith(
       "user_test",
       expect.objectContaining({ usageId: "usage_test" }),
-      "timeout",
+      "unreadable_edit",
     );
+  });
+
+  it("refuses a truncated answer rather than applying half of it", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [
+          { finish_reason: "length", message: { content: '{"clusters":[' } },
+        ],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words: [{ text: "hello" }] }));
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({
+      error: "transcript_too_long",
+    });
+    expect(mocks.refund).toHaveBeenCalledOnce();
   });
 });

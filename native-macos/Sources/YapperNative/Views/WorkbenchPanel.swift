@@ -124,7 +124,7 @@ struct WorkbenchPanel: View {
         }
         .overlay {
             if let stage = session.oneClickEditStage {
-                OneClickEditProgressOverlay(stage: stage)
+                OneClickEditProgressOverlay(stage: stage, pace: session.oneClickEditPace)
                     .transition(.opacity)
             }
         }
@@ -537,6 +537,7 @@ private struct WorkbenchDropGuide: View {
 /// sits in the corner and never takes a click.
 private struct OneClickEditProgressOverlay: View {
     let stage: OneClickEditStage
+    let pace: OneClickEditPace
 
     var body: some View {
         VStack {
@@ -580,7 +581,10 @@ private struct OneClickEditProgressOverlay: View {
                             .frame(width: 18, height: 18)
 
                             if item == stage {
-                                ShimmeringStatusText(text: item.title)
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ShimmeringStatusText(text: item.title)
+                                    StageProgressBar(stage: stage, pace: pace)
+                                }
                             } else {
                                 Text(item.title)
                                     .font(.studioCaptionStrong)

@@ -636,6 +636,16 @@ struct EditorProject: Codable, Equatable, Sendable {
             || cutsOutTheSpeaker
             || removesAnyBackground
             || hasBackdrop
+            || hasImageClip
+    }
+
+    /// True when the main track holds a still. AVFoundation's own compositor
+    /// draws tracks and nothing else, so a picture on the timeline has to go
+    /// through ours, which already knows how to draw one for overlays.
+    var hasImageClip: Bool {
+        clips.contains { clip in
+            media.first(where: { $0.id == clip.mediaID })?.isImage == true
+        }
     }
 
     /// What the main track actually plays at: the fader, or nothing at all when
