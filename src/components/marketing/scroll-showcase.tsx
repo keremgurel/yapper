@@ -72,7 +72,7 @@ export default function ScrollShowcase({ items }: { items: ShowcaseItem[] }) {
   }, [items.length]);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16">
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-20">
       <div>
         {items.map((item, index) => {
           const active = index === activeIndex;
@@ -87,7 +87,7 @@ export default function ScrollShowcase({ items }: { items: ShowcaseItem[] }) {
               <div
                 className="motion-reduce:!opacity-100"
                 style={{
-                  opacity: active ? 1 : 0.35,
+                  opacity: active ? 1 : 0.45,
                   transition: "opacity 240ms var(--sg-ease-out, ease-out)",
                 }}
               >
