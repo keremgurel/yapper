@@ -15,10 +15,14 @@ export default function ClosingCta() {
     <section className="marketing-container pb-20 sm:pb-28">
       <DarkPanel
         glow="warm"
+        backdrop={<ShapeField />}
         className="px-6 pt-20 pb-[17rem] sm:px-12 sm:pt-24 sm:pb-[19rem]"
       >
         <div className="relative z-10 text-center">
-          <h2 className="type-h2 mx-auto max-w-[20ch] text-white">
+          <h2
+            className="type-h2 mx-auto max-w-[20ch]"
+            style={{ color: "#ffffff" }}
+          >
             Say it better today.{" "}
             <GradientText>Post it better tomorrow.</GradientText>
           </h2>
@@ -44,8 +48,6 @@ export default function ClosingCta() {
             </Link>
           </div>
         </div>
-
-        <ShapeField />
       </DarkPanel>
     </section>
   );

@@ -13,10 +13,17 @@ import type { ReactNode } from "react";
  */
 export default function DarkPanel({
   children,
+  backdrop,
   className = "",
   glow = "cool",
 }: {
   children: ReactNode;
+  /**
+   * Decoration that belongs to the panel rather than to the content, so it can
+   * position against the panel's full height. Anything passed as `children`
+   * sits inside a positioned wrapper and would measure against the text.
+   */
+  backdrop?: ReactNode;
   className?: string;
   /** `cool` leans blue and violet, `warm` leans coral and amber. */
   glow?: "cool" | "warm";
@@ -69,6 +76,8 @@ export default function DarkPanel({
           backgroundRepeat: "no-repeat",
         }}
       />
+
+      {backdrop}
 
       <div className="relative">{children}</div>
     </div>
