@@ -15,7 +15,8 @@ struct CaptionFirstWordCardTests {
     private static func word(
         _ text: String,
         source: ClosedRange<Double>,
-        timeline: ClosedRange<Double>
+        timeline: ClosedRange<Double>,
+        clip: ClosedRange<Double>? = nil
     ) -> CaptionSourceWord {
         CaptionSourceWord(
             mediaID: media,
@@ -23,7 +24,8 @@ struct CaptionFirstWordCardTests {
             sourceStart: source.lowerBound,
             sourceEnd: source.upperBound,
             timelineStart: timeline.lowerBound,
-            timelineEnd: timeline.upperBound
+            timelineEnd: timeline.upperBound,
+            clip: clip
         )
     }
 
@@ -45,14 +47,60 @@ struct CaptionFirstWordCardTests {
         #expect(!cards.contains { $0.text.split(separator: " ").count == 1 })
     }
 
+    /// A cut lands inside the words either side of it, not between them.
+    ///
+    /// The transcriber's extents are generous and run together, so there is no
+    /// gap to measure at the join: measured on a real edit, "learn." ran to
+    /// 61.000 and "Choose" began at 61.000 while the video jumped 60.740 to
+    /// 61.060. The card built across it was anchored to a third of a second
+    /// that is not in the video, and never appeared.
+    @Test("a card is never built across a cut that runs through the words")
+    func neverSpansACutInsideTheWords() {
+        let before = 59.120 ... 60.740
+        let after = 61.060 ... 62.860
+        let across = [
+            Self.word("wanna", source: 60.200 ... 60.440, timeline: 15.560 ... 15.800, clip: before),
+            Self.word("learn.", source: 60.440 ... 61.000, timeline: 15.800 ... 16.360, clip: before),
+            Self.word("Choose", source: 61.000 ... 61.400, timeline: 16.100 ... 16.500, clip: after),
+            Self.word("the", source: 61.400 ... 61.560, timeline: 16.440 ... 16.600, clip: after),
+        ]
+        let cards = CaptionGenerator.captions(from: across, wordsPerCard: 3)
+
+        #expect(cards.map { $0.text } == ["wanna learn.", "Choose the"])
+        // Each card stays inside the clip its words play from, so the midpoint
+        // that places it can never land in removed footage.
+        for card in cards {
+            let clip = card.sourceStart < 61 ? before : after
+            #expect(card.sourceStart >= clip.lowerBound)
+            #expect(card.sourceEnd <= clip.upperBound)
+        }
+    }
+
+    /// The beat held at the end of a card is for the reader, not a claim on
+    /// footage. A card reading "you" was lost to seventeen milliseconds of it.
+    @Test("the tail never reaches past the clip and loses the card")
+    func tailStaysInsideTheClip() {
+        let clip = 83.045 ... 83.505
+        let cards = CaptionGenerator.captions(
+            from: [Self.word("you", source: 83.045 ... 83.925, timeline: 20.0 ... 20.880, clip: clip)],
+            wordsPerCard: 3
+        )
+        let card = try! #require(cards.first)
+        #expect(card.sourceEnd <= clip.upperBound)
+        #expect((card.sourceStart + card.sourceEnd) / 2 <= clip.upperBound)
+        #expect((card.sourceStart + card.sourceEnd) / 2 >= clip.lowerBound)
+    }
+
     @Test("a real cut still ends the run")
     func aRealCutStillBreaks() {
         // Nine seconds of recording removed between two words that now play
-        // back to back.
+        // back to back, so they come from different clips.
+        let before = 0.0 ... 6.20
+        let after = 14.60 ... 24.00
         let across = [
-            Self.word("vocabulary.", source: 5.28 ... 6.16, timeline: 3.42 ... 4.30),
-            Self.word("Navigate", source: 14.635 ... 15.035, timeline: 4.04 ... 4.44),
-            Self.word("to", source: 15.035 ... 15.275, timeline: 4.44 ... 4.68),
+            Self.word("vocabulary.", source: 5.28 ... 6.16, timeline: 3.42 ... 4.30, clip: before),
+            Self.word("Navigate", source: 14.635 ... 15.035, timeline: 4.04 ... 4.44, clip: after),
+            Self.word("to", source: 15.035 ... 15.275, timeline: 4.44 ... 4.68, clip: after),
         ]
         let cards = CaptionGenerator.captions(from: across, wordsPerCard: 3)
         #expect(cards.map { $0.text } == ["vocabulary.", "Navigate to"])
