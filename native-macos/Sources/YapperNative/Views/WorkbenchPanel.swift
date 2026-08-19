@@ -1032,7 +1032,7 @@ private struct TranscriptWorkbench: View {
                 ContentUnavailableView(
                     "No transcript yet",
                     systemImage: "doc.text.magnifyingglass",
-                    description: Text("The native transcriber sends clean PCM chunks to the same accurate service as the web editor.")
+                    description: Text("Your take is sent once, whole, to the same accurate service as the web editor.")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

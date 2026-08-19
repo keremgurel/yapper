@@ -25,6 +25,22 @@ vi.mock("@/lib/http/outbound", async (importOriginal) => {
   return { ...actual, fetchBoundedJson: mocks.fetchBoundedJson };
 });
 
+const r2 = vi.hoisted(() => ({
+  presignView: vi.fn(),
+  discardTranscriptionAudio: vi.fn(),
+  getObjectBytes: vi.fn(),
+}));
+
+vi.mock("@/lib/r2", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/r2")>();
+  return {
+    ...actual,
+    presignView: r2.presignView,
+    discardTranscriptionAudio: r2.discardTranscriptionAudio,
+    getObjectBytes: r2.getObjectBytes,
+  };
+});
+
 import { POST } from "./route";
 
 beforeEach(() => {
@@ -292,4 +308,92 @@ describe("POST /api/transcribe rate-limit placement", () => {
       expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
     },
   );
+});
+
+describe("POST /api/transcribe with audio already in storage", () => {
+  beforeEach(() => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg_test");
+    vi.stubEnv("R2_ENDPOINT", "https://r2.test");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "id");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret");
+    r2.presignView.mockResolvedValue("https://r2.test/signed-get");
+    r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+  });
+
+  const stored = (key: string) =>
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+
+  const transcript = {
+    metadata: { duration: 12 },
+    results: {
+      channels: [
+        {
+          alternatives: [
+            {
+              words: [
+                { word: "hello", punctuated_word: "Hello", start: 0, end: 0.4 },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  it("hands the transcriber a link and never the audio", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue({
+      response: { ok: true },
+      data: transcript,
+    });
+
+    const response = await POST(stored("u/user_test/asr/abc.m4a"));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      words: [{ text: "Hello", start: 0, end: 0.4 }],
+    });
+    const [, init] = mocks.fetchBoundedJson.mock.calls[0];
+    // A few hundred bytes, whatever the take's length.
+    expect(JSON.parse(init.body as string)).toEqual({
+      url: "https://r2.test/signed-get",
+    });
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledWith(
+      "u/user_test/asr/abc.m4a",
+    );
+  });
+
+  it("refuses a key belonging to somebody else", async () => {
+    const response = await POST(stored("u/someone_else/asr/abc.m4a"));
+
+    expect(response.status).toBe(400);
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+    expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+  });
+
+  it("refuses a key outside the scratch prefix", async () => {
+    const response = await POST(stored("u/user_test/recording.m4a"));
+
+    expect(response.status).toBe(400);
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+  });
+
+  it("throws the audio away even when the transcriber fails", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue({
+      response: { ok: false, status: 500 },
+      data: {},
+    });
+
+    const response = await POST(stored("u/user_test/asr/abc.m4a"));
+
+    expect(response.status).toBe(502);
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledWith(
+      "u/user_test/asr/abc.m4a",
+    );
+    expect(mocks.refundCreditReservation).toHaveBeenCalled();
+  });
 });
