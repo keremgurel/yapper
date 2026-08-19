@@ -19,8 +19,10 @@
   --font-body-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
   --font-display-sans:
     var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  /* Outfit carries the headlines; Hanken keeps every reading surface, so the
+     app's body copy is untouched by the brand change. */
   --sg-font-display:
-    var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+    var(--font-outfit), Outfit, var(--font-hanken), system-ui, sans-serif;
   --sg-font-body: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
   --sg-font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
@@ -77,6 +79,11 @@
   --sg-radius-xl: 20px;
   --sg-radius-2xl: 28px;
   --sg-radius-full: 9999px;
+  /* The shape signature: three rounded corners and one square one. Used on
+     feature tiles and media frames so the layout has an edge to it rather than
+     being a field of identical rounded rectangles. */
+  --sg-radius-notch: 24px 0 24px 24px;
+  --sg-radius-notch-lg: 32px 0 32px 32px;
   --sg-radius-btn: 8px;
 
   /* fluid type scale */
@@ -176,22 +183,24 @@
     0 3px 6px rgba(124, 45, 6, 0.07);
   --sg-accent-text-shadow: 0 1px 1px rgba(120, 45, 5, 0.32);
 
-  /* semantic (light) */
-  --sg-bg: #f4f3f1;
-  --sg-bg-2: #edeae6;
+  /* semantic (light) — warm paper, warm ink. The neutrals carry a little red
+     so the page reads as paper rather than as grey, which is most of what
+     makes this palette feel warm at all. */
+  --sg-bg: #fbfaf9;
+  --sg-bg-2: #f5f2e6;
   --sg-surface: #ffffff;
   --sg-surface-raised: #ffffff;
-  --sg-surface-sunken: #f0eeeb;
-  --sg-border: rgba(32, 29, 29, 0.1);
-  --sg-border-strong: rgba(32, 29, 29, 0.18);
-  --sg-text: #201d1d;
-  --sg-text-muted: #6f6a6a;
-  --sg-text-faint: #a29d9d;
+  --sg-surface-sunken: #faf8f0;
+  --sg-border: rgba(27, 24, 28, 0.1);
+  --sg-border-strong: rgba(27, 24, 28, 0.18);
+  --sg-text: #1b181c;
+  --sg-text-muted: #6b6570;
+  --sg-text-faint: #a09aa4;
   /* gold for tiny uppercase eyebrows/labels; cool slate for de-emphasized display text */
-  --sg-label: #d97706;
-  --sg-display-muted: #94a3b8;
-  --sg-accent: #f97316;
-  --sg-accent-strong: #ea580c;
+  --sg-label: #ff9e1f;
+  --sg-display-muted: #a09aa4;
+  --sg-accent: #f96f4b;
+  --sg-accent-strong: #e25732;
   --sg-accent-fg: #ffffff;
   --sg-accent-2: #06b6d4;
   --sg-accent-3: #7c6cff;
@@ -264,8 +273,10 @@
 .type-h3 {
   color: var(--sg-text);
   font-family: var(--sg-font-display);
-  font-weight: 800;
-  letter-spacing: -0.045em;
+  /* Outfit is a geometric face and holds up at 600 where Hanken needed 800.
+     The very tight tracking is what makes the headlines read as one mass. */
+  font-weight: 600;
+  letter-spacing: -0.06em;
 }
 
 .type-display,
@@ -309,22 +320,24 @@
 .dark {
   color-scheme: dark;
 
-  /* Luxurious neutral dark ramp — cool graphite, not warm brown. */
-  --sg-bg: #0a0a0b;
-  --sg-bg-2: #101012;
-  --sg-surface: #171719;
-  --sg-surface-raised: #202023;
-  --sg-surface-sunken: #101012;
-  --sg-border: rgba(255, 255, 255, 0.08);
-  --sg-border-strong: rgba(255, 255, 255, 0.15);
-  --sg-text: #f4f4f5;
-  --sg-text-muted: #a1a1aa;
-  --sg-text-faint: #71717a;
-  --sg-label: #fbbf24;
-  --sg-display-muted: #8b95a8;
-  --sg-accent: #ff8a2b;
-  --sg-accent-strong: #fdba74;
-  --sg-accent-fg: #1a0f06;
+  /* The same warmth, inverted. The dark ramp keeps the red cast of the ink so
+     the two themes read as one palette at two brightnesses, rather than a warm
+     site and a cold one. */
+  --sg-bg: #131114;
+  --sg-bg-2: #1b181c;
+  --sg-surface: #201d21;
+  --sg-surface-raised: #2a262b;
+  --sg-surface-sunken: #1b181c;
+  --sg-border: rgba(255, 255, 255, 0.09);
+  --sg-border-strong: rgba(255, 255, 255, 0.16);
+  --sg-text: #f7f5f3;
+  --sg-text-muted: #a9a2ac;
+  --sg-text-faint: #766f79;
+  --sg-label: #ff9e1f;
+  --sg-display-muted: #766f79;
+  --sg-accent: #f96f4b;
+  --sg-accent-strong: #ff8a68;
+  --sg-accent-fg: #1b0d08;
   --sg-accent-2: #22d3ee;
   --sg-accent-3: #a78bfa;
   --sg-accent-gradient: linear-gradient(
