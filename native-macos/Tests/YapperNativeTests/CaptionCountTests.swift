@@ -129,7 +129,12 @@ import Testing
     /// A card laid across a cut is anchored to seconds that are not in the edit
     /// any more, so it never appears at all. The run has to end there.
     @Test func aCutBreaksTheRun() {
+        // The two halves play back to back but come from different clips, which
+        // is what a cut is. The timings alone cannot say so: a transcriber's
+        // word extents run together, so the removed seconds regularly sit
+        // inside the words either side rather than in a gap between them.
         var spoken = words(3)
+        for index in spoken.indices { spoken[index].clip = 0 ... 1 }
         var afterCut = words(3)
         for index in afterCut.indices {
             // Later in the recording, but immediately after in the edit.
@@ -137,6 +142,7 @@ import Testing
             afterCut[index].sourceEnd += 9
             afterCut[index].timelineStart += 1
             afterCut[index].timelineEnd += 1
+            afterCut[index].clip = 9 ... 10
         }
         spoken += afterCut
 

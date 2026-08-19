@@ -10,6 +10,12 @@ struct CaptionSourceWord: Equatable, Sendable {
     var sourceEnd: Double
     var timelineStart: Double
     var timelineEnd: Double
+    /// The stretch of recording the clip this word plays from covers.
+    ///
+    /// A card may not span two clips, and may not reach outside its own: it is
+    /// anchored to a stretch of the recording, and a stretch holding seconds
+    /// that are no longer in the video maps to nothing and never appears.
+    var clip: ClosedRange<Double>?
 }
 
 /// Groups spoken words into caption cards.
@@ -55,12 +61,17 @@ enum CaptionGenerator {
         func flush() {
             guard let first = group.first, let last = group.last else { return }
             let previousEnd = previousWordSourceEnd[first.mediaID] ?? 0
+            let span = clamped(
+                start: max(previousEnd, first.sourceStart - leadSeconds),
+                end: max(first.sourceStart + 0.12, last.sourceEnd + tailSeconds),
+                to: first.clip
+            )
             captions.append(
                 ProjectCaption(
                     mediaID: first.mediaID,
                     text: group.map(\.text).joined(separator: " "),
-                    sourceStart: max(previousEnd, first.sourceStart - leadSeconds),
-                    sourceEnd: max(first.sourceStart + 0.12, last.sourceEnd + tailSeconds)
+                    sourceStart: span.start,
+                    sourceEnd: span.end
                 )
             )
             previousWordSourceEnd[first.mediaID] = last.sourceEnd
@@ -103,27 +114,42 @@ enum CaptionGenerator {
     /// Where a counted run has to end, whatever the count says.
     private static func endsRun(before word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
         if word.mediaID != last.mediaID { return true }
-        if word.timelineStart - last.timelineEnd > countedPauseSeconds { return true }
-        return removedBetween(word, after: last) > 0.05
+        if crossesACut(word, after: last) { return true }
+        return word.timelineStart - last.timelineEnd > countedPauseSeconds
     }
 
-    /// The recording seconds taken out between two words that still play
-    /// back to back.
+    /// Whether the join between two words is a cut.
     ///
-    /// A cut removes recording time without leaving a timeline gap, so the
-    /// difference between the two gaps is what went. What that difference
-    /// cannot be is more than the recording gap held: no seconds were removed
-    /// from between two words the speaker ran together.
+    /// Asked of the clips rather than worked out from the timings, because the
+    /// timings cannot answer it. A transcriber's word extents are generous and
+    /// run together, so the silence a cut removes regularly sits inside the
+    /// last word of one phrase and the first word of the next, with no gap
+    /// between them to measure. Measured on a real edit: "learn." ran to 61.000
+    /// and "Choose" began at 61.000, while the video jumped 60.740 to 61.060.
+    /// A card was built across the join, anchored to a third of a second that
+    /// is not in the video any more, and never appeared.
+    private static func crossesACut(_ word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
+        guard let clip = word.clip, let previous = last.clip else { return false }
+        return clip != previous
+    }
+
+    /// The card's own clip, and nothing past its edges.
     ///
-    /// Words do overlap on the timeline. The first word of a take starts a
-    /// breath before the clip does, so it has no position of its own and snaps
-    /// to the clip's edge, which puts its end past the next word's start.
-    /// Reading that as a cut is why a real edit opened on a card holding the
-    /// single word "If": three words a card, and the first card was one.
-    private static func removedBetween(_ word: CaptionSourceWord, after last: CaptionSourceWord) -> Double {
-        let inRecording = word.sourceStart - last.sourceEnd
-        let onTimeline = word.timelineStart - last.timelineEnd
-        return min(inRecording, inRecording - onTimeline)
+    /// The head start and the beat held at the end are for the reader, and a
+    /// transcriber's word extents are generous enough that either can reach
+    /// past the clip the words play from. A card is placed by the midpoint of
+    /// the stretch it claims, so a tenth of a second of overhang is enough to
+    /// place it in removed footage and drop it from the video. Measured: a card
+    /// reading "you" was lost to seventeen milliseconds.
+    private static func clamped(
+        start: Double,
+        end: Double,
+        to clip: ClosedRange<Double>?
+    ) -> (start: Double, end: Double) {
+        guard let clip else { return (start, end) }
+        let from = min(max(start, clip.lowerBound), clip.upperBound)
+        let to = max(from, min(end, clip.upperBound))
+        return (from, to > from ? to : min(clip.upperBound, from + 0.12))
     }
 
     private static func shouldBreak(
@@ -133,11 +159,9 @@ enum CaptionGenerator {
         wordsPerCard: Int
     ) -> Bool {
         if word.mediaID != last.mediaID { return true }
+        if crossesACut(word, after: last) { return true }
         let pause = wordsPerCard > 0 ? countedPauseSeconds : pauseSeconds
         if word.timelineStart - last.timelineEnd > pause { return true }
-        // A card must never span a cut: anchored across the removed region, it
-        // maps to nothing and vanishes from the video entirely.
-        if removedBetween(word, after: last) > 0.05 { return true }
         if wordsPerCard > 0 {
             return breaksFixedCard(group: group, next: word, wordsPerCard: wordsPerCard)
         }
