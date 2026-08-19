@@ -24,7 +24,9 @@ export const runtime = "nodejs";
 // The model works through every retake cluster before it answers, so this is a
 // reading job measured in minutes, not seconds, and the time grows with the
 // take: 472 words took half a minute, 1,888 took four. The route accepts 5,000,
-// so the budget has to cover about ten.
+// so the budget would need about ten minutes. It gets five, because that is
+// what the Hobby plan allows a function; past roughly 2,200 words the request
+// gives up and refunds rather than returning half an edit.
 //
 // It reads the take whole. Splitting it was the obvious way to keep the wall
 // clock flat, and it was wrong: a boundary has to miss every retake cluster,
@@ -33,9 +35,9 @@ export const runtime = "nodejs";
 // middle of one — he stopped, thought, and ran the line again. Splitting there
 // scored 57 lost words and 58 retakes left in, where reading it whole scored
 // nothing wrong at all.
-export const maxDuration = 800;
+export const maxDuration = 300;
 const MAX_JSON_BYTES = 256 * 1024;
-const PROVIDER_TIMEOUT_MS = 760_000;
+const PROVIDER_TIMEOUT_MS = 280_000;
 // The answer quotes every attempt it found before deciding between them, which
 // is what makes it accurate, and that scales with the take.
 const MAX_COMPLETION_TOKENS = 32_000;
