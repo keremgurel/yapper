@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 
 /**
- * One act of the homepage argument.
+ * One act of the homepage argument: an intro that spans the page, then the
+ * content beneath it.
  *
- * The site already has a numbered rail in the Studio workflow tour, so the
- * homepage borrows that idea rather than inventing a third grammar: an
- * oversized act numeral, a hairline accent rail running down beside it, and
- * one block of content. It reads as the same system without repeating the
- * tour's layout.
+ * It deliberately does NOT put the intro in its own column. The showcase below
+ * is already two columns, and nesting one inside the other produced three
+ * columns of competing text with the media panel stranded in the leftover
+ * space. The act introduces itself across the full width and then gets out of
+ * the way.
  */
 export default function ActSection({
   index,
@@ -26,36 +27,35 @@ export default function ActSection({
 }) {
   return (
     <section className="marketing-container py-16 sm:py-24">
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-16">
-        {/* The rail. On wide screens it runs the height of the act and the
-            numeral hangs off it; on narrow ones it collapses to a short
-            horizontal tick so the column can stack. */}
-        <div className="relative lg:sticky lg:top-28 lg:self-start">
-          <div className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-5">
-            <span
-              aria-hidden
-              className="font-mono text-[44px] leading-none font-semibold text-[color:var(--sg-accent)] tabular-nums sm:text-[56px]"
-            >
-              {index}
-            </span>
-            <span
-              aria-hidden
-              className="h-px flex-1 bg-gradient-to-r from-[color:var(--sg-accent)] to-transparent lg:h-24 lg:w-px lg:flex-none lg:bg-gradient-to-b"
-            />
-          </div>
+      <div className="flex items-start gap-5 sm:gap-7">
+        <span
+          aria-hidden
+          className="font-mono text-[40px] leading-none font-semibold text-[color:var(--sg-accent)] tabular-nums sm:text-[52px]"
+        >
+          {index}
+        </span>
+        <span
+          aria-hidden
+          className="mt-6 h-px flex-1 bg-gradient-to-r from-[color:var(--sg-accent)]/50 to-transparent"
+        />
+      </div>
 
-          <p className="text-muted-foreground mt-6 text-[11px] font-bold tracking-[0.16em] uppercase">
+      <div className="mt-8 grid gap-x-16 gap-y-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start">
+        <div>
+          <p className="text-muted-foreground text-[11px] font-bold tracking-[0.16em] uppercase">
             {eyebrow}
           </p>
           <h2 className="type-h2 mt-3">{title}</h2>
-          <p className="type-description mt-5 max-w-[46ch] text-base">
+        </div>
+        <div className="lg:pt-2">
+          <p className="type-description max-w-[52ch] text-base">
             {description}
           </p>
-          <div className="mt-7">{action}</div>
+          <div className="mt-6">{action}</div>
         </div>
-
-        <div className="min-w-0">{children}</div>
       </div>
+
+      <div className="mt-14 sm:mt-20">{children}</div>
     </section>
   );
 }
