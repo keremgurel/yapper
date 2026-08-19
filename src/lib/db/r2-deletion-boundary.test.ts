@@ -14,6 +14,12 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("R2 deletion boundary", () => {
+  // The rule is about media. A recording is referenced by submissions and
+  // history, so deleting one has to be durable, fenced and idempotent, which is
+  // what the leased worker provides. Scratch audio written for a single
+  // transcription request is referenced by nothing and has to be gone at once,
+  // so it is deleted through `discardTranscriptionAudio`, which lives in the
+  // same allowed file and refuses any key outside the scratch prefix.
   it("keeps physical object deletion inside the leased lifecycle worker", () => {
     const sourceRoot = join(process.cwd(), "src");
     const allowed = new Set([

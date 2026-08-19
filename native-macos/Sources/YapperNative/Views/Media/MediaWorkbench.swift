@@ -50,7 +50,7 @@ struct MediaWorkbench: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text("Media")
                     .font(.system(size: 15, weight: .bold))
-                Text("Drop files here · video stays local on this Mac")
+                Text("Drop files here")
                     .font(.studioBody)
                     .foregroundStyle(.secondary)
             }

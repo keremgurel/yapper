@@ -5,16 +5,29 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { isAudioTruncated } from "@/lib/studio/transcribe-guard";
-import type { RawWord } from "@/lib/studio/transcription-dictionary";
 import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
 import {
   readBoundedBody,
+  readBoundedJson,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
-import { fetchBoundedJson, OutboundHttpError } from "@/lib/http/outbound";
+import { OutboundHttpError } from "@/lib/http/outbound";
+import {
+  discardTranscriptionAudio,
+  isTranscriptionKey,
+  presignView,
+  r2Configured,
+} from "@/lib/r2";
+import {
+  type AsrResult,
+  viaDeepgram,
+  viaDeepgramURL,
+  viaOpenAiCompatible,
+} from "@/lib/transcription/providers";
+import { getObjectBytes } from "@/lib/r2";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -25,7 +38,6 @@ const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
 const MAX_AUDIO_BYTES = 4_000_000;
 const MAX_AUDIO_DURATION_SECONDS = 600;
 const PROVIDER_DEADLINE_MS = 108_000;
-const MAX_PROVIDER_RESPONSE_BYTES = 4_000_000;
 const AUDIO_MEDIA_TYPES = [
   "audio/wav",
   "audio/x-wav",
@@ -40,12 +52,6 @@ const AUDIO_MEDIA_TYPES = [
   "video/quicktime",
   "application/octet-stream",
 ] as const;
-
-/** An ASR result plus how many seconds of audio the provider actually heard. */
-interface AsrResult {
-  words: RawWord[];
-  heardSec: number;
-}
 
 /**
  * Backend transcription, returning word-level timings. Runs an ordered failover
@@ -88,28 +94,62 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "invalid_audio_duration" }, { status: 400 });
   }
 
-  let audio: ArrayBuffer;
-  let contentType: string;
-  try {
-    const body = await readBoundedBody(req, {
-      maxBytes: MAX_AUDIO_BYTES,
-      allowedMediaTypes: AUDIO_MEDIA_TYPES,
-      requireContentType: true,
-    });
-    audio = body.bytes.buffer;
-    contentType = body.mediaType as string;
-  } catch (error) {
-    const response = requestBodyErrorResponse(error);
-    if (response) return response;
-    throw error;
-  }
-  if (audio.byteLength === 0) {
-    return Response.json({ error: "empty_audio" }, { status: 400 });
+  // Two ways a take arrives. A browser posts the audio, because it has nowhere
+  // to put it first. The editor uploads it to storage and sends the key, which
+  // is what lets a long take through at all: the audio never passes through
+  // this function, so the hosting body limit stops capping the recording.
+  const stored = (req.headers.get("content-type") ?? "").includes(
+    "application/json",
+  );
+  let audio: ArrayBuffer | null = null;
+  let contentType = "audio/mp4";
+  let storedKey: string | null = null;
+
+  if (stored) {
+    if (!r2Configured())
+      return Response.json({ error: "no_storage" }, { status: 501 });
+    let body: unknown;
+    try {
+      body = await readBoundedJson(req, { maxBytes: 4 * 1024 });
+    } catch (error) {
+      const response = requestBodyErrorResponse(error);
+      if (response) return response;
+      throw error;
+    }
+    const key = (body as { key?: unknown } | null)?.key;
+    // The prefix is the ownership check: a ticket is only ever issued under the
+    // asking account, so a key outside it was not issued to this caller.
+    if (typeof key !== "string" || !isTranscriptionKey(userId, key)) {
+      return Response.json({ error: "bad_request" }, { status: 400 });
+    }
+    storedKey = key;
+  } else {
+    try {
+      const body = await readBoundedBody(req, {
+        maxBytes: MAX_AUDIO_BYTES,
+        allowedMediaTypes: AUDIO_MEDIA_TYPES,
+        requireContentType: true,
+      });
+      audio = body.bytes.buffer;
+      contentType = body.mediaType as string;
+    } catch (error) {
+      const response = requestBodyErrorResponse(error);
+      if (response) return response;
+      throw error;
+    }
+    if (audio.byteLength === 0) {
+      return Response.json({ error: "empty_audio" }, { status: 400 });
+    }
   }
   // How many seconds of audio the client built. Hosting infrastructure can cap
   // a body before this route runs, and some proxies truncate bodies silently.
   // The client now sends upload-safe chunks; this duration check remains a
   // final guard against ever accepting a chunk whose tail went missing.
+  // Deepgram is handed the link when there is one; the backup cannot fetch for
+  // itself, so for a stored take it reads the object here instead. That read is
+  // outbound, which the hosting body limit has no opinion about.
+  const bytes = async (): Promise<ArrayBuffer> =>
+    audio ?? (audio = await getObjectBytes(storedKey!));
   const providers: {
     name: string;
     run: (timeoutMs: number) => Promise<AsrResult>;
@@ -117,23 +157,31 @@ export async function POST(req: Request): Promise<Response> {
   if (deepgram) {
     providers.push({
       name: "deepgram",
-      run: (timeoutMs) =>
-        viaDeepgram(
-          audio,
-          deepgram,
-          contentType,
-          keyterms,
-          req.signal,
-          timeoutMs,
-        ),
+      run: async (timeoutMs) =>
+        storedKey
+          ? viaDeepgramURL(
+              await presignView(storedKey, 900),
+              deepgram,
+              keyterms,
+              req.signal,
+              timeoutMs,
+            )
+          : viaDeepgram(
+              await bytes(),
+              deepgram,
+              contentType,
+              keyterms,
+              req.signal,
+              timeoutMs,
+            ),
     });
   }
   if (groq) {
     providers.push({
       name: "groq",
-      run: (timeoutMs) =>
+      run: async (timeoutMs) =>
         viaOpenAiCompatible(
-          audio,
+          await bytes(),
           groq,
           "https://api.groq.com/openai/v1",
           "whisper-large-v3",
@@ -158,6 +206,19 @@ export async function POST(req: Request): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  // The take's audio exists for this request and no longer. Deepgram has
+  // already fetched it by the time any of these paths return, so nothing is
+  // waiting on the bytes, and a creator is not paying to store a copy of a
+  // video they have on their own disk.
+  const discard = async () => {
+    if (!storedKey) return;
+    try {
+      await discardTranscriptionAudio(storedKey);
+    } catch (error) {
+      console.error("[transcribe] could not discard stored audio", error);
+    }
+  };
+
   let lastError: unknown;
   for (const provider of providers) {
     const remainingMs = providerDeadline - Date.now();
@@ -179,6 +240,7 @@ export async function POST(req: Request): Promise<Response> {
         // The ASR heard less than the client sent: the body was truncated in
         // transit. Refuse rather than return a transcript missing its tail.
         await refundCreditReservation(userId, reservation, "audio_truncated");
+        await discard();
         return Response.json(
           {
             error: "audio_truncated",
@@ -188,6 +250,7 @@ export async function POST(req: Request): Promise<Response> {
           { status: 413 },
         );
       }
+      await discard();
       return Response.json({ words, balance: reservation.balance });
     } catch (e) {
       lastError = e;
@@ -203,6 +266,7 @@ export async function POST(req: Request): Promise<Response> {
       }
     }
   }
+  await discard();
   await refundCreditReservation(
     userId,
     reservation,
@@ -223,119 +287,4 @@ export async function POST(req: Request): Promise<Response> {
             : 502,
     },
   );
-}
-
-interface DeepgramWord {
-  word: string;
-  start: number;
-  end: number;
-  punctuated_word?: string;
-}
-
-async function viaDeepgram(
-  audio: ArrayBuffer,
-  key: string,
-  contentType: string,
-  keyterms: string[],
-  signal: AbortSignal,
-  timeoutMs: number,
-): Promise<AsrResult> {
-  const endpoint = new URL("https://api.deepgram.com/v1/listen");
-  endpoint.searchParams.set("model", "nova-3");
-  endpoint.searchParams.set("smart_format", "true");
-  endpoint.searchParams.set("punctuate", "true");
-  // Editing needs a verbatim record, not a polished meeting transcript.
-  // Deepgram otherwise strips "uh"/"um" by default, which makes audible speech
-  // disappear from the transcript and can cause the edit model to cut through
-  // a real hesitation or sentence onset.
-  endpoint.searchParams.set("filler_words", "true");
-  for (const term of keyterms) endpoint.searchParams.append("keyterm", term);
-  const { response, data: json } = await fetchBoundedJson<{
-    metadata?: { duration?: unknown };
-    results?: { channels?: { alternatives?: { words?: DeepgramWord[] }[] }[] };
-  }>(
-    endpoint,
-    {
-      method: "POST",
-      headers: { Authorization: `Token ${key}`, "Content-Type": contentType },
-      body: audio,
-    },
-    { timeoutMs, maxBytes: MAX_PROVIDER_RESPONSE_BYTES, signal },
-  );
-  if (!response.ok) throw new Error(`deepgram_${response.status}`);
-  const words: DeepgramWord[] =
-    json?.results?.channels?.[0]?.alternatives?.[0]?.words ?? [];
-  return {
-    // metadata.duration is the length of audio Deepgram actually decoded — the
-    // truncation signal.
-    heardSec: Number(json?.metadata?.duration ?? 0),
-    words: words.map((w) => ({
-      text: w.punctuated_word ?? w.word,
-      start: w.start,
-      end: w.end,
-    })),
-  };
-}
-
-/**
- * What to call the upload so the fallback transcriber parses it.
- *
- * Whisper picks its demuxer partly from the filename, and the editor now sends
- * AAC in an MPEG-4 container rather than raw PCM, which would have arrived
- * named audio.wav.
- */
-function fileExtension(contentType: string): string {
-  const type = contentType.toLowerCase();
-  if (type.includes("mp4") || type.includes("m4a")) return "m4a";
-  if (type.includes("aac")) return "aac";
-  if (type.includes("webm")) return "webm";
-  if (type.includes("ogg")) return "ogg";
-  if (type.includes("mpeg")) return "mp3";
-  if (type.includes("quicktime")) return "mov";
-  return "wav";
-}
-
-interface OpenAiWord {
-  word: string;
-  start: number;
-  end: number;
-}
-
-async function viaOpenAiCompatible(
-  audio: ArrayBuffer,
-  key: string,
-  base: string,
-  model: string,
-  contentType: string,
-  keyterms: string[],
-  signal: AbortSignal,
-  timeoutMs: number,
-): Promise<AsrResult> {
-  const ext = fileExtension(contentType);
-  const form = new FormData();
-  form.append("file", new File([audio], `audio.${ext}`, { type: contentType }));
-  form.append("model", model);
-  form.append("response_format", "verbose_json");
-  form.append("timestamp_granularities[]", "word");
-  if (keyterms.length > 0) {
-    form.append("prompt", `Preferred vocabulary: ${keyterms.join(", ")}`);
-  }
-  const { response, data: json } = await fetchBoundedJson<{
-    duration?: unknown;
-    words?: OpenAiWord[];
-  }>(
-    `${base}/audio/transcriptions`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}` },
-      body: form,
-    },
-    { timeoutMs, maxBytes: MAX_PROVIDER_RESPONSE_BYTES, signal },
-  );
-  if (!response.ok) throw new Error(`asr_${response.status}`);
-  const words: OpenAiWord[] = json?.words ?? [];
-  return {
-    heardSec: Number(json?.duration ?? 0),
-    words: words.map((w) => ({ text: w.word, start: w.start, end: w.end })),
-  };
 }

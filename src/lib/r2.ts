@@ -54,6 +54,22 @@ export function ownsKey(userId: string, key: string): boolean {
   return key.startsWith(`u/${userId}/`);
 }
 
+/**
+ * Object key for a take's audio on its way to the transcriber.
+ *
+ * Its own prefix under the user, because these are not recordings: they exist
+ * for one request and are deleted as soon as the transcriber has read them, so
+ * nothing here should be counted against a creator's storage or offered back
+ * to them as media.
+ */
+export function transcriptionKey(userId: string, id: string): string {
+  return `u/${userId}/asr/${id}.m4a`;
+}
+
+export function isTranscriptionKey(userId: string, key: string): boolean {
+  return key.startsWith(`u/${userId}/asr/`) && key.endsWith(".m4a");
+}
+
 /** Presigned PUT for the client to upload a recording straight to R2. */
 export function presignUpload(
   key: string,
@@ -176,6 +192,27 @@ export async function putObjectFile(
     signal?.removeEventListener("abort", abort);
     body.destroy();
   }
+}
+
+/**
+ * Throw away a take's audio the moment the transcriber has read it.
+ *
+ * Physical deletion otherwise belongs to the leased lifecycle worker, because
+ * a recording is referenced by submissions and history and a deletion that got
+ * lost, or raced a live reference, would take something a creator still owns.
+ * None of that applies here: this object is written for one request, is never
+ * referenced by anything, and exists under a prefix that holds nothing else.
+ * Keeping it would mean charging a creator storage for a copy of a video they
+ * already have on their own disk.
+ *
+ * The prefix check is the safety rail. This can only ever delete scratch audio,
+ * so it cannot become a back door to deleting media.
+ */
+export async function discardTranscriptionAudio(key: string): Promise<void> {
+  if (!/^u\/[^/]+\/asr\/[^/]+\.m4a$/.test(key)) {
+    throw new Error("not_transcription_audio");
+  }
+  await deleteObject(key);
 }
 
 export async function deleteObject(

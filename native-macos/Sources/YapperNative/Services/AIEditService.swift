@@ -18,70 +18,6 @@ enum TranscriptionPCM {
     }
 }
 
-struct TranscriptionChunkPlan: Equatable, Sendable {
-    let start: Int
-    let length: Int
-    let offset: Double
-    let duration: Double
-
-    static func make(
-        byteCount: Int,
-        sampleRate: Int,
-        chunkBytes: Int,
-        overlapSeconds: Double
-    ) -> [Self] {
-        let usableByteCount = byteCount - max(0, byteCount % 2)
-        let usableChunkBytes = chunkBytes - max(0, chunkBytes % 2)
-        guard usableByteCount > 0, sampleRate > 0, usableChunkBytes >= 2 else { return [] }
-        let bytesPerSecond = sampleRate * 2
-        let requestedOverlap = max(0, Int(overlapSeconds * Double(bytesPerSecond)))
-        let overlap = min(usableChunkBytes - 2, requestedOverlap - requestedOverlap % 2)
-        let advance = max(2, usableChunkBytes - overlap)
-        var plans: [Self] = []
-        var start = 0
-        while start < usableByteCount {
-            let length = min(usableChunkBytes, usableByteCount - start)
-            plans.append(.init(
-                start: start,
-                length: length,
-                offset: Double(start) / Double(bytesPerSecond),
-                duration: Double(length) / Double(bytesPerSecond)
-            ))
-            if start + length == usableByteCount { break }
-            start += advance
-        }
-        return plans
-    }
-}
-
-enum BoundedTranscriptionWork {
-    static func run<Result: Sendable>(
-        count: Int,
-        limit: Int,
-        operation: @escaping @Sendable (Int) async throws -> Result,
-        completed: @escaping @Sendable (Int, Result) async -> Void = { _, _ in }
-    ) async throws -> [Result] {
-        guard count > 0 else { return [] }
-        return try await withThrowingTaskGroup(of: (Int, Result).self) { group in
-            var next = 0
-            var results: [Result?] = Array(repeating: nil, count: count)
-            func enqueue(_ index: Int) { group.addTask { (index, try await operation(index)) } }
-            while next < min(max(1, limit), count) { enqueue(next); next += 1 }
-            do {
-                while let (index, result) = try await group.next() {
-                    results[index] = result
-                    await completed(index, result)
-                    if next < count { enqueue(next); next += 1 }
-                }
-            } catch {
-                group.cancelAll()
-                throw error
-            }
-            return results.compactMap { $0 }
-        }
-    }
-}
-
 enum TranscriptionTemporaryFile {
     static func withPCMFile<Result: Sendable>(
         isolation _: isolated (any Actor)? = #isolation,
@@ -95,11 +31,6 @@ enum TranscriptionTemporaryFile {
         defer { try? FileManager.default.removeItem(at: url) }
         return try await operation(url)
     }
-}
-
-private actor TranscriptionCompletionCounter {
-    private var value = 0
-    func increment() -> Int { value += 1; return value }
 }
 
 actor AIEditService {
@@ -124,6 +55,15 @@ actor AIEditService {
         let words: [RemoteWord]?
     }
 
+    private struct UploadTicketRequest: Codable { let bytes: Int }
+
+    private struct UploadTicket: Codable {
+        let key: String
+        let url: String
+    }
+
+    private struct StoredTranscriptionRequest: Codable { let key: String }
+
     private struct CleanRequest: Codable {
         /// The timings go with the words so the server can split a long take at
         /// a silence the speaker actually left, rather than at a word count
@@ -141,13 +81,6 @@ actor AIEditService {
         let error: String?
     }
 
-    private struct AudioChunk {
-        let start: Int
-        let length: Int
-        let offset: Double
-        let duration: Double
-    }
-
     private struct DecodedAudio {
         let url: URL
         let byteCount: Int
@@ -156,18 +89,6 @@ actor AIEditService {
 
     // Keep camera speech detail at its native rate. The previous forced 16 kHz
     // path could smear quiet sentence onsets before ASR heard them.
-    //
-    // Chunks are measured in seconds rather than bytes because what the server
-    // caps is seconds: ten minutes a request, and four megabytes. At the
-    // bitrate speech actually needs, six minutes is what fits the four
-    // megabytes with room to spare, and the platform refuses a body over 4.5 MB
-    // outright. Most takes are still one chunk, which is the point: the
-    // charges a credit and spends a rate limit token per request, so a take
-    // that arrives in eleven pieces costs eleven times what it should and runs
-    // out of both.
-    private let chunkSeconds = 360.0
-    private let overlapSeconds = 5.0
-    private let maximumConcurrentChunks = 2
 
     /// How loud each take was, moment by moment, kept from the decode the
     /// transcriber already paid for. Reading a fifteen minute take off a camera
@@ -219,34 +140,122 @@ actor AIEditService {
             let decoded = try await decodeAudio(
                 url: media.url, output: temporaryURL, progress: progress
             )
-            let chunks = makeChunks(byteCount: decoded.byteCount, sampleRate: decoded.sampleRate)
-            let completionCounter = TranscriptionCompletionCounter()
-            let completed = try await BoundedTranscriptionWork.run(
-                count: chunks.count,
-                limit: maximumConcurrentChunks,
-                operation: { index in
-                    let chunk = chunks[index]
-                    let payload = try Self.compressedChunk(
-                        at: decoded.url, start: chunk.start, length: chunk.length,
-                        sampleRate: decoded.sampleRate
-                    )
-                    return try await Self.transcribeChunk(
-                        data: payload, duration: chunk.duration, keyterms: keyterms,
-                        baseURL: YapperAPI.baseURL
-                    )
-                },
-                completed: { _, _ in
-                    let completedCount = await completionCounter.increment()
-                    await progress?(0.35 + 0.65 * Double(completedCount) / Double(max(1, chunks.count)))
-                }
+            // The whole take, in one piece. It used to be cut into upload-sized
+            // chunks and the answers stitched back together, because the audio
+            // went through the API and the host refuses a body over 4.5 MB. It
+            // does not go through the API any more, so there is nothing to cut
+            // it for, and the seam between two chunks was somewhere a word
+            // could go missing.
+            let payload = try Self.compressedChunk(
+                at: decoded.url, start: 0, length: decoded.byteCount,
+                sampleRate: decoded.sampleRate
             )
+            await progress?(0.45)
+            let key = try await Self.uploadForTranscription(
+                payload, baseURL: YapperAPI.baseURL
+            )
+            await progress?(0.6)
+            let spoken = try await Self.transcribeStored(
+                key: key, keyterms: keyterms, baseURL: YapperAPI.baseURL
+            )
+            await progress?(1)
 
-            let heard = mergeTranscribedChunks(chunks: chunks, completed: completed).map {
+            let heard = spoken.map {
                 TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
             }
             // The creator's own spellings win over what the transcriber heard.
             return TranscriptionDictionary.applied(to: heard, entries: dictionary)
         }
+    }
+
+    /// Puts the take's audio where the transcriber can read it.
+    ///
+    /// The write ticket is issued by the API and is good for this one object:
+    /// it carries no provider credential, so it cannot be spent on anything but
+    /// storing these bytes. The transcript still costs a credit at the route
+    /// that does the transcribing.
+    private static func uploadForTranscription(
+        _ audio: Data,
+        baseURL: URL
+    ) async throws -> String {
+        var ticketRequest = await YapperAPI.authenticatedRequest(
+            url: baseURL.appending(path: "api/transcribe/upload-url")
+        )
+        ticketRequest.httpMethod = "POST"
+        ticketRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        ticketRequest.httpBody = try JSONEncoder().encode(UploadTicketRequest(bytes: audio.count))
+        let (ticketData, ticketResponse) = try await URLSession.shared.data(for: ticketRequest)
+        guard let ticketHTTP = ticketResponse as? HTTPURLResponse else {
+            throw NativeEditorError.aiFailed("The transcriber returned no response.")
+        }
+        guard (200 ..< 300).contains(ticketHTTP.statusCode) else {
+            throw YapperAPI.failure(
+                status: ticketHTTP.statusCode,
+                body: ticketData,
+                action: "Transcribing",
+                note: EdgeRefusalNote.text(for: ticketHTTP, body: ticketData)
+            )
+        }
+        let ticket = try JSONDecoder().decode(UploadTicket.self, from: ticketData)
+        guard let uploadURL = URL(string: ticket.url) else {
+            throw NativeEditorError.aiFailed("The transcriber returned an unusable upload address.")
+        }
+
+        var upload = URLRequest(url: uploadURL)
+        upload.httpMethod = "PUT"
+        upload.timeoutInterval = 300
+        upload.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
+        let (_, uploadResponse) = try await URLSession.shared.upload(for: upload, from: audio)
+        guard
+            let uploadHTTP = uploadResponse as? HTTPURLResponse,
+            (200 ..< 300).contains(uploadHTTP.statusCode)
+        else {
+            throw NativeEditorError.aiFailed("The take's audio could not be uploaded for transcription.")
+        }
+        return ticket.key
+    }
+
+    /// Asks for the transcript of audio already in storage. The request is a
+    /// few dozen bytes however long the take is.
+    private static func transcribeStored(
+        key: String,
+        keyterms: [String],
+        baseURL: URL
+    ) async throws -> [RemoteWord] {
+        var lastError: Error?
+        for attempt in 0 ..< UploadRetrySchedule.attempts {
+            try Task.checkCancellation()
+            do {
+                var request = await YapperAPI.authenticatedRequest(
+                    url: transcribeURL(baseURL: baseURL, keyterms: keyterms)
+                )
+                request.httpMethod = "POST"
+                request.timeoutInterval = 300
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = try JSONEncoder().encode(StoredTranscriptionRequest(key: key))
+                let (data, response) = try await URLSession.shared.data(for: request)
+                guard let http = response as? HTTPURLResponse else {
+                    throw NativeEditorError.aiFailed("The transcriber returned no response.")
+                }
+                guard (200 ..< 300).contains(http.statusCode) else {
+                    // The audio is discarded by the route on any outcome, so a
+                    // retry would be asking about something that is gone.
+                    throw YapperAPI.failure(
+                        status: http.statusCode,
+                        body: data,
+                        action: "Transcribing",
+                        note: EdgeRefusalNote.text(for: http, body: data)
+                    )
+                }
+                return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
+            } catch let error as CancellationError {
+                throw error
+            } catch {
+                lastError = error
+                break
+            }
+        }
+        throw lastError ?? NativeEditorError.aiFailed("The take could not be transcribed.")
     }
 
     /// Fails before the work starts when nobody is signed in.
@@ -479,69 +488,6 @@ actor AIEditService {
         return DecodedAudio(url: output, byteCount: byteCount, sampleRate: Int(format.sampleRate.rounded()))
     }
 
-    private func makeChunks(byteCount: Int, sampleRate: Int) -> [AudioChunk] {
-        TranscriptionChunkPlan.make(
-            byteCount: byteCount, sampleRate: sampleRate,
-            chunkBytes: max(sampleRate * 2, Int(chunkSeconds * Double(sampleRate * 2))),
-            overlapSeconds: overlapSeconds
-        ).map { .init(start: $0.start, length: $0.length, offset: $0.offset, duration: $0.duration) }
-    }
-
-    private static func transcribeChunk(
-        data chunkData: Data,
-        duration: Double,
-        keyterms: [String],
-        baseURL: URL
-    ) async throws -> [RemoteWord] {
-        var lastError: Error?
-        for attempt in 0 ..< UploadRetrySchedule.attempts {
-            try Task.checkCancellation()
-            var status = 0
-            var retryAfter: String?
-            do {
-                var request = await YapperAPI.authenticatedRequest(
-                    url: transcribeURL(baseURL: baseURL, keyterms: keyterms)
-                )
-                request.httpMethod = "POST"
-                request.timeoutInterval = 120
-                request.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
-                request.setValue(String(duration), forHTTPHeaderField: "x-audio-duration")
-                request.httpBody = chunkData
-                let (data, response) = try await URLSession.shared.data(for: request)
-                let http = response as? HTTPURLResponse
-                status = http?.statusCode ?? 0
-                retryAfter = http?.value(forHTTPHeaderField: "Retry-After")
-                guard let http, (200 ..< 300).contains(status) else {
-                    let failure = YapperAPI.failure(
-                        status: status,
-                        body: data,
-                        action: "Transcription",
-                        note: http.flatMap { EdgeRefusalNote.text(for: $0, body: data) }
-                    )
-                    guard isRetryableTranscriptionStatus(status) else { throw NonRetryableFailure(error: failure) }
-                    throw failure
-                }
-                return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
-            } catch {
-                try Task.checkCancellation()
-                if let failure = error as? NonRetryableFailure { throw failure.error }
-                if error is CancellationError || (error as? URLError)?.code == .cancelled {
-                    throw CancellationError()
-                }
-                lastError = error
-                guard
-                    let wait = UploadRetrySchedule.wait(
-                        status: status,
-                        retryAfter: retryAfter,
-                        attempt: attempt
-                    )
-                else { break }
-                try await Task.sleep(for: .seconds(wait))
-            }
-        }
-        throw lastError ?? NativeEditorError.aiFailed("Transcription failed.")
-    }
-
     private struct NonRetryableFailure: Error { let error: Error }
 
     static func isRetryableTranscriptionStatus(_ status: Int) -> Bool {
@@ -560,97 +506,6 @@ actor AIEditService {
         else { return url }
         components.queryItems = keyterms.map { URLQueryItem(name: "keyterm", value: $0) }
         return components.url ?? url
-    }
-
-    private func mergeTranscribedChunks(
-        chunks: [AudioChunk],
-        completed: [[RemoteWord]]
-    ) -> [RemoteWord] {
-        guard !chunks.isEmpty, chunks.count == completed.count else { return [] }
-        let shifted = zip(chunks, completed).map { chunk, words in
-            words.map {
-                RemoteWord(text: $0.text, start: $0.start + chunk.offset, end: $0.end + chunk.offset)
-            }
-        }
-        var merged = shifted[0]
-        for index in 1 ..< shifted.count {
-            let left = shifted[index - 1]
-            let right = shifted[index]
-            let seam = (chunks[index].offset + chunks[index - 1].offset + chunks[index - 1].duration) / 2
-            let anchor = seamAnchor(left: left, right: right, seam: seam)
-            let rightOwnsPrefix = anchor.map { anchor in
-                right[..<anchor.right].contains { midpoint($0) >= seam }
-            } ?? false
-
-            if let anchor, !rightOwnsPrefix {
-                let trailing = left.count - anchor.left - 1
-                if trailing > 0 { merged.removeLast(min(trailing, merged.count)) }
-                merged.append(contentsOf: right.dropFirst(anchor.right + 1))
-            } else {
-                while let last = merged.last, midpoint(last) >= seam { merged.removeLast() }
-                merged.append(contentsOf: right.filter { midpoint($0) >= seam })
-            }
-        }
-        return restoreUnrepresentedSeamWords(
-            in: merged.filter { !normalize($0.text).isEmpty },
-            from: shifted
-        )
-    }
-
-    /// Midpoint ownership is deterministic, but a provider pass can omit a
-    /// quiet word that the overlapping pass heard. Restore only words whose
-    /// time is otherwise uncovered so alternate spellings are not duplicated.
-    private func restoreUnrepresentedSeamWords(
-        in merged: [RemoteWord],
-        from shiftedChunks: [[RemoteWord]]
-    ) -> [RemoteWord] {
-        var result = merged
-        for candidate in shiftedChunks.flatMap({ $0 }).sorted(by: { $0.start < $1.start }) {
-            let token = normalize(candidate.text)
-            guard !token.isEmpty else { continue }
-            let candidateMidpoint = midpoint(candidate)
-            let alreadyRepresented = result.contains {
-                normalize($0.text) == token && abs(midpoint($0) - candidateMidpoint) <= 0.55
-            }
-            if alreadyRepresented { continue }
-
-            let padding = max(0.08, min(0.22, (candidate.end - candidate.start) * 0.45))
-            let occupiedByAlternative = result.contains {
-                midpoint($0) >= candidate.start - padding && midpoint($0) <= candidate.end + padding
-            }
-            if !occupiedByAlternative { result.append(candidate) }
-        }
-        return result.sorted {
-            if abs($0.start - $1.start) > 0.000_1 { return $0.start < $1.start }
-            return $0.end < $1.end
-        }
-    }
-
-    private func seamAnchor(
-        left: [RemoteWord],
-        right: [RemoteWord],
-        seam: Double
-    ) -> (left: Int, right: Int)? {
-        var best: ((Int, Int), Double)?
-        for leftIndex in left.indices {
-            let token = normalize(left[leftIndex].text)
-            guard !token.isEmpty, abs(midpoint(left[leftIndex]) - seam) <= 3 else { continue }
-            for rightIndex in right.indices where normalize(right[rightIndex].text) == token {
-                let delta = abs(midpoint(left[leftIndex]) - midpoint(right[rightIndex]))
-                guard delta <= 1.5 else { continue }
-                var context = 0
-                for offset in -2 ... 2 {
-                    let a = left.indices.contains(leftIndex + offset) ? normalize(left[leftIndex + offset].text) : ""
-                    let b = right.indices.contains(rightIndex + offset) ? normalize(right[rightIndex + offset].text) : ""
-                    if !a.isEmpty, a == b { context += 1 }
-                }
-                guard context >= 2 || (token.count >= 5 && delta <= 0.35) else { continue }
-                let seamDistance = abs((midpoint(left[leftIndex]) + midpoint(right[rightIndex])) / 2 - seam)
-                let score = Double(context * 10) - delta - seamDistance * 0.1
-                if best == nil || score > best!.1 { best = ((leftIndex, rightIndex), score) }
-            }
-        }
-        return best.map { (left: $0.0.0, right: $0.0.1) }
     }
 
     private func midpoint(_ word: RemoteWord) -> Double { (word.start + word.end) / 2 }
