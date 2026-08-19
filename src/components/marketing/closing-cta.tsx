@@ -15,7 +15,7 @@ export default function ClosingCta() {
     <section className="marketing-container pb-20 sm:pb-28">
       <DarkPanel
         glow="warm"
-        className="px-6 pt-20 pb-[19rem] sm:px-12 sm:pt-24"
+        className="px-6 pt-20 pb-[17rem] sm:px-12 sm:pt-24 sm:pb-[19rem]"
       >
         <div className="relative z-10 text-center">
           <h2 className="type-h2 mx-auto max-w-[20ch] text-white">

@@ -82,7 +82,7 @@ export default function ShapeField() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%] min-h-[220px]"
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-[15rem] sm:h-[17rem]"
     >
       {PILLS.map((pill, i) => (
         <span

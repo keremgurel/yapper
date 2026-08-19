@@ -33,7 +33,12 @@ export default function DarkPanel({
   return (
     <div
       className={`relative isolate overflow-hidden rounded-[28px] sm:rounded-[36px] ${className}`}
-      style={{ background: "#131114" }}
+      // The hairline is what keeps the slab reading as a stage set into the
+      // page rather than dissolving into it when the page is already dark.
+      style={{
+        background: "#131114",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)",
+      }}
     >
       <div
         aria-hidden
