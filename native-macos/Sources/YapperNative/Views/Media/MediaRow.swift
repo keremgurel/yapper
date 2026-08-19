@@ -80,12 +80,13 @@ struct MediaRow: View {
 
     private var actions: some View {
         HStack(spacing: 6) {
-            if !media.isImage {
-                Button("Add") {
-                    Task { await session.appendMediaToTimeline(media.id) }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
+            Button("Add") {
+                Task { await session.appendMediaToTimeline(media.id) }
             }
+            .buttonStyle(EditorSecondaryButtonStyle())
+            .help(media.isImage
+                ? "Add this picture to the timeline, holding for \(Int(EditorSession.imageClipDefaultDuration))s"
+                : "Add this clip to the end of the timeline")
             Button("Overlay") {
                 Task { await session.addOverlay(media.id) }
             }

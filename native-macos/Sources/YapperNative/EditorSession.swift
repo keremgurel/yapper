@@ -1434,13 +1434,20 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// How long a picture holds on the timeline when it is first added.
+    static let imageClipDefaultDuration: Double = 4
+
     func appendMediaToTimeline(_ mediaID: UUID) async {
-        guard let media = project.media.first(where: { $0.id == mediaID }), !media.isImage else { return }
+        guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
         await commitTimelineEdit {
+            // A still has no duration of its own, so it gets the same default
+            // hold an image overlay gets and is trimmed from there like any
+            // other clip.
+            let length = media.isImage ? Self.imageClipDefaultDuration : media.duration
             project.clips.append(TimelineClip(
                 mediaID: media.id,
                 sourceStart: 0,
-                sourceEnd: media.duration
+                sourceEnd: length
             ))
             selectedClipID = project.clips.last?.id
             return true
@@ -1495,7 +1502,7 @@ final class EditorSession: ObservableObject {
         else { return }
         let start = min(currentTime, max(0, duration - 0.1))
         let available = max(0.1, duration - start)
-        let overlayDuration = min(available, media.isImage ? 4 : media.duration)
+        let overlayDuration = min(available, media.isImage ? Self.imageClipDefaultDuration : media.duration)
         let overlay = introducedOverlay(
             media: media,
             timelineStart: start,

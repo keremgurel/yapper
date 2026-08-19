@@ -1050,7 +1050,7 @@ private struct TimelineVideoClipItem: View {
                             translationX: rawTranslation,
                             contentWidth: contentWidth,
                             projectDuration: projectDuration,
-                            mediaDuration: media.duration
+                            mediaDuration: media.isImage ? nil : media.duration
                         )
                         let timelineStart = session.project.timelineStart(for: clip.id) ?? 0
                         let originalEdgeTime = edge == .leading
@@ -1074,7 +1074,7 @@ private struct TimelineVideoClipItem: View {
                             translationX: adjusted.translationX,
                             contentWidth: contentWidth,
                             projectDuration: projectDuration,
-                            mediaDuration: media.duration
+                            mediaDuration: media.isImage ? nil : media.duration
                         )
                         session.setActiveTimelineSnap(adjusted.match)
                     }
@@ -1102,7 +1102,9 @@ enum TimelineClipGeometry {
         translationX: CGFloat,
         contentWidth: Double,
         projectDuration: Double,
-        mediaDuration: Double
+        /// How much footage sits behind the clip, or nil for a still, which has
+        /// no end to run out of and can be held for as long as it is wanted.
+        mediaDuration: Double?
     ) -> TimelineClip {
         var updated = clip
         guard projectDuration > 0, contentWidth > 0 else { return updated }
@@ -1119,10 +1121,8 @@ enum TimelineClipGeometry {
                 max(0, clip.sourceStart + delta)
             )
         case .trailing:
-            updated.sourceEnd = min(
-                max(clip.sourceStart + minimumDuration, clip.sourceEnd + delta),
-                mediaDuration
-            )
+            let wanted = max(clip.sourceStart + minimumDuration, clip.sourceEnd + delta)
+            updated.sourceEnd = mediaDuration.map { min(wanted, $0) } ?? wanted
         }
         return updated
     }

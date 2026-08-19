@@ -37,6 +37,10 @@ private struct MainSegment {
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
     let renderSize: CGSize
+    /// Set when this stretch of the timeline is a picture rather than footage.
+    /// The video track holds an empty range across it, and the compositor draws
+    /// this instead, exactly as it already does for an image overlay.
+    var still: CIImage?
 
     var isKeyed: Bool { VideoFramingTrack.isKeyed(clip) }
 
@@ -181,6 +185,33 @@ enum CompositionBuilder {
 
         for clip in project.clips {
             let media = try media(for: clip, in: project)
+
+            if media.isImage {
+                // A still has no track to insert, so the video track is given an
+                // empty stretch to keep the timeline advancing and the picture is
+                // handed to the compositor for that range. Its length is whatever
+                // the clip was given: there is no source to run out of.
+                let duration = CMTime(seconds: clip.duration, preferredTimescale: timeScale)
+                guard duration > .zero, let image = CIImage(contentsOf: media.url), !image.extent.isEmpty else {
+                    continue
+                }
+                let segmentRange = CMTimeRange(start: cursor, duration: duration)
+                compositionVideo.insertEmptyTimeRange(segmentRange)
+                compositionAudio?.insertEmptyTimeRange(segmentRange)
+                segments.append(
+                    MainSegment(
+                        range: segmentRange,
+                        clip: clip,
+                        naturalSize: image.extent.size,
+                        preferredTransform: .identity,
+                        renderSize: renderSize,
+                        still: image
+                    )
+                )
+                cursor = cursor + duration
+                continue
+            }
+
             let source: LoadedSource
             if let cached = sourceCache[media.id] {
                 source = cached
@@ -630,7 +661,8 @@ enum CompositionBuilder {
             let mainEnd = segment.isKeyed ? segment.transform(atTimeline: end) : nil
             placements.append(
                 .init(
-                    source: .track(mainTrack.trackID),
+                    source: segment.still.map { .still($0) }
+                        ?? .track(mainTrack.trackID),
                     transform: mainStart,
                     endTransform: mainEnd == mainStart ? nil : mainEnd,
                     cropRect: nil,
