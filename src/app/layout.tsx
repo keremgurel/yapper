@@ -5,7 +5,7 @@ import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
 import AppChrome from "@/components/studio-shell/app-chrome";
 import AppRouteGuard from "@/components/studio-shell/app-route-guard";
-import { Geist_Mono, Hanken_Grotesk } from "next/font/google";
+import { Geist_Mono, Hanken_Grotesk, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { getSiteUrl } from "@/lib/json-ld";
@@ -17,6 +17,15 @@ const hanken = Hanken_Grotesk({
   variable: "--font-hanken",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+});
+
+// Display only. Headlines are the one place the brand voice lives; every
+// reading surface stays on Hanken so the app is untouched.
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -116,7 +125,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${hanken.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${hanken.variable} ${outfit.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
@@ -138,7 +147,7 @@ gtag('config', 'G-09JET8C3M0');`}
       <body className="flex min-h-full flex-col">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange={false}
           storageKey="yapper-theme"
