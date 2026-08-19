@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Video } from "lucide-react";
+import { Send, Video } from "lucide-react";
 import CopyScriptButton from "@/components/library/copy-script-button";
 import ItemPillarField from "@/components/library/item-pillar-field";
 import StatusSelect from "@/components/library/status-select";
@@ -125,9 +125,21 @@ export default function ShootRail({
           <Button asChild className="w-full">
             <Link href={`/studio/recorder?item=${item.id}`}>
               <Video className="h-4 w-4" />
-              Record
+              {item.submissionId ? "Record another take" : "Record"}
             </Link>
           </Button>
+
+          {/* Once there is a take behind this item there is somewhere to send
+              it, and making the creator go and find it again in the Poster grid
+              is the friction this removes. */}
+          {item.submissionId && (
+            <Button asChild variant="outline" className="mt-2 w-full">
+              <Link href={`/studio/poster?item=${item.id}`}>
+                <Send className="h-4 w-4" />
+                Cross-post this
+              </Link>
+            </Button>
+          )}
           <div className="mt-2">
             <SendToPhone itemId={item.id} />
           </div>
