@@ -235,7 +235,13 @@ private struct CloudStudioWebView: NSViewRepresentable {
         coordinator.armCoverTimeout(for: destination.cloudPath)
         isLoading = true
         errorMessage = nil
-        webView.load(URLRequest(url: url))
+        // Always ask whether the page has changed. WebKit's default policy will
+        // serve a cached document without checking, so a Studio tab could keep
+        // showing a version of itself from an earlier release for as long as
+        // the cache held it, with no way for a creator to tell. The assets it
+        // references are content-hashed and immutable, so only the document
+        // costs a round trip.
+        webView.load(URLRequest(url: url, cachePolicy: .reloadRevalidatingCacheData))
     }
 
     /// Move between Studio tabs through Next's App Router. Falling back to a
