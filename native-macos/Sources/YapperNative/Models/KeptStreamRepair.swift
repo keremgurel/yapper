@@ -236,6 +236,54 @@ enum KeptStreamRepair {
         return cuts
     }
 
+    /// A word or two said twice in a row, with no breath in between.
+    ///
+    /// The repeat passes above read three words at a time, because at that
+    /// length a repetition is meaningful. Below it they see nothing, and what
+    /// survived into a finished edit was: "you can save 15% on on a a monthly
+    /// or weekly weekly plan. Plan", and "here you'll here you'll be able to",
+    /// and "as well as well as a better phrasing section".
+    ///
+    /// The tell is that there is no gap. Every one of those was spoken with the
+    /// copies touching or overlapping, while the same words said twice for a
+    /// reason have a beat between them. So the first copy goes only when the
+    /// second follows immediately.
+    static let doubledGap = 0.35
+    /// Said twice on purpose often enough to leave alone.
+    static let saidTwiceForEffect: Set<String> = ["very", "really", "no", "yes", "so"]
+
+    static func withoutDoubledPhrases(
+        words: [TranscriptWord],
+        cuts: [(Int, Int)]
+    ) -> [(Int, Int)] {
+        var removed = removedFlags(count: words.count, cuts: cuts)
+        // Longer first: "here you'll here you'll" is one doubled phrase, not two
+        // unrelated words that happen to repeat.
+        for length in [2, 1] {
+            var changed = true
+            while changed {
+                changed = false
+                let kept = words.indices.filter { !removed[$0] }
+                guard kept.count >= length * 2 else { continue }
+                for start in 0 ... (kept.count - length * 2) {
+                    let first = Array(kept[start ..< start + length])
+                    let second = Array(kept[start + length ..< start + length * 2])
+                    let firstTokens = first.map { normalize(words[$0].text) }
+                    let secondTokens = second.map { normalize(words[$0].text) }
+                    guard firstTokens == secondTokens,
+                          !firstTokens.contains(where: \.isEmpty),
+                          !(length == 1 && saidTwiceForEffect.contains(firstTokens[0])),
+                          words[second[0]].start - words[first[length - 1]].end < doubledGap
+                    else { continue }
+                    for index in first { removed[index] = true }
+                    changed = true
+                    break
+                }
+            }
+        }
+        return ranges(from: removed)
+    }
+
     private static func removedFlags(count: Int, cuts: [(Int, Int)]) -> [Bool] {
         var removed = Array(repeating: false, count: count)
         for cut in cuts {

@@ -160,9 +160,11 @@ actor AIEditService {
             )
             await progress?(1)
 
-            let heard = spoken.map {
-                TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
-            }
+            let heard = HeardWords.withoutDoubledEmissions(
+                spoken.map {
+                    TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
+                }
+            )
             // The creator's own spellings win over what the transcriber heard.
             return TranscriptionDictionary.applied(to: heard, entries: dictionary)
         }

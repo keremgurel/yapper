@@ -39,8 +39,9 @@ enum EditFinishing {
         for _ in 0 ..< rounds {
             let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: settled)
             let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
-            if same(unstuttered, settled) { break }
-            settled = unstuttered
+            let undoubled = KeptStreamRepair.withoutDoubledPhrases(words: words, cuts: unstuttered)
+            if same(undoubled, settled) { break }
+            settled = undoubled
         }
         return settled
     }
@@ -52,7 +53,8 @@ enum EditFinishing {
         for _ in 0 ..< rounds {
             let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: settled)
             let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
-            let whole = SentenceSeamRepair.repaired(words: words, cuts: unstuttered)
+            let undoubled = KeptStreamRepair.withoutDoubledPhrases(words: words, cuts: unstuttered)
+            let whole = SentenceSeamRepair.repaired(words: words, cuts: undoubled)
             if same(whole, settled) { break }
             settled = whole
         }
