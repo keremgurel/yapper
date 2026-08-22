@@ -306,9 +306,13 @@ actor AIEditService {
             }
             return (pair[0], pair[1])
         }
-        guard !cuts.isEmpty else {
-            return locallyFinished(deterministicRetakeCuts(words), words: words)
-        }
+        // No cuts is an answer, not a failure: a take the speaker got right in
+        // one has no retakes to remove. This used to fall back to matching text
+        // locally, which meant a model that answered with nothing — measured in
+        // production, an overloaded provider returning an empty completion
+        // inside a 200 — produced a guessed edit presented as the model's, with
+        // nothing to tell a creator it had happened. The route refuses an empty
+        // answer now, and this trusts the one it gets.
         // Straight through. The cleaner answers in word indices now, so these
         // are the boundaries it chose rather than the closest text match to a
         // script it wrote; there is no off-by-one to mend. The pass that used

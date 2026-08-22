@@ -147,3 +147,62 @@ describe("POST /api/clean-transcript payload limits", () => {
     expect(mocks.refund).toHaveBeenCalledOnce();
   });
 });
+
+describe("POST /api/clean-transcript when the model does not answer", () => {
+  const overloaded = {
+    // Seen in production: the gateway answers 200 and carries the provider's
+    // failure in the body, with empty content and finish_reason "error".
+    error: { code: 503, message: "provider_overloaded" },
+    choices: [{ finish_reason: "error", message: { content: "" } }],
+  };
+  const answered = {
+    choices: [
+      { message: { content: '{"clusters":[{"keep":[2,2],"drop":[[1,1]]}]}' } },
+    ],
+  };
+  const words = [{ text: "a" }, { text: "b" }, { text: "c" }];
+
+  it("never reports an empty answer as an edit with no cuts", async () => {
+    // A fresh Response per call: a body can only be read once.
+    const fetchMock = vi.fn(async () => Response.json(overloaded));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    // A 200 with no cuts is what made the editor fall back to guessing the
+    // edit locally and present it as the model's.
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toEqual({ error: "ai_503" });
+    expect(mocks.refund).toHaveBeenCalled();
+  });
+
+  it("asks a busy model again rather than giving up", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => Response.json(overloaded))
+      .mockImplementationOnce(async () => Response.json(answered));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ cuts: [[1, 1]] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mocks.refund).not.toHaveBeenCalled();
+  });
+
+  it("keeps a genuine no-retakes answer as no cuts", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: '{"clusters":[]}' } }],
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ cuts: [] });
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+});

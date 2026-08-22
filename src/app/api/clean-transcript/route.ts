@@ -45,7 +45,23 @@ const MAX_PROVIDER_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface ChatCompletionResponse {
   choices?: { message?: { content?: string }; finish_reason?: string }[];
+  /**
+   * The gateway answers 200 and puts the provider's failure in the body. Seen
+   * in production: a 503 "provider_overloaded" arriving inside an otherwise
+   * ordinary looking completion with empty content.
+   */
+  error?: { code?: number; message?: string };
 }
+
+/** Worth asking again: the model was busy, not wrong. */
+function isTransient(error: { code?: number } | undefined, answer: string) {
+  if (!answer.trim()) return true;
+  const code = error?.code;
+  return code === 429 || code === 500 || code === 502 || code === 503;
+}
+
+const ATTEMPTS = 3;
+const RETRY_PAUSE_MS = 1_500;
 
 /**
  * The AI "remove mistakes" pass.
@@ -104,40 +120,56 @@ export async function POST(req: Request): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  const deadline = Date.now() + PROVIDER_TIMEOUT_MS;
   try {
-    const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
-      `${base}/chat/completions`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${key}`,
-          "Content-Type": "application/json",
+    let answer = "";
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error("timeout");
+      const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(
+        `${base}/chat/completions`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${key}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model,
+            temperature: 0,
+            max_completion_tokens: MAX_COMPLETION_TOKENS,
+            messages: [
+              { role: "system", content: RETAKE_CLUSTER_PROMPT },
+              { role: "user", content: numberedTranscript(words) },
+            ],
+          }),
         },
-        body: JSON.stringify({
-          model,
-          temperature: 0,
-          max_completion_tokens: MAX_COMPLETION_TOKENS,
-          messages: [
-            { role: "system", content: RETAKE_CLUSTER_PROMPT },
-            { role: "user", content: numberedTranscript(words) },
-          ],
-        }),
-      },
-      {
-        timeoutMs: PROVIDER_TIMEOUT_MS,
-        maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
-        signal: req.signal,
-      },
-    );
-    if (!response.ok) throw new Error(`ai_${response.status}`);
-    // Fail closed on a cut-off answer. Half a decision applied at full
-    // confidence looks exactly like a successful edit that lost the ending.
-    if (data.choices?.[0]?.finish_reason === "length") {
-      throw new Error("transcript_too_long");
+        {
+          timeoutMs: remaining,
+          maxBytes: MAX_PROVIDER_RESPONSE_BYTES,
+          signal: req.signal,
+        },
+      );
+      if (!response.ok) throw new Error(`ai_${response.status}`);
+      // Fail closed on a cut-off answer. Half a decision applied at full
+      // confidence looks exactly like a successful edit that lost the ending.
+      if (data.choices?.[0]?.finish_reason === "length") {
+        throw new Error("transcript_too_long");
+      }
+      answer = data.choices?.[0]?.message?.content ?? "";
+      if (answer.trim() && !data.error) break;
+      // An overloaded model comes back in a couple of seconds, so asking again
+      // costs almost nothing and usually works. What must not happen is this
+      // returning as an edit with nothing in it: the editor reads no cuts as a
+      // take with no retakes in it, and quietly falls back to matching text
+      // locally, which is the guesswork the model is here to replace.
+      if (!isTransient(data.error, answer) || attempt === ATTEMPTS - 1) {
+        throw new Error(
+          data.error?.code ? `ai_${data.error.code}` : "empty_answer",
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS));
     }
-    const answer = data.choices?.[0]?.message?.content ?? "";
-    if (!answer.trim())
-      return Response.json({ cuts: [], balance: reservation.balance });
 
     const cuts = retakeCutsFromResponse(answer, words.length);
     if (!cuts) {
