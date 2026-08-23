@@ -222,8 +222,11 @@ private struct TextLayerCanvasItem: View {
         )
     }
 
+    /// What the gesture is doing right now wins over what is saved, so a drag
+    /// stays smooth while the project catches up behind it.
+    private var displayed: ProjectTextLayer { drag.textDraft(for: layer.id) ?? layer }
+
     var body: some View {
-        let displayed = drag.textDraft(for: layer.id) ?? layer
         AppearanceText(
             text: displayed.text.isEmpty ? "Text" : displayed.text,
             appearance: displayed.appearance,
@@ -284,6 +287,15 @@ private struct TextLayerCanvasItem: View {
             .overlay(alignment: .bottomTrailing) {
                 if selected { resizeHandle(.bottomTrailing) }
             }
+            .overlay(alignment: .top) {
+                if selected { TurnRing().offset(y: -TurnHandle.reach) }
+            }
+            .overlay {
+                if selected { turnPad(centre: centreOnStage(of: displayed)) }
+            }
+            // The card and its handles turn together, so the corner you grab is
+            // always the corner you can see.
+            .rotationEffect(.degrees(displayed.rotation))
             // Placed last: `position` hands back a view the size of the whole
             // canvas, so anything after it would claim the lot.
             .position(
@@ -291,6 +303,46 @@ private struct TextLayerCanvasItem: View {
                 y: canvasSize.height * layer.y
             )
             .offset(dragOffset)
+    }
+
+    private func centreOnStage(of layer: ProjectTextLayer) -> CGPoint {
+        CGPoint(x: canvasSize.width * layer.x, y: canvasSize.height * layer.y)
+    }
+
+    /// The pad that turns the card, held still while it is dragged: see
+    /// `TurnHandle`. The card is placed from its centre, so that is the point
+    /// the angle is measured about.
+    private func turnPad(centre: CGPoint) -> some View {
+        ZStack(alignment: .top) {
+            Color.clear.allowsHitTesting(false)
+            TurnPad { start, current, ended in
+                if drag.textOrigin?.id != layer.id {
+                    drag.beginText(layer)
+                    if !selected { session.selectTextLayer(layer.id) }
+                }
+                guard let origin = drag.textOrigin else { return }
+                drag.updateText(
+                    TextCanvasGeometry.rotated(
+                        layer: origin,
+                        centre: centre,
+                        from: start,
+                        to: current
+                    )
+                )
+                if ended, let finished = drag.endText() { session.updateTextLayer(finished) }
+            }
+            .offset(y: -TurnHandle.reach)
+        }
+        // Turned back by however far the card has turned since the drag began,
+        // so that in the frame's own points it stands still.
+        .rotationEffect(.degrees(heldRotation - displayed.rotation))
+        .accessibilityLabel("Rotate text")
+    }
+
+    /// The angle the card stood at when the gesture in flight began.
+    private var heldRotation: Double {
+        guard let origin = drag.textOrigin, origin.id == layer.id else { return displayed.rotation }
+        return origin.rotation
     }
 
     private func resizeHandle(_ corner: CanvasResizeCorner) -> some View {
@@ -365,6 +417,29 @@ enum TextCanvasGeometry {
         )
     }
 
+    /// The card turned by dragging its rotate handle, snapped onto the quarter
+    /// turns unless Option says otherwise.
+    static func rotated(
+        layer: ProjectTextLayer,
+        centre: CGPoint,
+        from start: CGPoint,
+        to current: CGPoint,
+        snapping: Bool = true
+    ) -> ProjectTextLayer {
+        let swept = VideoFramingGeometry.angle(at: current, about: centre)
+            - VideoFramingGeometry.angle(at: start, about: centre)
+        var rotation = VideoFraming.wrap(layer.rotation + swept)
+        if snapping {
+            let quarter = (rotation / 90).rounded() * 90
+            if abs(rotation - quarter) <= VideoFramingGeometry.rotationSnapDegrees {
+                rotation = quarter
+            }
+        }
+        var turned = layer
+        turned.rotation = rotation
+        return turned
+    }
+
     static func resized(
         layer: ProjectTextLayer,
         translation: CGSize,
@@ -372,9 +447,19 @@ enum TextCanvasGeometry {
         canvasSize: CGSize
     ) -> ProjectTextLayer {
         var updated = layer
+        // Along the card's own axes, not the screen's: a corner of a turned
+        // card points somewhere else, and pulling it outwards has to grow the
+        // card whichever way outwards happens to be.
+        let radians = -layer.rotationRadians
+        let along = CGSize(
+            width: Double(translation.width) * cos(radians)
+                - Double(translation.height) * sin(radians),
+            height: Double(translation.width) * sin(radians)
+                + Double(translation.height) * cos(radians)
+        )
         let projected = (
-            Double(translation.width) * corner.xSign
-                + Double(translation.height) * corner.ySign
+            Double(along.width) * corner.xSign
+                + Double(along.height) * corner.ySign
         ) / 2
         let referenceWidth = max(72, Double(canvasSize.width) * layer.width)
         let scale = min(3.2, max(0.35, 1 + projected / referenceWidth))

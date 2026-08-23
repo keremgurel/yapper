@@ -87,7 +87,15 @@ extension EditorSession {
             return .caption(caption.resolvedStyle(base: project.captionStyleOrDefault))
         case let .text(id):
             guard let layer = project.textLayers?.first(where: { $0.id == id }) else { return nil }
-            return .text(TextStyle(x: layer.x, y: layer.y, width: layer.width, appearance: layer.appearance))
+            return .text(
+                TextStyle(
+                    x: layer.x,
+                    y: layer.y,
+                    width: layer.width,
+                    rotation: layer.rotation,
+                    appearance: layer.appearance
+                )
+            )
         case let .overlay(id):
             guard let overlay = overlays.first(where: { $0.id == id }) else { return nil }
             return .cutaway(.of(overlay))

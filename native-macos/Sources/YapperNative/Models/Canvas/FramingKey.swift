@@ -77,10 +77,15 @@ enum VideoFramingTrack {
         progress: Double
     ) -> VideoFraming {
         let t = min(1, max(0, progress))
+        // Rotation takes the short way round: 170° to -170° is a nudge of 20°
+        // across the top, not most of a turn back the other way.
+        var turn = VideoFraming.wrap(to.rotation - from.rotation)
+        if turn == 180, from.rotation > 0 { turn = -180 }
         return VideoFraming(
             scale: from.scale + (to.scale - from.scale) * t,
             x: from.x + (to.x - from.x) * t,
-            y: from.y + (to.y - from.y) * t
+            y: from.y + (to.y - from.y) * t,
+            rotation: from.rotation + turn * t
         )
     }
 

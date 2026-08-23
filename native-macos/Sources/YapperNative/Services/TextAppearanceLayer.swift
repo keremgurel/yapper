@@ -27,7 +27,8 @@ enum TextAppearanceLayer {
         centerX: Double,
         centerY: Double,
         maximumWidth: Double,
-        maximumHeight: Double
+        maximumHeight: Double,
+        rotation: Double = 0
     ) -> CALayer {
         let fontSize = max(10, renderSize.height * appearance.fontScale)
         let attributed = attributedString(text, appearance: appearance, fontSize: fontSize)
@@ -83,6 +84,13 @@ enum TextAppearanceLayer {
                 height: textSize.height + bleed * 2
             )
             container.addSublayer(textLayer)
+        }
+        if rotation != 0 {
+            // Core Animation counts its angles the other way round from the
+            // canvas, which counts clockwise, because its frame has its origin
+            // at the bottom. The card turns about the middle of itself, which
+            // is where the layer's anchor already is.
+            container.transform = CATransform3DMakeRotation(-rotation * .pi / 180, 0, 0, 1)
         }
         return container
     }

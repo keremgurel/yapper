@@ -32,16 +32,48 @@ struct OverlayCardStyle: Equatable, Sendable {
 enum OverlayCard {
     /// The card, rounded and with its shadow beneath it, ready to composite.
     ///
-    /// The image is expected to be where it will finally sit, so its extent is
-    /// the card's box.
-    static func drawn(_ image: CIImage, style: OverlayCardStyle) -> CIImage {
-        let box = image.extent
+    /// `box` is the card itself, upright, wherever it has been placed. It is
+    /// passed rather than taken from the image because a turned card's image
+    /// stretches to the corners of the square it sits in, and rounding that
+    /// square is rounding the wrong rectangle.
+    ///
+    /// `turnedBy` is the angle the card is standing at, in degrees clockwise on
+    /// screen. A mask is drawn square to the frame, so a turned card is stood
+    /// upright, rounded, and turned back.
+    static func drawn(
+        _ image: CIImage,
+        style: OverlayCardStyle,
+        box: CGRect? = nil,
+        turnedBy degrees: Double = 0
+    ) -> CIImage {
+        let box = box ?? image.extent
         guard box.width > 1, box.height > 1 else { return image }
+        guard degrees != 0 else { return rounded(image, box: box, style: style) }
 
+        let centre = CGPoint(x: box.midX, y: box.midY)
+        // Core Image measures from the bottom left, so a turn that reads as
+        // clockwise on screen is the other way round in here.
+        let radians = degrees * .pi / 180
+        let upright = image.transformed(by: turn(radians, about: centre))
+        return rounded(upright, box: box, style: style)
+            .transformed(by: turn(-radians, about: centre))
+    }
+
+    private static func rounded(
+        _ image: CIImage,
+        box: CGRect,
+        style: OverlayCardStyle
+    ) -> CIImage {
         let radius = min(style.cornerRadius, min(box.width, box.height) / 2)
         let rounded = radius > 0 ? clipped(image, to: box, radius: radius) : image
         guard style.shadowOpacity > 0, style.shadowRadius > 0 else { return rounded }
         return rounded.composited(over: shadow(under: rounded, style: style))
+    }
+
+    private static func turn(_ radians: Double, about centre: CGPoint) -> CGAffineTransform {
+        CGAffineTransform(translationX: -centre.x, y: -centre.y)
+            .concatenating(CGAffineTransform(rotationAngle: radians))
+            .concatenating(CGAffineTransform(translationX: centre.x, y: centre.y))
     }
 
     /// The card with its corners taken off.

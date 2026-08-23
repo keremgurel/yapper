@@ -55,6 +55,15 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         /// the picture. `nil` on tracks, and on a still cut to the whole frame,
         /// which is a graphic rather than a card.
         let card: OverlayCardStyle?
+        /// The angle, in degrees clockwise, that `transform` already turns this
+        /// layer by. Repeated here only so a card can be rounded upright.
+        ///
+        /// The rounding is a mask, and a mask is drawn square to the frame. A
+        /// card standing at an angle fills only the middle of the square it
+        /// sits in, so the mask took its corners off the empty square instead
+        /// of off the card and the card came out with four sharp ones. So a
+        /// turned card is stood upright, rounded, and turned back.
+        let cardRotation: Double
 
         /// The track this layer draws, when it draws one.
         var trackID: CMPersistentTrackID? {
@@ -69,7 +78,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             cropRect: CGRect? = nil,
             opacity: Float = 1,
             matte: Bool = false,
-            card: OverlayCardStyle? = nil
+            card: OverlayCardStyle? = nil,
+            cardRotation: Double = 0
         ) {
             self.source = source
             self.transform = transform
@@ -78,6 +88,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.opacity = opacity
             self.matte = matte
             self.card = card
+            self.cardRotation = cardRotation
         }
 
         /// The transform this layer has at `progress` through the instruction,
@@ -244,18 +255,23 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 // the way in and back out again.
                 let intoTopLeft = CGAffineTransform(1, 0, 0, -1, 0, sourceHeight)
                 let backToBottomLeft = CGAffineTransform(1, 0, 0, -1, 0, size.height)
-                image = image.transformed(
-                    by: intoTopLeft
-                        .concatenating(layer.transform(at: progress))
-                        .concatenating(backToBottomLeft)
-                )
+                let placement = intoTopLeft
+                    .concatenating(layer.transform(at: progress))
+                    .concatenating(backToBottomLeft)
+                let sourceExtent = image.extent
+                image = image.transformed(by: placement)
 
                 // Rounded and shadowed once the card is at the size it will be
                 // seen at, not before: a radius worked out on the source would
                 // be scaled along with the picture, and a small screenshot
                 // blown up would come out with balloon corners.
                 if let card = layer.card {
-                    image = OverlayCard.drawn(image, style: card)
+                    image = OverlayCard.drawn(
+                        image,
+                        style: card,
+                        box: Self.cardBox(source: sourceExtent, placedBy: placement, into: image.extent),
+                        turnedBy: layer.cardRotation
+                    )
                 }
 
                 if layer.opacity < 1 {
@@ -283,4 +299,27 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
     }
 
     func cancelAllPendingVideoCompositionRequests() {}
+
+    /// The card itself, upright, wherever the placement has put it.
+    ///
+    /// A turned card's image reaches the corners of the square it sits in, so
+    /// the rounding cannot be measured from that image: it has to be measured
+    /// from the card. The placement scales and turns without squashing, so the
+    /// card's size is its source's size times whatever the placement scales by,
+    /// and turning about the middle leaves the middle where it is.
+    private static func cardBox(
+        source: CGRect,
+        placedBy placement: CGAffineTransform,
+        into placed: CGRect
+    ) -> CGRect {
+        let scale = (abs(placement.a * placement.d - placement.b * placement.c)).squareRoot()
+        guard scale.isFinite, scale > 0, source.width > 0, source.height > 0 else { return placed }
+        let size = CGSize(width: source.width * scale, height: source.height * scale)
+        return CGRect(
+            x: placed.midX - size.width / 2,
+            y: placed.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
 }

@@ -54,14 +54,34 @@ extension EditorSession {
     /// This covers a gesture in flight and the wait after it lets go alike: the
     /// commit changes what is wanted, the rebuild changes what is rendered, and
     /// the picture is carried across both without ever moving backwards.
-    var framingPreviewTransform: (scale: Double, x: Double, y: Double)? {
-        guard let clip = framingClip else { return nil }
+    func framingPreview(in stageSize: CGSize) -> FramingPreview? {
+        guard let clip = framingClip, !hasCompositedOverlayOnScreen else { return nil }
         return VideoFramingGeometry.previewTransform(
             // What the composition is showing at this moment, which for a keyed
             // clip is a different answer every frame.
             from: renderedFraming.framing(for: clip.id, atSource: framingSourceTime),
-            to: displayedFraming
+            to: displayedFraming,
+            stageSize: stageSize
         )
+    }
+
+    /// True when the composition is drawing something over the speaker at the
+    /// playhead: a cutaway, or a still that has to sit under them.
+    ///
+    /// The preview transform pushes the finished frame, and anything the
+    /// composition drew is inside that frame, so a cutaway travelled with the
+    /// picture it is supposed to be sitting on and only snapped back when the
+    /// rebuild landed. Nothing is worth moving a cutaway you did not touch, so
+    /// while one is on screen the picture waits for the rebuild instead: it
+    /// follows the drag in steps rather than smoothly, and everything on the
+    /// frame stays where it belongs.
+    var hasCompositedOverlayOnScreen: Bool {
+        guard !overlays.isEmpty else { return false }
+        let composited = project.compositedOverlayIDs
+        return overlays(at: currentTime).contains { overlay in
+            guard let media = media(for: overlay) else { return false }
+            return !media.isImage || composited.contains(overlay.id)
+        }
     }
 
     /// The zoom that would fill the output frame with this clip's footage,
@@ -74,7 +94,10 @@ extension EditorSession {
         else { return nil }
         let scale = VideoFramingGeometry.fillingScale(
             sourceAspect: CompositionBuilder.aspect(of: media),
-            frameAspect: project.resolvedAspectRatio
+            frameAspect: project.resolvedAspectRatio,
+            // A turned picture needs a bigger zoom to leave no corner showing,
+            // and the button would otherwise promise a fill it does not deliver.
+            rotation: displayedFraming.rotation
         )
         guard scale > 1.001 else { return nil }
         return scale
@@ -164,11 +187,24 @@ extension EditorSession {
         return selected
     }
 
-    /// Slides the picture from the inspector, keeping the zoom.
+    /// Slides the picture from the inspector, keeping the zoom and the angle.
     func setFramingOffset(x: Double, y: Double) {
         guard let clip = framingClip else { return }
+        commitFraming(displayedFraming.with(x: x, y: y), clipID: clip.id)
+    }
+
+    /// Turns the picture from the inspector, in degrees clockwise.
+    func setFramingRotation(_ degrees: Double) {
+        guard let clip = framingClip else { return }
+        commitFraming(displayedFraming.with(rotation: degrees), clipID: clip.id)
+    }
+
+    /// A quarter turn, which is what footage shot the wrong way up needs and
+    /// what nobody wants to reach for a number field to get.
+    func turnFraming(by degrees: Double) {
+        guard let clip = framingClip else { return }
         let current = displayedFraming
-        commitFraming(VideoFraming(scale: current.scale, x: x, y: y), clipID: clip.id)
+        commitFraming(current.with(rotation: current.rotation + degrees), clipID: clip.id)
     }
 
     /// Sets the zoom from the inspector, keeping wherever the picture has been
@@ -177,11 +213,7 @@ extension EditorSession {
         guard let clip = framingClip else { return }
         // From what is on screen now, so a stepper press on a keyed clip nudges
         // the moment you are looking at rather than the clip's first key.
-        let current = displayedFraming
-        commitFraming(
-            VideoFraming(scale: scale, x: current.x, y: current.y),
-            clipID: clip.id
-        )
+        commitFraming(displayedFraming.with(scale: scale), clipID: clip.id)
     }
 
     func resetFraming() {
@@ -193,6 +225,9 @@ extension EditorSession {
     /// is what landscape footage in a portrait frame almost always wants.
     func fillFrameWithVideo() {
         guard let clip = framingClip, let scale = framingFillScale else { return }
-        commitFraming(VideoFraming(scale: scale, x: 0, y: 0), clipID: clip.id)
+        commitFraming(
+            displayedFraming.with(scale: scale, x: 0, y: 0),
+            clipID: clip.id
+        )
     }
 }

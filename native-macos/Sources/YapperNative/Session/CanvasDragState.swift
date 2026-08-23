@@ -34,6 +34,9 @@ final class CanvasDragState: ObservableObject {
         var x: Double
         var y: Double
         var width: Double
+        /// Degrees clockwise. Carried through the drag like the rest, so a card
+        /// being moved or widened keeps whatever angle it was set to.
+        var rotation: Double = 0
     }
 
     /// How the main track's picture is being framed right now.

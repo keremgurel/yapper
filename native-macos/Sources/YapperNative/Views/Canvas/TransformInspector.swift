@@ -27,6 +27,7 @@ struct TransformInspector: View {
             Divider().opacity(0.45)
             InspectorSection("Position", id: "video.position") {
                 positionRow
+                rotationRow
                 if session.isFramingKeyed { keyframeSummary }
             }
             Divider().opacity(0.45)
@@ -133,6 +134,45 @@ struct TransformInspector: View {
                 }
             }
         }
+    }
+
+    /// Which way up the picture is. Footage shot sideways is the reason this
+    /// exists, so the quarter turns are one press each and the number field is
+    /// there for the slight tilt nobody can hit with a drag.
+    private var rotationRow: some View {
+        InspectorRow("Rotate") {
+            HStack(spacing: 7) {
+                InspectorNumberField(
+                    value: framing.rotation.rounded(),
+                    range: -180 ... 180,
+                    decimals: 0
+                ) { degrees in
+                    session.setFramingRotation(degrees)
+                }
+                Text("°").font(.studioCaption).foregroundStyle(.secondary)
+
+                quarterTurn("rotate.left", degrees: -90, help: "Turn left")
+                quarterTurn("rotate.right", degrees: 90, help: "Turn right")
+
+                if framing.rotation != 0 {
+                    Button("Straighten") { session.setFramingRotation(0) }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                }
+            }
+        }
+    }
+
+    private func quarterTurn(_ icon: String, degrees: Double, help: String) -> some View {
+        Button {
+            session.turnFraming(by: degrees)
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 24, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.studioPlain)
+        .help(help)
     }
 
     private var keyframeSummary: some View {

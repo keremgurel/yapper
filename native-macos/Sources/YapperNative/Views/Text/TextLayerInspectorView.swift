@@ -16,6 +16,7 @@ struct TextLayerInspectorView: View {
                 x: layer.x,
                 y: layer.y,
                 width: layer.width,
+                rotation: layer.rotation,
                 appearance: layer.appearance
             ),
             defaults: .textLayerDefault,

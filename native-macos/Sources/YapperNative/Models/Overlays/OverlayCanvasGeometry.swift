@@ -118,9 +118,19 @@ enum OverlayCanvasGeometry {
         frameAspect: Double
     ) -> ProjectOverlay {
         let canvasWidth = max(1, Double(canvasSize.width))
+        // Along the card's own axes, not the screen's: a corner of a turned
+        // card points somewhere else, and pulling it outwards has to grow the
+        // card whichever way outwards happens to be.
+        let radians = -overlay.rotationRadians
+        let along = CGSize(
+            width: Double(translation.width) * cos(radians)
+                - Double(translation.height) * sin(radians),
+            height: Double(translation.width) * sin(radians)
+                + Double(translation.height) * cos(radians)
+        )
         let projected = (
-            Double(translation.width) * corner.xSign
-                + Double(translation.height) * corner.ySign
+            Double(along.width) * corner.xSign
+                + Double(along.height) * corner.ySign
         ) / 2
         let referenceWidth = max(48, canvasWidth * overlay.width)
         let scale = max(0.2, 1 + projected / referenceWidth)
@@ -144,6 +154,30 @@ enum OverlayCanvasGeometry {
         resized.x = placedOrigin(resized.x, extent: resized.width)
         resized.y = placedOrigin(resized.y, extent: resized.height)
         return resized
+    }
+
+    /// The overlay turned by dragging its rotate handle, swept about the middle
+    /// of the card rather than measured as a distance, so the handle stays
+    /// under the pointer however far out it wanders.
+    static func rotated(
+        overlay: ProjectOverlay,
+        centre: CGPoint,
+        from start: CGPoint,
+        to current: CGPoint,
+        snapping: Bool = true
+    ) -> ProjectOverlay {
+        let swept = VideoFramingGeometry.angle(at: current, about: centre)
+            - VideoFramingGeometry.angle(at: start, about: centre)
+        var rotation = VideoFraming.wrap(overlay.resolvedRotation + swept)
+        if snapping {
+            let quarter = (rotation / 90).rounded() * 90
+            if abs(rotation - quarter) <= VideoFramingGeometry.rotationSnapDegrees {
+                rotation = quarter
+            }
+        }
+        var turned = overlay
+        turned.rotation = rotation == 0 ? nil : rotation
+        return turned
     }
 
     /// The overlay resized to a share of the frame's width, centred on the box

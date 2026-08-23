@@ -105,6 +105,7 @@ enum ApplyToAll {
             copy.y = overlay.y
             copy.width = overlay.width
             copy.height = overlay.height
+            copy.rotation = overlay.rotation
             return copy
         }
     }

@@ -9,17 +9,22 @@ struct TextStyle: Equatable, Sendable {
     var y: Double
     /// Card width as a fraction of stage width.
     var width: Double
+    /// Degrees clockwise about the middle of the card. Zero on every project
+    /// saved before this existed, which is upright.
+    var rotation: Double
     var appearance: TextAppearance
 
     init(
         x: Double = 0.5,
         y: Double = 0.82,
         width: Double = 0.88,
+        rotation: Double = 0,
         appearance: TextAppearance = .captionDefault
     ) {
         self.x = x
         self.y = y
         self.width = width
+        self.rotation = rotation
         self.appearance = appearance
     }
 
@@ -73,13 +78,21 @@ struct TextStyle: Equatable, Sendable {
     static func clampPosition(_ value: Double) -> Double {
         min(0.95, max(0.05, value))
     }
+
+    /// Kept in (-180, 180], the way the main track's angle is, so the readout
+    /// on the canvas and the one in the inspector cannot disagree.
+    static func clampRotation(_ value: Double) -> Double {
+        VideoFraming.wrap(value)
+    }
+
+    var rotationRadians: Double { rotation * .pi / 180 }
 }
 
 // MARK: - Codable
 
 extension TextStyle: Codable {
     private enum CodingKeys: String, CodingKey {
-        case x, y, width, appearance
+        case x, y, width, rotation, appearance
     }
 
     /// Projects saved before captions carried a full appearance kept their look
@@ -94,6 +107,9 @@ extension TextStyle: Codable {
         x = try container.decode(Double.self, forKey: .x)
         y = try container.decode(Double.self, forKey: .y)
         width = try container.decode(Double.self, forKey: .width)
+        rotation = Self.clampRotation(
+            try container.decodeIfPresent(Double.self, forKey: .rotation) ?? 0
+        )
         if let appearance = try container.decodeIfPresent(TextAppearance.self, forKey: .appearance) {
             self.appearance = appearance
             return

@@ -73,6 +73,27 @@ struct OverlayInspectorView: View {
                         }
                     }
                 }
+
+                InspectorRow("Rotate") {
+                    HStack(spacing: 7) {
+                        InspectorNumberField(
+                            value: overlay.resolvedRotation.rounded(),
+                            range: -180 ... 180,
+                            decimals: 0
+                        ) { degrees in
+                            commit { $0.rotation = degrees == 0 ? nil : degrees }
+                        }
+                        Text("°").font(.studioCaption).foregroundStyle(.secondary)
+
+                        quarterTurn("rotate.left", degrees: -90, help: "Turn left")
+                        quarterTurn("rotate.right", degrees: 90, help: "Turn right")
+
+                        if overlay.resolvedRotation != 0 {
+                            Button("Straighten") { commit { $0.rotation = nil } }
+                                .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                        }
+                    }
+                }
             }
 
             Divider()
@@ -224,6 +245,20 @@ struct OverlayInspectorView: View {
         let crop = overlay.resolvedCrop
         guard !crop.isFull else { return "Whole picture" }
         return "\(Int((crop.width * 100).rounded()))% × \(Int((crop.height * 100).rounded()))%"
+    }
+
+    private func quarterTurn(_ icon: String, degrees: Double, help: String) -> some View {
+        Button {
+            let turned = VideoFraming.wrap(overlay.resolvedRotation + degrees)
+            commit { $0.rotation = turned == 0 ? nil : turned }
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 24, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.studioPlain)
+        .help(help)
     }
 
     private func commit(_ change: (inout ProjectOverlay) -> Void) {

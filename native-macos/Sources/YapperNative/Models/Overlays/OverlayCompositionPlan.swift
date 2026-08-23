@@ -63,7 +63,10 @@ enum OverlayCompositionPlan {
         }
         // The last boundary is the end of the composition, always. It can sit
         // within a rounding of the final clip's end, and dropping it as a
-        // duplicate leaves the last instant covered by no instruction at all.
+        // duplicate leaves the last instant of the video covered by no
+        // instruction at all. AVFoundation refuses such a composition outright:
+        // measured on an edit with eighty-five cuts, "The video could not be
+        // composed" and no export, over a millisecond and a half.
         if let last = result.last, last < duration { result[result.count - 1] = duration }
         // A single boundary describes no interval at all.
         return result.count > 1 ? result : []

@@ -34,6 +34,7 @@ struct CutawayLook: Equatable, Sendable {
     var y: Double
     var width: Double
     var height: Double
+    var rotation: Double?
     var crop: OverlayCrop?
     var behindSpeaker: Bool?
 
@@ -43,6 +44,7 @@ struct CutawayLook: Equatable, Sendable {
             y: overlay.y,
             width: overlay.width,
             height: overlay.height,
+            rotation: overlay.rotation,
             crop: overlay.crop,
             behindSpeaker: overlay.behindSpeaker
         )
@@ -60,6 +62,7 @@ struct CutawayLook: Equatable, Sendable {
         copy.y = y
         copy.width = width
         copy.height = height
+        copy.rotation = rotation
         return copy
     }
 }

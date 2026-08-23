@@ -74,8 +74,35 @@ import Testing
             try? await Task.sleep(for: .milliseconds(10))
         }
 
-        let preview = session.framingPreviewTransform
-        #expect(preview == nil || (preview!.scale == 1 && preview!.x == 0 && preview!.y == 0))
+        let preview = session.framingPreview(in: CGSize(width: 1200, height: 675))
+        #expect(preview == nil || preview == FramingPreview(scale: 1, rotation: 0, offset: .zero))
+    }
+
+    /// The transform pushes the finished frame, and a cutaway is drawn into that
+    /// frame by the same composition. So while one is on screen there is no
+    /// transform at all: the picture follows the drag at the rebuild's pace, and
+    /// the cutaway stays where it was put.
+    @Test func nothingIsPushedWhileACutawayIsOnScreen() async throws {
+        let url = try await movie()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let (session, clipID) = await session(url: url)
+        let stage = CGSize(width: 1200, height: 675)
+
+        // A gesture the composition has not caught up with yet, which is exactly
+        // when the transform would otherwise be doing something.
+        session.canvasDrag.beginFraming(.identity, clipID: clipID, from: .zero)
+        session.canvasDrag.updateFraming(VideoFraming(scale: 1.6, x: 0.2, y: 0))
+        #expect(session.framingPreview(in: stage) != nil)
+
+        session.updateProject { project in
+            project.overlays = [ProjectOverlay(
+                mediaID: project.media[0].id,
+                timelineStart: 0,
+                duration: 2
+            )]
+        }
+        #expect(session.hasCompositedOverlayOnScreen)
+        #expect(session.framingPreview(in: stage) == nil)
     }
 }
 

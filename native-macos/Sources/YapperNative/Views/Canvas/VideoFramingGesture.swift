@@ -29,6 +29,10 @@ struct VideoFramingGesture {
                     framing: origin,
                     translation: value.translation,
                     canvasSize: stageSize,
+                    // The shape of the footage, which is where the picture's own
+                    // edges are. Without it the edges cannot be settled onto the
+                    // frame's, only the middles.
+                    sourceAspect: session.framingSourceAspect,
                     // Always, like the captions and the overlays: aligning a
                     // picture in the frame is not what the timeline's magnetism
                     // is about. Option bypasses.
@@ -59,6 +63,29 @@ struct VideoFramingGesture {
                 }
             }
             .onEnded { _ in finish() }
+    }
+
+    /// Turning the picture, swept about the middle of it.
+    ///
+    /// Measured as an angle rather than as a distance, so the picture turns as
+    /// far as the pointer went round however far out it wandered, which is how
+    /// every other editor's rotate handle behaves.
+    func turn(centre: CGPoint, from start: CGPoint, to current: CGPoint, ended: Bool) {
+        guard let origin = beginIfNeeded(from: start) else { return }
+        let turned = VideoFramingGeometry.rotated(
+            framing: origin,
+            centre: centre,
+            from: start,
+            to: current,
+            // Straight up and the three quarter turns are what anyone is aiming
+            // for. Option is how you say otherwise.
+            snapping: !isSnapBypassed
+        )
+        drag.updateFraming(turned)
+        if let clipID = drag.framingClipID {
+            session.previewFraming(turned, clipID: clipID)
+        }
+        if ended { finish() }
     }
 
     /// The framing this step is measured from, starting or re-basing the drag

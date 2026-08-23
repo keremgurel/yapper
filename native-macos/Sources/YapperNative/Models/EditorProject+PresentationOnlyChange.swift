@@ -86,6 +86,9 @@ extension EditorProject {
             normalised.overlays?[index].width = theirs.width
             normalised.overlays?[index].height = theirs.height
             normalised.overlays?[index].crop = theirs.crop
+            // Turning a card is the same kind of change as moving it: a
+            // different transform over tracks that are already right.
+            normalised.overlays?[index].rotation = theirs.rotation
         }
         normalised.videoTrackVolume = other.videoTrackVolume
         // Timestamps move on every edit and mean nothing to the picture.

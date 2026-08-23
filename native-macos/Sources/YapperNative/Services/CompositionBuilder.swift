@@ -95,7 +95,8 @@ private struct OverlayMotion {
             naturalSize: naturalSize,
             preferredTransform: preferredTransform,
             crop: crop,
-            box: frame
+            box: frame,
+            rotation: overlay.resolvedRotation
         )
     }
 
@@ -551,7 +552,8 @@ enum CompositionBuilder {
                     naturalSize: naturalSize,
                     preferredTransform: preferredTransform,
                     crop: overlay.resolvedCrop,
-                    box: box
+                    box: box,
+                    rotation: overlay.resolvedRotation
                 )
                 if OverlayKeyTrack.isKeyed(overlay) {
                     motion[overlay.id] = OverlayMotion(
@@ -672,7 +674,8 @@ enum CompositionBuilder {
                         endTransform: to == from ? nil : to,
                         cropRect: lane.cropRects[overlay.id],
                         opacity: 1,
-                        card: lane.cards[overlay.id]
+                        card: lane.cards[overlay.id],
+                        cardRotation: overlay.resolvedRotation
                     )
                 )
             }
@@ -917,6 +920,19 @@ enum CompositionBuilder {
                 height: box.height
             )
 
+            if overlay.resolvedRotation != 0 {
+                // Core Animation measures its angles the other way round from
+                // the canvas, which counts clockwise, because its frame has its
+                // origin at the bottom. The layer turns about the middle of
+                // itself, which is where its anchor already is.
+                layer.transform = CATransform3DMakeRotation(
+                    -overlay.rotationRadians,
+                    0,
+                    0,
+                    1
+                )
+            }
+
             applyVisibility(
                 to: layer,
                 start: overlay.timelineStart,
@@ -946,7 +962,8 @@ enum CompositionBuilder {
                 centerX: text.x,
                 centerY: text.y,
                 maximumWidth: min(0.94, text.width),
-                maximumHeight: 0.46
+                maximumHeight: 0.46,
+                rotation: text.rotation
             )
             applyVisibility(
                 to: container,
@@ -965,7 +982,8 @@ enum CompositionBuilder {
                 centerX: caption.style.x,
                 centerY: caption.style.y,
                 maximumWidth: caption.style.width,
-                maximumHeight: 0.4
+                maximumHeight: 0.4,
+                rotation: caption.style.rotation
             )
             applyVisibility(
                 to: container,
@@ -1106,7 +1124,8 @@ enum CompositionBuilder {
         naturalSize: CGSize,
         preferredTransform: CGAffineTransform,
         crop: OverlayCrop,
-        box: CGRect
+        box: CGRect,
+        rotation: Double = 0
     ) -> CGAffineTransform {
         let orientedRect = CGRect(origin: .zero, size: naturalSize)
             .applying(preferredTransform)
@@ -1136,7 +1155,7 @@ enum CompositionBuilder {
             x: orientedSize.width * crop.x * scale,
             y: orientedSize.height * crop.y * scale
         )
-        return preferredTransform
+        let placed = preferredTransform
             .concatenating(
                 CGAffineTransform(translationX: -orientedRect.minX, y: -orientedRect.minY)
             )
@@ -1147,6 +1166,14 @@ enum CompositionBuilder {
                     y: box.midY - scaledKept.height / 2 - keptOrigin.y
                 )
             )
+        guard rotation != 0 else { return placed }
+        // About the middle of the card, once it is already where it belongs, so
+        // turning one never moves it as well. Positive is clockwise, the way it
+        // is everywhere else.
+        return placed
+            .concatenating(CGAffineTransform(translationX: -box.midX, y: -box.midY))
+            .concatenating(CGAffineTransform(rotationAngle: rotation * .pi / 180))
+            .concatenating(CGAffineTransform(translationX: box.midX, y: box.midY))
     }
 
     /// Places the main track's picture in the output frame: fitted and centred,
@@ -1193,15 +1220,17 @@ enum CompositionBuilder {
         )
         guard !framing.isIdentity else { return transform }
 
-        // Zoom about the middle of the output frame, then slide. Doing it in
-        // that order is what keeps a zoom from throwing the picture off to one
-        // side, and what lets the offset mean the same thing at every scale.
-        // The composition draws from the top left, so a positive offset moves
-        // the picture right and down, exactly as it does on the canvas.
+        // Turn and zoom about the middle of the output frame, then slide. Doing
+        // it in that order is what keeps a zoom from throwing the picture off to
+        // one side, and what lets the offset mean the same thing at every scale
+        // and every angle. The composition draws from the top left, so a
+        // positive offset moves the picture right and down and a positive angle
+        // turns it clockwise, exactly as they do on the canvas.
         let centreX = renderSize.width / 2
         let centreY = renderSize.height / 2
         return transform
             .concatenating(CGAffineTransform(translationX: -centreX, y: -centreY))
+            .concatenating(CGAffineTransform(rotationAngle: framing.rotationRadians))
             .concatenating(CGAffineTransform(scaleX: framing.scale, y: framing.scale))
             .concatenating(
                 CGAffineTransform(

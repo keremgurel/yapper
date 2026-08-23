@@ -113,6 +113,14 @@ extension EditorSession {
         )
     }
 
+    func rotateCaption(_ id: UUID, rotation: Double) {
+        applyCaptionStyle(
+            TextStylePatch(rotation: rotation),
+            coalescing: true,
+            layoutTargets: layoutTargets(draggedBy: id)
+        )
+    }
+
     func resizeCaption(_ id: UUID, width: Double) {
         applyCaptionStyle(
             TextStylePatch(width: width),

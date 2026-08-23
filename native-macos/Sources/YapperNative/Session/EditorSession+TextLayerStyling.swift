@@ -34,11 +34,18 @@ extension ProjectTextLayer {
     /// width, an appearance — so a patch is folded in through one rather than
     /// repeating every clamping rule here.
     mutating func apply(_ patch: TextStylePatch) {
-        var style = TextStyle(x: x, y: y, width: width, appearance: appearance)
+        var style = TextStyle(
+            x: x,
+            y: y,
+            width: width,
+            rotation: rotation,
+            appearance: appearance
+        )
         style.apply(patch)
         x = style.x
         y = style.y
         width = style.width
+        rotation = style.rotation
         appearance = style.appearance
     }
 }

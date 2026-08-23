@@ -24,6 +24,7 @@ struct TextStyleEditor {
     var x: Double { style.x }
     var y: Double { style.y }
     var width: Double { style.width }
+    var rotation: Double { style.rotation }
 
     func set(_ patch: TextStylePatch, live: Bool = false) {
         apply(patch, live)

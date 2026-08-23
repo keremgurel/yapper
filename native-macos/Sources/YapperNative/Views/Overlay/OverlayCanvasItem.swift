@@ -77,6 +77,11 @@ struct OverlayCanvasItem: View {
             .overlay(alignment: .topTrailing) { handle(.topTrailing) }
             .overlay(alignment: .bottomLeading) { handle(.bottomLeading) }
             .overlay(alignment: .bottomTrailing) { handle(.bottomTrailing) }
+            .overlay(alignment: .top) { turnRing }
+            .overlay { turnPad(centre: CGPoint(x: frame.midX, y: frame.midY)) }
+            // The card and everything drawn on it turn together, so the corner
+            // you grab is always the corner you can see.
+            .rotationEffect(.degrees(displayed.resolvedRotation))
             // Placed last: `position` hands back a view the size of the whole
             // canvas, so anything after it would claim the lot.
             .position(x: savedBox.midX, y: savedBox.midY)
@@ -136,6 +141,63 @@ struct OverlayCanvasItem: View {
                 resize(corner: corner, translation: translation, ended: phase)
             }
         }
+    }
+
+    /// The handle you can see, standing off the top edge so it never reads as a
+    /// fifth corner. It sweeps round with the card and takes no clicks.
+    @ViewBuilder
+    private var turnRing: some View {
+        if isSelected { TurnRing().offset(y: -TurnHandle.reach) }
+    }
+
+    /// The handle you can grab, which stands still for as long as it is held.
+    ///
+    /// Turned back by however far the card has turned since the drag began, so
+    /// that in the frame's own points it does not move. A pad that swept round
+    /// with the ring left the pointer behind within a few degrees, SwiftUI
+    /// cancelled the drag and offered a fresh one, and every restart threw away
+    /// the movement it began with: a card turning a fraction of the way the
+    /// pointer swept, in jumps.
+    @ViewBuilder
+    private func turnPad(centre: CGPoint) -> some View {
+        if isSelected {
+            ZStack(alignment: .top) {
+                Color.clear.allowsHitTesting(false)
+                TurnPad { start, current, ended in
+                    turn(centre: centre, from: start, to: current, ended: ended)
+                }
+                .offset(y: -TurnHandle.reach)
+            }
+            .rotationEffect(.degrees(heldRotation - displayed.resolvedRotation))
+            .accessibilityLabel("Rotate overlay")
+        }
+    }
+
+    /// The angle the card stood at when the gesture in flight began, which is
+    /// where anything that owns a drag has to stay.
+    private var heldRotation: Double {
+        guard let origin = drag.overlayOrigin, origin.id == overlay.id else {
+            return displayed.resolvedRotation
+        }
+        return origin.resolvedRotation
+    }
+
+    private func turn(centre: CGPoint, from start: CGPoint, to current: CGPoint, ended: Bool) {
+        if drag.overlayOrigin?.id != overlay.id {
+            drag.beginOverlay(overlay)
+            if !isSelected { session.selectOverlay(overlay.id) }
+        }
+        guard let origin = drag.overlayOrigin else { return }
+        drag.updateOverlay(
+            OverlayCanvasGeometry.rotated(
+                overlay: origin,
+                centre: centre,
+                from: start,
+                to: current,
+                snapping: !isSnapBypassed
+            )
+        )
+        if ended { finish() }
     }
 
     private var moveGesture: some Gesture {

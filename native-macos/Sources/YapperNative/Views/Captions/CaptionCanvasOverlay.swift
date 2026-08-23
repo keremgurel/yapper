@@ -56,6 +56,9 @@ private struct CaptionCanvasCard: View {
     /// What the gesture is doing right now wins over what is saved.
     private var draft: CanvasDragState.CaptionDraft? { drag.captionDraft(for: cue.id) }
     private var boxWidth: CGFloat { max(40, canvasSize.width * (draft?.width ?? style.width)) }
+    /// The angle on screen right now: the drag while one runs, the saved style
+    /// otherwise.
+    private var rotation: Double { draft?.rotation ?? style.rotation }
 
     /// Where the card is placed: always the saved position, never the drag.
     ///
@@ -104,6 +107,15 @@ private struct CaptionCanvasCard: View {
             .overlay(alignment: .trailing) {
                 if isSelected { widthHandle }
             }
+            .overlay(alignment: .top) {
+                if isSelected { TurnRing().offset(y: -TurnHandle.reach) }
+            }
+            .overlay {
+                if isSelected { turnPad }
+            }
+            // The card and its handles turn together, so the grip you reach for
+            // is always on the edge you can see.
+            .rotationEffect(.degrees(rotation))
             .position(anchor)
             .offset(dragOffset)
             .animation(.easeOut(duration: 0.08), value: cue.id)
@@ -120,7 +132,8 @@ private struct CaptionCanvasCard: View {
                             id: cue.id,
                             x: style.x,
                             y: style.y,
-                            width: style.width
+                            width: style.width,
+                            rotation: style.rotation
                         )
                     )
                     if !isSelected { session.selectCaption(cue.id) }
@@ -142,7 +155,8 @@ private struct CaptionCanvasCard: View {
                         id: cue.id,
                         x: snapped.x,
                         y: snapped.y,
-                        width: origin.width
+                        width: origin.width,
+                        rotation: origin.rotation
                     )
                 )
             }
@@ -152,6 +166,71 @@ private struct CaptionCanvasCard: View {
                 }
                 onGuidesChanged([])
             }
+    }
+
+    /// The pad that turns the card, held still while it is dragged: see
+    /// `TurnHandle`. The card is placed from its centre, so that is the point
+    /// the angle is measured about.
+    private var turnPad: some View {
+        ZStack(alignment: .top) {
+            Color.clear.allowsHitTesting(false)
+            TurnPad { start, current, ended in
+                beginDraftIfNeeded()
+                guard let origin = drag.captionOrigin else { return }
+                drag.updateCaption(turned(origin, from: start, to: current))
+                if ended, let finished = drag.endCaption() {
+                    session.rotateCaption(cue.id, rotation: finished.rotation)
+                }
+            }
+            .offset(y: -TurnHandle.reach)
+        }
+        // Turned back by however far the card has turned since the drag began,
+        // so that in the frame's own points it stands still.
+        .rotationEffect(.degrees(heldRotation - rotation))
+        .accessibilityLabel("Rotate caption")
+    }
+
+    /// The angle the card stood at when the gesture in flight began.
+    private var heldRotation: Double {
+        guard let origin = drag.captionOrigin, origin.id == cue.id else { return rotation }
+        return origin.rotation
+    }
+
+    private func beginDraftIfNeeded() {
+        guard drag.captionOrigin?.id != cue.id else { return }
+        drag.beginCaption(
+            CanvasDragState.CaptionDraft(
+                id: cue.id,
+                x: style.x,
+                y: style.y,
+                width: style.width,
+                rotation: style.rotation
+            )
+        )
+        if !isSelected { session.selectCaption(cue.id) }
+    }
+
+    private func turned(
+        _ origin: CanvasDragState.CaptionDraft,
+        from start: CGPoint,
+        to current: CGPoint
+    ) -> CanvasDragState.CaptionDraft {
+        let centre = CGPoint(
+            x: canvasSize.width * origin.x,
+            y: canvasSize.height * origin.y
+        )
+        let swept = VideoFramingGeometry.angle(at: current, about: centre)
+            - VideoFramingGeometry.angle(at: start, about: centre)
+        var rotation = VideoFraming.wrap(origin.rotation + swept)
+        if !isCaptionSnapBypassed {
+            let quarter = (rotation / 90).rounded() * 90
+            if abs(rotation - quarter) <= VideoFramingGeometry.rotationSnapDegrees {
+                rotation = quarter
+            }
+        }
+        var turned = origin
+        turned.rotation = rotation
+        return turned
     }
 
     /// Widening the card rewraps the text; the font size stays where it was set.
@@ -177,7 +256,8 @@ private struct CaptionCanvasCard: View {
                                     id: cue.id,
                                     x: style.x,
                                     y: style.y,
-                                    width: style.width
+                                    width: style.width,
+                                    rotation: style.rotation
                                 )
                             )
                         }
@@ -189,7 +269,8 @@ private struct CaptionCanvasCard: View {
                                 id: cue.id,
                                 x: origin.x,
                                 y: origin.y,
-                                width: origin.width + 2 * value.translation.width / canvasSize.width
+                                width: origin.width + 2 * value.translation.width / canvasSize.width,
+                                rotation: origin.rotation
                             )
                         )
                     }

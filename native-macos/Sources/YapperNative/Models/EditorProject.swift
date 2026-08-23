@@ -239,6 +239,9 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     /// Which lane above the speaker this sits on. 0 is the lane directly above,
     /// and a higher lane draws over a lower one. `nil` reads as 0.
     var track: Int?
+    /// Degrees clockwise about the middle of the card. `nil` reads as upright,
+    /// which is every overlay saved before this existed.
+    var rotation: Double?
     /// Hidden overlays keep their place on the timeline and draw nothing, which
     /// is what the eye on the track rail toggles.
     var isHidden: Bool?
@@ -267,6 +270,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         height: Double = 0.38,
         crop: OverlayCrop? = nil,
         track: Int? = nil,
+        rotation: Double? = nil,
         isHidden: Bool? = nil,
         behindSpeaker: Bool? = nil,
         keys: [OverlayKey]? = nil
@@ -282,12 +286,17 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.height = height
         self.crop = crop
         self.track = track
+        self.rotation = rotation
         self.isHidden = isHidden
         self.behindSpeaker = behindSpeaker
         self.keys = keys
     }
 
     var resolvedCrop: OverlayCrop { crop ?? .full }
+    /// Kept in (-180, 180] the way the main track's is, so the canvas readout
+    /// and the inspector's number field can never disagree.
+    var resolvedRotation: Double { VideoFraming.wrap(rotation ?? 0) }
+    var rotationRadians: Double { resolvedRotation * .pi / 180 }
     var lane: Int { max(0, track ?? 0) }
     var isVisible: Bool { isHidden != true }
     var isBehindSpeaker: Bool { behindSpeaker == true }
@@ -336,6 +345,9 @@ struct ProjectTextLayer: Equatable, Identifiable, Sendable {
     var x: Double
     var y: Double
     var width: Double
+    /// Degrees clockwise about the middle of the card. Zero on every layer
+    /// saved before this existed, which is upright.
+    var rotation: Double
     /// How the words are drawn. The same value type captions use, so both
     /// inspectors offer the same properties.
     var appearance: TextAppearance
@@ -348,6 +360,7 @@ struct ProjectTextLayer: Equatable, Identifiable, Sendable {
         x: Double = 0.5,
         y: Double = 0.18,
         width: Double = 0.74,
+        rotation: Double = 0,
         appearance: TextAppearance = .hookDefault
     ) {
         self.id = id
@@ -357,6 +370,7 @@ struct ProjectTextLayer: Equatable, Identifiable, Sendable {
         self.x = x
         self.y = y
         self.width = width
+        self.rotation = TextStyle.clampRotation(rotation)
         self.appearance = appearance
     }
 
@@ -369,6 +383,8 @@ struct ProjectTextLayer: Equatable, Identifiable, Sendable {
 
     var displayText: String { appearance.displayText(text) }
 
+    var rotationRadians: Double { rotation * .pi / 180 }
+
     func isVisible(at time: Double) -> Bool {
         time >= timelineStart && time <= timelineStart + duration
     }
@@ -376,7 +392,7 @@ struct ProjectTextLayer: Equatable, Identifiable, Sendable {
 
 extension ProjectTextLayer: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, text, timelineStart, duration, x, y, width, appearance
+        case id, text, timelineStart, duration, x, y, width, rotation, appearance
     }
 
     /// Layers saved before the appearance model kept their look in three flat
@@ -394,6 +410,9 @@ extension ProjectTextLayer: Codable {
         x = try container.decode(Double.self, forKey: .x)
         y = try container.decode(Double.self, forKey: .y)
         width = try container.decode(Double.self, forKey: .width)
+        rotation = TextStyle.clampRotation(
+            try container.decodeIfPresent(Double.self, forKey: .rotation) ?? 0
+        )
         if let stored = try container.decodeIfPresent(TextAppearance.self, forKey: .appearance) {
             appearance = stored
             return

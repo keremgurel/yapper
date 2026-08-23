@@ -17,13 +17,15 @@ struct AppearancePositionSection: View {
             expandedByDefault: false,
             isModified: editor.x != editor.defaults.x
                 || editor.y != editor.defaults.y
-                || editor.width != editor.defaults.width,
+                || editor.width != editor.defaults.width
+                || editor.rotation != editor.defaults.rotation,
             onReset: {
                 editor.set(
                     TextStylePatch(
                         x: editor.defaults.x,
                         y: editor.defaults.y,
-                        width: editor.defaults.width
+                        width: editor.defaults.width,
+                        rotation: editor.defaults.rotation
                     )
                 )
             }
@@ -54,7 +56,36 @@ struct AppearancePositionSection: View {
                     onChange: { editor.set(TextStylePatch(width: $0 / 100), live: true) }
                 )
             }
+
+            InspectorRow("Rotate") {
+                HStack(spacing: 7) {
+                    InspectorNumberField(
+                        value: editor.rotation.rounded(),
+                        range: -180 ... 180,
+                        decimals: 0
+                    ) { degrees in
+                        editor.set(TextStylePatch(rotation: degrees))
+                    }
+                    Text("°").font(.studioCaption).foregroundStyle(.secondary)
+
+                    quarterTurn("rotate.left", degrees: -90, help: "Turn left")
+                    quarterTurn("rotate.right", degrees: 90, help: "Turn right")
+                }
+            }
         }
+    }
+
+    private func quarterTurn(_ icon: String, degrees: Double, help: String) -> some View {
+        Button {
+            editor.set(TextStylePatch(rotation: VideoFraming.wrap(editor.rotation + degrees)))
+        } label: {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 24, height: 22)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.studioPlain)
+        .help(help)
     }
 
     private func coordinate(

@@ -37,6 +37,7 @@ struct TextStyleField: Sendable {
         make(\.x, \.x, clamp: TextStyle.clampPosition),
         make(\.y, \.y, clamp: TextStyle.clampPosition),
         make(\.width, \.width, clamp: TextStyle.clampWidth),
+        make(\.rotation, \.rotation, clamp: TextStyle.clampRotation),
         make(\.appearance.font, \.font),
         make(\.appearance.fontScale, \.fontScale, clamp: TextStyle.clampFontScale),
         make(\.appearance.textCase, \.textCase),

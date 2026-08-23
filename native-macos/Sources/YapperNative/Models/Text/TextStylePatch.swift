@@ -13,6 +13,7 @@ struct TextStylePatch: Codable, Equatable, Sendable {
     var x: Double?
     var y: Double?
     var width: Double?
+    var rotation: Double?
 
     // Text
     var font: TextLayerFont?
@@ -39,6 +40,7 @@ struct TextStylePatch: Codable, Equatable, Sendable {
         x: Double? = nil,
         y: Double? = nil,
         width: Double? = nil,
+        rotation: Double? = nil,
         font: TextLayerFont? = nil,
         fontScale: Double? = nil,
         textCase: TextCasing? = nil,
@@ -56,6 +58,7 @@ struct TextStylePatch: Codable, Equatable, Sendable {
         self.x = x
         self.y = y
         self.width = width
+        self.rotation = rotation
         self.font = font
         self.fontScale = fontScale
         self.textCase = textCase
@@ -83,6 +86,7 @@ struct TextStylePatch: Codable, Equatable, Sendable {
         patch.x = style.x
         patch.y = style.y
         patch.width = style.width
+        patch.rotation = style.rotation
         return patch
     }
 

@@ -191,22 +191,69 @@ struct VideoFramingTests {
 
     // MARK: - Carrying the picture while the composition catches up
 
+    private static let previewStage = CGSize(width: 1200, height: 675)
+
     @Test func nothingIsPreviewedWhenTheCompositionAlreadyAgrees() {
         let framing = VideoFraming(scale: 1.5, x: 0.1, y: 0)
-        #expect(VideoFramingGeometry.previewTransform(from: framing, to: framing) == nil)
+        #expect(
+            VideoFramingGeometry.previewTransform(
+                from: framing,
+                to: framing,
+                stageSize: Self.previewStage
+            ) == nil
+        )
     }
 
     @Test func thePreviewCarriesThePictureFromWhatIsRenderedToWhatIsWanted() {
         let rendered = VideoFraming(scale: 1.5, x: 0.2, y: -0.1)
         let wanted = VideoFraming(scale: 3, x: 0.4, y: 0.3)
+        let stage = Self.previewStage
         let preview = try! #require(
-            VideoFramingGeometry.previewTransform(from: rendered, to: wanted)
+            VideoFramingGeometry.previewTransform(from: rendered, to: wanted, stageSize: stage)
         )
         // Applying the preview to the picture already on screen has to land on
         // exactly the framing that was asked for, or the rebuild makes it jump.
         #expect(abs(rendered.scale * preview.scale - wanted.scale) < 1e-9)
-        #expect(abs(rendered.x * preview.scale + preview.x - wanted.x) < 1e-9)
-        #expect(abs(rendered.y * preview.scale + preview.y - wanted.y) < 1e-9)
+        #expect(preview.rotation == 0)
+        #expect(
+            abs(
+                rendered.x * stage.width * preview.scale + preview.offset.width
+                    - wanted.x * stage.width
+            ) < 1e-9
+        )
+        #expect(
+            abs(
+                rendered.y * stage.height * preview.scale + preview.offset.height
+                    - wanted.y * stage.height
+            ) < 1e-9
+        )
+    }
+
+    /// The same guarantee once the picture is turned as well as zoomed: the
+    /// three parts of the transform have to compose into exactly the framing
+    /// that was asked for, or letting go of the rotate handle makes it jump.
+    @Test func thePreviewCarriesAPictureThatIsAlsoTurned() {
+        let rendered = VideoFraming(scale: 1.2, x: 0.15, y: -0.2, rotation: 10)
+        let wanted = VideoFraming(scale: 1.8, x: -0.1, y: 0.25, rotation: 55)
+        let stage = Self.previewStage
+        let preview = try! #require(
+            VideoFramingGeometry.previewTransform(from: rendered, to: wanted, stageSize: stage)
+        )
+        #expect(abs(preview.rotation - 45) < 1e-9)
+
+        // Where the middle of the rendered picture ends up once the preview has
+        // been applied: turned and scaled about the middle of the stage, then
+        // slid. That has to be where the wanted framing puts it.
+        let radians = preview.rotation * .pi / 180
+        let carried = CGPoint(x: rendered.x * stage.width, y: rendered.y * stage.height)
+        let landed = CGPoint(
+            x: preview.scale * (cos(radians) * carried.x - sin(radians) * carried.y)
+                + preview.offset.width,
+            y: preview.scale * (sin(radians) * carried.x + cos(radians) * carried.y)
+                + preview.offset.height
+        )
+        #expect(abs(landed.x - wanted.x * stage.width) < 1e-9)
+        #expect(abs(landed.y - wanted.y * stage.height) < 1e-9)
     }
 
     // MARK: - Pulling the preview back
