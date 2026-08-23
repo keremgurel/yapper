@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Testing
 @testable import YapperNative
@@ -943,6 +944,46 @@ struct EditorProjectTests {
         viewport.zoom(by: 1.2, anchorX: 400, layout: layout)
         #expect(viewport.pointsPerSecond == TimelineZoomGeometry.scaleRange.upperBound)
         #expect(viewport.scrollX == offsetAtLimit)
+    }
+
+    @MainActor
+    @Test func timelineViewportDoesNotInvalidateItsFixedPanelOwner() {
+        let owner = TimelineViewportOwner()
+        let layout = TimelineViewportLayout(
+            duration: 600,
+            viewportWidth: 900,
+            minimumContentWidth: 468,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        var ownerChanges = 0
+        let observation = owner.objectWillChange.sink { ownerChanges += 1 }
+
+        owner.viewport.pan(by: 2_000, layout: layout)
+        owner.viewport.zoom(by: 1.4, anchorX: 450, layout: layout)
+
+        #expect(ownerChanges == 0)
+        withExtendedLifetime(observation) {}
+    }
+
+    @MainActor
+    @Test func timelineZoomPublishesScaleAndOffsetOnce() {
+        let viewport = TimelineViewportState()
+        let layout = TimelineViewportLayout(
+            duration: 600,
+            viewportWidth: 900,
+            minimumContentWidth: 468,
+            leadingInset: 84,
+            trailingInset: 160
+        )
+        viewport.pan(by: 2_000, layout: layout)
+        var changes = 0
+        let observation = viewport.objectWillChange.sink { changes += 1 }
+
+        viewport.zoom(by: 1.4, anchorX: 450, layout: layout)
+
+        #expect(changes == 1)
+        withExtendedLifetime(observation) {}
     }
 
     @Test func timelinePinchAmplifiesButStillComposesAcrossUpdates() {

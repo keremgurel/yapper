@@ -4,7 +4,9 @@ import SwiftUI
 
 struct TimelinePanel: View {
     @ObservedObject var session: EditorSession
-    @StateObject private var viewport = TimelineViewportState()
+    /// Own the viewport without subscribing this whole panel to it. Only the
+    /// moving pieces below observe `viewport` directly.
+    @StateObject private var viewportOwner = TimelineViewportOwner()
     /// Held here rather than read per event: the scroller has to be off for the
     /// whole time the key is down, not decided again on each scroll.
     @StateObject private var commandKey = CommandKeyMonitor()
@@ -20,6 +22,8 @@ struct TimelinePanel: View {
     private let trackHeaderWidth = 71.0
     private let leadingTimelineInset = 84.0
     private let trailingTimelineInset = 160.0
+
+    private var viewport: TimelineViewportState { viewportOwner.viewport }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -99,10 +103,7 @@ struct TimelinePanel: View {
                 Spacer()
                 Image(systemName: "minus.magnifyingglass")
                     .foregroundStyle(.secondary)
-                Slider(value: sliderZoom, in: TimelineZoomGeometry.scaleRange)
-                    .frame(width: 130)
-                    .controlSize(.mini)
-                    .help("Pinch or ⌘-scroll over the timeline to zoom")
+                TimelineZoomSlider(viewport: viewport, layout: layoutSnapshot)
                 Image(systemName: "plus.magnifyingglass")
                     .foregroundStyle(.secondary)
             }
@@ -112,7 +113,6 @@ struct TimelinePanel: View {
 
             GeometryReader { proxy in
                 let layout = timelineLayout(panelWidth: proxy.size.width)
-                let contentWidth = layout.contentWidth(at: viewport.pointsPerSecond)
                 let contentHeight = max(session.timelineRowLayout.contentHeight, proxy.size.height)
                 // When every track already fits, the scroller must be inert.
                 // Left enabled it still rubber-banded, which dragged the ruler
@@ -124,7 +124,6 @@ struct TimelinePanel: View {
                     viewport: viewport,
                     clock: session.playbackClock,
                     layout: layout,
-                    contentWidth: contentWidth,
                     railWidth: TimelineTrackRail.width
                 )
                 ScrollView(.vertical, showsIndicators: !tracksFit) {
@@ -166,16 +165,8 @@ struct TimelinePanel: View {
                     )
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    if layout.maximumScrollX(contentWidth: contentWidth) > 0 {
-                        TimelineScrollBar(
-                            layout: layout,
-                            contentWidth: contentWidth,
-                            scrollX: viewport.scrollX
-                        ) { offset in
-                            viewport.scroll(to: offset, layout: layout)
-                        }
+                    TimelineScrollBarOverlay(viewport: viewport, layout: layout)
                         .padding(.bottom, 2)
-                    }
                 }
                 .onChange(of: layout, initial: true) { _, updated in
                     viewport.reconcile(with: updated)
@@ -222,21 +213,6 @@ struct TimelinePanel: View {
         )
     }
 
-    /// The slider has no pointer to anchor to, so it zooms about the middle of
-    /// the viewport the way the zoom control in any editor does.
-    private var sliderZoom: Binding<Double> {
-        Binding(
-            get: { viewport.pointsPerSecond },
-            set: { value in
-                viewport.setPointsPerSecond(
-                    value,
-                    anchorX: layoutSnapshot.viewportWidth / 2,
-                    layout: layoutSnapshot
-                )
-            }
-        )
-    }
-
     private func performKeyCommand(_ command: TimelineKeyCommand) {
         switch command {
         case .togglePlayback:
@@ -259,6 +235,55 @@ struct TimelinePanel: View {
             // everything picked up on the canvas.
             if session.closeAssistant() { return }
             session.clearCanvasSelection()
+        }
+    }
+}
+
+/// The only toolbar control that follows viewport scale. Horizontal panning no
+/// longer asks SwiftUI to rebuild every fixed action button beside it.
+private struct TimelineZoomSlider: View {
+    @ObservedObject var viewport: TimelineViewportState
+    let layout: TimelineViewportLayout
+
+    var body: some View {
+        Slider(value: zoom, in: TimelineZoomGeometry.scaleRange)
+            .frame(width: 130)
+            .controlSize(.mini)
+            .help("Pinch or ⌘-scroll over the timeline to zoom")
+    }
+
+    /// The slider has no pointer to anchor to, so it zooms about the middle of
+    /// the viewport the way the zoom control in any editor does.
+    private var zoom: Binding<Double> {
+        Binding(
+            get: { viewport.pointsPerSecond },
+            set: { value in
+                viewport.setPointsPerSecond(
+                    value,
+                    anchorX: layout.viewportWidth / 2,
+                    layout: layout
+                )
+            }
+        )
+    }
+}
+
+/// The scrollbar follows the viewport without making the vertical scroller,
+/// fixed rail, or toolbar follow it too.
+private struct TimelineScrollBarOverlay: View {
+    @ObservedObject var viewport: TimelineViewportState
+    let layout: TimelineViewportLayout
+
+    var body: some View {
+        let contentWidth = layout.contentWidth(at: viewport.pointsPerSecond)
+        if layout.maximumScrollX(contentWidth: contentWidth) > 0 {
+            TimelineScrollBar(
+                layout: layout,
+                contentWidth: contentWidth,
+                scrollX: viewport.scrollX
+            ) { offset in
+                viewport.scroll(to: offset, layout: layout)
+            }
         }
     }
 }
@@ -311,7 +336,7 @@ enum TimelineWaveformGeometry {
     }
 }
 
-struct TimelineContent: View {
+struct TimelineContent: View, @MainActor Equatable {
     static let coordinateSpaceName = "yapper.timeline.content"
     /// Height of the ruler strip. The viewport paints its own strip of the same
     /// height so the bar reaches the edges even when the content is narrower.
@@ -341,6 +366,14 @@ struct TimelineContent: View {
     @State private var marqueeBaseSelection: Set<TimelineSelectionItem> = []
     /// Where every item sits, built when a marquee starts and dropped when it ends.
     @State private var marqueeItemFrameTable: [TimelineItemFrame] = []
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.session === rhs.session
+            && lhs.contentWidth == rhs.contentWidth
+            && lhs.leadingInset == rhs.leadingInset
+            && lhs.trailingInset == rhs.trailingInset
+            && lhs.visibleRange == rhs.visibleRange
+    }
 
     /// What the cells draw as selected: what the session holds, plus whatever
     /// the band being dragged has caught so far.
@@ -704,7 +737,7 @@ private struct TimelineVideoTrack: View {
                     .animation(.easeOut(duration: 0.14), value: plan)
             }
 
-            ForEach(clips) { clip in
+            ForEach(renderedClips(clips, positions: positions, movingIDs: movingIDs)) { clip in
                 let isMoving = movingIDs.contains(clip.id)
                 let isLifted = liftedClipID(among: clips) == clip.id
                 clipItem(for: clip, timelineStart: positions[clip.id] ?? 0)
@@ -726,6 +759,24 @@ private struct TimelineVideoTrack: View {
             }
         }
         .frame(width: contentWidth, height: 88, alignment: .topLeading)
+    }
+
+    /// Clips well outside the preload window have no pixels to contribute.
+    /// Their positions are still calculated so reordering stays exact, while
+    /// the moving/selected block is always retained under the pointer.
+    private func renderedClips(
+        _ clips: [TimelineClip],
+        positions: [UUID: Double],
+        movingIDs: Set<UUID>
+    ) -> [TimelineClip] {
+        clips.filter { clip in
+            visibleRange.showsItem(
+                start: positions[clip.id] ?? 0,
+                duration: clip.duration
+            )
+                || movingIDs.contains(clip.id)
+                || isSelected(.clip(clip.id))
+        }
     }
 
     /// The clip currently being carried up to an overlay lane, if it is one of

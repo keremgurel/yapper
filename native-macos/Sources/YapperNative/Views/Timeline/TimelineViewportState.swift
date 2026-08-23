@@ -1,6 +1,19 @@
 import Foundation
 import SwiftUI
 
+/// Gives SwiftUI ownership of a viewport without making the view that owns the
+/// lifetime observe every pixel it publishes. The ruler, content transform,
+/// zoom control, and scrollbar subscribe directly; fixed timeline chrome does
+/// not redraw while the timeline moves underneath it.
+@MainActor
+final class TimelineViewportOwner: ObservableObject {
+    let viewport: TimelineViewportState
+
+    init(viewport: TimelineViewportState = TimelineViewportState()) {
+        self.viewport = viewport
+    }
+}
+
 /// Owns the timeline's horizontal zoom scale and scroll offset.
 ///
 /// The two are published together in one transaction so SwiftUI lays out the
@@ -10,11 +23,21 @@ import SwiftUI
 /// pointer on every zoom step.
 @MainActor
 final class TimelineViewportState: ObservableObject {
-    @Published private(set) var pointsPerSecond: Double
-    @Published private(set) var scrollX: Double = 0
+    private struct Snapshot: Equatable {
+        let pointsPerSecond: Double
+        let scrollX: Double
+    }
+
+    /// One publication for one visual update. A zoom changes both values, and
+    /// separate `@Published` properties emitted twice before SwiftUI could draw
+    /// once, waking every viewport subscriber twice for the same frame.
+    @Published private var snapshot: Snapshot
+
+    var pointsPerSecond: Double { snapshot.pointsPerSecond }
+    var scrollX: Double { snapshot.scrollX }
 
     init(pointsPerSecond: Double = 36) {
-        self.pointsPerSecond = pointsPerSecond
+        snapshot = Snapshot(pointsPerSecond: pointsPerSecond, scrollX: 0)
     }
 
     /// Zooms by `factor`, keeping whatever sits at `anchorX` (viewport
@@ -70,8 +93,10 @@ final class TimelineViewportState: ObservableObject {
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            pointsPerSecond = newScale
-            scrollX = newOffset
+            snapshot = Snapshot(
+                pointsPerSecond: newScale,
+                scrollX: newOffset
+            )
         }
     }
 }

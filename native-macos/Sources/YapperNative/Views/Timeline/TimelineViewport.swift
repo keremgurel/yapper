@@ -30,6 +30,10 @@ struct TimelineViewport: View {
                 duration: session.duration
             )
         )
+            // Whole-second render windows plus an explicit equality boundary
+            // mean sub-second pans update only this content's layer transform.
+            // Cells rebuild when the preload window actually changes.
+            .equatable()
             .frame(width: contentWidth, height: contentHeight)
             .padding(.leading, layout.leadingInset)
             .padding(.trailing, layout.trailingInset)

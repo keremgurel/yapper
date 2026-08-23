@@ -13,11 +13,14 @@ struct TimelineRulerHeader: View {
     /// this strip and nothing else.
     @ObservedObject var clock: PlaybackClock
     let layout: TimelineViewportLayout
-    let contentWidth: Double
     /// Width of the fixed track-label column the strip starts after.
     let railWidth: Double
 
     private static let coordinateSpaceName = "yapper.timeline.ruler"
+
+    private var contentWidth: Double {
+        layout.contentWidth(at: viewport.pointsPerSecond)
+    }
 
     var body: some View {
         HStack(spacing: 0) {
