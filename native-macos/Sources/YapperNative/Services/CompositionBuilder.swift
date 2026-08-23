@@ -154,6 +154,21 @@ enum CompositionPurpose {
 enum CompositionBuilder {
     static let timeScale: CMTimeScale = 600
 
+    /// Seconds to a time on the composition's clock, rounded to the nearest
+    /// tick rather than down to the one below.
+    ///
+    /// `CMTime(seconds:preferredTimescale:)` truncates, and these seconds have
+    /// usually been a CMTime already: 121396/600 comes back as 202.326666…,
+    /// which multiplied out is 121395.99999… and truncates to 121395. One tick
+    /// short of the composition, which is all it takes for AVFoundation to
+    /// refuse the whole video composition as leaving an instant uncovered.
+    static func tick(_ seconds: Double) -> CMTime {
+        CMTime(
+            value: CMTimeValue((seconds * Double(timeScale)).rounded()),
+            timescale: timeScale
+        )
+    }
+
     static func build(
         project: EditorProject,
         for purpose: CompositionPurpose = .export
@@ -287,6 +302,7 @@ enum CompositionBuilder {
             isMainTrackHidden: project.isVideoTrackHidden,
             filter: filter,
             duration: cursor.seconds,
+            exactEnd: cursor,
             usesCustomCompositor: usesCustomCompositor,
             matteQuality: .accurate,
             backdrop: backdrop
@@ -339,6 +355,7 @@ enum CompositionBuilder {
                 isMainTrackHidden: project.isVideoTrackHidden,
                 filter: filter,
                 duration: cursor.seconds,
+                exactEnd: cursor,
                 usesCustomCompositor: usesCustomCompositor,
                 matteQuality: .fast,
                 backdrop: backdrop
@@ -582,6 +599,7 @@ enum CompositionBuilder {
         isMainTrackHidden: Bool,
         filter: VisualFilter,
         duration: Double,
+        exactEnd: CMTime? = nil,
         usesCustomCompositor: Bool,
         matteQuality: MatteQuality,
         backdrop: CIColor
@@ -604,9 +622,14 @@ enum CompositionBuilder {
                 midpoint >= $0.range.start.seconds && midpoint <= $0.range.end.seconds
             }) ?? segments.last else { continue }
 
+            // The last instruction ends on the composition's own time, not on a
+            // reconstruction of it. Rounding a boundary to the nearest tick can
+            // land half a tick past the end, and an instruction reaching beyond
+            // the composition is refused just as flatly as one falling short.
+            let isLast = index == boundaries.count - 2
             let timeRange = CMTimeRange(
-                start: CMTime(seconds: start, preferredTimescale: timeScale),
-                end: CMTime(seconds: end, preferredTimescale: timeScale)
+                start: tick(start),
+                end: isLast ? (exactEnd ?? tick(end)) : tick(end)
             )
 
             // Front to back: the cutaways on top of the speaker.

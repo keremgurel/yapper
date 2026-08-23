@@ -61,6 +61,10 @@ enum OverlayCompositionPlan {
             if let last = result.last, time - last < epsilon { continue }
             result.append(time)
         }
+        // The last boundary is the end of the composition, always. It can sit
+        // within a rounding of the final clip's end, and dropping it as a
+        // duplicate leaves the last instant covered by no instruction at all.
+        if let last = result.last, last < duration { result[result.count - 1] = duration }
         // A single boundary describes no interval at all.
         return result.count > 1 ? result : []
     }
