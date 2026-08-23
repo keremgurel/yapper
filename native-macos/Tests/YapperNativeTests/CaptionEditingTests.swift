@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 import Testing
 
 @testable import YapperNative
@@ -32,6 +34,28 @@ import Testing
             captionsEnabled: captionsEnabled,
             captionWordsPerCard: wordsPerCard
         )
+    }
+
+    @MainActor
+    @Test func endingAnEditReportsTheFieldEditorsNewestText() {
+        var endedWith = ""
+        let field = CaptionTextField(
+            text: .constant(""),
+            textCase: .asSpoken,
+            isFocused: true,
+            onFocus: {},
+            onEndEditing: { endedWith = $0 },
+            onSplit: { _ in },
+            onMergeUp: {},
+            onStep: { _ in }
+        )
+        let nativeField = NSTextField(string: "typed before the coalesced save")
+
+        field.makeCoordinator().controlTextDidEndEditing(
+            Notification(name: NSControl.textDidEndEditingNotification, object: nativeField)
+        )
+
+        #expect(endedWith == "typed before the coalesced save")
     }
 
     @Test func wordsPerCardGroupsExactlyThatManyWords() {

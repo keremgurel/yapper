@@ -67,7 +67,7 @@ struct CaptionWorkbenchView: View {
             Text(isOn ? "Captions on" : "Captions off")
                 .font(.system(size: 12, weight: .semibold))
             if session.hasCaptions {
-                Text("\(session.captions.count) cards")
+                Text("\(CaptionListProjection.visibleCount(in: session.captions, textsByID: session.captionTexts)) cards")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }

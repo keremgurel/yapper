@@ -16,7 +16,7 @@ struct CaptionTextField: NSViewRepresentable {
     /// Editing this row stopped, whether by clicking away, Escape, or Tab.
     /// Without it the row would keep claiming the caret and take the keyboard
     /// straight back on the next redraw.
-    var onEndEditing: () -> Void
+    var onEndEditing: (String) -> Void
     /// Return was pressed with `wordsBefore` whole words ahead of the caret.
     var onSplit: (Int) -> Void
     /// Return with nothing left to split off: a new card after this one.
@@ -97,8 +97,12 @@ struct CaptionTextField: NSViewRepresentable {
 
         func controlTextDidEndEditing(_ obj: Notification) {
             guard let field = obj.object as? NSTextField else { return }
+            // Keep the field editor's final value before restoring display
+            // casing. The project update is deliberately coalesced, so
+            // `parent.text` can still be one beat behind a just-finished edit.
+            let finalText = field.stringValue
             field.stringValue = parent.textCase.apply(to: parent.text)
-            parent.onEndEditing()
+            parent.onEndEditing(finalText)
         }
 
         func control(

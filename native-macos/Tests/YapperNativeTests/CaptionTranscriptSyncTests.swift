@@ -81,10 +81,37 @@ import Testing
 
         cutTwo(&subject)
 
-        // The card survives in the panel so restoring the word brings it back,
-        // but nothing of it reaches the video.
+        // The card survives in the project so restoring the word brings it
+        // back, but neither the list nor the video exposes an empty ghost.
         #expect(subject.storedCaptions.count == 4)
         #expect(subject.captionCues.map(\.text) == ["one", "three", "four"])
+        #expect(
+            CaptionListProjection.visibleCaptions(
+                from: subject.storedCaptions,
+                textsByID: subject.captionTextsByID
+            ).map(\.text) == ["one", "three", "four"]
+        )
+    }
+
+    @Test func aFocusedEmptyInsertionStaysVisibleOnlyWhileItIsBeingEdited() {
+        var subject = project(wordsPerCard: 1)
+        subject.regenerateCaptions()
+        let first = subject.storedCaptions[0]
+        let inserted = subject.addCaption(after: first.id)
+        #expect(inserted != nil)
+
+        let withoutFocus = CaptionListProjection.visibleCaptions(
+            from: subject.storedCaptions,
+            textsByID: subject.captionTextsByID
+        )
+        let withFocus = CaptionListProjection.visibleCaptions(
+            from: subject.storedCaptions,
+            textsByID: subject.captionTextsByID,
+            focusedID: inserted?.id
+        )
+
+        #expect(withoutFocus.contains { $0.id == inserted?.id } == false)
+        #expect(withFocus.contains { $0.id == inserted?.id })
     }
 
     @Test func aCardStartsAtWhicheverWordSurvives() {

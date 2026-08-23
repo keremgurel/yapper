@@ -9,6 +9,10 @@ struct CaptionListView: View {
     /// The row the caret is in. Driven by the arrow keys and by the edits that
     /// split or merge rows, so editing never loses its place.
     @State private var focusedCaptionID: UUID?
+    /// Text edits settle into the project on a short coalescing delay. A row
+    /// that began empty stays present across that hand-off instead of briefly
+    /// vanishing between the AppKit field resigning focus and the model commit.
+    @State private var pendingVisibleCaptionIDs: Set<UUID> = []
 
     init(session: EditorSession, onSeek: @escaping (Double) -> Void) {
         self.session = session
@@ -36,10 +40,30 @@ struct CaptionListView: View {
                 // each keystroke was most of what made typing in a card lag.
                 LazyVStack(spacing: 0) {
                     let texts = liveTexts
-                    ForEach(Array(captions.enumerated()), id: \.element.id) { index, caption in
+                    let visibleCaptions = CaptionListProjection.visibleCaptions(
+                        from: captions,
+                        textsByID: texts,
+                        focusedID: focusedCaptionID,
+                        retainingIDs: pendingVisibleCaptionIDs
+                    )
+                    ForEach(Array(visibleCaptions.enumerated()), id: \.element.id) { index, caption in
                         if index > 0 { Divider().opacity(0.4) }
                         row(caption, number: index + 1, text: texts[caption.id] ?? caption.text)
                             .id(caption.id)
+                            .overlay(alignment: .top) {
+                                if index > 0 {
+                                    CaptionInsertionHandle {
+                                        insertCaption(after: visibleCaptions[index - 1].id)
+                                    }
+                                    .offset(y: -6)
+                                }
+                            }
+                            .zIndex(1)
+                        if index == visibleCaptions.count - 1 {
+                            CaptionInsertionHandle {
+                                insertCaption(after: caption.id)
+                            }
+                        }
                     }
                 }
                 .background(Color.studioInputBackground.opacity(0.5))
@@ -67,7 +91,7 @@ struct CaptionListView: View {
             Button {
                 Task { await session.addCaptionAtPlayhead() }
             } label: {
-                Label("Add caption", systemImage: "plus")
+                Label("Add at playhead", systemImage: "plus")
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
             .disabled(session.project.clips.isEmpty)
@@ -89,10 +113,6 @@ struct CaptionListView: View {
 
     private func row(_ caption: ProjectCaption, number: Int, text: String) -> some View {
         let isSelected = session.isCaptionSelected(caption.id)
-        // Every word this card covered has been cut, so it is drawing nothing.
-        // It stays in the list, dimmed, because restoring those words in the
-        // transcript brings it straight back.
-        let isEmptied = text.trimmingCharacters(in: .whitespaces).isEmpty
         return HStack(spacing: 8) {
             Text("\(number)")
                 .font(.studioCaption)
@@ -141,8 +161,13 @@ struct CaptionListView: View {
                 // Only let go if the caret has not already been handed to
                 // another row: splitting, merging and the arrow keys all end
                 // editing here on their way somewhere else.
-                onEndEditing: {
+                onEndEditing: { finalText in
                     if focusedCaptionID == caption.id { focusedCaptionID = nil }
+                    guard finalText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                        retainAcrossPendingCommit(caption.id)
+                        return
+                    }
+                    Task { await session.removeCaption(caption.id) }
                 },
                 onSplit: { wordsBefore in
                     Task {
@@ -153,7 +178,7 @@ struct CaptionListView: View {
                     }
                 },
                 onAddAfter: {
-                    Task { focusedCaptionID = await session.addCaption(after: caption.id) }
+                    insertCaption(after: caption.id)
                 },
                 onMergeUp: {
                     Task { focusedCaptionID = await session.mergeCaptionIntoPrevious(caption.id) }
@@ -171,7 +196,6 @@ struct CaptionListView: View {
                 })
                 .accessibilityHidden(true)
         }
-        .opacity(isEmptied ? 0.45 : 1)
         .padding(.horizontal, 8)
         .frame(height: 28)
         .background(isSelected ? Color.yapperOrange.opacity(0.12) : Color.clear)
@@ -193,6 +217,21 @@ struct CaptionListView: View {
         }
         .accessibilityAction(named: "Delete caption \(number)") {
             Task { await session.removeCaption(caption.id) }
+        }
+        .accessibilityAction(named: "Insert caption after \(number)") {
+            insertCaption(after: caption.id)
+        }
+    }
+
+    private func insertCaption(after id: UUID) {
+        Task { focusedCaptionID = await session.addCaption(after: id) }
+    }
+
+    private func retainAcrossPendingCommit(_ id: UUID) {
+        pendingVisibleCaptionIDs.insert(id)
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(200))
+            pendingVisibleCaptionIDs.remove(id)
         }
     }
 
@@ -236,5 +275,44 @@ struct CaptionListView: View {
             index + 1 < captions.count
         else { return }
         focusedCaptionID = captions[index + 1].id
+    }
+}
+
+/// An insertion target lives only at a row boundary and owns its hover state,
+/// so moving the pointer does not invalidate the caption list or its text
+/// fields. The hit area is present all the time; the line and plus appear only
+/// when the pointer reaches it.
+private struct CaptionInsertionHandle: View {
+    let insert: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        ZStack {
+            Rectangle()
+                .fill(isHovered ? Color.yapperOrange.opacity(0.75) : Color.clear)
+                .frame(height: 1)
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(
+                    isHovered ? Color.white : Color.clear,
+                    isHovered ? Color.yapperOrange : Color.clear
+                )
+                .background {
+                    Circle()
+                        .fill(isHovered ? Color.studioInputBackground : Color.clear)
+                        .frame(width: 15, height: 15)
+                }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 12)
+        .contentShape(Rectangle())
+        .onHover { isHovered = $0 }
+        .highPriorityGesture(TapGesture().onEnded(insert))
+        .help("Insert a caption here")
+        // The row already exposes an "Insert caption after" action. Keeping
+        // this pointer-only target out of the accessibility tree avoids one
+        // extra native element at every visible boundary.
+        .accessibilityHidden(true)
     }
 }
