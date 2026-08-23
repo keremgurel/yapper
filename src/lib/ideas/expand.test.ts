@@ -28,7 +28,7 @@ describe("expandIdea provider request", () => {
 
     await expandIdea(
       { transcript: "A bounded idea" },
-      { block: "", pillarNames: [] },
+      { section: "", pillarNames: [] },
       controller.signal,
     );
 

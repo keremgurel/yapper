@@ -10,6 +10,7 @@ import {
   reorderBlocks,
   type BrainBlock,
   type BrainBlockPatch,
+  type NewBrainBlock,
 } from "@/lib/brain/client";
 
 /**
@@ -25,9 +26,10 @@ export function useBrainBlocks(): {
   loading: boolean;
   saveState: SaveState;
   edit: (id: string, patch: BrainBlockPatch) => void;
-  add: (block: BrainBlockPatch & { title: string }) => Promise<BrainBlock>;
+  add: (block: NewBrainBlock) => Promise<BrainBlock>;
   remove: (id: string) => Promise<void>;
   move: (id: string, direction: -1 | 1) => Promise<void>;
+  reorder: (ids: string[]) => Promise<void>;
 } {
   const [blocks, setBlocks] = useState<BrainBlock[] | null>(null);
 
@@ -78,14 +80,11 @@ export function useBrainBlocks(): {
     [queue],
   );
 
-  const add = useCallback(
-    async (input: BrainBlockPatch & { title: string }) => {
-      const block = await createBlock(input);
-      setBlocks((prev) => [...(prev ?? []), block]);
-      return block;
-    },
-    [],
-  );
+  const add = useCallback(async (input: NewBrainBlock) => {
+    const block = await createBlock(input);
+    setBlocks((prev) => [...(prev ?? []), block]);
+    return block;
+  }, []);
 
   const remove = useCallback(async (id: string) => {
     setBlocks((prev) => prev?.filter((block) => block.id !== id) ?? prev);
@@ -107,6 +106,19 @@ export function useBrainBlocks(): {
     [blocks],
   );
 
+  /** An explicit order, for a drag. Applied locally first so the row lands
+   * where it was dropped rather than after the round trip. */
+  const reorder = useCallback(async (ids: string[]) => {
+    setBlocks((prev) => {
+      if (!prev) return prev;
+      const byId = new Map(prev.map((block) => [block.id, block]));
+      return ids
+        .map((id) => byId.get(id))
+        .filter((block): block is BrainBlock => Boolean(block));
+    });
+    setBlocks(await reorderBlocks(ids));
+  }, []);
+
   return {
     blocks: blocks ?? [],
     loading: blocks === null,
@@ -115,5 +127,6 @@ export function useBrainBlocks(): {
     add,
     remove,
     move,
+    reorder,
   };
 }

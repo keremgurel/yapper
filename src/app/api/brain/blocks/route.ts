@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { parseBlockOrder, parseNewBrainBlock } from "@/lib/brain/input";
-import { invalidateProjectContext } from "@/lib/content/project-context-server";
+import { invalidateBrainContext } from "@/lib/brain/context/server";
 import {
   createBrainBlock,
   listBrainBlocks,
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   await ensureUser(userId);
   const project = await getActiveProject(userId);
   const block = await createBrainBlock(project.id, input);
-  invalidateProjectContext(project.id);
+  invalidateBrainContext(project.id);
   return Response.json({ block }, { status: 201 });
 }
 
@@ -50,6 +50,6 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   await ensureUser(userId);
   const project = await getActiveProject(userId);
   const blocks = await reorderBrainBlocks(project.id, order);
-  invalidateProjectContext(project.id);
+  invalidateBrainContext(project.id);
   return Response.json({ blocks });
 }

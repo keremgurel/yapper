@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import { hookPattern, hookPatternBlock } from "@/lib/content/hook-patterns";
 import type { ContentBlock, ContentHook } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
@@ -11,7 +10,7 @@ interface ChatCompletionResponse {
 }
 
 export interface HooksInput {
-  /** The creator's compiled standing context. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
   title?: string;
   /** What the idea actually is, so the hooks open THIS video. */
@@ -53,7 +52,7 @@ export function buildHooksMessages(input: HooksInput): {
     "hook.\n" +
     "- Output JSON and nothing else." +
     hookPatternBlock(only) +
-    projectContextSection(input.context ?? "");
+    (input.context ?? "");
 
   const parts: string[] = [];
   if (input.title) parts.push(`Title: ${input.title}`);

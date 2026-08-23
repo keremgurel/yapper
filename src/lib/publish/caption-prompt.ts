@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import { captionSpec } from "@/lib/publish/caption-specs";
 import type { PublishPlatform } from "@/lib/db/schema";
 
@@ -82,7 +81,7 @@ export function buildCaptionMessages(input: CaptionInput): {
     "no emoji unless the creator's own samples use them.\n" +
     "- Hashtags go in the hashtags array only, never inside the body.\n" +
     "- Output JSON and nothing else." +
-    projectContextSection(input.context ?? "");
+    (input.context ?? "");
 
   const parts: string[] = [`Video title: ${input.title}`];
   if (input.pillar) parts.push(`Content pillar: ${input.pillar}`);

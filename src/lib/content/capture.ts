@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import type { ContentBlock } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -120,7 +119,7 @@ export async function captureIdea(
   const pillars = (input.pillars ?? []).slice(0, 12);
   // Pillars ride in the context block when there is one, so naming them again
   // in the user message would just pay for the same tokens twice.
-  const system = SYSTEM + projectContextSection(input.context ?? "");
+  const system = SYSTEM + (input.context ?? "");
   const userMsg = [
     !input.context && pillars.length
       ? `My content pillars: ${pillars.join(", ")}`

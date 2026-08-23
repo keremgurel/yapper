@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { parseBrainBlockInput } from "@/lib/brain/input";
-import { invalidateProjectContext } from "@/lib/content/project-context-server";
+import { invalidateBrainContext } from "@/lib/brain/context/server";
 import { deleteBrainBlock, updateBrainBlock } from "@/lib/db/project-brain";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const project = await getActiveProject(userId);
   const block = await updateBrainBlock(project.id, id, input);
   if (!block) return Response.json({ error: "not_found" }, { status: 404 });
-  invalidateProjectContext(project.id);
+  invalidateBrainContext(project.id);
   return Response.json({ block });
 }
 
@@ -40,6 +40,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const project = await getActiveProject(userId);
   const removed = await deleteBrainBlock(project.id, id);
   if (!removed) return Response.json({ error: "not_found" }, { status: 404 });
-  invalidateProjectContext(project.id);
+  invalidateBrainContext(project.id);
   return Response.json({ ok: true });
 }

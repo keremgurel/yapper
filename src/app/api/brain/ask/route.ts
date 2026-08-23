@@ -6,7 +6,7 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { askBrain, type AskMessage } from "@/lib/brain/ask";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -41,8 +41,6 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!messages.length)
     return Response.json({ error: "no_message" }, { status: 400 });
 
-  // Read server-side: a client must not be able to claim a different brain.
-  const context = await getProjectContextSafe(userId);
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
@@ -55,16 +53,29 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  // Read server-side: a client must not be able to claim a different brain, and
+  // loaded after the gates so a refused request never routes.
+  // The coach is the one surface where the creator may be asking about a
+  // specific section by name, so the whole last turn is the routing signal.
+  const context = await getBrainContextSafe(userId, {
+    surface: "chat",
+    task: messages
+      .slice(-2)
+      .map((message) => message.content)
+      .join("\n")
+      .slice(0, 2000),
+    signal: req.signal,
+  });
   try {
     const answer = await askBrain(
       {
         messages,
-        context: context.block,
+        context: context.section,
         pillars: context.pillarNames,
       },
       req.signal,
     );
-    return Response.json(answer);
+    return Response.json({ ...answer, used: context.used });
   } catch (error) {
     await refundCreditReservation(userId, reservation, "ask_failed");
     console.error("[brain/ask] failed", error);

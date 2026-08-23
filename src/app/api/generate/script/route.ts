@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import type { NextRequest } from "next/server";
 import { GENERATE_CREDITS } from "@/lib/db/constants";
 import {
@@ -71,13 +71,31 @@ export async function POST(req: NextRequest): Promise<Response> {
       { status: 400 },
     );
   }
-  input.context = (await getProjectContextSafe(userId)).block;
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
 
   const spendLimited = await guardProviderSpend(req, userId, "generate-script");
   if (spendLimited) return spendLimited;
+
+  // The idea itself is the routing signal: its title, its hooks and the
+  // creator's own words are what decide which skill and which section change
+  // how this script should be written.
+  const brain = await getBrainContextSafe(userId, {
+    surface: "script",
+    task: [
+      input.title,
+      ...(input.hooks ?? []),
+      ...(input.blocks ?? []).map((block) =>
+        block.items?.length ? block.items.join(" ") : block.text,
+      ),
+      input.originalNote,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    signal: req.signal,
+  });
+  input.context = brain.section;
 
   let script: string;
   try {
@@ -102,5 +120,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     balance = await getBalance(userId);
   }
 
-  return Response.json({ script, balance });
+  return Response.json({ script, balance, used: brain.used });
 }

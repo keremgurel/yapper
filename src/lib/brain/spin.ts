@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import type { SpinCombination } from "@/lib/brain/reels";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -29,7 +28,7 @@ export interface SpunIdea {
 
 export interface SpinInput {
   combination: SpinCombination;
-  /** The creator's compiled standing context. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
   pillars: string[];
   /** Titles already in their bank and library, so a pull does not deal back
@@ -140,7 +139,7 @@ export async function spinIdea(
         messages: [
           {
             role: "system",
-            content: SYSTEM + projectContextSection(input.context ?? ""),
+            content: SYSTEM + (input.context ?? ""),
           },
           { role: "user", content: userMsg },
         ],

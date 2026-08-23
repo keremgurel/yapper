@@ -4,7 +4,7 @@ import {
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import { getContentItem } from "@/lib/db/content";
 import { hookTexts, normalizeBody } from "@/lib/content/normalize";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
@@ -90,11 +90,19 @@ export async function POST(req: Request): Promise<Response> {
     ? await collectStyleSamples(userId, platforms)
     : undefined;
 
+  const brain = await getBrainContextSafe(userId, {
+    surface: "caption",
+    task: [title, hook, script?.slice(0, 1200), pillar]
+      .filter(Boolean)
+      .join("\n"),
+    signal: req.signal,
+  });
+
   try {
     const captions = await generateCaptions(
       {
         title,
-        context: (await getProjectContextSafe(userId)).block,
+        context: brain.section,
         hook,
         script,
         // The item's own words win; the client's free-text context is the
@@ -106,7 +114,11 @@ export async function POST(req: Request): Promise<Response> {
       },
       req.signal,
     );
-    return Response.json({ captions, balance: reservation.balance });
+    return Response.json({
+      captions,
+      balance: reservation.balance,
+      used: brain.used,
+    });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "generate_failed";
     await refundCreditReservation(userId, reservation, detail);

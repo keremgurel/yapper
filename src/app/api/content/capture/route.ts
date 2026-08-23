@@ -8,7 +8,7 @@ import {
 import { createContentItem } from "@/lib/db/content";
 import { captureIdea, capturedIdeaToBlocks } from "@/lib/content/capture";
 import { normalizeHooks } from "@/lib/content/normalize";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -36,8 +36,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) return Response.json({ error: "no_input" }, { status: 400 });
-  // Classification only needs the pillars, not the voice or the offers.
-  const context = await getProjectContextSafe(userId, "pillars");
+  // Classification only needs the pillars, not the voice or the offers, and the
+  // capture surface's budget says so: no index, nothing loaded, no routing.
+  const context = await getBrainContextSafe(userId, { surface: "capture" });
   const pillars = context.pillarNames.length
     ? context.pillarNames
     : strArr(body.pillars, 12);
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   try {
     const idea = await captureIdea(
-      { text, pillars, context: context.block },
+      { text, pillars, context: context.section },
       req.signal,
     );
     const item = await createContentItem(userId, {

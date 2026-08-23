@@ -261,10 +261,31 @@ export const projectPillars = pgTable(
   ],
 );
 
-/** How a brain block holds what it holds. `note` is prose, `list` is lines the
- * creator collects: hooks that worked, formats that worked, rules. */
-export const brainBlockKinds = ["note", "list"] as const;
+/** How a brain block holds what it holds. `note` is prose and `list` is lines
+ * the creator collects; `table` is imported rows (keyword research, a content
+ * gap export) and `doc` is a long pasted document that is chunked rather than
+ * read whole. */
+export const brainBlockKinds = ["note", "list", "table", "doc"] as const;
 export type BrainBlockKind = (typeof brainBlockKinds)[number];
+
+/**
+ * How much of a block reaches a prompt, and when.
+ *
+ * This is the whole contract that lets the brain hold more than a prompt can.
+ * `core` is identity-grade truth that every writing prompt carries. `auto` is
+ * routable: its one-line digest is always visible, its contents load only for
+ * the task that needs them. `manual` is loaded only when the creator attaches
+ * it by hand. `private` never leaves the page.
+ */
+export const brainBlockUsages = ["core", "auto", "manual", "private"] as const;
+export type BrainBlockUsage = (typeof brainBlockUsages)[number];
+
+/** An imported grid, as it is stored. Ragged rows are padded on ingest so a
+ * row's nth cell always belongs to the nth column. */
+export interface BrainTable {
+  columns: string[];
+  rows: string[][];
+}
 
 /**
  * One section of the creator's brain, written by them.
@@ -275,6 +296,11 @@ export type BrainBlockKind = (typeof brainBlockKinds)[number];
  * working, the formats they trust, the rule they keep breaking. Free-form on
  * purpose, because a brain that shipped as a fixed form would be the same brain
  * for everybody, and the whole point is that it is theirs.
+ *
+ * `digest` is the one line that is always in the prompt, even for a block whose
+ * body never loads. It is what makes an unbounded brain compile into a bounded
+ * prompt: the model always knows the block exists and what it is for, and pays
+ * for the contents only when the task calls for them.
  */
 export const projectBrainBlocks = pgTable(
   "project_brain_blocks",
@@ -287,8 +313,21 @@ export const projectBrainBlocks = pgTable(
     kind: text("kind").$type<BrainBlockKind>().notNull().default("note"),
     body: text("body").notNull().default(""),
     items: jsonb("items").$type<string[]>().notNull().default([]),
-    /** Whether the AI reads it. Some of the brain is the creator thinking out
-     * loud, and a private block has to be able to stay out of every prompt. */
+    /** Rows for a `table` block. Null for every other kind. */
+    rows: jsonb("rows").$type<BrainTable | null>(),
+    /** One line: what this is and when it matters. Always in the prompt. */
+    digest: text("digest").notNull().default(""),
+    usage: text("usage").$type<BrainBlockUsage>().notNull().default("auto"),
+    /** Routing hints, and how the page groups sections. */
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    /** Where an imported block came from, in the creator's words. */
+    sourceLabel: text("source_label").notNull().default(""),
+    sourceUrl: text("source_url").notNull().default(""),
+    /** Total size of the block's contents, so the budget meter does not have to
+     * recompute it for every row on every render. */
+    charCount: integer("char_count").notNull().default(0),
+    /** @deprecated Superseded by `usage`; kept for one release so a rollback
+     * does not lose which blocks were private. Nothing reads it. */
     inContext: boolean("in_context").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -300,6 +339,132 @@ export const projectBrainBlocks = pgTable(
   },
   (t) => [
     index("project_brain_blocks_project_idx").on(t.projectId, t.sortOrder),
+  ],
+);
+
+/**
+ * A slice of a `doc` block.
+ *
+ * A pasted research document is worth keeping whole and worth never sending
+ * whole. Chunks are what the compiler actually selects from: the router picks
+ * the block, then the chunks that overlap the task are the ones that spend
+ * prompt budget.
+ */
+export const projectBrainChunks = pgTable(
+  "project_brain_chunks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockId: uuid("block_id")
+      .notNull()
+      .references(() => projectBrainBlocks.id, { onDelete: "cascade" }),
+    ord: integer("ord").notNull().default(0),
+    /** The heading this slice sat under, when the source had one. */
+    heading: text("heading").notNull().default(""),
+    text: text("text").notNull(),
+    charCount: integer("char_count").notNull().default(0),
+  },
+  (t) => [index("project_brain_chunks_block_idx").on(t.blockId, t.ord)],
+);
+
+/** The prompts a skill can apply to. One vocabulary, shared by the catalog, the
+ * creator's installed skills, and the compiler's budgets. */
+export const brainSurfaces = [
+  "ideate",
+  "hooks",
+  "script",
+  "caption",
+  "expand",
+  "chat",
+  "capture",
+] as const;
+export type BrainSurface = (typeof brainSurfaces)[number];
+
+/**
+ * A skill the creator has installed or written.
+ *
+ * A block states a fact; a skill states a procedure. "When you write a script
+ * for me, open on the turn and hold the reveal until the last five seconds" is
+ * not something the fixed fields can hold, and it is the half of the brain that
+ * changes what the output looks like rather than who it sounds like.
+ *
+ * Installing from the catalog copies the text rather than referencing it, so
+ * the creator owns their copy and a catalog edit never rewrites a brain behind
+ * someone's back. `catalogVersion` is what surfaces "update available", and
+ * `customized` is what makes that update ask first.
+ */
+export const projectSkills = pgTable(
+  "project_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** Null for a skill the creator wrote themselves. */
+    catalogSlug: text("catalog_slug"),
+    catalogVersion: integer("catalog_version"),
+    name: text("name").notNull(),
+    /** The line the router reads when deciding whether to load this. */
+    whenToUse: text("when_to_use").notNull().default(""),
+    instructions: text("instructions").notNull().default(""),
+    surfaces: jsonb("surfaces").$type<BrainSurface[]>().notNull().default([]),
+    enabled: boolean("enabled").notNull().default(true),
+    /** Set the first time the creator edits an installed skill. */
+    customized: boolean("customized").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("project_skills_project_idx").on(t.projectId, t.sortOrder),
+    // Installing the same catalog entry twice updates the copy rather than
+    // leaving two of it in the brain.
+    uniqueIndex("project_skills_catalog_unique").on(t.projectId, t.catalogSlug),
+  ],
+);
+
+/** A catalog entry is either a procedure to install as a skill, or a starting
+ * section to install as a context block. */
+export const catalogEntryKinds = ["skill", "context"] as const;
+export type CatalogEntryKind = (typeof catalogEntryKinds)[number];
+
+/**
+ * The skill catalog: what a creator can browse and install.
+ *
+ * In the database rather than in the repo so entries can be written, edited and
+ * published without a deploy. Seeded by migration so the shelf is never empty
+ * on a fresh install, and versioned so an improved entry can offer itself to
+ * the brains that already took a copy.
+ */
+export const skillCatalog = pgTable(
+  "skill_catalog",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull(),
+    version: integer("version").notNull().default(1),
+    kind: text("kind").$type<CatalogEntryKind>().notNull().default("skill"),
+    name: text("name").notNull(),
+    /** One line on the browse card. */
+    tagline: text("tagline").notNull().default(""),
+    whenToUse: text("when_to_use").notNull().default(""),
+    instructions: text("instructions").notNull().default(""),
+    surfaces: jsonb("surfaces").$type<BrainSurface[]>().notNull().default([]),
+    category: text("category").notNull().default(""),
+    published: boolean("published").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("skill_catalog_slug_unique").on(t.slug),
+    index("skill_catalog_browse_idx").on(t.published, t.sortOrder),
   ],
 );
 

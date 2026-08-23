@@ -8,9 +8,10 @@ import {
 import { recentTitles, spinReels } from "@/lib/brain/reels";
 import { formatsIn } from "@/lib/brain/formats";
 import { spinIdea } from "@/lib/brain/spin";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import { listContentItems } from "@/lib/db/content";
 import { listBrainBlocks } from "@/lib/db/project-brain";
+import { listPillars } from "@/lib/db/project-pillars";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
 import {
@@ -36,12 +37,13 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   await ensureUser(userId);
   const project = await getActiveProject(userId);
-  const context = await getProjectContextSafe(userId);
 
-  const [blocks, items] = await Promise.all([
+  const [blocks, pillarRows, items] = await Promise.all([
     listBrainBlocks(project.id),
+    listPillars(project.id),
     listContentItems(userId),
   ]);
+  const pillars = pillarRows.map((pillar) => pillar.name).filter(Boolean);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   // A creator can hold one reel still: "another one in this pillar".
@@ -49,8 +51,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     typeof body.pillar === "string" && body.pillar.trim()
       ? body.pillar.trim()
       : null;
-  const pillars = context.pillarNames;
-
   const combination = spinReels({
     pillars: heldPillar ? [heldPillar] : pillars,
     formats: formatsIn(blocks),
@@ -67,17 +67,27 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  // The reels are span first so the combination itself is the routing signal:
+  // a spin that landed on a pillar about pricing should pull in the pricing
+  // section, not whatever sits at the top of the brain.
+  const context = await getBrainContextSafe(userId, {
+    surface: "ideate",
+    task: [combination.pillar, combination.angle, combination.format]
+      .filter(Boolean)
+      .join("\n"),
+    signal: req.signal,
+  });
   try {
     const idea = await spinIdea(
       {
         combination,
-        context: context.block,
+        context: context.section,
         pillars,
         avoid: recentTitles(items.map((item) => item.title ?? "")),
       },
       req.signal,
     );
-    return Response.json({ idea });
+    return Response.json({ idea, used: context.used });
   } catch (error) {
     await refundCreditReservation(userId, reservation, "spin_failed");
     console.error("[brain/spin] failed", error);

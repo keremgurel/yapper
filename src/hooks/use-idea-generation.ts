@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { BrainUsed } from "@/lib/brain/context/types";
 import type { ContentBlock } from "@/lib/db/schema";
 import { parseSections } from "@/lib/ideas/expand-prompt";
 import { sectionsToBlocks } from "@/lib/ideas/expansion-patch";
@@ -29,6 +30,20 @@ export type GenApply = (fields: {
   script?: string;
 }) => void;
 
+/** The `used` payload every generate route now returns, guarded because it is
+ * a response body and an older deploy will not have sent one. */
+function readUsed(data: Record<string, unknown>): BrainUsed | null {
+  const used = data.used as Partial<BrainUsed> | undefined;
+  if (!used) return null;
+  const names = (value: unknown) =>
+    Array.isArray(value)
+      ? value.filter((name): name is string => typeof name === "string")
+      : [];
+  const skills = names(used.skills);
+  const context = names(used.context);
+  return skills.length || context.length ? { skills, context } : null;
+}
+
 async function postJson(path: string, body: unknown) {
   const res = await fetch(path, {
     method: "POST",
@@ -49,6 +64,12 @@ async function postJson(path: string, body: unknown) {
 export function useIdeaGeneration(source: GenSource, apply: GenApply) {
   const [generating, setGenerating] = useState<GenAction | null>(null);
   const [error, setError] = useState<GenError>(null);
+  // What the brain contributed to the last run, and which run it was, so the
+  // surface can put the line under the thing it applies to.
+  const [used, setUsed] = useState<{
+    action: GenAction;
+    used: BrainUsed;
+  } | null>(null);
 
   const kindFor = (
     res: Response,
@@ -64,6 +85,7 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
     if (generating || !source.title.trim()) return;
     setGenerating("idea");
     setError(null);
+    setUsed(null);
     try {
       const { res, data } = await postJson("/api/generate/idea", {
         topic: source.title,
@@ -74,6 +96,8 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
         setError({ action: "idea", kind: kindFor(res, data) });
         return;
       }
+      const readIdea = readUsed(data);
+      if (readIdea) setUsed({ action: "idea", used: readIdea });
       const hooks = data.hooks as string[] | undefined;
       const blocks = sectionsToBlocks(parseSections(data.sections));
       apply({
@@ -91,6 +115,7 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
     if (generating || !source.title.trim()) return;
     setGenerating("script");
     setError(null);
+    setUsed(null);
     try {
       const { res, data } = await postJson("/api/generate/script", {
         title: source.title,
@@ -102,6 +127,8 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
         setError({ action: "script", kind: kindFor(res, data) });
         return;
       }
+      const readScript = readUsed(data);
+      if (readScript) setUsed({ action: "script", used: readScript });
       apply({ script: data.script });
     } catch {
       setError({ action: "script", kind: "failed" });
@@ -110,5 +137,5 @@ export function useIdeaGeneration(source: GenSource, apply: GenApply) {
     }
   };
 
-  return { generating, error, runIdea, runScript };
+  return { generating, error, used, runIdea, runScript };
 }

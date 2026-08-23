@@ -1,6 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { invalidateProjectContext } from "@/lib/content/project-context-server";
+import { invalidateBrainContext } from "@/lib/brain/context/server";
 import { listPillars, replacePillars } from "@/lib/db/project-pillars";
 import { seedPillarsIfEmpty } from "@/lib/db/project-seed";
 import { getActiveProject, updateProject } from "@/lib/db/projects";
@@ -80,7 +80,7 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   // Both writes bump contextVersion, which already invalidates on read. This
   // drops the entry outright so the very next prompt on this warm instance
   // cannot serve the block the creator just edited away.
-  invalidateProjectContext(project.id);
+  invalidateBrainContext(project.id);
 
   return Response.json({ project, pillars });
 }

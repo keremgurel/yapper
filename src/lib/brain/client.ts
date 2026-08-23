@@ -1,6 +1,11 @@
 import type { AskMessage, AskReply, BlockSuggestion } from "@/lib/brain/ask";
 import type { SpunIdea } from "@/lib/brain/spin";
-import type { BrainBlockKind } from "@/lib/db/schema";
+import type { BrainUsed } from "@/lib/brain/context/types";
+import type {
+  BrainBlockKind,
+  BrainBlockUsage,
+  BrainTable,
+} from "@/lib/db/schema";
 
 /** One section of the brain, as the page sees it. */
 export interface BrainBlock {
@@ -9,13 +14,36 @@ export interface BrainBlock {
   kind: BrainBlockKind;
   body: string;
   items: string[];
-  inContext: boolean;
+  rows: BrainTable | null;
+  /** The one line that is always in the prompt. */
+  digest: string;
+  usage: BrainBlockUsage;
+  tags: string[];
+  sourceLabel: string;
+  sourceUrl: string;
+  /** Size of the contents, for the budget meter. Server-derived. */
+  charCount: number;
   sortOrder: number;
 }
 
 export type BrainBlockPatch = Partial<
-  Pick<BrainBlock, "title" | "kind" | "body" | "items" | "inContext">
+  Pick<
+    BrainBlock,
+    | "title"
+    | "kind"
+    | "body"
+    | "items"
+    | "rows"
+    | "digest"
+    | "usage"
+    | "tags"
+    | "sourceLabel"
+    | "sourceUrl"
+  >
 >;
+
+/** A section as it is created: a title is required, everything else optional. */
+export type NewBrainBlock = BrainBlockPatch & { title: string };
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`brain_api_${res.status}`);
@@ -29,9 +57,7 @@ export async function listBlocks(): Promise<BrainBlock[]> {
   return data.blocks;
 }
 
-export async function createBlock(
-  block: BrainBlockPatch & { title: string },
-): Promise<BrainBlock> {
+export async function createBlock(block: NewBrainBlock): Promise<BrainBlock> {
   const data = await json<{ block: BrainBlock }>(
     await fetch("/api/brain/blocks", {
       method: "POST",
@@ -76,16 +102,19 @@ export async function reorderBlocks(order: string[]): Promise<BrainBlock[]> {
   return data.blocks;
 }
 
-/** Pull the handle. `pillar` holds one reel still. */
-export async function spin(pillar?: string | null): Promise<SpunIdea> {
-  const data = await json<{ idea: SpunIdea }>(
+/** Pull the handle. `pillar` holds one reel still. `used` names what the brain
+ * contributed, so the card can say so. */
+export async function spin(
+  pillar?: string | null,
+): Promise<{ idea: SpunIdea; used: BrainUsed | null }> {
+  const data = await json<{ idea: SpunIdea; used?: BrainUsed }>(
     await fetch("/api/brain/spin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ pillar: pillar ?? null }),
     }),
   );
-  return data.idea;
+  return { idea: data.idea, used: data.used ?? null };
 }
 
 export async function ask(messages: AskMessage[]): Promise<AskReply> {
@@ -98,4 +127,4 @@ export async function ask(messages: AskMessage[]): Promise<AskReply> {
   );
 }
 
-export type { AskMessage, AskReply, BlockSuggestion, SpunIdea };
+export type { AskMessage, AskReply, BlockSuggestion, BrainUsed, SpunIdea };

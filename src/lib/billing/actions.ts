@@ -17,6 +17,7 @@ export const PAID_ACTIONS = {
   expand_idea: { credits: 2, label: "Idea expansion" },
   brainstorm: { credits: 1, label: "Idea brainstorm" },
   publish_caption: { credits: 1, label: "Publish copy" },
+  ingest_context: { credits: 1, label: "Context import" },
 } as const;
 
 export type PaidAction = keyof typeof PAID_ACTIONS;

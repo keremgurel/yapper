@@ -10,7 +10,7 @@ import {
   type ChatMessage,
   type ClipContext,
 } from "@/lib/content/brainstorm";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -51,8 +51,7 @@ export async function POST(req: NextRequest): Promise<Response> {
         12,
       )
     : [];
-  // Read server-side: a client must not be able to claim a different voice.
-  const context = await getProjectContextSafe(userId);
+  const messages = asMessages(body.messages);
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
@@ -69,17 +68,32 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  // Read server-side: a client must not be able to claim a different voice.
+  const context = await getBrainContextSafe(userId, {
+    surface: "ideate",
+    // The clip being riffed on plus what has just been said about it. The last
+    // turn matters more than the first, which is why only the tail is sent.
+    task: [clip.title, ...messages.slice(-3).map((message) => message.content)]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 2000),
+    signal: req.signal,
+  });
   try {
     const reply = await brainstorm(
       {
-        messages: asMessages(body.messages),
+        messages,
         clip,
         pillars: context.pillarNames.length ? context.pillarNames : pillars,
-        context: context.block,
+        context: context.section,
       },
       req.signal,
     );
-    return Response.json({ reply, balance: reservation.balance });
+    return Response.json({
+      reply,
+      balance: reservation.balance,
+      used: context.used,
+    });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "brainstorm_failed";
     await refundCreditReservation(userId, reservation, detail);

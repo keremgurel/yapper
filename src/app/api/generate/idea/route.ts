@@ -1,5 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import type { NextRequest } from "next/server";
 import { GENERATE_CREDITS } from "@/lib/db/constants";
 import {
@@ -48,7 +48,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     topic: str(body.topic, 500),
     sourceTitle: str(body.sourceTitle, 300),
     transcript: str(body.transcript, 8000),
-    context: (await getProjectContextSafe(userId)).block,
   };
   if (!input.topic && !input.sourceTitle && !input.transcript) {
     return Response.json(
@@ -62,6 +61,15 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const spendLimited = await guardProviderSpend(req, userId, "generate-idea");
   if (spendLimited) return spendLimited;
+
+  const brain = await getBrainContextSafe(userId, {
+    surface: "ideate",
+    task: [input.topic, input.sourceTitle, input.transcript?.slice(0, 1200)]
+      .filter(Boolean)
+      .join("\n"),
+    signal: req.signal,
+  });
+  input.context = brain.section;
 
   let idea;
   try {
@@ -88,5 +96,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     balance = await getBalance(userId);
   }
 
-  return Response.json({ ...idea, balance });
+  return Response.json({ ...idea, balance, used: brain.used });
 }

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
  * their head into a list. Editing a line in place rather than opening a form
  * keeps the block readable while it is being written.
  */
-export default function BrainListEditor({
+export default function ListEditor({
   items,
   placeholder,
   onChange,

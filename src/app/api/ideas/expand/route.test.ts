@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
-  getProjectContextSafe: vi.fn(),
+  getBrainContextSafe: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
   expandIdea: vi.fn(),
@@ -11,8 +11,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
-vi.mock("@/lib/content/project-context-server", () => ({
-  getProjectContextSafe: mocks.getProjectContextSafe,
+vi.mock("@/lib/brain/context/server", () => ({
+  getBrainContextSafe: mocks.getBrainContextSafe,
 }));
 vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderIngress: mocks.guardProviderIngress,
@@ -55,7 +55,7 @@ describe("POST /api/ideas/expand payload limits", () => {
     const response = await POST(request({ input: { transcript: {} } }));
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({ error: "no_input" });
-    expect(mocks.getProjectContextSafe).not.toHaveBeenCalled();
+    expect(mocks.getBrainContextSafe).not.toHaveBeenCalled();
     expect(mocks.guardProviderSpend).not.toHaveBeenCalled();
   });
 
@@ -94,9 +94,10 @@ describe("POST /api/ideas/expand payload limits", () => {
   });
 
   it("passes the request abort signal into expansion provider work", async () => {
-    mocks.getProjectContextSafe.mockResolvedValue({
-      block: "",
+    mocks.getBrainContextSafe.mockResolvedValue({
+      section: "",
       pillarNames: [],
+      used: { skills: [], context: [] },
     });
     mocks.guardProviderSpend.mockResolvedValue(null);
     mocks.expandIdea.mockResolvedValue({ title: "Idea", pillar: null });
@@ -107,7 +108,7 @@ describe("POST /api/ideas/expand payload limits", () => {
     expect(response.status).toBe(200);
     expect(mocks.expandIdea).toHaveBeenCalledWith(
       expect.objectContaining({ transcript: "A bounded idea" }),
-      expect.objectContaining({ block: "" }),
+      expect.objectContaining({ section: "" }),
       expect.any(AbortSignal),
     );
   });

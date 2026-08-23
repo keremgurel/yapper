@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import { hookPattern } from "@/lib/content/hook-patterns";
 import { GENERATE_CREDITS } from "@/lib/db/constants";
 import {
@@ -63,7 +63,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     blocks: sectionsToBlocks(parseSections(body.blocks)).slice(0, 8),
     originalNote: str(body.originalNote, 4000),
     patternId: requested,
-    context: (await getProjectContextSafe(userId)).block,
   };
   if (!input.title?.trim() && !input.originalNote?.trim()) {
     return Response.json(
@@ -77,6 +76,15 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const spendLimited = await guardProviderSpend(req, userId, "generate-hooks");
   if (spendLimited) return spendLimited;
+
+  // What the brain is being asked about, so routing can find the sections and
+  // skills that are actually about this idea rather than the top of the list.
+  const brain = await getBrainContextSafe(userId, {
+    surface: "hooks",
+    task: [input.title, input.originalNote].filter(Boolean).join("\n"),
+    signal: req.signal,
+  });
+  input.context = brain.section;
 
   let hooks;
   try {
@@ -101,5 +109,5 @@ export async function POST(req: NextRequest): Promise<Response> {
     balance = await getBalance(userId);
   }
 
-  return Response.json({ hooks, balance });
+  return Response.json({ hooks, balance, used: brain.used });
 }

@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import type {
   IdeaExpansion,
   IdeaExpansionSection,
@@ -9,15 +8,16 @@ import type {
 
 /** The creator's standing context, as the prompt builders consume it. */
 export interface PromptContext {
-  /** The compiled context block, "" when the creator has filled nothing in. */
-  block: string;
+  /** The compiled brain, wrapped and ready to append. "" when the creator has
+   * filled nothing in. */
+  section: string;
   /** Pillar names, used only to decide whether to emit the classify rule; the
    * names themselves already live in the block. */
   pillarNames: string[];
 }
 
 export const EMPTY_PROMPT_CONTEXT: PromptContext = {
-  block: "",
+  section: "",
   pillarNames: [],
 };
 
@@ -80,7 +80,7 @@ export function buildExpandMessages(
       : "") +
     "- Say plainly why this could land with THIS creator's audience.\n" +
     "- Output JSON and nothing else." +
-    projectContextSection(context.block);
+    context.section;
 
   const parts: string[] = [];
   if (type === "inspiration") {

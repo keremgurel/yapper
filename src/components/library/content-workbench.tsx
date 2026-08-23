@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import ScriptSection from "@/components/library/script-section";
+import ReadLine from "@/components/brain/recall/read-line";
 import HookList from "@/components/workbench/hook-list";
 import PlanningNotes from "@/components/workbench/planning-notes";
 import ShootRail from "@/components/workbench/shoot-rail";
@@ -35,7 +36,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
   const router = useRouter();
   const { item, loading, missing, saveState, update } = useContentItem(id);
 
-  const { generating, error, runIdea, runScript } = useIdeaGeneration(
+  const { generating, error, used, runIdea, runScript } = useIdeaGeneration(
     {
       title: item?.title ?? "",
       hooks: hookTexts(item?.hooks),
@@ -138,6 +139,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
             onGenerate={() => void runScript()}
             onChange={(script) => update({ script })}
           />
+          {used?.action === "script" && <ReadLine used={used.used} />}
 
           <PlanningNotes
             blocks={item.blocks}
@@ -148,6 +150,7 @@ export default function ContentWorkbench({ id }: { id: string }) {
             canGenerate={canGenerate}
             onGenerate={() => void runIdea()}
           />
+          {used?.action === "idea" && <ReadLine used={used.used} />}
         </div>
 
         <ShootRail

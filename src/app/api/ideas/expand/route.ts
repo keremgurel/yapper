@@ -5,7 +5,7 @@ import {
   refundCreditReservation,
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
-import { getProjectContextSafe } from "@/lib/content/project-context-server";
+import { getBrainContextSafe } from "@/lib/brain/context/server";
 import { expandIdea } from "@/lib/ideas/expand";
 import { parseExpandIdeaInput } from "@/lib/ideas/expand-input";
 import {
@@ -48,9 +48,6 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!input) {
     return Response.json({ error: "no_input" }, { status: 400 });
   }
-  // The creator's standing context is read server-side rather than trusted from
-  // the client, so a request cannot claim someone else's pillars or voice.
-  const context = await getProjectContextSafe(userId);
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
@@ -63,9 +60,29 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
+  // Read server-side rather than trusted from the client, so a request cannot
+  // claim someone else's pillars or voice. Loaded after the gates, so a request
+  // that will be refused never spends a provider call on routing.
+  const brain = await getBrainContextSafe(userId, {
+    surface: "expand",
+    task: [
+      input.source?.title,
+      input.transcript,
+      input.source?.summary,
+      input.source?.transcript?.slice(0, 1500),
+    ]
+      .filter(Boolean)
+      .join("\n"),
+    signal: req.signal,
+  });
+  const context = { section: brain.section, pillarNames: brain.pillarNames };
   try {
     const expansion = await expandIdea(input, context, req.signal);
-    return Response.json({ expansion, balance: reservation.balance });
+    return Response.json({
+      expansion,
+      balance: reservation.balance,
+      used: brain.used,
+    });
   } catch (e) {
     const detail = e instanceof Error ? e.message : "expand_failed";
     await refundCreditReservation(userId, reservation, detail);

@@ -137,7 +137,7 @@ describe("buildExpandMessages", () => {
 
   it("asks the model to classify into a pillar when the creator has some", () => {
     const { system } = buildExpandMessages({ transcript: "x" }, "original", {
-      block: "PILLARS:\n- Speaking\n- Mindset",
+      section: "\n\nPILLARS:\n- Speaking\n- Mindset",
       pillarNames: ["Speaking", "Mindset"],
     });
     expect(system).toContain("PILLARS list below");
@@ -152,7 +152,7 @@ describe("buildExpandMessages", () => {
 
   it("appends the standing context after the fixed instructions", () => {
     const { system } = buildExpandMessages({ transcript: "x" }, "original", {
-      block: "PROJECT: CELPIP Speaking",
+      section: "\n\nSTANDING CONTEXT\n\nPROJECT: CELPIP Speaking",
       pillarNames: [],
     });
     // Fixed instructions first keeps that prefix identical for every creator,

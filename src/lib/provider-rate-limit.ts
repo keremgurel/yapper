@@ -20,6 +20,8 @@ export type ProviderSpendEndpoint =
   | "generate-script"
   | "brain-ask"
   | "brain-spin"
+  | "brain-ingest"
+  | "brain-route"
   | "content-capture"
   | "content-brainstorm"
   | "ideas-expand"
@@ -50,6 +52,12 @@ const ENDPOINT_POLICIES: Record<
   "generate-script": { capacity: 3, refillPerSecond: 20 / HOUR },
   "brain-ask": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-spin": { capacity: 3, refillPerSecond: 12 / HOUR },
+  "brain-ingest": { capacity: 4, refillPerSecond: 20 / HOUR },
+  // Routing is infrastructure, not a feature: it rides along with a generation
+  // the creator already paid for, so the ceiling is set to catch a runaway loop
+  // rather than to ration the creator. Running out costs them nothing but a
+  // slightly blunter selection.
+  "brain-route": { capacity: 40, refillPerSecond: 400 / HOUR },
   "content-capture": { capacity: 3, refillPerSecond: 12 / HOUR },
   "content-brainstorm": { capacity: 3, refillPerSecond: 12 / HOUR },
   "ideas-expand": { capacity: 3, refillPerSecond: 12 / HOUR },
@@ -155,5 +163,43 @@ export async function guardProviderSpend(
         ? error
         : new RateLimitUnavailableError({ cause: error }),
     );
+  }
+}
+
+/**
+ * The limiter for context routing, which is not like the others.
+ *
+ * Every other provider call here is something the creator asked for, so its
+ * guard returns a 429 and the request stops. Routing is a call we make on their
+ * behalf inside a generation they already paid for, so it must not touch the
+ * shared `user:provider-spend` budget (spending their generation allowance on
+ * plumbing would be indefensible) and it must not be able to fail their
+ * request.
+ *
+ * So this consumes only its own scope and answers a question rather than
+ * returning a response: may we route. False means the caller uses the
+ * deterministic selection instead, which the creator will not notice.
+ */
+export async function guardRouterSpend(userId: string): Promise<boolean> {
+  try {
+    const decision = await consumeRateLimit(rateLimitUserSubject(userId), {
+      scope: "user:provider-spend:brain-route",
+      ...ENDPOINT_POLICIES["brain-route"],
+    });
+    recordRateLimitTelemetry({
+      outcome: decision.allowed ? "allowed" : "denied",
+      scope: "user:provider-spend:brain-route",
+      actor: "user",
+    });
+    return decision.allowed;
+  } catch {
+    // The limiter being unavailable is not a reason to skip a generation, and
+    // it is not a reason to make an unmetered provider call either.
+    recordRateLimitTelemetry({
+      outcome: "unavailable",
+      scope: "user:provider-spend:brain-route",
+      actor: "user",
+    });
+    return false;
   }
 }

@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import type { ContentBlock } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -10,7 +9,7 @@ interface ChatCompletionResponse {
 }
 
 export interface ScriptInput {
-  /** The creator's compiled standing context. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
   title?: string;
   hooks?: string[];
@@ -92,7 +91,7 @@ export async function generateScript(
         messages: [
           {
             role: "system",
-            content: SYSTEM + projectContextSection(input.context ?? ""),
+            content: SYSTEM + (input.context ?? ""),
           },
           {
             role: "user",

@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
 const PROVIDER_TIMEOUT_MS = 35_000;
@@ -35,7 +34,7 @@ export interface BrainstormInput {
   messages: ChatMessage[];
   clip: ClipContext;
   pillars?: string[];
-  /** The creator's compiled standing context. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
 }
 
@@ -95,7 +94,7 @@ export async function brainstorm(
     !input.context && input.pillars?.length
       ? `\n\nThe creator's content pillars: ${input.pillars.join(", ")}.`
       : "";
-  const system = SYSTEM + projectContextSection(input.context ?? "");
+  const system = SYSTEM + (input.context ?? "");
 
   const history = input.messages
     .slice(-12)

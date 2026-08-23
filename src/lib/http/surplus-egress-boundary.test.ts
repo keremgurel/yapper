@@ -6,6 +6,8 @@ const CALLERS = [
   "app/api/clean-transcript/route.ts",
   "app/api/place-overlays/route.ts",
   "lib/brain/ask.ts",
+  "lib/brain/context/select-model.ts",
+  "lib/brain/ingest.ts",
   "lib/brain/spin.ts",
   "lib/content/brainstorm.ts",
   "lib/content/capture.ts",

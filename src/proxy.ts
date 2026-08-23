@@ -16,6 +16,10 @@ const isNativeAuthHandoff = createRouteMatcher([
   "/studio/handoff",
 ]);
 const isProtectedApi = createRouteMatcher([
+  // The catalog admin. Behind the same session gate as everything else, and
+  // behind an id allowlist inside the handler, which answers 404 rather than
+  // 403 so it does not announce itself.
+  "/api/admin(.*)",
   "/api/billing(.*)",
   "/api/brain(.*)",
   "/api/clean-transcript",
@@ -78,6 +82,7 @@ export const config = {
   matcher: [
     // /studio itself is a static marketing page; authenticated tools are below it.
     "/studio/:path+",
+    "/api/admin/:path*",
     "/api/billing/:path*",
     "/api/brain/:path*",
     "/api/clean-transcript",

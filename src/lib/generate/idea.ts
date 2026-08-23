@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import { parseSections } from "@/lib/ideas/expand-prompt";
 import type { IdeaExpansionSection } from "@/lib/ideas/types";
 import { fetchBoundedJson } from "@/lib/http/outbound";
@@ -17,7 +16,7 @@ export interface GeneratedIdea {
 }
 
 export interface IdeaInput {
-  /** The creator's compiled standing context. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
   topic?: string;
   sourceTitle?: string;
@@ -106,7 +105,7 @@ export async function generateIdea(
         messages: [
           {
             role: "system",
-            content: SYSTEM + projectContextSection(input.context ?? ""),
+            content: SYSTEM + (input.context ?? ""),
           },
           {
             role: "user",

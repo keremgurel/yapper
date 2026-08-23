@@ -1,4 +1,3 @@
-import { projectContextSection } from "@/lib/content/project-context";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
 const PROVIDER_TIMEOUT_MS = 35_000;
@@ -30,7 +29,7 @@ export interface AskReply {
 
 export interface AskInput {
   messages: AskMessage[];
-  /** The creator's compiled standing context: their brain, as prompts see it. */
+  /** The creator's compiled brain, already wrapped and ready to append. */
   context?: string;
   pillars: string[];
 }
@@ -133,7 +132,7 @@ export async function askBrain(
         messages: [
           {
             role: "system",
-            content: SYSTEM + projectContextSection(input.context ?? ""),
+            content: SYSTEM + (input.context ?? ""),
           },
           ...history,
         ],

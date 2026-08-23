@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   canUsePremium: vi.fn(),
   ensureUser: vi.fn(),
   getBalance: vi.fn(),
-  getProjectContextSafe: vi.fn(),
+  getBrainContextSafe: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
 }));
@@ -18,8 +18,8 @@ vi.mock("@/lib/db/credits", () => ({
   getBalance: mocks.getBalance,
   InsufficientCreditsError: class extends Error {},
 }));
-vi.mock("@/lib/content/project-context-server", () => ({
-  getProjectContextSafe: mocks.getProjectContextSafe,
+vi.mock("@/lib/brain/context/server", () => ({
+  getBrainContextSafe: mocks.getBrainContextSafe,
 }));
 vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderIngress: mocks.guardProviderIngress,
@@ -35,7 +35,11 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.canUsePremium.mockResolvedValue(true);
   mocks.getBalance.mockResolvedValue(100);
-  mocks.getProjectContextSafe.mockResolvedValue({ block: {} });
+  mocks.getBrainContextSafe.mockResolvedValue({
+    section: "",
+    pillarNames: [],
+    used: { skills: [], context: [] },
+  });
   mocks.guardProviderIngress.mockResolvedValue(null);
   mocks.guardProviderSpend.mockResolvedValue(null);
 });

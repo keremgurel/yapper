@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
+import { Section } from "@/components/studio-ui";
 import { loadItems } from "@/lib/inspiration/store";
 import type { InspirationItem } from "@/lib/inspiration/types";
 
@@ -15,7 +16,7 @@ import type { InspirationItem } from "@/lib/inspiration/types";
  * Inspiration page, so there is one place a swipe file is kept rather than two
  * that drift.
  */
-export default function BrainInspirationCard() {
+export default function InspirationCard() {
   const [items, setItems] = useState<InspirationItem[] | null>(null);
 
   useEffect(() => {
@@ -31,19 +32,17 @@ export default function BrainInspirationCard() {
     .slice(0, 8);
 
   return (
-    <section className="sg-card space-y-3 p-4 sm:p-5">
-      <header className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold tracking-wide uppercase">
-          Content I like
-        </h2>
+    <Section
+      title="Content I like"
+      action={
         <Link
           href="/studio/inspiration"
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs no-underline"
         >
           Open swipe file <ArrowUpRight className="h-3 w-3" />
         </Link>
-      </header>
-
+      }
+    >
       {items === null ? null : saved.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           Nothing saved yet. Paste a link you wish you had made on the
@@ -72,6 +71,6 @@ export default function BrainInspirationCard() {
           ))}
         </ul>
       )}
-    </section>
+    </Section>
   );
 }
