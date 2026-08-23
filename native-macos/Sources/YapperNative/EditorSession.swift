@@ -112,8 +112,10 @@ final class EditorSession: ObservableObject {
     @Published var dictionarySuggestion: CaptionCorrection?
     /// Where the AI overlay placement pass has got to.
     @Published private(set) var overlayPlacement: OverlayPlacementStatus = .idle
-    /// Caption cards the styling controls act on when Apply-to-all is off.
-    @Published private(set) var selectedCaptionIDs: Set<UUID> = []
+    /// Caption selection has its own publisher. A click in a caption row must
+    /// not invalidate every view observing this session.
+    let captionSelection = CaptionSelectionState()
+    var selectedCaptionIDs: Set<UUID> { captionSelection.ids }
     /// The last card picked in the caption list, which is what a shift-click
     /// there reaches back to.
     var captionSelectionAnchor: UUID?
@@ -780,7 +782,7 @@ final class EditorSession: ObservableObject {
         // Captions were left out of this, so picking a text layer left the
         // caption still selected: both drew handles on the canvas, and it was
         // anyone's guess which one a drag would move.
-        selectedCaptionIDs = []
+        captionSelection.set([])
         // Picking anything else puts the picture back down. Two things drawing
         // handles on the canvas at once is how a drag becomes a guess.
         isVideoFrameSelected = false
@@ -2409,10 +2411,13 @@ final class EditorSession: ObservableObject {
     }
 
     func setSelectedCaptionIDs(_ ids: Set<UUID>) {
-        selectedCaptionIDs = ids
+        captionSelection.set(ids)
         guard !ids.isEmpty else { return }
-        selectedTextLayerID = nil
-        selectedOverlayID = nil
+        // @Published emits even when assigned the same value. Avoid turning a
+        // caption-only selection into a session-wide redraw by repeatedly
+        // writing nil into the other canvas selections.
+        if selectedTextLayerID != nil { selectedTextLayerID = nil }
+        if selectedOverlayID != nil { selectedOverlayID = nil }
     }
 
     func scheduleVisualCommit(
@@ -3170,7 +3175,7 @@ final class EditorSession: ObservableObject {
         selectedTextLayerID = state.selectedTextLayerID
         selectedAudioLayerID = state.selectedAudioLayerID
         selectedOverlayID = state.selectedOverlayID
-        selectedCaptionIDs = state.selectedCaptionIDs
+        captionSelection.set(state.selectedCaptionIDs)
         timelineSelection = state.timelineSelection
         mediaSelection = state.mediaSelection
         isVideoFrameSelected = state.isVideoFrameSelected

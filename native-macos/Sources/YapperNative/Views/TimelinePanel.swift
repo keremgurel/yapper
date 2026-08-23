@@ -439,6 +439,11 @@ struct TimelineContent: View {
                     rowY: captionRowY,
                     selected: isSelected(.caption(cue.id))
                 )
+                    // The icon and label are one timeline item, not separate
+                    // focus targets. At fit zoom a real project has every
+                    // caption on screen, so exposing both children doubled an
+                    // already large accessibility/focus tree.
+                    .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Caption: \(cue.text)")
                     .zIndex(3)
             }

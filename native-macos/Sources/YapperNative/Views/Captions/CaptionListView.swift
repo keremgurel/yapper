@@ -4,10 +4,17 @@ import SwiftUI
 /// creator is restyling is always the card on screen.
 struct CaptionListView: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var captionSelection: CaptionSelectionState
     let onSeek: (Double) -> Void
     /// The row the caret is in. Driven by the arrow keys and by the edits that
     /// split or merge rows, so editing never loses its place.
     @State private var focusedCaptionID: UUID?
+
+    init(session: EditorSession, onSeek: @escaping (Double) -> Void) {
+        self.session = session
+        _captionSelection = ObservedObject(wrappedValue: session.captionSelection)
+        self.onSeek = onSeek
+    }
 
     private var captions: [ProjectCaption] { session.captions }
     /// What every card says right now, worked out in one pass rather than once
@@ -86,36 +93,33 @@ struct CaptionListView: View {
         // transcript brings it straight back.
         let isEmptied = text.trimmingCharacters(in: .whitespaces).isEmpty
         return HStack(spacing: 8) {
-            Button {
-                // The number is the multi-select handle, so a plain click on it
-                // picks the card out rather than replacing the run.
-                pickAndSeek(caption, toggling: true)
-            } label: {
-                Text("\(number)")
-                    .font(.studioCaption)
-                    .monospacedDigit()
-                    .foregroundStyle(isSelected ? Color.yapperOrange : .secondary)
-                    // Wide enough for a three figure card and never wrapped: at
-                    // twenty points the hundredth caption broke across two
-                    // lines and took the row's height with it.
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                    .frame(width: 26, alignment: .trailing)
-            }
-            .buttonStyle(.studioPlain)
-        .clickableCursor()
-            .help("Select and jump here. Click several to restyle or merge them together.")
+            Text("\(number)")
+                .font(.studioCaption)
+                .monospacedDigit()
+                .foregroundStyle(isSelected ? Color.yapperOrange : .secondary)
+                // Wide enough for a three figure card and never wrapped: at
+                // twenty points the hundredth caption broke across two lines
+                // and took the row's height with it.
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .frame(width: 26, height: 24, alignment: .trailing)
+                .contentShape(Rectangle())
+                // A SwiftUI Button brings a focus responder, accessibility
+                // attachment and cursor-region NSView with it. There were
+                // three of those per visible caption row. This is a pointer
+                // handle, while the row exposes the semantic action below.
+                .highPriorityGesture(TapGesture().onEnded {
+                    pickAndSeek(caption, toggling: true)
+                })
+                .accessibilityHidden(true)
 
-            Button {
-                seek(to: caption)
-            } label: {
-                Image(systemName: "play.circle")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.studioPlain)
-            .clickableCursor()
-            .help("Jump the playhead here")
+            Image(systemName: "play.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 24)
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded { seek(to: caption) })
+                .accessibilityHidden(true)
 
             CaptionTextField(
                 text: Binding(
@@ -156,19 +160,17 @@ struct CaptionListView: View {
                 onStep: { step in step < 0 ? focusPrevious(of: caption.id) : focusNext(of: caption.id) }
             )
 
-            Button {
-                Task { await session.removeCaption(caption.id) }
-            } label: {
-                Image(systemName: "trash")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.studioPlain)
-        .clickableCursor()
-            .help("Delete caption")
+            Image(systemName: "trash")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, height: 24)
+                .contentShape(Rectangle())
+                .highPriorityGesture(TapGesture().onEnded {
+                    Task { await session.removeCaption(caption.id) }
+                })
+                .accessibilityHidden(true)
         }
         .opacity(isEmptied ? 0.45 : 1)
-        .help(isEmptied ? "Every word on this card is cut from the transcript" : "")
         .padding(.horizontal, 8)
         .frame(height: 28)
         .background(isSelected ? Color.yapperOrange.opacity(0.12) : Color.clear)
@@ -182,8 +184,14 @@ struct CaptionListView: View {
         // selects the card and seeks to it, so the whole row is a target.
         .contentShape(Rectangle())
         .onTapGesture { pickAndSeek(caption) }
-        .contextMenu {
-            PropertiesMenuItems(session: session, item: .caption(caption.id))
+        .accessibilityAction(named: "Select and jump to caption \(number)") {
+            pickAndSeek(caption)
+        }
+        .accessibilityAction(named: "Play from caption \(number)") {
+            seek(to: caption)
+        }
+        .accessibilityAction(named: "Delete caption \(number)") {
+            Task { await session.removeCaption(caption.id) }
         }
     }
 

@@ -135,7 +135,7 @@ extension EditorSession {
         scheduleVisualCommit(
             successStatus: value == CaptionWordsPerCard.auto
                 ? "Captions grouped by phrase"
-                : "Captions set to \(value) word\(value == 1 ? "" : "s") per card"
+                : "Captions set to \(value) word\(value == 1 ? "" : "s") per full card"
         ) { [self] in
             updateProject { $0.setCaptionWordsPerCard(value) }
             setSelectedCaptionIDs([])

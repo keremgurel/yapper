@@ -10,6 +10,12 @@ import SwiftUI
 /// which is what lets somebody learn the panel once instead of per tab.
 struct CaptionInspectorView: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var captionSelection: CaptionSelectionState
+
+    init(session: EditorSession) {
+        self.session = session
+        _captionSelection = ObservedObject(wrappedValue: session.captionSelection)
+    }
 
     private var style: TextStyle { session.editingCaptionStyle }
     private var noTarget: Bool { session.captionStylingHasNoTarget }
@@ -70,7 +76,9 @@ struct CaptionInspectorView: View {
                     onSelect: session.setCaptionWordsPerCard
                 )
             }
-            .help("How many spoken words each card holds. Changing it rebuilds every card.")
+            .help(
+                "Full cards hold exactly this many spoken words. Only the final card at the end of the video, a source change, or an edit cut can be shorter. Changing it rebuilds every card."
+            )
 
             Group {
                 InspectorRow("Look") {

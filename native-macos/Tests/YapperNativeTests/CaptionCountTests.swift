@@ -24,12 +24,12 @@ import Testing
         #expect(sizes(13, perCard: 5).count { $0 == 5 } == 2)
     }
 
-    /// One word over is one word alone on screen, so the run is divided some
-    /// other way.
-    @Test func aSingleLeftoverIsNeverLeftAlone() {
-        #expect(sizes(7, perCard: 3).contains(1) == false)
-        #expect(sizes(11, perCard: 5).contains(1) == false)
-        #expect(sizes(7, perCard: 3).reduce(0, +) == 7)
+    /// The selected count is literal. A tail may be short, but earlier cards
+    /// are never silently redistributed to disguise it.
+    @Test func onlyTheFinalCardCanBeShort() {
+        #expect(sizes(7, perCard: 3) == [3, 3, 1])
+        #expect(sizes(11, perCard: 5) == [5, 5, 1])
+        #expect(sizes(17, perCard: 8) == [8, 8, 1])
     }
 
     /// A run shorter than the count is what it is: there are no other words to
@@ -50,19 +50,9 @@ import Testing
         }
     }
 
-    /// Between divisions that cost the same, the one that does not leave a
-    /// card ending on "the" wins. It never buys its way out of the count: that
-    /// is what the flat cost on a card short of full is for.
-    @Test func anEqualDivisionAvoidsEndingOnAClingingWord() {
+    @Test func grammarNeverOverridesTheExplicitCount() {
         let words = ["I'll", "do", "the", "full", "cost", "versus", "revenue"]
-
-        let sizes = CaptionCardSizes.sizes(for: words, perCard: 3)
-
-        var cursor = 0
-        for size in sizes.dropLast() {
-            cursor += size
-            #expect(words[cursor - 1] != "the")
-        }
+        #expect(CaptionCardSizes.sizes(for: words, perCard: 3) == [3, 3, 1])
     }
 }
 
@@ -109,7 +99,7 @@ import Testing
         #expect(counts(cards) == [5, 5])
     }
 
-    @Test func aRealStopBreaksTheRun() {
+    @Test func aSpokenPauseDoesNotOverrideTheExplicitCount() {
         var spoken = words(4)
         // A second of silence after the fourth word, then four more.
         var later = words(4)
@@ -123,7 +113,7 @@ import Testing
 
         let cards = CaptionGenerator.captions(from: spoken, wordsPerCard: 3)
 
-        #expect(counts(cards) == [2, 2, 2, 2])
+        #expect(counts(cards) == [3, 3, 2])
     }
 
     /// A card laid across a cut is anchored to seconds that are not in the edit

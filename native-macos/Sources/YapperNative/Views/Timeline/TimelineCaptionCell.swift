@@ -71,7 +71,6 @@ struct TimelineCaptionCell: View {
             .overlay(alignment: .trailing) {
                 if selected { trimHandle(edge: .trailing) }
             }
-            .help("Drag to change when this caption shows. Its words are fixed once you move it.")
             .offset(
                 x: startX + (selected
                     ? TimelineTrimGeometry.x(

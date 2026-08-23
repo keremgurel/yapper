@@ -30,10 +30,6 @@ enum CaptionGenerator {
     /// An edited gap this long reads as a real pause, so the card breaks there
     /// whether or not it is full.
     static let pauseSeconds = 0.48
-    /// A counted card holds its count through the small gaps between phrases,
-    /// so the break has to be a real stop rather than a breath.
-    static let countedPauseSeconds = 0.7
-
     /// Transcriber word starts lag the true onset slightly, so a card anchored
     /// exactly at its first word reads late. Each card takes this much of a
     /// head start, never crossing the previous word.
@@ -78,8 +74,8 @@ enum CaptionGenerator {
             group.removeAll(keepingCapacity: true)
         }
 
-        /// Cuts a whole run into cards of no more than the count, as evenly as
-        /// the run divides. See CaptionCardSizes.
+        /// Cuts a whole run into literal fixed-size cards. Only the final card
+        /// before a structural boundary can be short.
         func flushRun() {
             guard !run.isEmpty else { return }
             var index = 0
@@ -100,9 +96,10 @@ enum CaptionGenerator {
                 group.append(word)
                 continue
             }
-            // A counted card is cut from a run, and a run ends only where it
-            // has to: another recording, a real stop, or a cut through the
-            // middle. Anything else and the count stops meaning anything.
+            // A counted card is cut from a run, and a run ends only where the
+            // model cannot represent one card: another recording or a cut.
+            // A spoken pause is not structural and must not silently override
+            // the explicit word count the creator picked.
             if let last = run.last, endsRun(before: word, after: last) { flushRun() }
             run.append(word)
         }
@@ -114,8 +111,7 @@ enum CaptionGenerator {
     /// Where a counted run has to end, whatever the count says.
     private static func endsRun(before word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
         if word.mediaID != last.mediaID { return true }
-        if crossesACut(word, after: last) { return true }
-        return word.timelineStart - last.timelineEnd > countedPauseSeconds
+        return crossesACut(word, after: last)
     }
 
     /// Whether the join between two words is a cut.
@@ -160,8 +156,7 @@ enum CaptionGenerator {
     ) -> Bool {
         if word.mediaID != last.mediaID { return true }
         if crossesACut(word, after: last) { return true }
-        let pause = wordsPerCard > 0 ? countedPauseSeconds : pauseSeconds
-        if word.timelineStart - last.timelineEnd > pause { return true }
+        if word.timelineStart - last.timelineEnd > pauseSeconds { return true }
         if wordsPerCard > 0 {
             return breaksFixedCard(group: group, next: word, wordsPerCard: wordsPerCard)
         }

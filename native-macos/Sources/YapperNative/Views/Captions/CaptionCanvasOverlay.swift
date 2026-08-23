@@ -5,12 +5,19 @@ import SwiftUI
 /// selected, dragged and resized right there.
 struct CaptionCanvasOverlay: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var captionSelection: CaptionSelectionState
     /// Watches which card is on screen rather than the clock: see
     /// OverlayCanvasLayer for why.
     @ObservedObject var cursor: PlaybackCursor
     /// Owned here rather than in the card so the lines can span the whole
     /// stage instead of being clipped to the card being dragged.
     @StateObject private var guides = CanvasGuidePresenter()
+
+    init(session: EditorSession, cursor: PlaybackCursor) {
+        self.session = session
+        _captionSelection = ObservedObject(wrappedValue: session.captionSelection)
+        self.cursor = cursor
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -282,4 +289,3 @@ private struct CaptionCanvasCard: View {
             )
     }
 }
-

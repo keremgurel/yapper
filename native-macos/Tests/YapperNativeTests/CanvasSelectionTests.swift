@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import Testing
 @testable import YapperNative
@@ -72,6 +73,22 @@ struct CanvasSelectionTests {
         session.setSelectedCaptionIDs([])
 
         #expect(session.selectedTextLayerID == layerID)
+    }
+
+    @Test func aCaptionOnlyClickDoesNotPublishTheWholeEditorSession() {
+        let session = EditorSession()
+        var sessionChanges = 0
+        var selectionChanges = 0
+        let sessionObservation = session.objectWillChange.sink { sessionChanges += 1 }
+        let selectionObservation = session.captionSelection.objectWillChange.sink {
+            selectionChanges += 1
+        }
+
+        session.selectCaption(UUID())
+
+        #expect(sessionChanges == 0)
+        #expect(selectionChanges == 1)
+        withExtendedLifetime((sessionObservation, selectionObservation)) {}
     }
 }
 

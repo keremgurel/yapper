@@ -196,9 +196,8 @@ import Testing
         // three-words default.
         let legacy = project(wordsPerCard: nil)
         #expect(legacy.captions == nil)
-        // Four words at three a card divides as two and two rather than
-        // leaving one on screen by itself. See `CaptionCardSizes`.
-        #expect(legacy.captionCues.map(\.text) == ["one two", "three four"])
+        // The historical three-word default remains literal too.
+        #expect(legacy.captionCues.map(\.text) == ["one two three", "four"])
     }
 
     @Test func exportStyleFollowsThePerCaptionOverride() {
