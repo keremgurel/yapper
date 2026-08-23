@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct AppShellView: View {
@@ -5,6 +6,7 @@ struct AppShellView: View {
     // session here made every selection, caption edit and background waveform
     // update rebuild the sidebar and cross the WKWebView bridge as well.
     let session: EditorSession
+    @ObservedObject private var previewPresentation: PreviewPresentationState
     @AppStorage("studioSidebarExpanded") private var sidebarExpanded = true
     @AppStorage("studioDestination") private var destinationRaw = StudioDestination.home.rawValue
     @AppStorage("studioColorScheme") private var themeRaw = StudioTheme.dark.rawValue
@@ -20,6 +22,13 @@ struct AppShellView: View {
     @State private var parkedWebDestination = StudioDestination.home
     @ObservedObject private var auth = StudioAuth.shared
     @ObservedObject private var handoff = NativeAuthHandoff.shared
+
+    init(session: EditorSession) {
+        self.session = session
+        _previewPresentation = ObservedObject(
+            wrappedValue: session.previewPresentation
+        )
+    }
 
     /// The chrome is for people who are in. A signed-out window shows one door,
     /// not eleven locked ones.
@@ -50,6 +59,34 @@ struct AppShellView: View {
     }
 
     var body: some View {
+        studioShell
+            .background {
+                PreviewFullScreenWindowBridge(
+                    session: session,
+                    requested: previewPresentation.isFullScreen,
+                    onWindowExited: previewPresentation.exitFullScreen
+                )
+            }
+            .task {
+                await auth.refresh()
+                if auth.isSignedIn == false { auth.startWatching() }
+            }
+            .onChange(of: auth.isSignedIn) { _, signedIn in
+                // Someone signing out mid-session lands on the door, and the watcher
+                // picks them back up when they come through it.
+                if signedIn == false { auth.startWatching() } else { auth.stopWatching() }
+            }
+            .onAppear {
+                // A launch straight into a web tab parks on that tab, not on Home.
+                if !destination.isNative { parkedWebDestination = destination }
+                guard editorLayoutDefaultsVersion < 1 else { return }
+                editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
+                editorTallWorkbenchFraction = 0
+                editorLayoutDefaultsVersion = 1
+            }
+    }
+
+    private var studioShell: some View {
         HStack(spacing: 0) {
             if isSignedIn {
                 StudioSidebar(
@@ -136,23 +173,6 @@ struct AppShellView: View {
             .minFrame()
         }
         .background(Color.editorBackground)
-        .task {
-            await auth.refresh()
-            if auth.isSignedIn == false { auth.startWatching() }
-        }
-        .onChange(of: auth.isSignedIn) { _, signedIn in
-            // Someone signing out mid-session lands on the door, and the watcher
-            // picks them back up when they come through it.
-            if signedIn == false { auth.startWatching() } else { auth.stopWatching() }
-        }
-        .onAppear {
-            // A launch straight into a web tab parks on that tab, not on Home.
-            if !destination.isNative { parkedWebDestination = destination }
-            guard editorLayoutDefaultsVersion < 1 else { return }
-            editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
-            editorTallWorkbenchFraction = 0
-            editorLayoutDefaultsVersion = 1
-        }
     }
 
     private func navigate(_ next: StudioDestination) {
@@ -507,5 +527,108 @@ private struct NativeThemeSwitcher: View {
 private extension View {
     func minFrame() -> some View {
         frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+    }
+}
+
+/// Presents the existing player in a borderless window covering the current
+/// display. This avoids rebuilding the editor and avoids macOS moving the
+/// entire Studio window into another Space just to watch the result.
+private struct PreviewFullScreenWindowBridge: NSViewRepresentable {
+    let session: EditorSession
+    let requested: Bool
+    let onWindowExited: @MainActor () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(session: session, onWindowExited: onWindowExited)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        NSView(frame: .zero)
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        DispatchQueue.main.async { [weak view, weak coordinator = context.coordinator] in
+            guard let view, let coordinator else { return }
+            coordinator.setPresented(requested, from: view.window)
+        }
+    }
+
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        coordinator.detach()
+    }
+
+    @MainActor
+    final class Coordinator {
+        private let session: EditorSession
+        private let onWindowExited: @MainActor () -> Void
+        private weak var presentingWindow: NSWindow?
+        private var presentationWindow: NSWindow?
+        private var escapeMonitor: Any?
+
+        init(
+            session: EditorSession,
+            onWindowExited: @escaping @MainActor () -> Void
+        ) {
+            self.session = session
+            self.onWindowExited = onWindowExited
+        }
+
+        func setPresented(_ presented: Bool, from sourceWindow: NSWindow?) {
+            if presented {
+                guard presentationWindow == nil, let sourceWindow else { return }
+                present(from: sourceWindow)
+            } else {
+                dismiss()
+            }
+        }
+
+        private func present(from sourceWindow: NSWindow) {
+            guard let screen = sourceWindow.screen ?? NSScreen.main else {
+                onWindowExited()
+                return
+            }
+            presentingWindow = sourceWindow
+
+            let window = NSWindow(
+                contentRect: screen.frame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false,
+                screen: screen
+            )
+            window.backgroundColor = .black
+            window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            window.hasShadow = false
+            window.isMovable = false
+            window.level = .mainMenu + 1
+            window.contentViewController = NSHostingController(
+                rootView: PlayerPanel(session: session, layoutMode: .tallPreview)
+            )
+            window.setFrame(screen.frame, display: true)
+            presentationWindow = window
+
+            escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
+                [weak self, weak window] event in
+                guard event.window === window, event.keyCode == 53 else { return event }
+                self?.onWindowExited()
+                return nil
+            }
+            window.makeKeyAndOrderFront(nil)
+        }
+
+        private func dismiss() {
+            guard let window = presentationWindow else { return }
+            if let escapeMonitor { NSEvent.removeMonitor(escapeMonitor) }
+            escapeMonitor = nil
+            presentationWindow = nil
+            window.orderOut(nil)
+            window.contentViewController = nil
+            presentingWindow?.makeKeyAndOrderFront(nil)
+            presentingWindow = nil
+        }
+
+        func detach() {
+            dismiss()
+        }
     }
 }

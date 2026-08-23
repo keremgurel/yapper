@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PlayerPanel: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var previewPresentation: PreviewPresentationState
     let layoutMode: EditorLayoutMode
     /// How far the stage is pulled back from the panel. View state on purpose:
     /// it is how you are looking at the project, not part of it, and it has no
@@ -10,6 +11,14 @@ struct PlayerPanel: View {
     /// Where a pinch started, so its factor is applied once rather than
     /// compounding on every step of the gesture.
     @State private var zoomAtPinchStart: PreviewZoom?
+
+    init(session: EditorSession, layoutMode: EditorLayoutMode) {
+        self.session = session
+        self.layoutMode = layoutMode
+        _previewPresentation = ObservedObject(
+            wrappedValue: session.previewPresentation
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -131,9 +140,14 @@ struct PlayerPanel: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            TransportBar(session: session, zoom: $zoom)
+            TransportBar(
+                session: session,
+                previewPresentation: previewPresentation,
+                zoom: $zoom
+            )
         }
         .background(Color.previewWorkspaceBackground)
+        .onExitCommand { previewPresentation.exitFullScreen() }
     }
 
     /// A trackpad pinch, which is what anyone coming from another editor tries
@@ -524,6 +538,7 @@ private struct DashedGuideLine: View {
 
 private struct TransportBar: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject var previewPresentation: PreviewPresentationState
     @Binding var zoom: PreviewZoom
 
     var body: some View {
@@ -545,6 +560,36 @@ private struct TransportBar: View {
             Spacer()
 
             PreviewZoomControl(zoom: $zoom)
+
+            Button {
+                previewPresentation.toggleFullScreen()
+            } label: {
+                Image(
+                    systemName: previewPresentation.isFullScreen
+                        ? "arrow.down.right.and.arrow.up.left"
+                        : "arrow.up.left.and.arrow.down.right"
+                )
+                .font(.system(size: 11, weight: .semibold))
+                .frame(width: 28, height: 28)
+                .contentShape(Rectangle())
+                .accessibilityLabel(
+                    previewPresentation.isFullScreen
+                        ? "Exit full screen"
+                        : "Watch preview full screen"
+                )
+            }
+            .buttonStyle(.studioPlain)
+            .background(Color.studioFaintFill)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.studioLine, lineWidth: 1)
+            }
+            .help(
+                previewPresentation.isFullScreen
+                    ? "Exit full screen"
+                    : "Watch preview full screen"
+            )
 
             Menu {
                 ForEach(ProjectAspectRatio.allCases) { aspectRatio in

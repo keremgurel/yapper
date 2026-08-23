@@ -140,6 +140,9 @@ final class EditorSession: ObservableObject {
     /// Publishes once after a timeline scrub ends, never while it moves or
     /// while video plays. Transcript and caption panels observe it directly.
     let timelineSeekReveal = TimelineSeekRevealState()
+    /// Window-only preview presentation state, isolated so fullscreen does not
+    /// publish the entire editor session or rebuild the composition.
+    let previewPresentation = PreviewPresentationState()
     /// Live drag feedback, published on its own for the same reason as the
     /// clock: a drag updates on every mouse move, and only the timeline tracks
     /// have any use for it.
