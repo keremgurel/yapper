@@ -137,6 +137,9 @@ final class EditorSession: ObservableObject {
     let playbackClock = PlaybackClock()
     /// What the playhead is over, published only when the answer changes.
     let playbackCursor = PlaybackCursor()
+    /// Publishes once after a timeline scrub ends, never while it moves or
+    /// while video plays. Transcript and caption panels observe it directly.
+    let timelineSeekReveal = TimelineSeekRevealState()
     /// Live drag feedback, published on its own for the same reason as the
     /// clock: a drag updates on every mouse move, and only the timeline tracks
     /// have any use for it.
@@ -1006,7 +1009,9 @@ final class EditorSession: ObservableObject {
         let shouldResume = resumePlaybackAfterScrub
         isScrubbing = false
         resumePlaybackAfterScrub = false
-        seek(to: time, exact: true, playAfter: shouldResume)
+        let target = min(max(0, time), duration)
+        seek(to: target, exact: true, playAfter: shouldResume)
+        timelineSeekReveal.reveal(at: target)
     }
 
     private func beginScrubbing() {

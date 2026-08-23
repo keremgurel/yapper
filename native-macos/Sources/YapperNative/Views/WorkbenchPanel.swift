@@ -260,7 +260,11 @@ struct WorkbenchPanel: View {
         case .quick:
             QuickEditWorkbench(session: session)
         case .transcript:
-            TranscriptWorkbench(session: session, cursor: session.playbackCursor)
+            TranscriptWorkbench(
+                session: session,
+                cursor: session.playbackCursor,
+                seekReveal: session.timelineSeekReveal
+            )
         case .video:
             VideoWorkbench(session: session)
         case .audio:
@@ -910,6 +914,9 @@ private struct TranscriptWorkbench: View {
     /// playhead crosses into the next word. Deriving it from the raw time here
     /// re-laid-out every token on every frame of playback.
     @ObservedObject var cursor: PlaybackCursor
+    /// A completed timeline seek, published separately so normal playback does
+    /// not make the transcript chase the playhead.
+    @ObservedObject var seekReveal: TimelineSeekRevealState
     @State private var selection = TranscriptWordSelection()
     @State private var isApplyingSelection = false
     /// Where the flow sits inside the marquee's space, and how wide it is. Two
@@ -1055,103 +1062,120 @@ private struct TranscriptWorkbench: View {
                 // scroller, the transcript went on wrapping to the width the
                 // panel used to have and left the rest of the pane empty.
                 GeometryReader { geometry in
-                    ZStack(alignment: .bottom) {
-                        ScrollView {
-                            // Rows, not a flow. The wrapping is worked out from
-                            // token widths before any view exists, which lets
-                            // the rows be lazy: a transcript of any length only
-                            // builds the lines you can see. The hand belongs to
-                            // the whole thing, so it is one cursor region here
-                            // rather than one per word.
-                            LazyVStack(alignment: .leading, spacing: TranscriptFlow.lineSpacing) {
-                                ForEach(transcriptLines) { line in
-                                    HStack(spacing: TranscriptFlow.tokenSpacing) {
-                                        ForEach(line.tokens, id: \.self) { index in
-                                            tokenView(at: index, playbackWordID: playbackWordID)
-                                                .frame(
-                                                    width: tokenWidths[index],
-                                                    alignment: .leading
-                                                )
+                    ScrollViewReader { scrollProxy in
+                        ZStack(alignment: .bottom) {
+                            ScrollView {
+                                // Rows, not a flow. The wrapping is worked out from
+                                // token widths before any view exists, which lets
+                                // the rows be lazy: a transcript of any length only
+                                // builds the lines you can see. The hand belongs to
+                                // the whole thing, so it is one cursor region here
+                                // rather than one per word.
+                                LazyVStack(alignment: .leading, spacing: TranscriptFlow.lineSpacing) {
+                                    ForEach(transcriptLines) { line in
+                                        HStack(spacing: TranscriptFlow.tokenSpacing) {
+                                            ForEach(line.tokens, id: \.self) { index in
+                                                tokenView(at: index, playbackWordID: playbackWordID)
+                                                    .frame(
+                                                        width: tokenWidths[index],
+                                                        alignment: .leading
+                                                    )
+                                            }
                                         }
+                                        .frame(height: TranscriptFlow.lineHeight, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                        // One hit target per visible line, then
+                                        // arithmetic decides which token was under
+                                        // the pointer. The old version made every
+                                        // word a Button. Despite combining the row
+                                        // for accessibility, SwiftUI still built a
+                                        // focus responder, help attachment, action
+                                        // and gesture for every word. A real 2,214
+                                        // word project spent most of a scroll walk
+                                        // maintaining that invisible control tree.
+                                        .simultaneousGesture(
+                                            SpatialTapGesture().onEnded { value in
+                                                guard let index = TranscriptLineBreaker.token(
+                                                    atX: value.location.x,
+                                                    in: line,
+                                                    widths: tokenWidths
+                                                ) else { return }
+                                                activateToken(at: index)
+                                            }
+                                        )
+                                        // A transcript is read by line. Ignoring
+                                        // the decorative token children also keeps
+                                        // assistive tools from rebuilding them as
+                                        // separate elements while the page moves.
+                                        .accessibilityElement(children: .ignore)
+                                        .accessibilityLabel(lineText(line))
+                                        .id(line.id)
                                     }
-                                    .frame(height: TranscriptFlow.lineHeight, alignment: .leading)
-                                    .contentShape(Rectangle())
-                                    // One hit target per visible line, then
-                                    // arithmetic decides which token was under
-                                    // the pointer. The old version made every
-                                    // word a Button. Despite combining the row
-                                    // for accessibility, SwiftUI still built a
-                                    // focus responder, help attachment, action
-                                    // and gesture for every word. A real 2,214
-                                    // word project spent most of a scroll walk
-                                    // maintaining that invisible control tree.
-                                    .simultaneousGesture(
-                                        SpatialTapGesture().onEnded { value in
-                                            guard let index = TranscriptLineBreaker.token(
-                                                atX: value.location.x,
-                                                in: line,
-                                                widths: tokenWidths
-                                            ) else { return }
-                                            activateToken(at: index)
-                                        }
-                                    )
-                                    // A transcript is read by line. Ignoring
-                                    // the decorative token children also keeps
-                                    // assistive tools from rebuilding them as
-                                    // separate elements while the page moves.
-                                    .accessibilityElement(children: .ignore)
-                                    .accessibilityLabel(lineText(line))
-                                    .id(line.id)
                                 }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background {
+                                    GeometryReader { geometry in
+                                        Color.clear.preference(
+                                            key: TranscriptFlowOriginKey.self,
+                                            value: geometry.frame(in: .named(Self.selectionCoordinateSpace)).origin
+                                        )
+                                    }
+                                }
+                                .cursor(.pointingHand)
+                                .padding(.bottom, selection.wordIDs.isEmpty ? 0 : 58)
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background {
-                                GeometryReader { geometry in
-                                    Color.clear.preference(
-                                        key: TranscriptFlowOriginKey.self,
-                                        value: geometry.frame(in: .named(Self.selectionCoordinateSpace)).origin
-                                    )
-                                }
+
+                            if let marqueeRectangle {
+                                Rectangle()
+                                    .fill(Color.cyan.opacity(0.12))
+                                    .overlay {
+                                        Rectangle()
+                                            .stroke(Color.cyan.opacity(0.9), lineWidth: 1)
+                                    }
+                                    .frame(width: marqueeRectangle.width, height: marqueeRectangle.height)
+                                    .position(x: marqueeRectangle.midX, y: marqueeRectangle.midY)
+                                    .allowsHitTesting(false)
                             }
-                            .cursor(.pointingHand)
-                            .padding(.bottom, selection.wordIDs.isEmpty ? 0 : 58)
-                        }
 
-                        if let marqueeRectangle {
-                            Rectangle()
-                                .fill(Color.cyan.opacity(0.12))
-                                .overlay {
-                                    Rectangle()
-                                        .stroke(Color.cyan.opacity(0.9), lineWidth: 1)
-                                }
-                                .frame(width: marqueeRectangle.width, height: marqueeRectangle.height)
-                                .position(x: marqueeRectangle.midX, y: marqueeRectangle.midY)
-                                .allowsHitTesting(false)
+                            if !selection.wordIDs.isEmpty {
+                                selectionBar
+                            }
                         }
-
-                        if !selection.wordIDs.isEmpty {
-                            selectionBar
+                        .coordinateSpace(name: Self.selectionCoordinateSpace)
+                        .onPreferenceChange(TranscriptFlowOriginKey.self) { origin in
+                            flowOrigin = origin
                         }
+                        .onChange(of: geometry.size.width, initial: true) { _, width in
+                            // A floor, so a transient zero during a layout pass can
+                            // never wrap the transcript one word to a line.
+                            guard width > 80 else { return }
+                            // Held in steps, not to the point. Dragging the divider
+                            // walks the width through every value between the two
+                            // ends, and re-wrapping a few hundred words on each of
+                            // them is what made the drag stutter. In steps, most
+                            // frames of a drag change nothing here at all, and the
+                            // ones that do are a wrap the eye was expecting anyway.
+                            let stepped = (width / Self.wrapStep).rounded(.down) * Self.wrapStep
+                            guard stepped != flowWidth else { return }
+                            flowWidth = stepped
+                        }
+                        .onChange(of: seekReveal.request) { _, request in
+                            guard
+                                let request,
+                                let wordID = session.transcriptFlowCache.nearestWordID(
+                                    to: request.timelineTime
+                                ),
+                                let lineID = session.transcriptFlowCache.lineID(
+                                    forWordID: wordID,
+                                    width: flowWidth
+                                )
+                            else { return }
+                            // A direct jump, not an animation and not a clock
+                            // follower: one lazy row is materialised once.
+                            scrollProxy.scrollTo(lineID, anchor: .center)
+                        }
+                        .highPriorityGesture(marqueeGesture)
                     }
-                    .coordinateSpace(name: Self.selectionCoordinateSpace)
-                    .onPreferenceChange(TranscriptFlowOriginKey.self) { origin in
-                        flowOrigin = origin
-                    }
-                    .onChange(of: geometry.size.width, initial: true) { _, width in
-                        // A floor, so a transient zero during a layout pass can
-                        // never wrap the transcript one word to a line.
-                        guard width > 80 else { return }
-                        // Held in steps, not to the point. Dragging the divider
-                        // walks the width through every value between the two
-                        // ends, and re-wrapping a few hundred words on each of
-                        // them is what made the drag stutter. In steps, most
-                        // frames of a drag change nothing here at all, and the
-                        // ones that do are a wrap the eye was expecting anyway.
-                        let stepped = (width / Self.wrapStep).rounded(.down) * Self.wrapStep
-                        guard stepped != flowWidth else { return }
-                        flowWidth = stepped
-                    }
-                    .highPriorityGesture(marqueeGesture)
                 }
             }
         }

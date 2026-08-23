@@ -7,6 +7,12 @@ import SwiftUI
 /// space and says nothing.
 struct CaptionWorkbenchView: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var seekReveal: TimelineSeekRevealState
+
+    init(session: EditorSession) {
+        self.session = session
+        _seekReveal = ObservedObject(wrappedValue: session.timelineSeekReveal)
+    }
 
     private var isOn: Bool { session.captionsVisible }
 
@@ -15,26 +21,39 @@ struct CaptionWorkbenchView: View {
             toolbar
             Divider()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    if session.hasCaptions {
-                        CaptionInspectorView(session: session)
-                            .padding(.horizontal, 14)
+            ScrollViewReader { scrollProxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if session.hasCaptions {
+                            CaptionInspectorView(session: session)
+                                .padding(.horizontal, 14)
+                            Divider()
+                            CaptionListView(session: session) { session.seekToTimelineTime($0) }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                        } else {
+                            emptyState
+                                .padding(14)
+                        }
+
                         Divider()
-                        CaptionListView(session: session) { session.seekToTimelineTime($0) }
+                        DictionaryPanel(session: session)
                             .padding(.horizontal, 14)
                             .padding(.vertical, 12)
-                    } else {
-                        emptyState
-                            .padding(14)
                     }
-
-                    Divider()
-                    DictionaryPanel(session: session)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .onChange(of: seekReveal.request) { _, request in
+                    guard
+                        let request,
+                        let captionID = session.captionCueCache.nearestCueID(
+                            to: request.timelineTime
+                        )
+                    else { return }
+                    // No animation and no playback observation: one lazy row
+                    // jumps into view after the seek finishes.
+                    scrollProxy.scrollTo(captionID, anchor: .center)
+                }
             }
         }
         .inspectorPane(maxWidth: 620)

@@ -58,4 +58,30 @@ final class CaptionCueCache {
     func cue(at timelineTime: Double) -> ProjectCaptionCue? {
         cues.first { $0.isVisible(at: timelineTime) }
     }
+
+    /// The card a one-shot timeline seek should reveal. Cues are sorted, so
+    /// this checks only the two neighbours around the insertion point instead
+    /// of walking every caption in a long project.
+    func nearestCueID(to timelineTime: Double) -> UUID? {
+        guard !cues.isEmpty else { return nil }
+        var low = 0
+        var high = cues.count
+        while low < high {
+            let middle = (low + high) / 2
+            if cues[middle].timelineStart <= timelineTime {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        let candidates = [low - 1, low].compactMap { index in
+            cues.indices.contains(index) ? cues[index] : nil
+        }
+        return candidates.min { distance(to: $0, from: timelineTime) < distance(to: $1, from: timelineTime) }?.id
+    }
+
+    private func distance(to cue: ProjectCaptionCue, from timelineTime: Double) -> Double {
+        if cue.isVisible(at: timelineTime) { return 0 }
+        return min(abs(timelineTime - cue.timelineStart), abs(timelineTime - cue.timelineEnd))
+    }
 }

@@ -32,7 +32,9 @@ final class TranscriptFlowCache {
     /// timeline, and the transcript builds hundreds of word views a scroll.
     private(set) var keptWordIDs: Set<UUID> = []
     private var signature: Signature?
-    private var wrapped: (width: Double, lines: [TranscriptLine])?
+    private var wordTokenIndexByID: [UUID: Int] = [:]
+    private var timelineWordTargets: [(time: Double, id: UUID)] = []
+    private var wrapped: (width: Double, lines: [TranscriptLine], lineByToken: [Int: Int])?
 
     func refresh(for project: EditorProject) {
         let updated = Signature(project)
@@ -41,6 +43,14 @@ final class TranscriptFlowCache {
         words = project.timelineTranscript
         tokens = TranscriptFlow.tokens(words: words, media: project.media)
         tokenWidths = tokens.map(TranscriptFlow.width(of:))
+        wordTokenIndexByID = tokens.enumerated().reduce(into: [:]) { result, pair in
+            guard case let .word(word) = pair.element else { return }
+            result[word.id] = pair.offset
+        }
+        timelineWordTargets = words.compactMap { word in
+            project.timelineTime(for: word).map { (time: $0, id: word.id) }
+        }
+        .sorted { $0.time < $1.time }
         keptWordIDs = Set(
             project.transcript?.lazy.filter(project.isWordKept).map(\.id) ?? []
         )
@@ -66,7 +76,44 @@ final class TranscriptFlowCache {
             spacing: TranscriptFlow.tokenSpacing,
             available: max(1, stepped - TranscriptFlow.wrapMargin)
         )
-        wrapped = (stepped, lines)
+        var lineByToken: [Int: Int] = [:]
+        lineByToken.reserveCapacity(tokens.count)
+        for line in lines {
+            for token in line.tokens { lineByToken[token] = line.id }
+        }
+        wrapped = (stepped, lines, lineByToken)
         return lines
+    }
+
+    /// The nearest kept word to a completed timeline seek. Binary search keeps
+    /// the one-shot lookup independent of transcript length.
+    func nearestWordID(to timelineTime: Double) -> UUID? {
+        guard !timelineWordTargets.isEmpty else { return nil }
+        var low = 0
+        var high = timelineWordTargets.count
+        while low < high {
+            let middle = (low + high) / 2
+            if timelineWordTargets[middle].time <= timelineTime {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        let previous = low > 0 ? timelineWordTargets[low - 1] : nil
+        let next = low < timelineWordTargets.count ? timelineWordTargets[low] : nil
+        switch (previous, next) {
+        case let (previous?, next?):
+            return timelineTime - previous.time <= next.time - timelineTime ? previous.id : next.id
+        case let (previous?, nil): return previous.id
+        case let (nil, next?): return next.id
+        default: return nil
+        }
+    }
+
+    /// Which lazy transcript row contains a word at the current wrap width.
+    func lineID(forWordID id: UUID, width: Double) -> Int? {
+        guard let token = wordTokenIndexByID[id] else { return nil }
+        _ = lines(forWidth: width)
+        return wrapped?.lineByToken[token]
     }
 }

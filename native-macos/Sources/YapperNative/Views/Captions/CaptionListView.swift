@@ -39,6 +39,7 @@ struct CaptionListView: View {
                     ForEach(Array(captions.enumerated()), id: \.element.id) { index, caption in
                         if index > 0 { Divider().opacity(0.4) }
                         row(caption, number: index + 1, text: texts[caption.id] ?? caption.text)
+                            .id(caption.id)
                     }
                 }
                 .background(Color.studioInputBackground.opacity(0.5))
