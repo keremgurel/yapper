@@ -80,4 +80,20 @@ enum TranscriptLineBreaker {
         }
         return nil
     }
+
+    /// The token actually under a pointer in one rendered line.
+    ///
+    /// Transcript rows use one spatial gesture for the whole line. Keeping
+    /// hit-testing in the same arithmetic as wrapping means each word remains
+    /// individually clickable without turning every word into a SwiftUI
+    /// button, focus responder, accessibility action and gesture recognizer.
+    static func token(atX x: Double, in line: TranscriptLine, widths: [Double]) -> Int? {
+        guard x >= 0 else { return nil }
+        for (position, token) in line.tokens.enumerated() {
+            guard position < line.offsets.count, token < widths.count else { continue }
+            let start = line.offsets[position]
+            if x >= start, x <= start + widths[token] { return token }
+        }
+        return nil
+    }
 }

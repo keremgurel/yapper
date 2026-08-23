@@ -2432,7 +2432,11 @@ final class EditorSession: ObservableObject {
     /// every step of a gesture would stutter, so the last one wins and the
     /// whole gesture lands as a single undo step.
     func scheduleCompositionCommit(
-        settleFor delay: Duration = .milliseconds(220),
+        // Just over one 60 Hz frame: enough to coalesce a continuous control's
+        // stream of changes, without adding a visible quarter-second pause to
+        // every discrete click. The canvas already previews a live gesture;
+        // this delay is only the hand-off to the AV composition and storage.
+        settleFor delay: Duration = .milliseconds(32),
         successStatus: String = "Ready",
         _ mutation: @escaping @MainActor () -> Bool
     ) {
@@ -2448,7 +2452,7 @@ final class EditorSession: ObservableObject {
     /// actually executes. Two clicks made while another save is in flight must
     /// cancel each other, not both replay the same pre-wait value.
     func scheduleCompositionCommitResolvingStatus(
-        settleFor delay: Duration = .milliseconds(220),
+        settleFor delay: Duration = .milliseconds(32),
         _ mutation: @escaping @MainActor () -> String?
     ) {
         scheduleEdit(
@@ -2874,7 +2878,15 @@ final class EditorSession: ObservableObject {
         seekGeneration += 1
         let generation = seekGeneration
         playWhenSeekFinishes = playAfter
-        let tolerance = exact ? CMTime.zero : CMTime(seconds: 0.04, preferredTimescale: 600)
+        // The preview cannot show anything between video frames. Asking
+        // AVFoundation for zero-tolerance sample accuracy made a click wait on
+        // extra decoder work for precision the display cannot represent,
+        // especially across an 80+ cut composition. Editing commands still
+        // store the exact requested time; only the preview frame may land up
+        // to one frame either side. Export remains sample-accurate.
+        let tolerance = exact
+            ? CMTime(seconds: max(frameDuration, 1.0 / 120.0), preferredTimescale: 600)
+            : CMTime(seconds: 0.04, preferredTimescale: 600)
         player.seek(
             to: CMTime(seconds: targetSeconds, preferredTimescale: 600),
             toleranceBefore: tolerance,

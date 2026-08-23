@@ -966,10 +966,23 @@ private struct TranscriptWorkbench: View {
         if index < flowTokens.count {
             switch flowTokens[index] {
             case let .word(word):
-                transcriptWordButton(word, playbackWordID: playbackWordID)
+                transcriptWordToken(word, playbackWordID: playbackWordID)
             case let .pause(pause):
-                transcriptPauseButton(pause)
+                transcriptPauseToken(pause)
             }
+        }
+    }
+
+    private func activateToken(at index: Int) {
+        guard flowTokens.indices.contains(index) else { return }
+        switch flowTokens[index] {
+        case let .word(word):
+            select(
+                word,
+                kept: session.transcriptFlowCache.keptWordIDs.contains(word.id)
+            )
+        case let .pause(pause):
+            activatePause(pause)
         }
     }
 
@@ -1062,17 +1075,31 @@ private struct TranscriptWorkbench: View {
                                         }
                                     }
                                     .frame(height: TranscriptFlow.lineHeight, alignment: .leading)
-                                    // One element a line, not one a word. Every
-                                    // word here is a button, and anything that
-                                    // asks the window for its accessibility
-                                    // tree, a screen recorder or a dictation
-                                    // tool, makes SwiftUI rebuild every node of
-                                    // it on every update: sampled while a
-                                    // creator worked, that walk was the most
-                                    // expensive thing in the app. A line at a
-                                    // time is also how anybody would want the
-                                    // transcript read to them.
-                                    .accessibilityElement(children: .combine)
+                                    .contentShape(Rectangle())
+                                    // One hit target per visible line, then
+                                    // arithmetic decides which token was under
+                                    // the pointer. The old version made every
+                                    // word a Button. Despite combining the row
+                                    // for accessibility, SwiftUI still built a
+                                    // focus responder, help attachment, action
+                                    // and gesture for every word. A real 2,214
+                                    // word project spent most of a scroll walk
+                                    // maintaining that invisible control tree.
+                                    .simultaneousGesture(
+                                        SpatialTapGesture().onEnded { value in
+                                            guard let index = TranscriptLineBreaker.token(
+                                                atX: value.location.x,
+                                                in: line,
+                                                widths: tokenWidths
+                                            ) else { return }
+                                            activateToken(at: index)
+                                        }
+                                    )
+                                    // A transcript is read by line. Ignoring
+                                    // the decorative token children also keeps
+                                    // assistive tools from rebuilding them as
+                                    // separate elements while the page moves.
+                                    .accessibilityElement(children: .ignore)
                                     .accessibilityLabel(lineText(line))
                                     .id(line.id)
                                 }
@@ -1178,72 +1205,65 @@ private struct TranscriptWorkbench: View {
         return Self.rectangle(from: marqueeStart, to: marqueeCurrent)
     }
 
-    private func transcriptWordButton(_ word: TranscriptWord, playbackWordID: UUID?) -> some View {
+    private func transcriptWordToken(_ word: TranscriptWord, playbackWordID: UUID?) -> some View {
         let kept = session.transcriptFlowCache.keptWordIDs.contains(word.id)
         let active = playbackWordID == word.id
-        return Button {
-            select(word, kept: kept)
-        } label: {
-            Text(word.text)
-                .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
-                .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
-                .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
-                .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 3)
-                .background(wordBackground(wordID: word.id, kept: kept, active: active))
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        // Clicking a word must not leave it holding the keyboard: a focused
-        // button fires on Space, so the next Space seeked to the word again
-        // instead of starting playback.
-        .focusable(false)
-        .highPriorityGesture(marqueeGesture)
-        .help(kept ? "Select and seek to \(word.text)" : "Select deleted word to restore")
-        .id(word.id)
+        return Text(word.text)
+            .font(.system(size: 14, weight: active ? .bold : kept ? .medium : .regular))
+            .foregroundStyle(wordForeground(wordID: word.id, kept: kept))
+            .strikethrough(!kept, color: selection.wordIDs.contains(word.id) ? Color.white : Color.secondary)
+            .underline(active && !selection.wordIDs.contains(word.id), color: Color.cyan)
+            .padding(.horizontal, 3)
+            .padding(.vertical, 3)
+            .background(wordBackground(wordID: word.id, kept: kept, active: active))
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .accessibilityHidden(true)
+            .id(word.id)
     }
 
-    private func transcriptPauseButton(_ pause: TranscriptPause) -> some View {
+    private func transcriptPauseToken(_ pause: TranscriptPause) -> some View {
         let kept = session.project.isSourceRangeKept(
             mediaID: pause.mediaID,
             start: pause.start,
             end: pause.end
         )
-        return Button {
-            selection.clear()
-            Task {
-                if kept {
-                    await session.deleteTranscriptPause(
-                        mediaID: pause.mediaID,
-                        start: pause.start,
-                        end: pause.end
-                    )
-                } else {
-                    await session.restoreTranscriptPause(
-                        mediaID: pause.mediaID,
-                        start: pause.start,
-                        end: pause.end
-                    )
-                }
+        return Text(pause.label)
+            .font(.system(size: 10, weight: .bold, design: .monospaced))
+            .foregroundStyle(kept ? Color.secondary : Color.secondary.opacity(0.42))
+            .strikethrough(!kept, color: Color.secondary.opacity(0.55))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 3)
+            .background(kept ? Color.primary.opacity(0.07) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(kept ? Color.studioLine : Color.clear, lineWidth: 1)
             }
-        } label: {
-            Text(pause.label)
-                .font(.system(size: 10, weight: .bold, design: .monospaced))
-                .foregroundStyle(kept ? Color.secondary : Color.secondary.opacity(0.42))
-                .strikethrough(!kept, color: Color.secondary.opacity(0.55))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 3)
-                .background(kept ? Color.primary.opacity(0.07) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .stroke(kept ? Color.studioLine : Color.clear, lineWidth: 1)
-                }
+            .accessibilityHidden(true)
+    }
+
+    private func activatePause(_ pause: TranscriptPause) {
+        let kept = session.project.isSourceRangeKept(
+            mediaID: pause.mediaID,
+            start: pause.start,
+            end: pause.end
+        )
+        selection.clear()
+        Task {
+            if kept {
+                await session.deleteTranscriptPause(
+                    mediaID: pause.mediaID,
+                    start: pause.start,
+                    end: pause.end
+                )
+            } else {
+                await session.restoreTranscriptPause(
+                    mediaID: pause.mediaID,
+                    start: pause.start,
+                    end: pause.end
+                )
+            }
         }
-        .buttonStyle(.studioPlain)
-        .clickableCursor()
-        .help(kept ? "Delete this \(pause.duration.formatted(.number.precision(.fractionLength(1)))) second pause" : "Restore this removed pause")
     }
 
     private var marqueeGesture: some Gesture {

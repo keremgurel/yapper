@@ -52,4 +52,19 @@ struct TranscriptLineBreakerTests {
             ofToken: 99, in: lines, widths: widths, lineHeight: 20, lineSpacing: 6
         ) == nil)
     }
+
+    @Test func aLineHitTestsTokensWithoutGivingTheGapsAnAction() throws {
+        let widths = [40.0, 30, 20]
+        let line = try #require(
+            TranscriptLineBreaker.lines(widths: widths, spacing: 5, available: 200).first
+        )
+        #expect(TranscriptLineBreaker.token(atX: 0, in: line, widths: widths) == 0)
+        #expect(TranscriptLineBreaker.token(atX: 39, in: line, widths: widths) == 0)
+        #expect(TranscriptLineBreaker.token(atX: 42, in: line, widths: widths) == nil)
+        #expect(TranscriptLineBreaker.token(atX: 45, in: line, widths: widths) == 1)
+        #expect(TranscriptLineBreaker.token(atX: 79, in: line, widths: widths) == nil)
+        #expect(TranscriptLineBreaker.token(atX: 80, in: line, widths: widths) == 2)
+        #expect(TranscriptLineBreaker.token(atX: -1, in: line, widths: widths) == nil)
+        #expect(TranscriptLineBreaker.token(atX: 101, in: line, widths: widths) == nil)
+    }
 }
