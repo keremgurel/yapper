@@ -38,6 +38,24 @@ extension EditorProject {
         return captionsEnabled == true ? generatedCaptions() : []
     }
 
+    /// Cards in the order the edited video plays, not recording-file order.
+    /// Those differ as soon as clips are rearranged. The list, keyboard range
+    /// selection and inline insertion all need to agree with the timeline.
+    var captionsInTimelineOrder: [ProjectCaption] {
+        storedCaptions.sorted { left, right in
+            let leftTime = timelineTime(
+                forSource: (left.sourceStart + left.sourceEnd) / 2,
+                mediaID: left.mediaID
+            )
+            let rightTime = timelineTime(
+                forSource: (right.sourceStart + right.sourceEnd) / 2,
+                mediaID: right.mediaID
+            )
+            if abs(leftTime - rightTime) > 0.000_1 { return leftTime < rightTime }
+            return left.sourceStart < right.sourceStart
+        }
+    }
+
     /// The cards that should actually be drawn and burned in.
     var captionEntries: [ProjectCaption] {
         captionsEnabled == true ? storedCaptions : []

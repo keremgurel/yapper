@@ -8,10 +8,12 @@ import SwiftUI
 struct CaptionWorkbenchView: View {
     @ObservedObject var session: EditorSession
     @ObservedObject private var seekReveal: TimelineSeekRevealState
+    @ObservedObject private var captionSelection: CaptionSelectionState
 
     init(session: EditorSession) {
         self.session = session
         _seekReveal = ObservedObject(wrappedValue: session.timelineSeekReveal)
+        _captionSelection = ObservedObject(wrappedValue: session.captionSelection)
     }
 
     private var isOn: Bool { session.captionsVisible }
@@ -52,6 +54,13 @@ struct CaptionWorkbenchView: View {
                     else { return }
                     // No animation and no playback observation: one lazy row
                     // jumps into view after the seek finishes.
+                    scrollProxy.scrollTo(captionID, anchor: .center)
+                }
+                .onChange(of: captionSelection.ids) { _, ids in
+                    guard ids.count == 1, let captionID = ids.first else { return }
+                    // A timeline click already opens this tab. Reveal the exact
+                    // selected row once, without observing playback or adding
+                    // animation work to scrolling.
                     scrollProxy.scrollTo(captionID, anchor: .center)
                 }
             }
@@ -104,7 +113,7 @@ struct CaptionWorkbenchView: View {
             .disabled(session.project.clips.isEmpty || session.isBusy)
             .help(
                 session.hasCaptions
-                    ? "Rebuild every card from the transcript. Replaces hand-edited text."
+                    ? "Rebuild every card from the transcript while keeping your corrections."
                     : "Build caption cards from the transcript"
             )
         }

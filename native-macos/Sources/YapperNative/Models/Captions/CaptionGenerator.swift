@@ -50,13 +50,25 @@ enum CaptionGenerator {
     ) -> [ProjectCaption] {
         var captions: [ProjectCaption] = []
         var group: [CaptionSourceWord] = []
-        var previousWordSourceEnd: [UUID: Double] = [:]
+        // Source time is not monotonic: the editor can put a later stretch of
+        // one recording before an earlier stretch of that same recording. A
+        // per-media "previous end" therefore leaks across reordered clips and
+        // can clamp the first card in the next clip to zero duration.
+        var previouslyFlushedWord: CaptionSourceWord?
         /// The words a counted card is being cut from, filled a run at a time.
         var run: [CaptionSourceWord] = []
 
         func flush() {
             guard let first = group.first, let last = group.last else { return }
-            let previousEnd = previousWordSourceEnd[first.mediaID] ?? 0
+            let previousEnd: Double
+            if let previous = previouslyFlushedWord,
+               previous.mediaID == first.mediaID,
+               previous.clip == first.clip,
+               previous.sourceEnd <= first.sourceStart {
+                previousEnd = previous.sourceEnd
+            } else {
+                previousEnd = first.clip?.lowerBound ?? 0
+            }
             let span = clamped(
                 start: max(previousEnd, first.sourceStart - leadSeconds),
                 end: max(first.sourceStart + 0.12, last.sourceEnd + tailSeconds),
@@ -70,7 +82,7 @@ enum CaptionGenerator {
                     sourceEnd: span.end
                 )
             )
-            previousWordSourceEnd[first.mediaID] = last.sourceEnd
+            previouslyFlushedWord = last
             group.removeAll(keepingCapacity: true)
         }
 

@@ -7,7 +7,7 @@ extension EditorSession {
     var captionWordsPerCard: Int { project.wordsPerCaptionCard }
     /// Every card the project holds, shown or hidden. The inspector edits cards
     /// that are currently hidden just as happily as visible ones.
-    var captions: [ProjectCaption] { project.storedCaptions }
+    var captions: [ProjectCaption] { project.captionsInTimelineOrder }
     var hasCaptions: Bool { !project.storedCaptions.isEmpty }
     var captionsVisible: Bool { project.captionsEnabled == true }
 

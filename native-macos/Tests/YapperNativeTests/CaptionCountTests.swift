@@ -140,6 +140,30 @@ import Testing
 
         #expect(counts(cards) == [3, 3])
     }
+
+    /// The same recording can be cut into a later clip followed by an earlier
+    /// clip. Source seconds then move backwards even though timeline seconds
+    /// keep moving forwards; the first card after that join must stay visible.
+    @Test func aReorderedClipNeverCreatesAZeroDurationCaption() {
+        var later = words(3)
+        for index in later.indices {
+            later[index].sourceStart += 10
+            later[index].sourceEnd += 10
+            later[index].clip = 10 ... 11
+        }
+        var earlier = words(3)
+        for index in earlier.indices {
+            earlier[index].timelineStart += 1
+            earlier[index].timelineEnd += 1
+            earlier[index].clip = 0 ... 1
+        }
+
+        let cards = CaptionGenerator.captions(from: later + earlier, wordsPerCard: 8)
+
+        #expect(cards.count == 2)
+        #expect(cards.allSatisfy { $0.sourceEnd > $0.sourceStart })
+        #expect(cards[1].sourceStart < 0.1)
+    }
 }
 
 /// Changing how many words a card holds is about where the words break. It is

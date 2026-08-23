@@ -61,9 +61,9 @@ import Testing
         #expect(subject.captionCues.map(\.text) == ["one two three four"])
     }
 
-    /// A card the creator has typed into is theirs, and a later transcript edit
-    /// must not rewrite it underneath them.
-    @Test func aTypedCardStopsFollowingTheTranscript() {
+    /// A rewrite becomes timed transcript words, so later cut operations still
+    /// move the corrected language with the footage it belongs to.
+    @Test func aTypedCardBecomesTheTranscript() {
         var subject = project()
         subject.regenerateCaptions()
         let id = subject.storedCaptions[0].id
@@ -71,7 +71,32 @@ import Testing
 
         cutTwo(&subject)
 
-        #expect(subject.captionCues.map(\.text) == ["my own words"])
+        #expect(subject.captionCues.map(\.text) == ["my words"])
+    }
+
+    @Test func aWordForWordCaptionCorrectionUpdatesTranscriptAndSurvivesRegeneration() {
+        var subject = project()
+        subject.regenerateCaptions()
+        let id = subject.storedCaptions[0].id
+
+        subject.setCaptionText("one corrected three four", for: id)
+
+        #expect(subject.transcript?.map(\.text) == ["one", "corrected", "three", "four"])
+        #expect(subject.storedCaptions[0].isTextEdited == false)
+        subject.regenerateCaptions()
+        #expect(subject.captionCues.map(\.text) == ["one corrected three four"])
+    }
+
+    @Test func aFreeformCaptionRewriteAlsoBecomesTranscriptAndSurvivesRegeneration() {
+        var subject = project()
+        subject.regenerateCaptions()
+        let id = subject.storedCaptions[0].id
+
+        subject.setCaptionText("a shorter rewrite", for: id)
+        subject.regenerateCaptions()
+
+        #expect(subject.captionCues.map(\.text) == ["a shorter rewrite"])
+        #expect(subject.storedCaptions[0].isTextEdited == false)
     }
 
     @Test func aCardWhoseWordsAreAllCutDrawsNothing() {
@@ -168,8 +193,7 @@ import Testing
         #expect(subject.captionCues.map(\.text) == ["one three four"])
     }
 
-    /// Merging a typed card into a spoken one keeps the typed words, because
-    /// dropping them would lose work.
+    /// Merging a corrected card into a spoken one keeps the corrected words.
     @Test func mergingATypedCardKeepsItsWords() {
         var subject = project(wordsPerCard: 2)
         subject.regenerateCaptions()
@@ -178,7 +202,7 @@ import Testing
 
         subject.mergeCaptions(Set(ids))
 
-        #expect(subject.storedCaptions[0].isTextEdited)
+        #expect(subject.storedCaptions[0].isTextEdited == false)
         #expect(subject.captionCues.map(\.text) == ["hello there three four"])
     }
 

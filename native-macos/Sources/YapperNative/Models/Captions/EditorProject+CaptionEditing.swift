@@ -20,9 +20,42 @@ extension EditorProject {
     }
 
     /// Replaces every card with a fresh pass over the current transcript and
-    /// cut. Per-caption restyling is deliberately dropped: these are new cards.
+    /// cut. Corrections are first written back to matching timed transcript
+    /// words, and edits that cannot be represented word-for-word are carried
+    /// onto the rebuilt card instead of being destroyed.
     mutating func regenerateCaptions() {
-        captions = generatedCaptions()
+        ensureCaptionsMaterialized()
+        let previous = (captions ?? []).filter {
+            $0.isTextEdited && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        var unsynced: [ProjectCaption] = []
+        for caption in previous where !synchronizeCaptionWithTranscript(caption) {
+            unsynced.append(caption)
+        }
+
+        var fresh = generatedCaptions()
+        var claimed: Set<UUID> = []
+        var manual: [ProjectCaption] = []
+        for edited in unsynced {
+            let matches = fresh.indices.filter { index in
+                let candidate = fresh[index]
+                return candidate.mediaID == edited.mediaID
+                    && candidate.sourceStart < edited.sourceEnd
+                    && edited.sourceStart < candidate.sourceEnd
+                    && !claimed.contains(candidate.id)
+            }
+            if let index = matches.max(by: {
+                overlap(fresh[$0], edited) < overlap(fresh[$1], edited)
+            }) {
+                fresh[index].text = edited.text
+                fresh[index].isTextEdited = true
+                fresh[index].overrides = edited.overrides
+                claimed.insert(fresh[index].id)
+            } else {
+                manual.append(edited)
+            }
+        }
+        captions = fresh + manual
         captionsEnabled = true
         updatedAt = Date()
     }
@@ -68,14 +101,78 @@ extension EditorProject {
         ensureCaptionsMaterialized()
         guard let index = captions?.firstIndex(where: { $0.id == id }) else { return }
         guard captions?[index].text != text || captions?[index].isTextEdited == false else { return }
+        let original = captions![index]
+        let originalWords = captionWordIndex(for: captions ?? []).words(for: id)
         captions?[index].text = text
-        // Typed words are the creator's, so this card stops following the
-        // transcript from here on.
-        captions?[index].isTextEdited = true
+        // The corrected tokens replace the timed words this card came from.
+        // That makes the transcript the source of truth, so a later regenerate
+        // cannot resurrect the transcriber's old wording.
+        let synchronized = synchronizeCaptionWithTranscript(
+            captions![index],
+            knownWords: original.isTextEdited ? nil : originalWords,
+            force: !original.isTextEdited
+        )
+        captions?[index].isTextEdited = !synchronized
         // A deliberate keystroke outranks the shared casing transform, which
         // would otherwise mask the capitalization the creator just typed.
         captions?[index].overrides.textCase = .asSpoken
         updatedAt = Date()
+    }
+
+    private mutating func synchronizeCaptionWithTranscript(
+        _ caption: ProjectCaption,
+        knownWords: [TranscriptWord]? = nil,
+        force: Bool = false
+    ) -> Bool {
+        let tokens = caption.text.split(whereSeparator: \.isWhitespace).map(String.init)
+        guard !tokens.isEmpty, var transcript else { return false }
+        let words = knownWords ?? transcript.filter {
+            $0.mediaID == caption.mediaID
+                && $0.midpoint >= caption.sourceStart
+                && $0.midpoint <= caption.sourceEnd
+        }.sorted { $0.start < $1.start }
+        guard !words.isEmpty else { return false }
+        // Saved projects cannot tell an old hand-added card from an old
+        // transcription correction. Only migrate the latter automatically:
+        // most of its words still agree with what the transcriber heard. A new
+        // edit on a generated card is unambiguous and uses `force`.
+        guard force || looksLikeCorrection(tokens, of: words.map(\.text)) else { return false }
+
+        let replacedIDs = Set(words.map(\.id))
+        guard let insertionIndex = transcript.firstIndex(where: { replacedIDs.contains($0.id) }) else {
+            return false
+        }
+        let start = words.first!.start
+        let end = max(start + 0.001, words.last!.end)
+        let width = (end - start) / Double(tokens.count)
+        let replacements = tokens.enumerated().map { offset, token in
+            TranscriptWord(
+                id: words.indices.contains(offset) ? words[offset].id : UUID(),
+                mediaID: caption.mediaID,
+                text: token,
+                start: start + Double(offset) * width,
+                end: offset == tokens.count - 1 ? end : start + Double(offset + 1) * width
+            )
+        }
+        transcript.removeAll { replacedIDs.contains($0.id) }
+        transcript.insert(contentsOf: replacements, at: min(insertionIndex, transcript.count))
+        self.transcript = transcript
+        return true
+    }
+
+    private func looksLikeCorrection(_ edited: [String], of spoken: [String]) -> Bool {
+        func normalized(_ token: String) -> String {
+            token.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
+        }
+        let editedSet = Set(edited.map(normalized).filter { !$0.isEmpty })
+        let spokenSet = Set(spoken.map(normalized).filter { !$0.isEmpty })
+        guard !editedSet.isEmpty, !spokenSet.isEmpty else { return false }
+        let shared = editedSet.intersection(spokenSet).count
+        return Double(shared) / Double(max(editedSet.count, spokenSet.count)) >= 0.5
+    }
+
+    private func overlap(_ left: ProjectCaption, _ right: ProjectCaption) -> Double {
+        max(0, min(left.sourceEnd, right.sourceEnd) - max(left.sourceStart, right.sourceStart))
     }
 
     /// Moves a card to a stretch of the timeline, which is what dragging or
@@ -144,39 +241,60 @@ extension EditorProject {
     /// about it.
     mutating func addCaption(after id: UUID) -> ProjectCaption? {
         ensureCaptionsMaterialized()
-        guard let index = (captions ?? []).firstIndex(where: { $0.id == id }) else { return nil }
-        let previous = captions![index]
+        let ordered = captionsInTimelineOrder
+        guard let orderedIndex = ordered.firstIndex(where: { $0.id == id }) else { return nil }
+        let previous = ordered[orderedIndex]
+        guard let storageIndex = captions?.firstIndex(where: { $0.id == id }) else { return nil }
         let minimumLength = 0.3
         let defaultLength = 1.4
 
-        let nextStart = (captions ?? [])
-            .filter { $0.mediaID == previous.mediaID && $0.sourceStart > previous.sourceEnd }
-            .map(\.sourceStart)
-            .min()
-
-        var start = previous.sourceEnd + 0.02
-        var end = start + defaultLength
-        if let nextStart {
-            let room = nextStart - start
+        let previousTimelineEnd = timelineTime(
+            forSource: previous.sourceEnd,
+            mediaID: previous.mediaID
+        )
+        let next = ordered.indices.contains(orderedIndex + 1) ? ordered[orderedIndex + 1] : nil
+        let nextTimelineStart = next.map {
+            timelineTime(forSource: $0.sourceStart, mediaID: $0.mediaID)
+        }
+        var timelineStart = previousTimelineEnd + 0.02
+        var timelineEnd = timelineStart + defaultLength
+        if let nextTimelineStart {
+            let room = nextTimelineStart - timelineStart
             if room < minimumLength {
                 // No gap to take, so the card ahead lends the room.
-                start = max(previous.sourceStart + minimumLength, nextStart - minimumLength)
-                captions![index].sourceEnd = max(previous.sourceStart + minimumLength, start - 0.02)
-                end = nextStart - 0.02
+                timelineStart = max(0, nextTimelineStart - minimumLength)
+                timelineEnd = nextTimelineStart
             } else {
-                end = min(nextStart - 0.02, start + defaultLength)
+                timelineEnd = min(nextTimelineStart - 0.02, timelineStart + defaultLength)
             }
         }
-        guard end > start else { return nil }
+        guard timelineEnd > timelineStart,
+              let head = captionAnchor(atTimelineTime: timelineStart),
+              let tail = captionAnchor(atTimelineTime: timelineEnd),
+              head.mediaID == tail.mediaID,
+              tail.sourceTime > head.sourceTime
+        else { return nil }
+
+        // Only trim the previous card when the borrowed room is in that same
+        // source clip. Across a reordered cut, changing its source range would
+        // corrupt an unrelated stretch of the recording.
+        if head.mediaID == previous.mediaID,
+           head.sourceTime >= previous.sourceStart,
+           head.sourceTime <= previous.sourceEnd {
+            captions![storageIndex].sourceEnd = max(
+                previous.sourceStart + minimumLength,
+                head.sourceTime - 0.02
+            )
+        }
 
         let caption = ProjectCaption(
-            mediaID: previous.mediaID,
+            mediaID: head.mediaID,
             text: "",
             isTextEdited: true,
-            sourceStart: start,
-            sourceEnd: end
+            sourceStart: head.sourceTime,
+            sourceEnd: tail.sourceTime
         )
-        captions = ((captions ?? []) + [caption]).sorted { $0.sourceStart < $1.sourceStart }
+        captions = (captions ?? []) + [caption]
         captionsEnabled = true
         updatedAt = Date()
         return caption
