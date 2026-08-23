@@ -602,14 +602,25 @@ private struct PreviewFullScreenWindowBridge: NSViewRepresentable {
             window.isMovable = false
             window.level = .mainMenu + 1
             window.contentViewController = NSHostingController(
-                rootView: PlayerPanel(session: session, layoutMode: .tallPreview)
+                rootView: PlayerPanel(
+                    session: session,
+                    layoutMode: .tallPreview,
+                    showsSeekBar: true
+                )
             )
             window.setFrame(screen.frame, display: true)
             presentationWindow = window
 
             escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) {
-                [weak self, weak window] event in
-                guard event.window === window, event.keyCode == 53 else { return event }
+                [weak self] event in
+                guard PreviewFullScreenKeyboard.shouldExit(keyCode: event.keyCode) else {
+                    return event
+                }
+                // A local event can report the hosting view's field-editor
+                // window (or no window), so matching `event.window` against
+                // the borderless presentation made Escape unreliable. The
+                // monitor only exists while this presentation is alive.
+                self?.dismiss()
                 self?.onWindowExited()
                 return nil
             }
@@ -630,5 +641,11 @@ private struct PreviewFullScreenWindowBridge: NSViewRepresentable {
         func detach() {
             dismiss()
         }
+    }
+}
+
+enum PreviewFullScreenKeyboard {
+    static func shouldExit(keyCode: UInt16) -> Bool {
+        keyCode == 53
     }
 }

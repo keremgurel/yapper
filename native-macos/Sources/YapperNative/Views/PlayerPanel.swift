@@ -4,6 +4,7 @@ struct PlayerPanel: View {
     @ObservedObject var session: EditorSession
     @ObservedObject private var previewPresentation: PreviewPresentationState
     let layoutMode: EditorLayoutMode
+    let showsSeekBar: Bool
     /// How far the stage is pulled back from the panel. View state on purpose:
     /// it is how you are looking at the project, not part of it, and it has no
     /// business being saved or exported. See `PreviewZoom`.
@@ -12,9 +13,14 @@ struct PlayerPanel: View {
     /// compounding on every step of the gesture.
     @State private var zoomAtPinchStart: PreviewZoom?
 
-    init(session: EditorSession, layoutMode: EditorLayoutMode) {
+    init(
+        session: EditorSession,
+        layoutMode: EditorLayoutMode,
+        showsSeekBar: Bool = false
+    ) {
         self.session = session
         self.layoutMode = layoutMode
+        self.showsSeekBar = showsSeekBar
         _previewPresentation = ObservedObject(
             wrappedValue: session.previewPresentation
         )
@@ -143,7 +149,8 @@ struct PlayerPanel: View {
             TransportBar(
                 session: session,
                 previewPresentation: previewPresentation,
-                zoom: $zoom
+                zoom: $zoom,
+                showsSeekBar: showsSeekBar
             )
         }
         .background(Color.previewWorkspaceBackground)
@@ -540,6 +547,7 @@ private struct TransportBar: View {
     @ObservedObject var session: EditorSession
     @ObservedObject var previewPresentation: PreviewPresentationState
     @Binding var zoom: PreviewZoom
+    let showsSeekBar: Bool
 
     var body: some View {
         HStack(spacing: 10) {
@@ -557,7 +565,17 @@ private struct TransportBar: View {
 
             PlaybackTimeReadout(clock: session.playbackClock, duration: session.duration)
 
-            Spacer()
+            if showsSeekBar {
+                FullScreenSeekBar(
+                    clock: session.playbackClock,
+                    duration: session.duration,
+                    onScrub: session.scrub,
+                    onFinish: session.finishScrubbing
+                )
+                .frame(minWidth: 220, maxWidth: .infinity)
+            } else {
+                Spacer()
+            }
 
             PreviewZoomControl(zoom: $zoom)
 
@@ -644,6 +662,46 @@ private struct TransportBar: View {
         case .square: "square"
         case .landscape: "rectangle"
         }
+    }
+}
+
+/// Fullscreen has no timeline underneath it, so its transport owns one compact
+/// scrubber. Clock observation is isolated here: playback can move the thumb
+/// thirty times a second without rebuilding the zoom, aspect or window buttons.
+private struct FullScreenSeekBar: View {
+    @ObservedObject var clock: PlaybackClock
+    let duration: Double
+    let onScrub: (Double) -> Void
+    let onFinish: (Double) -> Void
+    @State private var draftTime: Double?
+
+    var body: some View {
+        Slider(
+            value: scrubTime,
+            in: 0 ... max(duration, 0.001),
+            onEditingChanged: { editing in
+                guard !editing else { return }
+                let target = draftTime ?? min(clock.currentTime, duration)
+                draftTime = nil
+                onFinish(target)
+            }
+        )
+        .controlSize(.small)
+        .tint(.yapperOrange)
+        .disabled(duration <= 0)
+        .accessibilityLabel("Preview position")
+        .accessibilityValue(formatTimePrecise(draftTime ?? clock.currentTime))
+        .help("Drag to seek through the preview")
+    }
+
+    private var scrubTime: Binding<Double> {
+        Binding(
+            get: { min(max(0, draftTime ?? clock.currentTime), max(duration, 0.001)) },
+            set: { time in
+                draftTime = time
+                onScrub(time)
+            }
+        )
     }
 }
 

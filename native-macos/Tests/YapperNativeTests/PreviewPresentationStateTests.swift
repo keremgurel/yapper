@@ -27,4 +27,11 @@ struct PreviewPresentationStateTests {
         state.toggleFullScreen()
         #expect(!state.isFullScreen)
     }
+
+    @Test("Escape exits the borderless preview while other keys pass through")
+    func escapeKeyRouting() {
+        #expect(PreviewFullScreenKeyboard.shouldExit(keyCode: 53))
+        #expect(!PreviewFullScreenKeyboard.shouldExit(keyCode: 49))
+        #expect(!PreviewFullScreenKeyboard.shouldExit(keyCode: 36))
+    }
 }
