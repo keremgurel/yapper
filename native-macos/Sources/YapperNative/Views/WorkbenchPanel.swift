@@ -1025,6 +1025,25 @@ private struct TranscriptWorkbench: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+                if !words.isEmpty {
+                    Menu {
+                        Button {
+                            session.copyTranscript(keptOnly: false)
+                        } label: {
+                            Label("Copy full transcript", systemImage: "doc.on.doc")
+                        }
+                        Button {
+                            session.copyTranscript(keptOnly: true)
+                        } label: {
+                            Label("Copy kept transcript", systemImage: "scissors")
+                        }
+                    } label: {
+                        Label("Copy", systemImage: "doc.on.doc")
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("Copy the complete transcript or only words kept in the edit")
+                }
                 Button(words.isEmpty ? "Transcribe" : "Transcribe Again") {
                     session.startTranscription()
                 }
