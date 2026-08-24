@@ -2,7 +2,7 @@
 
 import { startTransition, useEffect } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 import { clearClientResources } from "@/lib/client-resource-cache";
 
@@ -41,7 +41,6 @@ let activeCacheOwner: string | null | undefined;
  */
 export default function AppChrome() {
   const router = useRouter();
-  const pathname = usePathname();
   const { isLoaded, user } = useUser();
   const { signOut, openUserProfile } = useClerk();
 
@@ -60,22 +59,6 @@ export default function AppChrome() {
       args: { signedIn: !!user },
     });
   }, [isLoaded, user]);
-
-  // Tell the native shell which route is actually on screen.
-  //
-  // It asks for a tab and then has no way of knowing when React has committed
-  // it, so it used to reveal the web view immediately: clicking Brain showed
-  // the previous page under the Brain heading for a beat. This effect runs
-  // after the new route paints, which is exactly the moment the shell can stop
-  // covering it.
-  useEffect(() => {
-    const bridge = (window as NativeNavigationWindow).webkit?.messageHandlers
-      ?.yapperNative;
-    bridge?.postMessage({
-      command: "route_changed",
-      args: { path: pathname },
-    });
-  }, [pathname]);
 
   useEffect(() => {
     if (!isLoaded) return;

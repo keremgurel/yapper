@@ -232,7 +232,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     ) {
         guard !destination.isNative, let url = destination.cloudURL else { return }
         coordinator.requestedPath = destination.cloudPath
-        coordinator.armCoverTimeout(for: destination.cloudPath)
+        coordinator.armCover(for: destination.cloudPath)
         isLoading = true
         errorMessage = nil
         // Always ask whether the page has changed. WebKit's default policy will
@@ -260,7 +260,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         coordinator.requestedPath = path
         // A router push that quietly does nothing (a page with no shell on it,
         // an error page) would otherwise leave the cover up for good.
-        coordinator.armCoverTimeout(for: path)
+        coordinator.armCover(for: path)
         let script = "window.__yapperNativeNavigate?.(\(literal)) === true"
         webView.evaluateJavaScript(script) { result, error in
             Task { @MainActor in
@@ -379,10 +379,8 @@ private struct CloudStudioWebView: NSViewRepresentable {
         var lastAppliedTheme: StudioTheme
         var requestedPath: String?
         var lastReloadGeneration = 0
-        private var coverTimeout: Task<Void, Never>?
         /// The destination the cover is currently protecting. A page arriving
-        /// for anything else is not the one being waited for, and must not take
-        /// this one's safety net with it.
+        /// for anything else is not the one being waited for.
         private var coveringPath: String?
         var lastSignOutGeneration = 0
         var lastManageAccountGeneration = 0
@@ -443,21 +441,11 @@ private struct CloudStudioWebView: NSViewRepresentable {
             }
         }
 
-        /// The cover cannot outlive the navigation that raised it.
-        ///
-        /// This used to be a SwiftUI `.task`, which every rebuild cancelled,
-        /// and the shell rebuilds every couple of seconds while signed out. It
-        /// lost that race and left an opaque sheet over the sign-in card,
-        /// swallowing the click on the only button on screen.
-        func armCoverTimeout(for path: String?) {
-            coverTimeout?.cancel()
+        /// Remember which destination the cover protects. Do not reveal the
+        /// web view on a timer: under a slow connection it can still contain
+        /// the previous tab, which is precisely what the cover exists to hide.
+        func armCover(for path: String?) {
             coveringPath = path
-            guard let path else { return }
-            coverTimeout = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(1500))
-                guard !Task.isCancelled else { return }
-                StudioWebPresentation.shared.shownPath = path
-            }
         }
 
         func webView(_ webView: WKWebView, didCommit navigation: WKNavigation?) {
@@ -469,14 +457,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
         /// A page arrived.
         ///
-        /// The timeout is only stood down when what arrived is what the cover
-        /// is waiting for. A late commit from the page being navigated away
-        /// from used to cancel the new destination's safety net and then name
-        /// itself as what was on screen, which left the cover up for good.
+        /// The cover is cleared only when what arrived is what it is waiting
+        /// for. A late commit from the page being navigated away from must not
+        /// clear the new destination's safety net.
         func report(shown path: String?) {
             StudioWebPresentation.shared.shownPath = path
             guard path == coveringPath else { return }
-            coverTimeout?.cancel()
             coveringPath = nil
         }
 
