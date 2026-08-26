@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
+import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
+import { getDb } from "@/lib/db/client";
 import { createContentItem, listContentItems } from "@/lib/db/content";
+import { submissions } from "@/lib/db/schema";
 import { ensureUser } from "@/lib/db/users";
 import { parseContentInput } from "@/lib/content/input";
 import { parseIdeaFields } from "@/lib/ideas/input";
@@ -35,6 +38,29 @@ export async function POST(req: NextRequest): Promise<Response> {
   // absent and allows title-only caption generation.
   Object.assign(input, parseIdeaFields(body));
   if (badStatus) return Response.json({ error: "bad_status" }, { status: 400 });
+  // Poster creates the content row and attaches the just-registered upload in
+  // one request. The shared parser intentionally drops foreign keys, so this
+  // ownership check must restore the id explicitly (the PATCH route does the
+  // same). Dropping it here made a successful upload disappear immediately.
+  if (body.submissionId !== undefined) {
+    if (body.submissionId === null) input.submissionId = null;
+    else if (typeof body.submissionId === "string") {
+      const [own] = await getDb()
+        .select({ id: submissions.id })
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.id, body.submissionId),
+            eq(submissions.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (!own) {
+        return Response.json({ error: "bad_submission" }, { status: 400 });
+      }
+      input.submissionId = own.id;
+    }
+  }
   // Same invariant as PATCH (and the DB CHECK): scheduled requires a date.
   if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {
     return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
