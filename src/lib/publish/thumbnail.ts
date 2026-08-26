@@ -89,7 +89,13 @@ export async function generateThumbnail(
         generationConfig: {
           responseModalities: ["IMAGE"],
           responseFormat: {
-            image: { aspectRatio: "9:16", imageSize: "2K" },
+            // REST takes the protobuf enum names here. The SDK examples show
+            // friendly "9:16"/"2K" values, but sending those strings directly
+            // to v1 is a 400 INVALID_ARGUMENT.
+            image: {
+              aspectRatio: "ASPECT_RATIO_NINE_BY_SIXTEEN",
+              imageSize: "IMAGE_SIZE_TWO_K",
+            },
           },
         },
       }),

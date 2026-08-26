@@ -75,7 +75,12 @@ describe("Gemini thumbnail generation", () => {
     );
     expect(request.generationConfig).toEqual({
       responseModalities: ["IMAGE"],
-      responseFormat: { image: { aspectRatio: "9:16", imageSize: "2K" } },
+      responseFormat: {
+        image: {
+          aspectRatio: "ASPECT_RATIO_NINE_BY_SIXTEEN",
+          imageSize: "IMAGE_SIZE_TWO_K",
+        },
+      },
     });
   });
 
