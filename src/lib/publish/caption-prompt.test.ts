@@ -77,6 +77,18 @@ describe("buildCaptionMessages", () => {
     expect(user).toContain("Creator's instructions for this draft");
     expect(user).toContain("Mention the free practice exam");
     expect(user).toContain("searchable title");
+    expect(user).toContain("ideal number of relevant, specific hashtags");
+  });
+
+  it("explicitly requires useful hashtags and rejects generic reach tags", () => {
+    const { system } = buildCaptionMessages({
+      title: "T",
+      platforms: ["youtube", "instagram", "tiktok"],
+    });
+    expect(system).toContain(
+      "specific topic, audience, and search-intent tags",
+    );
+    expect(system).toContain("Never return #fyp");
   });
 
   /** The caption sits beside the video rather than narrating it, so repeating

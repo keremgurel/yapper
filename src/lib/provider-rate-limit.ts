@@ -28,6 +28,7 @@ export type ProviderSpendEndpoint =
   | "inspiration-creator"
   | "inspiration-resolve"
   | "publish-caption"
+  | "publish-thumbnail"
   | "instagram-import";
 
 const HOUR = 60 * 60;
@@ -64,6 +65,7 @@ const ENDPOINT_POLICIES: Record<
   "inspiration-creator": { capacity: 2, refillPerSecond: 10 / HOUR },
   "inspiration-resolve": { capacity: 3, refillPerSecond: 20 / HOUR },
   "publish-caption": { capacity: 3, refillPerSecond: 20 / HOUR },
+  "publish-thumbnail": { capacity: 3, refillPerSecond: 12 / HOUR },
   // Two at a time refilling ten a day was set as a guard on someone else's
   // API, but it is also the ceiling on cross-posting a week of clips, and a
   // creator who hits it waits two and a half hours for the next one.

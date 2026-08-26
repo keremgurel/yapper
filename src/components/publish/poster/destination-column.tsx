@@ -97,7 +97,7 @@ export default function DestinationColumn({
               ? "Reading what the video says…"
               : generating
                 ? "Writing platform copy…"
-                : "Generate smart copy + YouTube title"}
+                : "Generate captions + YouTube title"}
           </Button>
           <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-[11px]">
             {transcriptStatus === "ready" ? (

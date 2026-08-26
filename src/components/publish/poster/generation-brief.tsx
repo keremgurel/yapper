@@ -26,9 +26,12 @@ export default function GenerationBrief({
           <WandSparkles aria-hidden className="h-4 w-4" />
         </span>
         <div>
-          <p className="text-foreground text-sm font-semibold">Writing brief</p>
+          <p className="text-foreground text-sm font-semibold">
+            Caption &amp; title prompt
+          </p>
           <p className="text-muted-foreground text-[11px]">
-            The default is ready. Add the angle, offer, tone, or CTA you want.
+            Controls captions, hashtags, and the YouTube title. Add context or
+            requests.
           </p>
         </div>
         {customized ? (
@@ -46,7 +49,9 @@ export default function GenerationBrief({
         ) : null}
       </div>
       <label className="block p-4">
-        <span className="sr-only">Instructions for caption generation</span>
+        <span className="sr-only">
+          Prompt for captions, hashtags, and YouTube title
+        </span>
         <textarea
           value={value}
           disabled={disabled}
@@ -54,7 +59,7 @@ export default function GenerationBrief({
           rows={5}
           onChange={(event) => onChange(event.target.value)}
           className="border-border bg-background text-foreground placeholder:text-muted-foreground min-h-32 w-full resize-y rounded-lg border px-3 py-2.5 text-[13px] leading-relaxed focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-60"
-          placeholder="Add context: the audience, the offer, the point to emphasize, words to avoid…"
+          placeholder="Add context: audience, offer, CTA, keywords, tone, hashtags, or anything to avoid…"
         />
         <span className="text-muted-foreground mt-1.5 block text-right font-mono text-[10px] tabular-nums">
           {value.length}/2000

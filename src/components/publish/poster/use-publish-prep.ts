@@ -34,11 +34,13 @@ export function usePublishPrep() {
         videos.map(async (video) => {
           const cover = covers[video.id] ?? defaultCover(video.title);
           let thumbnail: { key: string; previewUrl: string } | undefined;
-          try {
-            thumbnail = await uploadThumbnailFile(await renderCover(cover));
-          } catch {
-            // A cover is optional. Keep preparing the remaining videos and show
-            // one non-blocking warning after the batch is ready.
+          if (cover.image) {
+            try {
+              thumbnail = await uploadThumbnailFile(await renderCover(cover));
+            } catch {
+              // A cover is optional. Keep preparing the remaining videos and show
+              // one non-blocking warning after the batch is ready.
+            }
           }
           return {
             id: video.id,
@@ -52,7 +54,10 @@ export function usePublishPrep() {
           } satisfies CrossPostTarget;
         }),
       );
-      if (prepared.some((item) => !item.thumbnailKey)) {
+      if (
+        videos.some((video) => covers[video.id]?.image) &&
+        prepared.some((item) => !item.thumbnailKey)
+      ) {
         setWarning(
           "One or more covers couldn't upload. The videos are still ready to publish.",
         );

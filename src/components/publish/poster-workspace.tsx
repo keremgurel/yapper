@@ -155,7 +155,7 @@ export default function PosterWorkspace() {
       <div className="w-full">
         <PageHeader
           title="Poster"
-          description="Drop the final export, generate platform-native copy from what it actually says, and send it everywhere."
+          description="Drop the final export, choose or generate its thumbnail, write platform-native captions from the transcript, and send it everywhere."
           actions={
             <PosterActions
               uploadState={uploadState}
@@ -262,9 +262,10 @@ export default function PosterWorkspace() {
                   {/* One artwork shared by every destination that shows a
                       chosen thumbnail, so it sits with the video rather than
                       inside any single destination's card. */}
-                  <Section title="Cover">
+                  <Section title="Thumbnail studio">
                     <CoverCanvas
                       draft={cover}
+                      submissionId={active.submissionId}
                       onChange={(next) =>
                         setCovers((current) => ({
                           ...current,
@@ -282,7 +283,7 @@ export default function PosterWorkspace() {
                       connections?.map((connection) => connection.platform) ??
                       []
                     }
-                    hasCover={Boolean(cover.headline.trim())}
+                    hasCover={Boolean(cover.image)}
                     generating={generating}
                     captionError={error}
                     publishing={prep.preparing}

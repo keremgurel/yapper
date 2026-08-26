@@ -33,7 +33,7 @@ const NOTE_MAX = 1500;
 const INSTRUCTIONS_MAX = 2000;
 
 export const DEFAULT_CAPTION_BRIEF =
-  "Write high-retention, specific copy that makes the value of this video obvious without clickbait. Lead with the strongest useful takeaway, keep the language natural and spoken, and make each version feel native to its platform. For YouTube, write a clear searchable title that creates curiosity without overpromising.";
+  "Write a fully optimized caption for each selected platform based on what is actually said in this video. Make the opening line strong enough to stop the scroll without repeating the video's spoken hook. Keep the voice natural, specific, and human—never generic marketing copy. Adapt the structure and call to action to each platform instead of reusing the same caption. Include the ideal number of relevant, specific hashtags for each platform, mixing topic, audience, and intent tags; never use filler tags such as #fyp unless they are genuinely relevant. For YouTube Shorts, also write a concise, searchable title with the concrete topic and a credible curiosity gap, plus a useful description. Do not invent claims, outcomes, links, or offers that are not supported by the transcript or creator context.";
 
 /**
  * Build the messages for one call that writes every requested platform at once.
@@ -86,6 +86,10 @@ export function buildCaptionMessages(input: CaptionInput): {
     "- Plain spoken language. No 'unlock', no 'dive in', no 'game changer', " +
     "no emoji unless the creator's own samples use them.\n" +
     "- Hashtags go in the hashtags array only, never inside the body.\n" +
+    "- Return the requested number of hashtags for every platform. Prefer " +
+    "specific topic, audience, and search-intent tags over generic reach tags. " +
+    "Never return #fyp, #viral, #explore, or #trending unless the creator " +
+    "explicitly requests one.\n" +
     "- Output JSON and nothing else." +
     (input.context ?? "");
 
