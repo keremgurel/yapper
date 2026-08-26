@@ -25,8 +25,8 @@ import {
   type PublishWorkflow,
 } from "./workflow";
 
-const MAX_CHUNK = 64 * 1024 * 1024; // 64MB, TikTok's per-chunk ceiling when splitting.
-const MAX_SINGLE = 128 * 1024 * 1024; // A single (final) chunk may run up to 128MB.
+const MAX_WHOLE_FILE = 64 * 1024 * 1024;
+const MULTIPART_CHUNK = 32 * 1024 * 1024;
 
 export interface TikTokUploadInput {
   accessToken: string;
@@ -40,17 +40,18 @@ export interface TikTokUploadResult {
 }
 
 /**
- * Chunk plan honoring TikTok's rules. A file that fits a single chunk (up to
- * 128MB, the final-chunk ceiling) is announced as chunk_size = video_size,
- * count = 1 — TikTok's documented whole-file shape. Announcing a 64MB chunk with
- * count 1 for, say, a 100MB file is inconsistent (64MB x 1 != 100MB) and can be
- * rejected. Larger files split into 64MB chunks with the last absorbing the
- * remainder (which stays under 128MB, so total_chunk_count = floor(size/64MB)).
+ * TikTok accepts a whole-file upload only through 64MB. Above that threshold it
+ * requires multiple chunks, with every non-final chunk between 5MB and 64MB.
+ * Using 32MB produces at least two chunks immediately above the threshold and
+ * leaves a 32-64MB final chunk that absorbs the remainder. TikTok defines
+ * total_chunk_count as floor(video_size / chunk_size).
  */
 export function planChunks(size: number): { chunkSize: number; count: number } {
-  if (size <= MAX_SINGLE) return { chunkSize: size, count: 1 };
-  const count = Math.floor(size / MAX_CHUNK);
-  return { chunkSize: MAX_CHUNK, count };
+  if (size <= MAX_WHOLE_FILE) return { chunkSize: size, count: 1 };
+  return {
+    chunkSize: MULTIPART_CHUNK,
+    count: Math.floor(size / MULTIPART_CHUNK),
+  };
 }
 
 async function initUpload(
@@ -90,7 +91,13 @@ async function initUpload(
       signal: workflow.signal,
     },
   );
-  if (!response.ok) throw new Error(`tiktok_init_${response.status}`);
+  if (!response.ok) {
+    const code = (json.error?.code ?? "unknown").slice(0, 100);
+    const message = (
+      json.error?.message ?? "upload initialization failed"
+    ).slice(0, 300);
+    throw new Error(`tiktok_init_${response.status}: ${code}: ${message}`);
+  }
   const publishId = json.data?.publish_id;
   const uploadUrl = json.data?.upload_url;
   if (!publishId || !uploadUrl) {
