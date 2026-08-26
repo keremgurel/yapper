@@ -11,9 +11,15 @@ import type { ContentDetail } from "@/lib/content/client";
  * the creator straight into composing the thing they just dropped instead of
  * making them find it again in a grid.
  */
-export function useVideoFiles(onAdded: (item: ContentDetail) => void) {
+export function useVideoFiles(
+  onAdded: (item: ContentDetail) => void,
+  onUpdated?: (item: ContentDetail) => void,
+) {
   const ref = useRef<HTMLInputElement>(null);
-  const { state, error, add } = useAddVideo(onAdded);
+  const { state, error, notice, progress, add } = useAddVideo(
+    onAdded,
+    onUpdated,
+  );
 
   const onChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
@@ -41,5 +47,5 @@ export function useVideoFiles(onAdded: (item: ContentDetail) => void) {
 
   const open = useCallback(() => ref.current?.click(), []);
 
-  return { ref, state, error, onChange, addFiles, open };
+  return { ref, state, error, notice, progress, onChange, addFiles, open };
 }

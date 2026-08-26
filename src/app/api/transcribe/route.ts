@@ -28,6 +28,7 @@ import {
   viaOpenAiCompatible,
 } from "@/lib/transcription/providers";
 import { getObjectBytes } from "@/lib/r2";
+import { getOwnedMediaKey } from "@/lib/db/submissions";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -104,6 +105,8 @@ export async function POST(req: Request): Promise<Response> {
   let audio: ArrayBuffer | null = null;
   let contentType = "audio/mp4";
   let storedKey: string | null = null;
+  let discardStoredKey = false;
+  let durableVideoMaster = false;
 
   if (stored) {
     if (!r2Configured())
@@ -116,13 +119,26 @@ export async function POST(req: Request): Promise<Response> {
       if (response) return response;
       throw error;
     }
-    const key = (body as { key?: unknown } | null)?.key;
-    // The prefix is the ownership check: a ticket is only ever issued under the
-    // asking account, so a key outside it was not issued to this caller.
-    if (typeof key !== "string" || !isTranscriptionKey(userId, key)) {
+    const value = body as { key?: unknown; submissionId?: unknown } | null;
+    const key = value?.key;
+    const submissionId = value?.submissionId;
+    if (typeof key === "string" && isTranscriptionKey(userId, key)) {
+      // Scratch audio uploaded only for this request.
+      storedKey = key;
+      discardStoredKey = true;
+    } else if (typeof submissionId === "string") {
+      // Poster uploads already have a durable master in R2. Resolve it through
+      // the owner-scoped submission row rather than accepting a raw key from
+      // the browser, and never delete that master after transcription.
+      storedKey = await getOwnedMediaKey(userId, submissionId);
+      contentType = "video/mp4";
+      durableVideoMaster = true;
+      if (!storedKey) {
+        return Response.json({ error: "bad_request" }, { status: 400 });
+      }
+    } else {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
-    storedKey = key;
   } else {
     try {
       const body = await readBoundedBody(req, {
@@ -176,7 +192,10 @@ export async function POST(req: Request): Promise<Response> {
             ),
     });
   }
-  if (groq) {
+  // A Poster master can be hundreds of megabytes. Deepgram reads it directly
+  // from the signed URL; pulling that whole video into serverless memory just
+  // to hand it to Groq would recreate the upload failure this path removes.
+  if (groq && !durableVideoMaster) {
     providers.push({
       name: "groq",
       run: async (timeoutMs) =>
@@ -211,7 +230,7 @@ export async function POST(req: Request): Promise<Response> {
   // waiting on the bytes, and a creator is not paying to store a copy of a
   // video they have on their own disk.
   const discard = async () => {
-    if (!storedKey) return;
+    if (!storedKey || !discardStoredKey) return;
     try {
       await discardTranscriptionAudio(storedKey);
     } catch (error) {

@@ -50,7 +50,10 @@ export function useContentList(
 
   const prependRow = useCallback(
     (row: ContentSummary) => {
-      mutate((prev) => [row, ...(prev ?? [])]);
+      mutate((prev) => [
+        row,
+        ...(prev ?? []).filter((item) => item.id !== row.id),
+      ]);
     },
     [mutate],
   );

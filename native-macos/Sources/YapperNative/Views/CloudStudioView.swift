@@ -78,6 +78,8 @@ struct CloudStudioView: View {
                 errorMessage: $errorMessage,
                 signOutGeneration: commands.signOutGeneration,
                 manageAccountGeneration: commands.manageAccountGeneration,
+                posterGeneration: commands.posterGeneration,
+                posterItemID: commands.posterItemID,
                 onNavigate: onNavigate
             )
             .opacity(isShowingDestination ? 1 : 0)
@@ -122,6 +124,8 @@ private struct CloudStudioWebView: NSViewRepresentable {
     @Binding var errorMessage: String?
     let signOutGeneration: Int
     let manageAccountGeneration: Int
+    let posterGeneration: Int
+    let posterItemID: String?
     let onNavigate: (StudioDestination) -> Void
 
     private static var nativeUserAgentToken: String {
@@ -168,6 +172,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         context.coordinator.lastReloadGeneration = reloadGeneration
         context.coordinator.lastSignOutGeneration = signOutGeneration
         context.coordinator.lastManageAccountGeneration = manageAccountGeneration
+        context.coordinator.lastPosterGeneration = posterGeneration
         load(destination, in: webView, coordinator: context.coordinator)
         return webView
     }
@@ -188,6 +193,14 @@ private struct CloudStudioWebView: NSViewRepresentable {
         if context.coordinator.lastManageAccountGeneration != manageAccountGeneration {
             context.coordinator.lastManageAccountGeneration = manageAccountGeneration
             webView.evaluateJavaScript("window.__yapperNativeManageAccount?.() === true")
+            return
+        }
+
+        if context.coordinator.lastPosterGeneration != posterGeneration,
+           destination == .poster,
+           let posterItemID {
+            context.coordinator.lastPosterGeneration = posterGeneration
+            navigateToPosterItem(posterItemID, in: webView, coordinator: context.coordinator)
             return
         }
 
@@ -269,6 +282,29 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 guard error != nil || (result as? Bool) != true else { return }
                 coordinator.requestedPath = nil
                 load(destination, in: webView, coordinator: coordinator)
+            }
+        }
+    }
+
+    private func navigateToPosterItem(
+        _ itemID: String,
+        in webView: WKWebView,
+        coordinator: Coordinator
+    ) {
+        guard let encoded = itemID.addingPercentEncoding(
+            withAllowedCharacters: .urlQueryAllowed
+        ), let literal = Coordinator.javascriptLiteral("/studio/poster?item=\(encoded)") else {
+            return
+        }
+        coordinator.requestedPath = "/studio/poster"
+        coordinator.armCover(for: "/studio/poster")
+        let script = "window.__yapperNativeNavigate?.(\(literal)) === true"
+        webView.evaluateJavaScript(script) { result, error in
+            Task { @MainActor in
+                guard error != nil || (result as? Bool) != true else { return }
+                coordinator.requestedPath = nil
+                let url = URL(string: "https://ypr.app/studio/poster?item=\(encoded)&native=swift")!
+                webView.load(URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData))
             }
         }
     }
@@ -386,6 +422,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         private var coveringPath: String?
         var lastSignOutGeneration = 0
         var lastManageAccountGeneration = 0
+        var lastPosterGeneration = 0
         var nativeDestination: StudioDestination?
 
         init(

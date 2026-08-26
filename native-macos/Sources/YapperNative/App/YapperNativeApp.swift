@@ -77,6 +77,9 @@ struct YapperNativeApp: App {
                 Button("Export…") { ImportPanels.saveExport(for: session) }
                     .keyboardShortcut("e")
                     .disabled(session.project.clips.isEmpty || session.isBusy)
+                Button("Export & Post") { ImportPanels.exportAndPost(for: session) }
+                    .keyboardShortcut("e", modifiers: [.command, .shift])
+                    .disabled(session.project.clips.isEmpty || session.isBusy)
             }
             CommandMenu("Timeline") {
                 Button("Split at Playhead") {

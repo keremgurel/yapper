@@ -172,6 +172,7 @@ export async function generateCaptions(input: {
   contentItemId?: string;
   context?: string;
   matchStyle: boolean;
+  instructions?: string;
 }): Promise<PlatformCaption[]> {
   const res = await fetch("/api/publish/caption", {
     method: "POST",

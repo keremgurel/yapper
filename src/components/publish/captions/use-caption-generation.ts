@@ -36,6 +36,7 @@ export function useCaptionGeneration(
       subjects: CaptionSubject[],
       platforms: PublishPlatform[],
       matchStyle: boolean,
+      instructions?: string,
     ) => {
       if (!subjects.length || !platforms.length) return;
       setGenerating(true);
@@ -49,6 +50,7 @@ export function useCaptionGeneration(
               platforms,
               contentItemId: subject.contentItemId,
               matchStyle,
+              instructions,
             }),
           })),
         );

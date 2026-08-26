@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { Upload } from "lucide-react";
+import { videoTypeFor } from "@/hooks/use-add-video";
 
 /**
  * Drop a video anywhere on the Poster to add it.
@@ -57,7 +58,7 @@ export default function VideoDropzone({
       depth.current = 0;
       setOver(false);
       const files = Array.from(event.dataTransfer?.files ?? []).filter((file) =>
-        file.type.startsWith("video/"),
+        Boolean(videoTypeFor(file)),
       );
       if (files.length > 0) onFiles(files);
     },

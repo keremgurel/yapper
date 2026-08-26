@@ -9,12 +9,15 @@ import type { AddVideoState } from "@/hooks/use-add-video";
  * Publish, at the end of the rail. */
 export default function PosterActions({
   uploadState,
+  progress,
   onAdd,
 }: {
   uploadState: AddVideoState;
+  progress: number;
   onAdd: () => void;
 }) {
   const uploading = uploadState === "uploading";
+  const preparing = uploadState === "preparing";
 
   return (
     <>
@@ -27,15 +30,19 @@ export default function PosterActions({
       <Button
         type="button"
         variant="contrast"
-        disabled={uploading}
+        disabled={uploading || preparing}
         onClick={onAdd}
       >
-        {uploading ? (
+        {uploading || preparing ? (
           <Loader2 aria-hidden className="animate-spin" />
         ) : (
           <Upload aria-hidden />
         )}
-        {uploading ? "Uploading…" : "Add videos"}
+        {uploading
+          ? `Uploading ${Math.round(progress * 100)}%`
+          : preparing
+            ? "Reading video…"
+            : "Add videos"}
       </Button>
     </>
   );

@@ -1,6 +1,12 @@
 "use client";
 
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import {
+  AudioLines,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Sparkles,
+} from "lucide-react";
 
 import DestinationCard from "@/components/publish/poster/destination-card";
 import PlatformIcon from "@/components/publish/platform-icon";
@@ -30,6 +36,7 @@ export default function DestinationColumn({
   generating,
   captionError,
   publishing,
+  transcriptStatus,
   onToggle,
   onCaptionChange,
   onGenerate,
@@ -42,6 +49,7 @@ export default function DestinationColumn({
   generating: boolean;
   captionError: string;
   publishing: boolean;
+  transcriptStatus: "ready" | "pending" | "needs_media" | "unavailable" | null;
   onToggle: (platform: PublishPlatform) => void;
   onCaptionChange: (caption: PlatformCaption) => void;
   onGenerate: () => void;
@@ -57,6 +65,7 @@ export default function DestinationColumn({
   );
   const summary = publishSummary(readiness);
   const unchosen = publishPlatforms.filter((p) => !chosen.has(p));
+  const readingVideo = transcriptStatus === "pending";
 
   return (
     <div className="space-y-4">
@@ -76,18 +85,32 @@ export default function DestinationColumn({
             variant="outline"
             size="sm"
             onClick={onGenerate}
-            disabled={generating}
+            disabled={generating || readingVideo}
             className="w-full"
           >
-            {generating ? (
+            {generating || readingVideo ? (
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
-            {generating
-              ? "Writing captions…"
-              : `Write ${chosen.size === 1 ? "the caption" : "all captions"}`}
+            {readingVideo
+              ? "Reading what the video says…"
+              : generating
+                ? "Writing platform copy…"
+                : "Generate smart copy + YouTube title"}
           </Button>
+          <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-[11px]">
+            {transcriptStatus === "ready" ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--sg-green-500)]" />
+            ) : (
+              <AudioLines className="h-3.5 w-3.5" />
+            )}
+            {transcriptStatus === "ready"
+              ? "Grounded in the video's full transcript"
+              : transcriptStatus === "pending"
+                ? "Transcript is being prepared automatically"
+                : "Uses the title and your writing brief"}
+          </p>
           {captionError && (
             <p
               role="alert"

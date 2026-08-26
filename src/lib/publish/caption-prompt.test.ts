@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCaptionMessages,
+  DEFAULT_CAPTION_BRIEF,
   parseCaptions,
 } from "@/lib/publish/caption-prompt";
 import type { PublishPlatform } from "@/lib/db/schema";
@@ -65,6 +66,17 @@ describe("buildCaptionMessages", () => {
     });
     expect(user).toContain("the words I say");
     expect(user).toContain("my rough thought");
+  });
+
+  it("carries the editable writing brief into the request", () => {
+    const { user } = buildCaptionMessages({
+      title: "T",
+      platforms: ["youtube"],
+      instructions: `${DEFAULT_CAPTION_BRIEF} Mention the free practice exam.`,
+    });
+    expect(user).toContain("Creator's instructions for this draft");
+    expect(user).toContain("Mention the free practice exam");
+    expect(user).toContain("searchable title");
   });
 
   /** The caption sits beside the video rather than narrating it, so repeating

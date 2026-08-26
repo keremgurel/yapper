@@ -16,6 +16,8 @@ export interface CaptionInput {
   platforms: PublishPlatform[];
   /** Recent real captions per platform, present only when matching style. */
   styleSamples?: Partial<Record<PublishPlatform, string[]>>;
+  /** The creator's editable brief for this specific generation. */
+  instructions?: string;
 }
 
 export interface PlatformCaption {
@@ -28,6 +30,10 @@ export interface PlatformCaption {
 
 const SCRIPT_MAX = 4000;
 const NOTE_MAX = 1500;
+const INSTRUCTIONS_MAX = 2000;
+
+export const DEFAULT_CAPTION_BRIEF =
+  "Write high-retention, specific copy that makes the value of this video obvious without clickbait. Lead with the strongest useful takeaway, keep the language natural and spoken, and make each version feel native to its platform. For YouTube, write a clear searchable title that creates curiosity without overpromising.";
 
 /**
  * Build the messages for one call that writes every requested platform at once.
@@ -96,6 +102,11 @@ export function buildCaptionMessages(input: CaptionInput): {
   if (input.script?.trim()) {
     parts.push(
       `What is said on camera:\n${input.script.trim().slice(0, SCRIPT_MAX)}`,
+    );
+  }
+  if (input.instructions?.trim()) {
+    parts.push(
+      `Creator's instructions for this draft:\n${input.instructions.trim().slice(0, INSTRUCTIONS_MAX)}`,
     );
   }
 

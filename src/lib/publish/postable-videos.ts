@@ -9,6 +9,7 @@ export interface PostableVideo {
   status: ContentSummary["status"];
   scheduledFor: string | null;
   updatedAt: string;
+  transcriptStatus: ContentSummary["transcriptStatus"];
 }
 
 /**
@@ -32,6 +33,7 @@ export function postableVideos(
       status: it.status,
       scheduledFor: it.scheduledFor,
       updatedAt: it.updatedAt,
+      transcriptStatus: it.transcriptStatus,
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }

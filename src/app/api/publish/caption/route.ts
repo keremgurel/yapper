@@ -74,12 +74,14 @@ export async function POST(req: Request): Promise<Response> {
   let script: string | undefined;
   let hook: string | undefined;
   let originalNote: string | undefined;
+  let sourceTranscript: string | undefined;
   let pillar: string | undefined;
   const itemId = str(body.contentItemId, 100);
   if (itemId) {
     const item = await getContentItem(userId, itemId);
     if (item) {
       script = item.script ?? undefined;
+      sourceTranscript = item.sourceTranscript ?? undefined;
       hook = hookTexts(normalizeBody(item).hooks)[0];
       originalNote = item.originalNote || undefined;
       pillar = item.pillar ?? undefined;
@@ -92,7 +94,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const brain = await getBrainContextSafe(userId, {
     surface: "caption",
-    task: [title, hook, script?.slice(0, 1200), pillar]
+    task: [title, hook, (script ?? sourceTranscript)?.slice(0, 1200), pillar]
       .filter(Boolean)
       .join("\n"),
     signal: req.signal,
@@ -104,13 +106,14 @@ export async function POST(req: Request): Promise<Response> {
         title,
         context: brain.section,
         hook,
-        script,
+        script: script ?? sourceTranscript,
         // The item's own words win; the client's free-text context is the
         // fallback for a video with no library row behind it.
         originalNote: originalNote ?? str(body.context, 2000),
         pillar,
         platforms,
         styleSamples,
+        instructions: str(body.instructions, 2000),
       },
       req.signal,
     );

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Loader2, UploadCloud } from "lucide-react";
 import { EmptyState, PageHeader, Section } from "@/components/studio-ui";
 import CrossPostSheet from "@/components/publish/cross-post-sheet";
 import PlatformVideos from "@/components/publish/platform-videos";
@@ -11,6 +11,7 @@ import { useCaptionDrafts } from "@/components/publish/captions/use-caption-draf
 import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
 import PosterActions from "@/components/publish/poster/poster-actions";
 import DestinationColumn from "@/components/publish/poster/destination-column";
+import GenerationBrief from "@/components/publish/poster/generation-brief";
 import VideoDropzone from "@/components/publish/poster/video-dropzone";
 import VideoGrid from "@/components/publish/poster/video-grid";
 import CoverCanvas from "@/components/publish/poster/cover-canvas";
@@ -27,6 +28,10 @@ import { useConnections } from "@/hooks/use-connections";
 import { useContentList } from "@/hooks/use-content-list";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { postableVideos } from "@/lib/publish/postable-videos";
+import { DEFAULT_CAPTION_BRIEF } from "@/lib/publish/caption-prompt";
+import type { ContentDetail } from "@/lib/content/client";
+
+const NO_DESTINATIONS = new Set<PublishPlatform>();
 
 /**
  * The Poster: one finished video, and everywhere it is going.
@@ -41,7 +46,7 @@ import { postableVideos } from "@/lib/publish/postable-videos";
  */
 export default function PosterWorkspace() {
   const { isSignedIn } = useUser();
-  const { items, refresh } = useContentList(!!isSignedIn, {
+  const { items, prependRow, patchRow } = useContentList(!!isSignedIn, {
     includePosterUploads: true,
   });
   const videos = useMemo(() => postableVideos(items), [items]);
@@ -54,6 +59,9 @@ export default function PosterWorkspace() {
   const [destinationsByVideo, setDestinationsByVideo] = useState<
     Record<string, Set<PublishPlatform>>
   >({});
+  const [briefsByVideo, setBriefsByVideo] = useState<Record<string, string>>(
+    {},
+  );
   const matchStyle = true;
 
   const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
@@ -64,18 +72,27 @@ export default function PosterWorkspace() {
     ref: fileInputRef,
     state: uploadState,
     error: uploadError,
+    notice: uploadNotice,
+    progress: uploadProgress,
     onChange: onFilesPicked,
     addFiles,
     open: openFilePicker,
   } = useVideoFiles(
     useCallback(
-      (item) => {
-        refresh();
-        // Straight into composing the thing that was just added, rather than
-        // dropping the creator back into a grid to find it again.
+      (item: ContentDetail) => {
+        // Publish the returned row into the shared resource immediately. A
+        // refetch races the active selection and used to make a successful
+        // upload look as though it vanished.
+        prependRow(item);
         open(item.id);
       },
-      [refresh, open],
+      [prependRow, open],
+    ),
+    useCallback(
+      (item: ContentDetail) => {
+        patchRow(item.id, item);
+      },
+      [patchRow],
     ),
   );
 
@@ -89,21 +106,32 @@ export default function PosterWorkspace() {
   const cover = active
     ? (covers[active.id] ?? defaultCover(active.title))
     : null;
-  const destinations = active
-    ? (destinationsByVideo[active.id] ?? new Set<PublishPlatform>())
-    : new Set<PublishPlatform>();
+  const connectedPlatforms = useMemo(
+    () => connections?.map((connection) => connection.platform) ?? [],
+    [connections],
+  );
+  const destinations = useMemo(
+    () =>
+      active
+        ? (destinationsByVideo[active.id] ?? new Set(connectedPlatforms))
+        : NO_DESTINATIONS,
+    [active, connectedPlatforms, destinationsByVideo],
+  );
+  const brief = active
+    ? (briefsByVideo[active.id] ?? DEFAULT_CAPTION_BRIEF)
+    : DEFAULT_CAPTION_BRIEF;
 
   const toggleDestination = useCallback(
     (platform: PublishPlatform) => {
       if (!active) return;
       setDestinationsByVideo((current) => {
-        const next = new Set(current[active.id] ?? []);
+        const next = new Set(current[active.id] ?? connectedPlatforms);
         if (next.has(platform)) next.delete(platform);
         else next.add(platform);
         return { ...current, [active.id]: next };
       });
     },
-    [active],
+    [active, connectedPlatforms],
   );
 
   const draftCaptions = () => {
@@ -118,6 +146,7 @@ export default function PosterWorkspace() {
       })),
       [...destinations],
       matchStyle,
+      brief,
     );
   };
 
@@ -126,9 +155,13 @@ export default function PosterWorkspace() {
       <div className="w-full">
         <PageHeader
           title="Poster"
-          description="Open a finished video, choose where it goes, and send it."
+          description="Drop the final export, generate platform-native copy from what it actually says, and send it everywhere."
           actions={
-            <PosterActions uploadState={uploadState} onAdd={openFilePicker} />
+            <PosterActions
+              uploadState={uploadState}
+              progress={uploadProgress}
+              onAdd={openFilePicker}
+            />
           }
         />
 
@@ -147,9 +180,50 @@ export default function PosterWorkspace() {
           </p>
         )}
 
-        <div className="space-y-8">
-          <PlatformVideos />
+        {uploadState === "uploading" || uploadState === "preparing" ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="border-border bg-card mb-5 overflow-hidden rounded-xl border"
+          >
+            <div className="flex items-center gap-3 px-4 py-3">
+              {uploadState === "uploading" ? (
+                <UploadCloud className="h-4 w-4 text-[color:var(--sg-accent)]" />
+              ) : (
+                <Loader2 className="h-4 w-4 animate-spin text-[color:var(--sg-accent)] motion-reduce:animate-none" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-foreground text-sm font-semibold">
+                  {uploadState === "uploading"
+                    ? `Uploading the final export — ${Math.round(uploadProgress * 100)}%`
+                    : "Reading the video for smarter captions"}
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  {uploadState === "uploading"
+                    ? "You can see exactly how far it has gone."
+                    : "The video is already saved. This transcript grounds every platform draft."}
+                </p>
+              </div>
+            </div>
+            <div className="h-1 bg-black/20">
+              <div
+                className="h-full bg-[color:var(--sg-accent)] transition-[width] duration-200"
+                style={{
+                  width: `${uploadState === "uploading" ? uploadProgress * 100 : 100}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : null}
 
+        {uploadNotice === "transcript_failed" ? (
+          <p className="mb-4 text-sm text-[color:var(--sg-yellow-500)]">
+            The video uploaded, but its transcript could not be prepared. You
+            can still generate from the title and your writing brief.
+          </p>
+        ) : null}
+
+        <div className="space-y-8">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_460px]">
             <Section
               title="Finished videos"
@@ -174,6 +248,17 @@ export default function PosterWorkspace() {
             <div className="xl:border-border/70 xl:border-l xl:pl-6">
               {active && cover ? (
                 <div className="space-y-6">
+                  <GenerationBrief
+                    value={brief}
+                    disabled={generating}
+                    onChange={(value) =>
+                      setBriefsByVideo((current) => ({
+                        ...current,
+                        [active.id]: value,
+                      }))
+                    }
+                  />
+
                   {/* One artwork shared by every destination that shows a
                       chosen thumbnail, so it sits with the video rather than
                       inside any single destination's card. */}
@@ -201,6 +286,7 @@ export default function PosterWorkspace() {
                     generating={generating}
                     captionError={error}
                     publishing={prep.preparing}
+                    transcriptStatus={active.transcriptStatus}
                     onToggle={toggleDestination}
                     onCaptionChange={(caption) =>
                       setCaption(active.id, caption)
@@ -215,11 +301,13 @@ export default function PosterWorkspace() {
                 <EmptyState
                   icon={ImageIcon}
                   title="Pick a video to post"
-                  description="Its destinations and captions appear here. You can also drop a file anywhere on this page."
+                  description="Drop the MP4 anywhere or choose it from disk. It uploads once, opens automatically, and all connected platforms are selected for you."
                 />
               )}
             </div>
           </div>
+
+          <PlatformVideos />
         </div>
 
         {prep.targets && (

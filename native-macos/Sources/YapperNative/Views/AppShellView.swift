@@ -22,6 +22,7 @@ struct AppShellView: View {
     @State private var parkedWebDestination = StudioDestination.home
     @ObservedObject private var auth = StudioAuth.shared
     @ObservedObject private var handoff = NativeAuthHandoff.shared
+    @ObservedObject private var webCommands = StudioWebCommands.shared
 
     init(session: EditorSession) {
         self.session = session
@@ -92,6 +93,9 @@ struct AppShellView: View {
             }
             .onChange(of: destinationRaw) { _, _ in
                 updateAssistantSurface()
+            }
+            .onChange(of: webCommands.posterGeneration) { _, _ in
+                navigate(.poster)
             }
     }
 
@@ -413,6 +417,13 @@ private struct StudioTopBar: View {
                     ImportPanels.saveExport(for: session)
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                .disabled(session.project.clips.isEmpty || session.isBusy)
+                Button {
+                    ImportPanels.exportAndPost(for: session)
+                } label: {
+                    Label("Export & Post", systemImage: "paperplane.fill")
                 }
                 .buttonStyle(EditorPrimaryButtonStyle(size: .small))
                 .disabled(session.project.clips.isEmpty || session.isBusy)

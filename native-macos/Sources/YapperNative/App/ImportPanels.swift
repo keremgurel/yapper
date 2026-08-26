@@ -24,6 +24,16 @@ enum ImportPanels {
         Task { await session.export(to: url) }
     }
 
+    /// The fast path: render to an app-owned temporary file, upload that exact
+    /// final composition once, and open it in Poster. No save panel and no
+    /// second file picker between the edit and the cross-post.
+    static func exportAndPost(for session: EditorSession) {
+        let url = FileManager.default.temporaryDirectory
+            .appending(path: "yapper-poster-\(UUID().uuidString)")
+            .appendingPathExtension("mp4")
+        Task { await session.exportForPosting(to: url) }
+    }
+
     static func openAudio(for session: EditorSession) {
         let panel = NSOpenPanel()
         panel.title = "Import audio"

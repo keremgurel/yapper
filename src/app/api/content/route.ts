@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { createContentItem, listContentItems } from "@/lib/db/content";
 import { ensureUser } from "@/lib/db/users";
 import { parseContentInput } from "@/lib/content/input";
+import { parseIdeaFields } from "@/lib/ideas/input";
 
 export const runtime = "nodejs";
 
@@ -29,6 +30,10 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const { input, badStatus } = parseContentInput(body);
+  // New Poster uploads need their pending transcript state on the very first
+  // response. Without this, the UI briefly treats an in-flight transcript as
+  // absent and allows title-only caption generation.
+  Object.assign(input, parseIdeaFields(body));
   if (badStatus) return Response.json({ error: "bad_status" }, { status: 400 });
   // Same invariant as PATCH (and the DB CHECK): scheduled requires a date.
   if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {

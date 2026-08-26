@@ -384,6 +384,14 @@ private struct EditorHeader: View {
             } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
+            .buttonStyle(EditorSecondaryButtonStyle())
+            .disabled(session.project.clips.isEmpty || session.isBusy)
+
+            Button {
+                ImportPanels.exportAndPost(for: session)
+            } label: {
+                Label("Export & Post", systemImage: "paperplane.fill")
+            }
             .buttonStyle(EditorPrimaryButtonStyle())
             .disabled(session.project.clips.isEmpty || session.isBusy)
         }

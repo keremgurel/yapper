@@ -36,6 +36,8 @@ final class StudioWebCommands: ObservableObject {
 
     @Published private(set) var signOutGeneration = 0
     @Published private(set) var manageAccountGeneration = 0
+    @Published private(set) var posterGeneration = 0
+    @Published private(set) var posterItemID: String?
     private weak var webView: WKWebView?
 
     func signOut() {
@@ -49,6 +51,11 @@ final class StudioWebCommands: ObservableObject {
         }
     }
     func manageAccount() { manageAccountGeneration += 1 }
+
+    func openPoster(itemID: String) {
+        posterItemID = itemID
+        posterGeneration += 1
+    }
 
     func register(webView: WKWebView) {
         self.webView = webView

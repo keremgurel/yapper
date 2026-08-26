@@ -30,6 +30,11 @@ const r2 = vi.hoisted(() => ({
   discardTranscriptionAudio: vi.fn(),
   getObjectBytes: vi.fn(),
 }));
+const submissions = vi.hoisted(() => ({ getOwnedMediaKey: vi.fn() }));
+
+vi.mock("@/lib/db/submissions", () => ({
+  getOwnedMediaKey: submissions.getOwnedMediaKey,
+}));
 
 vi.mock("@/lib/r2", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/r2")>();
@@ -318,6 +323,7 @@ describe("POST /api/transcribe with audio already in storage", () => {
     vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret");
     r2.presignView.mockResolvedValue("https://r2.test/signed-get");
     r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+    submissions.getOwnedMediaKey.mockResolvedValue(null);
   });
 
   const stored = (key: string) =>
@@ -380,6 +386,48 @@ describe("POST /api/transcribe with audio already in storage", () => {
 
     expect(response.status).toBe(400);
     expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+  });
+
+  it("transcribes an owned Poster master by submission id without deleting it", async () => {
+    submissions.getOwnedMediaKey.mockResolvedValue(
+      "u/user_test/final-export.mp4",
+    );
+    mocks.fetchBoundedJson.mockResolvedValue({
+      response: { ok: true },
+      data: transcript,
+    });
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ submissionId: "submission-owned" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(submissions.getOwnedMediaKey).toHaveBeenCalledWith(
+      "user_test",
+      "submission-owned",
+    );
+    expect(r2.presignView).toHaveBeenCalledWith(
+      "u/user_test/final-export.mp4",
+      900,
+    );
+    expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+  });
+
+  it("refuses a Poster submission that the signed-in user does not own", async () => {
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ submissionId: "submission-other" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+    expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
   });
 
   it("throws the audio away even when the transcriber fails", async () => {

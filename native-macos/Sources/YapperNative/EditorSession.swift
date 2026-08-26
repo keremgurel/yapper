@@ -1378,24 +1378,70 @@ final class EditorSession: ObservableObject {
     func export(to url: URL) async -> Bool {
         guard !project.clips.isEmpty else { return false }
         return await runTrackedLongOperation(.exporting) { [weak self] operation in
-            await self?.performExport(to: url, owner: operation)
+            _ = await self?.performExport(to: url, owner: operation, revealInFinder: true)
         }
     }
 
-    private func performExport(to url: URL, owner _: LongOperationLease) async {
-        guard await beginPreparedTimelineEdit() != nil else { return }
+    @discardableResult
+    func exportForPosting(to url: URL) async -> Bool {
+        guard !project.clips.isEmpty else { return false }
+        return await runTrackedLongOperation(.exporting) { [weak self] operation in
+            guard let self else { return }
+            guard await performExport(
+                to: url,
+                owner: operation,
+                revealInFinder: false
+            ) else { return }
+            statusMessage = "Uploading the final edit to Poster…"
+            do {
+                let itemID = try await PosterHandoffService.prepare(
+                    exportURL: url,
+                    title: project.name
+                ) { [weak self] stage in
+                    switch stage {
+                    case .uploading:
+                        self?.statusMessage = "Uploading the final edit to Poster…"
+                    case .registering:
+                        self?.statusMessage = "Saving the final edit in Poster…"
+                    case .transcribing:
+                        self?.statusMessage = "Reading the final edit for smart copy…"
+                    }
+                }
+                guard !Task.isCancelled else {
+                    markCurrentLongOperationCanceled()
+                    statusMessage = "Export and post canceled"
+                    return
+                }
+                statusMessage = "Ready to write and cross-post"
+                StudioWebCommands.shared.openPoster(itemID: itemID)
+            } catch is CancellationError {
+                markCurrentLongOperationCanceled()
+                errorMessage = nil
+                statusMessage = "Export and post canceled"
+            } catch {
+                show(error)
+            }
+        }
+    }
+
+    private func performExport(
+        to url: URL,
+        owner _: LongOperationLease,
+        revealInFinder: Bool
+    ) async -> Bool {
+        guard await beginPreparedTimelineEdit() != nil else { return false }
         guard !Task.isCancelled else {
             endPreparedTimelineEdit()
             markCurrentLongOperationCanceled()
             statusMessage = "Export canceled"
-            return
+            return false
         }
         repairBuiltInAudioURLs()
         mediaAvailability.refresh(notifyRestored: false)
         guard mediaAvailability.requiredOffline.isEmpty else {
             endPreparedTimelineEdit()
             errorMessage = "Reconnect the required offline media before exporting."
-            return
+            return false
         }
         do {
             try await validateAvailableMediaIdentity()
@@ -1403,7 +1449,7 @@ final class EditorSession: ObservableObject {
             mediaAvailability.refresh(notifyRestored: false)
             endPreparedTimelineEdit()
             show(error)
-            return
+            return false
         }
         let exportProject = project
         endPreparedTimelineEdit()
@@ -1412,13 +1458,16 @@ final class EditorSession: ObservableObject {
         do {
             try await exportRunner(exportProject, url)
             statusMessage = "Exported \(url.lastPathComponent) with audio verified"
-            NSWorkspace.shared.activateFileViewerSelecting([url])
+            if revealInFinder { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            return true
         } catch is CancellationError {
             markCurrentLongOperationCanceled()
             errorMessage = nil
             statusMessage = "Export canceled"
+            return false
         } catch {
             show(error)
+            return false
         }
     }
 
