@@ -65,17 +65,22 @@ struct AssistantTranscript: View {
 /// An empty box with a cursor in it tells you nothing about what it accepts, and
 /// this box accepts far more than its placeholder can fit.
 struct AssistantEmptyState: View {
+    let usesStudioBrain: Bool
     let onPick: (String) -> Void
 
-    private let examples = [
-        "Trim the silent gaps",
-        "Add captions",
-        "Cut the retakes",
-    ]
+    private var examples: [String] {
+        usesStudioBrain
+            ? ["Add context", "Change my voice", "Create an idea"]
+            : ["Trim the silent gaps", "Add captions", "Cut the retakes"]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Ask for an edit, or say where your overlays go.")
+            Text(
+                usesStudioBrain
+                    ? "Change what Yapper knows, or start something anywhere in Studio."
+                    : "Ask for an edit, or say where your overlays go."
+            )
                 .font(.studioCaption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

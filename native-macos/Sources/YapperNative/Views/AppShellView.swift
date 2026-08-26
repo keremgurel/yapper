@@ -59,7 +59,12 @@ struct AppShellView: View {
     }
 
     var body: some View {
-        studioShell
+        ZStack {
+            studioShell
+            if isSignedIn {
+                FloatingAssistant(session: session, conversation: session.conversation)
+            }
+        }
             .background {
                 PreviewFullScreenWindowBridge(
                     session: session,
@@ -79,10 +84,14 @@ struct AppShellView: View {
             .onAppear {
                 // A launch straight into a web tab parks on that tab, not on Home.
                 if !destination.isNative { parkedWebDestination = destination }
+                updateAssistantSurface()
                 guard editorLayoutDefaultsVersion < 1 else { return }
                 editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
                 editorTallWorkbenchFraction = 0
                 editorLayoutDefaultsVersion = 1
+            }
+            .onChange(of: destinationRaw) { _, _ in
+                updateAssistantSurface()
             }
     }
 
@@ -184,6 +193,12 @@ struct AppShellView: View {
         withTransaction(transaction) {
             destinationRaw = next.rawValue
         }
+    }
+
+    private func updateAssistantSurface() {
+        // Audio has no conversational command set of its own, so it benefits
+        // from the same Brain-backed assistant as the cloud Studio tabs.
+        session.assistantUsesStudioBrain = destination != .editor
     }
 }
 

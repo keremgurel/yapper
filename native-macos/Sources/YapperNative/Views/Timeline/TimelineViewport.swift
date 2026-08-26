@@ -23,6 +23,7 @@ struct TimelineViewport: View {
             contentWidth: contentWidth,
             leadingInset: layout.leadingInset,
             trailingInset: layout.trailingInset,
+            timelineSelection: session.timelineSelection,
             visibleRange: TimelineVisibleRange.make(
                 scrollX: viewport.scrollX,
                 viewportWidth: layout.viewportWidth,

@@ -14,6 +14,8 @@ enum TimelineKeyCommand {
     case stepForward
     /// Escape: put back whatever is being dragged, without letting go first.
     case cancelDrag
+    /// P: present the existing preview by itself.
+    case togglePreviewFullScreen
 }
 
 /// Delivers unmodified editor keys through a local `NSEvent` monitor.
@@ -115,14 +117,17 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             let disallowedModifiers: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
             guard event.modifierFlags.intersection(disallowedModifiers).isEmpty else { return event }
 
-            guard let command = command(for: event) else { return event }
+            guard let command = Self.command(
+                keyCode: event.keyCode,
+                characters: event.charactersIgnoringModifiers
+            ) else { return event }
             guard Self.claim(event) else { return nil }
             onCommand(command)
             return nil
         }
 
-        private func command(for event: NSEvent) -> TimelineKeyCommand? {
-            switch event.keyCode {
+        static func command(keyCode: UInt16, characters: String?) -> TimelineKeyCommand? {
+            switch keyCode {
             case 49: return .togglePlayback
             case 53: return .cancelDrag
             case 51, 117: return .delete
@@ -130,8 +135,9 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             case 124: return .stepForward
             default: break
             }
-            switch event.charactersIgnoringModifiers?.lowercased() {
+            switch characters?.lowercased() {
             case "s": return .split
+            case "p": return .togglePreviewFullScreen
             case "[": return .trimLeading
             case "]": return .trimTrailing
             default: return nil

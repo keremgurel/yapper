@@ -11,6 +11,29 @@ extension EditorSession {
         assistantRunInFlight = true
         defer { assistantRunInFlight = false }
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if assistantUsesStudioBrain {
+            conversation.ask(text)
+            do {
+                let reply = try await StudioWebCommands.shared.askChirpy(text)
+                conversation.answer(
+                    .chirpy(
+                        reply.text,
+                        notes: reply.notes,
+                        tone: reply.isTrouble ? .trouble : .done
+                    )
+                )
+            } catch {
+                conversation.answer(
+                    .chirpy(
+                        "I couldn’t reach your Brain just now. Nothing was changed.",
+                        tone: .trouble
+                    )
+                )
+            }
+            return
+        }
+
         let intent = AssistantRouter.route(
             text,
             mentionsFile: !OverlayMention.mentioned(

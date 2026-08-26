@@ -1,4 +1,25 @@
 import Foundation
+@preconcurrency import WebKit
+
+struct StudioChirpyReply: Sendable {
+    let text: String
+    let notes: [String]
+    let isTrouble: Bool
+}
+
+enum StudioChirpyBridgeError: LocalizedError {
+    case webViewUnavailable
+    case assistantUnavailable
+    case invalidReply
+
+    var errorDescription: String? {
+        switch self {
+        case .webViewUnavailable: "Studio is not ready yet."
+        case .assistantUnavailable: "Chirpy is not ready on this page."
+        case .invalidReply: "Chirpy returned an unreadable reply."
+        }
+    }
+}
 
 /// Things the native chrome needs the web session to do.
 ///
@@ -15,6 +36,7 @@ final class StudioWebCommands: ObservableObject {
 
     @Published private(set) var signOutGeneration = 0
     @Published private(set) var manageAccountGeneration = 0
+    private weak var webView: WKWebView?
 
     func signOut() {
         signOutGeneration += 1
@@ -27,4 +49,40 @@ final class StudioWebCommands: ObservableObject {
         }
     }
     func manageAccount() { manageAccountGeneration += 1 }
+
+    func register(webView: WKWebView) {
+        self.webView = webView
+    }
+
+    func unregister(webView: WKWebView) {
+        if self.webView === webView { self.webView = nil }
+    }
+
+    /// Runs the same Brain-aware Chirpy action as the browser UI, but returns
+    /// the settled reply to the native transcript.
+    func askChirpy(_ instruction: String) async throws -> StudioChirpyReply {
+        guard let webView else { throw StudioChirpyBridgeError.webViewUnavailable }
+        let result = try await webView.callAsyncJavaScript(
+            """
+            if (typeof window.__yapperNativeChirpy !== 'function') {
+              throw new Error('Chirpy is not ready');
+            }
+            return await window.__yapperNativeChirpy(instruction);
+            """,
+            arguments: ["instruction": instruction],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let payload = result as? [String: Any] else {
+            throw StudioChirpyBridgeError.invalidReply
+        }
+        guard let text = payload["text"] as? String, !text.isEmpty else {
+            throw StudioChirpyBridgeError.invalidReply
+        }
+        return StudioChirpyReply(
+            text: text,
+            notes: payload["notes"] as? [String] ?? [],
+            isTrouble: payload["tone"] as? String == "trouble"
+        )
+    }
 }

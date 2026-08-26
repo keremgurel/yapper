@@ -235,6 +235,8 @@ struct TimelinePanel: View {
             // everything picked up on the canvas.
             if session.closeAssistant() { return }
             session.clearCanvasSelection()
+        case .togglePreviewFullScreen:
+            session.previewPresentation.toggleFullScreen()
         }
     }
 }
@@ -357,6 +359,10 @@ struct TimelineContent: View, @MainActor Equatable {
     /// at, so they have to be part of it to drag on.
     var leadingInset: Double = 0
     var trailingInset: Double = 0
+    /// Selection is an explicit render input. `session` keeps the command
+    /// surface available, but reference identity cannot tell `EquatableView`
+    /// that a value inside that same session changed.
+    let timelineSelection: Set<TimelineSelectionItem>
     /// The stretch of timeline that gets cells. Everything outside it is off
     /// screen, and a selected item is drawn wherever it is so that carrying one
     /// past the edge never makes it vanish.
@@ -372,13 +378,14 @@ struct TimelineContent: View, @MainActor Equatable {
             && lhs.contentWidth == rhs.contentWidth
             && lhs.leadingInset == rhs.leadingInset
             && lhs.trailingInset == rhs.trailingInset
+            && lhs.timelineSelection == rhs.timelineSelection
             && lhs.visibleRange == rhs.visibleRange
     }
 
     /// What the cells draw as selected: what the session holds, plus whatever
     /// the band being dragged has caught so far.
     private func isSelected(_ item: TimelineSelectionItem) -> Bool {
-        session.isTimelineSelected(item) || marquee.holds(item)
+        timelineSelection.contains(item) || marquee.holds(item)
     }
 
     /// Cells inside the visible stretch, plus anything selected so a drag can

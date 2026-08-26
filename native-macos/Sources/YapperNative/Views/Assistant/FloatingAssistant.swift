@@ -247,7 +247,7 @@ private struct AssistantPanel: View {
     @ViewBuilder
     private var transcript: some View {
         if conversation.isEmpty {
-            AssistantEmptyState(onPick: {
+            AssistantEmptyState(usesStudioBrain: session.assistantUsesStudioBrain, onPick: {
                 draft = $0
                 focusRequest += 1
             })
@@ -316,7 +316,9 @@ private struct AssistantPanel: View {
             session: session,
             instruction: $draft,
             caret: $caret,
-            placeholder: AssistantComposer.placeholder,
+            placeholder: session.assistantUsesStudioBrain
+                ? AssistantComposer.studioPlaceholder
+                : AssistantComposer.placeholder,
             isWorking: isWorking,
             focusRequest: $focusRequest,
             onListKey: handleListKey,

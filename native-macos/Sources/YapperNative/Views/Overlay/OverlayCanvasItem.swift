@@ -20,6 +20,12 @@ struct OverlayCanvasItem: View {
 
     private var media: ProjectMedia? { session.media(for: overlay) }
     private var isImage: Bool { media?.isImage ?? false }
+    /// Depth is not a frame property. Read the live saved item so a canvas view
+    /// retained across a compositor rebuild cannot keep the pre-toggle value.
+    private var isBehindSpeaker: Bool {
+        session.project.overlays?.first { $0.id == overlay.id }?.isBehindSpeaker
+            ?? overlay.isBehindSpeaker
+    }
 
     /// True when this overlay's picture is drawn here, over the player, rather
     /// than composited into it.
@@ -72,7 +78,7 @@ struct OverlayCanvasItem: View {
                 PropertiesMenuItems(session: session, item: .overlay(overlay.id))
             }
             .gesture(moveGesture)
-            .overlay { selectionBorder }
+            .overlay { cutawayHint }
             .overlay(alignment: .topLeading) { handle(.topLeading) }
             .overlay(alignment: .topTrailing) { handle(.topTrailing) }
             .overlay(alignment: .bottomLeading) { handle(.bottomLeading) }
@@ -118,12 +124,12 @@ struct OverlayCanvasItem: View {
     }
 
     @ViewBuilder
-    private var selectionBorder: some View {
-        if isSelected {
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .stroke(Color.yapperOrange, style: StrokeStyle(lineWidth: 1.25, dash: [5, 3]))
-                .padding(-2)
-        } else if !isImage {
+    private var cutawayHint: some View {
+        if OverlayCanvasChrome.showsCutawayHint(
+            isBehindSpeaker: isBehindSpeaker,
+            isImage: isImage,
+            isSelected: isSelected
+        ) {
             // Only cutaways. A still is a solid picture wherever it is drawn
             // from, so it needs no hint about where it is, and a permanent
             // rectangle over one is a line drawn across whatever is behind it:
@@ -273,6 +279,20 @@ struct OverlayCanvasItem: View {
     /// the bypass the timeline and the captions already use.
     private var isSnapBypassed: Bool {
         NSEvent.modifierFlags.contains(.option)
+    }
+}
+
+/// Editor-only decoration for an overlay. A behind-speaker overlay is already
+/// composited into the player, below the foreground-person pass. Any SwiftUI
+/// perimeter added here would be painted after that pass and would therefore
+/// cut across the person even though the overlay itself is at the right depth.
+enum OverlayCanvasChrome {
+    static func showsCutawayHint(
+        isBehindSpeaker: Bool,
+        isImage: Bool,
+        isSelected: Bool
+    ) -> Bool {
+        !isBehindSpeaker && !isImage && !isSelected
     }
 }
 

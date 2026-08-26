@@ -163,6 +163,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         webView.allowsMagnification = false
         webView.setValue(false, forKey: "drawsBackground")
         context.coordinator.webView = webView
+        StudioWebCommands.shared.register(webView: webView)
         context.coordinator.startObservingAuthenticationCallbacks()
         context.coordinator.lastReloadGeneration = reloadGeneration
         context.coordinator.lastSignOutGeneration = signOutGeneration
@@ -218,6 +219,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        StudioWebCommands.shared.unregister(webView: webView)
         coordinator.stopObservingAuthenticationCallbacks()
         webView.stopLoading()
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "yapperNative")
@@ -558,6 +560,10 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 // new route. Until it arrives the previous page is still what
                 // is painted, whatever the sidebar says.
                 report(shown: path)
+                if let destination = StudioDestination(cloudPath: path),
+                   destination != nativeDestination {
+                    onNavigate(destination)
+                }
             case "open_microphone_settings":
                 guard let url = URL(
                     string: "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Microphone"

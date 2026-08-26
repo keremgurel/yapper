@@ -73,7 +73,12 @@ struct EditorRootView: View {
         // you want to say is not the property of any one panel, and a thing you
         // can move is a thing that is never in the way.
         .overlay {
-            FloatingAssistant(session: session, conversation: session.conversation)
+            // The app shell owns Chirpy when this editor is embedded. Keep the
+            // overlay here only for the standalone editor preview used during
+            // development, otherwise two birds would occupy the same window.
+            if !embedded {
+                FloatingAssistant(session: session, conversation: session.conversation)
+            }
         }
         // Cropping opens over the whole editor rather than inside the panel
         // that started it: it is opened from the bin, from the timeline and

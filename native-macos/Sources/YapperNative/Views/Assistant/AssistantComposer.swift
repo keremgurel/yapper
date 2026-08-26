@@ -25,12 +25,16 @@ struct AssistantComposer: View {
     /// the hardest thing to ask for in words — but nothing here refuses a
     /// sentence about anything else the editor can do.
     static let placeholder = "Show @01-hook.png while I say what the video is about"
+    static let studioPlaceholder = "Add context, change my Brain, or create an idea…"
 
     private var isEmpty: Bool {
         instruction.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    private var canSend: Bool { !isWorking && !isEmpty && !session.project.clips.isEmpty }
+    private var canSend: Bool {
+        !isWorking && !isEmpty
+            && (session.assistantUsesStudioBrain || !session.project.clips.isEmpty)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -76,7 +80,11 @@ struct AssistantComposer: View {
 
     private var controls: some View {
         HStack(spacing: 8) {
-            Text(isEmpty ? "@ to name a file" : "⏎ send · ⇧⏎ new line")
+            Text(
+                isEmpty
+                    ? (session.assistantUsesStudioBrain ? "Ask across Studio" : "@ to name a file")
+                    : "⏎ send · ⇧⏎ new line"
+            )
                 .font(.system(size: 10.5))
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
@@ -108,7 +116,11 @@ struct AssistantComposer: View {
         }
         .buttonStyle(.plain)
         .disabled(!canSend)
-        .help(session.project.clips.isEmpty ? "Import a video first" : "Send · ⏎")
+        .help(
+            !session.assistantUsesStudioBrain && session.project.clips.isEmpty
+                ? "Import a video first"
+                : "Send · ⏎"
+        )
         .animation(.easeOut(duration: 0.14), value: canSend)
     }
 }

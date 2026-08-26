@@ -49,4 +49,11 @@ struct KeyPressClaimTests {
         #expect(TimelineKeyCommandView.Coordinator.claim(keyDown(timestamp: 3_000.0, keyCode: 49)))
         #expect(TimelineKeyCommandView.Coordinator.claim(keyDown(timestamp: 3_000.0, keyCode: 51)))
     }
+
+    @MainActor
+    @Test("P opens preview and Escape keeps its editor command")
+    func previewKeysAreRouted() {
+        #expect(TimelineKeyCommandView.Coordinator.command(keyCode: 35, characters: "p") == .togglePreviewFullScreen)
+        #expect(TimelineKeyCommandView.Coordinator.command(keyCode: 53, characters: nil) == .cancelDrag)
+    }
 }

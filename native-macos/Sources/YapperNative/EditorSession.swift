@@ -89,6 +89,9 @@ final class EditorSession: ObservableObject {
     private var longOperationCoordinator = LongOperationCoordinator()
     private var pendingMediaRecovery: PendingMediaRecovery?
     var assistantRunInFlight = false
+    /// Brain-backed Studio pages answer through the persistent web session;
+    /// the Editor keeps using the native command router below.
+    var assistantUsesStudioBrain = false
     private var captionOperationWaiters: [CheckedContinuation<Bool, Never>] = []
     var isBusy: Bool { activeOperation != nil }
     var isExporting: Bool { activeOperation?.operation.isExport == true }

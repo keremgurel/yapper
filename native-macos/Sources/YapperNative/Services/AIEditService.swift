@@ -356,7 +356,7 @@ actor AIEditService {
         let kept = words.filter { word in
             !retakeRanges.contains { word.midpoint >= $0.0 && word.midpoint <= $0.1 }
         }
-        guard let first = kept.first, let last = kept.last else { return retakeRanges }
+        guard !kept.isEmpty else { return retakeRanges }
 
         // Measured silence, which finds the dead air a transcript hides: a
         // word's end is where it stops being a word, not where the room goes
@@ -367,24 +367,27 @@ actor AIEditService {
 
         if let measured, !measured.isEmpty {
             ranges.append(contentsOf: measured)
-        } else {
-            for index in kept.indices.dropLast() {
-                let next = kept.index(after: index)
-                if kept[next].start - kept[index].end >= 0.20 {
-                    let start = kept[index].end + 0.04
-                    let end = kept[next].start - 0.03
-                    if end > start { ranges.append((start, end)) }
-                }
-            }
         }
+
+        // A waveform can tell quiet from sound; it cannot tell the kept take
+        // from an abandoned one the transcriber did not write down. Treating
+        // measured silence as a replacement for transcript gaps therefore
+        // left loud, untranscribed retakes in the finished video. They also
+        // could never have captions, because there were no words to build a
+        // card from. The two signals are complementary: measured ranges remove
+        // dead air hidden inside generous word timings, while these ranges
+        // guarantee that every surviving spoken stretch is backed by the
+        // transcript and can be captioned.
+        ranges.append(contentsOf: wordGapSilences(
+            words: kept,
+            duration: duration,
+            minimumPause: 0.20
+        ))
         let fillers = Set(["um", "umm", "uh", "uhh", "uhm", "er", "err", "ah", "ahh", "hmm", "mhm"])
         for word in kept where fillers.contains(normalize(word.text)) {
             ranges.append((word.start, word.end))
         }
-        // The ends of a take are dead air rather than rhythm, so they go
-        // nearly whole, whichever way the silence was found.
-        if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
-        if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
+        // `wordGapSilences` also handles both source edges.
         return merge(ranges, sparing: kept.map(\.midpoint))
     }
 
