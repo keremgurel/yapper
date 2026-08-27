@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { planByKey } from "@/lib/billing/plans";
 import { useBillingPortal } from "@/hooks/use-billing-portal";
 import { useBillingStatus } from "@/hooks/use-billing-status";
+import { formatStorageBytes } from "@/lib/storage/format";
 
 /** Shown to subscribers/trialers: current plan, credit balance, and a button to
  * the Stripe billing portal to manage or cancel. Renders nothing otherwise. */
@@ -24,6 +26,13 @@ export default function CurrentPlanBanner() {
       <div>
         <p className="sg-display text-lg">{label}</p>
         <p className="sg-label mt-0.5">{status.balance} credits available</p>
+        <p className="sg-label mt-0.5">
+          {formatStorageBytes(status.storageBytes)} of{" "}
+          {formatStorageBytes(status.storageQuotaBytes)} video storage used ·{" "}
+          <Link href="/studio/storage" className="underline underline-offset-2">
+            View storage
+          </Link>
+        </p>
         {error && (
           <p role="alert" className="text-destructive mt-1 text-xs font-bold">
             Could not open the billing portal. Please try again.

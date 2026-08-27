@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings,
   TrendingUp,
+  HardDrive,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -95,6 +96,12 @@ export default function UserMenu() {
           <Link href="/pricing" className="no-underline">
             <CreditCard className="h-4 w-4" />
             Membership & credits
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
+          <Link href="/studio/storage" className="no-underline">
+            <HardDrive className="h-4 w-4" />
+            Storage
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>

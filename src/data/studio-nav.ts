@@ -9,7 +9,8 @@ export type StudioIcon =
   | "dictionary"
   | "send"
   | "zap"
-  | "brain";
+  | "brain"
+  | "storage";
 
 export interface StudioNavItem {
   title: string;
@@ -106,6 +107,14 @@ const connections: StudioNavItem = {
   icon: "share",
 };
 
+const storage: StudioNavItem = {
+  title: "Storage",
+  href: "/studio/storage",
+  description:
+    "See what is using space, your plan limit, and what to clean up.",
+  icon: "storage",
+};
+
 /**
  * The Studio sidebar, grouped by what you are doing: Lab is where ideas come
  * from, Studio is where you make the video, Press is where it goes out, and
@@ -117,7 +126,7 @@ export const studioNavGroups: StudioNavGroup[] = [
   { label: "Lab", items: [brain, inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
-  { label: "Settings", items: [dictionary, connections] },
+  { label: "Settings", items: [storage, dictionary, connections] },
 ];
 
 /**

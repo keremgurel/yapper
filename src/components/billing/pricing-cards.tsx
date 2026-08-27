@@ -59,6 +59,7 @@ export default function PricingCards({
                 ).toLocaleString()}{" "}
                 AI feedbacks
               </p>
+              <p className="sg-label">{plan.storageLabel} video storage</p>
             </div>
             <p className="text-sm leading-6" style={muted}>
               {plan.blurb}

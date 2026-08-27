@@ -10,6 +10,8 @@ export interface BillingStatus {
   plan: string | null;
   currentPeriodEnd: string | null;
   balance: number;
+  storageBytes: number;
+  storageQuotaBytes: number;
 }
 
 async function fetchBillingStatus(): Promise<BillingStatus | null> {

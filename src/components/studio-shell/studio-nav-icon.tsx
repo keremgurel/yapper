@@ -10,6 +10,7 @@ import {
   Share2,
   Video,
   Zap,
+  HardDrive,
 } from "lucide-react";
 import type { StudioIcon } from "@/data/studio-nav";
 
@@ -25,6 +26,7 @@ const map = {
   dictionary: BookType,
   zap: Zap,
   brain: Brain,
+  storage: HardDrive,
 } as const;
 
 export default function StudioNavIcon({
