@@ -35,16 +35,18 @@ Neon Launch:
 
 ## Marginal storage cost per fully used allowance
 
-| Allowance          | R2 storage cost/month |            Share of listed membership price |
-| ------------------ | --------------------: | ------------------------------------------: |
-| 2 GB free fallback |                 $0.03 |                                         n/a |
-| 25 GB Weekly       |                $0.375 |         4.7% of $7.99/week before free tier |
-| 50 GB Monthly      |                 $0.75 |       3.0% of $24.99/month before free tier |
-| 100 GB Yearly      |                 $1.50 | 0.75% of $199.99/year in a fully-used month |
+| Allowance          | R2 storage cost/month | Monthly-equivalent membership revenue |         Storage share |
+| ------------------ | --------------------: | ------------------------------------: | --------------------: |
+| 2 GB free fallback |                 $0.03 |                                   n/a |                   n/a |
+| 25 GB Weekly       |                $0.375 |                          about $34.62 | 1.1% before free tier |
+| 50 GB Monthly      |                 $0.75 |                                $24.99 | 3.0% before free tier |
+| 100 GB Yearly      |                 $1.50 |                          about $16.67 | 9.0% before free tier |
 
-The weekly/yearly comparisons are deliberately conservative: R2 bills by
-GB-month while those memberships bill on different cadences. Storage is not the
-margin risk at these allowances; AI provider usage and always-on compute are.
+R2 bills by GB-month, so margins must compare against monthly-equivalent plan
+revenue rather than the price printed for a different cadence. Storage remains
+healthy at these allowances, but the yearly plan is the one to watch: a user
+holding the full 100 GB all year creates about $18 of annual R2 storage cost
+before the account-wide free tier.
 
 ## Product accounting rules
 
