@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
 import { importedPlatformMedia, submissions } from "@/lib/db/schema";
 import { activateObjectWithinTx } from "@/lib/db/r2-lifecycle";
 import {
@@ -56,7 +56,7 @@ export async function GET(): Promise<Response> {
  * Register an uploaded recording as a submission WITHOUT running feedback
  * ("save this take"): the client presign-PUTs to R2 first (/api/media/upload-url),
  * then posts the mediaKey here. The claimed size is never trusted: we HeadObject
- * for the actual bytes, enforce the per-clip cap and the storage quota on them,
+ * for the actual bytes, enforce the direct-upload cap and storage quota on them,
  * and count the object against the quota once (shared dedupe with the feedback
  * pipeline). Premium-gated like the rest of the library surface.
  */
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (bytes === null) {
     return Response.json({ error: "media_not_found" }, { status: 404 });
   }
-  if (bytes > MAX_CLIP_BYTES) {
+  if (bytes > MAX_DIRECT_VIDEO_UPLOAD_BYTES) {
     return Response.json({ error: "clip_too_large" }, { status: 400 });
   }
 

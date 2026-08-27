@@ -7,7 +7,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createReadStream } from "node:fs";
-import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_SERVER_PROCESSED_VIDEO_BYTES } from "@/lib/db/constants";
 import {
   spoolBoundedTemporaryFile,
   type BoundedTemporaryFile,
@@ -134,7 +134,7 @@ export async function getObjectFile(
   const file = await spoolBoundedTemporaryFile(
     body as AsyncIterable<Uint8Array>,
     {
-      maxBytes: options.maxBytes ?? MAX_CLIP_BYTES,
+      maxBytes: options.maxBytes ?? MAX_SERVER_PROCESSED_VIDEO_BYTES,
       declaredBytes: response.ContentLength,
       signal: options.signal,
       prefix: "yapper-r2-",

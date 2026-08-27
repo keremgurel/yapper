@@ -120,6 +120,32 @@ describe("POST /api/submissions atomic storage registration", () => {
     expect(mocks.lockStorageUserWithinTx).toHaveBeenCalledWith(tx, "user_test");
   });
 
+  it("registers an uploaded video above the removed 250 MB ceiling", async () => {
+    const bytes = 300 * 1024 * 1024;
+    const quota = 25 * 1024 * 1024 * 1024;
+    mocks.headObjectBytes.mockResolvedValue(bytes);
+    mocks.getStorageQuota.mockResolvedValue(quota);
+
+    const response = await POST(request());
+
+    expect(response.status).toBe(201);
+    expect(mocks.activateObjectWithinTx).toHaveBeenCalledWith(
+      tx,
+      "user_test",
+      "user_test/clip.mp4",
+      bytes,
+      "recording",
+    );
+    expect(mocks.countMediaOnceWithinTx).toHaveBeenCalledWith(
+      tx,
+      "user_test",
+      "user_test/clip.mp4",
+      bytes,
+      "submission_test",
+      quota,
+    );
+  });
+
   it("does not durably return a submission when accounting fails", async () => {
     mocks.countMediaOnceWithinTx.mockRejectedValue(
       new Error("storage_accounting_failed"),

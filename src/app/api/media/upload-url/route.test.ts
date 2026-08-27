@@ -95,7 +95,7 @@ describe("POST /api/media/upload-url lifecycle allocation", () => {
   });
 
   it.each([
-    ["recording", "video/webm", 250 * 1024 * 1024 + 1],
+    ["recording", "video/webm", 4 * 1024 * 1024 * 1024 + 1],
     ["thumbnail", "image/png", 20 * 1024 * 1024 + 1],
   ] as const)(
     "rejects an oversized %s before allocating storage",
@@ -110,6 +110,37 @@ describe("POST /api/media/upload-url lifecycle allocation", () => {
       expect(mocks.presignUpload).not.toHaveBeenCalled();
     },
   );
+
+  it("accepts a recording above the removed 250 MB ceiling", async () => {
+    const sizeBytes = 300 * 1024 * 1024;
+    mocks.getStorageQuota.mockResolvedValue(25 * 1024 * 1024 * 1024);
+
+    const response = await POST(
+      request({
+        sizeBytes,
+        mimeType: "video/mp4",
+        ext: "mp4",
+        purpose: "recording",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.allocatePendingObject).toHaveBeenCalledWith(
+      "user_test",
+      "u/user_test/recording.webm",
+      "recording",
+      sizeBytes,
+      25 * 1024 * 1024 * 1024,
+      expect.any(Date),
+      expect.any(Date),
+    );
+    expect(mocks.presignUpload).toHaveBeenCalledWith(
+      "u/user_test/recording.webm",
+      "video/mp4",
+      sizeBytes,
+      7_680,
+    );
+  });
 
   it("allocates a recording before issuing its presigned PUT", async () => {
     const response = await POST(

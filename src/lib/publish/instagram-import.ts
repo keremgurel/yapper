@@ -3,7 +3,7 @@ import { mkdtemp, open, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { captionToTitle } from "./instagram-list";
-import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_SERVER_PROCESSED_VIDEO_BYTES } from "@/lib/db/constants";
 
 const GRAPH = "https://graph.instagram.com/v21.0";
 export const INSTAGRAM_IMPORT_TIMEOUT_MS = 45_000;
@@ -88,7 +88,7 @@ export async function downloadInstagramClip(
     signal?: AbortSignal;
   } = {},
 ): Promise<DownloadedInstagramClip> {
-  const maxBytes = options.maxBytes ?? MAX_CLIP_BYTES;
+  const maxBytes = options.maxBytes ?? MAX_SERVER_PROCESSED_VIDEO_BYTES;
   const timeoutMs = options.timeoutMs ?? INSTAGRAM_IMPORT_TIMEOUT_MS;
   const fetchImpl = options.fetchImpl ?? fetch;
   const controller = new AbortController();

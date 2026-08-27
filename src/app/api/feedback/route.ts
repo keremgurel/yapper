@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import {
   FEEDBACK_CREDITS,
-  MAX_CLIP_BYTES,
+  MAX_SERVER_PROCESSED_VIDEO_BYTES,
   type FeedbackTier,
 } from "@/lib/db/constants";
 import { getStorageQuota } from "@/lib/db/billing";
@@ -311,7 +311,7 @@ async function runTier(
   // video + full: pull the clip from R2 (server-side, no browser CORS), push it
   // to Gemini, and coach on the native video + audio.
   const file = await getObjectFile(mediaKey as string, {
-    maxBytes: MAX_CLIP_BYTES,
+    maxBytes: MAX_SERVER_PROCESSED_VIDEO_BYTES,
     signal: workflow.signal,
   });
   const mediaBytes = file.byteLength;

@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { canUsePremium } from "@/lib/billing/gate";
 import { getStorageQuota } from "@/lib/db/billing";
-import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
 import { getStorageBytes } from "@/lib/db/users";
 import {
   abandonPendingObject,
@@ -53,7 +53,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
   const purposeLimit =
-    purpose === "thumbnail" ? MAX_THUMBNAIL_BYTES : MAX_CLIP_BYTES;
+    purpose === "thumbnail"
+      ? MAX_THUMBNAIL_BYTES
+      : MAX_DIRECT_VIDEO_UPLOAD_BYTES;
   if (sizeBytes > purposeLimit) {
     return Response.json({ error: "media_too_large" }, { status: 413 });
   }

@@ -26,6 +26,7 @@ import {
   PublishOutcomeUnknownError,
 } from "@/lib/publish/workflow";
 import { getObjectFile, ownsKey, r2Configured } from "@/lib/r2";
+import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -104,7 +105,10 @@ export async function POST(req: Request): Promise<Response> {
 
   let result: Awaited<ReturnType<typeof uploadYouTubeVideo>>;
   try {
-    const file = await getObjectFile(mediaKey, { signal: workflow.signal });
+    const file = await getObjectFile(mediaKey, {
+      maxBytes: MAX_DIRECT_VIDEO_UPLOAD_BYTES,
+      signal: workflow.signal,
+    });
     try {
       result = await uploadYouTubeVideo(
         {

@@ -25,6 +25,7 @@ import {
   PublishOutcomeUnknownError,
 } from "@/lib/publish/workflow";
 import { getObjectFile, r2Configured } from "@/lib/r2";
+import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -91,6 +92,7 @@ export async function POST(req: Request): Promise<Response> {
   let result: Awaited<ReturnType<typeof uploadTikTokDraft>>;
   try {
     const file = await getObjectFile(media.mediaKey, {
+      maxBytes: MAX_DIRECT_VIDEO_UPLOAD_BYTES,
       signal: workflow.signal,
     });
     try {

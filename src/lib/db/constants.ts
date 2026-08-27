@@ -9,8 +9,22 @@ export const WELCOME_CREDITS = 3;
 /** Free-tier media storage quota (bytes). */
 export const FREE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 
-/** Hard per-clip cap — bounds serverless memory + abuse (checked on actual bytes). */
-export const MAX_CLIP_BYTES = 250 * 1024 * 1024; // 250 MB
+/**
+ * Largest video accepted by the direct browser-to-R2 upload path.
+ *
+ * Four GiB matches TikTok's current upload ceiling and remains below R2's
+ * single-PUT ceiling. The bytes never pass through the application server, so
+ * this must not inherit the much smaller server-processing safety limit.
+ */
+export const MAX_DIRECT_VIDEO_UPLOAD_BYTES = 4 * 1024 * 1024 * 1024; // 4 GiB
+
+/**
+ * Bound for workflows that pull an entire clip through a server function.
+ * Keep this separate from direct uploads: it protects temporary disk, runtime,
+ * and provider costs without preventing creators from storing or publishing a
+ * larger finished export through streaming/direct-transfer paths.
+ */
+export const MAX_SERVER_PROCESSED_VIDEO_BYTES = 250 * 1024 * 1024; // 250 MiB
 
 /** Credit cost per feedback tier, weighted to the provider pipeline used. */
 export const FEEDBACK_CREDITS = { audio: 3, video: 5, full: 8 } as const;

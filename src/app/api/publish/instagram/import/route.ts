@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { auth } from "@clerk/nextjs/server";
 import { canUsePremium } from "@/lib/billing/gate";
 import { getStorageQuota } from "@/lib/db/billing";
-import { MAX_CLIP_BYTES } from "@/lib/db/constants";
+import { MAX_SERVER_PROCESSED_VIDEO_BYTES } from "@/lib/db/constants";
 import {
   ImportedMediaQuotaError,
   importedMediaForPost,
@@ -128,7 +128,7 @@ export async function POST(req: Request): Promise<Response> {
       if (actualBytes <= 0) {
         return Response.json({ error: "download_failed" }, { status: 502 });
       }
-      if (actualBytes > MAX_CLIP_BYTES) {
+      if (actualBytes > MAX_SERVER_PROCESSED_VIDEO_BYTES) {
         return Response.json({ error: "clip_too_large" }, { status: 413 });
       }
       try {
