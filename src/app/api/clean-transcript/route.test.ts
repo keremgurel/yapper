@@ -101,6 +101,7 @@ describe("POST /api/clean-transcript payload limits", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(init.body as string)).toMatchObject({
+      model: "gemini-3-5-flash",
       max_completion_tokens: 32_000,
       temperature: 0,
     });

@@ -82,10 +82,12 @@ export async function POST(req: Request): Promise<Response> {
   if (!key) return Response.json({ error: "no_provider" }, { status: 501 });
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
-  // Measured against a real 472 word take with a hand-checked answer, twice:
-  // this model got every word right both times. The next best left 17 wrong,
-  // and what shipped before this left 92.
-  const model = process.env.AI_CLEAN_MODEL ?? "gemini-3.7-flash";
+  // Gemini 3.7 previously scored perfectly on hand-checked takes, but its
+  // active Surplus routes began accepting requests without producing output,
+  // which exhausted this function's entire deadline. Gemini 3.5 completed the
+  // exact 1,407-word production take inside the provider budget and preserved
+  // the same fail-closed, index-based edit contract.
+  const model = process.env.AI_CLEAN_MODEL ?? "gemini-3-5-flash";
 
   let rawBody: unknown;
   try {
