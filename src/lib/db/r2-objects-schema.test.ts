@@ -16,7 +16,12 @@ describe("R2 object lifecycle schema", () => {
       table.columns.map((column) => [column.name, column]),
     );
 
-    expect(r2ObjectPurposes).toEqual(["recording", "import", "thumbnail"]);
+    expect(r2ObjectPurposes).toEqual([
+      "recording",
+      "import",
+      "thumbnail",
+      "brand_logo",
+    ]);
     expect(r2ObjectStates).toEqual([
       "pending_upload",
       "active",

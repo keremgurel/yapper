@@ -13,7 +13,9 @@ import {
 import { deleteObject } from "@/lib/r2";
 import { getDb, type DbTx } from "./client";
 import {
+  brandAssets,
   importedPlatformMedia,
+  projects,
   publishJobs,
   r2Objects,
   submissions,
@@ -323,7 +325,26 @@ async function hasDurableR2ReferencesWithinTx(
       ),
     )
     .limit(1);
-  return !!imported;
+  if (imported) return true;
+
+  const [project] = await tx
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.userId, userId))
+    .limit(1);
+  if (!project) return false;
+
+  const [brandAsset] = await tx
+    .select({ id: brandAssets.id })
+    .from(brandAssets)
+    .where(
+      and(
+        eq(brandAssets.projectId, project.id),
+        eq(brandAssets.mediaKey, mediaKey),
+      ),
+    )
+    .limit(1);
+  return !!brandAsset;
 }
 
 async function hasActivePublishReferenceWithinTx(

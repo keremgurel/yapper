@@ -131,6 +131,7 @@ export async function getStorageUsageDetails(
     recording: { bytes: 0, count: 0 },
     import: { bytes: 0, count: 0 },
     thumbnail: { bytes: 0, count: 0 },
+    brand_logo: { bytes: 0, count: 0 },
   };
   for (const row of mediaRows) {
     media[row.purpose] = {

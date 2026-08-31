@@ -11,6 +11,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     case poster
     case calendar
     case automations
+    case brand
     case dictionary
     case connections
     /// Not a tab. The page a signed-out window shows, in place of everything.
@@ -39,6 +40,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .poster: "Poster"
         case .calendar: "Calendar"
         case .automations: "Automations"
+        case .brand: "Brand"
         case .dictionary: "Dictionary"
         case .connections: "Connections"
         case .signIn: "Sign in"
@@ -57,6 +59,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .poster: "paperplane"
         case .calendar: "calendar"
         case .automations: "bolt"
+        case .brand: "paintpalette"
         case .dictionary: "character.book.closed"
         case .connections: "point.3.connected.trianglepath.dotted"
         case .signIn: "person.crop.circle"
@@ -69,7 +72,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .brain, .ideas, .library: "Lab"
         case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
-        case .dictionary, .connections: "Settings"
+        case .brand, .dictionary, .connections: "Settings"
         case .signIn: ""
         }
     }
@@ -79,6 +82,6 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         ("Lab", [.brain, .ideas, .library]),
         ("Studio", [.recorder, .editor, .audio]),
         ("Press", [.poster, .calendar, .automations]),
-        ("Settings", [.dictionary, .connections]),
+        ("Settings", [.brand, .dictionary, .connections]),
     ]
 }

@@ -11,6 +11,7 @@ export interface ProjectInput {
   offers?: string;
   doNots?: string;
   links?: string[];
+  brandColors?: string[];
 }
 
 export type ProjectRow = typeof projects.$inferSelect;

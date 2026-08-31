@@ -216,6 +216,8 @@ export const projects = pgTable(
     offers: text("offers").notNull().default(""),
     doNots: text("do_nots").notNull().default(""),
     links: jsonb("links").$type<string[]>().notNull().default([]),
+    /** Ordered swatches for generated graphics. The first colour is primary. */
+    brandColors: jsonb("brand_colors").$type<string[]>().notNull().default([]),
     contextVersion: integer("context_version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -230,6 +232,34 @@ export const projects = pgTable(
     // so two concurrent first requests cannot both insert. Adding the account
     // switcher later drops this one index; it is not a data migration.
     uniqueIndex("projects_user_unique").on(t.userId),
+  ],
+);
+
+/** Logos a creator wants Chirpy to use when it creates branded visuals. */
+export const brandAssets = pgTable(
+  "brand_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    mediaKey: text("media_key").notNull(),
+    name: text("name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    mediaBytes: bigint("media_bytes", { mode: "number" }).notNull().default(0),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("brand_assets_media_key_unique").on(t.mediaKey),
+    index("brand_assets_project_idx").on(t.projectId, t.sortOrder),
+    check("brand_assets_media_bytes_check", sql`${t.mediaBytes} >= 0`),
   ],
 );
 
@@ -791,7 +821,12 @@ export const importedPlatformMedia = pgTable(
   ],
 );
 
-export const r2ObjectPurposes = ["recording", "import", "thumbnail"] as const;
+export const r2ObjectPurposes = [
+  "recording",
+  "import",
+  "thumbnail",
+  "brand_logo",
+] as const;
 export type R2ObjectPurpose = (typeof r2ObjectPurposes)[number];
 
 export const r2ObjectStates = [
@@ -841,7 +876,7 @@ export const r2Objects = pgTable(
     index("r2_objects_user_state_idx").on(t.userId, t.state),
     check(
       "r2_objects_purpose_check",
-      sql`${t.purpose} in ('recording','import','thumbnail')`,
+      sql`${t.purpose} in ('recording','import','thumbnail','brand_logo')`,
     ),
     check(
       "r2_objects_state_check",

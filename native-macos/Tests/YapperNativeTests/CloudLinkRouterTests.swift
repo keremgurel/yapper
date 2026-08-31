@@ -3,6 +3,13 @@ import Testing
 @testable import YapperNative
 
 struct CloudLinkRouterTests {
+    @Test func brandAppearsFirstInTheSettingsSidebarGroup() {
+        let settings = StudioDestination.groups.first { $0.0 == "Settings" }
+
+        #expect(settings?.1 == [.brand, .dictionary, .connections])
+        #expect(StudioDestination.brand.group == "Settings")
+    }
+
     @Test func externalWebLinksOpenInTheDefaultBrowser() throws {
         let url = try #require(URL(string: "https://www.instagram.com/p/example/"))
 
@@ -18,6 +25,15 @@ struct CloudLinkRouterTests {
         #expect(
             CloudLinkRouter.disposition(for: url, nativeDestination: .ideas)
                 == .navigateInShell(.calendar)
+        )
+    }
+
+    @Test func brandLinksNavigateThroughTheNativeShell() throws {
+        let url = try #require(URL(string: "https://ypr.app/studio/brand"))
+
+        #expect(
+            CloudLinkRouter.disposition(for: url, nativeDestination: .brain)
+                == .navigateInShell(.brand)
         )
     }
 

@@ -17,6 +17,7 @@ export interface Project {
   offers: string;
   doNots: string;
   links: string[];
+  brandColors: string[];
   contextVersion: number;
 }
 
@@ -36,6 +37,7 @@ export interface ProjectPatch {
   offers?: string;
   doNots?: string;
   links?: string[];
+  brandColors?: string[];
   pillars?: PillarDraft[];
 }
 

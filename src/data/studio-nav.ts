@@ -10,7 +10,8 @@ export type StudioIcon =
   | "send"
   | "zap"
   | "brain"
-  | "storage";
+  | "storage"
+  | "palette";
 
 export interface StudioNavItem {
   title: string;
@@ -115,6 +116,13 @@ const storage: StudioNavItem = {
   icon: "storage",
 };
 
+const brand: StudioNavItem = {
+  title: "Brand",
+  href: "/studio/brand",
+  description: "The logos and colors Chirpy uses in generated visuals.",
+  icon: "palette",
+};
+
 /**
  * The Studio sidebar, grouped by what you are doing: Lab is where ideas come
  * from, Studio is where you make the video, Press is where it goes out, and
@@ -126,7 +134,7 @@ export const studioNavGroups: StudioNavGroup[] = [
   { label: "Lab", items: [brain, inspiration, contentLibrary] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
-  { label: "Settings", items: [storage, dictionary, connections] },
+  { label: "Settings", items: [brand, storage, dictionary, connections] },
 ];
 
 /**

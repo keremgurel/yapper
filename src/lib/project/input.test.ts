@@ -32,6 +32,21 @@ describe("parseProjectInput", () => {
     });
     expect(input.links).toEqual(["https://a.com", "https://b.com"]);
   });
+
+  it("normalizes, deduplicates, and validates brand colors", () => {
+    const input = parseProjectInput({
+      brandColors: [" #ff7a21 ", "#FF7A21", "#151515", "orange", 42],
+    });
+    expect(input.brandColors).toEqual(["#FF7A21", "#151515"]);
+  });
+
+  it("caps a brand palette at eight colors", () => {
+    const brandColors = Array.from(
+      { length: 12 },
+      (_, index) => `#00000${index.toString(16)}`,
+    );
+    expect(parseProjectInput({ brandColors }).brandColors).toHaveLength(8);
+  });
 });
 
 describe("parsePillarInput", () => {

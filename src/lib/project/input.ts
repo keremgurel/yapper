@@ -8,6 +8,8 @@ const NAME_MAX = 120;
 const FIELD_MAX = 2000;
 const LINK_MAX = 300;
 const LINKS_MAX = 12;
+const BRAND_COLORS_MAX = 8;
+const HEX_COLOR = /^#[0-9A-F]{6}$/i;
 
 const PILLAR_NAME_MAX = 80;
 const PILLAR_DESC_MAX = 600;
@@ -45,6 +47,19 @@ export function parseProjectInput(body: Record<string, unknown>): ProjectInput {
       .map((l) => l.trim().slice(0, LINK_MAX))
       .filter(Boolean)
       .slice(0, LINKS_MAX);
+  }
+
+  if (Array.isArray(body.brandColors)) {
+    const seen = new Set<string>();
+    input.brandColors = body.brandColors
+      .flatMap((value) => {
+        if (typeof value !== "string") return [];
+        const color = value.trim().toUpperCase();
+        if (!HEX_COLOR.test(color) || seen.has(color)) return [];
+        seen.add(color);
+        return [color];
+      })
+      .slice(0, BRAND_COLORS_MAX);
   }
 
   return input;

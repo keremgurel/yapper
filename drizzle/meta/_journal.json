@@ -141,6 +141,13 @@
       "when": 1787178315169,
       "tag": "0019_plain_molten_man",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788145733330,
+      "tag": "0020_silly_ogun",
+      "breakpoints": true
     }
   ]
 }

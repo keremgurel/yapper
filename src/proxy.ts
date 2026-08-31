@@ -21,6 +21,7 @@ const isProtectedApi = createRouteMatcher([
   // 403 so it does not announce itself.
   "/api/admin(.*)",
   "/api/billing(.*)",
+  "/api/brand(.*)",
   "/api/brain(.*)",
   "/api/clean-transcript",
   "/api/content(.*)",
@@ -84,6 +85,7 @@ export const config = {
     "/studio/:path+",
     "/api/admin/:path*",
     "/api/billing/:path*",
+    "/api/brand/:path*",
     "/api/brain/:path*",
     "/api/clean-transcript",
     "/api/content/:path*",

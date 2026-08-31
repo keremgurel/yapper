@@ -11,6 +11,7 @@ import {
   Video,
   Zap,
   HardDrive,
+  Palette,
 } from "lucide-react";
 import type { StudioIcon } from "@/data/studio-nav";
 
@@ -27,6 +28,7 @@ const map = {
   zap: Zap,
   brain: Brain,
   storage: HardDrive,
+  palette: Palette,
 } as const;
 
 export default function StudioNavIcon({

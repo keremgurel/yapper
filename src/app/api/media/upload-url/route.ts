@@ -18,6 +18,13 @@ export const runtime = "nodejs";
 const UPLOAD_GRACE_MS = 15 * 60 * 1_000;
 const THUMBNAIL_RETENTION_MS = 24 * 60 * 60 * 1_000;
 const MAX_THUMBNAIL_BYTES = 20 * 1024 * 1024;
+const MAX_BRAND_LOGO_BYTES = 5 * 1024 * 1024;
+const BRAND_LOGO_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/svg+xml",
+]);
 
 /**
  * Presigned R2 PUT so the client uploads a recording directly to R2 (browser
@@ -47,15 +54,20 @@ export async function POST(req: NextRequest): Promise<Response> {
     !sizeBytes ||
     sizeBytes <= 0 ||
     !mimeType ||
-    (purpose !== "recording" && purpose !== "thumbnail") ||
-    (purpose === "thumbnail" && !mimeType.startsWith("image/"))
+    (purpose !== "recording" &&
+      purpose !== "thumbnail" &&
+      purpose !== "brand_logo") ||
+    (purpose === "thumbnail" && !mimeType.startsWith("image/")) ||
+    (purpose === "brand_logo" && !BRAND_LOGO_TYPES.has(mimeType))
   ) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
   const purposeLimit =
-    purpose === "thumbnail"
-      ? MAX_THUMBNAIL_BYTES
-      : MAX_DIRECT_VIDEO_UPLOAD_BYTES;
+    purpose === "brand_logo"
+      ? MAX_BRAND_LOGO_BYTES
+      : purpose === "thumbnail"
+        ? MAX_THUMBNAIL_BYTES
+        : MAX_DIRECT_VIDEO_UPLOAD_BYTES;
   if (sizeBytes > purposeLimit) {
     return Response.json({ error: "media_too_large" }, { status: 413 });
   }

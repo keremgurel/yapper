@@ -94,9 +94,46 @@ describe("POST /api/media/upload-url lifecycle allocation", () => {
     expect(mocks.allocatePendingObject).not.toHaveBeenCalled();
   });
 
+  it("accepts a supported brand logo and reserves it durably", async () => {
+    const response = await POST(
+      request({
+        sizeBytes: 256,
+        mimeType: "image/svg+xml",
+        ext: "svg",
+        purpose: "brand_logo",
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.allocatePendingObject).toHaveBeenCalledWith(
+      "user_test",
+      "u/user_test/recording.webm",
+      "brand_logo",
+      256,
+      1_000_000,
+      new Date("2026-08-13T13:00:00.000Z"),
+      new Date("2026-08-13T12:30:00.000Z"),
+    );
+  });
+
+  it("rejects an unsupported brand logo type", async () => {
+    const response = await POST(
+      request({
+        sizeBytes: 256,
+        mimeType: "image/gif",
+        ext: "gif",
+        purpose: "brand_logo",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.allocatePendingObject).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["recording", "video/webm", 4 * 1024 * 1024 * 1024 + 1],
     ["thumbnail", "image/png", 20 * 1024 * 1024 + 1],
+    ["brand_logo", "image/png", 5 * 1024 * 1024 + 1],
   ] as const)(
     "rejects an oversized %s before allocating storage",
     async (purpose, mimeType, sizeBytes) => {

@@ -840,6 +840,7 @@ private extension StudioDestination {
         case .poster: "/studio/poster"
         case .calendar: "/studio/calendar"
         case .automations: "/studio/automations"
+        case .brand: "/studio/brand"
         case .dictionary: "/studio/dictionary"
         case .connections: "/studio/connections"
         case .signIn: "/studio/app-sign-in"

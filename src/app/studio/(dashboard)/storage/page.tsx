@@ -10,6 +10,7 @@ import {
   Images,
   Lightbulb,
   Library,
+  Palette,
   Trash2,
 } from "lucide-react";
 import { getBillingState } from "@/lib/db/billing";
@@ -189,7 +190,7 @@ export default async function StoragePage() {
             <Trash2 className="h-3.5 w-3.5" /> Manage videos
           </Link>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <BreakdownCard
             icon={Clapperboard}
             label="Uploaded videos"
@@ -207,6 +208,12 @@ export default async function StoragePage() {
             label="Thumbnail assets"
             detail={`${details.media.thumbnail.count} retained thumbnail${details.media.thumbnail.count === 1 ? "" : "s"}`}
             value={formatStorageBytes(details.media.thumbnail.bytes)}
+          />
+          <BreakdownCard
+            icon={Palette}
+            label="Brand logos"
+            detail={`${details.media.brand_logo.count} saved logo${details.media.brand_logo.count === 1 ? "" : "s"}`}
+            value={formatStorageBytes(details.media.brand_logo.bytes)}
           />
         </div>
       </section>
