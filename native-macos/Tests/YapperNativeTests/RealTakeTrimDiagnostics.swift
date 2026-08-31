@@ -70,7 +70,13 @@ struct RealTakeTrimDiagnostics {
         }
 
         let silent = kept.filter { !isAudible($0) }
+        let unexplainedSilent = silent.filter { segment in
+            !words.contains { $0.playbackAnchor >= segment.0 && $0.playbackAnchor <= segment.1 }
+        }
         let tiny = kept.filter { $0.1 - $0.0 < 0.35 }
+        let wordlessTiny = tiny.filter { segment in
+            !words.contains { $0.end > segment.0 && $0.start < segment.1 }
+        }
         print("""
 
         === trim report ===
@@ -91,22 +97,42 @@ struct RealTakeTrimDiagnostics {
                 overlapping.map(\.text).joined(separator: " ")
             ))
         }
+        if let rawProbe = environment["TRIM_PROBE"], let probe = Double(rawProbe) {
+            for range in ranges where range.1 >= probe - 1 && range.0 <= probe + 1 {
+                print(String(format: "probe cut       %.3f → %.3f", range.0, range.1))
+            }
+            for segment in kept where segment.1 >= probe - 1 && segment.0 <= probe + 1 {
+                print(String(format: "probe kept      %.3f → %.3f", segment.0, segment.1))
+            }
+            let from = max(0, Int((probe - 0.25) / envelope.hop))
+            let to = min(envelope.loudness.count, Int((probe + 0.25) / envelope.hop) + 1)
+            print(String(format: "probe threshold %.1f dB", threshold))
+            for frame in from ..< to {
+                print(String(
+                    format: "probe level     %.3f  %6.1f dB",
+                    Double(frame) * envelope.hop,
+                    envelope.loudness[frame]
+                ))
+            }
+        }
 
         // The other half of the complaint: a word whose audio survives must
         // not be drawn as cut. The transcript decides that by the word's
-        // midpoint, so a cut that laps over a word's generous boundary strikes
+        // playback anchor, so a cut that laps over a word's generous boundary strikes
         // it through while it is still in the video.
         let struckThrough = words.filter { word in
-            let midpoint = (word.start + word.end) / 2
-            return !kept.contains { midpoint >= $0.0 && midpoint <= $0.1 }
+            !kept.contains { word.playbackAnchor >= $0.0 && word.playbackAnchor <= $0.1 }
         }
         print("words shown as cut: \(struckThrough.count) of \(words.count)")
         for word in struckThrough.prefix(8) {
             print(String(format: "  %.2f-%.2f %@", word.start, word.end, word.text))
         }
 
-        #expect(silent.isEmpty, "a clip with no sound in it should never survive the trim")
-        #expect(tiny.isEmpty, "a clip too short to see should never survive the trim")
+        #expect(
+            unexplainedSilent.isEmpty,
+            "a clip with neither measured sound nor a transcribed word should never survive the trim"
+        )
+        #expect(wordlessTiny.isEmpty, "a short clip with no word in it should never survive the trim")
         #expect(
             struckThrough.isEmpty,
             "no retakes were requested, so every word should still be in the edit"

@@ -17,19 +17,19 @@ enum SilenceScan {
         /// Quiet is relative: a whisper recorded hot and a shout recorded cold
         /// are both speech. The floor is set this far under the recording's own
         /// speech level rather than at a fixed dBFS.
-        var dropBelowSpeech: Double = 22
+        var dropBelowSpeech: Double = 16
         /// Never treat anything above this as silence, however quiet the take.
         var ceiling: Double = -34
         /// Never treat anything below this as speech, however noisy the room.
         var floor: Double = -60
         /// Shorter than this stays: speech without its small gaps is unlistenable.
-        var minimumSilence: Double = 0.18
+        var minimumSilence: Double = 0.14
         /// Left at each edge of a cut, so words keep their attack and release.
-        var padding: Double = 0.04
+        var padding: Double = 0.01
         /// The ends of a take are dead air rather than rhythm, so they go
         /// almost entirely.
         var edgeMinimum: Double = 0.10
-        var edgePadding: Double = 0.03
+        var edgePadding: Double = 0.015
     }
 
     /// The ranges worth removing, in seconds.
@@ -81,7 +81,7 @@ enum SilenceScan {
     ///
     /// A transcriber's word boundaries are generous, so measured quiet often
     /// laps over the start or end of a word that is genuinely spoken. Cutting
-    /// there costs the word its attack, and worse, moves its midpoint into the
+    /// there costs the word its attack, and worse, moves its playback anchor into the
     /// removed side: the transcript then shows a word struck through that is
     /// still in the video, which is a lie about the edit.
     static func avoiding(

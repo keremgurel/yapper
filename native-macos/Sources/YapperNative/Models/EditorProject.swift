@@ -103,6 +103,7 @@ struct TranscriptWord: Codable, Equatable, Identifiable, Sendable {
     }
 
     var midpoint: Double { (start + end) / 2 }
+    var playbackAnchor: Double { WordPlaybackAnchor.time(start: start, end: end) }
 }
 
 struct TranscriptSourceRange: Equatable, Sendable {
@@ -854,7 +855,9 @@ struct EditorProject: Codable, Equatable, Sendable {
 
     func isWordKept(_ word: TranscriptWord) -> Bool {
         clips.contains {
-            $0.mediaID == word.mediaID && word.midpoint >= $0.sourceStart && word.midpoint <= $0.sourceEnd
+            $0.mediaID == word.mediaID
+                && word.playbackAnchor >= $0.sourceStart
+                && word.playbackAnchor <= $0.sourceEnd
         }
     }
 
@@ -869,8 +872,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         var cursor = 0.0
         for clip in clips {
             if clip.mediaID == word.mediaID,
-               word.midpoint >= clip.sourceStart,
-               word.midpoint <= clip.sourceEnd
+               word.playbackAnchor >= clip.sourceStart,
+               word.playbackAnchor <= clip.sourceEnd
             {
                 return cursor + min(clip.duration, max(0, word.start - clip.sourceStart))
             }
@@ -886,9 +889,9 @@ struct EditorProject: Codable, Equatable, Sendable {
         var nextSameMediaStart: (source: Double, timeline: Double)?
         for clip in clips {
             if clip.mediaID == word.mediaID {
-                if clip.sourceEnd <= word.midpoint {
+                if clip.sourceEnd <= word.playbackAnchor {
                     previousSameMediaEnd = (clip.sourceEnd, cursor + clip.duration)
-                } else if clip.sourceStart >= word.midpoint, nextSameMediaStart == nil {
+                } else if clip.sourceStart >= word.playbackAnchor, nextSameMediaStart == nil {
                     nextSameMediaStart = (clip.sourceStart, cursor)
                 }
             }
@@ -896,7 +899,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         }
         switch (previousSameMediaEnd, nextSameMediaStart) {
         case let (previous?, next?):
-            return word.midpoint - previous.source <= next.source - word.midpoint
+            return word.playbackAnchor - previous.source <= next.source - word.playbackAnchor
                 ? previous.timeline
                 : next.timeline
         case let (previous?, nil):
@@ -915,7 +918,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         var nearest: TranscriptWord?
         var nearestDistance = Double.greatestFiniteMagnitude
         for word in transcript ?? [] where word.mediaID == clip.mediaID {
-            guard word.midpoint >= clip.sourceStart, word.midpoint <= clip.sourceEnd else { continue }
+            guard word.playbackAnchor >= clip.sourceStart,
+                  word.playbackAnchor <= clip.sourceEnd else { continue }
             if sourceTime >= word.start - 0.025, sourceTime <= word.end + 0.025 {
                 return word
             }
@@ -941,6 +945,9 @@ struct EditorProject: Codable, Equatable, Sendable {
     mutating func removeSourceRanges(_ ranges: [(Double, Double)], for mediaID: UUID) {
         guard !ranges.isEmpty else { return }
         let merged = Self.merge(ranges)
+        let spokenAnchors = (transcript ?? [])
+            .filter { $0.mediaID == mediaID }
+            .map(\.playbackAnchor)
         clips = clips.flatMap { clip in
             guard clip.mediaID == mediaID else { return [clip] }
             var kept = [(clip.sourceStart, clip.sourceEnd)]
@@ -954,7 +961,8 @@ struct EditorProject: Codable, Equatable, Sendable {
                 }
             }
             return kept.compactMap { start, end in
-                guard end - start >= Self.shortestClipWorthKeeping else { return nil }
+                let containsWord = spokenAnchors.contains { $0 >= start && $0 <= end }
+                guard end - start >= Self.shortestClipWorthKeeping || containsWord else { return nil }
                 return TimelineClip(mediaID: clip.mediaID, sourceStart: start, sourceEnd: end)
             }
         }

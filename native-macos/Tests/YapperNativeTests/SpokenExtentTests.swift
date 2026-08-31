@@ -29,13 +29,13 @@ struct SpokenExtentTests {
         )
         #expect(audible.0 == 0)
         // The sound ends at 0.80, plus the padding that keeps the release.
-        #expect(abs(audible.1 - 0.86) < 0.03)
+        #expect(abs(audible.1 - 0.84) < 0.03)
         // Which is 0.34s of the transcriber's word that is free to cut.
         #expect(1.2 - audible.1 > 0.3)
     }
 
-    @Test("The midpoint is protected even when the sound stops before it")
-    func keepsTheMidpoint() {
+    @Test("The playback anchor is protected even when the sound stops before it")
+    func keepsThePlaybackAnchor() {
         let loudness = envelope(soundSeconds: 0.10, total: 1.00)
         let audible = SpokenExtent.audible(
             word: (0, 1.0),
@@ -43,11 +43,11 @@ struct SpokenExtentTests {
             hop: hop,
             threshold: threshold
         )
-        // Anything less and the cut would swallow the midpoint, which is how
-        // the editor decides the word is gone: the transcript would strike out
-        // a word still audible in the video.
-        #expect(audible.1 >= 0.5)
-        #expect(audible.1 < 0.55)
+        let anchor = WordPlaybackAnchor.time(start: 0, end: 1)
+        // Anything less and the cut would swallow the point the editor uses to
+        // decide that the word belongs to the clip.
+        #expect(audible.1 > anchor)
+        #expect(audible.1 < 0.40)
     }
 
     @Test("A word that sounds all the way through is left alone")
@@ -99,24 +99,43 @@ struct SpokenExtentTests {
         // Believing the transcript, the whole 0.9s pause hides inside the word
         // that was said for the first 0.3s of it, and nothing is cut.
         #expect(believed < 0.1)
-        // Measured, everything past that word's midpoint goes.
+        // Measured, everything past that word's playback anchor goes.
         #expect(heard > 0.5)
+    }
+
+    @Test("A tiny noise spike does not preserve the quiet lead-in to a pause")
+    func absorbsNoiseAfterAWord() {
+        var loudness = [Double](repeating: -16, count: 130)
+        // Speech ends at 1.00, followed by 40 ms quiet, one 20 ms noise spike,
+        // then half a second of room tone before the next word.
+        for frame in 50 ..< 78 { loudness[frame] = -60 }
+        loudness[52] = -28
+        let envelope = LoudnessEnvelope.Envelope(loudness: loudness, hop: hop)
+
+        let ranges = MeasuredSilence.ranges(
+            envelope: envelope,
+            words: [(0, 1.0), (1.56, 2.6)]
+        )
+
+        let pause = try! #require(ranges.first { $0.0 >= 0.9 && $0.1 <= 1.7 })
+        #expect(pause.0 < 1.04)
+        #expect(pause.1 > 1.50)
     }
 }
 
 /// A word must survive the silence around it.
 ///
-/// Protecting a word up to exactly its midpoint is not protecting it: the
-/// silence begins at that instant, the midpoint sits on the boundary, and the
+/// Protecting a word up to exactly its playback anchor is not protecting it:
+/// the silence begins at that instant, the anchor sits on the boundary, and the
 /// editor reads the word as cut. Seventeen words went that way on a real
 /// fifteen minute recording, each one taking the sense of its sentence with it.
 @Suite
-struct MidpointSurvivesSilenceTests {
+struct PlaybackAnchorSurvivesSilenceTests {
     private let hop = 0.02
     private let threshold = -40.0
 
-    @Test("The silence never starts on a word's own midpoint")
-    func leavesRoomAroundTheMidpoint() {
+    @Test("The silence never starts on a word's own playback anchor")
+    func leavesRoomAroundThePlaybackAnchor() {
         // Loud for a moment, then room tone for the rest of the word.
         var loudness = [Double](repeating: -60, count: 200)
         for frame in 0 ..< 8 { loudness[frame] = -20 }
@@ -127,9 +146,9 @@ struct MidpointSurvivesSilenceTests {
             hop: hop,
             threshold: threshold
         )
-        let midpoint = (word.0 + word.1) / 2
-        #expect(audible.1 > midpoint)
-        #expect(audible.0 < midpoint)
+        let anchor = WordPlaybackAnchor.time(start: word.0, end: word.1)
+        #expect(audible.1 > anchor)
+        #expect(audible.0 < anchor)
     }
 
     @Test("A word shorter than the margin is protected whole")

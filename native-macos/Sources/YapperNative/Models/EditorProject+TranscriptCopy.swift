@@ -19,7 +19,7 @@ extension EditorProject {
         let kept = clips.flatMap { clip in
             (byMedia[clip.mediaID] ?? [])
                 .filter { word in
-                    word.midpoint >= clip.sourceStart && word.midpoint < clip.sourceEnd
+                    word.playbackAnchor >= clip.sourceStart && word.playbackAnchor < clip.sourceEnd
                 }
                 .sorted { left, right in
                     if left.start != right.start { return left.start < right.start }

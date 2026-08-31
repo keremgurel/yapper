@@ -4,6 +4,68 @@ import Testing
 @testable import YapperNative
 
 struct EditorProjectTests {
+    @Test("A manual trim through a generous word tail keeps the audible word and caption")
+    func trimKeepsAudibleLastWord() {
+        let mediaID = UUID()
+        // Exact timings from the reported "on my app." failure. The clip ends
+        // after the word has sounded but 51 ms before the transcriber's midpoint.
+        let app = TranscriptWord(
+            mediaID: mediaID,
+            text: "app.",
+            start: 47.025,
+            end: 47.665
+        )
+        let project = EditorProject(
+            clips: [
+                TimelineClip(
+                    mediaID: mediaID,
+                    sourceStart: 45.525_001_5,
+                    sourceEnd: 47.293_540_039_062_506
+                ),
+            ],
+            transcript: [app],
+            captionsEnabled: true,
+            captions: [
+                ProjectCaption(
+                    mediaID: mediaID,
+                    text: "on my app.",
+                    sourceStart: 46.705,
+                    sourceEnd: 47.44
+                ),
+            ]
+        )
+
+        #expect(app.midpoint > project.clips[0].sourceEnd)
+        #expect(app.playbackAnchor < project.clips[0].sourceEnd)
+        #expect(project.isWordKept(app))
+        #expect(project.keptTranscriptText == "app.")
+        #expect(project.captionTextsByID.values.contains("app."))
+    }
+
+    @Test("Silence cleanup keeps a short fragment when it contains a transcribed word")
+    func shortSpokenFragmentSurvivesCleanup() {
+        let mediaID = UUID()
+        let word = TranscriptWord(
+            mediaID: mediaID,
+            text: "pick",
+            start: 616.525,
+            end: 616.605
+        )
+        var project = EditorProject(
+            clips: [TimelineClip(mediaID: mediaID, sourceStart: 616, sourceEnd: 617)],
+            transcript: [word]
+        )
+
+        project.removeSourceRanges(
+            [(616, 616.525), (616.605, 617)],
+            for: mediaID
+        )
+
+        #expect(project.clips.count == 1)
+        #expect(project.clips[0].duration < EditorProject.shortestClipWorthKeeping)
+        #expect(project.isWordKept(word))
+    }
+
     @Test func resettingOneMediaPreservesOtherMediaAndEveryLayer() {
         let firstID = UUID()
         let secondID = UUID()

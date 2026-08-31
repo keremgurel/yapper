@@ -1,5 +1,19 @@
 import Foundation
 
+/// The point that decides whether a transcribed word still belongs to a clip.
+///
+/// Speech-to-text ends are deliberately generous, especially on the last word
+/// before a pause. Its midpoint can therefore sit in dead air after the whole
+/// word has already sounded. Thirty-five percent is late enough to be past the
+/// attack, while not mistaking that reported tail for part of the word.
+enum WordPlaybackAnchor {
+    static let fraction = 0.35
+
+    static func time(start: Double, end: Double) -> Double {
+        start + max(0, end - start) * fraction
+    }
+}
+
 /// The part of a transcribed word that actually makes a sound.
 ///
 /// `SilenceScan.avoiding` protects every word from being cut into, using the
@@ -16,7 +30,7 @@ import Foundation
 enum SpokenExtent {
     /// Left on each side of the sound, so a soft consonant that sits under the
     /// line is not shaved off the front or back of a word.
-    static let padding = 0.06
+    static let padding = 0.02
 
     static func audible(
         words: [(Double, Double)],
@@ -63,21 +77,20 @@ enum SpokenExtent {
         // measurement cannot see, not an empty stretch. Leave it whole.
         guard let first, let last else { return word }
 
-        // The midpoint stays protected, whatever the sound says. The editor
-        // decides which words survive a cut by asking where their midpoint
-        // landed, so a cut that swallowed one would strike a word off the
-        // transcript that is still there in the video.
+        // The playback anchor stays protected, whatever the sound says. The
+        // editor uses that same point to decide whether a word survives, so a
+        // cut cannot strike a word off the transcript while leaving its sound.
         //
         // With room to spare on either side of it, because protecting up to
-        // exactly the midpoint is not protecting it: the silence then began at
-        // that very instant, the midpoint sat on the boundary, and the word
+        // exactly the anchor is not protecting it: the silence then began at
+        // that very instant, the anchor sat on the boundary, and the word
         // counted as cut. Seventeen words went that way on a real recording,
         // each one taking the sense of the sentence around it.
-        let midpoint = (word.0 + word.1) / 2
+        let anchor = WordPlaybackAnchor.time(start: word.0, end: word.1)
         let margin = min(max(hop, 0.02), (word.1 - word.0) / 2)
         return (
-            min(max(word.0, Double(first) * hop - padding), midpoint - margin),
-            max(min(word.1, Double(last + 1) * hop + padding), midpoint + margin)
+            min(max(word.0, Double(first) * hop - padding), anchor - margin),
+            max(min(word.1, Double(last + 1) * hop + padding), anchor + margin)
         )
     }
 }

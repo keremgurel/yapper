@@ -73,8 +73,8 @@ extension EditorProject {
             guard isWordKept(word), let start = timelineTime(for: word) else { return nil }
             let clip = clips.first {
                 $0.mediaID == word.mediaID
-                    && word.midpoint >= $0.sourceStart
-                    && word.midpoint <= $0.sourceEnd
+                    && word.playbackAnchor >= $0.sourceStart
+                    && word.playbackAnchor <= $0.sourceEnd
             }
             let text = word.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
