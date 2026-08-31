@@ -29,6 +29,7 @@ import {
 } from "@/lib/transcription/providers";
 import { getObjectBytes } from "@/lib/r2";
 import { getOwnedMediaKey } from "@/lib/db/submissions";
+import { mergeAsrChunks, type TimedAsrChunk } from "@/lib/transcription/chunks";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -38,6 +39,8 @@ export const maxDuration = 120;
 const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
 const MAX_AUDIO_BYTES = 4_000_000;
 const MAX_AUDIO_DURATION_SECONDS = 600;
+const MAX_STORED_CHUNKS = 12;
+const MAX_STORED_TAKE_SECONDS = 3_600;
 const PROVIDER_DEADLINE_MS = 108_000;
 const AUDIO_MEDIA_TYPES = [
   "audio/wav",
@@ -104,8 +107,7 @@ export async function POST(req: Request): Promise<Response> {
   );
   let audio: ArrayBuffer | null = null;
   let contentType = "audio/mp4";
-  let storedKey: string | null = null;
-  let discardStoredKey = false;
+  let storedChunks: { key: string; offset: number; duration: number }[] = [];
   let durableVideoMaster = false;
 
   if (stored) {
@@ -119,23 +121,66 @@ export async function POST(req: Request): Promise<Response> {
       if (response) return response;
       throw error;
     }
-    const value = body as { key?: unknown; submissionId?: unknown } | null;
+    const value = body as {
+      key?: unknown;
+      chunks?: unknown;
+      submissionId?: unknown;
+    } | null;
     const key = value?.key;
+    const chunks = value?.chunks;
     const submissionId = value?.submissionId;
     if (typeof key === "string" && isTranscriptionKey(userId, key)) {
-      // Scratch audio uploaded only for this request.
-      storedKey = key;
-      discardStoredKey = true;
+      // Legacy native clients upload one whole take.
+      storedChunks = [{ key, offset: 0, duration: 0 }];
+    } else if (
+      Array.isArray(chunks) &&
+      chunks.length > 0 &&
+      chunks.length <= MAX_STORED_CHUNKS
+    ) {
+      const parsed = chunks.map((chunk) => {
+        const candidate = chunk as {
+          key?: unknown;
+          offset?: unknown;
+          duration?: unknown;
+        };
+        return {
+          key: candidate.key,
+          offset: Number(candidate.offset),
+          duration: Number(candidate.duration),
+        };
+      });
+      const valid = parsed.every(
+        (chunk, index) =>
+          typeof chunk.key === "string" &&
+          isTranscriptionKey(userId, chunk.key) &&
+          parsed.findIndex((candidate) => candidate.key === chunk.key) ===
+            index &&
+          Number.isFinite(chunk.offset) &&
+          chunk.offset >= 0 &&
+          (index === 0 || chunk.offset > parsed[index - 1]!.offset) &&
+          Number.isFinite(chunk.duration) &&
+          chunk.duration > 0 &&
+          chunk.duration <= MAX_AUDIO_DURATION_SECONDS &&
+          chunk.offset + chunk.duration <= MAX_STORED_TAKE_SECONDS,
+      );
+      if (!valid)
+        return Response.json({ error: "bad_request" }, { status: 400 });
+      storedChunks = parsed as {
+        key: string;
+        offset: number;
+        duration: number;
+      }[];
     } else if (typeof submissionId === "string") {
       // Poster uploads already have a durable master in R2. Resolve it through
       // the owner-scoped submission row rather than accepting a raw key from
       // the browser, and never delete that master after transcription.
-      storedKey = await getOwnedMediaKey(userId, submissionId);
+      const storedKey = await getOwnedMediaKey(userId, submissionId);
       contentType = "video/mp4";
       durableVideoMaster = true;
       if (!storedKey) {
         return Response.json({ error: "bad_request" }, { status: 400 });
       }
+      storedChunks = [{ key: storedKey, offset: 0, duration: 0 }];
     } else {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
@@ -164,8 +209,26 @@ export async function POST(req: Request): Promise<Response> {
   // Deepgram is handed the link when there is one; the backup cannot fetch for
   // itself, so for a stored take it reads the object here instead. That read is
   // outbound, which the hosting body limit has no opinion about.
-  const bytes = async (): Promise<ArrayBuffer> =>
-    audio ?? (audio = await getObjectBytes(storedKey!));
+  const bytes = async (key?: string): Promise<ArrayBuffer> =>
+    key ? getObjectBytes(key) : audio!;
+  const transcribeStored = async (
+    run: (
+      chunk: { key: string; offset: number; duration: number },
+      timeoutMs: number,
+    ) => Promise<AsrResult>,
+    timeoutMs: number,
+  ): Promise<AsrResult> => {
+    const completed = await Promise.all(
+      storedChunks.map(
+        async (chunk): Promise<TimedAsrChunk> => ({
+          ...(await run(chunk, timeoutMs)),
+          offset: chunk.offset,
+          duration: chunk.duration,
+        }),
+      ),
+    );
+    return mergeAsrChunks(completed);
+  };
   const providers: {
     name: string;
     run: (timeoutMs: number) => Promise<AsrResult>;
@@ -174,12 +237,16 @@ export async function POST(req: Request): Promise<Response> {
     providers.push({
       name: "deepgram",
       run: async (timeoutMs) =>
-        storedKey
-          ? viaDeepgramURL(
-              await presignView(storedKey, 900),
-              deepgram,
-              keyterms,
-              req.signal,
+        storedChunks.length > 0
+          ? transcribeStored(
+              async (chunk, chunkTimeoutMs) =>
+                viaDeepgramURL(
+                  await presignView(chunk.key, 900),
+                  deepgram,
+                  keyterms,
+                  req.signal,
+                  chunkTimeoutMs,
+                ),
               timeoutMs,
             )
           : viaDeepgram(
@@ -199,16 +266,31 @@ export async function POST(req: Request): Promise<Response> {
     providers.push({
       name: "groq",
       run: async (timeoutMs) =>
-        viaOpenAiCompatible(
-          await bytes(),
-          groq,
-          "https://api.groq.com/openai/v1",
-          "whisper-large-v3",
-          contentType,
-          keyterms,
-          req.signal,
-          timeoutMs,
-        ),
+        storedChunks.length > 0
+          ? transcribeStored(
+              async (chunk, chunkTimeoutMs) =>
+                viaOpenAiCompatible(
+                  await bytes(chunk.key),
+                  groq,
+                  "https://api.groq.com/openai/v1",
+                  "whisper-large-v3",
+                  "audio/mp4",
+                  keyterms,
+                  req.signal,
+                  chunkTimeoutMs,
+                ),
+              timeoutMs,
+            )
+          : viaOpenAiCompatible(
+              await bytes(),
+              groq,
+              "https://api.groq.com/openai/v1",
+              "whisper-large-v3",
+              contentType,
+              keyterms,
+              req.signal,
+              timeoutMs,
+            ),
     });
   }
   if (providers.length === 0) {
@@ -230,12 +312,16 @@ export async function POST(req: Request): Promise<Response> {
   // waiting on the bytes, and a creator is not paying to store a copy of a
   // video they have on their own disk.
   const discard = async () => {
-    if (!storedKey || !discardStoredKey) return;
-    try {
-      await discardTranscriptionAudio(storedKey);
-    } catch (error) {
-      console.error("[transcribe] could not discard stored audio", error);
-    }
+    if (durableVideoMaster || storedChunks.length === 0) return;
+    await Promise.all(
+      storedChunks.map(async ({ key }) => {
+        try {
+          await discardTranscriptionAudio(key);
+        } catch (error) {
+          console.error("[transcribe] could not discard stored audio", error);
+        }
+      }),
+    );
   };
 
   let lastError: unknown;

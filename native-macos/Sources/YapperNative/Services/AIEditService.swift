@@ -18,6 +18,71 @@ enum TranscriptionPCM {
     }
 }
 
+struct TranscriptionChunkPlan: Equatable, Sendable {
+    let start: Int
+    let length: Int
+    let offset: Double
+    let duration: Double
+
+    static func make(
+        byteCount: Int,
+        sampleRate: Int,
+        chunkSeconds: Double,
+        overlapSeconds: Double
+    ) -> [Self] {
+        let usableByteCount = byteCount - max(0, byteCount % 2)
+        let bytesPerSecond = sampleRate * 2
+        let requestedBytes = Int(chunkSeconds * Double(bytesPerSecond))
+        let chunkBytes = requestedBytes - max(0, requestedBytes % 2)
+        guard usableByteCount > 0, sampleRate > 0, chunkBytes >= 2 else { return [] }
+        let requestedOverlap = max(0, Int(overlapSeconds * Double(bytesPerSecond)))
+        let overlap = min(chunkBytes - 2, requestedOverlap - requestedOverlap % 2)
+        let advance = max(2, chunkBytes - overlap)
+        var plans: [Self] = []
+        var start = 0
+        while start < usableByteCount {
+            let length = min(chunkBytes, usableByteCount - start)
+            plans.append(.init(
+                start: start,
+                length: length,
+                offset: Double(start) / Double(bytesPerSecond),
+                duration: Double(length) / Double(bytesPerSecond)
+            ))
+            if start + length == usableByteCount { break }
+            start += advance
+        }
+        return plans
+    }
+}
+
+enum BoundedTranscriptionWork {
+    static func run<Result: Sendable>(
+        count: Int,
+        limit: Int,
+        operation: @escaping @Sendable (Int) async throws -> Result,
+        completed: @escaping @Sendable (Int, Result) async -> Void = { _, _ in }
+    ) async throws -> [Result] {
+        guard count > 0 else { return [] }
+        return try await withThrowingTaskGroup(of: (Int, Result).self) { group in
+            var next = 0
+            var results: [Result?] = Array(repeating: nil, count: count)
+            func enqueue(_ index: Int) { group.addTask { (index, try await operation(index)) } }
+            while next < min(max(1, limit), count) { enqueue(next); next += 1 }
+            do {
+                while let (index, result) = try await group.next() {
+                    results[index] = result
+                    await completed(index, result)
+                    if next < count { enqueue(next); next += 1 }
+                }
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+            return results.compactMap { $0 }
+        }
+    }
+}
+
 enum TranscriptionTemporaryFile {
     static func withPCMFile<Result: Sendable>(
         isolation _: isolated (any Actor)? = #isolation,
@@ -31,6 +96,11 @@ enum TranscriptionTemporaryFile {
         defer { try? FileManager.default.removeItem(at: url) }
         return try await operation(url)
     }
+}
+
+private actor TranscriptionCompletionCounter {
+    private var value = 0
+    func increment() -> Int { value += 1; return value }
 }
 
 actor AIEditService {
@@ -62,7 +132,15 @@ actor AIEditService {
         let url: String
     }
 
-    private struct StoredTranscriptionRequest: Codable { let key: String }
+    private struct StoredTranscriptionChunk: Codable, Sendable {
+        let key: String
+        let offset: Double
+        let duration: Double
+    }
+
+    private struct StoredTranscriptionRequest: Codable {
+        let chunks: [StoredTranscriptionChunk]
+    }
 
     private struct CleanRequest: Codable {
         /// The timings go with the words so the server can split a long take at
@@ -89,6 +167,13 @@ actor AIEditService {
 
     // Keep camera speech detail at its native rate. The previous forced 16 kHz
     // path could smear quiet sentence onsets before ASR heard them.
+    // Three-minute windows keep a long take from losing an isolated phrase in
+    // the provider's long context. Eight seconds of overlap make every seam
+    // somebody's interior; the server joins the answers under one billable
+    // transcription request.
+    private let chunkSeconds = 180.0
+    private let overlapSeconds = 8.0
+    private let maximumConcurrentUploads = 3
 
     /// How loud each take was, moment by moment, kept from the decode the
     /// transcriber already paid for. Reading a fifteen minute take off a camera
@@ -140,23 +225,46 @@ actor AIEditService {
             let decoded = try await decodeAudio(
                 url: media.url, output: temporaryURL, progress: progress
             )
-            // The whole take, in one piece. It used to be cut into upload-sized
-            // chunks and the answers stitched back together, because the audio
-            // went through the API and the host refuses a body over 4.5 MB. It
-            // does not go through the API any more, so there is nothing to cut
-            // it for, and the seam between two chunks was somewhere a word
-            // could go missing.
-            let payload = try Self.compressedChunk(
-                at: decoded.url, start: 0, length: decoded.byteCount,
-                sampleRate: decoded.sampleRate
+            let chunks = TranscriptionChunkPlan.make(
+                byteCount: decoded.byteCount,
+                sampleRate: decoded.sampleRate,
+                chunkSeconds: chunkSeconds,
+                overlapSeconds: overlapSeconds
             )
-            await progress?(0.45)
-            let key = try await Self.uploadForTranscription(
-                payload, baseURL: YapperAPI.baseURL
+            let completionCounter = TranscriptionCompletionCounter()
+            let uploaded = try await BoundedTranscriptionWork.run(
+                count: chunks.count,
+                limit: maximumConcurrentUploads,
+                operation: { index in
+                    let chunk = chunks[index]
+                    let payload = try Self.compressedChunk(
+                        at: decoded.url,
+                        start: chunk.start,
+                        length: chunk.length,
+                        sampleRate: decoded.sampleRate
+                    )
+                    let key = try await Self.uploadForTranscription(
+                        payload,
+                        baseURL: YapperAPI.baseURL
+                    )
+                    return StoredTranscriptionChunk(
+                        key: key,
+                        offset: chunk.offset,
+                        duration: chunk.duration
+                    )
+                },
+                completed: { _, _ in
+                    let completedCount = await completionCounter.increment()
+                    await progress?(
+                        0.35 + 0.25 * Double(completedCount) / Double(max(1, chunks.count))
+                    )
+                }
             )
             await progress?(0.6)
             let spoken = try await Self.transcribeStored(
-                key: key, keyterms: keyterms, baseURL: YapperAPI.baseURL
+                chunks: uploaded,
+                keyterms: keyterms,
+                baseURL: YapperAPI.baseURL
             )
             await progress?(1)
 
@@ -220,7 +328,7 @@ actor AIEditService {
     /// Asks for the transcript of audio already in storage. The request is a
     /// few dozen bytes however long the take is.
     private static func transcribeStored(
-        key: String,
+        chunks: [StoredTranscriptionChunk],
         keyterms: [String],
         baseURL: URL
     ) async throws -> [RemoteWord] {
@@ -234,7 +342,7 @@ actor AIEditService {
                 request.httpMethod = "POST"
                 request.timeoutInterval = 300
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.httpBody = try JSONEncoder().encode(StoredTranscriptionRequest(key: key))
+                request.httpBody = try JSONEncoder().encode(StoredTranscriptionRequest(chunks: chunks))
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
                     throw NativeEditorError.aiFailed("The transcriber returned no response.")

@@ -211,6 +211,28 @@ struct EditorProjectTests {
         #expect(TranscriptionPCM.monoSample(sum: -8, channelCount: 2) == -32_767)
     }
 
+    @Test func longTranscriptionIsCoveredByOverlappingThreeMinuteWindows() {
+        let sampleRate = 48_000
+        let bytesPerSecond = sampleRate * 2
+        let plans = TranscriptionChunkPlan.make(
+            byteCount: 845 * bytesPerSecond,
+            sampleRate: sampleRate,
+            chunkSeconds: 180,
+            overlapSeconds: 8
+        )
+
+        #expect(plans.count == 5)
+        #expect(plans.first?.offset == 0)
+        #expect(plans.last.map { $0.start + $0.length } == 845 * bytesPerSecond)
+        #expect(plans.allSatisfy { $0.duration <= 180 })
+        for pair in zip(plans, plans.dropFirst()) {
+            #expect(abs((pair.0.offset + pair.0.duration) - pair.1.offset - 8) < 0.000_1)
+        }
+        // The phrase lost by the former single 14-minute request is well
+        // inside one window, not on a seam.
+        #expect(plans.contains { 499.535 >= $0.offset + 8 && 502.495 <= $0.offset + $0.duration - 8 })
+    }
+
     @Test func transcriptionRetriesOnlyTransientStatuses() {
         for status in [0, 408, 429, 500, 503, 599] {
             #expect(AIEditService.isRetryableTranscriptionStatus(status))

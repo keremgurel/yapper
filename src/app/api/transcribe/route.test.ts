@@ -333,6 +333,15 @@ describe("POST /api/transcribe with audio already in storage", () => {
       body: JSON.stringify({ key }),
     });
 
+  const storedChunks = (
+    chunks: { key: string; offset: number; duration: number }[],
+  ) =>
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ chunks }),
+    });
+
   const transcript = {
     metadata: { duration: 12 },
     results: {
@@ -370,6 +379,75 @@ describe("POST /api/transcribe with audio already in storage", () => {
     expect(r2.discardTranscriptionAudio).toHaveBeenCalledWith(
       "u/user_test/asr/abc.m4a",
     );
+  });
+
+  it("transcribes overlapping chunks as one billed take and merges the seam", async () => {
+    r2.presignView.mockImplementation(async (key: string) =>
+      key.includes("part-1")
+        ? "https://r2.test/part-1"
+        : "https://r2.test/part-2",
+    );
+    mocks.fetchBoundedJson.mockImplementation(
+      async (_url: URL, init: RequestInit) => ({
+        response: { ok: true },
+        data: init.body
+          ? {
+              metadata: { duration: 10 },
+              results: {
+                channels: [
+                  {
+                    alternatives: [
+                      {
+                        words: (init.body as string).includes("part-1")
+                          ? [
+                              { word: "the", start: 7.4, end: 7.7 },
+                              { word: "work", start: 7.7, end: 8.1 },
+                            ]
+                          : [
+                              { word: "the", start: 1.4, end: 1.7 },
+                              { word: "work", start: 1.7, end: 2.1 },
+                              { word: "stacks", start: 2.1, end: 2.5 },
+                            ],
+                      },
+                    ],
+                  },
+                ],
+              },
+            }
+          : {},
+      }),
+    );
+
+    const response = await POST(
+      storedChunks([
+        { key: "u/user_test/asr/part-1.m4a", offset: 0, duration: 10 },
+        { key: "u/user_test/asr/part-2.m4a", offset: 6, duration: 10 },
+      ]),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledOnce();
+    expect(mocks.fetchBoundedJson).toHaveBeenCalledTimes(2);
+    await expect(response.json()).resolves.toMatchObject({
+      words: [
+        { text: "the", start: 7.4, end: 7.7 },
+        { text: "work", start: 7.7, end: 8.1 },
+        { text: "stacks", start: 8.1, end: 8.5 },
+      ],
+    });
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses a batch containing somebody else's chunk", async () => {
+    const response = await POST(
+      storedChunks([
+        { key: "u/user_test/asr/part-1.m4a", offset: 0, duration: 10 },
+        { key: "u/other/asr/part-2.m4a", offset: 6, duration: 10 },
+      ]),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
   });
 
   it("refuses a key belonging to somebody else", async () => {
