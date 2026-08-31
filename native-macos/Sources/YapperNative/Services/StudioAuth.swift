@@ -55,6 +55,17 @@ final class StudioAuth: ObservableObject {
         reportedByWeb = false
     }
 
+    /// Put the actual sign-in surface in front of a request that discovered an
+    /// expired session. The editor used to stay visible and tell the creator
+    /// to find another tab themselves, even though the app already owns a
+    /// complete sign-in flow.
+    func requireSignIn() {
+        reportedByWeb = false
+        firstLook = nil
+        isSignedIn = false
+        startWatching()
+    }
+
     /// Watches while signed out, and stops as soon as somebody is in.
     ///
     /// The browser half of sign-in finishes outside the app, and the cookie

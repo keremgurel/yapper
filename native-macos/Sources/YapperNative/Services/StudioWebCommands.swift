@@ -65,6 +65,29 @@ final class StudioWebCommands: ObservableObject {
         if self.webView === webView { self.webView = nil }
     }
 
+    /// A fresh Clerk token for native API calls.
+    ///
+    /// Clerk's API cookie is deliberately short-lived. The hidden Studio page
+    /// can still have a perfectly valid client session while that cookie is
+    /// between refreshes, especially just after launch. Asking Clerk itself
+    /// avoids turning that timing window into a spurious sign-out.
+    func sessionToken() async -> String? {
+        guard let webView else { return nil }
+        let result = try? await webView.callAsyncJavaScript(
+            """
+            let clerk = window.Clerk;
+            if (!clerk) return null;
+            await clerk.load();
+            return await clerk.session?.getToken() ?? null;
+            """,
+            arguments: [:],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let token = result as? String, !token.isEmpty else { return nil }
+        return token
+    }
+
     /// Runs the same Brain-aware Chirpy action as the browser UI, but returns
     /// the settled reply to the native transcript.
     func askChirpy(_ instruction: String) async throws -> StudioChirpyReply {

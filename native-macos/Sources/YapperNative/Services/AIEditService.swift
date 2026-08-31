@@ -263,8 +263,9 @@ actor AIEditService {
     /// Fails before the work starts when nobody is signed in.
     static func requireSession() async throws {
         guard await YapperAPI.hasSession() else {
+            await StudioAuth.shared.requireSignIn()
             throw NativeEditorError.aiFailed(
-                "Sign in from the Cloud Studio tab first. The AI edit runs on your Yapper account."
+                "Your Yapper session expired. Sign in to continue; your project is saved."
             )
         }
     }

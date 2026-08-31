@@ -25,9 +25,12 @@ enum YapperAPI {
         // answer is the same one the request itself will get.
         let target = url(path: "api/transcribe")
         let cookies = await webSessionCookies()
-        return cookies.contains { cookie in
+        if cookies.contains(where: { cookie in
             cookie.name.hasPrefix("__session") && cookieApplies(cookie, to: target)
+        }) {
+            return true
         }
+        return await StudioWebCommands.shared.sessionToken() != nil
     }
 
     static func authenticatedRequest(url: URL) async -> URLRequest {
@@ -38,6 +41,12 @@ enum YapperAPI {
         var request = URLRequest(url: url)
         for (header, value) in HTTPCookie.requestHeaderFields(with: applicableCookies) {
             request.setValue(value, forHTTPHeaderField: header)
+        }
+        // A freshly minted bearer token is authoritative when the short-lived
+        // cookie has not refreshed yet. Keep cookies too: they are the cheap,
+        // established path and cover older Clerk clients.
+        if let token = await StudioWebCommands.shared.sessionToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         // The same name the web session uses. An unnamed URLSession posting
         // megabytes of audio is exactly the traffic an edge bot filter is built
@@ -106,7 +115,10 @@ enum YapperAPI {
         // routes exist. From the app's side an expired session and a missing
         // route are the same status, and one of those is the creator's to fix.
         if status == 401 || status == 403 || status == 404 {
-            return .aiFailed("Sign in from the Cloud Studio tab, then try \(action.lowercased()) again.")
+            Task { @MainActor in StudioAuth.shared.requireSignIn() }
+            return .aiFailed(
+                "Your Yapper session expired. Sign in to continue; your project is saved."
+            )
         }
         // A bare status tells a creator nothing they can act on. The routes
         // all answer with a reason; carry it.

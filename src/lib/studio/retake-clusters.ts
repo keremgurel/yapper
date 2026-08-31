@@ -8,64 +8,24 @@
  * opening words, and dropped sentences the model had kept. Here the model
  * returns word indices, so there is nothing to align: the edit is what it said.
  *
- * The output is grouped by retake cluster on purpose. A cluster names the one
- * attempt that survives alongside the ones it deletes, so an edit that removes
- * every run at a line is not something the model can express, and anything it
- * does not put in a cluster is kept untouched.
+ * The output is grouped by retake block on purpose. A block names the source
+ * spans that survive alongside the ones it deletes. Several kept spans let a
+ * clean opening and ending survive around a false start, while requiring at
+ * least one survivor prevents deleting every version of an idea. Anything the
+ * model does not put in a block is kept untouched.
  */
 
-export const RETAKE_CLUSTER_PROMPT =
-  "You are cutting the mistakes out of a talking-head video. You get the " +
-  "speaker's transcript as numbered words, in recording order.\n\n" +
-  "The speaker says a line, fumbles it, stops, and says it again, sometimes " +
-  "three or four times, until they get it right. Every attempt is in the " +
-  "transcript, one after another. A RETAKE CLUSTER is one such stretch: two or " +
-  "more attempts at the same line, back to back.\n\n" +
-  "Find every retake cluster. For each one, say which single attempt survives " +
-  "and which spans are deleted.\n\n" +
-  "PUNCTUATION DOES NOT MARK THE ATTEMPTS. The transcriber writes a false start " +
-  "and its correction as one sentence, because the speaker does not pause for a " +
-  "full stop before restarting. Read the words, not the periods. For example:\n" +
-  '  "Navigate to practice celpip.ca and go to practice celpip.ca and click ' +
-  'words in the navigation bar."\n' +
-  'is one transcribed sentence holding two attempts: the abandoned "Navigate ' +
-  'to practice celpip.ca and go", then the real line "to practice celpip.ca ' +
-  'and click words in the navigation bar." Split it and delete the first.\n\n' +
-  "Choosing the survivor:\n" +
-  "- It is the LAST attempt that is a complete, fluent sentence. Later beats " +
-  "earlier every time, as long as the later one is complete.\n" +
-  "- Only fall back to an earlier attempt when NO later attempt finishes the " +
-  "thought: the speaker trailed off, stuttered through it, or never got to the " +
-  "end.\n" +
-  "- Exactly one attempt survives per cluster. Never delete them all: the idea " +
-  "has to be said once in the finished video.\n" +
-  "- The kept span starts at the first word of that attempt and ends at its " +
-  "last. Do not lop the opening word off it, and do not let it start on the " +
-  "tail of the attempt before.\n\n" +
-  "What counts as one cluster:\n" +
-  '- Reworded attempts count. "Choose the right meaning for that word and the ' +
-  'translation will be added automatically" and "And the translation as well ' +
-  'as the English meaning will be added automatically" are two attempts at one ' +
-  "line, not two facts.\n" +
-  "- A half-finished restart counts as an attempt, so it is one of the spans " +
-  "you delete.\n\n" +
-  "Anything you do not put in a cluster is kept untouched, so do not build a " +
-  "cluster around a line the speaker only said once.\n\n" +
-  "For each cluster, first WRITE OUT every attempt you found, quoting the " +
-  "speaker's words and its index range, and say whether it finishes the " +
-  "thought. Only then pick the survivor. Work left to right through the " +
-  "transcript and do not skip a cluster.\n\n" +
-  "Return ONLY JSON:\n" +
-  '{"clusters": [{\n' +
-  '  "line": "<the line in a few words>",\n' +
-  '  "attempts": [{"span": [<first>, <last>], "text": "<the words>", ' +
-  '"complete": true|false}, ...],\n' +
-  '  "keep": [<firstIndex>, <lastIndex>],\n' +
-  '  "drop": [[<firstIndex>, <lastIndex>], ...]\n' +
-  "}, ...]}\n" +
-  "Every index range must be contiguous, non-overlapping, and inside the " +
-  "cluster. The kept span must be one unbroken run of the recording, and it " +
-  "must equal one of the attempts you listed.";
+export const RETAKE_BLOCK_PROMPT = `You are making a jump-cut edit of a talking-head recording. The input is the exact transcript as global wordIndex:word tokens. Return source ranges to DELETE; you cannot rewrite words.
+
+A RETAKE BLOCK is any nearby passage the speaker records more than once. It may be one phrase, one sentence, OR A SEQUENCE OF MULTIPLE SENTENCES. Attempts can be interleaved: the speaker may say old metrics, new metrics, then restart and say old metrics and new metrics again. Treat that as one block and keep one coherent delivery, not one independently chosen version of each sentence.
+
+Keep the latest version that is fluent, semantically complete, contextually correct, and preserves the intended detail. A version is NOT clean if it contains a restarted or duplicated phrase, stutter, abandoned fragment, self-correction, wrong number, or obvious wrong-word transcription when a nearby clean version resolves it. If the latest version is defective, keep the latest earlier clean version. You may keep several non-adjacent source spans when that is the only way to preserve a clean opening and clean ending around a false start.
+
+Preserve every unique idea said only once. Do not shorten for style, remove ordinary filler, paraphrase, reorder, or delete a complete sentence merely because another sentence discusses the same topic. Remove only recorded mistakes and superseded attempts. Never delete every version of an idea.
+
+Work through the entire transcript from left to right. Privately reconstruct the remaining transcript and verify that it is grammatical, contains one coherent version of each idea, retains the ending, and has no restart fragments. Then return ONLY JSON:
+{"blocks":[{"topic":"few words","keep":[[first,last],...],"drop":[[first,last],...]}]}
+All ranges are inclusive global indices. Kept and dropped ranges must not overlap.`;
 
 /** How the transcript is handed to the model. */
 export function numberedTranscript(words: { text: string }[]): string {
@@ -114,15 +74,21 @@ export function retakeCutsFromResponse(
     return null;
   }
   if (!parsed || typeof parsed !== "object") return null;
-  const clusters = (parsed as { clusters?: unknown }).clusters;
-  if (!Array.isArray(clusters)) return null;
+  const blocks = (parsed as { blocks?: unknown }).blocks;
+  if (!Array.isArray(blocks)) return null;
 
   const keeps: [number, number][] = [];
   const drops: [number, number][] = [];
-  for (const entry of clusters) {
+  for (const entry of blocks) {
     if (!entry || typeof entry !== "object") return null;
     const { keep, drop } = entry as { keep?: unknown; drop?: unknown };
-    if (!isSpan(keep, wordCount)) return null;
+    if (
+      !Array.isArray(keep) ||
+      keep.length === 0 ||
+      !keep.every((span) => isSpan(span, wordCount))
+    ) {
+      return null;
+    }
     if (!Array.isArray(drop)) return null;
     const cluster: [number, number][] = [];
     for (const span of drop) {
@@ -132,12 +98,10 @@ export function retakeCutsFromResponse(
     // A cluster that deletes its own survivor is self-contradictory, and one
     // whose deletions sit somewhere else in the recording has lost track of the
     // indices. Either way the response is not an edit of this transcript.
-    if (cluster.some((span) => overlaps(span, keep))) return null;
-    const extent = [keep, ...cluster];
-    const from = Math.min(...extent.map(([start]) => start));
-    const to = Math.max(...extent.map(([, end]) => end));
-    if (to - from > wordCount) return null;
-    keeps.push(keep);
+    if (cluster.some((span) => keep.some((kept) => overlaps(span, kept)))) {
+      return null;
+    }
+    keeps.push(...keep);
     drops.push(...cluster);
   }
 

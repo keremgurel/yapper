@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { numberedTranscript, retakeCutsFromResponse } from "./retake-clusters";
 
-const answer = (clusters: unknown) => JSON.stringify({ clusters });
+const answer = (blocks: unknown) => JSON.stringify({ blocks });
 
 describe("numberedTranscript", () => {
   it("indexes every word so the model can point at one", () => {
@@ -20,7 +20,7 @@ describe("retakeCutsFromResponse", () => {
     const cuts = retakeCutsFromResponse(
       answer([
         {
-          keep: [10, 19],
+          keep: [[10, 19]],
           drop: [
             [0, 4],
             [5, 9],
@@ -38,11 +38,28 @@ describe("retakeCutsFromResponse", () => {
   it("reads an answer wrapped in prose or a code fence", () => {
     const cuts = retakeCutsFromResponse(
       "Here is the edit:\n```json\n" +
-        answer([{ keep: [5, 9], drop: [[0, 4]] }]) +
+        answer([{ keep: [[5, 9]], drop: [[0, 4]] }]) +
         "\n```",
       10,
     );
     expect(cuts).toEqual([[0, 4]]);
+  });
+
+  it("allows clean source spans on both sides of a false start", () => {
+    expect(
+      retakeCutsFromResponse(
+        answer([
+          {
+            keep: [
+              [0, 3],
+              [8, 12],
+            ],
+            drop: [[4, 7]],
+          },
+        ]),
+        13,
+      ),
+    ).toEqual([[4, 7]]);
   });
 
   it("keeps everything when no line was said twice", () => {
@@ -51,7 +68,7 @@ describe("retakeCutsFromResponse", () => {
 
   it("refuses a cluster that deletes its own survivor", () => {
     expect(
-      retakeCutsFromResponse(answer([{ keep: [5, 9], drop: [[0, 12]] }]), 20),
+      retakeCutsFromResponse(answer([{ keep: [[5, 9]], drop: [[0, 12]] }]), 20),
     ).toBeNull();
   });
 
@@ -59,8 +76,8 @@ describe("retakeCutsFromResponse", () => {
     expect(
       retakeCutsFromResponse(
         answer([
-          { keep: [0, 4], drop: [] },
-          { keep: [10, 14], drop: [[3, 6]] },
+          { keep: [[0, 4]], drop: [] },
+          { keep: [[10, 14]], drop: [[3, 6]] },
         ]),
         20,
       ),
@@ -72,7 +89,7 @@ describe("retakeCutsFromResponse", () => {
       retakeCutsFromResponse(
         answer([
           {
-            keep: [15, 19],
+            keep: [[15, 19]],
             drop: [
               [0, 6],
               [4, 9],
@@ -86,17 +103,17 @@ describe("retakeCutsFromResponse", () => {
 
   it("refuses an index that is not in the transcript", () => {
     expect(
-      retakeCutsFromResponse(answer([{ keep: [0, 4], drop: [[5, 99]] }]), 20),
+      retakeCutsFromResponse(answer([{ keep: [[0, 4]], drop: [[5, 99]] }]), 20),
     ).toBeNull();
     expect(
-      retakeCutsFromResponse(answer([{ keep: [0, 4], drop: [[9, 5]] }]), 20),
+      retakeCutsFromResponse(answer([{ keep: [[0, 4]], drop: [[9, 5]] }]), 20),
     ).toBeNull();
   });
 
   it("refuses an answer that would delete the video", () => {
     expect(
       retakeCutsFromResponse(
-        answer([{ keep: [99, 99], drop: [[0, 98]] }]),
+        answer([{ keep: [[99, 99]], drop: [[0, 98]] }]),
         100,
       ),
     ).toBeNull();
@@ -106,7 +123,13 @@ describe("retakeCutsFromResponse", () => {
     expect(retakeCutsFromResponse("no json here", 20)).toBeNull();
     expect(retakeCutsFromResponse("{ not json", 20)).toBeNull();
     expect(retakeCutsFromResponse(JSON.stringify({}), 20)).toBeNull();
-    expect(retakeCutsFromResponse(answer([{ keep: [0, 4] }]), 20)).toBeNull();
+    expect(retakeCutsFromResponse(answer([{ keep: [[0, 4]] }]), 20)).toBeNull();
     expect(retakeCutsFromResponse(answer([{ drop: [[0, 4]] }]), 20)).toBeNull();
+    expect(
+      retakeCutsFromResponse(answer([{ keep: [0, 4], drop: [[5, 9]] }]), 20),
+    ).toBeNull();
+    expect(
+      retakeCutsFromResponse(answer([{ keep: [], drop: [[5, 9]] }]), 20),
+    ).toBeNull();
   });
 });

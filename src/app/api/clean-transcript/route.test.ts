@@ -84,7 +84,7 @@ describe("POST /api/clean-transcript payload limits", () => {
         choices: [
           {
             message: {
-              content: '{"clusters":[{"keep":[2,2],"drop":[[1,1]]}]}',
+              content: '{"blocks":[{"keep":[[2,2]],"drop":[[1,1]]}]}',
             },
           },
         ],
@@ -101,8 +101,8 @@ describe("POST /api/clean-transcript payload limits", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(init.body as string)).toMatchObject({
-      model: "gemini-3-5-flash",
-      max_completion_tokens: 32_000,
+      model: "gemini-3.1-pro",
+      max_completion_tokens: 16_000,
       temperature: 0,
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
@@ -133,7 +133,7 @@ describe("POST /api/clean-transcript payload limits", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
         choices: [
-          { finish_reason: "length", message: { content: '{"clusters":[' } },
+          { finish_reason: "length", message: { content: '{"blocks":[' } },
         ],
       }),
     );
@@ -158,7 +158,7 @@ describe("POST /api/clean-transcript when the model does not answer", () => {
   };
   const answered = {
     choices: [
-      { message: { content: '{"clusters":[{"keep":[2,2],"drop":[[1,1]]}]}' } },
+      { message: { content: '{"blocks":[{"keep":[[2,2]],"drop":[[1,1]]}]}' } },
     ],
   };
   const words = [{ text: "a" }, { text: "b" }, { text: "c" }];
@@ -192,10 +192,31 @@ describe("POST /api/clean-transcript when the model does not answer", () => {
     expect(mocks.refund).not.toHaveBeenCalled();
   });
 
+  it("recovers when a marketplace seller returns an HTML gateway page", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(
+        async () =>
+          new Response("<html><h1>Bad gateway</h1></html>", {
+            status: 502,
+            headers: { "content-type": "text/html" },
+          }),
+      )
+      .mockImplementationOnce(async () => Response.json(answered));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(request({ words }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({ cuts: [[1, 1]] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mocks.refund).not.toHaveBeenCalled();
+  });
+
   it("keeps a genuine no-retakes answer as no cuts", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
-        choices: [{ message: { content: '{"clusters":[]}' } }],
+        choices: [{ message: { content: '{"blocks":[]}' } }],
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
