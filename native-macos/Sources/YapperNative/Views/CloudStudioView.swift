@@ -406,8 +406,14 @@ private struct CloudStudioWebView: NSViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         private static let authenticationStateKey = "yapperNativeAuthenticationState"
         weak var webView: WKWebView?
+        // Keep the OAuth surface alive for the coordinator's lifetime. Closing
+        // and releasing an NSWindow from inside WKNavigationDelegate's
+        // `didFinish` callback can race AppKit's window transform teardown
+        // (and, on macOS 26, crash in `_NSWindowTransformAnimation dealloc`).
+        // Reusing one hidden window also preserves the provider cookie jar and
+        // makes a second connection cheaper.
         private var oauthWindow: NSWindow?
-        private weak var oauthWebView: WKWebView?
+        private var oauthWebView: WKWebView?
         private var authenticationState: String?
         private var authenticationObserverID: UUID?
         var isLoading: Binding<Bool>
@@ -518,9 +524,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     Self.isYapperHost(url.host),
                     url.path == "/studio/connections"
                 else { return }
-                oauthWindow?.close()
-                oauthWindow = nil
-                self.webView?.reload()
+                finishOAuthFlow()
                 return
             }
             webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
@@ -729,6 +733,10 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 defer: false
             )
             window.title = "Connect account"
+            // `close()` must not make AppKit release this auxiliary window.
+            // The coordinator owns and reuses it until the Studio web view is
+            // dismantled.
+            window.isReleasedWhenClosed = false
             window.contentView = oauthWebView
             window.center()
             window.makeKeyAndOrderFront(nil)
@@ -736,6 +744,19 @@ private struct CloudStudioWebView: NSViewRepresentable {
             self.oauthWebView = oauthWebView
             oauthWindow = window
             oauthWebView.load(URLRequest(url: url))
+        }
+
+        /// Hide the completed OAuth surface outside the WebKit delegate
+        /// callback that detected completion. `orderOut` has no close-window
+        /// transform to tear down, and retaining the window/web view prevents
+        /// either object from disappearing while WebKit is unwinding the
+        /// callback stack.
+        private func finishOAuthFlow() {
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                self.oauthWindow?.orderOut(nil)
+                self.webView?.reload()
+            }
         }
 
         private static func isYapperHost(_ host: String?) -> Bool {
