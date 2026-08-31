@@ -1,4 +1,6 @@
 desktop
 .next
+node_modules
+native-macos
 scratchpad
 *.log
