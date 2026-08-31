@@ -61,13 +61,25 @@ function SaveIndicator({ state }: { state: SaveState }) {
   );
 }
 
-function EmptyValue({ children }: { children?: string }) {
+function EmptyValue({
+  children,
+  prompt,
+}: {
+  children?: string;
+  prompt: string;
+}) {
   return children ? (
-    <span className="text-foreground text-[13px] leading-relaxed font-semibold">
+    <span className="text-foreground block text-sm leading-relaxed font-semibold text-pretty">
       {children}
     </span>
   ) : (
-    <span className="text-muted-foreground text-[13px]">Not set yet</span>
+    <span className="text-muted-foreground group-hover:text-foreground block text-sm transition-colors">
+      {prompt}
+      <ChevronRight
+        className="ml-1 inline size-3.5 transition-transform group-hover:translate-x-0.5"
+        aria-hidden="true"
+      />
+    </span>
   );
 }
 
@@ -174,6 +186,7 @@ export default function BrainPage() {
     edit: editSkill,
     add: addSkill,
     remove: removeSkill,
+    reset: resetSkill,
     refresh: refreshSkills,
   } = useBrainSkills();
   const {
@@ -369,21 +382,51 @@ export default function BrainPage() {
                     Loading your Essentials…
                   </p>
                 ) : (
-                  <div className="border-border grid border-t sm:grid-cols-2">
-                    <div className="border-border border-b p-4 sm:border-r">
-                      <span className="sg-overline">You make</span>
-                      <EmptyValue>{project?.whatIMake}</EmptyValue>
-                    </div>
-                    <div className="border-border border-b p-4">
-                      <span className="sg-overline">For</span>
-                      <EmptyValue>{project?.audience}</EmptyValue>
-                    </div>
-                    <div className="border-border border-b p-4 sm:border-r sm:border-b-0">
-                      <span className="sg-overline">Your voice</span>
-                      <EmptyValue>{project?.voice}</EmptyValue>
-                    </div>
-                    <div className="p-4">
-                      <span className="sg-overline">Content pillars</span>
+                  <div className="border-border bg-border grid gap-px border-t sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingEssentials(true)}
+                      className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                    >
+                      <span className="text-muted-foreground mb-3 block text-[10px] font-bold tracking-[0.16em] uppercase">
+                        You make
+                      </span>
+                      <EmptyValue prompt="Describe what you create">
+                        {project?.whatIMake}
+                      </EmptyValue>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingEssentials(true)}
+                      className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                    >
+                      <span className="text-muted-foreground mb-3 block text-[10px] font-bold tracking-[0.16em] uppercase">
+                        Your audience
+                      </span>
+                      <EmptyValue prompt="Describe who it is for">
+                        {project?.audience}
+                      </EmptyValue>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingEssentials(true)}
+                      className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                    >
+                      <span className="text-muted-foreground mb-3 block text-[10px] font-bold tracking-[0.16em] uppercase">
+                        Your voice
+                      </span>
+                      <EmptyValue prompt="Define how you should sound">
+                        {project?.voice}
+                      </EmptyValue>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingEssentials(true)}
+                      className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                    >
+                      <span className="text-muted-foreground mb-3 block text-[10px] font-bold tracking-[0.16em] uppercase">
+                        Content pillars
+                      </span>
                       {pillars.length ? (
                         <div className="flex flex-wrap gap-1.5">
                           {pillars.map((pillar) => (
@@ -396,11 +439,15 @@ export default function BrainPage() {
                           ))}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-[13px]">
-                          Not set yet
+                        <span className="text-muted-foreground group-hover:text-foreground block text-sm transition-colors">
+                          Add your recurring themes
+                          <ChevronRight
+                            className="ml-1 inline size-3.5 transition-transform group-hover:translate-x-0.5"
+                            aria-hidden="true"
+                          />
                         </span>
                       )}
-                    </div>
+                    </button>
                   </div>
                 )}
               </section>
@@ -789,6 +836,10 @@ export default function BrainPage() {
             editSkill(editingSkill.id, patch);
             changed();
           }
+        }}
+        onReset={async (skill) => {
+          await resetSkill(skill);
+          changed();
         }}
       />
     </div>

@@ -1,6 +1,6 @@
 import { listBrainBlocks, listBrainChunks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
-import { listProjectSkills } from "@/lib/db/project-skills";
+import { listProjectSkillsWithDefaults } from "@/lib/db/project-skills";
 import { getActiveProject } from "@/lib/db/projects";
 import { guardRouterSpend } from "@/lib/provider-rate-limit";
 import { compileBrain, type CompiledBrain } from "./compile";
@@ -73,7 +73,7 @@ async function loadSnapshot(
   const [blockRows, pillars, skillRows] = await Promise.all([
     listBrainBlocks(projectId),
     listPillars(projectId),
-    listProjectSkills(projectId),
+    listProjectSkillsWithDefaults(projectId),
   ]);
 
   // One query for every document's slices rather than one per document.

@@ -65,7 +65,7 @@ beforeEach(() => {
 });
 
 describe("selectContext", () => {
-  it("loads everything without routing when the brain is small", async () => {
+  it("loads all context without model routing when the brain is small", async () => {
     const blocks = [block("b1", "One"), block("b2", "Two")];
     const selection = await selectContext(
       options({
@@ -74,7 +74,33 @@ describe("selectContext", () => {
         skills: new Map(),
       }),
     );
-    expect(selection.by).toBe("all");
+    expect(selection).toMatchObject({
+      by: "rules",
+      skillRefs: [],
+      contextRefs: ["c1", "c2"],
+    });
+    expect(mocks.selectByModel).not.toHaveBeenCalled();
+  });
+
+  it("does not load a small-brain skill on an unrelated surface", async () => {
+    const captionSkill = {
+      ...skill("s1", "Caption that earns the save"),
+      surfaces: ["caption" as const],
+    };
+    const selection = await selectContext(
+      options({
+        index: buildIndex([], [captionSkill], 4000),
+        blocks: new Map(),
+        skills: new Map([[captionSkill.id, captionSkill]]),
+        surface: "script",
+        task: "tell a personal story",
+      }),
+    );
+    expect(selection).toMatchObject({
+      by: "rules",
+      skillRefs: [],
+      contextRefs: [],
+    });
     expect(mocks.selectByModel).not.toHaveBeenCalled();
   });
 

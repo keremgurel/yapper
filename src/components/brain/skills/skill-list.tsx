@@ -17,7 +17,7 @@ import { useBrainSkills } from "@/hooks/use-brain-skills";
  * legible: one changes what the AI knows, the other changes what it does.
  */
 export default function SkillList({ onChanged }: { onChanged: () => void }) {
-  const { skills, loading, saveState, edit, add, remove, refresh } =
+  const { skills, loading, saveState, edit, add, remove, reset, refresh } =
     useBrainSkills();
   const [browsing, setBrowsing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -112,6 +112,10 @@ export default function SkillList({ onChanged }: { onChanged: () => void }) {
         skill={editing}
         onClose={() => setEditingId(null)}
         onEdit={(patch) => editing && change(editing.id, patch)}
+        onReset={async (skill) => {
+          await reset(skill);
+          onChanged();
+        }}
       />
     </Section>
   );

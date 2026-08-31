@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2, RotateCcw } from "lucide-react";
 import { Chip } from "@/components/studio-ui";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { brainSurfaces, type BrainSurface } from "@/lib/db/schema";
+import { isStarterSkill } from "@/lib/brain/default-skills";
 import type { BrainSkill, BrainSkillPatch } from "@/lib/brain/skills-client";
 
 const SURFACE_LABELS: Record<BrainSurface, string> = {
@@ -36,12 +40,30 @@ export default function SkillEditorSheet({
   skill,
   onClose,
   onEdit,
+  onReset,
 }: {
   skill: BrainSkill | null;
   onClose: () => void;
   onEdit: (patch: BrainSkillPatch) => void;
+  onReset: (skill: BrainSkill) => Promise<void>;
 }) {
+  const [resetting, setResetting] = useState(false);
   if (!skill) return null;
+
+  const resetToDefault = async () => {
+    if (
+      !window.confirm(
+        `Reset “${skill.name}” to Yapper’s current default? Your edits to this skill will be replaced.`,
+      )
+    )
+      return;
+    setResetting(true);
+    try {
+      await onReset(skill);
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const toggleSurface = (surface: BrainSurface) =>
     onEdit({
@@ -57,7 +79,7 @@ export default function SkillEditorSheet({
           <SheetTitle>Edit skill</SheetTitle>
           <SheetDescription>
             {skill.catalogSlug
-              ? "Your copy. Editing it here never changes anyone else's."
+              ? "Your editable copy. You can always restore Yapper’s original."
               : "Yours, written from scratch."}
           </SheetDescription>
         </SheetHeader>
@@ -129,6 +151,40 @@ export default function SkillEditorSheet({
               className="font-mono text-[13px] leading-relaxed"
             />
           </div>
+
+          {skill.catalogSlug ? (
+            <div className="border-border bg-muted/35 rounded-xl border p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {isStarterSkill(skill.catalogSlug)
+                      ? "Included by Yapper"
+                      : "Installed from Skills"}
+                  </p>
+                  <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+                    {skill.customized
+                      ? "You’ve customized this copy. Reset restores the latest official version."
+                      : "This matches the official version. You can edit it freely."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={resetting}
+                  onClick={() => void resetToDefault()}
+                  className="shrink-0"
+                >
+                  {resetting ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-3.5" />
+                  )}
+                  Reset to default
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </SheetContent>
     </Sheet>

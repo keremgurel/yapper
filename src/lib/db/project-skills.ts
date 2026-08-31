@@ -1,7 +1,8 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { STARTER_SKILL_SLUGS } from "@/lib/brain/default-skills";
 import { getDb } from "./client";
 import { bumpProjectContext } from "./projects";
-import { projectSkills, type BrainSurface } from "./schema";
+import { projectSkills, skillCatalog, type BrainSurface } from "./schema";
 
 export type ProjectSkillRow = typeof projectSkills.$inferSelect;
 
@@ -29,6 +30,66 @@ export async function listProjectSkills(
     .from(projectSkills)
     .where(eq(projectSkills.projectId, projectId))
     .orderBy(asc(projectSkills.sortOrder), asc(projectSkills.createdAt));
+}
+
+/**
+ * Give an empty Brain its useful-on-day-one methods.
+ *
+ * This runs at the API boundary, making the rollout self-healing for existing
+ * deployments without waiting for a schema migration. A Brain with any skill
+ * already in it is never rearranged or overwritten.
+ */
+export async function listProjectSkillsWithDefaults(
+  projectId: string,
+): Promise<ProjectSkillRow[]> {
+  const db = getDb();
+  const [existing] = await db
+    .select({ id: projectSkills.id })
+    .from(projectSkills)
+    .where(eq(projectSkills.projectId, projectId))
+    .limit(1);
+
+  if (!existing) {
+    const catalogEntries = await db
+      .select()
+      .from(skillCatalog)
+      .where(
+        and(
+          eq(skillCatalog.published, true),
+          eq(skillCatalog.kind, "skill"),
+          inArray(skillCatalog.slug, [...STARTER_SKILL_SLUGS]),
+        ),
+      );
+
+    if (catalogEntries.length) {
+      const order = new Map<string, number>(
+        STARTER_SKILL_SLUGS.map((slug, index) => [slug, index]),
+      );
+      const inserted = await db
+        .insert(projectSkills)
+        .values(
+          catalogEntries.map((entry) => ({
+            projectId,
+            catalogSlug: entry.slug,
+            catalogVersion: entry.version,
+            name: entry.name,
+            whenToUse: entry.whenToUse,
+            instructions: entry.instructions,
+            surfaces: entry.surfaces,
+            enabled: true,
+            customized: false,
+            sortOrder: order.get(entry.slug) ?? STARTER_SKILL_SLUGS.length,
+          })),
+        )
+        .onConflictDoNothing({
+          target: [projectSkills.projectId, projectSkills.catalogSlug],
+        })
+        .returning({ id: projectSkills.id });
+      if (inserted.length) await bumpProjectContext(projectId);
+    }
+  }
+
+  return listProjectSkills(projectId);
 }
 
 async function nextSortOrder(projectId: string): Promise<number> {

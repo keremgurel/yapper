@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { SELECTION_FLOOR } from "./budgets";
 import type { BrainIndex } from "./digest";
-import { selectAll, selectByRules } from "./select-rules";
+import { selectByRules } from "./select-rules";
 import { selectByModel } from "./select-model";
 import type {
   BrainBlockSource,
@@ -129,7 +129,27 @@ export async function selectContext(
   if (!index.entries.length) {
     return { skillRefs: [], contextRefs: [], by: "all" };
   }
-  if (index.entries.length <= SELECTION_FLOOR) return selectAll(index);
+  if (index.entries.length <= SELECTION_FLOOR) {
+    // A small Brain is cheap to read, but a skill still has a declared place
+    // and purpose. Loading every enabled skill here made a caption method alter
+    // scripts simply because the creator had only a few skills installed.
+    // Route the skills; keep the old small-Brain promise for context, where
+    // reading every short fact is both cheap and useful.
+    const routed = selectByRules({
+      index,
+      blocks: options.blocks,
+      skills: options.skills,
+      surface: options.surface,
+      task: options.task,
+    });
+    return {
+      ...routed,
+      contextRefs: index.entries
+        .filter((entry) => entry.type === "context")
+        .map((entry) => entry.ref),
+      by: "rules",
+    };
+  }
 
   const rules = () =>
     selectByRules({

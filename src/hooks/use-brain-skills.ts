@@ -10,6 +10,7 @@ import {
   type BrainSkill,
   type BrainSkillPatch,
 } from "@/lib/brain/skills-client";
+import { installCatalogEntry } from "@/lib/brain/catalog-client";
 
 /**
  * The creator's skills.
@@ -26,6 +27,7 @@ export function useBrainSkills(): {
   edit: (id: string, patch: BrainSkillPatch) => void;
   add: (skill: BrainSkillPatch & { name: string }) => Promise<BrainSkill>;
   remove: (id: string) => Promise<void>;
+  reset: (skill: BrainSkill) => Promise<BrainSkill>;
   refresh: () => Promise<void>;
 } {
   const [skills, setSkills] = useState<BrainSkill[] | null>(null);
@@ -66,8 +68,11 @@ export function useBrainSkills(): {
     },
     [],
   );
-  const { state: saveState, queue } =
-    useAutosave<Record<string, BrainSkillPatch>>(save);
+  const {
+    state: saveState,
+    queue,
+    flush,
+  } = useAutosave<Record<string, BrainSkillPatch>>(save);
 
   const edit = useCallback(
     (id: string, patch: BrainSkillPatch) => {
@@ -95,6 +100,26 @@ export function useBrainSkills(): {
     await deleteSkill(id);
   }, []);
 
+  const reset = useCallback(
+    async (current: BrainSkill) => {
+      if (!current.catalogSlug) throw new Error("skill_has_no_default");
+      // A reset must sit after any pending autosave. Otherwise the last edit
+      // typed before pressing Reset could arrive later and overwrite the
+      // catalog copy we just restored.
+      await flush();
+      const result = await installCatalogEntry(current.catalogSlug);
+      if (!result.skill) throw new Error("catalog_skill_not_found");
+      setSkills(
+        (previous) =>
+          previous?.map((skill) =>
+            skill.id === current.id ? result.skill! : skill,
+          ) ?? previous,
+      );
+      return result.skill;
+    },
+    [flush],
+  );
+
   return {
     skills: skills ?? [],
     loading: skills === null,
@@ -102,6 +127,7 @@ export function useBrainSkills(): {
     edit,
     add,
     remove,
+    reset,
     refresh: load,
   };
 }

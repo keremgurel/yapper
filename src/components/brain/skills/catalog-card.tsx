@@ -24,6 +24,17 @@ export default function CatalogCard({
 }) {
   const installed = entry.installedVersion !== null;
   const stale = updateAvailable(entry);
+  const resettable = installed && entry.customized && !stale;
+  const applyCatalogCopy = () => {
+    if (
+      entry.customized &&
+      !window.confirm(
+        `${stale ? "Update" : "Reset"} “${entry.name}” to Yapper’s current version? Your edits to this skill will be replaced.`,
+      )
+    )
+      return;
+    onInstall();
+  };
 
   return (
     <div className="border-border rounded-xl border p-3">
@@ -36,7 +47,7 @@ export default function CatalogCard({
             {entry.tagline}
           </p>
         </div>
-        {installed && !stale ? (
+        {installed && !stale && !resettable ? (
           <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
             <Check aria-hidden className="h-3.5 w-3.5" /> Added
           </span>
@@ -45,18 +56,18 @@ export default function CatalogCard({
             type="button"
             variant={stale ? "default" : "outline"}
             size="sm"
-            onClick={onInstall}
+            onClick={applyCatalogCopy}
             disabled={installing}
             className="shrink-0"
           >
             {installing ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : stale ? (
+            ) : stale || resettable ? (
               <RefreshCw className="h-3.5 w-3.5" />
             ) : (
               <Download className="h-3.5 w-3.5" />
             )}
-            {stale ? "Update" : "Add"}
+            {stale ? "Update" : resettable ? "Reset" : "Add"}
           </Button>
         )}
       </div>
@@ -76,6 +87,11 @@ export default function CatalogCard({
             Updating replaces your edits
           </span>
         )}
+        {resettable ? (
+          <span className="text-muted-foreground text-xs">
+            Reset restores Yapper’s version
+          </span>
+        ) : null}
       </div>
     </div>
   );

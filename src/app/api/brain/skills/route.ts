@@ -4,7 +4,7 @@ import { invalidateBrainContext } from "@/lib/brain/context/server";
 import { parseNewSkill, parseSkillOrder } from "@/lib/brain/skill-input";
 import {
   createProjectSkill,
-  listProjectSkills,
+  listProjectSkillsWithDefaults,
   reorderProjectSkills,
 } from "@/lib/db/project-skills";
 import { getActiveProject } from "@/lib/db/projects";
@@ -19,7 +19,9 @@ export async function GET(): Promise<Response> {
 
   await ensureUser(userId);
   const project = await getActiveProject(userId);
-  return Response.json({ skills: await listProjectSkills(project.id) });
+  return Response.json({
+    skills: await listProjectSkillsWithDefaults(project.id),
+  });
 }
 
 /** Write one from scratch. */
