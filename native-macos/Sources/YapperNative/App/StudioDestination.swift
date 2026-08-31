@@ -12,6 +12,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     case calendar
     case automations
     case brand
+    case storage
     case dictionary
     case connections
     /// Not a tab. The page a signed-out window shows, in place of everything.
@@ -21,9 +22,9 @@ enum StudioDestination: String, CaseIterable, Identifiable {
 
     /// Drawn by the app itself rather than loaded from the web.
     ///
-    /// The editor is native because a browser cannot cut video the way this
-    /// does, and the audio library is native because it is a folder of real
-    /// files on this Mac. Everything else is the same page the browser shows.
+    /// The editor is the one deliberate platform difference. The rest of the
+    /// visible Studio navigation loads the same route the browser shows.
+    /// Audio remains an internal editor destination, not a second product tab.
     var isNative: Bool {
         self == .editor || self == .audio
     }
@@ -41,6 +42,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .calendar: "Calendar"
         case .automations: "Automations"
         case .brand: "Brand"
+        case .storage: "Storage"
         case .dictionary: "Dictionary"
         case .connections: "Connections"
         case .signIn: "Sign in"
@@ -60,6 +62,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .calendar: "calendar"
         case .automations: "bolt"
         case .brand: "paintpalette"
+        case .storage: "externaldrive"
         case .dictionary: "character.book.closed"
         case .connections: "point.3.connected.trianglepath.dotted"
         case .signIn: "person.crop.circle"
@@ -72,7 +75,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .brain, .ideas, .library: "Lab"
         case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
-        case .brand, .dictionary, .connections: "Settings"
+        case .brand, .storage, .dictionary, .connections: "Settings"
         case .signIn: ""
         }
     }
@@ -80,8 +83,8 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     static let groups: [(String, [StudioDestination])] = [
         ("", [.home]),
         ("Lab", [.brain, .ideas, .library]),
-        ("Studio", [.recorder, .editor, .audio]),
+        ("Studio", [.recorder, .editor]),
         ("Press", [.poster, .calendar, .automations]),
-        ("Settings", [.brand, .dictionary, .connections]),
+        ("Settings", [.brand, .storage, .dictionary, .connections]),
     ]
 }

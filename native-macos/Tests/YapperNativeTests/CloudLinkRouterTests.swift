@@ -3,11 +3,26 @@ import Testing
 @testable import YapperNative
 
 struct CloudLinkRouterTests {
-    @Test func brandAppearsFirstInTheSettingsSidebarGroup() {
+    @Test func nativeSidebarMatchesTheWebStudioDestinations() {
+        let visible = StudioDestination.groups.flatMap(\.1)
+
+        #expect(visible == [
+            .home,
+            .brain, .ideas, .library,
+            .recorder, .editor,
+            .poster, .calendar, .automations,
+            .brand, .storage, .dictionary, .connections,
+        ])
+        #expect(!visible.contains(.audio))
+        #expect(visible.filter(\.isNative) == [.editor])
+    }
+
+    @Test func brandAndStorageLeadTheSettingsSidebarGroup() {
         let settings = StudioDestination.groups.first { $0.0 == "Settings" }
 
-        #expect(settings?.1 == [.brand, .dictionary, .connections])
+        #expect(settings?.1 == [.brand, .storage, .dictionary, .connections])
         #expect(StudioDestination.brand.group == "Settings")
+        #expect(StudioDestination.storage.group == "Settings")
     }
 
     @Test func externalWebLinksOpenInTheDefaultBrowser() throws {
@@ -34,6 +49,15 @@ struct CloudLinkRouterTests {
         #expect(
             CloudLinkRouter.disposition(for: url, nativeDestination: .brain)
                 == .navigateInShell(.brand)
+        )
+    }
+
+    @Test func storageLinksNavigateThroughTheNativeShell() throws {
+        let url = try #require(URL(string: "https://ypr.app/studio/storage"))
+
+        #expect(
+            CloudLinkRouter.disposition(for: url, nativeDestination: .brain)
+                == .navigateInShell(.storage)
         )
     }
 

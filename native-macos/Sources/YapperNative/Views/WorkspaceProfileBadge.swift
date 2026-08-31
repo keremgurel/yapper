@@ -115,6 +115,7 @@ private struct WorkspaceProfileMenu: View {
             row("Content Library", "square.stack.3d.up", .library)
             Divider().padding(.vertical, 4)
             row("Brand", "paintpalette", .brand)
+            row("Storage", "externaldrive", .storage)
             row("Dictionary", "character.book.closed", .dictionary)
             row("Connections", "link", .connections)
             Divider().padding(.vertical, 4)

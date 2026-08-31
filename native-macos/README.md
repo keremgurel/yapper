@@ -31,6 +31,7 @@ continuous composition for playback; it never pause/plays separate video
 elements at clip boundaries.
 
 The native shell includes the complete Yapper Studio navigation hierarchy.
-The editor stays mounted while moving through Home, Idea Bank, Content Library,
-Recorder, Poster, Calendar, Automations, Brand, Dictionary, and Connections, so
-the open media, cuts, playhead, and panel layout are retained.
+The editor stays mounted while moving through the same destinations as the web
+Studio: Home, Brain, Idea Bank, Content Library, Recorder, Editor, Poster,
+Calendar, Automations, Brand, Storage, Dictionary, and Connections. Editor is
+the sole platform substitution: native on Mac and web-backed in the browser.
