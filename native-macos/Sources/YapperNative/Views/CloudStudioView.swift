@@ -65,7 +65,7 @@ struct CloudStudioView: View {
         // is an opaque sheet over the only button in the app.
         if destination == .signIn { return true }
         return destination.cloudPath == nil
-            || presentation.shownPath == destination.cloudPath
+            || destination.contains(cloudPath: presentation.shownPath)
     }
 
     var body: some View {
@@ -225,7 +225,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         guard !destination.isNative else { return }
         let currentURL = webView.url
         let isYapperPage = currentURL?.host == "ypr.app" || currentURL?.host == "www.ypr.app"
-        if isYapperPage, currentURL?.path != destination.cloudPath,
+        if isYapperPage, !destination.contains(cloudPath: currentURL?.path),
            context.coordinator.requestedPath != destination.cloudPath {
             navigate(destination, in: webView, coordinator: context.coordinator)
         }
@@ -845,7 +845,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 }
 
-private extension StudioDestination {
+extension StudioDestination {
     /// The web route this tab shows, or nil for one the app draws itself.
     var cloudPath: String? {
         switch self {
@@ -874,13 +874,24 @@ private extension StudioDestination {
         return URL(string: "https://ypr.app\(cloudPath)?native=swift")
     }
 
+    /// Whether a browser path belongs to this sidebar destination. Detail
+    /// pages are part of their parent surface: `/studio/library/<id>` must stay
+    /// visible while Library remains selected instead of being mistaken for a
+    /// stale page and immediately replaced with `/studio/library`.
+    func contains(cloudPath candidate: String?) -> Bool {
+        guard let candidate, let cloudPath else { return false }
+        let normalized = candidate.hasSuffix("/") && candidate.count > 1
+            ? String(candidate.dropLast())
+            : candidate
+        return normalized == cloudPath || normalized.hasPrefix("\(cloudPath)/")
+    }
+
     init?(cloudPath: String) {
         let normalized = cloudPath.hasSuffix("/") && cloudPath.count > 1
             ? String(cloudPath.dropLast())
             : cloudPath
         guard let match = StudioDestination.allCases.first(where: {
-            guard let path = $0.cloudPath else { return false }
-            return normalized == path || normalized.hasPrefix("\(path)/")
+            $0.contains(cloudPath: normalized)
         }) else { return nil }
         self = match
     }

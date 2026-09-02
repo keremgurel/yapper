@@ -2,45 +2,37 @@ import CoreGraphics
 import Testing
 @testable import YapperNative
 
-@Suite("Crop handle acquisition")
+@Suite("Crop interaction acquisition")
 struct CropHandleMetricsTests {
-    @Test("Large crops use a generous corner target")
+    @Test("Large crops use a dependable corner target")
     func largeCropTarget() {
-        #expect(CropHandleMetrics.targetLength(for: 800) == 56)
+        #expect(CropHandleMetrics.cornerTarget(for: 800) == 32)
     }
 
-    @Test("Small crops retain a minimum 44-point corner target")
-    func smallCropTarget() {
-        #expect(CropHandleMetrics.targetLength(for: 60) == 44)
-        #expect(CropHandleMetrics.targetLength(for: 1) == 44)
+    @Test("Small crops preserve a central movement region")
+    func smallCropPreservesMovement() {
+        #expect(CropHandleMetrics.cornerTarget(for: 60) == 20)
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 30, y: 30), cropSize: CGSize(width: 60, height: 60)) == .move)
     }
 
-    @Test("The visible grip leaves room for an invisible acquisition area")
-    func gripIsSmallerThanTarget() {
-        #expect(CropHandleMetrics.gripSide == 18)
-        #expect(CropHandleMetrics.gripSide < CropHandleMetrics.minimumTargetSide)
-    }
-
-    @Test("Every enlarged corner region resolves to the correct resize")
+    @Test("Every corner region resolves to the correct resize")
     func classifiesAllCorners() {
         let size = CGSize(width: 300, height: 180)
 
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 40, y: 40), cropSize: size)) == "top left")
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 260, y: 40), cropSize: size)) == "top right")
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 40, y: 140), cropSize: size)) == "bottom left")
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 260, y: 140), cropSize: size)) == "bottom right")
-        #expect(CropHandleMetrics.corner(at: CGPoint(x: 150, y: 90), cropSize: size) == nil)
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 24, y: 24), cropSize: size) == .corner(.topLeading))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 276, y: 24), cropSize: size) == .corner(.topTrailing))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 24, y: 156), cropSize: size) == .corner(.bottomLeading))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 276, y: 156), cropSize: size) == .corner(.bottomTrailing))
     }
 
-    @Test("Overlapping targets on a tiny crop choose the nearest corner")
-    func tinyCropChoosesNearestCorner() {
-        let size = CGSize(width: 60, height: 60)
+    @Test("Sides resize without stealing the centre")
+    func classifiesEdgesAndMovement() {
+        let size = CGSize(width: 300, height: 180)
 
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 20, y: 45), cropSize: size)) == "bottom left")
-        #expect(name(of: CropHandleMetrics.corner(at: CGPoint(x: 45, y: 45), cropSize: size)) == "bottom right")
-    }
-
-    private func name(of corner: CanvasResizeCorner?) -> String? {
-        corner?.accessibilityName
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 8), cropSize: size) == .edge(.top))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 172), cropSize: size) == .edge(.bottom))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 8, y: 90), cropSize: size) == .edge(.leading))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 292, y: 90), cropSize: size) == .edge(.trailing))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 90), cropSize: size) == .move)
     }
 }

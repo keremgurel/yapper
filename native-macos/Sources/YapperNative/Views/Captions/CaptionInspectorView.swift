@@ -77,7 +77,7 @@ struct CaptionInspectorView: View {
                 )
             }
             .help(
-                "Full cards hold exactly this many spoken words. Only the final card at the end of the video, a source change, or an edit cut can be shorter. Changing it rebuilds every card."
+                "Full cards hold exactly this many spoken words, including across edit cuts. Only the final card at the end of a source can be shorter. Changing it rebuilds every card."
             )
 
             Group {

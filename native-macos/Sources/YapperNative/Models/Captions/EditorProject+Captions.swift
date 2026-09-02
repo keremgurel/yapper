@@ -42,15 +42,19 @@ extension EditorProject {
     /// Those differ as soon as clips are rearranged. The list, keyboard range
     /// selection and inline insertion all need to agree with the timeline.
     var captionsInTimelineOrder: [ProjectCaption] {
-        storedCaptions.sorted { left, right in
-            let leftTime = timelineTime(
-                forSource: (left.sourceStart + left.sourceEnd) / 2,
-                mediaID: left.mediaID
+        let wordsByID = Dictionary(uniqueKeysWithValues: (transcript ?? []).map { ($0.id, $0) })
+        func orderTime(_ caption: ProjectCaption) -> Double {
+            for id in caption.wordIDs ?? [] {
+                if let word = wordsByID[id], let time = timelineTime(for: word) { return time }
+            }
+            return timelineTime(
+                forSource: (caption.sourceStart + caption.sourceEnd) / 2,
+                mediaID: caption.mediaID
             )
-            let rightTime = timelineTime(
-                forSource: (right.sourceStart + right.sourceEnd) / 2,
-                mediaID: right.mediaID
-            )
+        }
+        return storedCaptions.sorted { left, right in
+            let leftTime = orderTime(left)
+            let rightTime = orderTime(right)
             if abs(leftTime - rightTime) > 0.000_1 { return leftTime < rightTime }
             return left.sourceStart < right.sourceStart
         }
@@ -79,6 +83,7 @@ extension EditorProject {
             let text = word.text.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             return CaptionSourceWord(
+                id: word.id,
                 mediaID: word.mediaID,
                 text: text,
                 sourceStart: word.start,
@@ -129,6 +134,24 @@ extension EditorProject {
         var cues: [ProjectCaptionCue] = entries.compactMap { caption in
             let text = index.text(for: caption)
             guard !text.trimmingCharacters(in: .whitespaces).isEmpty else { return nil }
+            if !caption.isTextEdited, caption.wordIDs?.isEmpty == false {
+                let words = index.words(for: caption.id)
+                guard let first = words.first,
+                      let last = words.last,
+                      let firstTime = timelineTime(for: first),
+                      let lastTime = timelineTime(for: last)
+                else { return nil }
+                return ProjectCaptionCue(
+                    id: caption.id,
+                    text: text,
+                    timelineStart: max(0, firstTime - CaptionGenerator.leadSeconds),
+                    timelineEnd: min(
+                        duration,
+                        lastTime + max(0.12, last.end - last.start) + CaptionGenerator.tailSeconds
+                    ),
+                    style: caption.resolvedStyle(base: base)
+                )
+            }
             guard let range = index.sourceRange(for: caption) else { return nil }
             // A card that still follows the transcript goes when its words go.
             // A card placed by hand was put there on purpose, so it stays even

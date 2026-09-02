@@ -129,6 +129,11 @@ what it costs us (§4). Exact credit-per-action and tier prices are set in the
 
 ## 4. What each AI action costs us (the money map)
 
+> **Superseded 2026-09-03.** Current per-action COGS, plan margins and the
+> recommended credit schedule live in `docs/unit-economics-and-pricing.md`.
+> The tables below are kept for history; the models, prices and actions have
+> changed since they were written.
+
 **Guiding principle: do the free/deterministic work on-device; only pay for
 genuine AI judgment.** All the _meters_ (WPM, filler rate, pauses, clarity,
 vocab) are computed for **$0** from transcript + word timings — the LLM only

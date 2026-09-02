@@ -19,7 +19,12 @@ enum CaptionStyleInheritance {
         guard !previous.isEmpty else { return fresh }
         let byMedia = Dictionary(grouping: previous, by: \.mediaID)
         return fresh.map { card in
-            let candidates = (byMedia[card.mediaID] ?? [])
+            let sameMedia = byMedia[card.mediaID] ?? []
+            let wordIDs = Set(card.wordIDs ?? [])
+            let sharedWordCandidates = wordIDs.isEmpty ? [] : sameMedia.filter {
+                !wordIDs.isDisjoint(with: $0.wordIDs ?? [])
+            }
+            let candidates = (sharedWordCandidates.isEmpty ? sameMedia : sharedWordCandidates)
                 .filter { $0.sourceStart < card.sourceEnd && card.sourceStart < $0.sourceEnd }
             guard let source = candidates.min(by: { $0.sourceStart < $1.sourceStart }) else {
                 return card

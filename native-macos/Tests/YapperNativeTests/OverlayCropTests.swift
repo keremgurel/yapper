@@ -32,6 +32,21 @@ struct OverlayCropTests {
         #expect(abs(resized.y + resized.height - 0.8) < 0.0001)
     }
 
+    @Test func draggingTheChosenRegionRepositionsItWithoutChangingItsSize() {
+        let crop = OverlayCrop(x: 0.1, y: 0.2, width: 0.4, height: 0.3)
+        let moved = CropGeometry.moved(
+            crop,
+            dx: 0.25,
+            dy: 0.15,
+            minimumSide: OverlayCrop.minimumSide
+        )
+
+        #expect(abs(moved.x - 0.35) < 0.0001)
+        #expect(abs(moved.y - 0.35) < 0.0001)
+        #expect(moved.width == crop.width)
+        #expect(moved.height == crop.height)
+    }
+
     @Test func croppingChangesTheShapeAnOverlayIsGiven() {
         // Half the width of a 16:9 picture is 8:9.
         let aspect = OverlayFrame.shownAspect(

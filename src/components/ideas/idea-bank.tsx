@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Lightbulb } from "lucide-react";
+import { Archive, Lightbulb, Sparkles } from "lucide-react";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
 import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
@@ -17,7 +17,8 @@ import BulkBar from "@/components/items/bulk-bar";
 import ItemFilters from "@/components/items/item-filters";
 import ItemTable from "@/components/items/item-table";
 import ItemTableSkeleton from "@/components/items/item-table-skeleton";
-import { EmptyState, PageHeader } from "@/components/studio-ui";
+import LabOverview, { LabSwitchLink } from "@/components/items/lab-overview";
+import { EmptyState } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
 import { BANK_COLUMNS } from "@/lib/content/columns";
 
@@ -43,7 +44,7 @@ export default function IdeaBank() {
     refresh,
   } = useIdeaBank();
 
-  const [view, setView] = useState<BankView>("table");
+  const [view, setView] = useState<BankView>("cards");
   const [importOpen, setImportOpen] = useState(false);
   const filters = useItemFilters(bank);
   const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
@@ -53,10 +54,25 @@ export default function IdeaBank() {
 
   return (
     <div className="w-full pb-24">
-      <PageHeader
-        title="Idea Bank"
-        description="Capture it in seconds, keep the original reference, and send the keepers to your library."
-        actions={
+      <LabOverview
+        mode="ideas"
+        items={loading ? null : bank}
+        action={<LabSwitchLink mode="ideas" />}
+      />
+
+      <section aria-labelledby="quick-capture-title">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
+              Start here
+            </p>
+            <h2
+              id="quick-capture-title"
+              className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]"
+            >
+              Quick capture
+            </h2>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -65,14 +81,32 @@ export default function IdeaBank() {
             title="Step-by-step Instagram saved-post import"
           >
             <Archive className="h-3.5 w-3.5" />
-            Import saves
+            Import Instagram saves
           </Button>
-        }
-      />
+        </div>
+        <p className="text-muted-foreground mb-3 max-w-2xl text-sm leading-6">
+          Write the unfinished version. Add a reference link if there is
+          one—Yapper keeps your words separate from the source and the AI
+          expansion.
+        </p>
+        <IdeaCapture onCapture={capture} />
+      </section>
 
-      <IdeaCapture onCapture={capture} />
-
-      <div className="mt-8">
+      <div className="mt-10">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
+              <Sparkles className="h-3.5 w-3.5" /> Curate next
+            </p>
+            <h2 className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]">
+              Your idea bank
+            </h2>
+          </div>
+          <p className="text-muted-foreground max-w-md text-xs leading-5 sm:text-right">
+            Open an idea to develop it. Select one or more to send them into the
+            production pipeline.
+          </p>
+        </div>
         {loading ? (
           <ItemTableSkeleton columns={BANK_COLUMNS} />
         ) : bank.length === 0 ? (

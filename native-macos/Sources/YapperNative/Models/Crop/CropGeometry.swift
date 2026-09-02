@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// Which side of the crop rectangle a drag has hold of.
-enum CropEdge: CaseIterable, Sendable {
+enum CropEdge: CaseIterable, Equatable, Sendable {
     case top
     case bottom
     case leading

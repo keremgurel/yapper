@@ -4,6 +4,7 @@ import Foundation
 /// groups these into cards; it needs the timeline position only to spot real
 /// pauses, while the card itself is stored against the recording.
 struct CaptionSourceWord: Equatable, Sendable {
+    var id: UUID? = nil
     var mediaID: UUID
     var text: String
     var sourceStart: Double
@@ -12,9 +13,9 @@ struct CaptionSourceWord: Equatable, Sendable {
     var timelineEnd: Double
     /// The stretch of recording the clip this word plays from covers.
     ///
-    /// A card may not span two clips, and may not reach outside its own: it is
-    /// anchored to a stretch of the recording, and a stretch holding seconds
-    /// that are no longer in the video maps to nothing and never appears.
+    /// Auto/phrase cards may not span two clips. Fixed-count cards carry stable
+    /// word IDs and can cross a cut without treating removed source seconds as
+    /// if they were still present.
     var clip: ClosedRange<Double>?
 }
 
@@ -41,9 +42,9 @@ enum CaptionGenerator {
     ///
     /// With `wordsPerCard` at zero the words group by phrase: a card breaks on a
     /// real pause, at a sentence end, or once it exceeds the character, word or
-    /// duration budget. With a count set, cards are exactly that many words
-    /// (still breaking on real pauses and at media boundaries), which gives the
-    /// one-word-at-a-time look.
+    /// duration budget. With a count set, cards are exactly that many words,
+    /// continuing across pauses and edit cuts and breaking only at source-media
+    /// boundaries.
     static func captions(
         from words: [CaptionSourceWord],
         wordsPerCard: Int
@@ -69,25 +70,35 @@ enum CaptionGenerator {
             } else {
                 previousEnd = first.clip?.lowerBound ?? 0
             }
-            let span = clamped(
-                start: max(previousEnd, first.sourceStart - leadSeconds),
-                end: max(first.sourceStart + 0.12, last.sourceEnd + tailSeconds),
-                to: first.clip
-            )
+            let spansCuts = group.contains { $0.clip != first.clip }
+            let span = spansCuts
+                ? (
+                    start: group.map(\.sourceStart).min() ?? first.sourceStart,
+                    end: group.map(\.sourceEnd).max() ?? last.sourceEnd
+                )
+                : clamped(
+                    start: max(previousEnd, first.sourceStart - leadSeconds),
+                    end: max(first.sourceStart + 0.12, last.sourceEnd + tailSeconds),
+                    to: first.clip
+                )
+            let stableWordIDs = group.compactMap(\.id)
             captions.append(
                 ProjectCaption(
                     mediaID: first.mediaID,
                     text: group.map(\.text).joined(separator: " "),
                     sourceStart: span.start,
-                    sourceEnd: span.end
+                    sourceEnd: span.end,
+                    wordIDs: wordsPerCard > 0 && stableWordIDs.count == group.count
+                        ? stableWordIDs
+                        : nil
                 )
             )
             previouslyFlushedWord = last
             group.removeAll(keepingCapacity: true)
         }
 
-        /// Cuts a whole run into literal fixed-size cards. Only the final card
-        /// before a structural boundary can be short.
+        /// Cuts a whole run into literal fixed-size cards. Only its final card
+        /// can be short.
         func flushRun() {
             guard !run.isEmpty else { return }
             var index = 0
@@ -108,8 +119,8 @@ enum CaptionGenerator {
                 group.append(word)
                 continue
             }
-            // A counted card is cut from a run, and a run ends only where the
-            // model cannot represent one card: another recording or a cut.
+            // A counted card is cut from a run. Stable word membership lets it
+            // cross an edit cut, so only a change of source media ends a run.
             // A spoken pause is not structural and must not silently override
             // the explicit word count the creator picked.
             if let last = run.last, endsRun(before: word, after: last) { flushRun() }
@@ -120,10 +131,10 @@ enum CaptionGenerator {
         return captions
     }
 
-    /// Where a counted run has to end, whatever the count says.
+    /// A card still has one source-media owner. Within that media, stable word
+    /// membership carries it across any number of edit cuts.
     private static func endsRun(before word: CaptionSourceWord, after last: CaptionSourceWord) -> Bool {
-        if word.mediaID != last.mediaID { return true }
-        return crossesACut(word, after: last)
+        word.mediaID != last.mediaID
     }
 
     /// Whether the join between two words is a cut.

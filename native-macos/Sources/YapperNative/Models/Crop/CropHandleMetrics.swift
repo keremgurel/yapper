@@ -1,45 +1,63 @@
 import CoreGraphics
 
-/// Shared sizing rules for crop-corner controls.
-///
-/// The visible grip is intentionally smaller than its interaction area. Keeping
-/// the target at least 44 points wide makes corners dependable with a trackpad,
-/// mouse, or touch input even when the crop itself becomes narrow.
-enum CropHandleMetrics {
-    static let preferredTargetSide: CGFloat = 56
-    static let minimumTargetSide: CGFloat = 44
-    static let gripSide: CGFloat = 18
-    static let gripInset: CGFloat = 6
+/// What a drag starting inside the crop rectangle intends to manipulate.
+enum CropDragIntent: Equatable, Sendable {
+    case move
+    case corner(CanvasResizeCorner)
+    case edge(CropEdge)
+}
 
-    static func targetLength(for cropSide: CGFloat) -> CGFloat {
-        min(preferredTargetSide, max(minimumTargetSide, cropSide / 2))
+/// Shared sizing and hit-testing rules for crop controls.
+///
+/// A single gesture owns the entire selection and asks these rules what was
+/// grabbed. That avoids overlapping SwiftUI gestures and guarantees the middle
+/// remains available for repositioning, even when the crop is very small.
+enum CropHandleMetrics {
+    static let preferredCornerTarget: CGFloat = 32
+    static let preferredEdgeTarget: CGFloat = 14
+    static let cornerMarkSide: CGFloat = 24
+    static let edgeGripLength: CGFloat = 28
+    static let edgeGripThickness: CGFloat = 6
+
+    static func cornerTarget(for cropSide: CGFloat) -> CGFloat {
+        min(preferredCornerTarget, max(0, cropSide / 3))
     }
 
-    /// Classifies a drag start inside a crop-local coordinate space. Corner
-    /// regions deliberately extend inward; when a crop is tiny and two regions
-    /// overlap, the nearest half wins predictably.
-    static func corner(at point: CGPoint, cropSize: CGSize) -> CanvasResizeCorner? {
+    static func edgeTarget(for cropSide: CGFloat) -> CGFloat {
+        min(preferredEdgeTarget, max(0, cropSide / 4))
+    }
+
+    /// Classifies a drag start in crop-local coordinates. Corners win over
+    /// edges, edges win over movement, and neither can consume the central
+    /// third that creators use to reposition the chosen part of the picture.
+    static func intent(at point: CGPoint, cropSize: CGSize) -> CropDragIntent? {
         guard cropSize.width > 0, cropSize.height > 0,
               point.x >= 0, point.y >= 0,
               point.x <= cropSize.width, point.y <= cropSize.height
         else { return nil }
 
-        let horizontalTarget = targetLength(for: cropSize.width)
-        let verticalTarget = targetLength(for: cropSize.height)
+        let horizontalTarget = cornerTarget(for: cropSize.width)
+        let verticalTarget = cornerTarget(for: cropSize.height)
         let nearLeading = point.x <= horizontalTarget
         let nearTrailing = point.x >= cropSize.width - horizontalTarget
         let nearTop = point.y <= verticalTarget
         let nearBottom = point.y >= cropSize.height - verticalTarget
 
-        guard (nearLeading || nearTrailing), (nearTop || nearBottom) else { return nil }
-
-        let leading = nearLeading && (!nearTrailing || point.x <= cropSize.width / 2)
-        let top = nearTop && (!nearBottom || point.y <= cropSize.height / 2)
-        switch (leading, top) {
-        case (true, true): return .topLeading
-        case (false, true): return .topTrailing
-        case (true, false): return .bottomLeading
-        case (false, false): return .bottomTrailing
+        if (nearLeading || nearTrailing), (nearTop || nearBottom) {
+            switch (nearLeading, nearTop) {
+            case (true, true): return .corner(.topLeading)
+            case (false, true): return .corner(.topTrailing)
+            case (true, false): return .corner(.bottomLeading)
+            case (false, false): return .corner(.bottomTrailing)
+            }
         }
+
+        let horizontalEdge = edgeTarget(for: cropSize.height)
+        let verticalEdge = edgeTarget(for: cropSize.width)
+        if point.y <= horizontalEdge { return .edge(.top) }
+        if point.y >= cropSize.height - horizontalEdge { return .edge(.bottom) }
+        if point.x <= verticalEdge { return .edge(.leading) }
+        if point.x >= cropSize.width - verticalEdge { return .edge(.trailing) }
+        return .move
     }
 }

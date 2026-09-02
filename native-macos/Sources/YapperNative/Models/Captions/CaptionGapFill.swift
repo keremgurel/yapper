@@ -54,6 +54,9 @@ enum CaptionGapFill {
     }
 
     private static func isCovered(_ word: CaptionSourceWord, by captions: [ProjectCaption]) -> Bool {
+        if let id = word.id, captions.contains(where: { $0.wordIDs?.contains(id) == true }) {
+            return true
+        }
         let midpoint = (word.sourceStart + word.sourceEnd) / 2
         return captions.contains { $0.sourceStart <= midpoint && $0.sourceEnd >= midpoint }
     }

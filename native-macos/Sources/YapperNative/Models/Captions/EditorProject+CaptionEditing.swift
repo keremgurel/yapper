@@ -23,13 +23,19 @@ extension EditorProject {
     /// cut. Corrections are first written back to matching timed transcript
     /// words, and edits that cannot be represented word-for-word are carried
     /// onto the rebuilt card instead of being destroyed.
-    mutating func regenerateCaptions() {
+    mutating func regenerateCaptions(preservingManualEdits: Bool = true) {
         ensureCaptionsMaterialized()
+        guard preservingManualEdits else {
+            captions = generatedCaptions()
+            captionsEnabled = true
+            updatedAt = Date()
+            return
+        }
         let previous = (captions ?? []).filter {
             $0.isTextEdited && !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         var unsynced: [ProjectCaption] = []
-        for caption in previous where !synchronizeCaptionWithTranscript(caption) {
+        for caption in previous where synchronizeCaptionWithTranscript(caption) == nil {
             unsynced.append(caption)
         }
 
@@ -107,12 +113,15 @@ extension EditorProject {
         // The corrected tokens replace the timed words this card came from.
         // That makes the transcript the source of truth, so a later regenerate
         // cannot resurrect the transcriber's old wording.
-        let synchronized = synchronizeCaptionWithTranscript(
+        let synchronizedWordIDs = synchronizeCaptionWithTranscript(
             captions![index],
             knownWords: original.isTextEdited ? nil : originalWords,
             force: !original.isTextEdited
         )
-        captions?[index].isTextEdited = !synchronized
+        captions?[index].isTextEdited = synchronizedWordIDs == nil
+        if let synchronizedWordIDs {
+            captions?[index].wordIDs = synchronizedWordIDs
+        }
         // A deliberate keystroke outranks the shared casing transform, which
         // would otherwise mask the capitalization the creator just typed.
         captions?[index].overrides.textCase = .asSpoken
@@ -123,41 +132,62 @@ extension EditorProject {
         _ caption: ProjectCaption,
         knownWords: [TranscriptWord]? = nil,
         force: Bool = false
-    ) -> Bool {
+    ) -> [UUID]? {
         let tokens = caption.text.split(whereSeparator: \.isWhitespace).map(String.init)
-        guard !tokens.isEmpty, var transcript else { return false }
+        guard !tokens.isEmpty, var transcript else { return nil }
         let words = knownWords ?? transcript.filter {
             $0.mediaID == caption.mediaID
                 && $0.midpoint >= caption.sourceStart
                 && $0.midpoint <= caption.sourceEnd
         }.sorted { $0.start < $1.start }
-        guard !words.isEmpty else { return false }
+        guard !words.isEmpty else { return nil }
         // Saved projects cannot tell an old hand-added card from an old
         // transcription correction. Only migrate the latter automatically:
         // most of its words still agree with what the transcriber heard. A new
         // edit on a generated card is unambiguous and uses `force`.
-        guard force || looksLikeCorrection(tokens, of: words.map(\.text)) else { return false }
+        guard force || looksLikeCorrection(tokens, of: words.map(\.text)) else { return nil }
 
         let replacedIDs = Set(words.map(\.id))
         guard let insertionIndex = transcript.firstIndex(where: { replacedIDs.contains($0.id) }) else {
-            return false
+            return nil
         }
-        let start = words.first!.start
-        let end = max(start + 0.001, words.last!.end)
-        let width = (end - start) / Double(tokens.count)
+        let timingWords = words.sorted { left, right in
+            guard let leftIndex = caption.wordIDs?.firstIndex(of: left.id),
+                  let rightIndex = caption.wordIDs?.firstIndex(of: right.id)
+            else { return left.start < right.start }
+            return leftIndex < rightIndex
+        }
+        let mappedWordIndexes = tokens.indices.map { tokenIndex in
+            guard tokens.count > 1, timingWords.count > 1 else { return 0 }
+            if tokens.count >= timingWords.count {
+                return Int(ceil(
+                    Double(tokenIndex) * Double(timingWords.count - 1)
+                        / Double(tokens.count - 1)
+                ))
+            }
+            if tokenIndex == tokens.count - 1 { return timingWords.count - 1 }
+            return tokenIndex * timingWords.count / tokens.count
+        }
         let replacements = tokens.enumerated().map { offset, token in
-            TranscriptWord(
-                id: words.indices.contains(offset) ? words[offset].id : UUID(),
-                mediaID: caption.mediaID,
+            let wordIndex = mappedWordIndexes[offset]
+            let timingWord = timingWords[wordIndex]
+            let peers = mappedWordIndexes.indices.filter { mappedWordIndexes[$0] == wordIndex }
+            let peerIndex = peers.firstIndex(of: offset) ?? 0
+            let width = max(0.001, timingWord.end - timingWord.start) / Double(peers.count)
+            return TranscriptWord(
+                id: peerIndex == 0 ? timingWord.id : UUID(),
+                mediaID: timingWord.mediaID,
                 text: token,
-                start: start + Double(offset) * width,
-                end: offset == tokens.count - 1 ? end : start + Double(offset + 1) * width
+                start: timingWord.start + Double(peerIndex) * width,
+                end: peerIndex == peers.count - 1
+                    ? timingWord.end
+                    : timingWord.start + Double(peerIndex + 1) * width
             )
         }
         transcript.removeAll { replacedIDs.contains($0.id) }
         transcript.insert(contentsOf: replacements, at: min(insertionIndex, transcript.count))
         self.transcript = transcript
-        return true
+        return replacements.map(\.id)
     }
 
     private func looksLikeCorrection(_ edited: [String], of spoken: [String]) -> Bool {
@@ -334,6 +364,11 @@ extension EditorProject {
         // The merged range covers every word the parts covered, so a merge of
         // cards that were all still following the transcript keeps following it.
         merged.isTextEdited = targets.contains(where: \.isTextEdited)
+        if !merged.isTextEdited, targets.allSatisfy({ $0.wordIDs != nil }) {
+            merged.wordIDs = targets.flatMap { $0.wordIDs ?? [] }
+        } else {
+            merged.wordIDs = nil
+        }
         var remaining = (captions ?? []).filter { !ids.contains($0.id) }
         remaining.append(merged)
         captions = remaining.sorted { $0.sourceStart < $1.sourceStart }
@@ -363,11 +398,17 @@ extension EditorProject {
         head.id = UUID()
         head.sourceEnd = boundary
         head.text = parts[..<cutIndex].joined(separator: " ")
+        if let wordIDs = caption.wordIDs, wordIDs.count == parts.count {
+            head.wordIDs = Array(wordIDs[..<cutIndex])
+        }
 
         var tail = caption
         tail.id = UUID()
         tail.sourceStart = boundary
         tail.text = parts[cutIndex...].joined(separator: " ")
+        if let wordIDs = caption.wordIDs, wordIDs.count == parts.count {
+            tail.wordIDs = Array(wordIDs[cutIndex...])
+        }
 
         captions?.replaceSubrange(index...index, with: [head, tail])
         updatedAt = Date()

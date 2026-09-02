@@ -28,8 +28,8 @@ struct TranscriptionAudioEncoderTests {
         let encoded = try TranscriptionAudioEncoder.m4a(pcm: pcm, sampleRate: sampleRate)
         #expect(!encoded.isEmpty)
         // Raw would be 5.7 MB. The server refuses anything over four.
-        #expect(encoded.count < 600_000)
-        #expect(encoded.count * 8 < pcm.count)
+        #expect(encoded.count < 1_400_000)
+        #expect(encoded.count < pcm.count)
     }
 
     @Test("The encoded audio still plays back at its own rate and length")

@@ -9,8 +9,8 @@ import Foundation
 struct CaptionWordIndex: Sendable {
     private let wordsByCaption: [UUID: [TranscriptWord]]
 
-    /// - Parameter keptWords: the transcript words still in the cut, in
-    ///   recording order.
+    /// - Parameter keptWords: the transcript words still in the cut, in edited
+    ///   timeline order.
     init(captions: [ProjectCaption], keptWords: [TranscriptWord]) {
         // Cards are laid out per recording, and one card's tail padding can
         // reach past the start of the next. Assigning each word to the latest
@@ -20,25 +20,33 @@ struct CaptionWordIndex: Sendable {
         // this entirely: it says what they told it to say, so it has no use for
         // words — and a card stretched across its neighbour would otherwise
         // take every word the neighbour was living on and leave it blank.
-        var sortedByMedia: [UUID: [ProjectCaption]] = [:]
+        var assigned: [UUID: [TranscriptWord]] = [:]
+        var claimedWordIDs: Set<UUID> = []
+        let keptByID = Dictionary(uniqueKeysWithValues: keptWords.map { ($0.id, $0) })
         for caption in captions where !caption.isTextEdited {
+            guard let wordIDs = caption.wordIDs, !wordIDs.isEmpty else { continue }
+            let words = wordIDs.compactMap { keptByID[$0] }
+            if !words.isEmpty { assigned[caption.id] = words }
+            claimedWordIDs.formUnion(words.map(\.id))
+        }
+
+        var sortedByMedia: [UUID: [ProjectCaption]] = [:]
+        for caption in captions where !caption.isTextEdited && caption.wordIDs == nil {
             sortedByMedia[caption.mediaID, default: []].append(caption)
         }
         for (mediaID, group) in sortedByMedia {
             sortedByMedia[mediaID] = group.sorted { $0.sourceStart < $1.sourceStart }
         }
 
-        var assigned: [UUID: [TranscriptWord]] = [:]
-        for word in keptWords {
+        for word in keptWords where !claimedWordIDs.contains(word.id) {
             guard
                 let candidates = sortedByMedia[word.mediaID],
                 let caption = CaptionWordIndex.caption(covering: word.midpoint, in: candidates)
             else { continue }
             assigned[caption.id, default: []].append(word)
         }
-        for (id, words) in assigned {
-            assigned[id] = words.sorted { $0.start < $1.start }
-        }
+        // Preserve edited-timeline order. Source time can run backwards when a
+        // creator places a later piece of a recording before an earlier one.
         wordsByCaption = assigned
     }
 

@@ -15,11 +15,13 @@
  * model does not put in a block is kept untouched.
  */
 
-export const RETAKE_BLOCK_PROMPT = `You are making a jump-cut edit of a talking-head recording. The input is the exact transcript as global wordIndex:word tokens. Return source ranges to DELETE; you cannot rewrite words.
+export const RETAKE_BLOCK_PROMPT = `You are making a jump-cut edit of a talking-head recording. The input is the exact transcript as global wordIndex:word tokens, with unnumbered [pause=Ns] markers where the recording has a meaningful pause. Pause markers are context, not words, and cannot be included in a range. Return source ranges to DELETE; you cannot rewrite words.
 
 A RETAKE BLOCK is any nearby passage the speaker records more than once. It may be one phrase, one sentence, OR A SEQUENCE OF MULTIPLE SENTENCES. Attempts can be interleaved: the speaker may say old metrics, new metrics, then restart and say old metrics and new metrics again. Treat that as one block and keep one coherent delivery, not one independently chosen version of each sentence.
 
 Keep the latest version that is fluent, semantically complete, contextually correct, and preserves the intended detail. A version is NOT clean if it contains a restarted or duplicated phrase, stutter, abandoned fragment, self-correction, wrong number, or obvious wrong-word transcription when a nearby clean version resolves it. If the latest version is defective, keep the latest earlier clean version. You may keep several non-adjacent source spans when that is the only way to preserve a clean opening and clean ending around a false start.
+
+Never assemble one sentence from separate attempts. In particular, words that look grammatically continuous but have a long [pause=Ns] boundary may be the end of one attempt followed by the tail of another whose opening ASR missed. Keep one contiguous delivery of a repeated sentence; do not splice a prefix before such a pause to a suffix after it.
 
 Preserve every unique idea said only once. Do not shorten for style, remove ordinary filler, paraphrase, reorder, or delete a complete sentence merely because another sentence discusses the same topic. Remove only recorded mistakes and superseded attempts. Never delete every version of an idea.
 
@@ -28,8 +30,27 @@ Work through the entire transcript from left to right. Privately reconstruct the
 All ranges are inclusive global indices. Kept and dropped ranges must not overlap.`;
 
 /** How the transcript is handed to the model. */
-export function numberedTranscript(words: { text: string }[]): string {
-  return words.map(({ text }, index) => `${index}:${text}`).join(" ");
+export function numberedTranscript(
+  words: { text: string; start?: number; end?: number }[],
+): string {
+  const parts: string[] = [];
+  for (let index = 0; index < words.length; index++) {
+    const word = words[index]!;
+    if (index > 0) {
+      const previous = words[index - 1]!;
+      if (
+        typeof previous.end === "number" &&
+        typeof word.start === "number" &&
+        Number.isFinite(previous.end) &&
+        Number.isFinite(word.start)
+      ) {
+        const pause = word.start - previous.end;
+        if (pause >= 0.75) parts.push(`[pause=${pause.toFixed(1)}s]`);
+      }
+    }
+    parts.push(`${index}:${word.text}`);
+  }
+  return parts.join(" ");
 }
 
 /**

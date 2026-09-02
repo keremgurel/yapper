@@ -75,6 +75,13 @@ struct CloudLinkRouterTests {
         )
     }
 
+    @Test func nestedLibraryRoutesBelongToTheLibrarySurface() {
+        #expect(StudioDestination.library.contains(cloudPath: "/studio/library/item-123"))
+        #expect(StudioDestination.library.contains(cloudPath: "/studio/library/item-123/"))
+        #expect(!StudioDestination.library.contains(cloudPath: "/studio/ideas"))
+        #expect(!StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123"))
+    }
+
     @Test func sameOriginPublicLinksStillLeaveTheAppShell() throws {
         let url = try #require(URL(string: "https://ypr.app/blog/editor-tips"))
 

@@ -60,13 +60,13 @@ export default function ItemTable({
 
   return (
     <Card
-      className="gap-0 overflow-x-auto py-0"
+      className="gap-0 overflow-x-auto rounded-[18px_4px_18px_18px] border-[color:var(--sg-border-strong)] py-0 shadow-[var(--sg-shadow-card)]"
       style={{ ["--item-grid" as string]: grid }}
     >
       {/* Header sits on the sunken well (opaque bg-muted per the design
           language), not a translucent wash. */}
       <div
-        className="bg-muted grid min-h-9 items-center gap-3 border-b px-4 py-1.5"
+        className="bg-muted grid min-h-10 items-center gap-3 border-b px-4 py-1.5"
         style={{ gridTemplateColumns: grid }}
       >
         <button

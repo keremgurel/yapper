@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Film, Link2, Minus, Send } from "lucide-react";
+import { ArrowUpRight, FileText, Film, Link2, Minus, Send } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import FormatChips from "@/components/views/format-chips";
 import { Chip, pillarTone } from "@/components/studio-ui";
@@ -56,7 +56,7 @@ export default function ItemCell({
   switch (column) {
     case "title":
       return (
-        <span className="flex min-w-0 items-center gap-2">
+        <span className="group/title flex min-w-0 flex-1 items-center gap-2">
           <span className="text-foreground min-w-0 truncate text-sm font-medium">
             {row.title.trim() || firstLine(row.originalNote) || "Untitled idea"}
           </span>
@@ -66,6 +66,10 @@ export default function ItemCell({
               className="text-muted-foreground/70 h-3.5 w-3.5 shrink-0"
             />
           )}
+          <ArrowUpRight
+            aria-label="Open workspace"
+            className="text-muted-foreground/40 ml-auto h-3.5 w-3.5 shrink-0 transition-[color,transform] group-hover/title:translate-x-0.5 group-hover/title:-translate-y-0.5 group-hover/title:text-[color:var(--sg-accent-strong)]"
+          />
         </span>
       );
 

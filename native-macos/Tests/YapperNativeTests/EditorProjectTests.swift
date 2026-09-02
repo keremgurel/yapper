@@ -4,6 +4,54 @@ import Testing
 @testable import YapperNative
 
 struct EditorProjectTests {
+    @Test func legacyTranscriptIsNotTrustedByOneClickUntilRefreshed() {
+        let mediaID = UUID()
+        var project = EditorProject(transcript: [
+            TranscriptWord(mediaID: mediaID, text: "legacy", start: 0, end: 0.3),
+        ])
+
+        #expect(!project.hasCurrentTranscription(for: mediaID))
+        project.markTranscriptionCurrent(for: mediaID)
+        #expect(project.hasCurrentTranscription(for: mediaID))
+
+        let otherMediaID = UUID()
+        #expect(!project.hasCurrentTranscription(for: otherMediaID))
+    }
+
+    @Test("A manual leading trim keeps an audible first word in its caption")
+    func leadingTrimKeepsAudibleFirstWord() {
+        let mediaID = UUID()
+        let first = TranscriptWord(mediaID: mediaID, text: "is", start: 1, end: 2)
+        let great = TranscriptWord(mediaID: mediaID, text: "great", start: 2, end: 2.4)
+        var project = EditorProject(
+            clips: [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 3)],
+            transcript: [first, great],
+            captionsEnabled: true
+        )
+        project.regenerateCaptions()
+
+        // The trim passes the old 35% anchor but leaves the latter half of
+        // "is" in the video. This is the leading-edge mirror of the long-tail
+        // failure covered below.
+        var trimmed = project.clips[0]
+        trimmed.sourceStart = 1.40
+        let didTrim = project.applyManualClipTrim(trimmed)
+        #expect(didTrim)
+
+        #expect(first.playbackAnchor < trimmed.sourceStart)
+        let rebasedFirst = try! #require(project.transcript?.first)
+        #expect(project.isWordKept(rebasedFirst))
+        #expect(project.keptTranscriptText == "is great")
+        #expect(project.captionCues.map(\.text) == ["is great"])
+
+        // Because the original timed word never vanished, a subsequent caption
+        // edit replaces that same word instead of minting a hidden duplicate.
+        let captionID = try! #require(project.storedCaptions.first?.id)
+        project.setCaptionText("is really great", for: captionID)
+        #expect(project.transcript?.map(\.text) == ["is", "really", "great"])
+        #expect(project.transcript?.filter { $0.text == "is" }.count == 1)
+    }
+
     @Test("A manual trim through a generous word tail keeps the audible word and caption")
     func trimKeepsAudibleLastWord() {
         let mediaID = UUID()
@@ -211,26 +259,27 @@ struct EditorProjectTests {
         #expect(TranscriptionPCM.monoSample(sum: -8, channelCount: 2) == -32_767)
     }
 
-    @Test func longTranscriptionIsCoveredByOverlappingThreeMinuteWindows() {
+    @Test func longTranscriptionIsCoveredByDenseOverlappingWindows() {
         let sampleRate = 48_000
         let bytesPerSecond = sampleRate * 2
         let plans = TranscriptionChunkPlan.make(
             byteCount: 845 * bytesPerSecond,
             sampleRate: sampleRate,
-            chunkSeconds: 180,
-            overlapSeconds: 8
+            chunkSeconds: 120,
+            overlapSeconds: 30
         )
 
-        #expect(plans.count == 5)
+        #expect(plans.count == 10)
         #expect(plans.first?.offset == 0)
         #expect(plans.last.map { $0.start + $0.length } == 845 * bytesPerSecond)
-        #expect(plans.allSatisfy { $0.duration <= 180 })
+        #expect(plans.allSatisfy { $0.duration <= 120 })
         for pair in zip(plans, plans.dropFirst()) {
-            #expect(abs((pair.0.offset + pair.0.duration) - pair.1.offset - 8) < 0.000_1)
+            #expect(abs((pair.0.offset + pair.0.duration) - pair.1.offset - 30) < 0.000_1)
         }
-        // The phrase lost by the former single 14-minute request is well
-        // inside one window, not on a seam.
-        #expect(plans.contains { 499.535 >= $0.offset + 8 && 502.495 <= $0.offset + $0.duration - 8 })
+        // The exact retake cluster that the old window misheard now sits in
+        // the shorter context empirically verified against the source.
+        #expect(plans.contains { $0.offset == 630 && $0.duration == 120 })
+        #expect(plans.contains { 656.77 >= $0.offset + 20 && 670.45 <= $0.offset + $0.duration - 20 })
     }
 
     @Test func transcriptionRetriesOnlyTransientStatuses() {
@@ -334,10 +383,10 @@ struct EditorProjectTests {
             captionsEnabled: true
         )
 
-        #expect(project.captionCues.map(\.text) == ["This stays.", "Still here"])
-        #expect(project.captionCues[1].timelineStart < 1.11)
-        #expect(project.captionCues[1].timelineStart > 1.05)
-        #expect(project.captionCue(at: 0.2)?.text == "This stays.")
+        #expect(project.captionCues.map(\.text) == ["This stays. Still", "here"])
+        #expect(project.captionCues[1].timelineStart < 1.39)
+        #expect(project.captionCues[1].timelineStart > 1.36)
+        #expect(project.captionCue(at: 0.2)?.text == "This stays. Still")
         #expect(!project.captionCues.map(\.text).joined().contains("deleted"))
     }
 

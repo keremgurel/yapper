@@ -39,7 +39,10 @@ export const maxDuration = 120;
 const DEFAULT_KEYTERMS = ["CELPIP", "Yapper"];
 const MAX_AUDIO_BYTES = 4_000_000;
 const MAX_AUDIO_DURATION_SECONDS = 600;
-const MAX_STORED_CHUNKS = 12;
+// Dense overlap gives retake-heavy recordings more than one useful ASR
+// context. Forty chunks cover the full supported hour at 120s/30s overlap;
+// leave room for the short tail without weakening the total-duration bound.
+const MAX_STORED_CHUNKS = 48;
 const MAX_STORED_TAKE_SECONDS = 3_600;
 const PROVIDER_DEADLINE_MS = 108_000;
 const AUDIO_MEDIA_TYPES = [

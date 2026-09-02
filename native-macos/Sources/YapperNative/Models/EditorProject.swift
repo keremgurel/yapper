@@ -526,6 +526,13 @@ struct EditorProject: Codable, Equatable, Sendable {
     var media: [ProjectMedia]
     var clips: [TimelineClip]
     var transcript: [TranscriptWord]?
+    /// Which transcription pipeline produced each source's words.
+    ///
+    /// Projects saved before this marker existed are deliberately treated as
+    /// stale by one-click edit. Some of those transcripts were made by the old
+    /// attenuated/low-bitrate upload path, and reusing one lets an ASR omission
+    /// become a confident retake edit forever.
+    var transcriptionRevisions: [String: Int]?
     var captionsEnabled: Bool?
     /// Editable caption cards. `nil` marks a project saved before captions were
     /// editable, whose cards are derived from the transcript on demand.
@@ -564,6 +571,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         media: [ProjectMedia] = [],
         clips: [TimelineClip] = [],
         transcript: [TranscriptWord]? = nil,
+        transcriptionRevisions: [String: Int]? = nil,
         captionsEnabled: Bool? = nil,
         captions: [ProjectCaption]? = nil,
         captionStyle: TextStyle? = nil,
@@ -585,6 +593,7 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.media = media
         self.clips = clips
         self.transcript = transcript
+        self.transcriptionRevisions = transcriptionRevisions
         self.captionsEnabled = captionsEnabled
         self.captions = captions
         self.captionStyle = captionStyle
@@ -598,6 +607,22 @@ struct EditorProject: Codable, Equatable, Sendable {
         self.videoTrackVolume = videoTrackVolume
         self.visualFilter = visualFilter
         self.backdrop = backdrop
+    }
+
+    /// Bump when the bytes supplied to ASR materially change. Existing
+    /// projects then get one clean refresh the next time one-click relies on
+    /// their transcript, without charging for a fresh transcript forever.
+    static let currentTranscriptionRevision = 3
+
+    func hasCurrentTranscription(for mediaID: UUID) -> Bool {
+        (transcript ?? []).contains { $0.mediaID == mediaID }
+            && transcriptionRevisions?[mediaID.uuidString] == Self.currentTranscriptionRevision
+    }
+
+    mutating func markTranscriptionCurrent(for mediaID: UUID) {
+        var revisions = transcriptionRevisions ?? [:]
+        revisions[mediaID.uuidString] = Self.currentTranscriptionRevision
+        transcriptionRevisions = revisions
     }
 
     var resolvedVisualFilter: VisualFilter { visualFilter ?? .none }
@@ -859,6 +884,56 @@ struct EditorProject: Codable, Equatable, Sendable {
                 && word.playbackAnchor >= $0.sourceStart
                 && word.playbackAnchor <= $0.sourceEnd
         }
+    }
+
+    /// Applies a trim made directly on a clip handle and keeps transcript time
+    /// honest at the changed edge.
+    ///
+    /// A transcriber's first-word timestamp can begin in the silence before the
+    /// actual attack. If a creator trims that silence past the word's playback
+    /// anchor but still leaves an audible part of the word, treating the old
+    /// timestamp as authoritative makes the transcript and caption drop it.
+    /// Rebase only the boundary the creator moved. Transcript-word deletion is
+    /// deliberately separate and continues to remove the whole timed word.
+    @discardableResult
+    mutating func applyManualClipTrim(_ updated: TimelineClip) -> Bool {
+        guard let clipIndex = clips.firstIndex(where: { $0.id == updated.id }) else { return false }
+        let original = clips[clipIndex]
+        guard updated.mediaID == original.mediaID else { return false }
+
+        let minimumAudibleRemainder = 0.04
+        let otherClips = clips.enumerated().filter { $0.offset != clipIndex }.map(\.element)
+        transcript = transcript?.map { word in
+            guard word.mediaID == original.mediaID,
+                  word.playbackAnchor >= original.sourceStart,
+                  word.playbackAnchor <= original.sourceEnd,
+                  !otherClips.contains(where: {
+                      $0.mediaID == word.mediaID
+                          && word.playbackAnchor >= $0.sourceStart
+                          && word.playbackAnchor <= $0.sourceEnd
+                  })
+            else { return word }
+
+            var rebased = word
+            if updated.sourceStart > original.sourceStart,
+               word.playbackAnchor < updated.sourceStart,
+               word.end - updated.sourceStart >= minimumAudibleRemainder,
+               updated.sourceStart < updated.sourceEnd
+            {
+                rebased.start = updated.sourceStart
+            }
+            if updated.sourceEnd < original.sourceEnd,
+               word.playbackAnchor > updated.sourceEnd,
+               updated.sourceEnd - word.start >= minimumAudibleRemainder,
+               updated.sourceEnd > updated.sourceStart
+            {
+                rebased.end = updated.sourceEnd
+            }
+            return rebased
+        }
+        clips[clipIndex] = updated
+        updatedAt = Date()
+        return true
     }
 
     func isSourceRangeKept(mediaID: UUID, start: Double, end: Double) -> Bool {

@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import {
+  ArrowUpRight,
   Check,
   ChevronDown,
   ExternalLink,
@@ -125,6 +127,15 @@ export default function IdeaCard({
             <ExternalLink className="h-4 w-4" />
           </a>
         )}
+        <Link
+          href={`/studio/library/${item.id}`}
+          title="Open idea workspace"
+          aria-label="Open idea workspace"
+          className="text-muted-foreground hover:bg-muted mt-0.5 inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-xs font-bold transition-colors hover:text-[color:var(--sg-accent-strong)] focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+        >
+          <span className="hidden sm:inline">Open</span>
+          <ArrowUpRight className="h-4 w-4" />
+        </Link>
         <ChevronDown
           aria-hidden="true"
           className={`text-muted-foreground mt-1 h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
@@ -132,7 +143,7 @@ export default function IdeaCard({
       </div>
 
       {open && (
-        <div className="border-border border-t px-4 py-5">
+        <div className="border-border border-t bg-[color:color-mix(in_srgb,var(--sg-surface-sunken)_55%,transparent)] px-4 py-5">
           {loading ? (
             <p className="text-muted-foreground flex items-center gap-2 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />

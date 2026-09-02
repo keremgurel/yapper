@@ -167,12 +167,14 @@ actor AIEditService {
 
     // Keep camera speech detail at its native rate. The previous forced 16 kHz
     // path could smear quiet sentence onsets before ASR heard them.
-    // Three-minute windows keep a long take from losing an isolated phrase in
-    // the provider's long context. Eight seconds of overlap make every seam
-    // somebody's interior; the server joins the answers under one billable
-    // transcription request.
-    private let chunkSeconds = 180.0
-    private let overlapSeconds = 8.0
+    // Two-minute windows are short enough that a dense run of near-identical
+    // retakes stays legible to ASR. Measured on the reported DJI source, the
+    // former three-minute window omitted an entire repeated sentence opening;
+    // this window heard both complete attempts from the exact same native PCM.
+    // Thirty seconds of overlap keeps every seam well inside another pass; the
+    // server joins all answers under one billable transcription request.
+    private let chunkSeconds = 120.0
+    private let overlapSeconds = 30.0
     private let maximumConcurrentUploads = 3
 
     /// How loud each take was, moment by moment, kept from the decode the

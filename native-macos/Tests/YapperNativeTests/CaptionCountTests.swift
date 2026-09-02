@@ -56,8 +56,8 @@ import Testing
     }
 }
 
-/// A counted card holds its count through everything except the three things
-/// that make a card impossible: another recording, a real stop, and a cut.
+/// A counted card holds its count across pauses and edit cuts. Only a change
+/// of source recording starts a new run.
 @MainActor
 @Suite struct CaptionCountedGroupingTests {
     private let mediaID = UUID()
@@ -116,9 +116,9 @@ import Testing
         #expect(counts(cards) == [3, 3, 2])
     }
 
-    /// A card laid across a cut is anchored to seconds that are not in the edit
-    /// any more, so it never appears at all. The run has to end there.
-    @Test func aCutBreaksTheRun() {
+    /// Stable transcript-word membership lets a card span a cut without
+    /// treating the removed source seconds as part of its edited duration.
+    @Test func aCutDoesNotBreakTheSelectedCount() {
         // The two halves play back to back but come from different clips, which
         // is what a cut is. The timings alone cannot say so: a transcriber's
         // word extents run together, so the removed seconds regularly sit
@@ -138,7 +138,7 @@ import Testing
 
         let cards = CaptionGenerator.captions(from: spoken, wordsPerCard: 4)
 
-        #expect(counts(cards) == [3, 3])
+        #expect(counts(cards) == [4, 2])
     }
 
     /// The same recording can be cut into a later clip followed by an earlier
@@ -160,9 +160,9 @@ import Testing
 
         let cards = CaptionGenerator.captions(from: later + earlier, wordsPerCard: 8)
 
-        #expect(cards.count == 2)
+        #expect(cards.count == 1)
         #expect(cards.allSatisfy { $0.sourceEnd > $0.sourceStart })
-        #expect(cards[1].sourceStart < 0.1)
+        #expect(counts(cards) == [6])
     }
 }
 

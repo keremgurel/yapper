@@ -40,10 +40,57 @@ enum EditFinishing {
             let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: settled)
             let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
             let undoubled = KeptStreamRepair.withoutDoubledPhrases(words: words, cuts: unstuttered)
-            if same(undoubled, settled) { break }
-            settled = undoubled
+            let withoutOrphans = withoutDetachedDiscourseStarters(words: words, cuts: undoubled)
+            if same(withoutOrphans, settled) { break }
+            settled = withoutOrphans
         }
         return settled
+    }
+
+    /// Drops a one-word connector stranded between rejected takes.
+    ///
+    /// The cleaner once kept only the 160 ms "And" at the start of an
+    /// abandoned attempt, cut the rest of that attempt, then kept the complete
+    /// next attempt after 6.8 seconds. Silence removal made the orphan sound as
+    /// though it belonged to the final take. This is deliberately narrow: it
+    /// only removes a short discourse starter already surrounded by the
+    /// cleaner's cuts and detached from the following word by audible space.
+    /// It never restores anything the cleaner rejected.
+    private static func withoutDetachedDiscourseStarters(
+        words: [TranscriptWord],
+        cuts: [(Int, Int)]
+    ) -> [(Int, Int)] {
+        guard words.count >= 3, !cuts.isEmpty else { return cuts }
+        var removed = Array(repeating: false, count: words.count)
+        for cut in cuts {
+            let lower = max(0, min(cut.0, cut.1))
+            let upper = min(words.count - 1, max(cut.0, cut.1))
+            guard lower <= upper else { continue }
+            for index in lower ... upper { removed[index] = true }
+        }
+
+        let starters = Set(["and", "but", "so", "because", "then", "also", "plus"])
+        for index in 1 ..< words.count - 1 where !removed[index] {
+            guard removed[index - 1], removed[index + 1],
+                  words[index].end - words[index].start <= 0.35,
+                  words[index + 1].start - words[index].end >= 0.45,
+                  starters.contains(normalize(words[index].text)),
+                  words[index].text.range(of: "[.!?]$", options: .regularExpression) == nil
+            else { continue }
+            removed[index] = true
+        }
+
+        var result: [(Int, Int)] = []
+        var start: Int?
+        for index in words.indices {
+            if removed[index], start == nil { start = index }
+            if !removed[index], let runStart = start {
+                result.append((runStart, index - 1))
+                start = nil
+            }
+        }
+        if let start { result.append((start, words.count - 1)) }
+        return result
     }
 
     /// Cuts the local text matcher chose, with nothing behind them but string
@@ -74,5 +121,9 @@ enum EditFinishing {
 
     private static func same(_ a: [(Int, Int)], _ b: [(Int, Int)]) -> Bool {
         a.count == b.count && zip(a, b).allSatisfy { $0.0 == $1.0 && $0.1 == $1.1 }
+    }
+
+    private static func normalize(_ text: String) -> String {
+        text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
     }
 }

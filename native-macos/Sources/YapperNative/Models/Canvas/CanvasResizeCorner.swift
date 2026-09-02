@@ -2,7 +2,7 @@ import CoreGraphics
 
 /// Which corner handle a resize drag started from, and which way that corner
 /// grows. Shared by every resizable thing on the player canvas.
-enum CanvasResizeCorner: CaseIterable, Sendable {
+enum CanvasResizeCorner: CaseIterable, Equatable, Sendable {
     case topLeading
     case topTrailing
     case bottomLeading

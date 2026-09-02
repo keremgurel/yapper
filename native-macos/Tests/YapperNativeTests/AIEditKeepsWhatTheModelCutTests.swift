@@ -76,4 +76,36 @@ struct AIEditKeepsWhatTheModelCutTests {
         for cut in finished { for index in cut.0 ... cut.1 { stillCut[index] = true } }
         #expect(words.indices.allSatisfy { !wasCut[$0] || stillCut[$0] })
     }
+
+    @Test("a detached And from an abandoned take is not glued to the final take")
+    func detachedDiscourseStarterIsCut() {
+        let media = UUID()
+        let words = [
+            TranscriptWord(mediaID: media, text: "fulfilling.", start: 657.475, end: 658.035),
+            TranscriptWord(mediaID: media, text: "And", start: 658.035, end: 658.195),
+            TranscriptWord(mediaID: media, text: "that's", start: 658.76, end: 659.16),
+            TranscriptWord(mediaID: media, text: "that's", start: 666.28, end: 666.44),
+            TranscriptWord(mediaID: media, text: "very", start: 666.44, end: 666.68),
+            TranscriptWord(mediaID: media, text: "fulfilling", start: 666.68, end: 667.0),
+        ]
+
+        let finished = EditFinishing.aiCuts([(0, 0), (2, 2)], words: words)
+
+        #expect(Self.kept(finished, words) == "that's very fulfilling")
+    }
+
+    @Test("a connected And inside the kept take remains")
+    func connectedDiscourseStarterRemains() {
+        let media = UUID()
+        let words = [
+            TranscriptWord(mediaID: media, text: "discarded", start: 0, end: 0.3),
+            TranscriptWord(mediaID: media, text: "And", start: 0.4, end: 0.56),
+            TranscriptWord(mediaID: media, text: "that's", start: 0.66, end: 0.96),
+            TranscriptWord(mediaID: media, text: "kept", start: 1.0, end: 1.25),
+        ]
+
+        let finished = EditFinishing.aiCuts([(0, 0), (2, 2)], words: words)
+
+        #expect(Self.kept(finished, words) == "And kept")
+    }
 }

@@ -16,6 +16,10 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
     var isTextEdited: Bool
     var sourceStart: Double
     var sourceEnd: Double
+    /// Stable membership for generated fixed-count cards. Source ranges alone
+    /// cannot describe a card whose words sit on both sides of an edit cut.
+    /// Older and hand-authored cards leave this nil and keep range semantics.
+    var wordIDs: [UUID]?
 
     /// What this card refuses to take from the project caption style. Empty is
     /// the normal case, and it is what keeps an Apply-to-all change visible on
@@ -29,6 +33,7 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
         isTextEdited: Bool = false,
         sourceStart: Double,
         sourceEnd: Double,
+        wordIDs: [UUID]? = nil,
         overrides: TextStylePatch = TextStylePatch()
     ) {
         self.id = id
@@ -37,6 +42,7 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
         self.isTextEdited = isTextEdited
         self.sourceStart = sourceStart
         self.sourceEnd = sourceEnd
+        self.wordIDs = wordIDs
         self.overrides = overrides
     }
 
@@ -61,7 +67,7 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
 
 extension ProjectCaption: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, mediaID, text, isTextEdited, sourceStart, sourceEnd, overrides
+        case id, mediaID, text, isTextEdited, sourceStart, sourceEnd, wordIDs, overrides
     }
 
     /// Cards saved before the appearance model kept their overrides as flat
@@ -82,6 +88,7 @@ extension ProjectCaption: Codable {
         isTextEdited = try container.decodeIfPresent(Bool.self, forKey: .isTextEdited) ?? false
         sourceStart = try container.decode(Double.self, forKey: .sourceStart)
         sourceEnd = try container.decode(Double.self, forKey: .sourceEnd)
+        wordIDs = try container.decodeIfPresent([UUID].self, forKey: .wordIDs)
         if let stored = try container.decodeIfPresent(TextStylePatch.self, forKey: .overrides) {
             overrides = stored
             return

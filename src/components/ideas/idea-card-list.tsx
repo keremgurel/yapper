@@ -32,7 +32,7 @@ export default function IdeaCardList({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="grid gap-3 xl:grid-cols-2">
       {rows.map((row) => (
         <IdeaCard
           key={row.id}

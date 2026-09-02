@@ -52,10 +52,11 @@ struct CaptionFirstWordCardTests {
     /// The transcriber's extents are generous and run together, so there is no
     /// gap to measure at the join: measured on a real edit, "learn." ran to
     /// 61.000 and "Choose" began at 61.000 while the video jumped 60.740 to
-    /// 61.060. The card built across it was anchored to a third of a second
-    /// that is not in the video, and never appeared.
-    @Test("a card is never built across a cut that runs through the words")
-    func neverSpansACutInsideTheWords() {
+    /// 61.060. Stable word IDs now place the card on the edited timeline, so
+    /// the selected count remains literal without anchoring it in removed
+    /// footage.
+    @Test("a counted card keeps its size across a cut through the words")
+    func keepsItsCountAcrossACutInsideTheWords() {
         let before = 59.120 ... 60.740
         let after = 61.060 ... 62.860
         let across = [
@@ -66,14 +67,7 @@ struct CaptionFirstWordCardTests {
         ]
         let cards = CaptionGenerator.captions(from: across, wordsPerCard: 3)
 
-        #expect(cards.map { $0.text } == ["wanna learn.", "Choose the"])
-        // Each card stays inside the clip its words play from, so the midpoint
-        // that places it can never land in removed footage.
-        for card in cards {
-            let clip = card.sourceStart < 61 ? before : after
-            #expect(card.sourceStart >= clip.lowerBound)
-            #expect(card.sourceEnd <= clip.upperBound)
-        }
+        #expect(cards.map { $0.text } == ["wanna learn. Choose", "the"])
     }
 
     /// The beat held at the end of a card is for the reader, not a claim on
@@ -91,8 +85,8 @@ struct CaptionFirstWordCardTests {
         #expect((card.sourceStart + card.sourceEnd) / 2 >= clip.lowerBound)
     }
 
-    @Test("a real cut still ends the run")
-    func aRealCutStillBreaks() {
+    @Test("a large cut still does not change the selected count")
+    func aLargeCutDoesNotChangeTheCount() {
         // Nine seconds of recording removed between two words that now play
         // back to back, so they come from different clips.
         let before = 0.0 ... 6.20
@@ -103,6 +97,6 @@ struct CaptionFirstWordCardTests {
             Self.word("to", source: 15.035 ... 15.275, timeline: 4.44 ... 4.68, clip: after),
         ]
         let cards = CaptionGenerator.captions(from: across, wordsPerCard: 3)
-        #expect(cards.map { $0.text } == ["vocabulary.", "Navigate to"])
+        #expect(cards.map { $0.text } == ["vocabulary. Navigate to"])
     }
 }

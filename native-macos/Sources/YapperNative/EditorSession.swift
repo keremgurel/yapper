@@ -1298,8 +1298,7 @@ final class EditorSession: ObservableObject {
                 } else {
                     clip.sourceEnd = sourceTime
                 }
-                project.clips[index] = clip
-                changed = true
+                changed = project.applyManualClipTrim(clip) || changed
             case let .text(id):
                 guard let index = project.textLayers?.firstIndex(where: { $0.id == id }),
                       var layer = project.textLayers?[index],
@@ -1487,8 +1486,7 @@ final class EditorSession: ObservableObject {
 
     func commitClipTrim(_ updated: TimelineClip) async {
         await commitTimelineEdit {
-            guard let index = project.clips.firstIndex(where: { $0.id == updated.id }) else { return false }
-            project.clips[index] = updated
+            guard project.applyManualClipTrim(updated) else { return false }
             selectedClipID = updated.id
             timelineSelection = [.clip(updated.id)]
             currentTime = min(currentTime, project.duration)
@@ -1881,6 +1879,7 @@ final class EditorSession: ObservableObject {
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
                 project.transcript = transcript
+                project.markTranscriptionCurrent(for: mediaID)
                 aiProgress = Double(index + 1) / Double(max(1, mediaIDs.count))
             }
             project.updatedAt = Date()
@@ -1932,6 +1931,7 @@ final class EditorSession: ObservableObject {
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
                 project.transcript = transcript
+                project.markTranscriptionCurrent(for: mediaID)
             }
         }
     }
@@ -1960,10 +1960,10 @@ final class EditorSession: ObservableObject {
             oneClickEditStage = nil
         }
 
-        // Transcribing is the slow, paid half of this. Whatever it hears is
-        // kept even when the edit that follows fails, so a retry is a retry of
-        // the part that broke rather than another two minutes and another
-        // credit spent hearing the same words again.
+        // A transcript made by the current pipeline is reusable. A legacy one
+        // is refreshed before it is trusted: the old upload path could omit a
+        // whole attempt, and cleaning that incomplete text merely fossilizes
+        // the omission into a confident-looking edit.
         var heard: [TranscriptWord]?
         do {
             let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
@@ -1971,17 +1971,29 @@ final class EditorSession: ObservableObject {
                 try Task.checkCancellation()
                 guard let media = project.media.first(where: { $0.id == mediaID }) else { continue }
                 var words = (project.transcript ?? []).filter { $0.mediaID == mediaID }
-                if words.isEmpty {
+                if !project.hasCurrentTranscription(for: mediaID) {
                     setOneClickEditStage(.transcribing)
                     words = try await transcribedWords(of: media)
                     var transcript = project.transcript ?? []
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
                     project.transcript = transcript
+                    project.markTranscriptionCurrent(for: mediaID)
                     heard = transcript
                 }
                 guard !words.isEmpty else {
                     throw NativeEditorError.aiFailed("No spoken words were found in \(media.name).")
+                }
+
+                // One-click is a fresh edit of the source, not an additional
+                // set of deletions applied to its previous result. Without
+                // restoring the source first, a better transcription on a
+                // retry cannot bring back words an earlier bad edit removed.
+                guard project.resetMainTrack(
+                    mediaID: mediaID,
+                    sourceDuration: media.duration
+                ) != nil else {
+                    throw NativeEditorError.aiFailed("\(media.name) could not be reset for editing.")
                 }
 
                 setOneClickEditStage(.removingRetakes)
@@ -2011,7 +2023,11 @@ final class EditorSession: ObservableObject {
                 throw NativeEditorError.aiFailed("The proposed edit was empty, so the original was restored.")
             }
             setOneClickEditStage(.addingCaptions)
-            project.regenerateCaptions()
+            // One-click is a new edit, not a caption merge. Corrections that
+            // were synchronized into the transcript are already represented
+            // there; carrying old freeform/retimed cards forward can overwrite
+            // a fresh card and duplicate one of its words on screen.
+            project.regenerateCaptions(preservingManualEdits: false)
             setSelectedCaptionIDs([])
             selectedClipID = project.clips.first?.id
             currentTime = 0
@@ -2068,6 +2084,9 @@ final class EditorSession: ObservableObject {
     private func keepTranscript(_ heard: [TranscriptWord]?) async {
         guard let heard, !heard.isEmpty, (project.transcript ?? []).isEmpty else { return }
         project.transcript = heard
+        for mediaID in Set(heard.map(\.mediaID)) {
+            project.markTranscriptionCurrent(for: mediaID)
+        }
         try? await persist()
     }
 
@@ -2116,6 +2135,7 @@ final class EditorSession: ObservableObject {
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
                     project.transcript = transcript
+                    project.markTranscriptionCurrent(for: mediaID)
                 }
                 guard !project.timelineTranscript.isEmpty else {
                     throw NativeEditorError.aiFailed("No spoken words were found to caption.")
@@ -2179,6 +2199,7 @@ final class EditorSession: ObservableObject {
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
                 project.transcript = transcript
+                project.markTranscriptionCurrent(for: mediaID)
             }
             guard !project.timelineTranscript.isEmpty else {
                 throw NativeEditorError.aiFailed("No spoken words were found to caption.")
@@ -2236,6 +2257,7 @@ final class EditorSession: ObservableObject {
                     transcript.removeAll { $0.mediaID == mediaID }
                     transcript.append(contentsOf: words)
                     project.transcript = transcript
+                    project.markTranscriptionCurrent(for: mediaID)
                 }
                 guard !words.isEmpty else { continue }
                 statusMessage = "Trimming silent gaps…"

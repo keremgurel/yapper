@@ -23,9 +23,14 @@ enum TranscriptionAudioEncoder {
     /// invents: at 48 kbps the transcriber placed the word "go" across 0.8
     /// seconds of room tone 1.6 seconds before the speaker said it, which read
     /// downstream as a retake that never happened and cost the edit a real one.
-    /// From 64 kbps up the answer is the original's, so this sits a step above
-    /// the plateau's edge rather than on it.
-    static let bitRate = 72_000
+    /// The original 72 kbps setting passed broad word-count checks but failed
+    /// on tightly repeated takes: the app upload dropped the opening of a
+    /// complete sentence while the same camera audio at higher fidelity heard
+    /// both attempts. Stored chunks bypass the request-body ceiling, so there
+    /// is no reason to balance speech accuracy on that cliff. 160 kbps keeps a
+    /// three-minute chunk small while preserving substantially more onset and
+    /// consonant detail for retake-heavy recordings.
+    static let bitRate = 160_000
 
     static func m4a(pcm: Data, sampleRate: Int) throws -> Data {
         let url = FileManager.default.temporaryDirectory

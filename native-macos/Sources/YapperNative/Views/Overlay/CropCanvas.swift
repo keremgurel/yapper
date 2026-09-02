@@ -11,6 +11,8 @@ struct CropCanvas: View {
     let image: CGImage?
     let mediaAspect: Double
     let crop: OverlayCrop
+    /// Width/height in source fractions when an aspect preset is active.
+    var aspectRatio: Double? = nil
     /// Every step of a drag, for anything drawing along with it.
     var onChange: (OverlayCrop) -> Void = { _ in }
     /// Once, when the drag lets go. The only one that has to be saved.
@@ -18,7 +20,7 @@ struct CropCanvas: View {
 
     @State private var draft: OverlayCrop?
     @State private var dragOrigin: OverlayCrop?
-    @State private var resizeCorner: CanvasResizeCorner?
+    @State private var dragIntent: CropDragIntent?
 
     private var shown: OverlayCrop { draft ?? crop }
 
@@ -36,6 +38,11 @@ struct CropCanvas: View {
             // those drags against. See CanvasCoordinateSpace.
             .coordinateSpace(name: CanvasCoordinateSpace.crop)
             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                    .allowsHitTesting(false)
+            }
         }
         .aspectRatio(mediaAspect, contentMode: .fit)
     }
@@ -72,11 +79,22 @@ struct CropCanvas: View {
             width: max(1, size.width * crop.width),
             height: max(1, size.height * crop.height)
         )
-        .overlay { Rectangle().stroke(Color.cyan, lineWidth: 1.5) }
-        .overlay(alignment: .topLeading) { handle(.topLeading, in: size) }
-        .overlay(alignment: .topTrailing) { handle(.topTrailing, in: size) }
-        .overlay(alignment: .bottomLeading) { handle(.bottomLeading, in: size) }
-        .overlay(alignment: .bottomTrailing) { handle(.bottomTrailing, in: size) }
+        .overlay { selectionGrid }
+        .overlay {
+            Rectangle()
+                .stroke(Color.yapperOrange, lineWidth: 2)
+                .shadow(color: .black.opacity(0.55), radius: 2)
+                .allowsHitTesting(false)
+        }
+        .overlay(alignment: .topLeading) { cornerHandle(.topLeading) }
+        .overlay(alignment: .topTrailing) { cornerHandle(.topTrailing) }
+        .overlay(alignment: .bottomLeading) { cornerHandle(.bottomLeading) }
+        .overlay(alignment: .bottomTrailing) { cornerHandle(.bottomTrailing) }
+        .overlay(alignment: .top) { edgeHandle(.top) }
+        .overlay(alignment: .bottom) { edgeHandle(.bottom) }
+        .overlay(alignment: .leading) { edgeHandle(.leading) }
+        .overlay(alignment: .trailing) { edgeHandle(.trailing) }
+        .overlay { moveAffordance(in: size, crop: crop) }
         .offset(x: size.width * crop.x, y: size.height * crop.y)
         .contentShape(Rectangle())
         .cursor(.openHand)
@@ -85,7 +103,7 @@ struct CropCanvas: View {
                 .onChanged { value in
                     if dragOrigin == nil {
                         dragOrigin = crop
-                        resizeCorner = CropHandleMetrics.corner(
+                        dragIntent = CropHandleMetrics.intent(
                             at: CGPoint(
                                 x: value.startLocation.x - size.width * crop.x,
                                 y: value.startLocation.y - size.height * crop.y
@@ -96,64 +114,109 @@ struct CropCanvas: View {
                             )
                         )
                     }
-                    guard let dragOrigin, size.width > 0, size.height > 0 else { return }
+                    guard let dragOrigin, let dragIntent,
+                          size.width > 0, size.height > 0
+                    else { return }
 
-                    if let resizeCorner {
+                    switch dragIntent {
+                    case .corner(let corner):
                         update(
-                            dragOrigin.resized(
-                                corner: resizeCorner,
+                            CropGeometry.resized(
+                                dragOrigin,
+                                corner: corner,
                                 dx: Double(value.translation.width) / Double(size.width),
-                                dy: Double(value.translation.height) / Double(size.height)
+                                dy: Double(value.translation.height) / Double(size.height),
+                                ratio: aspectRatio,
+                                minimumSide: OverlayCrop.minimumSide
                             )
                         )
-                    } else {
-                        update(dragOrigin.moved(
-                            dx: Double(value.translation.width) / Double(size.width),
-                            dy: Double(value.translation.height) / Double(size.height)
-                        ))
+                    case .edge(let edge):
+                        let delta = edge.isHorizontal
+                            ? Double(value.translation.width) / Double(size.width)
+                            : Double(value.translation.height) / Double(size.height)
+                        update(
+                            CropGeometry.resized(
+                                dragOrigin,
+                                edge: edge,
+                                delta: delta,
+                                ratio: aspectRatio,
+                                minimumSide: OverlayCrop.minimumSide
+                            )
+                        )
+                    case .move:
+                        update(
+                            CropGeometry.moved(
+                                dragOrigin,
+                                dx: Double(value.translation.width) / Double(size.width),
+                                dy: Double(value.translation.height) / Double(size.height),
+                                minimumSide: OverlayCrop.minimumSide
+                            )
+                        )
                     }
                 }
                 .onEnded { _ in commit() }
         )
     }
 
-    private func handle(_ corner: CanvasResizeCorner, in size: CGSize) -> some View {
-        // Keep both the visible grip and its larger hit target wholly inside the
-        // crop. A grip centred on the outline gets clipped at picture edges and
-        // misleadingly exposes pixels that cannot reliably receive the drag.
-        ZStack(alignment: alignment(for: corner)) {
-            Color.clear
-
-            Circle()
-                .fill(Color.white)
-                .overlay { Circle().stroke(Color.cyan, lineWidth: 2) }
-                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
-                .frame(
-                    width: CropHandleMetrics.gripSide,
-                    height: CropHandleMetrics.gripSide
-                )
-                .offset(
-                    x: corner.xSign < 0 ? CropHandleMetrics.gripInset : -CropHandleMetrics.gripInset,
-                    y: corner.ySign < 0 ? CropHandleMetrics.gripInset : -CropHandleMetrics.gripInset
-                )
-                .allowsHitTesting(false)
+    private var selectionGrid: some View {
+        GeometryReader { proxy in
+            Path { path in
+                for fraction in [1.0 / 3.0, 2.0 / 3.0] {
+                    path.move(to: CGPoint(x: proxy.size.width * fraction, y: 0))
+                    path.addLine(to: CGPoint(x: proxy.size.width * fraction, y: proxy.size.height))
+                    path.move(to: CGPoint(x: 0, y: proxy.size.height * fraction))
+                    path.addLine(to: CGPoint(x: proxy.size.width, y: proxy.size.height * fraction))
+                }
+            }
+            .stroke(Color.white.opacity(0.4), lineWidth: 0.8)
         }
-            .frame(
-                width: CropHandleMetrics.targetLength(for: size.width * shown.width),
-                height: CropHandleMetrics.targetLength(for: size.height * shown.height)
-            )
-            .contentShape(Rectangle())
-            .cursor(.crosshair)
-            .accessibilityLabel("Crop from \(corner.accessibilityName)")
-            .help("Drag to crop from \(corner.accessibilityName)")
+        .allowsHitTesting(false)
     }
 
-    private func alignment(for corner: CanvasResizeCorner) -> Alignment {
-        switch corner {
-        case .topLeading: .topLeading
-        case .topTrailing: .topTrailing
-        case .bottomLeading: .bottomLeading
-        case .bottomTrailing: .bottomTrailing
+    private func cornerHandle(_ corner: CanvasResizeCorner) -> some View {
+        CropCornerMark(corner: corner)
+            .stroke(Color.black.opacity(0.65), style: StrokeStyle(lineWidth: 6, lineCap: .round, lineJoin: .round))
+            .overlay {
+                CropCornerMark(corner: corner)
+                    .stroke(Color.yapperOrange, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+            }
+            .frame(width: CropHandleMetrics.cornerMarkSide, height: CropHandleMetrics.cornerMarkSide)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    private func edgeHandle(_ edge: CropEdge) -> some View {
+        Capsule(style: .continuous)
+            .fill(Color.white)
+            .overlay {
+                Capsule(style: .continuous)
+                    .stroke(Color.yapperOrange, lineWidth: 2)
+            }
+            .shadow(color: .black.opacity(0.45), radius: 2, y: 1)
+            .frame(
+                width: edge.isHorizontal
+                    ? CropHandleMetrics.edgeGripThickness
+                    : CropHandleMetrics.edgeGripLength,
+                height: edge.isHorizontal
+                    ? CropHandleMetrics.edgeGripLength
+                    : CropHandleMetrics.edgeGripThickness
+            )
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func moveAffordance(in size: CGSize, crop: OverlayCrop) -> some View {
+        if size.width * crop.width >= 92, size.height * crop.height >= 92 {
+            Image(systemName: "arrow.up.and.down.and.arrow.left.and.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(9)
+                .background(Color.black.opacity(0.58), in: Circle())
+                .overlay { Circle().stroke(Color.white.opacity(0.22), lineWidth: 1) }
+                .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 
@@ -166,6 +229,22 @@ struct CropCanvas: View {
         if let draft { onCommit(draft) }
         draft = nil
         dragOrigin = nil
-        resizeCorner = nil
+        dragIntent = nil
+    }
+}
+
+private struct CropCornerMark: Shape {
+    let corner: CanvasResizeCorner
+
+    func path(in rect: CGRect) -> Path {
+        let horizontalEnd = corner.xSign < 0 ? rect.maxX : rect.minX
+        let verticalEnd = corner.ySign < 0 ? rect.maxY : rect.minY
+        let x = corner.xSign < 0 ? rect.minX : rect.maxX
+        let y = corner.ySign < 0 ? rect.minY : rect.maxY
+        var path = Path()
+        path.move(to: CGPoint(x: horizontalEnd, y: y))
+        path.addLine(to: CGPoint(x: x, y: y))
+        path.addLine(to: CGPoint(x: x, y: verticalEnd))
+        return path
     }
 }

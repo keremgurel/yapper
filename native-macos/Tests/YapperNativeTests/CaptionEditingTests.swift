@@ -251,7 +251,7 @@ extension CaptionEditingTests {
         #expect(CaptionWordsPerCard.normalized(nil) == 3)
     }
 
-    @Test func aCardNeverSpansACutEvenAtAFixedWordCount() {
+    @Test func aFixedCountContinuesAcrossACut() {
         let mediaID = UUID()
         var subject = EditorProject(
             media: [
@@ -266,8 +266,8 @@ extension CaptionEditingTests {
                 ),
             ],
             // The recording's second 1..2 is cut, so "two" and "three" sit next
-            // to each other on the timeline while their anchors are a second
-            // apart. A card holding both would map to nothing.
+            // to each other on the edited timeline while their source anchors
+            // remain a second apart.
             clips: [
                 TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1),
                 TimelineClip(mediaID: mediaID, sourceStart: 2, sourceEnd: 4),
@@ -283,7 +283,8 @@ extension CaptionEditingTests {
         )
         subject.regenerateCaptions()
 
-        #expect(subject.captionEntries.map(\.text) == ["one two", "three four"])
-        #expect(subject.captionCues.map(\.text) == ["one two", "three four"])
+        #expect(subject.captionEntries.map(\.text) == ["one two three", "four"])
+        #expect(subject.captionCues.map(\.text) == ["one two three", "four"])
+        #expect(subject.captionCues.allSatisfy { $0.duration > 0 })
     }
 }

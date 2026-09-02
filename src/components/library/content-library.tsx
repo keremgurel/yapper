@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { ArrowRight, Lightbulb } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import Link from "next/link";
 import CrossPostSheet, {
   type CrossPostTarget,
@@ -12,7 +12,8 @@ import BulkBar from "@/components/items/bulk-bar";
 import ItemFilters from "@/components/items/item-filters";
 import ItemTable from "@/components/items/item-table";
 import ItemTableSkeleton from "@/components/items/item-table-skeleton";
-import { EmptyState, PageHeader } from "@/components/studio-ui";
+import LabOverview, { LabSwitchLink } from "@/components/items/lab-overview";
+import { EmptyState } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
 import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
@@ -70,21 +71,31 @@ export default function ContentLibrary() {
 
   return (
     <div className="w-full pb-24">
-      <PageHeader
-        title="Content Library"
-        description={`The ideas you sent from the Idea Bank, from draft to posted.${
-          importing ? " Importing your saved ideas…" : ""
-        }`}
-        actions={
-          <Button asChild variant="outline">
-            <Link href="/studio/ideas">
-              <Lightbulb className="h-4 w-4" />
-              Open Idea Bank
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
-        }
+      <LabOverview
+        mode="library"
+        items={items}
+        action={<LabSwitchLink mode="library" />}
       />
+
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
+            Your working slate
+          </p>
+          <h2 className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]">
+            Content pipeline
+          </h2>
+          {importing && (
+            <p className="text-muted-foreground mt-1 text-xs">
+              Importing your saved ideas…
+            </p>
+          )}
+        </div>
+        <p className="text-muted-foreground max-w-md text-xs leading-5 sm:text-right">
+          Open any row to develop its hook and script. Change status here as the
+          work moves forward.
+        </p>
+      </div>
 
       <ViewBar views={views} />
 

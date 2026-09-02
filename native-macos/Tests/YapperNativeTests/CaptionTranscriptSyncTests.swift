@@ -99,6 +99,58 @@ import Testing
         #expect(subject.storedCaptions[0].isTextEdited == false)
     }
 
+    @Test func aFreshOneClickPassDropsAnObsoleteManualCard() {
+        var subject = project(wordsPerCard: 3)
+        subject.regenerateCaptions()
+        // Model an old retimed/freeform card which cannot be synchronized back
+        // to the newly selected take.
+        subject.captions?[0].text = "stale manual card"
+        subject.captions?[0].isTextEdited = true
+
+        subject.regenerateCaptions(preservingManualEdits: false)
+
+        #expect(subject.captionCues.map(\.text) == ["one two three", "four"])
+        #expect(subject.storedCaptions.allSatisfy { !$0.isTextEdited })
+    }
+
+    @Test func addingAWordToACaptionAcrossACutKeepsOneVisibleCopy() {
+        let mediaID = UUID()
+        var subject = EditorProject(
+            media: [
+                ProjectMedia(
+                    id: mediaID,
+                    url: URL(filePath: "/tmp/caption-sync-across-cut.mp4"),
+                    name: "caption-sync-across-cut.mp4",
+                    duration: 3,
+                    width: 1080,
+                    height: 1920,
+                    hasAudio: true
+                ),
+            ],
+            clips: [
+                TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1),
+                TimelineClip(mediaID: mediaID, sourceStart: 2, sourceEnd: 3),
+            ],
+            transcript: [
+                TranscriptWord(mediaID: mediaID, text: "update.", start: 0.70, end: 0.90),
+                TranscriptWord(mediaID: mediaID, text: "last", start: 2.10, end: 2.30),
+                TranscriptWord(mediaID: mediaID, text: "check-in,", start: 2.35, end: 2.60),
+            ],
+            captionsEnabled: true,
+            captionWordsPerCard: 3
+        )
+        subject.regenerateCaptions()
+        let captionID = try! #require(subject.storedCaptions.first?.id)
+
+        subject.setCaptionText("update. last check-in, testword", for: captionID)
+
+        #expect(subject.captionCues.map(\.text) == ["update. last check-in, testword"])
+        #expect(subject.transcript?.filter { $0.text == "testword" }.count == 1)
+        #expect(subject.transcript?.allSatisfy(subject.isWordKept) == true)
+        #expect(subject.storedCaptions.first?.wordIDs?.count == 4)
+        #expect(Set(subject.storedCaptions.first?.wordIDs ?? []).count == 4)
+    }
+
     @Test func aCardWhoseWordsAreAllCutDrawsNothing() {
         var subject = project(wordsPerCard: 1)
         subject.regenerateCaptions()
