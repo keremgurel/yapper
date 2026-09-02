@@ -8,12 +8,6 @@ import SwiftUI
 /// rectangle and reports the rectangle it ends up with, which is what lets the
 /// same surface be a thumbnail in the inspector and the whole of a sheet.
 struct CropCanvas: View {
-    /// Keep the control easy to acquire even though the visible grip is small.
-    /// The target sits *inside* the crop, so it remains available when a crop
-    /// edge is flush with the (clipped) edge of the picture.
-    private static let cornerTargetSide: CGFloat = 36
-    private static let cornerGripSide: CGFloat = 12
-
     let image: CGImage?
     let mediaAspect: Double
     let crop: OverlayCrop
@@ -24,6 +18,7 @@ struct CropCanvas: View {
 
     @State private var draft: OverlayCrop?
     @State private var dragOrigin: OverlayCrop?
+    @State private var resizeCorner: CanvasResizeCorner?
 
     private var shown: OverlayCrop { draft ?? crop }
 
@@ -86,69 +81,71 @@ struct CropCanvas: View {
         .contentShape(Rectangle())
         .cursor(.openHand)
         .gesture(
-            DragGesture(minimumDistance: 1, coordinateSpace: .named(CanvasCoordinateSpace.crop))
+            DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.crop))
                 .onChanged { value in
-                    if dragOrigin == nil { dragOrigin = crop }
+                    if dragOrigin == nil {
+                        dragOrigin = crop
+                        resizeCorner = CropHandleMetrics.corner(
+                            at: CGPoint(
+                                x: value.startLocation.x - size.width * crop.x,
+                                y: value.startLocation.y - size.height * crop.y
+                            ),
+                            cropSize: CGSize(
+                                width: size.width * crop.width,
+                                height: size.height * crop.height
+                            )
+                        )
+                    }
                     guard let dragOrigin, size.width > 0, size.height > 0 else { return }
-                    update(
-                        dragOrigin.moved(
+
+                    if let resizeCorner {
+                        update(
+                            dragOrigin.resized(
+                                corner: resizeCorner,
+                                dx: Double(value.translation.width) / Double(size.width),
+                                dy: Double(value.translation.height) / Double(size.height)
+                            )
+                        )
+                    } else {
+                        update(dragOrigin.moved(
                             dx: Double(value.translation.width) / Double(size.width),
                             dy: Double(value.translation.height) / Double(size.height)
-                        )
-                    )
+                        ))
+                    }
                 }
                 .onEnded { _ in commit() }
         )
     }
 
     private func handle(_ corner: CanvasResizeCorner, in size: CGSize) -> some View {
-        // A negative content-shape inset does not give a tiny view dependable
-        // hit-testing beyond its layout bounds, and the crop canvas clips any
-        // part that hangs beyond the picture. Give the gesture a genuine frame
-        // extending inward from the corner instead. The grip can stay centred
-        // on the outline without making the user aim at a few visible pixels.
+        // Keep both the visible grip and its larger hit target wholly inside the
+        // crop. A grip centred on the outline gets clipped at picture edges and
+        // misleadingly exposes pixels that cannot reliably receive the drag.
         ZStack(alignment: alignment(for: corner)) {
             Color.clear
 
             Circle()
                 .fill(Color.white)
-                .overlay { Circle().stroke(Color.cyan, lineWidth: 1.5) }
+                .overlay { Circle().stroke(Color.cyan, lineWidth: 2) }
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                 .frame(
-                    width: Self.cornerGripSide,
-                    height: Self.cornerGripSide
+                    width: CropHandleMetrics.gripSide,
+                    height: CropHandleMetrics.gripSide
                 )
                 .offset(
-                    x: corner.xSign < 0
-                        ? -Self.cornerGripSide / 2
-                        : Self.cornerGripSide / 2,
-                    y: corner.ySign < 0
-                        ? -Self.cornerGripSide / 2
-                        : Self.cornerGripSide / 2
+                    x: corner.xSign < 0 ? CropHandleMetrics.gripInset : -CropHandleMetrics.gripInset,
+                    y: corner.ySign < 0 ? CropHandleMetrics.gripInset : -CropHandleMetrics.gripInset
                 )
                 .allowsHitTesting(false)
         }
             .frame(
-                width: min(Self.cornerTargetSide, max(1, size.width * shown.width / 2)),
-                height: min(Self.cornerTargetSide, max(1, size.height * shown.height / 2))
+                width: CropHandleMetrics.targetLength(for: size.width * shown.width),
+                height: CropHandleMetrics.targetLength(for: size.height * shown.height)
             )
             .contentShape(Rectangle())
             .cursor(.crosshair)
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.crop))
-                    .onChanged { value in
-                        if dragOrigin == nil { dragOrigin = shown }
-                        guard let dragOrigin, size.width > 0, size.height > 0 else { return }
-                        update(
-                            dragOrigin.resized(
-                                corner: corner,
-                                dx: Double(value.translation.width) / Double(size.width),
-                                dy: Double(value.translation.height) / Double(size.height)
-                            )
-                        )
-                    }
-                    .onEnded { _ in commit() }
-            )
             .accessibilityLabel("Crop from \(corner.accessibilityName)")
+            .help("Drag to crop from \(corner.accessibilityName)")
     }
 
     private func alignment(for corner: CanvasResizeCorner) -> Alignment {
@@ -169,5 +166,6 @@ struct CropCanvas: View {
         if let draft { onCommit(draft) }
         draft = nil
         dragOrigin = nil
+        resizeCorner = nil
     }
 }
