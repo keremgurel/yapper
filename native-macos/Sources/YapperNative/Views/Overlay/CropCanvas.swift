@@ -8,6 +8,12 @@ import SwiftUI
 /// rectangle and reports the rectangle it ends up with, which is what lets the
 /// same surface be a thumbnail in the inspector and the whole of a sheet.
 struct CropCanvas: View {
+    /// Keep the control easy to acquire even though the visible grip is small.
+    /// The target sits *inside* the crop, so it remains available when a crop
+    /// edge is flush with the (clipped) edge of the picture.
+    private static let cornerTargetSide: CGFloat = 36
+    private static let cornerGripSide: CGFloat = 12
+
     let image: CGImage?
     let mediaAspect: Double
     let crop: OverlayCrop
@@ -96,12 +102,36 @@ struct CropCanvas: View {
     }
 
     private func handle(_ corner: CanvasResizeCorner, in size: CGSize) -> some View {
-        Circle()
-            .fill(Color.white)
-            .overlay { Circle().stroke(Color.cyan, lineWidth: 1.5) }
-            .frame(width: 12, height: 12)
-            .offset(x: corner.xOffset * 0.7, y: corner.yOffset * 0.7)
-            .contentShape(Rectangle().inset(by: -10))
+        // A negative content-shape inset does not give a tiny view dependable
+        // hit-testing beyond its layout bounds, and the crop canvas clips any
+        // part that hangs beyond the picture. Give the gesture a genuine frame
+        // extending inward from the corner instead. The grip can stay centred
+        // on the outline without making the user aim at a few visible pixels.
+        ZStack(alignment: alignment(for: corner)) {
+            Color.clear
+
+            Circle()
+                .fill(Color.white)
+                .overlay { Circle().stroke(Color.cyan, lineWidth: 1.5) }
+                .frame(
+                    width: Self.cornerGripSide,
+                    height: Self.cornerGripSide
+                )
+                .offset(
+                    x: corner.xSign < 0
+                        ? -Self.cornerGripSide / 2
+                        : Self.cornerGripSide / 2,
+                    y: corner.ySign < 0
+                        ? -Self.cornerGripSide / 2
+                        : Self.cornerGripSide / 2
+                )
+                .allowsHitTesting(false)
+        }
+            .frame(
+                width: min(Self.cornerTargetSide, max(1, size.width * shown.width / 2)),
+                height: min(Self.cornerTargetSide, max(1, size.height * shown.height / 2))
+            )
+            .contentShape(Rectangle())
             .cursor(.crosshair)
             .highPriorityGesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.crop))
@@ -119,6 +149,15 @@ struct CropCanvas: View {
                     .onEnded { _ in commit() }
             )
             .accessibilityLabel("Crop from \(corner.accessibilityName)")
+    }
+
+    private func alignment(for corner: CanvasResizeCorner) -> Alignment {
+        switch corner {
+        case .topLeading: .topLeading
+        case .topTrailing: .topTrailing
+        case .bottomLeading: .bottomLeading
+        case .bottomTrailing: .bottomTrailing
+        }
     }
 
     private func update(_ crop: OverlayCrop) {

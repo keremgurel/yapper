@@ -6,6 +6,19 @@ final class YapperNativeAppDelegate: NSObject, NSApplicationDelegate {
     weak var session: EditorSession?
     private var terminationTask: Task<Void, Never>?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // `swift run` launches the executable without an enclosing `.app`
+        // bundle. In that form AppKit otherwise leaves it as a background
+        // process: the Scene exists, but macOS gives it no visible window or
+        // Dock presence. Explicitly promote and activate it so development
+        // launches behave like the packaged application.
+        NSApp.setActivationPolicy(.regular)
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+            NSApp.windows.first?.makeKeyAndOrderFront(nil)
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard terminationTask == nil else { return .terminateLater }
         guard let session else { return .terminateNow }
