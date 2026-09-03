@@ -650,7 +650,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 return
             }
             let script = """
-            (async () => {
+            void (async () => {
               try {
                 let clerk = window.Clerk;
                 for (let attempt = 0; !clerk && attempt < 100; attempt += 1) {
@@ -677,7 +677,11 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 });
               }
             })();
+            null;
             """
+            // Completion/errors arrive through the message bridge above.
+            // Returning a Promise to evaluateJavaScript produces WebKit's
+            // "unsupported type" error even while sign-in is succeeding.
             webView?.evaluateJavaScript(script) { [weak self] _, evaluationError in
                 guard let evaluationError else { return }
                 Task { @MainActor in

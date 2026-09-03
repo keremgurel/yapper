@@ -22,7 +22,7 @@ struct StudioSignInView: View {
                 VStack(spacing: 6) {
                     Text("Yapper Studio")
                         .font(.system(size: 26, weight: .black, design: .rounded))
-                    Text("Finish signing in in your browser. This window updates by itself.")
+                    Text("Finish signing in in the private sign-in window. Your regular browser account stays separate.")
                         .font(.studioBody)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -67,7 +67,7 @@ struct StudioSignInView: View {
     private func signIn() {
         errorMessage = nil
         if !NativeAuthHandoff.shared.begin() {
-            errorMessage = "Couldn’t open your browser. Open ypr.app and sign in there."
+            errorMessage = "Couldn’t open the private sign-in window. Try again, or sign in with email here."
         }
     }
 }

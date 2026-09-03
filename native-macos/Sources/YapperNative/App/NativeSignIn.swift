@@ -6,8 +6,8 @@ import Foundation
 /// an address is the difference between signing in and being sent away. Google
 /// and Apple are the exception, and not by choice: Google refuses OAuth from an
 /// embedded web view outright (`disallowed_useragent`), and Apple's is barely
-/// better. Those get the creator's real browser, where their existing session
-/// and password manager already are.
+/// better. Those use a private system authentication session, so signing in
+/// here does not deliberately reuse the regular browser's account.
 enum NativeSignIn {
     /// Hosts that will not do business with an embedded web view.
     private static let providerHosts = [

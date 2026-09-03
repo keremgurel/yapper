@@ -1,18 +1,19 @@
 import AppKit
+import AuthenticationServices
 import Foundation
 
-/// Signing in, which happens in the creator's own browser.
+/// Signing in through a private system authentication session.
 ///
-/// Credentials and Google never touch the app's web view: it opens the default
-/// browser, Clerk signs the person in there with their existing session and
-/// password manager, and a short-lived one-time ticket comes back through the
+/// Credentials and Google never touch the app's web view. Clerk signs the
+/// person in independently of their regular browser account, and a short-lived
+/// one-time ticket comes back through the
 /// `yapper-studio://auth/callback` scheme to hand that identity over.
 ///
 /// This owns both ends: the `state` that ties a callback to the attempt that
 /// asked for it, and the callback itself, kept in memory when nothing is
 /// listening yet so switching pages mid-login cannot lose it.
 @MainActor
-final class NativeAuthHandoff: ObservableObject {
+final class NativeAuthHandoff: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     static let shared = NativeAuthHandoff()
 
     /// True from opening the browser until a callback comes back.
@@ -22,8 +23,10 @@ final class NativeAuthHandoff: ObservableObject {
     private var pendingCallback: URL?
     private var observers: [UUID: (URL) -> Void] = [:]
     private static let stateKey = "yapperNativeAuthenticationState"
+    private var authenticationSession: ASWebAuthenticationSession?
+    private var presentationWindow: NSWindow?
 
-    private init() {}
+    private override init() { super.init() }
 
     /// The attempt currently in flight. Persisted, because the browser half can
     /// outlive a relaunch of the app.
@@ -36,6 +39,9 @@ final class NativeAuthHandoff: ObservableObject {
     ///   failure the caller can say anything useful about.
     @discardableResult
     func begin(at baseURL: URL = URL(string: "https://ypr.app/studio/native-auth")!) -> Bool {
+        // Repeated clicks must not replace an attempt whose callback is pending.
+        guard !isWaitingInBrowser else { return true }
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return false }
         let state = UUID().uuidString.lowercased()
         guard var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             return false
@@ -48,19 +54,57 @@ final class NativeAuthHandoff: ObservableObject {
 
         UserDefaults.standard.set(state, forKey: Self.stateKey)
         isWaitingInBrowser = true
-        // NSWorkspace uses the person's configured default browser and its
-        // normal cookie jar. ASWebAuthenticationSession presents a separate auth
-        // sheet, which was the source of the inconsistent sign-in UX.
-        guard NSWorkspace.shared.open(url) else {
+        pendingCallback = nil
+        presentationWindow = window
+        let session = Self.makeAuthenticationSession(url: url) { [weak self] callback, _ in
+            Task { @MainActor in
+                guard let self, self.expectedState == state else { return }
+                self.authenticationSession = nil
+                self.presentationWindow = nil
+                guard let callback,
+                      Self.ticket(in: callback, expecting: state) != nil else {
+                    self.clearState()
+                    return
+                }
+                self.receive(callback)
+            }
+        }
+        session.presentationContextProvider = self
+        authenticationSession = session
+        // Never fall back to opening the regular browser: that would silently
+        // reuse its account (and changing it could sign that browser out).
+        guard session.start() else {
             clearState()
             return false
         }
         return true
     }
 
+    static func makeAuthenticationSession(
+        url: URL,
+        completion: @escaping ASWebAuthenticationSession.CompletionHandler
+    ) -> ASWebAuthenticationSession {
+        let session = ASWebAuthenticationSession(
+            url: url,
+            callbackURLScheme: "yapper-studio",
+            completionHandler: completion
+        )
+        session.prefersEphemeralWebBrowserSession = true
+        return session
+    }
+
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        presentationWindow ?? NSApp.keyWindow ?? NSApp.mainWindow ?? ASPresentationAnchor()
+    }
+
     func clearState() {
         UserDefaults.standard.removeObject(forKey: Self.stateKey)
         isWaitingInBrowser = false
+        pendingCallback = nil
+        let session = authenticationSession
+        authenticationSession = nil
+        presentationWindow = nil
+        session?.cancel()
     }
 
     /// The ticket in a callback, if the callback is one we asked for.

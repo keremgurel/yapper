@@ -10,6 +10,15 @@ import Testing
 /// well-formed one carrying nothing.
 @Suite
 struct NativeAuthHandoffTests {
+    @Test("Native login requests an isolated browser session")
+    @MainActor
+    func requestsPrivateBrowserSession() {
+        let session = NativeAuthHandoff.makeAuthenticationSession(
+            url: URL(string: "https://ypr.app/studio/native-auth?state=abc")!
+        ) { _, _ in }
+        #expect(session.prefersEphemeralWebBrowserSession)
+    }
+
     private func callback(
         scheme: String = "yapper-studio",
         host: String = "auth",
