@@ -7,30 +7,10 @@ import { Camera, Check, Music2, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConnections } from "@/hooks/use-connections";
-import { connectUrl } from "@/lib/publish/client";
+import { beginConnect } from "@/lib/publish/begin-connect";
 import TikTokInsightsRow from "@/components/publish/tiktok-insights-row";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
-import { invoke, isNative } from "@/lib/studio/native/bridge";
-
-/**
- * Start the OAuth flow. On the web this is a real navigation to the connect
- * route, same as any other link. Natively, a plain link would still let the
- * MAIN window navigate through that same-origin route before the redirect
- * chain ever reaches an external host — tearing the whole page (and every
- * OTHER connection's already-settled state) down and rebuilding it, just to
- * connect one platform. Invoking the popup directly means the main window's
- * page is never touched until the flow actually finishes.
- */
-function beginConnect(platform: PublishPlatform): void {
-  if (!isNative()) {
-    window.location.href = connectUrl(platform);
-    return;
-  }
-  void invoke("open_oauth_flow", {
-    url: `${window.location.origin}${connectUrl(platform)}`,
-  });
-}
 
 // Lucide dropped its brand marks, so these are neutral stand-ins.
 const ICON: Record<PublishPlatform, typeof Video> = {

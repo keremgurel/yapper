@@ -7,14 +7,15 @@ import {
   defaultCover,
   type CoverDraft,
 } from "@/components/publish/poster/cover-draft";
+import type { PosterVideo } from "@/components/publish/poster/poster-video";
 import { renderCover } from "@/components/publish/poster/render-cover";
 import { uploadThumbnailFile } from "@/hooks/use-thumbnail-upload";
-import type { PostableVideo } from "@/lib/publish/postable-videos";
 
 /**
- * Turning prepared videos into what the cross-post sheet posts: the cover is
- * uploaded here, and each video carries its own per-platform captions so the
- * sheet never has to reconstruct them from a single string.
+ * Turning a prepared video into what the cross-post sheet posts: the cover is
+ * uploaded here, and the video carries its own per-platform captions so the
+ * sheet never has to reconstruct them from a single string. A Yapper take
+ * travels by submission, a channel post by the R2 key of its master.
  */
 export function usePublishPrep() {
   const [targets, setTargets] = useState<CrossPostTarget[] | null>(null);
@@ -23,7 +24,7 @@ export function usePublishPrep() {
 
   const prepare = useCallback(
     async (
-      videos: PostableVideo[],
+      videos: PosterVideo[],
       covers: Record<string, CoverDraft>,
       captions: Record<string, CaptionSet>,
     ) => {
@@ -38,8 +39,8 @@ export function usePublishPrep() {
             try {
               thumbnail = await uploadThumbnailFile(await renderCover(cover));
             } catch {
-              // A cover is optional. Keep preparing the remaining videos and show
-              // one non-blocking warning after the batch is ready.
+              // A cover is optional. Keep preparing and show one non-blocking
+              // warning after the batch is ready.
             }
           }
           return {
@@ -47,8 +48,11 @@ export function usePublishPrep() {
             title: video.title,
             initialTitle: cover.headline || video.title,
             captions: captions[video.id],
-            submissionId: video.submissionId,
-            contentItemId: video.id,
+            submissionId:
+              video.kind === "yapper" ? video.submissionId : undefined,
+            mediaKey: video.kind === "platform" ? video.mediaKey : undefined,
+            contentItemId:
+              video.kind === "yapper" ? video.contentItemId : undefined,
             thumbnailKey: thumbnail?.key,
             thumbnailPreviewUrl: thumbnail?.previewUrl,
           } satisfies CrossPostTarget;
@@ -59,7 +63,7 @@ export function usePublishPrep() {
         prepared.some((item) => !item.thumbnailKey)
       ) {
         setWarning(
-          "One or more covers couldn't upload. The videos are still ready to publish.",
+          "The cover couldn't upload. The video is still ready to publish.",
         );
       }
       setTargets(prepared);

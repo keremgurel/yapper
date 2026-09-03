@@ -47,6 +47,25 @@ struct OverlayCropTests {
         #expect(moved.height == crop.height)
     }
 
+    @Test func choosingAnAspectStartsWithTheLargestUsefulRectangle() {
+        let shallow = OverlayCrop(x: 0, y: 0.65, width: 1, height: 0.35)
+        let portrait = CropGeometry.maximized(
+            shallow,
+            to: 0.5,
+            minimumSide: OverlayCrop.minimumSide
+        )
+        let landscape = CropGeometry.maximized(
+            shallow,
+            to: 4,
+            minimumSide: OverlayCrop.minimumSide
+        )
+
+        #expect(portrait.width == 0.5)
+        #expect(portrait.height == 1)
+        #expect(landscape.width == 1)
+        #expect(landscape.height == 0.25)
+    }
+
     @Test func croppingChangesTheShapeAnOverlayIsGiven() {
         // Half the width of a 16:9 picture is 8:9.
         let aspect = OverlayFrame.shownAspect(

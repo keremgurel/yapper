@@ -84,7 +84,7 @@ describe("POST /api/clean-transcript payload limits", () => {
         choices: [
           {
             message: {
-              content: '{"blocks":[{"keep":[[2,2]],"drop":[[1,1]]}]}',
+              content: '{"keep":[[0,0],[2,2]]}',
             },
           },
         ],
@@ -101,8 +101,8 @@ describe("POST /api/clean-transcript payload limits", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(init.body as string)).toMatchObject({
-      model: "gemini-3.1-pro",
-      max_completion_tokens: 16_000,
+      model: "gemini-3.7-flash",
+      max_completion_tokens: 8_000,
       temperature: 0,
     });
     expect(init.signal).toBeInstanceOf(AbortSignal);
@@ -133,7 +133,7 @@ describe("POST /api/clean-transcript payload limits", () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
         choices: [
-          { finish_reason: "length", message: { content: '{"blocks":[' } },
+          { finish_reason: "length", message: { content: '{"keep":[' } },
         ],
       }),
     );
@@ -157,9 +157,7 @@ describe("POST /api/clean-transcript when the model does not answer", () => {
     choices: [{ finish_reason: "error", message: { content: "" } }],
   };
   const answered = {
-    choices: [
-      { message: { content: '{"blocks":[{"keep":[[2,2]],"drop":[[1,1]]}]}' } },
-    ],
+    choices: [{ message: { content: '{"keep":[[0,0],[2,2]]}' } }],
   };
   const words = [{ text: "a" }, { text: "b" }, { text: "c" }];
 
@@ -216,7 +214,7 @@ describe("POST /api/clean-transcript when the model does not answer", () => {
   it("keeps a genuine no-retakes answer as no cuts", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
-        choices: [{ message: { content: '{"blocks":[]}' } }],
+        choices: [{ message: { content: '{"keep":[[0,2]]}' } }],
       }),
     );
     vi.stubGlobal("fetch", fetchMock);

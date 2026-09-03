@@ -162,7 +162,7 @@ struct CropSheet: View {
         let ratio = selectedAspect.ratio(sourceAspect: mediaAspect).flatMap {
             CropGeometry.fractionRatio(forRealRatio: $0, sourceAspect: mediaAspect)
         }
-        let fitted = CropGeometry.fitted(
+        let fitted = CropGeometry.maximized(
             crop,
             to: ratio,
             minimumSide: OverlayCrop.minimumSide

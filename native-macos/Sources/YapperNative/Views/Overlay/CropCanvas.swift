@@ -33,6 +33,12 @@ struct CropCanvas: View {
                 keptRectangle(in: proxy.size)
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
+            // Own the interaction from a surface that never moves. If the
+            // gesture lives on the kept rectangle, SwiftUI has to keep hit
+            // testing a view whose frame changes beneath the pointer; that is
+            // why repositioning and the bottom handles used to drop drags.
+            .contentShape(Rectangle())
+            .gesture(cropGesture(in: proxy.size))
             // The picture stands still while the kept rectangle is dragged
             // around inside it, which makes it the only honest thing to measure
             // those drags against. See CanvasCoordinateSpace.
@@ -98,64 +104,66 @@ struct CropCanvas: View {
         .offset(x: size.width * crop.x, y: size.height * crop.y)
         .contentShape(Rectangle())
         .cursor(.openHand)
-        .gesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.crop))
-                .onChanged { value in
-                    if dragOrigin == nil {
-                        dragOrigin = crop
-                        dragIntent = CropHandleMetrics.intent(
-                            at: CGPoint(
-                                x: value.startLocation.x - size.width * crop.x,
-                                y: value.startLocation.y - size.height * crop.y
-                            ),
-                            cropSize: CGSize(
-                                width: size.width * crop.width,
-                                height: size.height * crop.height
-                            )
-                        )
-                    }
-                    guard let dragOrigin, let dragIntent,
-                          size.width > 0, size.height > 0
-                    else { return }
+    }
 
-                    switch dragIntent {
-                    case .corner(let corner):
-                        update(
-                            CropGeometry.resized(
-                                dragOrigin,
-                                corner: corner,
-                                dx: Double(value.translation.width) / Double(size.width),
-                                dy: Double(value.translation.height) / Double(size.height),
-                                ratio: aspectRatio,
-                                minimumSide: OverlayCrop.minimumSide
-                            )
+    private func cropGesture(in size: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(CanvasCoordinateSpace.crop))
+            .onChanged { value in
+                if dragOrigin == nil {
+                    let origin = shown
+                    dragOrigin = origin
+                    dragIntent = CropHandleMetrics.intent(
+                        at: CGPoint(
+                            x: value.startLocation.x - size.width * origin.x,
+                            y: value.startLocation.y - size.height * origin.y
+                        ),
+                        cropSize: CGSize(
+                            width: size.width * origin.width,
+                            height: size.height * origin.height
                         )
-                    case .edge(let edge):
-                        let delta = edge.isHorizontal
-                            ? Double(value.translation.width) / Double(size.width)
-                            : Double(value.translation.height) / Double(size.height)
-                        update(
-                            CropGeometry.resized(
-                                dragOrigin,
-                                edge: edge,
-                                delta: delta,
-                                ratio: aspectRatio,
-                                minimumSide: OverlayCrop.minimumSide
-                            )
-                        )
-                    case .move:
-                        update(
-                            CropGeometry.moved(
-                                dragOrigin,
-                                dx: Double(value.translation.width) / Double(size.width),
-                                dy: Double(value.translation.height) / Double(size.height),
-                                minimumSide: OverlayCrop.minimumSide
-                            )
-                        )
-                    }
+                    )
                 }
-                .onEnded { _ in commit() }
-        )
+                guard let dragOrigin, let dragIntent,
+                      size.width > 0, size.height > 0
+                else { return }
+
+                switch dragIntent {
+                case .corner(let corner):
+                    update(
+                        CropGeometry.resized(
+                            dragOrigin,
+                            corner: corner,
+                            dx: Double(value.translation.width) / Double(size.width),
+                            dy: Double(value.translation.height) / Double(size.height),
+                            ratio: aspectRatio,
+                            minimumSide: OverlayCrop.minimumSide
+                        )
+                    )
+                case .edge(let edge):
+                    let delta = edge.isHorizontal
+                        ? Double(value.translation.width) / Double(size.width)
+                        : Double(value.translation.height) / Double(size.height)
+                    update(
+                        CropGeometry.resized(
+                            dragOrigin,
+                            edge: edge,
+                            delta: delta,
+                            ratio: aspectRatio,
+                            minimumSide: OverlayCrop.minimumSide
+                        )
+                    )
+                case .move:
+                    update(
+                        CropGeometry.moved(
+                            dragOrigin,
+                            dx: Double(value.translation.width) / Double(size.width),
+                            dy: Double(value.translation.height) / Double(size.height),
+                            minimumSide: OverlayCrop.minimumSide
+                        )
+                    )
+                }
+            }
+            .onEnded { _ in commit() }
     }
 
     private var selectionGrid: some View {

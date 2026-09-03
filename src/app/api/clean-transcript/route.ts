@@ -6,9 +6,9 @@ import {
 } from "@/lib/billing/actions";
 import {
   numberedTranscript,
-  RETAKE_BLOCK_PROMPT,
-  retakeCutsFromResponse,
+  RETAKE_PROMPT,
 } from "@/lib/studio/retake-clusters";
+import { cutsFromKeptSpans } from "@/lib/studio/retake-keep-spans";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -35,10 +35,11 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 const MAX_JSON_BYTES = 256 * 1024;
 const PROVIDER_TIMEOUT_MS = 280_000;
-// The compact range-only contract measured under 1,000 completion tokens on
-// the 1,407-word production take. This leaves ample headroom without inviting
-// a reasoning model to consume the whole function deadline before answering.
-const MAX_COMPLETION_TOKENS = 16_000;
+// The keep-only contract measured about 350 completion tokens on the 1,399-word
+// production take. Gemini counts hidden thinking against this cap, so it must
+// leave room to think as well as to answer; 8,000 did on every measured run,
+// while the previous model at 16,000 still ran out mid-answer.
+const MAX_COMPLETION_TOKENS = 8_000;
 const MAX_PROVIDER_RESPONSE_BYTES = 2 * 1024 * 1024;
 
 interface ChatCompletionResponse {
@@ -72,10 +73,10 @@ function isRetryableProviderFailure(error: unknown): boolean {
  * The AI "remove mistakes" pass.
  *
  * The model is given the transcript as numbered words and answers with the word
- * ranges to delete, grouped by retake cluster. Nothing is matched back by text,
- * so the failure that used to define this route — a cleaned script that could
- * not be told apart from the wrong attempt at the same line — cannot happen.
- * A response that does not describe a coherent edit is refused whole.
+ * ranges that survive; everything else is deleted. Nothing is matched back by
+ * text, so the failure that used to define this route, a cleaned script that
+ * could not be told apart from the wrong attempt at the same line, cannot
+ * happen. A response that does not describe a coherent edit is refused whole.
  */
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
@@ -88,8 +89,12 @@ export async function POST(req: Request): Promise<Response> {
   const base =
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   // The default is selected from repeatable, word-level scoring against a
-  // hand-audited real take. Keep the environment override for canaries.
-  const model = process.env.AI_CLEAN_MODEL ?? "gemini-3.1-pro";
+  // hand-audited real take (docs/one-click-benchmark-review.md, Part 2): on
+  // this contract it scored F1 0.986 in about 20 seconds, where gemini-3.1-pro
+  // took 100 seconds and failed its own contract on every run. Keep the
+  // environment override for canaries. Do not send a `reasoning` parameter:
+  // Google rejects it with a 400 through the gateway.
+  const model = process.env.AI_CLEAN_MODEL ?? "gemini-3.7-flash";
 
   let rawBody: unknown;
   try {
@@ -145,7 +150,7 @@ export async function POST(req: Request): Promise<Response> {
                 temperature: 0,
                 max_completion_tokens: MAX_COMPLETION_TOKENS,
                 messages: [
-                  { role: "system", content: RETAKE_BLOCK_PROMPT },
+                  { role: "system", content: RETAKE_PROMPT },
                   { role: "user", content: numberedTranscript(words) },
                 ],
               }),
@@ -191,7 +196,7 @@ export async function POST(req: Request): Promise<Response> {
       await new Promise((resolve) => setTimeout(resolve, RETRY_PAUSE_MS));
     }
 
-    const cuts = retakeCutsFromResponse(answer, words.length);
+    const cuts = cutsFromKeptSpans(answer, words.length);
     if (!cuts) {
       await refundCreditReservation(userId, reservation, "unreadable_edit");
       return Response.json({ error: "unreadable_edit" }, { status: 502 });

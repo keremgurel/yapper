@@ -176,6 +176,35 @@ enum CropGeometry {
         )
     }
 
+    /// The largest rectangle of a chosen shape that fits in the source,
+    /// centred as closely as possible on what the creator was targeting.
+    /// Aspect buttons use this instead of shrinking the existing rectangle:
+    /// choosing 9:16 after a shallow free crop should still start with a useful,
+    /// full-height portrait selection.
+    static func maximized(
+        _ crop: OverlayCrop,
+        to ratio: Double?,
+        minimumSide: Double
+    ) -> OverlayCrop {
+        guard let ratio, ratio > 0 else {
+            return contained(crop, ratio: nil, minimumSide: minimumSide)
+        }
+        let centreX = crop.x + crop.width / 2
+        let centreY = crop.y + crop.height / 2
+        let width = ratio >= 1 ? 1 : ratio
+        let height = ratio >= 1 ? 1 / ratio : 1
+        return contained(
+            OverlayCrop(
+                x: centreX - width / 2,
+                y: centreY - height / 2,
+                width: width,
+                height: height
+            ),
+            ratio: ratio,
+            minimumSide: minimumSide
+        )
+    }
+
     /// A rectangle with a new size, holding one corner still.
     private static func anchored(
         _ crop: OverlayCrop,

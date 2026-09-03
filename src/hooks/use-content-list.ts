@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { listContent, type ContentSummary } from "@/lib/content/client";
 import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
 import { useClientResource } from "@/hooks/use-client-resource";
@@ -12,11 +12,13 @@ export function useContentList(
   options: { includePosterUploads?: boolean } = {},
 ) {
   const includePosterUploads = options.includePosterUploads === true;
+  const [loadError, setLoadError] = useState<Error | null>(null);
   const key = includePosterUploads
     ? STUDIO_RESOURCE_KEYS.posterContent
     : STUDIO_RESOURCE_KEYS.content;
   const {
     data: items,
+    error,
     refresh: refreshResource,
     mutate,
   } = useClientResource(key, enabled, () =>
@@ -25,8 +27,11 @@ export function useContentList(
   const refresh = useCallback(async () => {
     try {
       await refreshResource(true);
-    } catch {
+      setLoadError(null);
+    } catch (cause) {
       // Keep the stale rows visible; a refresh failure is not an empty list.
+      // With nothing loaded yet, though, the surface needs to know.
+      setLoadError(cause instanceof Error ? cause : new Error("load_failed"));
     }
   }, [refreshResource]);
 
@@ -58,5 +63,8 @@ export function useContentList(
     [mutate],
   );
 
-  return { items, refresh, patchRow, removeRow, prependRow };
+  /** Set only when no rows have ever loaded and the fetch failed. */
+  const loadFailed = items === null && Boolean(loadError ?? error);
+
+  return { items, loadFailed, refresh, patchRow, removeRow, prependRow };
 }

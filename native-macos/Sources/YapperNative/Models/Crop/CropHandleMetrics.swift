@@ -13,8 +13,9 @@ enum CropDragIntent: Equatable, Sendable {
 /// grabbed. That avoids overlapping SwiftUI gestures and guarantees the middle
 /// remains available for repositioning, even when the crop is very small.
 enum CropHandleMetrics {
-    static let preferredCornerTarget: CGFloat = 32
-    static let preferredEdgeTarget: CGFloat = 14
+    static let preferredCornerTarget: CGFloat = 36
+    static let preferredEdgeTarget: CGFloat = 22
+    static let outsideTolerance: CGFloat = 10
     static let cornerMarkSide: CGFloat = 24
     static let edgeGripLength: CGFloat = 28
     static let edgeGripThickness: CGFloat = 6
@@ -32,8 +33,9 @@ enum CropHandleMetrics {
     /// third that creators use to reposition the chosen part of the picture.
     static func intent(at point: CGPoint, cropSize: CGSize) -> CropDragIntent? {
         guard cropSize.width > 0, cropSize.height > 0,
-              point.x >= 0, point.y >= 0,
-              point.x <= cropSize.width, point.y <= cropSize.height
+              point.x >= -outsideTolerance, point.y >= -outsideTolerance,
+              point.x <= cropSize.width + outsideTolerance,
+              point.y <= cropSize.height + outsideTolerance
         else { return nil }
 
         let horizontalTarget = cornerTarget(for: cropSize.width)
@@ -54,10 +56,12 @@ enum CropHandleMetrics {
 
         let horizontalEdge = edgeTarget(for: cropSize.height)
         let verticalEdge = edgeTarget(for: cropSize.width)
-        if point.y <= horizontalEdge { return .edge(.top) }
-        if point.y >= cropSize.height - horizontalEdge { return .edge(.bottom) }
-        if point.x <= verticalEdge { return .edge(.leading) }
-        if point.x >= cropSize.width - verticalEdge { return .edge(.trailing) }
-        return .move
+        let withinWidth = point.x >= 0 && point.x <= cropSize.width
+        let withinHeight = point.y >= 0 && point.y <= cropSize.height
+        if withinWidth, point.y <= horizontalEdge { return .edge(.top) }
+        if withinWidth, point.y >= cropSize.height - horizontalEdge { return .edge(.bottom) }
+        if withinHeight, point.x <= verticalEdge { return .edge(.leading) }
+        if withinHeight, point.x >= cropSize.width - verticalEdge { return .edge(.trailing) }
+        return withinWidth && withinHeight ? .move : nil
     }
 }

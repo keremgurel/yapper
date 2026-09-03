@@ -6,7 +6,7 @@ import Testing
 struct CropHandleMetricsTests {
     @Test("Large crops use a dependable corner target")
     func largeCropTarget() {
-        #expect(CropHandleMetrics.cornerTarget(for: 800) == 32)
+        #expect(CropHandleMetrics.cornerTarget(for: 800) == 36)
     }
 
     @Test("Small crops preserve a central movement region")
@@ -34,5 +34,14 @@ struct CropHandleMetricsTests {
         #expect(CropHandleMetrics.intent(at: CGPoint(x: 8, y: 90), cropSize: size) == .edge(.leading))
         #expect(CropHandleMetrics.intent(at: CGPoint(x: 292, y: 90), cropSize: size) == .edge(.trailing))
         #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 90), cropSize: size) == .move)
+    }
+
+    @Test("Bottom controls can be acquired just outside the selection")
+    func bottomOutsideTolerance() {
+        let size = CGSize(width: 300, height: 180)
+
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 186), cropSize: size) == .edge(.bottom))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 294, y: 186), cropSize: size) == .corner(.bottomTrailing))
+        #expect(CropHandleMetrics.intent(at: CGPoint(x: 150, y: 192), cropSize: size) == nil)
     }
 }

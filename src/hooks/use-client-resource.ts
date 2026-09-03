@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   loadClientResource,
   mutateClientResource,
@@ -37,8 +43,17 @@ export function useClientResource<T>(
     [key, staleAfter],
   );
 
+  // The first load failing is the one case a surface must say something about:
+  // with no cached rows and no error, a page would show its loading shape
+  // forever. Later refresh failures keep the stale rows and stay quiet.
+  const [error, setError] = useState<Error | null>(null);
   useEffect(() => {
-    if (enabled) void refresh(false).catch(() => undefined);
+    if (!enabled) return;
+    void refresh(false)
+      .then(() => setError(null))
+      .catch((cause: unknown) =>
+        setError(cause instanceof Error ? cause : new Error("load_failed")),
+      );
   }, [enabled, refresh]);
 
   const mutate = useCallback(
@@ -47,5 +62,5 @@ export function useClientResource<T>(
     [key],
   );
 
-  return { data, refresh, mutate };
+  return { data, error, refresh, mutate };
 }

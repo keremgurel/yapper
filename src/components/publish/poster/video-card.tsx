@@ -1,8 +1,7 @@
 "use client";
 
-import { Check, ChevronRight } from "lucide-react";
 import { Chip, statusTone } from "@/components/studio-ui";
-import type { PostableVideo } from "@/lib/publish/postable-videos";
+import type { PosterVideo } from "@/components/publish/poster/poster-video";
 
 function readableDate(iso: string | null): string {
   if (!iso) return "Not scheduled";
@@ -14,20 +13,15 @@ function readableDate(iso: string | null): string {
   });
 }
 
-/** One finished video, selectable for a batch and openable for preparing.
- * Selection is the only accent on the card, because selection is what orange
- * means. */
+/** One finished Yapper take, portrait like the video itself. The whole card
+ * opens it. Orange means open, and nothing else on the card is colored. */
 export default function VideoCard({
   video,
-  selected,
   active,
-  onToggle,
   onOpen,
 }: {
-  video: PostableVideo;
-  selected: boolean;
+  video: Extract<PosterVideo, { kind: "yapper" }>;
   active: boolean;
-  onToggle: () => void;
   onOpen: () => void;
 }) {
   return (
@@ -39,53 +33,24 @@ export default function VideoCard({
       <button
         type="button"
         onClick={onOpen}
+        aria-label={`Prepare ${video.title}`}
         className="block w-full text-left focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
       >
-        <div className="relative aspect-[16/9] overflow-hidden bg-[linear-gradient(145deg,#202020,#090909)]">
-          <div className="absolute inset-0 grid place-items-center px-6">
-            <span className="line-clamp-3 text-center text-[13px] leading-tight font-semibold text-white">
+        <div className="relative aspect-[9/16] overflow-hidden bg-[linear-gradient(160deg,#2a2a2a,#0c0c0c)]">
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10">
+            <p className="line-clamp-3 text-[13px] leading-snug font-semibold text-white">
               {video.title}
-            </span>
+            </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 p-3 pr-10">
-          <div className="min-w-0 flex-1">
-            <p className="text-foreground truncate text-sm font-medium">
-              {video.title}
-            </p>
-            <p className="text-muted-foreground mt-0.5 text-xs">
-              {readableDate(video.scheduledFor)}
-            </p>
-          </div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+          <p className="text-muted-foreground truncate text-xs">
+            {readableDate(video.scheduledFor)}
+          </p>
           <Chip tone={statusTone(video.status)} pill>
             {video.status}
           </Chip>
         </div>
-      </button>
-
-      <button
-        type="button"
-        aria-label={
-          selected ? `Deselect ${video.title}` : `Select ${video.title}`
-        }
-        aria-pressed={selected}
-        onClick={onToggle}
-        className={`absolute top-2.5 left-2.5 grid h-7 w-7 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-          selected
-            ? "bg-[color:var(--sg-accent)] text-black"
-            : "bg-black/50 text-white/60 hover:text-white"
-        }`}
-      >
-        <Check aria-hidden className="h-4 w-4" />
-      </button>
-
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Prepare ${video.title}`}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground absolute right-2 bottom-2.5 grid h-8 w-8 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-      >
-        <ChevronRight aria-hidden className="h-4 w-4" />
       </button>
     </article>
   );
