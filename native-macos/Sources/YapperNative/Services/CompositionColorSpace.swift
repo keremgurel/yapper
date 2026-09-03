@@ -72,6 +72,29 @@ enum CompositionColorSpace {
         composition.colorYCbCrMatrix = tags.matrix
     }
 
+    /// A custom compositor must encode its pixels in the same space it reports
+    /// to AVFoundation. A new BGRA render buffer need not carry these tags;
+    /// letting Core Image infer its space can encode sRGB and display it as
+    /// Rec.709, lifting the entire picture when a person cutout is enabled.
+    static func prepare(
+        _ buffer: CVPixelBuffer,
+        for composition: AVVideoComposition
+    ) -> CGColorSpace {
+        let attachments = [
+            kCVImageBufferColorPrimariesKey as String:
+                composition.colorPrimaries ?? Tags.rec709.primaries,
+            kCVImageBufferTransferFunctionKey as String:
+                composition.colorTransferFunction ?? Tags.rec709.transfer,
+            kCVImageBufferYCbCrMatrixKey as String:
+                composition.colorYCbCrMatrix ?? Tags.rec709.matrix,
+        ] as CFDictionary
+        let space = CVImageBufferCreateColorSpaceFromAttachments(attachments)?
+            .takeRetainedValue() ?? CGColorSpace(name: CGColorSpace.itur_709)!
+        CVBufferSetAttachments(buffer, attachments, .shouldPropagate)
+        CVBufferSetAttachment(buffer, kCVImageBufferCGColorSpaceKey, space, .shouldPropagate)
+        return space
+    }
+
     private static func tag(
         _ key: CFString,
         of description: CMFormatDescription

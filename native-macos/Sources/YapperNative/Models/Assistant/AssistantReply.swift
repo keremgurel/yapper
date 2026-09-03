@@ -13,6 +13,8 @@ enum AssistantReply {
         switch status {
         case let .placed(notes):
             .chirpy(landed(notes.count), notes: notes)
+        case let .generated(notes, changed):
+            .chirpy(changed == 0 ? "No overlays changed." : "Updated \(changed) overlay\(changed == 1 ? "" : "s").", notes: notes)
         case let .failed(message):
             .chirpy(message, tone: .trouble)
         case .idle, .working:

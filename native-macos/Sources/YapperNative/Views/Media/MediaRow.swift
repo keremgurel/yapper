@@ -65,6 +65,13 @@ struct MediaRow: View {
             Text(media.name)
                 .font(.studioBodyStrong)
                 .lineLimit(2)
+            if let generated = media.generated {
+                Text(generated.description)
+                    .font(.studioCaption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .help("Mention @\(media.name) in Chirpy to request changes")
+            }
             Text("\(media.width)×\(media.height) · \(formatTime(media.duration))")
                 .font(.studioCaption)
                 .foregroundStyle(.secondary)
@@ -76,22 +83,37 @@ struct MediaRow: View {
                     .foregroundStyle(.cyan)
             }
         }
+        .frame(minWidth: 0, alignment: .leading)
     }
 
     private var actions: some View {
         HStack(spacing: 6) {
-            Button("Add") {
+            Button {
                 Task { await session.appendMediaToTimeline(media.id) }
+            } label: {
+                AdaptiveControlLabel(
+                    title: "Add to main track",
+                    systemImage: "rectangle.stack.badge.plus",
+                    compactTitle: "Add"
+                )
             }
-            .buttonStyle(EditorSecondaryButtonStyle())
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .disabled(media.isScene)
             .help(media.isImage
                 ? "Add this picture to the timeline, holding for \(Int(EditorSession.imageClipDefaultDuration))s"
                 : "Add this clip to the end of the timeline")
-            Button("Overlay") {
+            Button {
                 Task { await session.addOverlay(media.id) }
+            } label: {
+                AdaptiveControlLabel(
+                    title: "Add as overlay",
+                    systemImage: "rectangle.on.rectangle",
+                    compactTitle: "Overlay"
+                )
             }
-            .buttonStyle(EditorSecondaryButtonStyle())
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             .disabled(!canOverlay)
+            .help(canOverlay ? "Add this media as an overlay" : "Add a clip to the main track first")
 
             Menu {
                 MediaActions(session: session, media: media, canOverlay: canOverlay)

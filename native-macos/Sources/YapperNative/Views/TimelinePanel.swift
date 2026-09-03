@@ -36,9 +36,10 @@ struct TimelinePanel: View {
                 Button {
                     session.toggleTimelineSnapping()
                 } label: {
-                    Label(
-                        session.isTimelineSnappingEnabled ? "Snap on" : "Snap off",
-                        systemImage: session.isTimelineSnappingEnabled ? "magnet" : "magnet.slash"
+                    AdaptiveControlLabel(
+                        title: session.isTimelineSnappingEnabled ? "Snap on" : "Snap off",
+                        systemImage: session.isTimelineSnappingEnabled ? "magnet" : "magnet.slash",
+                        compactTitle: "Snap"
                     )
                         .font(.studioCaptionStrong)
                         .foregroundStyle(session.isTimelineSnappingEnabled ? Color.yapperOrange : Color.secondary)
@@ -53,6 +54,7 @@ struct TimelinePanel: View {
                 }
                 .buttonStyle(.studioPlain)
                 .help("Snap to the playhead, edges, seconds, and audio transients · hold Option to bypass")
+                .accessibilityHint("Snap to the playhead, edges, seconds, and audio transients. Hold Option to bypass.")
                 Divider()
                     .frame(height: 18)
                 TimelineActionButton(
@@ -2106,6 +2108,7 @@ enum TimelineOverlayGeometry {
                     max(0, overlay.timelineStart + delta)
                 )
                 updated.duration = end - updated.timelineStart
+                updated = OverlayKeyTrack.rebased(updated, by: updated.timelineStart - overlay.timelineStart)
             case .trailing:
                 updated.duration = min(
                     max(minimumDuration, overlay.duration + delta),
@@ -2136,6 +2139,7 @@ enum TimelineOverlayGeometry {
                 overlay.timelineStart + (newSourceStart - overlay.sourceStart)
             )
             updated.duration = sourceEnd - newSourceStart
+            updated = OverlayKeyTrack.rebased(updated, by: updated.timelineStart - overlay.timelineStart)
         case .trailing:
             let sourceEnd = min(
                 available,

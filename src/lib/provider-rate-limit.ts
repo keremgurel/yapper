@@ -29,7 +29,10 @@ export type ProviderSpendEndpoint =
   | "inspiration-resolve"
   | "publish-caption"
   | "publish-thumbnail"
-  | "instagram-import";
+  | "instagram-import"
+  | "direct-overlays"
+  | "design-overlays"
+  | "revise-overlay";
 
 const HOUR = 60 * 60;
 const DAY = 24 * HOUR;
@@ -70,6 +73,13 @@ const ENDPOINT_POLICIES: Record<
   // API, but it is also the ceiling on cross-posting a week of clips, and a
   // creator who hits it waits two and a half hours for the next one.
   "instagram-import": { capacity: 8, refillPerSecond: 40 / DAY },
+  // Generated overlays. Planning is one reasoning call over the transcript.
+  // Native designs one moment per request, so a single editorial action may
+  // need up to twelve calls. A three-request burst cap cut normal batches off
+  // mid-action. Credits plus shared user/IP budgets still bound provider spend.
+  "direct-overlays": { capacity: 4, refillPerSecond: 20 / HOUR },
+  "design-overlays": { capacity: 12, refillPerSecond: 60 / HOUR },
+  "revise-overlay": { capacity: 6, refillPerSecond: 40 / HOUR },
 };
 
 /** High-ceiling pre-body flood protection. This is deliberately distinct from

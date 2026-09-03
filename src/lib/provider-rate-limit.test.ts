@@ -45,6 +45,26 @@ beforeEach(() => {
 });
 
 describe("guardProviderSpend", () => {
+  it("allows the native director's twelve-moment batch without an endpoint burst denial", async () => {
+    mocks.consumeRateLimits.mockResolvedValue([{ allowed: true }]);
+    await expect(
+      guardProviderSpend(
+        new Request("https://ypr.app/api/design-overlays"),
+        "user_test",
+        "design-overlays",
+      ),
+    ).resolves.toBeNull();
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          policy: expect.objectContaining({
+            scope: "user:provider-spend:design-overlays",
+            capacity: 12,
+          }),
+        }),
+      ]),
+    );
+  });
   it("uses a separate high-ceiling IP ingress bucket", async () => {
     const request = new Request("https://ypr.app/api/feedback");
 

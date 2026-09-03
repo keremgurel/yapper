@@ -88,6 +88,7 @@ enum AssistantRouter {
         let text = instruction.lowercased()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .unknown }
         if mentionsFile { return .placeOverlays }
+        if GeneratedOverlayCommand.creates(instruction) { return .placeOverlays }
 
         // Order matters: the more specific reading of a sentence wins. "Edit
         // this and add captions" is the one-click pass, not two separate asks.

@@ -1192,18 +1192,10 @@ final class EditorSession: ObservableObject {
                       currentTime > overlay.timelineStart + 0.02,
                       currentTime < overlay.timelineStart + overlay.duration - 0.02 else { continue }
                 let elapsed = currentTime - overlay.timelineStart
-                var left = overlay
-                left.duration = elapsed
-                let right = ProjectOverlay(
-                    mediaID: overlay.mediaID,
-                    timelineStart: currentTime,
-                    duration: overlay.duration - elapsed,
-                    sourceStart: overlay.sourceStart + elapsed,
-                    x: overlay.x,
-                    y: overlay.y,
-                    width: overlay.width,
-                    height: overlay.height
-                )
+                let left = OverlayKeyTrack.portion(of: overlay, from: 0, duration: elapsed)
+                var right = OverlayKeyTrack.portion(of: overlay, from: elapsed, duration: overlay.duration - elapsed)
+                right.id = UUID()
+                if media(for: overlay)?.isImage != true { right.sourceStart += elapsed }
                 project.overlays?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.overlay(right.id))
                 didSplit = true
@@ -1341,8 +1333,9 @@ final class EditorSession: ObservableObject {
                 if edge == .leading {
                     let elapsed = currentTime - overlay.timelineStart
                     overlay.timelineStart = currentTime
-                    overlay.sourceStart += elapsed
+                    if media(for: overlay)?.isImage != true { overlay.sourceStart += elapsed }
                     overlay.duration = end - currentTime
+                    overlay = OverlayKeyTrack.rebased(overlay, by: elapsed)
                 } else {
                     overlay.duration = currentTime - overlay.timelineStart
                 }
@@ -1508,6 +1501,10 @@ final class EditorSession: ObservableObject {
 
     func appendMediaToTimeline(_ mediaID: UUID) async {
         guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
+        guard !media.isScene else {
+            setStatus("Use Add as overlay for generated visuals.")
+            return
+        }
         await commitTimelineEdit {
             // A still has no duration of its own, so it gets the same default
             // hold an image overlay gets and is trimmed from there like any
@@ -1605,7 +1602,10 @@ final class EditorSession: ObservableObject {
         let box = solved ?? {
             let introduced = OverlayFrame.introduced(
                 mediaAspect: CompositionBuilder.aspect(of: media),
-                frameAspect: project.resolvedAspectRatio
+                frameAspect: project.resolvedAspectRatio,
+                // A generated scene is a card whatever its shape; see
+                // `OverlayLayout.FullFramePolicy`.
+                allowFullFrame: !media.isScene
             )
             return OverlayBox(
                 x: introduced.x,
@@ -2342,6 +2342,7 @@ final class EditorSession: ObservableObject {
 
         pausePlayback()
         project = target
+        if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
         reconcileSelectionAfterProjectChange()
         currentTime = min(currentTime, project.duration)
         do {
@@ -3054,6 +3055,18 @@ final class EditorSession: ObservableObject {
 
     private func beginDerivedMedia(for media: ProjectMedia) async {
         let generation = derivedGenerationFence.advance(media.id)
+        if media.isScene {
+            if let scene = SceneFileCache.shared.scene(at: media.url),
+               let image = ScenePosterRenderer.render(scene: scene,
+                    size: CGSize(width: media.width, height: media.height),
+                    palette: media.generated?.palette ?? .house,
+                    assets: FileSceneAssetResolver(sceneFile: media.url)) {
+                thumbnailsByMedia[media.id] = [image]
+            }
+            waveformByMedia[media.id] = []
+            waveformProgressByMedia[media.id] = 1
+            return
+        }
         if media.isImage {
             if let image = NSImage(contentsOf: media.url),
                let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -3186,6 +3199,7 @@ final class EditorSession: ObservableObject {
             syncHistoryAvailability()
         }
         project = next
+        if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
         if !keepingHistory {
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id

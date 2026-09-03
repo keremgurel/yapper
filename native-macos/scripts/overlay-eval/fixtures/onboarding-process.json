@@ -1,0 +1,16 @@
+{
+  "name": "onboarding-process",
+  "about": "A how-to with one clear three-step process and a lot of opinion around it. Expect one diagram; nothing for the opinions.",
+  "transcript": "Most people over complicate onboarding. You do not need a twelve step flow with tooltips everywhere. Here is what we do and it works. Step one, ask them one question, what are they trying to get done. Step two, drop them straight into a template that matches the answer. Step three, send one email two days later asking if it worked. That is it. Three steps. No tour, no checklist, no confetti. I think the reason this works is that people want to feel competent, not entertained, and every extra screen you add is a chance for them to feel dumb. So resist it. Keep it boring.",
+  "expected": [
+    {
+      "quote": "Step one, ask them one question, what are they trying to get done. Step two, drop them straight into a template that matches the answer. Step three, send one email two days later",
+      "kind": "diagram"
+    }
+  ],
+  "forbidden": [
+    "Most people over complicate onboarding",
+    "people want to feel competent",
+    "Keep it boring"
+  ]
+}

@@ -11,7 +11,7 @@ let package = Package(
         .executableTarget(
             name: "YapperNative",
             path: "Sources/YapperNative",
-            resources: [.copy("Resources/SoundEffects")],
+            resources: [.copy("Resources/SoundEffects"), .copy("Resources/SceneIcons")],
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"]),
             ]

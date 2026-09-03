@@ -1,7 +1,11 @@
 import Foundation
 
 struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
-    enum Kind: String, Codable, Sendable { case video, image }
+    /// `scene` is a generated overlay: a design in the overlay scene format
+    /// stored inside the project package, drawn by `SceneLayerBuilder`. It
+    /// behaves like an image everywhere an image is "a still the canvas
+    /// draws" and differs only where pixels are read from a file.
+    enum Kind: String, Codable, Sendable { case video, image, scene }
 
     var id: UUID
     var url: URL
@@ -14,6 +18,9 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
     /// SHA-256 of the source bytes when the media was imported by a version
     /// that records identity. Optional keeps older project files readable.
     var sourceFingerprint: String?
+    /// Present on a generated overlay: what it was made for, how it was
+    /// described, the palette its tokens resolve against, and its versions.
+    var generated: GeneratedOverlayRecord?
 
     init(
         id: UUID = UUID(),
@@ -24,7 +31,8 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         height: Int,
         hasAudio: Bool,
         kind: Kind = .video,
-        sourceFingerprint: String? = nil
+        sourceFingerprint: String? = nil,
+        generated: GeneratedOverlayRecord? = nil
     ) {
         self.id = id
         self.url = url
@@ -35,9 +43,20 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
         self.hasAudio = hasAudio
         self.kind = kind
         self.sourceFingerprint = sourceFingerprint
+        self.generated = generated
     }
 
-    var isImage: Bool { kind == .image }
+    /// A still: anything that is not a video track. Drawn by the canvas in the
+    /// preview and burned in by Core Animation at export, held for
+    /// `imageClipDefaultDuration` when added, never probed for faces. Scenes
+    /// count, because every one of those rules is about not being footage.
+    /// Read `isPicture` where the question is "can pixels be loaded from the
+    /// file", and `isScene` where a scene needs its own path.
+    var isImage: Bool { kind == .image || kind == .scene }
+    /// A picture file `NSImage` can open.
+    var isPicture: Bool { kind == .image }
+    /// A generated overlay in the scene format.
+    var isScene: Bool { kind == .scene }
 }
 
 struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
@@ -656,10 +675,25 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// Asked here so the compositor, the export and the canvas cannot come to
     /// different answers about who is drawing what.
     var compositedOverlayIDs: Set<UUID> {
-        guard !isVideoTrackHidden else { return [] }
         let ordered = OverlayTracks.backToFront((overlays ?? []).filter { $0.isVisible })
-        guard let frontmost = ordered.lastIndex(where: { $0.isBehindSpeaker }) else { return [] }
-        return Set(ordered[...frontmost].map(\.id))
+        let keyedPictures = keyframedPictureIDs
+        guard let frontmost = ordered.lastIndex(where: {
+            (!isVideoTrackHidden && $0.isBehindSpeaker) || keyedPictures.contains($0.id)
+        }) else { return [] }
+        // A generated scene has no picture file to hand the compositor, so it
+        // stays with Core Animation whatever lane it is on. It cannot itself be
+        // marked to sit behind the speaker; see `EditorSession.setBehindSpeaker`.
+        let scenes = Set(media.filter(\.isScene).map(\.id))
+        return Set(ordered[...frontmost].filter { !scenes.contains($0.mediaID) }.map(\.id))
+    }
+
+    /// Source-window keys use the same compositor in playback and export.
+    /// This remains necessary when the main video track is hidden.
+    var keyframedPictureIDs: Set<UUID> {
+        let pictures = Set(media.filter(\.isPicture).map(\.id))
+        return Set((overlays ?? []).filter {
+            $0.isVisible && pictures.contains($0.mediaID) && ($0.keys ?? []).contains { $0.crop != nil }
+        }.map(\.id))
     }
 
     /// True when any clip keeps only the speaker and throws the room away.
@@ -682,6 +716,7 @@ struct EditorProject: Codable, Equatable, Sendable {
             || removesAnyBackground
             || hasBackdrop
             || hasImageClip
+            || !keyframedPictureIDs.isEmpty
     }
 
     /// True when the main track holds a still. AVFoundation's own compositor

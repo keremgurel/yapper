@@ -55,7 +55,7 @@ struct MentionSuggestionList: View {
                 LazyVStack(spacing: 0) {
                     ForEach(Array(files.enumerated()), id: \.element.id) { index, file in
                         row(file, index: index)
-                            .id(index)
+                            .id(file.id)
                     }
                 }
                 .padding(Self.padding)
@@ -66,7 +66,8 @@ struct MentionSuggestionList: View {
             // row into view, or the arrow keys stop meaning anything past row
             // nine.
             .onChange(of: active) { _, index in
-                withAnimation(.easeOut(duration: 0.12)) { scroller.scrollTo(index) }
+                guard files.indices.contains(index) else { return }
+                withAnimation(.easeOut(duration: 0.12)) { scroller.scrollTo(files[index].id) }
             }
         }
         .background(Color.raisedBackground)
@@ -84,7 +85,7 @@ struct MentionSuggestionList: View {
             onPick(file)
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: file.isImage ? "photo" : "film")
+                Image(systemName: file.isScene ? "sparkles" : file.isImage ? "photo" : "film")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(isActive ? Color.white : Color.yapperOrange)
                     .frame(width: 16)
@@ -117,7 +118,8 @@ struct MentionSuggestionList: View {
     }
 
     private func detail(for file: ProjectMedia) -> String {
-        file.isImage
+        if file.isScene { return String(format: "Generated · %.1fs", file.duration) }
+        return file.isImage
             ? "\(file.width)×\(file.height)"
             : String(format: "%.1fs", file.duration)
     }

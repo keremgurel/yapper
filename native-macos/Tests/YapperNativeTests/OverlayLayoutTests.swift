@@ -242,3 +242,36 @@ struct OverlayLayoutTests {
         )
     }
 }
+
+/// A generated scene shaped like the video is still a card.
+///
+/// The solver's full-frame bypass exists for imported graphics cut to the
+/// video's own shape. A generated comparison designed for a tall box on a tall
+/// video used to trip it and cover the whole shot, speaker included.
+@Suite struct GeneratedOverlayFullFrameTests {
+    private let frame = 9.0 / 16.0
+
+    @Test func aFrameShapedImportStillCoversTheFrame() {
+        let box = OverlayLayout.solve(proposed: nil, mediaAspect: frame, frameAspect: frame, avoid: [])
+        #expect(box == OverlayBox(x: 0, y: 0, width: 1, height: 1))
+    }
+
+    @Test func aFrameShapedGeneratedSceneStaysACard() {
+        let face = SpeakerRegion(rect: CGRect(x: 0.3, y: 0.3, width: 0.4, height: 0.3), weight: 1)
+        let box = OverlayLayout.solve(
+            proposed: nil, mediaAspect: frame, frameAspect: frame, avoid: [face], fullFrame: .never
+        )
+        #expect(box.width < 0.98)
+        #expect(box.height < 0.98)
+        #expect(box.x >= 0 && box.y >= 0)
+        #expect(box.x + box.width <= 1.000_1 && box.y + box.height <= 1.000_1)
+        #expect(OverlayLayout.overlap(box, avoid: [face]) < 0.5)
+    }
+
+    @Test func introducedSceneNeverStartsFullFrame() {
+        let card = OverlayFrame.introduced(mediaAspect: frame, frameAspect: frame, allowFullFrame: false)
+        #expect(card.width < 1 && card.height < 1)
+        let graphic = OverlayFrame.introduced(mediaAspect: frame, frameAspect: frame)
+        #expect(graphic.width == 1 && graphic.height == 1)
+    }
+}

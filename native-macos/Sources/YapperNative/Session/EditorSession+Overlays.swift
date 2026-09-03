@@ -142,21 +142,11 @@ extension EditorSession {
     /// it is and keeps its width; only its height moves, so the kept rectangle
     /// fills it exactly.
     func setOverlayCrop(_ overlay: ProjectOverlay, crop: OverlayCrop) {
-        var updated = overlay
-        let clamped = crop.clamped
-        updated.crop = clamped.isFull ? nil : clamped
-        let aspects = aspects(for: updated)
-        updated.height = OverlayFrame.height(
-            forWidth: updated.width,
-            mediaAspect: aspects.media,
-            frameAspect: aspects.frame
-        )
-        // Where the creator put it, not where a crop would rather have it. The
-        // box's height changes to fit what the crop kept, and pulling the box
-        // back inside the frame afterwards dragged the picture down off the top
-        // edge they had just placed it against.
-        updated.y = OverlayCanvasGeometry.placedOrigin(updated.y, extent: updated.height)
-        commitOverlayEdit(updated)
+        applyCrop(crop, to: CropRequest(
+            mediaID: overlay.mediaID, name: media(for: overlay)?.name ?? "Image",
+            overlayIDs: [overlay.id], crop: overlay.resolvedCrop,
+            keyTime: media(for: overlay)?.isPicture == true ? overlayTime(of: overlay) : nil
+        ))
     }
 
     /// Cuts the speaker out of their own clip and draws them again over this
@@ -168,6 +158,10 @@ extension EditorSession {
     /// it would save without rebuilding the composition. This changes how the
     /// whole project is composited, so it always rebuilds.
     func setOverlayBehindSpeaker(_ overlay: ProjectOverlay, behind: Bool) {
+        guard !behind || media(for: overlay)?.isScene != true else {
+            setStatus("Generated overlays currently sit in front of the video.")
+            return
+        }
         guard overlays.contains(where: { $0.id == overlay.id }) else { return }
         scheduleCompositionCommit { [self] in
             updateProject { project in
@@ -231,6 +225,7 @@ extension EditorSession {
         shown.y = box.y
         shown.width = box.width
         shown.height = box.height
+        shown.crop = OverlayKeyTrack.crop(of: overlay, at: overlayTime(of: overlay))
         return shown
     }
 
@@ -273,7 +268,17 @@ extension EditorSession {
         // of moving the whole card, which is the second half of the same
         // gesture the main track's punch-in uses: mark a moment, move the
         // playhead, drag, and the move writes itself.
-        if OverlayKeyTrack.isKeyed(existing) {
+        let isFrameEdit = updated.timelineStart == existing.timelineStart
+            && updated.duration == existing.duration
+            && updated.sourceStart == existing.sourceStart
+            && updated.track == existing.track
+            && updated.rotation == existing.rotation
+            && updated.isHidden == existing.isHidden
+        if OverlayKeyTrack.isKeyed(existing), isFrameEdit {
+            guard isPlayheadOver(existing) else {
+                setStatus("Move the playhead over this portion to edit a keyframe")
+                return
+            }
             let time = overlayTime(of: existing)
             let box = OverlayBox(
                 x: updated.x,

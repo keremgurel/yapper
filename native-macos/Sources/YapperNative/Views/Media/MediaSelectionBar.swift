@@ -20,11 +20,17 @@ struct MediaSelectionBar: View {
             Text("\(count) selected")
                 .font(.studioBodyStrong)
 
-            Button("Select all") { session.selectAllMedia() }
+            Button { session.selectAllMedia() } label: {
+                AdaptiveControlLabel(title: "Select all", systemImage: "checkmark.circle")
+            }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .help("Select all media")
 
-            Button("Deselect") { session.clearMediaSelection() }
+            Button { session.clearMediaSelection() } label: {
+                AdaptiveControlLabel(title: "Deselect", systemImage: "xmark.circle")
+            }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .help("Clear the media selection")
 
             Spacer(minLength: 8)
 
@@ -32,15 +38,20 @@ struct MediaSelectionBar: View {
                 Button {
                     Task { await session.appendSelectedMediaToTimeline() }
                 } label: {
-                    Label("Add to main track", systemImage: "rectangle.stack.badge.plus")
+                    AdaptiveControlLabel(
+                        title: "Add to main track",
+                        systemImage: "rectangle.stack.badge.plus",
+                        compactTitle: "Add"
+                    )
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .help("Add the selected media to the main track")
             }
 
             Button(role: .destructive) {
                 Task { await session.deleteSelectedMedia() }
             } label: {
-                Label("Remove", systemImage: "trash")
+                AdaptiveControlLabel(title: "Remove", systemImage: "trash")
             }
             .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
             .help("Remove \(count) from this project · the source files are kept")

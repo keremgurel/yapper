@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// A labelled timeline action with its keyboard shortcut shown inline.
-///
-/// The toolbar used to be bare icons leaning on tooltips, which meant the
-/// actions and their shortcuts were effectively undiscoverable.
+/// A labelled timeline action with its keyboard shortcut shown when space
+/// allows. Narrow toolbars fall back to the label and then its unambiguous icon.
 struct TimelineActionButton: View {
     let title: String
     let systemImage: String
@@ -15,18 +13,20 @@ struct TimelineActionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 5) {
+                    actionLabel
+                    shortcutLabel
+                }
+                .fixedSize(horizontal: true, vertical: false)
+
+                actionLabel
+                    .fixedSize(horizontal: true, vertical: false)
+
                 Image(systemName: systemImage)
                     .font(.system(size: 11, weight: .semibold))
-                Text(title)
-                    .font(.studioCaptionStrong)
-                Text(shortcut)
-                    .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 3.5)
-                    .padding(.vertical, 1)
-                    .background(Color.studioFaintFill)
-                    .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                    .accessibilityHidden(true)
+                    .frame(minWidth: 14)
             }
             .padding(.horizontal, 8)
             .frame(height: 26)
@@ -42,5 +42,22 @@ struct TimelineActionButton: View {
         .clickableCursor()
         .onHover { isHovering = $0 }
         .help("\(help) · \(shortcut)")
+        .accessibilityLabel(title)
+        .accessibilityHint("\(help). Keyboard shortcut: \(shortcut)")
+    }
+
+    private var actionLabel: some View {
+        Label(title, systemImage: systemImage)
+            .font(.studioCaptionStrong)
+    }
+
+    private var shortcutLabel: some View {
+        Text(shortcut)
+            .font(.system(size: 9.5, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 3.5)
+            .padding(.vertical, 1)
+            .background(Color.studioFaintFill)
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
     }
 }

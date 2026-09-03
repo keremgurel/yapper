@@ -68,6 +68,14 @@ final class ExportSourceSnapshot: @unchecked Sendable {
                     request.sampledFingerprints.insert(fingerprint)
                 }
                 requests[key] = request
+                if media.isScene {
+                    let scene = try SceneExportLayer.loadScene(for: media)
+                    for asset in scene.imageAssets {
+                        guard let name = GeneratedAssetLayout.imageFileName(forAsset: asset) else { continue }
+                        let source = media.url.deletingLastPathComponent().appending(path: name)
+                        requests[sourceKey(source)] = SnapshotRequest(source: source)
+                    }
+                }
             }
             for layer in requiredAudio {
                 let key = sourceKey(layer.url)
@@ -109,8 +117,23 @@ final class ExportSourceSnapshot: @unchecked Sendable {
             }
 
             for index in result.media.indices where requiredMedia.contains(result.media[index].id) {
-                result.media[index].url = destinations[sourceKey(result.media[index].url)]
-                    ?? result.media[index].url
+                let original = result.media[index]
+                if original.isScene {
+                    let folder = directory.appending(path: original.id.uuidString, directoryHint: .isDirectory)
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    guard let source = destinations[sourceKey(original.url)] else { continue }
+                    let sceneURL = folder.appending(path: original.url.lastPathComponent)
+                    try FileManager.default.copyItem(at: source, to: sceneURL)
+                    let scene = try SceneExportLayer.loadScene(for: original)
+                    for asset in Set(scene.imageAssets) {
+                        guard let name = GeneratedAssetLayout.imageFileName(forAsset: asset),
+                              let snapshot = destinations[sourceKey(original.url.deletingLastPathComponent().appending(path: name))] else { continue }
+                        try FileManager.default.copyItem(at: snapshot, to: folder.appending(path: name))
+                    }
+                    result.media[index].url = sceneURL
+                } else {
+                    result.media[index].url = destinations[sourceKey(original.url)] ?? original.url
+                }
             }
             if var layers = result.audioLayers {
                 for index in layers.indices where

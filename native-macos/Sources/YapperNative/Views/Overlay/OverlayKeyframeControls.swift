@@ -5,6 +5,13 @@ import SwiftUI
 struct OverlayKeyframeControls: View {
     @ObservedObject var session: EditorSession
     let overlay: ProjectOverlay
+    @ObservedObject private var clock: PlaybackClock
+
+    init(session: EditorSession, overlay: ProjectOverlay) {
+        self.session = session
+        self.overlay = overlay
+        self.clock = session.playbackClock
+    }
 
     private var isOnKey: Bool { session.overlayKeyAtPlayhead(overlay) != nil }
 
@@ -27,6 +34,7 @@ struct OverlayKeyframeControls: View {
             .buttonStyle(.studioPlain)
             .disabled(!session.isPlayheadOver(overlay))
             .help(isOnKey ? "Remove this keyframe" : "Add a keyframe here")
+            .accessibilityLabel(isOnKey ? "Remove overlay keyframe" : "Add overlay keyframe")
 
             arrow("chevron.right", enabled: session.hasNextOverlayKey(overlay)) {
                 session.goToNextOverlayKey(overlay)

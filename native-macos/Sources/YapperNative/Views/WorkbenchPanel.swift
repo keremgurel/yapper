@@ -1038,17 +1038,22 @@ private struct TranscriptWorkbench: View {
                             Label("Copy kept transcript", systemImage: "scissors")
                         }
                     } label: {
-                        Label("Copy", systemImage: "doc.on.doc")
+                        AdaptiveControlLabel(title: "Copy", systemImage: "doc.on.doc")
                     }
                     .menuStyle(.borderlessButton)
-                    .fixedSize()
                     .help("Copy the complete transcript or only words kept in the edit")
                 }
-                Button(words.isEmpty ? "Transcribe" : "Transcribe Again") {
+                Button {
                     session.startTranscription()
+                } label: {
+                    AdaptiveControlLabel(
+                        title: words.isEmpty ? "Transcribe" : "Transcribe Again",
+                        systemImage: "waveform"
+                    )
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 .disabled(session.isBusy || session.project.clips.isEmpty)
+                .help(words.isEmpty ? "Transcribe the timeline" : "Transcribe the timeline again")
             }
 
             if !words.isEmpty {

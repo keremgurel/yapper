@@ -76,15 +76,30 @@ enum OverlayLayout {
     ///   - mediaAspect: the shape of what the overlay shows, crop included.
     ///     `EditorSession.aspects(for:)` already returns this.
     ///   - avoid: the speaker, plus anything else already on screen.
+    /// Whether a box may cover the whole frame.
+    ///
+    /// An imported file cut to the video's own shape is a graphic laid over
+    /// the picture, and covering the frame is what it is for. A generated
+    /// scene never is: its aspect is the shape of the card the designer was
+    /// given, and one that happens to match the video is still a card that
+    /// has to clear the speaker. Without this the solver read "frame shaped"
+    /// as "full frame" and put a generated comparison over the whole shot.
+    enum FullFramePolicy: Sendable {
+        case allowed
+        case never
+    }
+
     static func solve(
         proposed: ProposedOverlayBox?,
         mediaAspect: Double,
         frameAspect: Double,
-        avoid: [SpeakerRegion]
+        avoid: [SpeakerRegion],
+        fullFrame: FullFramePolicy = .allowed
     ) -> OverlayBox {
         let introduced = OverlayFrame.introduced(
             mediaAspect: mediaAspect,
-            frameAspect: frameAspect
+            frameAspect: frameAspect,
+            allowFullFrame: fullFrame == .allowed
         )
         let seed = proposed ?? ProposedOverlayBox(
             x: introduced.x,
@@ -95,7 +110,9 @@ enum OverlayLayout {
         // Media cut to the frame's own shape is a graphic laid over the whole
         // picture, not a card sitting on it. Asking where the face is misses
         // the point of it, so it is never repaired.
-        if seed.width >= 0.98, isFrameShaped(mediaAspect: mediaAspect, frameAspect: frameAspect) {
+        if fullFrame == .allowed, seed.width >= 0.98,
+           isFrameShaped(mediaAspect: mediaAspect, frameAspect: frameAspect)
+        {
             return OverlayBox(x: 0, y: 0, width: 1, height: 1)
         }
 

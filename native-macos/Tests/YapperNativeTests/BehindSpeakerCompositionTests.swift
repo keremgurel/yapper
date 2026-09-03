@@ -19,20 +19,24 @@ struct BehindSpeakerCompositionTests {
     private let directory = FileManager.default.temporaryDirectory
         .appending(path: "yapper-behind-speaker-tests")
 
-    private func built(behindSpeaker: Bool) async throws -> (BuiltComposition, () -> Void) {
+    private func built(
+        behindSpeaker: Bool,
+        speakerColor: CGColor = CGColor(red: 0, green: 0.6, blue: 0, alpha: 1),
+        cutawayColor: CGColor = CGColor(red: 0, green: 0, blue: 1, alpha: 1)
+    ) async throws -> (BuiltComposition, () -> Void) {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let speakerURL = directory.appending(path: "speaker.mov")
         let cutawayURL = directory.appending(path: "cutaway.mov")
         let cleanup: () -> Void = { _ = try? FileManager.default.removeItem(at: self.directory) }
 
         try await SyntheticVideo.write(
-            color: CGColor(red: 0, green: 0.6, blue: 0, alpha: 1),
+            color: speakerColor,
             size: CGSize(width: 640, height: 360),
             seconds: 2,
             to: speakerURL
         )
         try await SyntheticVideo.write(
-            color: CGColor(red: 0, green: 0, blue: 1, alpha: 1),
+            color: cutawayColor,
             size: CGSize(width: 320, height: 180),
             seconds: 2,
             to: cutawayURL
@@ -67,6 +71,46 @@ struct BehindSpeakerCompositionTests {
             built.videoComposition?.instructions.first as? StudioCompositionInstruction
         )
         return instruction.layers
+    }
+
+    @Test("Behind me preserves skin-tone midtones and dark overlays in preview and export")
+    func depthDoesNotChangeColor() async throws {
+        func samples(behind: Bool, preview: Bool) async throws -> [SampledPixel] {
+            let (built, cleanup) = try await built(
+                behindSpeaker: behind,
+                speakerColor: CGColor(red: 0.62, green: 0.43, blue: 0.34, alpha: 1),
+                cutawayColor: CGColor(red: 0.13, green: 0.14, blue: 0.16, alpha: 1)
+            )
+            defer { cleanup() }
+            let generator = AVAssetImageGenerator(asset: built.asset)
+            generator.videoComposition = preview ? built.playbackVideoComposition : built.videoComposition
+            let frame = try generator.copyCGImage(
+                at: CMTime(seconds: 1, preferredTimescale: 600), actualTime: nil
+            )
+            // Compare displayed colors, not bytes encoded in different spaces.
+            let context = try #require(CGContext(
+                data: nil, width: frame.width, height: frame.height,
+                bitsPerComponent: 8, bytesPerRow: frame.width * 4,
+                space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ))
+            context.draw(frame, in: CGRect(x: 0, y: 0, width: frame.width, height: frame.height))
+            let normalized = try #require(context.makeImage())
+            return try [#require(normalized.sample(x: 20, y: 20)),
+                        #require(normalized.sample(x: 320, y: 180))]
+        }
+        for preview in [true, false] {
+            let normal = try await samples(behind: false, preview: preview)
+            let behind = try await samples(behind: true, preview: preview)
+            // Vision's accurate model can label a solid skin-colored frame as
+            // foreground. Compare the unobscured main image in both modes;
+            // the fast model also leaves the dark card visible in this fixture.
+            for (expected, actual) in zip(normal.prefix(preview ? 2 : 1), behind) {
+                #expect(abs(expected.red - actual.red) <= 3)
+                #expect(abs(expected.green - actual.green) <= 3)
+                #expect(abs(expected.blue - actual.blue) <= 3)
+            }
+        }
     }
 
     @Test("The speaker is drawn again, cut out, in front of the cutaway")

@@ -21,30 +21,27 @@ extension EditorSession {
             let overlay = (project.overlays ?? []).first(where: { $0.id == overlayID }),
             let media = project.media.first(where: { $0.id == overlay.mediaID })
         else { return }
+        pausePlayback()
         cropRequest = CropRequest(
             mediaID: media.id,
             name: media.name,
             overlayIDs: [overlay.id],
-            crop: overlay.resolvedCrop
+            crop: OverlayKeyTrack.crop(of: overlay, at: overlayTime(of: overlay)),
+            keyTime: media.isPicture ? overlayTime(of: overlay) : nil
         )
     }
 
-    /// Opens it on a file, which means every cutaway made from that file.
-    /// Cropping a screenshot in the bin and having it apply to one of the four
-    /// places it appears would be a puzzle, not a feature.
+    /// Prefer the selected occurrence, then the one at the playhead, then the
+    /// first. The sheet lets the creator explicitly switch portions or batch.
     func beginCropping(mediaID: UUID) {
         guard let media = project.media.first(where: { $0.id == mediaID }) else { return }
-        guard
-            let request = CropRequest.make(
-                mediaID: mediaID,
-                name: media.name,
-                overlays: overlays(ofMedia: mediaID)
-            )
-        else {
+        let portions = overlays(ofMedia: mediaID)
+        guard let chosen = portions.first(where: { $0.id == selectedOverlayID })
+            ?? portions.first(where: { isPlayheadOver($0) }) ?? portions.first else {
             setStatus("Put \(media.name) on the timeline before cropping it")
             return
         }
-        cropRequest = request
+        beginCropping(overlayID: chosen.id)
     }
 
     /// Whether cropping this file would have anything to act on, for the menus
@@ -60,18 +57,12 @@ extension EditorSession {
     /// Writes a crop to every cutaway the request covers, as one edit.
     func applyCrop(_ crop: OverlayCrop, to request: CropRequest) {
         let clamped = crop.clamped
-        let targets = Set(request.overlayIDs)
-        guard
-            (project.overlays ?? []).contains(where: {
-                targets.contains($0.id) && $0.resolvedCrop != clamped
-            })
-        else { return }
         scheduleCompositionCommit { [self] in
+            let previous = project.overlays ?? []
+            let updated = request.applying(clamped, to: previous)
+            guard updated != previous else { return false }
             updateProject { project in
-                for index in project.overlays?.indices ?? (0 ..< 0).indices {
-                    guard let id = project.overlays?[index].id, targets.contains(id) else { continue }
-                    project.overlays?[index].crop = clamped.isFull ? nil : clamped
-                }
+                project.overlays = updated
                 project.updatedAt = Date()
             }
             return true

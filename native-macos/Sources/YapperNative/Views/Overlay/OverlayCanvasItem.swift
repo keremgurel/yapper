@@ -96,7 +96,9 @@ struct OverlayCanvasItem: View {
 
     @ViewBuilder
     private var content: some View {
-        if drawsItsOwnPicture, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
+        if let media, media.isScene {
+            SceneCanvasPreview(media: media, overlay: displayed, size: box.size, clock: session.playbackClock)
+        } else if drawsItsOwnPicture, let image = session.thumbnailsByMedia[overlay.mediaID]?.first {
             let full = OverlayFrame.isFullFrame(displayed)
             let frame = box
             CroppedOverlayImage(

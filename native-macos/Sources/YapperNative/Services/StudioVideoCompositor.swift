@@ -41,6 +41,9 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         let endTransform: CGAffineTransform?
         /// The part of the source that is kept, in its own pixels.
         let cropRect: CGRect?
+        /// Exact source-window/box evaluation for keyed overlays. Interpolating
+        /// endpoint affine matrices is not equivalent to interpolating a zoom.
+        let overlayMotion: OverlayMotion?
         let opacity: Float
         /// True when only the person in this layer is drawn and the rest of the
         /// frame is thrown away.
@@ -76,6 +79,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             transform: CGAffineTransform,
             endTransform: CGAffineTransform? = nil,
             cropRect: CGRect? = nil,
+            overlayMotion: OverlayMotion? = nil,
             opacity: Float = 1,
             matte: Bool = false,
             card: OverlayCardStyle? = nil,
@@ -85,6 +89,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.transform = transform
             self.endTransform = endTransform
             self.cropRect = cropRect
+            self.overlayMotion = overlayMotion
             self.opacity = opacity
             self.matte = matte
             self.card = card
@@ -138,7 +143,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         self.backdrop = backdrop
         // A matted layer is a different shape on every frame even when nothing
         // in the edit moves, so an instruction carrying one is never a still.
-        containsTweening = layers.contains { $0.endTransform != nil || $0.matte }
+        containsTweening = layers.contains { $0.endTransform != nil || $0.overlayMotion != nil || $0.matte }
         // A track drawn both whole and cut out is named twice, and asking
         // AVFoundation for the same source twice is not a request it honours.
         // Stills are not sources at all: they are already decoded.
@@ -239,7 +244,7 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 }
                 let sourceHeight = image.extent.height
 
-                if let cropRect = layer.cropRect {
+                if let cropRect = layer.overlayMotion?.cropRect(atTimeline: request.compositionTime.seconds) ?? layer.cropRect {
                     image = image.cropped(
                         to: CGRect(
                             x: cropRect.minX,
@@ -256,7 +261,8 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 let intoTopLeft = CGAffineTransform(1, 0, 0, -1, 0, sourceHeight)
                 let backToBottomLeft = CGAffineTransform(1, 0, 0, -1, 0, size.height)
                 let placement = intoTopLeft
-                    .concatenating(layer.transform(at: progress))
+                    .concatenating(layer.overlayMotion?.transform(atTimeline: request.compositionTime.seconds)
+                        ?? layer.transform(at: progress))
                     .concatenating(backToBottomLeft)
                 let sourceExtent = image.extent
                 image = image.transformed(by: placement)
@@ -293,7 +299,13 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 if let graded = filter.outputImage { output = graded }
             }
 
-            self.context.render(output.cropped(to: frame), to: destination)
+            let outputSpace = CompositionColorSpace.prepare(
+                destination, for: request.renderContext.videoComposition
+            )
+            self.context.render(
+                output.cropped(to: frame), to: destination,
+                bounds: frame, colorSpace: outputSpace
+            )
             request.finish(withComposedVideoFrame: destination)
         }
     }

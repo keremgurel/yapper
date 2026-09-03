@@ -2,11 +2,7 @@ import Foundation
 
 /// What a crop editor is open on.
 ///
-/// A crop belongs to an overlay: it is the part of that cutaway's picture the
-/// finished video shows. But the thing a creator right-clicks is often the file
-/// in the bin rather than one of the cutaways made from it, and "crop this
-/// screenshot" plainly means every place it appears. So a request names the
-/// media and carries the overlays it turned out to mean.
+/// One portion by default. Multiple IDs are an explicit batch operation.
 struct CropRequest: Equatable, Identifiable, Sendable {
     var id: UUID { mediaID }
     let mediaID: UUID
@@ -18,6 +14,9 @@ struct CropRequest: Equatable, Identifiable, Sendable {
     /// only when the same file has been cropped differently in two places, and
     /// then editing starts from the whole picture rather than from one of them.
     let crop: OverlayCrop
+    /// Pinned local time, so an edit cannot land on a different moment if the
+    /// playback clock changes while the modal is open. nil means static/batch.
+    var keyTime: Double? = nil
 
     var isMultiple: Bool { overlayIDs.count > 1 }
 
@@ -25,8 +24,31 @@ struct CropRequest: Equatable, Identifiable, Sendable {
     var subtitle: String {
         switch overlayIDs.count {
         case 0: "Not on the timeline yet"
-        case 1: "One cutaway"
+        case 1: "This overlay portion only"
         default: "\(overlayIDs.count) cutaways, all together"
+        }
+    }
+
+    func applying(_ crop: OverlayCrop, to overlays: [ProjectOverlay]) -> [ProjectOverlay] {
+        let targets = Set(overlayIDs)
+        let crop = crop.clamped
+        return overlays.map { overlay in
+            guard targets.contains(overlay.id) else { return overlay }
+            if !isMultiple, let keyTime, OverlayKeyTrack.isKeyed(overlay) {
+                let time = min(overlay.duration, max(0, keyTime))
+                return OverlayKeyTrack.setting(
+                    OverlayKeyTrack.box(of: overlay, at: time), at: time, in: overlay, crop: crop
+                )
+            }
+            var result = overlay
+            result.crop = crop.isFull ? nil : crop
+            // Explicit static/batch changes replace crop animation, never box motion.
+            result.keys = result.keys?.map { key in
+                var key = key
+                key.crop = crop
+                return key
+            }
+            return result
         }
     }
 

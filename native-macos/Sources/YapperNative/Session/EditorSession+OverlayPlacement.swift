@@ -7,6 +7,7 @@ enum OverlayPlacementStatus: Equatable, Sendable {
     case working
     /// Finished, with one line per cutaway that landed.
     case placed(notes: [String])
+    case generated(notes: [String], changed: Int)
     case failed(String)
 }
 
@@ -83,7 +84,10 @@ extension EditorSession {
         // nothing in it. Anything else asking for overlays with no overlays to
         // place is answered here rather than paid for and answered by the model.
         let intent = AssistantRouter.route(instruction)
-        guard !placeableMedia.isEmpty || intent == .addSounds || intent == .placeText else {
+        let revisions = generatedMediaMentioned(in: instruction)
+        let creates = GeneratedOverlayCommand.creates(instruction)
+            && OverlayMention.mentioned(in: instruction, names: placeableMedia.map(\.name)).isEmpty
+        guard !placeableMedia.isEmpty || intent == .addSounds || intent == .placeText || creates else {
             setOverlayPlacement(.failed("Import the overlays you want placed first."))
             return
         }
@@ -114,6 +118,11 @@ extension EditorSession {
                 setOverlayPlacement(.failed("This video has no transcript to place overlays against."))
                 return
             }
+        }
+
+        if creates || !revisions.isEmpty {
+            await performGeneratedOverlays(instruction: instruction, revising: revisions)
+            return
         }
 
         let named = OverlayPlan.mentionedNames(

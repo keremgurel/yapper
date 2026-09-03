@@ -39,16 +39,7 @@ extension EditorSession {
             updated = OverlayKeyTrack.removingKey(at: time, in: overlay)
             setStatus("Keyframe removed")
         } else {
-            updated = OverlayKeyTrack.setting(
-                OverlayBox(
-                    x: overlay.x,
-                    y: overlay.y,
-                    width: overlay.width,
-                    height: overlay.height
-                ),
-                at: time,
-                in: overlay
-            )
+            updated = OverlayKeyTrack.capturing(at: time, in: overlay)
             setStatus("Keyframe added at \(formatTime(currentTime))")
         }
         writeOverlay(updated)

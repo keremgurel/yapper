@@ -127,10 +127,18 @@ struct OverlayKeyMarkers: View {
     @ObservedObject var session: EditorSession
     let overlay: ProjectOverlay
     let cellWidth: Double
+    @ObservedObject private var clock: PlaybackClock
+
+    init(session: EditorSession, overlay: ProjectOverlay, cellWidth: Double) {
+        self.session = session
+        self.overlay = overlay
+        self.cellWidth = cellWidth
+        self.clock = session.playbackClock
+    }
 
     var body: some View {
         TimelineKeyMarkers(
-            times: session.overlayKeys(overlay).map(\.at),
+            times: session.overlayKeys(overlay).map(\.at).filter { $0 >= 0 && $0 <= overlay.duration },
             span: overlay.duration,
             cellWidth: cellWidth,
             activeTime: activeTime,

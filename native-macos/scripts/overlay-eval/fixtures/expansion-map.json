@@ -1,0 +1,19 @@
+{
+  "name": "expansion-map",
+  "about": "A named place list that a map serves, plus a percentage. Expect a map for the cities and a typographic or counter treatment for the percentage. The story about the flight is not a moment.",
+  "transcript": "So this year we opened in Berlin, Amsterdam and Lisbon. Next quarter it is Madrid and Warsaw. Five European cities in eighteen months, which if you had told me two years ago I would have laughed. Funny story, I almost missed the Lisbon launch because my flight got cancelled and I ended up taking a train from Madrid overnight. Worth it though. Right now forty four percent of our revenue comes from Europe, up from eleven percent when we started. Okay, next video I will talk about hiring in each of these cities because that has been the hard part.",
+  "expected": [
+    {
+      "quote": "we opened in Berlin, Amsterdam and Lisbon. Next quarter it is Madrid and Warsaw",
+      "kind": "map"
+    },
+    {
+      "quote": "forty four percent of our revenue comes from Europe, up from eleven percent",
+      "kind": "counter"
+    }
+  ],
+  "forbidden": [
+    "my flight got cancelled",
+    "next video I will talk about hiring"
+  ]
+}

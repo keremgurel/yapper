@@ -71,7 +71,7 @@ private struct MainSegment {
 }
 
 /// A moving cutaway: everything needed to place it at any second of its life.
-private struct OverlayMotion {
+struct OverlayMotion {
     let overlay: ProjectOverlay
     let naturalSize: CGSize
     let preferredTransform: CGAffineTransform
@@ -82,6 +82,7 @@ private struct OverlayMotion {
     /// Where the card sits at one moment of the finished video.
     func transform(atTimeline time: Double) -> CGAffineTransform {
         let box = OverlayKeyTrack.box(of: overlay, atTimeline: time)
+        let crop = OverlayKeyTrack.crop(of: overlay, at: time - overlay.timelineStart)
         let frame = OverlayFrame.fitted(
             CGRect(
                 x: box.x * renderSize.width,
@@ -98,6 +99,13 @@ private struct OverlayMotion {
             box: frame,
             rotation: overlay.resolvedRotation
         )
+    }
+
+    func cropRect(atTimeline time: Double) -> CGRect {
+        let crop = OverlayKeyTrack.crop(of: overlay, at: time - overlay.timelineStart)
+        let oriented = CGRect(origin: .zero, size: naturalSize).applying(preferredTransform)
+        return CGRect(x: crop.x * abs(oriented.width), y: crop.y * abs(oriented.height),
+                      width: crop.width * abs(oriented.width), height: crop.height * abs(oriented.height))
     }
 
     /// The moments this cutaway changes direction, in timeline seconds.
@@ -435,7 +443,10 @@ enum CompositionBuilder {
                 overlay.isVisible,
                 let media = project.media.first(where: { $0.id == overlay.mediaID })
             else { return false }
-            return !media.isImage || compositedStills.contains(overlay.id)
+            // A scene is never composited: it has no pixels to hand the
+            // compositor, and Core Animation paints it on at the end whatever
+            // lane it sits on. See `EditorProject.compositedOverlayIDs`.
+            return !media.isImage || (media.isPicture && compositedStills.contains(overlay.id))
         }
         guard !drawn.isEmpty, compositionDuration > 0 else { return [] }
 
@@ -475,6 +486,7 @@ enum CompositionBuilder {
 
                 if media.isImage {
                     guard
+                        media.isPicture,
                         let image = CIImage(contentsOf: media.url),
                         !image.extent.isEmpty
                     else { continue }
@@ -673,6 +685,7 @@ enum CompositionBuilder {
                         transform: from,
                         endTransform: to == from ? nil : to,
                         cropRect: lane.cropRects[overlay.id],
+                        overlayMotion: usesCustomCompositor ? motion : nil,
                         opacity: 1,
                         card: lane.cards[overlay.id],
                         cardRotation: overlay.resolvedRotation
@@ -849,7 +862,7 @@ enum CompositionBuilder {
         duration: Double,
         to videoComposition: AVMutableVideoComposition
     ) throws {
-        var imageOverlays: [(ProjectOverlay, ProjectMedia, CGImage)] = []
+        var imageOverlays: [(ProjectOverlay, ProjectMedia, CGImage?)] = []
         for overlay in OverlayTracks.backToFront(overlays) where
             overlay.isVisible && overlay.duration > 0 && overlay.timelineStart < duration &&
                 overlay.timelineStart + overlay.duration > 0
@@ -858,6 +871,10 @@ enum CompositionBuilder {
                 throw NativeEditorError.missingMedia(overlay.mediaID)
             }
             guard media.isImage else { continue }
+            if media.isScene {
+                imageOverlays.append((overlay, media, nil))
+                continue
+            }
             guard MediaAvailability.isRegularReadableFile(media.url),
                   let image = NSImage(contentsOf: media.url),
                   let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
@@ -877,6 +894,13 @@ enum CompositionBuilder {
         // the editor's own marks on the picture, not part of it.
         let grade = project.resolvedVisualFilter.colorMatrix
         for (overlay, media, image) in imageOverlays {
+            if media.isScene {
+                let scene = try SceneExportLayer.loadScene(for: media)
+                parentLayer.addSublayer(SceneExportLayer.make(overlay: overlay, media: media, scene: scene,
+                    renderSize: renderSize, compositionDuration: duration))
+                continue
+            }
+            guard let image else { continue }
             let layer = CALayer()
             layer.contents = grade.graded(image) ?? image
             let crop = overlay.resolvedCrop

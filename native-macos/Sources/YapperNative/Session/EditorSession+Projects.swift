@@ -125,8 +125,11 @@ extension EditorSession {
             var copy = project
             copy.id = UUID()
             copy.name = destination.displayName
+            try GeneratedAssetLayout.copyAssets(in: copy, to: destination.url)
+            copy = GeneratedAssetLayout.relocated(copy, to: destination.url)
             store = ProjectPackageStore(package: destination)
-            resetProject(to: copy, keepingHistory: true)
+            projectNavigation.noteOpened(destination)
+            resetProject(to: copy)
             try await persist()
             projectNavigation.noteOpened(destination)
             projectNavigation.noteLibraryChanged()

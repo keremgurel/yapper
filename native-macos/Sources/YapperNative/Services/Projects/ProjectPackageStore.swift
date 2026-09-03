@@ -17,7 +17,8 @@ actor ProjectPackageStore: ProjectPersisting {
     }
 
     func load() async throws -> EditorProject? {
-        try await store.load()
+        guard let project = try await store.load() else { return nil }
+        return GeneratedAssetLayout.relocated(project, to: package.url)
     }
 
     func save(_ project: EditorProject) async throws {

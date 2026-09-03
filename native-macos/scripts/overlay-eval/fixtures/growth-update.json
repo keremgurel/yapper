@@ -1,0 +1,20 @@
+{
+  "name": "growth-update",
+  "about": "A founder update with two numbers, a comparison and a lot of connective talk. Expect the counter and the comparison, nothing on the opener or the sign-off.",
+  "transcript": "Hey everyone, quick update on where we are this quarter. I know a lot of you have been asking. So the big one first. We went from twelve hundred to two thousand eight hundred and fifty customers since January. That is more than double in seven months. And honestly most of that came from one change. We stopped charging per seat and moved to a flat plan. Before the switch a team of ten paid about four hundred dollars a month. After it they pay one ninety nine. So cheaper for them and we still grew revenue because way more teams signed up. Anyway, that is the headline. I want to thank the team, this was a grind, and I will do a longer breakdown next week. See you then.",
+  "expected": [
+    {
+      "quote": "We went from twelve hundred to two thousand eight hundred and fifty customers",
+      "kind": "counter"
+    },
+    {
+      "quote": "a team of ten paid about four hundred dollars a month. After it they pay one ninety nine",
+      "kind": "comparison"
+    }
+  ],
+  "forbidden": [
+    "Hey everyone, quick update",
+    "I want to thank the team",
+    "See you then"
+  ]
+}

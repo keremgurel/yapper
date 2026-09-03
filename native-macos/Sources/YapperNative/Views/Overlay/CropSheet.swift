@@ -11,16 +11,18 @@ struct CropSheet: View {
     @ObservedObject var session: EditorSession
     let request: CropRequest
 
-    /// Held here and written on every gesture, so the preview behind the sheet
-    /// follows along and the crop can be abandoned by pressing Escape without
-    /// having touched anything else.
+    /// Each completed gesture is saved as an undoable edit.
     @State private var crop: OverlayCrop
     @State private var aspect: CropAspect = .free
+    @State private var targetID: UUID?
+    @State private var localTime: Double
 
     init(session: EditorSession, request: CropRequest) {
         self.session = session
         self.request = request
         _crop = State(initialValue: request.crop)
+        _targetID = State(initialValue: request.overlayIDs.first)
+        _localTime = State(initialValue: request.keyTime ?? 0)
     }
 
     private var mediaAspect: Double {
@@ -37,6 +39,8 @@ struct CropSheet: View {
 
             controls
 
+            scopeControls
+
             ZStack {
                 Color.black.opacity(0.88)
 
@@ -48,7 +52,7 @@ struct CropSheet: View {
                     onChange: { crop = $0 },
                     onCommit: { committed in
                         crop = committed
-                        session.applyCrop(committed, to: request)
+                        session.applyCrop(committed, to: activeRequest)
                     }
                 )
                 .padding(28)
@@ -66,6 +70,9 @@ struct CropSheet: View {
         }
         .frame(minWidth: 780, idealWidth: 920, minHeight: 620, idealHeight: 760)
         .background(Color.panelBackground)
+        .onChange(of: target?.keys) { _, _ in
+            if let target { crop = OverlayKeyTrack.crop(of: target, at: localTime) }
+        }
     }
 
     private var header: some View {
@@ -79,7 +86,7 @@ struct CropSheet: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(request.name)
                     .font(.system(size: 17, weight: .bold))
-                Text(request.subtitle)
+                Text(targetID == nil ? "All portions · replaces crop animation" : "This portion only · other portions stay unchanged")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
             }
@@ -130,7 +137,7 @@ struct CropSheet: View {
             Button("Reset") {
                 crop = .full
                 aspect = .free
-                session.applyCrop(.full, to: request)
+                session.applyCrop(.full, to: activeRequest)
             }
             .buttonStyle(EditorSecondaryButtonStyle())
             .disabled(crop.isFull)
@@ -159,6 +166,7 @@ struct CropSheet: View {
     }
 
     private func apply(_ selectedAspect: CropAspect) {
+        guard selectedAspect != .free else { return }
         let ratio = selectedAspect.ratio(sourceAspect: mediaAspect).flatMap {
             CropGeometry.fractionRatio(forRealRatio: $0, sourceAspect: mediaAspect)
         }
@@ -169,6 +177,74 @@ struct CropSheet: View {
         )
         guard fitted != crop else { return }
         crop = fitted
-        session.applyCrop(fitted, to: request)
+        session.applyCrop(fitted, to: activeRequest)
+    }
+
+    private var portions: [ProjectOverlay] { session.overlays(ofMedia: request.mediaID) }
+    private var target: ProjectOverlay? { portions.first { $0.id == targetID } }
+    private var supportsCropKeys: Bool {
+        session.project.media.first { $0.id == request.mediaID }?.isPicture == true
+    }
+
+    private var activeRequest: CropRequest {
+        CropRequest(mediaID: request.mediaID, name: request.name,
+                    overlayIDs: targetID.map { [$0] } ?? portions.map(\.id),
+                    crop: crop, keyTime: targetID != nil && supportsCropKeys ? localTime : nil)
+    }
+
+    private var scopeControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
+                Text("Edit").font(.studioCaption).foregroundStyle(.secondary)
+                Picker("Overlay portion", selection: $targetID) {
+                    ForEach(Array(portions.enumerated()), id: \.element.id) { index, portion in
+                        Text("Portion \(index + 1) · \(formatTime(portion.timelineStart)) · \(String(format: "%.1fs", portion.duration))")
+                            .tag(Optional(portion.id))
+                    }
+                    if portions.count > 1 {
+                        Text("All \(portions.count) portions — same crop").tag(nil as UUID?)
+                    }
+                }
+                .labelsHidden()
+                .frame(maxWidth: 340)
+                .onChange(of: targetID) { _, _ in
+                    aspect = .free
+                    if let target {
+                        localTime = min(localTime, target.duration)
+                        crop = OverlayKeyTrack.crop(of: target, at: localTime)
+                        session.seekToTimelineTime(target.timelineStart + localTime)
+                    } else {
+                        crop = CropRequest.make(mediaID: request.mediaID, name: request.name, overlays: portions)?.crop ?? .full
+                    }
+                }
+                Spacer()
+                if let target, supportsCropKeys {
+                    Button {
+                        session.seekToTimelineTime(target.timelineStart + localTime)
+                        session.toggleOverlayKey(target)
+                    } label: {
+                        Label(OverlayKeyTrack.key(of: target, at: localTime) == nil ? "Add keyframe" : "Remove keyframe",
+                              systemImage: OverlayKeyTrack.key(of: target, at: localTime) == nil ? "diamond" : "diamond.fill")
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                }
+            }
+            if let target, supportsCropKeys {
+                HStack(spacing: 10) {
+                    Text(String(format: "%.2fs", localTime))
+                        .font(.studioCaption).monospacedDigit().frame(width: 52, alignment: .leading)
+                    Slider(value: $localTime, in: 0...max(0.001, target.duration))
+                        .accessibilityLabel("Time within this overlay portion")
+                        .onChange(of: localTime) { _, time in
+                            crop = OverlayKeyTrack.crop(of: target, at: time)
+                            session.seekToTimelineTime(target.timelineStart + time)
+                        }
+                    Text(OverlayKeyTrack.isKeyed(target) ? "Crop edits add a key here" : "Add a key to animate, then scrub and crop")
+                        .font(.studioCaption).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 12)
     }
 }

@@ -99,8 +99,93 @@ describe("paid action reservations", () => {
     expect(reservation).toMatchObject({
       action: "creator_analysis",
       cost: 4,
+      quantity: 1,
       balance: 42,
     });
+  });
+
+  it("multiplies the catalog cost by the quantity and records it", async () => {
+    const reservation = await reservePaidAction("user_1", "design_overlay", {
+      quantity: 3,
+    });
+
+    expect(mocks.deductCredits).toHaveBeenCalledWith(
+      "user_1",
+      6,
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          action: "design_overlay",
+          quantity: 3,
+        }),
+      }),
+    );
+    expect(reservation).toMatchObject({ cost: 6, quantity: 3 });
+  });
+
+  it("refuses a quantity outside the batch cap before touching the ledger", async () => {
+    await expect(
+      reservePaidAction("user_1", "design_overlay", { quantity: 9 }),
+    ).rejects.toBeInstanceOf(RangeError);
+    await expect(
+      reservePaidAction("user_1", "design_overlay", { quantity: 0 }),
+    ).rejects.toBeInstanceOf(RangeError);
+    expect(mocks.deductCredits).not.toHaveBeenCalled();
+  });
+
+  it("preflights the whole batch cost", async () => {
+    mocks.getBalance.mockResolvedValue(5);
+
+    const response = await preflightPaidActionOrResponse(
+      "user_1",
+      "design_overlay",
+      { quantity: 3 },
+    );
+
+    expect(response?.status).toBe(402);
+  });
+
+  it("refunds part of a batch and marks the ledger row partial", async () => {
+    await refundCreditReservation(
+      "user_1",
+      {
+        action: "design_overlay",
+        cost: 6,
+        quantity: 3,
+        balance: 36,
+        usageId: "usage_2",
+      },
+      "invalid_scene",
+      { amount: 2 },
+    );
+
+    expect(mocks.grantCredits).toHaveBeenCalledWith(
+      "user_1",
+      2,
+      "refund",
+      expect.objectContaining({
+        metadata: expect.objectContaining({ partial: true }),
+      }),
+    );
+  });
+
+  it("never refunds more than was reserved, and nothing for zero", async () => {
+    const reservation = {
+      action: "design_overlay" as const,
+      cost: 6,
+      quantity: 3,
+      balance: 36,
+      usageId: "usage_3",
+    };
+    await refundCreditReservation("user_1", reservation, "x", { amount: 40 });
+    expect(mocks.grantCredits).toHaveBeenLastCalledWith(
+      "user_1",
+      6,
+      "refund",
+      expect.anything(),
+    );
+    mocks.grantCredits.mockClear();
+    await refundCreditReservation("user_1", reservation, "x", { amount: 0 });
+    expect(mocks.grantCredits).not.toHaveBeenCalled();
   });
 
   it("returns the billing error when the atomic debit loses a race", async () => {
@@ -117,6 +202,7 @@ describe("paid action reservations", () => {
       {
         action: "transcribe",
         cost: 1,
+        quantity: 1,
         balance: 41,
         usageId: "usage_1",
       },

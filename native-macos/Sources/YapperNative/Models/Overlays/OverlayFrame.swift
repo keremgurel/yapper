@@ -88,11 +88,14 @@ enum OverlayFrame {
     /// else becomes a card in the top right corner, already on the media's own
     /// shape so nothing is letterboxed inside it, and never so tall that it
     /// covers the speaker.
+    /// - Parameter allowFullFrame: false for a generated scene, whose shape is
+    ///   the card it was designed for and never a licence to cover the video.
     static func introduced(
         mediaAspect: Double,
-        frameAspect: Double
+        frameAspect: Double,
+        allowFullFrame: Bool = true
     ) -> (x: Double, y: Double, width: Double, height: Double) {
-        if frameAspect > 0,
+        if allowFullFrame, frameAspect > 0,
            abs(mediaAspect - frameAspect) / frameAspect <= aspectTolerance
         {
             return (x: 0, y: 0, width: 1, height: 1)

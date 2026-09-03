@@ -9,8 +9,16 @@ import SwiftUI
 struct OverlayInspectorView: View {
     @ObservedObject var session: EditorSession
     let overlay: ProjectOverlay
+    @ObservedObject private var clock: PlaybackClock
+
+    init(session: EditorSession, overlay: ProjectOverlay) {
+        self.session = session
+        self.overlay = overlay
+        self.clock = session.playbackClock
+    }
 
     private var media: ProjectMedia? { session.media(for: overlay) }
+    private var shown: ProjectOverlay { session.displayedOverlay(overlay) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -36,11 +44,11 @@ struct OverlayInspectorView: View {
 
                 InspectorRow("Size") {
                     InspectorSlider(
-                        value: overlay.width * 100,
+                        value: shown.width * 100,
                         range: 6 ... 140,
                         decimals: 0
                     ) { percent in
-                        session.scaleOverlay(overlay, toWidth: percent / 100)
+                        session.scaleOverlay(shown, toWidth: percent / 100)
                     }
                 }
 
@@ -48,7 +56,7 @@ struct OverlayInspectorView: View {
                     HStack(spacing: 7) {
                         Text("X").font(.studioCaption).foregroundStyle(.secondary)
                         InspectorNumberField(
-                            value: overlay.x * 100,
+                            value: shown.x * 100,
                             range: -20 ... 120,
                             decimals: 0
                         ) { percent in
@@ -56,7 +64,7 @@ struct OverlayInspectorView: View {
                         }
                         Text("Y").font(.studioCaption).foregroundStyle(.secondary)
                         InspectorNumberField(
-                            value: overlay.y * 100,
+                            value: shown.y * 100,
                             range: -20 ... 120,
                             decimals: 0
                         ) { percent in
@@ -166,7 +174,7 @@ struct OverlayInspectorView: View {
                 Spacer(minLength: 0)
 
                 if let media {
-                    Text(media.isImage ? "Image overlay" : "Video cutaway")
+                    Text(media.isScene ? "Generated overlay" : media.isImage ? "Image overlay" : "Video cutaway")
                         .font(.studioCaption)
                         .foregroundStyle(.secondary)
                 }
@@ -216,7 +224,7 @@ struct OverlayInspectorView: View {
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
 
-                    if !overlay.resolvedCrop.isFull {
+                    if !shown.resolvedCrop.isFull {
                         Button("Reset") { session.setOverlayCrop(overlay, crop: .full) }
                             .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                     }
@@ -230,7 +238,7 @@ struct OverlayInspectorView: View {
         let keys = session.overlayKeys(overlay)
         switch keys.count {
         case 0: return "Mark the start of a move"
-        case 1: return "1 keyframe · move the playhead and drag the card"
+        case 1: return "Move the playhead, then move, resize or crop"
         default: return "\(keys.count) keyframes"
         }
     }
@@ -242,7 +250,7 @@ struct OverlayInspectorView: View {
     }
 
     private var cropReadout: String {
-        let crop = overlay.resolvedCrop
+        let crop = shown.resolvedCrop
         guard !crop.isFull else { return "Whole picture" }
         return "\(Int((crop.width * 100).rounded()))% × \(Int((crop.height * 100).rounded()))%"
     }
@@ -262,7 +270,7 @@ struct OverlayInspectorView: View {
     }
 
     private func commit(_ change: (inout ProjectOverlay) -> Void) {
-        var updated = overlay
+        var updated = shown
         change(&updated)
         session.commitOverlayEdit(updated)
     }

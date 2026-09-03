@@ -26,7 +26,7 @@ struct CropRequestTests {
         )
         #expect(request?.crop == crop)
         #expect(request?.isMultiple == false)
-        #expect(request?.subtitle == "One cutaway")
+        #expect(request?.subtitle == "This overlay portion only")
     }
 
     /// Cropping a screenshot in the bin means every place it appears, and when

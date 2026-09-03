@@ -52,6 +52,16 @@ function usesClerkAuth(group: string): boolean {
 describe("proxy coverage", () => {
   const groups = routeGroups().filter(usesClerkAuth);
 
+  it.each(["direct-overlays", "design-overlays", "revise-overlay"])(
+    "includes delegated scene auth for /api/%s in the matcher",
+    (group) => {
+      // These route files delegate auth() to the shared scene handler, so the
+      // direct-import scan below cannot discover their Clerk dependency.
+      const matcher = PROXY.slice(PROXY.indexOf("matcher: ["));
+      expect(matcher).toContain(`"/api/${group}"`);
+    },
+  );
+
   it("finds the API groups to check", () => {
     // Guards the test itself: a broken walk would vacuously pass everything.
     expect(groups.length).toBeGreaterThan(5);

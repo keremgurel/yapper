@@ -95,6 +95,10 @@ export const config = {
     "/api/inspiration/:path*",
     "/api/media/:path*",
     "/api/place-overlays",
+    // Scene handlers return their own JSON 401, but still need Clerk context.
+    "/api/direct-overlays",
+    "/api/design-overlays",
+    "/api/revise-overlay",
     "/api/project/:path*",
     "/api/publish/:path*",
     "/api/submissions/:path*",
