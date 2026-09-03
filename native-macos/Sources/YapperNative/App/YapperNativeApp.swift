@@ -58,7 +58,12 @@ struct YapperNativeApp: App {
                 .frame(minWidth: 1_100, minHeight: 700)
                 .preferredColorScheme(theme.colorScheme)
                 .onOpenURL { url in
-                    NativeAuthHandoff.shared.receive(url)
+                    // A project double-clicked in Finder, or the sign-in ticket.
+                    if url.isFileURL, ProjectPackage.isPackage(url) {
+                        Task { await session.openProject(ProjectPackage(url: url)) }
+                    } else {
+                        NativeAuthHandoff.shared.receive(url)
+                    }
                 }
         }
         .defaultSize(width: 1_500, height: 950)
@@ -83,7 +88,40 @@ struct YapperNativeApp: App {
                 }
                 .keyboardShortcut("k", modifiers: [.command])
             }
+            CommandGroup(replacing: .newItem) {
+                Button("New Project…") { ProjectPanels.newProject(for: session) }
+                    .keyboardShortcut("n")
+                Button("Open Project…") { ProjectPanels.openProject(for: session) }
+                    .keyboardShortcut("o")
+                Menu("Open Recent") {
+                    ForEach(session.projectNavigation.recentProjects, id: \.self) { url in
+                        Button(ProjectPackage(url: url).displayName) {
+                            Task { await session.openProject(ProjectPackage(url: url)) }
+                        }
+                    }
+                    if session.projectNavigation.recentProjects.isEmpty {
+                        Text("No recent projects")
+                    }
+                }
+                Button("Show All Projects") { session.showProjectsHome() }
+                    .keyboardShortcut("o", modifiers: [.command, .shift])
+                Divider()
+                Button("Rename Project…") { ProjectPanels.renameProject(for: session) }
+                    .disabled(session.projectNavigation.currentPackage == nil)
+                Button("Duplicate Project") { Task { await session.duplicateCurrentProject() } }
+                    .disabled(session.projectNavigation.currentPackage == nil || session.isBusy)
+                Button("Save a Copy…") { ProjectPanels.saveCopy(for: session) }
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
+                    .disabled(session.isBusy)
+                Button("Show Project in Finder") {
+                    if let package = session.projectNavigation.currentPackage {
+                        ProjectPanels.revealInFinder(package)
+                    }
+                }
+                .disabled(session.projectNavigation.currentPackage == nil)
+            }
             CommandGroup(after: .newItem) {
+                Divider()
                 Button("Import Media…") { ImportPanels.openMedia(for: session) }
                     .keyboardShortcut("i")
                     .disabled(session.isBusy)

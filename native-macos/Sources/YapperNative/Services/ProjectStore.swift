@@ -14,10 +14,20 @@ actor ProjectStore: ProjectPersisting {
     static let shared = ProjectStore()
 
     private let directoryURL: URL
+    private let primaryName: String
+    private let backupName: String
     private var pendingRecoveryNotice: String?
 
-    init(directory: URL = ProjectStore.directory) {
+    /// The shared store keeps the legacy single-project file names; a project
+    /// package names its files for what they are inside the package folder.
+    init(
+        directory: URL = ProjectStore.directory,
+        primaryName: String = "CurrentProject.json",
+        backupName: String = "CurrentProject.backup.json"
+    ) {
         directoryURL = directory
+        self.primaryName = primaryName
+        self.backupName = backupName
     }
 
     private let encoder: JSONEncoder = {
@@ -43,12 +53,12 @@ actor ProjectStore: ProjectPersisting {
     /// file, per process, and are welcome to do whatever they like to it.
     private var projectURL: URL {
         directoryURL
-            .appending(path: "CurrentProject.json", directoryHint: .notDirectory)
+            .appending(path: primaryName, directoryHint: .notDirectory)
     }
 
     private var backupURL: URL {
         directoryURL
-            .appending(path: "CurrentProject.backup.json", directoryHint: .notDirectory)
+            .appending(path: backupName, directoryHint: .notDirectory)
     }
 
     /// True while a test bundle is what is running, however it was started.

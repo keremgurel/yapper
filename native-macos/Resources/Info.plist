@@ -19,9 +19,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.9.23</string>
+    <string>0.9.24</string>
     <key>CFBundleVersion</key>
-    <string>37</string>
+    <string>38</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
@@ -31,6 +31,43 @@
             <array>
                 <string>yapper-studio</string>
             </array>
+        </dict>
+    </array>
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>Yapper Project</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSHandlerRank</key>
+            <string>Owner</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.yapper.studio.project</string>
+            </array>
+            <key>LSTypeIsPackage</key>
+            <true/>
+        </dict>
+    </array>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key>
+            <string>com.yapper.studio.project</string>
+            <key>UTTypeDescription</key>
+            <string>Yapper Project</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>com.apple.package</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict>
+                <key>public.filename-extension</key>
+                <array>
+                    <string>yapperproj</string>
+                </array>
+            </dict>
         </dict>
     </array>
     <key>LSMinimumSystemVersion</key>

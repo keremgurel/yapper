@@ -23,12 +23,19 @@ struct AppShellView: View {
     @ObservedObject private var auth = StudioAuth.shared
     @ObservedObject private var handoff = NativeAuthHandoff.shared
     @ObservedObject private var webCommands = StudioWebCommands.shared
+    @ObservedObject private var projectNavigation: ProjectNavigationState
 
     init(session: EditorSession) {
         self.session = session
         _previewPresentation = ObservedObject(
             wrappedValue: session.previewPresentation
         )
+        _projectNavigation = ObservedObject(wrappedValue: session.projectNavigation)
+    }
+
+    /// The projects grid covers the editor while it is showing.
+    private var isProjectsHomeVisible: Bool {
+        destination == .editor && projectNavigation.showsProjectsHome
     }
 
     /// The chrome is for people who are in. A signed-out window shows one door,
@@ -136,11 +143,15 @@ struct AppShellView: View {
                 ZStack {
                     PersistentEditorHost(
                         session: session,
-                        isActive: destination == .editor
+                        isActive: destination == .editor && !isProjectsHomeVisible
                     )
-                        .opacity(destination == .editor ? 1 : 0)
-                        .allowsHitTesting(destination == .editor)
-                        .accessibilityHidden(destination != .editor)
+                        .opacity(destination == .editor && !isProjectsHomeVisible ? 1 : 0)
+                        .allowsHitTesting(destination == .editor && !isProjectsHomeVisible)
+                        .accessibilityHidden(destination != .editor || isProjectsHomeVisible)
+
+                    if isProjectsHomeVisible {
+                        ProjectsHomeView(session: session, navigation: projectNavigation)
+                    }
 
                     // Built on arrival and torn down on the way out, unlike the
                     // editor: the library holds no work in progress, and one
@@ -359,9 +370,37 @@ private struct StudioTopBar: View {
             .help(sidebarExpanded ? "Collapse sidebar" : "Expand sidebar")
 
             Rectangle().fill(Color.studioLine).frame(width: 1, height: 22)
-            Text(destination.title)
-                .font(.system(size: 15, weight: .bold, design: .rounded))
-                .contentTransition(.interpolate)
+            if destination == .editor {
+                Button {
+                    session.showProjectsHome()
+                } label: {
+                    Label("Projects", systemImage: "square.grid.2x2")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                .buttonStyle(.studioPlain)
+                .clickableCursor()
+                .foregroundStyle(.secondary)
+                .help("All projects")
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.tertiary)
+                Button {
+                    ProjectPanels.renameProject(for: session)
+                } label: {
+                    Text(session.project.name)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .frame(maxWidth: 260, alignment: .leading)
+                }
+                .buttonStyle(.studioPlain)
+                .clickableCursor()
+                .help("Rename project")
+                .disabled(session.projectNavigation.currentPackage == nil)
+            } else {
+                Text(destination.title)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .contentTransition(.interpolate)
+            }
 
             Spacer()
 

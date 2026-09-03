@@ -173,7 +173,11 @@ final class EditorSession: ObservableObject {
     /// up against what is being said rather than guessed at.
     let audioWaveforms: AudioWaveformStore
 
-    private let store: any ProjectPersisting
+    /// Where the open project is saved. Swapped when another project is opened;
+    /// see `EditorSession+Projects`.
+    var store: any ProjectPersisting
+    let library = ProjectLibrary.shared
+    let projectNavigation = ProjectNavigationState()
     let waveformService = WaveformService()
     private let thumbnailService = ThumbnailService()
     private let aiEditService = AIEditService()
@@ -237,12 +241,13 @@ final class EditorSession: ObservableObject {
     var gradedOverlayImages: [ObjectIdentifier: (filter: VisualFilter, image: CGImage)] = [:]
 
     init(
-        store: any ProjectPersisting = ProjectStore.shared,
+        store: (any ProjectPersisting)? = nil,
         overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService(),
         transcriptionRunner: TranscriptionRunner? = nil,
         exportRunner: @escaping NativeExportRunner = ExportService.export
     ) {
-        self.store = store
+        let restoresProjectLibrary = store == nil
+        self.store = store ?? ProjectStore.shared
         self.overlayPlacementService = overlayPlacementService
         self.transcriptionRunner = transcriptionRunner
         self.exportRunner = exportRunner
@@ -251,7 +256,11 @@ final class EditorSession: ObservableObject {
         player.automaticallyWaitsToMinimizeStalling = false
         installObservers()
         restorationTask = Task { [weak self] in
-            await self?.restoreProject()
+            if restoresProjectLibrary {
+                await self?.restoreLastProject()
+            } else {
+                await self?.restoreProject()
+            }
             await self?.loadDictionary()
         }
         mediaAvailability.start(
@@ -3123,7 +3132,7 @@ final class EditorSession: ObservableObject {
         await reconcileDerivedMedia(from: previous)
     }
 
-    private func restoreProject() async {
+    func restoreProject() async {
         do {
             guard let saved = try await store.load() else { return }
             let recoveryNotice = await store.takeRecoveryNotice()
@@ -3165,6 +3174,33 @@ final class EditorSession: ObservableObject {
 
     func persist() async throws {
         try await store.save(project)
+    }
+
+    /// Make `next` the open project outright: no undo across projects, no
+    /// selection pointing into a timeline that is gone. Renames keep history
+    /// because the timeline did not change, only its name.
+    func resetProject(to next: EditorProject, keepingHistory: Bool = false) {
+        if !keepingHistory {
+            history.clear()
+            pendingEdit = nil
+            syncHistoryAvailability()
+        }
+        project = next
+        if !keepingHistory {
+            selectedClipID = project.clips.first?.id
+            selectedTextLayerID = project.textLayers?.first?.id
+            selectedAudioLayerID = project.audioLayers?.first?.id
+            selectedOverlayID = project.overlays?.first?.id
+            timelineSelection = selectedClipID.map { [.clip($0)] } ?? []
+            mediaAvailability.refresh()
+            if project.clips.isEmpty { player.replaceCurrentItem(with: nil) }
+            statusMessage = project.clips.isEmpty ? "Import video to begin" : "Opened \(project.name)"
+        }
+    }
+
+    /// A one-line note in the editor's status area.
+    func showMessage(_ text: String) {
+        statusMessage = text
     }
 
     struct RebuiltProjectRollbackState {
