@@ -1,6 +1,6 @@
 export type CoverPosition = "top" | "center" | "bottom";
 export type CoverTextStyle = "shadow" | "label";
-export type CoverSource = "frame" | "generated";
+export type CoverSource = "frame" | "generated" | "uploaded";
 
 /** The cover image a post ships with, kept separate from its captions: one
  * cover serves every platform, the captions do not. */
@@ -13,6 +13,18 @@ export interface CoverDraft {
   showHeadline: boolean;
   textStyle: CoverTextStyle;
   position: CoverPosition;
+}
+
+export function withCoverFrame(
+  draft: CoverDraft,
+  frame: { image: string; time: number },
+): CoverDraft {
+  return {
+    ...draft,
+    frameImage: frame.image,
+    frameTime: frame.time,
+    image: draft.source === "frame" ? frame.image : draft.image,
+  };
 }
 
 export const DEFAULT_THUMBNAIL_PROMPT =

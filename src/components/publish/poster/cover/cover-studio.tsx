@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { Section } from "@/components/studio-ui";
 import {
   DEFAULT_THUMBNAIL_PROMPT,
+  withCoverFrame,
   type CoverDraft,
 } from "@/components/publish/poster/cover-draft";
 import CoverPreview from "./cover-preview";
+import ThumbnailUpload from "./thumbnail-upload";
 import Disclosure from "./disclosure";
 import FramePicker, { FramePreview } from "./frame-picker";
 import RemixPanel from "./remix-panel";
@@ -45,7 +47,7 @@ export default function CoverStudio({
   const [useFrame, setUseFrame] = useState(true);
 
   useEffect(() => {
-    onFramePendingChange(draft.source !== "generated" && picker.busy);
+    onFramePendingChange(draft.source === "frame" && picker.busy);
     return () => onFramePendingChange(false);
   }, [draft.source, picker.busy, onFramePendingChange]);
 
@@ -58,15 +60,7 @@ export default function CoverStudio({
 
   useEffect(() => {
     if (!picker.frame) return;
-    const current = draftRef.current;
-    const keepRemix = current.source === "generated";
-    onChangeRef.current({
-      ...current,
-      frameImage: picker.frame.image,
-      image: keepRemix ? current.image : picker.frame.image,
-      source: keepRemix ? "generated" : "frame",
-      frameTime: picker.frame.time,
-    });
+    onChangeRef.current(withCoverFrame(draftRef.current, picker.frame));
   }, [picker.frame]);
 
   const generate = async () => {
@@ -96,6 +90,17 @@ export default function CoverStudio({
                 ...draft,
                 image: draft.frameImage,
                 source: "frame",
+              })
+            }
+          />
+          <ThumbnailUpload
+            replacing={draft.source === "uploaded"}
+            disabled={generation.generating}
+            onImage={(image) =>
+              onChangeRef.current({
+                ...draftRef.current,
+                image,
+                source: "uploaded",
               })
             }
           />

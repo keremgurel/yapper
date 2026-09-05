@@ -57,7 +57,11 @@ export default function CoverPreview({
         {draft.image ? (
           <>
             <span className="absolute top-2.5 left-2.5 rounded-full bg-black/65 px-2 py-1 text-[11px] font-bold tracking-[.12em] text-white uppercase backdrop-blur">
-              {draft.source === "generated" ? "AI remix" : "Video frame"}
+              {draft.source === "generated"
+                ? "AI remix"
+                : draft.source === "uploaded"
+                  ? "Your upload"
+                  : "Video frame"}
             </span>
             <button
               type="button"
@@ -71,7 +75,7 @@ export default function CoverPreview({
           </>
         ) : null}
       </div>
-      {draft.source === "generated" && draft.frameImage ? (
+      {draft.source !== "frame" && draft.frameImage ? (
         <button
           type="button"
           onClick={onUseFrame}
