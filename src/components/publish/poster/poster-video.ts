@@ -48,6 +48,17 @@ export function fromPostable(video: PostableVideo): PosterVideo {
   };
 }
 
+/** Keep the open library video current as its upload/transcript is updated. */
+export function currentPosterVideo(
+  selected: PosterVideo | null,
+  library: readonly PostableVideo[],
+): PosterVideo | null {
+  if (selected?.kind !== "yapper") return selected;
+  const current = library.find((video) => video.id === selected.contentItemId);
+  // An uploaded video can open before its library row reaches this render.
+  return current ? fromPostable(current) : selected;
+}
+
 export function fromPlatform(
   platform: PublishPlatform,
   video: PlatformVideo,

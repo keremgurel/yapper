@@ -18,6 +18,7 @@ import {
 import DestinationColumn from "@/components/publish/poster/destination-column";
 import PosterActions from "@/components/publish/poster/poster-actions";
 import {
+  currentPosterVideo,
   fromPostable,
   mediaOf,
 } from "@/components/publish/poster/poster-video";
@@ -72,9 +73,13 @@ export default function PosterWorkspace() {
     !!isSignedIn,
   );
   const bench = useOpenVideo();
-  const active = bench.active;
+  const active = useMemo(
+    () => currentPosterVideo(bench.active, library),
+    [bench.active, library],
+  );
 
   const [covers, setCovers] = useState<Record<string, CoverDraft>>({});
+  const [framePending, setFramePending] = useState(false);
   // Per video, because two videos genuinely go to different places and one
   // shared Set could never say so.
   const [destinationsByVideo, setDestinationsByVideo] = useState<
@@ -294,6 +299,7 @@ export default function PosterWorkspace() {
                   setCovers((current) => ({ ...current, [active.id]: next }))
                 }
                 onDownload={() => void downloadCover(cover)}
+                onFramePendingChange={setFramePending}
               />
             </Section>
 
@@ -307,6 +313,7 @@ export default function PosterWorkspace() {
                   generating={generating}
                   captionError={error}
                   publishing={prep.preparing}
+                  framePending={framePending}
                   transcriptStatus={
                     active.kind === "yapper" ? active.transcriptStatus : null
                   }

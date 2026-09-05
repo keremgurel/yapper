@@ -15,7 +15,7 @@ export default function CoverPreview({
 }) {
   return (
     <div className="space-y-2">
-      <div className="relative mx-auto aspect-[9/16] w-full max-w-[230px] overflow-hidden rounded-2xl bg-[linear-gradient(145deg,#202020,#080808)] ring-1 ring-white/10">
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[270px] overflow-hidden rounded-xl bg-[linear-gradient(145deg,#202020,#080808)] ring-1 ring-white/10">
         {draft.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
