@@ -60,8 +60,8 @@ export async function generateThumbnail(
         "Create one finished 9:16 social-video thumbnail. Follow the creator's " +
         "request precisely. If a SELECTED VIDEO FRAME is supplied, preserve the " +
         "person's identity and use that frame as the composition/subject source. " +
-        "If an EXAMPLE THUMBNAIL is supplied, borrow its visual language—layout, " +
-        "lighting, color, energy, and hierarchy—but do not copy its people, text, " +
+        "If an EXAMPLE THUMBNAIL is supplied, borrow its visual language (layout, " +
+        "lighting, color, energy, and hierarchy) but do not copy its people, text, " +
         "logos, or copyrighted characters. Unless explicitly requested, do not " +
         "render any words, logos, borders, or watermarks. Output only the image.\n\n" +
         `CREATOR REQUEST:\n${input.prompt.trim()}`,

@@ -50,7 +50,7 @@ export default function FeedbackResult({
             value={
               m.avgConfidence != null
                 ? `${Math.round(m.avgConfidence * 100)}%`
-                : "—"
+                : "n/a"
             }
           />
         </div>

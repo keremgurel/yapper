@@ -1,5 +1,6 @@
 import type { ContentBlock } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
+import { undash } from "@/lib/text/undash";
 import {
   parseCanvasActions,
   type CanvasAction,
@@ -77,7 +78,9 @@ const SYSTEM =
   "them over anything a summary says.\n" +
   "- If a reference source is given, draw on it but do not copy it.\n" +
   "- If the ask is a question or a chat rather than a writing task, answer it " +
-  'in "note" and return no actions.';
+  'in "note" and return no actions.\n' +
+  "- Never use em dashes or en dashes in anything you write. Use a comma, a " +
+  "colon, or a new sentence.";
 
 function describe(input: CanvasAskInput): string {
   const blocks = input.blocks.length
@@ -126,7 +129,7 @@ function parseReply(content: string, blockCount: number): CanvasAskResult {
     raw &&
     typeof raw === "object" &&
     typeof (raw as { note?: unknown }).note === "string"
-      ? (raw as { note: string }).note.trim().slice(0, 240) || null
+      ? undash((raw as { note: string }).note.trim()).slice(0, 240) || null
       : null;
   // A reply with neither is a wrong-shape answer, not an empty edit. The route
   // charges only when this returns, so throwing keeps it free.

@@ -29,7 +29,7 @@ const STEPS = [
   {
     n: "02",
     title: "Script",
-    body: "AI shapes the hook options, key points, and a full teleprompter-ready script — edit anything you want.",
+    body: "AI shapes the hook options, key points, and a full teleprompter-ready script. Edit anything you want.",
   },
   {
     n: "03",

@@ -1,3 +1,4 @@
+import { undash } from "@/lib/text/undash";
 /**
  * Names come from the model and are checked, not trusted. A generated overlay
  * lives in the media library beside the creator's own files and gets referred
@@ -92,6 +93,7 @@ export function cleanOverlayName(
   name: unknown,
   fallback: { brief?: string; quote?: string },
 ): string {
+  if (typeof name === "string") name = undash(name);
   const proposed =
     typeof name === "string" ? cutToLength(strip(name), OVERLAY_NAME_MAX) : "";
   if (acceptable(proposed)) return proposed;
@@ -110,6 +112,7 @@ export function cleanOverlayName(
 
 /** One sentence about what it looks like, or an empty string. */
 export function cleanOverlayDescription(text: unknown): string {
+  if (typeof text === "string") text = undash(text);
   if (typeof text !== "string") return "";
   const collapsed = collapse(text);
   if (!collapsed) return "";

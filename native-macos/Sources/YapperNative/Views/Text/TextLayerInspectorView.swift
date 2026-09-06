@@ -111,7 +111,7 @@ struct TextLayerInspectorView: View {
     private var footer: some View {
         HStack {
             Label(
-                "\(formatTimePrecise(layer.timelineStart)) – \(formatTimePrecise(layer.timelineStart + layer.duration)) · trim on the timeline",
+                "\(formatTimePrecise(layer.timelineStart)) to \(formatTimePrecise(layer.timelineStart + layer.duration)) · trim on the timeline",
                 systemImage: "arrow.left.and.right"
             )
             .font(.studioCaption)

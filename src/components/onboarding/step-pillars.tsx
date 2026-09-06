@@ -54,7 +54,7 @@ export default function StepPillars({
     <StepShell
       stepIndex={stepIndex}
       title="What are your content pillars?"
-      subtitle="The 3–5 themes your videos keep coming back to. We use these to sort every idea you capture. Not sure? Skip it — you can set these up later."
+      subtitle="The three to five themes your videos keep coming back to. We use these to sort every idea you capture. Not sure? Skip it and set these up later."
       onBack={onBack}
       footer={
         <div className="flex flex-col gap-2">

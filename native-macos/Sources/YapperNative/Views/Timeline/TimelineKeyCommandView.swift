@@ -1,5 +1,6 @@
 @preconcurrency import AppKit
 import SwiftUI
+import WebKit
 
 /// Unmodified keys the editor claims while the timeline is on screen.
 enum TimelineKeyCommand {
@@ -105,6 +106,13 @@ struct TimelineKeyCommandView: NSViewRepresentable {
 
         private func handle(_ event: NSEvent) -> NSEvent? {
             guard let view, let window = view.window, event.window === window else { return event }
+            // The editor stays mounted behind the other Studio destinations,
+            // so this monitor is alive while a web page is on screen. A space
+            // typed into a Brain field there is a space, not play; a letter is
+            // a letter, not a panel toggle. Anything typed into a web view, or
+            // while this view is not the one being looked at, is left alone.
+            if view.isHiddenOrHasHiddenAncestor || view.visibleRect.isEmpty { return event }
+            if Self.isInsideWebView(window.firstResponder) { return event }
             // Typing a space in the transcript or a caption field must stay a
             // space, so a field being edited is left alone. A selectable label
             // is not being typed into and must not swallow the transport.
@@ -124,6 +132,18 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             guard Self.claim(event) else { return nil }
             onCommand(command)
             return nil
+        }
+
+        /// True when keystrokes are going to a web page: the Studio surfaces
+        /// the shell hosts in a `WKWebView`, whose fields are not AppKit text
+        /// views and so would not be recognised by the checks above.
+        static func isInsideWebView(_ responder: NSResponder?) -> Bool {
+            var current: NSResponder? = responder
+            while let candidate = current {
+                if candidate is WKWebView { return true }
+                current = candidate.nextResponder
+            }
+            return false
         }
 
         static func command(keyCode: UInt16, characters: String?) -> TimelineKeyCommand? {

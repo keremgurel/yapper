@@ -202,7 +202,7 @@ struct CropSheet: View {
                             .tag(Optional(portion.id))
                     }
                     if portions.count > 1 {
-                        Text("All \(portions.count) portions — same crop").tag(nil as UUID?)
+                        Text("All \(portions.count) portions, same crop").tag(nil as UUID?)
                     }
                 }
                 .labelsHidden()

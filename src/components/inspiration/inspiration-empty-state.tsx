@@ -13,7 +13,7 @@ const STORY = [
   {
     icon: Scissors,
     title: "See why it works",
-    body: "We break down the hook, the story, and the moves that made it land — so you learn, not just collect.",
+    body: "We break down the hook, the story, and the moves that made it land, so you learn, not just collect.",
   },
   {
     icon: Wand2,
@@ -40,7 +40,7 @@ export default function InspirationEmptyState({
         Your swipe file of what great looks like.
       </h1>
       <p className="text-muted-foreground mt-3 max-w-md text-base leading-relaxed">
-        Keep the videos and creators that inspire you in one place — then turn
+        Keep the videos and creators that inspire you in one place, then turn
         them into content that&apos;s unmistakably yours.
       </p>
 

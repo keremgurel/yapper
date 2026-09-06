@@ -34,7 +34,7 @@ it("supplies real speech cues to the designer", () => {
     ...parsed,
     brand: { palette: paletteFor([]), hasKit: false, colors: [], logos: [] },
   });
-  expect(message).toContain("2.250–2.600 now");
+  expect(message).toContain("2.250 to 2.600 now");
   expect(message).toContain(
     "Do not reveal the result before the speaker introduces it",
   );

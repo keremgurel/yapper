@@ -270,7 +270,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
         if (/^what can you help me (?:do here|with)\??$/i.test(text)) {
           return answer({
-            text: "Tell me your brand colors and I’ll set up your kit—for example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, create ideas from your Brain, and help shape your content.",
+            text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, create ideas from your Brain, and help shape your content.",
           });
         }
         if (IDEA_COMMAND.test(text)) {

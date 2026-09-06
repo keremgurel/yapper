@@ -12,7 +12,7 @@ const EDITORIAL_REVIEW = [
   "Check every proposed fact against the ORIGINAL transcript, not against the draft's confident wording. Zero ad spend does NOT imply zero previous revenue. Unknown source attribution must not become attributed sales. Remove unsupported starting values, rates, causal claims, and invented quotes or interface content. You may compute an exact mathematical comparison only from explicit compatible values.",
   "Reject weak concepts even if they are renderable: a generic icon, chat bubble, dashboard placeholder or highlighted spoken phrase does not earn a place merely by matching a noun. Keep personal and emotional moments unobstructed unless the creator explicitly asks otherwise. Do not replace a rejected concept just to maintain a count.",
   "For the concepts that survive, sharpen the concrete visual idea, hierarchy and meaningful motion. Check whether it can actually be read during its quoted span; reduce the scope instead of asking for a tiny multi-panel dashboard.",
-  "Quotes must be verbatim contiguous stretches in the original transcript, not stitched together. Prefer 3–20 words; up to 40 is allowed when the visual needs the complete comparison or explanation. Briefs must be complete and at most 600 characters. Return no moments if none earn their place.",
+  "Quotes must be verbatim contiguous stretches in the original transcript, not stitched together. Prefer 3 to 20 words; up to 40 is allowed when the visual needs the complete comparison or explanation. Briefs must be complete and at most 600 characters. Return no moments if none earn their place.",
 ].join("\n\n");
 
 /** Two internal editorial passes, one user action. Never inserts a draft. */

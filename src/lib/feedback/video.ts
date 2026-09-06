@@ -8,7 +8,7 @@ const SYSTEM =
   "contact with the lens, framing/composition, facial expression, energy/" +
   "enthusiasm, hand gestures/body language, posture, and background. Also factor " +
   "how their delivery (pace, emphasis, pauses) reads on video. Be specific, warm, " +
-  "and concrete — reference what you actually see.\n\n" +
+  "and concrete, reference what you actually see.\n\n" +
   "Return STRICT JSON only:\n" +
   '{"score": <0-100 overall on-camera delivery>, "summary": "<2-3 sentence read>", ' +
   '"strengths": ["..."], "improvements": ["..."], ' +

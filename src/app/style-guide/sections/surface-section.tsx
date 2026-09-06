@@ -108,7 +108,7 @@ export function SurfaceSection() {
             Section container
           </h3>
           <p style={{ color: "var(--sg-text-muted)" }}>
-            Panels group cards. They never contain other panels — the recursion
+            Panels group cards. They never contain other panels. The recursion
             stops here.
           </p>
         </div>

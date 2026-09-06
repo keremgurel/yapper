@@ -28,7 +28,7 @@ export default function StudioSetupPrompt() {
           </p>
           <p className="text-muted-foreground text-sm">
             Tell us where you post and your content pillars so every idea and
-            script fits your voice. Takes a minute — skip anything you like.
+            script fits your voice. Takes a minute. Skip anything you like.
           </p>
         </div>
         <Button

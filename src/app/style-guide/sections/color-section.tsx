@@ -27,7 +27,7 @@ export function ColorSection() {
       id="color"
       eyebrow="Tokens"
       title="Color"
-      blurb="One neutral ink ramp + a small semantic layer + accents. Every component reads these — no more 16 raw Tailwind palettes scattered across the app."
+      blurb="One neutral ink ramp + a small semantic layer + accents. Every component reads these. No more 16 raw Tailwind palettes scattered across the app."
     >
       <Group label="Semantic surfaces & text">
         {SEMANTIC.map((s) => (

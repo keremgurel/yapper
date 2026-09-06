@@ -20,7 +20,7 @@ export function AuroraSection() {
       id="aurora"
       eyebrow="Signature surface"
       title="Aurora background"
-      blurb="The living mesh-gradient you love from the practice stage, promoted to a reusable <Aurora/> component. Tokenized palettes keep it cohesive — teal-forward with a warm kiss, a brand-warm variant, and a cool violet."
+      blurb="The living mesh-gradient you love from the practice stage, promoted to a reusable <Aurora/> component. Tokenized palettes keep it cohesive. Teal-forward with a warm kiss, a brand-warm variant, and a cool violet."
     >
       <div
         style={{

@@ -151,7 +151,7 @@ export default function HistoryView() {
                 </span>
                 <span className="text-foreground/50 block text-[11px]">
                   {s.status === "complete"
-                    ? `Score ${s.scores?.delivery ?? "—"}`
+                    ? `Score ${s.scores?.delivery ?? "n/a"}`
                     : s.status === "failed"
                       ? "Failed"
                       : "Processing…"}

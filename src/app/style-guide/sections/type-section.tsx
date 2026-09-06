@@ -36,7 +36,7 @@ export function TypeSection() {
       id="type"
       eyebrow="Tokens"
       title="Typography"
-      blurb="One geo-grotesque family (Hanken Grotesk — our free stand-in for Aave's FT Regola Neue) across display and body, Geist Mono for numerals. One fluid scale replaces the ad-hoc text-[9px]…text-[72px] sprawl."
+      blurb="One geo-grotesque family (Hanken Grotesk, our free stand-in for Aave's FT Regola Neue) across display and body, Geist Mono for numerals. One fluid scale replaces the ad-hoc text-[9px]…text-[72px] sprawl."
     >
       <div
         style={{

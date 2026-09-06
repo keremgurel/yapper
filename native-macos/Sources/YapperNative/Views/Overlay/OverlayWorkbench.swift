@@ -47,7 +47,7 @@ struct OverlayWorkbench: View {
         VStack(alignment: .leading, spacing: 9) {
             Label("No overlays yet", systemImage: "rectangle.on.rectangle")
                 .font(.studioBodyStrong)
-            Text("Import an image or a clip in Media, then add it as an overlay — or ask Chirpy where your files belong and let him place them against the transcript.")
+            Text("Import an image or a clip in Media, then add it as an overlay, or ask Chirpy where your files belong and let him place them against the transcript.")
                 .font(.studioCaption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

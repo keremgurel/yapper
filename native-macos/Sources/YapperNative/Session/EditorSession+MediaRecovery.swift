@@ -370,7 +370,7 @@ enum RelinkPanel {
         if media.sourceFingerprint == nil {
             let warning = NSAlert()
             warning.messageText = "Confirm the original source"
-            warning.informativeText = "Yapper will verify newer imports exactly. Older projects do not contain that identity, so confirm that this is the same file—not replacement footage."
+            warning.informativeText = "Yapper will verify newer imports exactly. Older projects do not contain that identity, so confirm that this is the same file, not replacement footage."
             warning.addButton(withTitle: "Reconnect")
             warning.addButton(withTitle: "Cancel")
             guard warning.runModal() == .alertFirstButtonReturn else { return }

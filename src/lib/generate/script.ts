@@ -27,8 +27,9 @@ const SYSTEM =
   "bullet formatting or headers), following whatever order and emphasis those " +
   "sections imply rather than a fixed template. If the creator's own words are " +
   "supplied, their angle and meaning win over any summary of them. 130-200 " +
-  "words (~45-75s spoken). Write ONLY the words to say aloud — no stage " +
-  "directions, scene labels, or notes. Return STRICT JSON only: " +
+  "words (~45-75s spoken). Write ONLY the words to say aloud, no stage " +
+  "directions, scene labels, or notes. Never use em dashes or en dashes; use a " +
+  "comma, a colon, or a new sentence. Return STRICT JSON only: " +
   '{"script": "<the full script as one string, newlines allowed>"}.';
 
 function parseScript(content: string): string {
@@ -38,13 +39,13 @@ function parseScript(content: string): string {
   const raw = JSON.parse(content.slice(s, e + 1)) as { script?: unknown };
   const script = typeof raw.script === "string" ? raw.script.trim() : "";
   // Empty-but-valid JSON (content filter, wrong shape) must NOT count as success
-  // — the route only charges when this returns, so throw to trigger no-charge.
+  //, the route only charges when this returns, so throw to trigger no-charge.
   if (!script) throw new Error("script_empty");
   return script;
 }
 
 /** Generate a full spoken-word script from an idea via the Surplus gateway.
- * This is the "expensive side" of generation (long output) — a separate,
+ * This is the "expensive side" of generation (long output), a separate,
  * opt-in call from idea generation, so users only pay for it when they want it. */
 export async function generateScript(
   input: ScriptInput,

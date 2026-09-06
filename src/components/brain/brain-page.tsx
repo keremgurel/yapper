@@ -290,7 +290,7 @@ export default function BrainPage() {
             Brain
           </h1>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm text-pretty">
-            What Yapper knows about you—and the skills it uses to create with
+            What Yapper knows about you, and the skills it uses to create with
             you.
           </p>
         </div>
@@ -612,7 +612,7 @@ export default function BrainPage() {
                 your work across Yapper.
               </strong>
               <span className="text-muted-foreground mt-1 block text-xs">
-                Skills are invoked when relevant—or selected directly while
+                Skills are invoked when relevant, or selected directly while
                 creating.
               </span>
             </div>

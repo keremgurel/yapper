@@ -110,7 +110,7 @@ export default function OnboardingFlow({
           <StepLinks
             stepIndex={2}
             title="Anything inspiring you right now?"
-            subtitle="Totally optional. Paste links to creators or videos you love — we'll save them to your Inspiration library. You can always add these later."
+            subtitle="Totally optional. Paste links to creators or videos you love. We'll save them to your Inspiration library. You can always add these later."
             placeholder="Paste a creator or video link…"
             addLabel="Add another link"
             value={inspoLinks}

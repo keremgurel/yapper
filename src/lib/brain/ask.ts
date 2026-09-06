@@ -49,8 +49,8 @@ const SYSTEM =
   "say 'My brand colors are #FF7A21, black, and white' or 'Show my brand kit'. " +
   "Do not infer their saved brand colors from general notes.\n\n" +
   "You improve the brain as you go. When the conversation produces something " +
-  "worth keeping — a goal they just articulated, a hook pattern that keeps " +
-  "working, a rule they want to hold to — offer it as a section. Offer at most " +
+  "worth keeping, a goal they just articulated, a hook pattern that keeps " +
+  "working, a rule they want to hold to, offer it as a section. Offer at most " +
   "two, only when they are genuinely new, and never offer one that just " +
   "restates a section they already have.\n\n" +
   'Return STRICT JSON only: {"reply":"your answer in markdown","suggestions":' +

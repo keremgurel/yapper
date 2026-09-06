@@ -18,7 +18,7 @@ export default function StepWelcome({ onStart }: { onStart: () => void }) {
       <p className="text-muted-foreground mt-3 max-w-sm text-sm leading-relaxed">
         A few quick things about your content and what inspires you. Takes about
         a minute and makes every idea and script sharper. All of it is optional
-        — skip anything and set it up later.
+        Skip anything and set it up later.
       </p>
       <Button size="lg" onClick={onStart} className="mt-8 sm:px-8">
         Let&apos;s go

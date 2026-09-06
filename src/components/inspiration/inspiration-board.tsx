@@ -39,7 +39,7 @@ const COPY: Record<
   },
   creator: {
     empty: "No creators saved here yet",
-    hint: "Paste a creator's profile link to keep the people you learn from in one place — we'll connect their videos as you save them.",
+    hint: "Paste a creator's profile link to keep the people you learn from in one place. We'll connect their videos as you save them.",
     cta: "Add a creator",
     noun: "creator",
   },

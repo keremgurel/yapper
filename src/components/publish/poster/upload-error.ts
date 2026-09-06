@@ -6,6 +6,6 @@ export function uploadErrorText(error: AddVideoError): string {
   if (error === "locked") return "Uploading needs an active plan.";
   if (error === "too_large") return "That video is over the 4 GB upload limit.";
   if (error === "network")
-    return "The upload lost its connection. Your file is safe—try again.";
+    return "The upload lost its connection. Your file is safe. Try again.";
   return "The upload could not finish. Try again; no blank video was created.";
 }

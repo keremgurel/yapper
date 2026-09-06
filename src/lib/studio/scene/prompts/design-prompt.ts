@@ -19,7 +19,8 @@ export const DESIGN_ROLE =
 
 /** Craft criteria, not example scenes or a catalogue of allowed compositions. */
 export const ART_DIRECTION = [
-  "ART DIRECTION — this is a finished editorial motion graphic, not a UI wireframe.",
+  "ART DIRECTION: this is a finished editorial motion graphic, not a UI wireframe.",
+  "Text on screen never uses em dashes or en dashes. Write a number range as 'from 1,200 to 2,850' and a pause as a comma or a new line.",
   "Start with one visual idea that makes the brief tangible. Pick a focal element and establish a decisive hierarchy: dominant information, supporting context, generous intentional empty space. A small box is not a reason to shrink a dashboard into it.",
   "Choose a coherent visual language for this subject. Do not default to rounded cards, pill labels, fake browser chrome, emoji-like icons or a grid of equal-weight boxes. A background panel must earn its area through contrast or composition; transparent negative space is valid. Use a restrained palette with one purposeful accent, deliberate alignment, and consistent strokes/radii.",
   "Show relationships spatially or through change rather than stacking sentences. Never draw a chart with invented intermediate data. Never invent messages, testimonials, interface screenshots or quoted speech to make the visual look specific. Do not manufacture evidence.",
@@ -102,7 +103,7 @@ export function buildDesignUserMessage(
     moment.wordTimings?.length
       ? "SPEECH TIMING (seconds from the overlay's start):\n" +
         moment.wordTimings
-          .map((w) => `${w.at.toFixed(3)}–${w.end.toFixed(3)} ${w.text}`)
+          .map((w) => `${w.at.toFixed(3)} to ${w.end.toFixed(3)} ${w.text}`)
           .join("\n") +
         "\nSynchronize meaningful changes with these spoken cues. Hold the earlier state while it is described; start the transition on 'now' or the corresponding change in meaning. Do not reveal the result before the speaker introduces it. These cues take priority over generic entrance/settle percentages."
       : "",

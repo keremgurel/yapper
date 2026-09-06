@@ -57,7 +57,7 @@ export default function StepPlatforms({
     <StepShell
       stepIndex={stepIndex}
       title="Where do you post?"
-      subtitle="Add the accounts you create for so every idea and script fits your voice. Type a username and press enter — or skip this and set it up later."
+      subtitle="Add the accounts you create for so every idea and script fits your voice. Type a username and press enter, or skip this and set it up later."
       onBack={onBack}
       footer={footer}
     >

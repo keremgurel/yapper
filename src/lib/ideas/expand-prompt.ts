@@ -57,7 +57,7 @@ export function buildExpandMessages(
     "generic explainer.\n" +
     "- Choose 2-6 useful sections whose labels fit THIS reference. Examples " +
     "include Reference breakdown, Joke mechanics, Beat-by-beat, What to keep, " +
-    "CELPIP adaptation, Audio/dialogue, Shot plan, or Draft—but use only what " +
+    "CELPIP adaptation, Audio/dialogue, Shot plan, or Draft, but use only what " +
     "actually helps.\n" +
     "- For a recreation, separate the source's reusable mechanism from the new " +
     "topic. Preserve reactions, pauses, escalation, and audio cues when those " +

@@ -46,15 +46,15 @@ export default function PrivacyPage() {
       <Section heading="4. How we share information (service providers)">
         <p>{`We share information only with providers that help us run Yapper, each acting on our instructions:`}</p>
         <ul>
-          <li>{`Clerk — authentication and account management;`}</li>
-          <li>{`Neon — our database;`}</li>
-          <li>{`Cloudflare R2 — storage for your media;`}</li>
-          <li>{`Stripe — payment processing;`}</li>
-          <li>{`Deepgram and Google (Gemini), among other AI providers — transcription and content generation;`}</li>
-          <li>{`PostHog — product analytics;`}</li>
-          <li>{`Resend — transactional email;`}</li>
-          <li>{`Vercel — application hosting;`}</li>
-          <li>{`the social platforms you connect (YouTube, TikTok, Instagram) — to publish the content you choose.`}</li>
+          <li>{`Clerk: authentication and account management;`}</li>
+          <li>{`Neon: our database;`}</li>
+          <li>{`Cloudflare R2: storage for your media;`}</li>
+          <li>{`Stripe: payment processing;`}</li>
+          <li>{`Deepgram and Google (Gemini), among other AI providers: transcription and content generation;`}</li>
+          <li>{`PostHog: product analytics;`}</li>
+          <li>{`Resend: transactional email;`}</li>
+          <li>{`Vercel: application hosting;`}</li>
+          <li>{`the social platforms you connect (YouTube, TikTok, Instagram): to publish the content you choose.`}</li>
         </ul>
         <p>{`We may also disclose information to comply with the law, enforce our terms, protect rights and safety, or in connection with a merger, acquisition, or sale of assets. In that case this policy will continue to apply to your information.`}</p>
       </Section>

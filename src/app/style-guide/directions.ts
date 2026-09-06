@@ -17,5 +17,5 @@ export const BRAND = {
   name: "Yapper",
   tagline: "A tactile studio for your voice",
   blurb:
-    "Aave-grade palette and visibility, orange as our signature, one geo-grotesque typeface, roomy elegant surfaces — and our own yap-creature. Consistent in light and dark.",
+    "Aave-grade palette and visibility, orange as our signature, one geo-grotesque typeface, roomy elegant surfaces, and our own yap-creature. Consistent in light and dark.",
 };

@@ -55,7 +55,7 @@ export default function PerformanceBand({
           >
             <StatBlock
               label={stat.label}
-              value={loaded ? (unavailable ? "—" : stat.value) : null}
+              value={loaded ? (unavailable ? "n/a" : stat.value) : null}
               detail={
                 unavailable ? "Some data couldn’t be loaded" : stat.detail
               }

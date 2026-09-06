@@ -1,4 +1,5 @@
 import type { ContentBlock } from "@/lib/db/schema";
+import { undash } from "@/lib/text/undash";
 import {
   blockFrom,
   insertBlockAfter,
@@ -53,7 +54,7 @@ const record = (value: unknown): Record<string, unknown> | null =>
     : null;
 
 function clip(value: unknown, max: number): string {
-  return typeof value === "string" ? value.trim().slice(0, max) : "";
+  return typeof value === "string" ? undash(value.trim()).slice(0, max) : "";
 }
 
 function parseBlock(value: unknown): CanvasBlockInput | null {
