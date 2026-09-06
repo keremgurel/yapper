@@ -23,7 +23,7 @@ struct StudioEditorTests {
     @Test func embeddedLibraryLinksPreserveTheirRecording() {
         #expect(CloudLinkRouter.disposition(
             for: URL(string: "https://ypr.app/studio/editor?item=\(itemID)")!,
-            nativeDestination: .library
+            nativeDestination: .ideas
         ) == .openEditor(itemID))
         #expect(CloudLinkRouter.disposition(
             for: URL(string: "yapper-studio://open/editor?item=\(itemID)")!,
