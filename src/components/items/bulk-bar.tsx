@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ArrowLeftToLine, Layers, Loader2, Tag, Trash2, X } from "lucide-react";
+import { Tag, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,13 +11,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePillars } from "@/hooks/use-pillars";
-import type { ContentStage, ContentStatus } from "@/lib/db/schema";
+import type { ContentStatus } from "@/lib/db/schema";
 import { contentStatuses } from "@/lib/db/schema";
 
 const STATUS_LABEL: Record<ContentStatus, string> = {
-  drafted: "Drafted",
-  planned: "Planned",
-  scheduled: "Scheduled",
+  captured: "Captured",
+  drafting: "Drafting",
+  ready: "Ready",
   posted: "Posted",
 };
 
@@ -29,18 +29,14 @@ const STATUS_LABEL: Record<ContentStatus, string> = {
  * else (reclassify, delete, clear) is common to both.
  */
 export default function BulkBar({
-  stage,
   count,
   onSetPillar,
-  onMove,
   onSetStatus,
   onDelete,
   onClear,
 }: {
-  stage: ContentStage;
   count: number;
   onSetPillar: (pillarId: string | null) => Promise<void>;
-  onMove: (to: ContentStage) => Promise<void>;
   onSetStatus: (status: ContentStatus) => Promise<void>;
   onDelete: () => Promise<void>;
   onClear: () => void;
@@ -118,33 +114,27 @@ export default function BulkBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {stage === "library" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                disabled={busy}
-                className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={busy}
+              className="text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50"
+            >
+              Status
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center">
+            {contentStatuses.map((status) => (
+              <DropdownMenuItem
+                key={status}
+                onSelect={() => void run(() => onSetStatus(status))}
               >
-                Status
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center">
-              {contentStatuses
-                // Scheduling needs a date per item, which a bulk action has no
-                // sensible value for; the API refuses it for the same reason.
-                .filter((status) => status !== "scheduled")
-                .map((status) => (
-                  <DropdownMenuItem
-                    key={status}
-                    onSelect={() => void run(() => onSetStatus(status))}
-                  >
-                    {STATUS_LABEL[status]}
-                  </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                {STATUS_LABEL[status]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <button
           type="button"
@@ -155,33 +145,6 @@ export default function BulkBar({
           <Trash2 className="h-4 w-4" />
           Delete
         </button>
-
-        {stage === "bank" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => onMove("library"))}
-            className="ml-1 flex items-center gap-1.5 rounded-full bg-[color:var(--sg-accent)] px-4 py-1.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {busy ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Layers className="h-4 w-4" />
-            )}
-            Send to library
-          </button>
-        ) : (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void run(() => onMove("bank"))}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground ml-1 flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50"
-          >
-            <ArrowLeftToLine className="h-4 w-4" />
-            Back to bank
-          </button>
-        )}
-
         <button
           type="button"
           onClick={onClear}

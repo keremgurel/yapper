@@ -8,7 +8,7 @@ struct CloudLinkRouterTests {
 
         #expect(visible == [
             .home,
-            .brain, .ideas, .library,
+            .brain, .ideas,
             .recorder, .editor,
             .poster, .calendar, .automations,
             .brand, .storage, .dictionary, .connections,
@@ -70,15 +70,15 @@ struct CloudLinkRouterTests {
                 == .allowInApp
         )
         #expect(
-            CloudLinkRouter.disposition(for: nestedPage, nativeDestination: .library)
+            CloudLinkRouter.disposition(for: nestedPage, nativeDestination: .ideas)
                 == .allowInApp
         )
     }
 
     @Test func nestedLibraryRoutesBelongToTheLibrarySurface() {
-        #expect(StudioDestination.library.contains(cloudPath: "/studio/library/item-123"))
-        #expect(StudioDestination.library.contains(cloudPath: "/studio/library/item-123/"))
-        #expect(!StudioDestination.library.contains(cloudPath: "/studio/ideas"))
+        #expect(StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123"))
+        #expect(StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123/"))
+        #expect(!StudioDestination.ideas.contains(cloudPath: "/studio/brain"))
         #expect(!StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123"))
     }
 

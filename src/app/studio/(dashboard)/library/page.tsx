@@ -1,13 +1,6 @@
-import type { Metadata } from "next";
-import ContentLibrary from "@/components/library/content-library";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Content Library",
-  description:
-    "Your content pipeline: shape ideas into scripts with AI and track them from drafted to posted.",
-  robots: { index: false }, // personal dashboard surface
-};
-
+/** The Content Library merged into Ideas. Old links keep working. */
 export default function Page() {
-  return <ContentLibrary />;
+  redirect("/studio/ideas");
 }

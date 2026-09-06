@@ -23,7 +23,7 @@ export const DEFAULT_CONTENT_SORT: ContentSort = {
 };
 
 /** The direction a column jumps to the first time you click it. Names and the
- * pipeline read most naturally ascending (A→Z, drafted→posted); time reads
+ * pipeline read most naturally ascending (A to Z, captured to posted); time reads
  * newest-first, which is what "what did I touch last" wants. */
 export function defaultDirFor(key: ContentSortKey): SortDir {
   return key === "updated" ? "desc" : "asc";

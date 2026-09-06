@@ -11,9 +11,9 @@ import {
 import { contentStatuses, type ContentStatus } from "@/lib/db/schema";
 
 const LABEL: Record<ContentStatus, string> = {
-  drafted: "Drafted",
-  planned: "Planned",
-  scheduled: "Scheduled",
+  captured: "Captured",
+  drafting: "Drafting",
+  ready: "Ready",
   posted: "Posted",
 };
 

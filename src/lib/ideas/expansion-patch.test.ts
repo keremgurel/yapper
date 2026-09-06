@@ -20,8 +20,14 @@ describe("expansionToPatch", () => {
       }),
     );
 
-    // The old curate.ts collapsed all of this into points/example/cta.
+    // The direction leads the page; the reference-specific sections follow
+    // as they came, nothing flattened into fixed fields.
     expect(patch.blocks).toEqual([
+      {
+        label: "Direction",
+        kind: "paragraph",
+        text: "The audio carries the joke.",
+      },
       { label: "Joke mechanics", kind: "bullets", items: ["a", "b"] },
       { label: "Beat-by-beat", kind: "steps", items: ["one", "two"] },
       { label: "Draft", kind: "script", text: "Say this." },

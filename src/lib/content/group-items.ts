@@ -11,9 +11,9 @@ export interface ItemGroup {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  drafted: "Drafted",
-  planned: "Planned",
-  scheduled: "Scheduled",
+  captured: "Captured",
+  drafting: "Drafting",
+  ready: "Ready",
   posted: "Posted",
 };
 

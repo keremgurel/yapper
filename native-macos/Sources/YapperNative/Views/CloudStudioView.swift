@@ -883,7 +883,6 @@ extension StudioDestination {
         case .home: "/studio/home"
         case .brain: "/studio/brain"
         case .ideas: "/studio/ideas"
-        case .library: "/studio/library"
         case .recorder: "/studio/recorder"
         case .editor: "/studio/editor"
         // Nothing to load: the audio library is a folder on this Mac, and there
@@ -914,7 +913,11 @@ extension StudioDestination {
         let normalized = candidate.hasSuffix("/") && candidate.count > 1
             ? String(candidate.dropLast())
             : candidate
-        return normalized == cloudPath || normalized.hasPrefix("\(cloudPath)/")
+        if normalized == cloudPath || normalized.hasPrefix("\(cloudPath)/") { return true }
+        // Ideas used to be two destinations. Links to the old Library address
+        // still exist in emails and history, so they stay part of Ideas.
+        return self == .ideas
+            && (normalized == "/studio/library" || normalized.hasPrefix("/studio/library/"))
     }
 
     init?(cloudPath: String) {

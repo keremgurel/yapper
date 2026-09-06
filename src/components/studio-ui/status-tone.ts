@@ -1,12 +1,13 @@
 import type { ChipTone } from "@/components/studio-ui/chip-tones";
 import type { ContentStatus } from "@/lib/db/schema";
 
-/** Pipeline status on the shared hue meanings: neutral draft, cyan while in
- * progress, yellow while waiting on a date, green when it shipped. */
+/** Status on the shared hue meanings: neutral for a raw capture, cyan while
+ * being drafted, yellow while ready and waiting to be shot or posted, green
+ * when it shipped. */
 const STATUS_TONE: Record<ContentStatus, ChipTone> = {
-  drafted: "neutral",
-  planned: "cyan",
-  scheduled: "yellow",
+  captured: "neutral",
+  drafting: "cyan",
+  ready: "yellow",
   posted: "green",
 };
 

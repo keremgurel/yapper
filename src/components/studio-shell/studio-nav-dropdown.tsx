@@ -52,7 +52,7 @@ export default function StudioNavDropdown() {
         ))}
 
         <Link
-          href="/studio/library"
+          href="/studio/ideas"
           className="bg-foreground text-background mt-1 flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-[13px] font-black no-underline transition-opacity hover:opacity-90"
         >
           Open your Studio

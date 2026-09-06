@@ -68,7 +68,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       // a captured idea and an expanded one have the same body model.
       blocks: capturedIdeaToBlocks(idea),
       pillar: idea.pillar ?? undefined,
-      status: "drafted",
+      status: "captured",
     });
 
     return Response.json({

@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import IdeaBank from "@/components/ideas/idea-bank";
+import IdeasPage from "@/components/ideas/ideas-page";
 
 export const metadata: Metadata = {
-  title: "Idea bank · Yapper Studio",
+  title: "Ideas · Yapper Studio",
 };
 
-export default function IdeasPage() {
-  return <IdeaBank />;
+export default function IdeasRoute() {
+  return <IdeasPage />;
 }

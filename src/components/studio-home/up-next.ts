@@ -8,10 +8,10 @@ export function upNextItems(
 ): ContentSummary[] {
   const active = items.filter((item) => item.status !== "posted");
   const dated = active
-    .filter((item) => item.status === "scheduled" && item.scheduledFor)
+    .filter((item) => item.status === "ready" && item.scheduledFor)
     .sort((a, b) => (a.scheduledFor ?? "").localeCompare(b.scheduledFor ?? ""));
   const undated = active
-    .filter((item) => !(item.status === "scheduled" && item.scheduledFor))
+    .filter((item) => !(item.status === "ready" && item.scheduledFor))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return [...dated, ...undated].slice(0, limit);
 }

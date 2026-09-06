@@ -8,7 +8,7 @@ const item = (
 ): ContentSummary =>
   ({
     title: "",
-    status: "drafted" as ContentStatus,
+    status: "drafting" as ContentStatus,
     stage: "library",
     formats: [],
     ideaType: null,
@@ -33,7 +33,7 @@ describe("upNextItems", () => {
       item({ id: "draft", updatedAt: "2026-05-01T00:00:00.000Z" }),
       item({
         id: "sched",
-        status: "scheduled",
+        status: "ready",
         scheduledFor: "2026-09-01T00:00:00.000Z",
       }),
     ]);
@@ -44,12 +44,12 @@ describe("upNextItems", () => {
     const out = upNextItems([
       item({
         id: "late",
-        status: "scheduled",
+        status: "ready",
         scheduledFor: "2026-12-01T00:00:00.000Z",
       }),
       item({
         id: "soon",
-        status: "scheduled",
+        status: "ready",
         scheduledFor: "2026-02-01T00:00:00.000Z",
       }),
     ]);
@@ -72,10 +72,10 @@ describe("upNextItems", () => {
     const out = upNextItems([
       item({
         id: "dated",
-        status: "scheduled",
+        status: "ready",
         scheduledFor: "2026-03-01T00:00:00.000Z",
       }),
-      item({ id: "dateless", status: "scheduled", scheduledFor: null }),
+      item({ id: "dateless", status: "ready", scheduledFor: null }),
     ]);
     expect(out.map((r) => r.id)).toEqual(["dated", "dateless"]);
   });

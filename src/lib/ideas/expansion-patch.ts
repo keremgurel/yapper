@@ -47,6 +47,13 @@ export function sectionsToBlocks(
 
 export function expansionToPatch(expansion: IdeaExpansion): ExpansionPatch {
   const blocks = sectionsToBlocks(expansion.sections);
+  // The direction leads the page: what this piece is and the angle for this
+  // creator, as the first block, so the canvas opens on the idea rather than
+  // on a bare script.
+  const direction = expansion.summary?.trim();
+  if (direction) {
+    blocks.unshift({ label: "Direction", kind: "paragraph", text: direction });
+  }
 
   // Older expansions predate adaptive sections and only have the fixed fields.
   // They become blocks too, so every idea ends up with one body model.

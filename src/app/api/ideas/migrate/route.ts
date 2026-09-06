@@ -62,8 +62,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       // A localStorage idea that was already curated has a library counterpart
       // created by the old (lossy) bridge; it still belongs in the bank as the
       // record of the creator's own words.
-      stage: "bank",
-      status: "drafted",
+      status: "captured",
       ideaType: idea.type ?? null,
       originalNote: note.slice(0, 20_000),
       title: expansion?.title ?? "",

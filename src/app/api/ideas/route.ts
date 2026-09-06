@@ -8,12 +8,12 @@ import { parseIdeaFields } from "@/lib/ideas/input";
 
 export const runtime = "nodejs";
 
-/** Everything currently sitting in the Idea Bank inbox. */
+/** Every idea, whatever its status: there is one list. */
 export async function GET(): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  const items = await listContentItems(userId, { stage: "bank" });
+  const items = await listContentItems(userId);
   return Response.json({ items });
 }
 
@@ -44,9 +44,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     ...base,
     ...idea,
     projectId: project.id,
-    // Ideas always start in the bank; a client cannot claim otherwise.
-    stage: "bank",
-    status: "drafted",
+    // A capture is always a capture; a client cannot claim otherwise.
+    status: "captured",
   });
 
   return Response.json({ item });

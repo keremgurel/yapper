@@ -44,10 +44,12 @@ export function buildExpandMessages(
     '{"title":"<=8 words, specific, no quotes",' +
     '"pillar":"best-fit pillar or null",' +
     '"format":"specific creative format, e.g. audio-led reaction sketch",' +
-    '"summary":"2-4 sentences explaining what happens, what carries the idea, and the adaptation angle",' +
-    '"sections":[{"label":"a reference-specific label",' +
-    '"kind":"paragraph|bullets|steps|script",' +
-    '"text":"for paragraph or script",' +
+    '"summary":"the content direction: 2-4 sentences on what this piece is, what carries it, and the angle for THIS creator",' +
+    '"hooks":["3 to 5 opening lines, each one spoken sentence, different mechanisms"],' +
+    '"script":"a complete first draft in the creator\'s voice: the words said aloud, or the dialogue and cues if the format is a sketch; newlines allowed",' +
+    '"sections":[{"label":"only when this reference genuinely needs one more block, e.g. Beat-by-beat for a sketch",' +
+    '"kind":"paragraph|bullets|steps",' +
+    '"text":"for paragraph",' +
     '"items":["for bullets or steps"]}]}\n\n' +
     "Rules:\n" +
     "- First identify what literally happens in the source and which layer " +
@@ -55,10 +57,15 @@ export function buildExpandMessages(
     "or visual reveal.\n" +
     "- Keep the creator's angle and meaning. Do not convert the topic into a " +
     "generic explainer.\n" +
-    "- Choose 2-6 useful sections whose labels fit THIS reference. Examples " +
-    "include Reference breakdown, Joke mechanics, Beat-by-beat, What to keep, " +
-    "CELPIP adaptation, Audio/dialogue, Shot plan, or Draft, but use only what " +
-    "actually helps.\n" +
+    "- The automatic set is exactly: the direction, the hooks, and the full " +
+    "first draft. Add a section only when this specific reference needs one " +
+    "more block to be shootable (a beat-by-beat for a sketch, a shot plan for " +
+    "a visual gag). Never add key points, research, or a breakdown of the " +
+    "reference: the creator asks for those on the page when they want them.\n" +
+    "- The script is a real first draft the creator could shoot: their angle, " +
+    "their voice, 130 to 200 spoken words unless the format is shorter by " +
+    "nature. No headers, no bullet formatting, no stage directions unless the " +
+    "format is a sketch. Never use em dashes or en dashes.\n" +
     "- For a recreation, separate the source's reusable mechanism from the new " +
     "topic. Preserve reactions, pauses, escalation, and audio cues when those " +
     "are the point.\n" +

@@ -10,7 +10,7 @@ const uploaded: PostableVideo = {
   id: "upload-1",
   title: "ep-11",
   submissionId: "submission-1",
-  status: "drafted",
+  status: "drafting",
   scheduledFor: null,
   updatedAt: "2026-09-05T15:00:00Z",
   transcriptStatus: "pending",

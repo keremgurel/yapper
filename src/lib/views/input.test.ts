@@ -35,11 +35,11 @@ describe("parseViewInput", () => {
     const view = parseViewInput({
       name: "x",
       filters: {
-        status: ["drafted", "archived"],
+        status: ["drafting", "archived"],
         formats: ["short", "hologram"],
       },
     });
-    expect(view?.filters).toEqual({ status: ["drafted"], formats: ["short"] });
+    expect(view?.filters).toEqual({ status: ["drafting"], formats: ["short"] });
   });
 
   it("omits a filter key entirely when nothing valid is left", () => {

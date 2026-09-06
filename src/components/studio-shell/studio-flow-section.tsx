@@ -50,7 +50,7 @@ export default function StudioFlowSection() {
 
         <div className="mt-10 flex justify-center">
           <Link
-            href="/studio/library"
+            href="/studio/ideas"
             className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-black no-underline transition-opacity hover:opacity-90"
           >
             Open your Studio

@@ -16,15 +16,10 @@ interface GateCopy {
 
 /** The sell for each locked surface. One headline, one line. No filler. */
 const COPY: Record<string, GateCopy> = {
-  "/studio/library": {
-    eyebrow: "Content Library",
-    headline: "Your whole content pipeline, from idea to posted.",
-    sub: "Capture an idea by voice, turn it into a script, track it to posted.",
-  },
   "/studio/ideas": {
-    eyebrow: "Idea bank",
-    headline: "Every idea and inspiration in one place.",
-    sub: "Drop a link or a voice note. We expand it into a ready idea.",
+    eyebrow: "Ideas",
+    headline: "From a passing thought to a posted video, in one place.",
+    sub: "Capture by voice or link, get a first draft, track it to posted.",
   },
   "/studio/recorder": {
     eyebrow: "Recorder",

@@ -26,23 +26,19 @@ import {
  */
 export default function CanvasMenu({
   hasRecording,
-  inBank,
   busy,
   onCopyScript,
   onSendToPhone,
   onEditOnMac,
   onCrossPost,
-  onMoveToLibrary,
   onDelete,
 }: {
   hasRecording: boolean;
-  inBank: boolean;
   busy: boolean;
   onCopyScript: () => void;
   onSendToPhone: () => void;
   onEditOnMac: () => void;
   onCrossPost: () => void;
-  onMoveToLibrary: () => void;
   onDelete: () => void;
 }) {
   return (
@@ -73,14 +69,6 @@ export default function CanvasMenu({
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={onCrossPost}>
               <Send className="h-4 w-4" /> Cross-post
-            </DropdownMenuItem>
-          </>
-        )}
-        {inBank && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onMoveToLibrary}>
-              Move to Library
             </DropdownMenuItem>
           </>
         )}

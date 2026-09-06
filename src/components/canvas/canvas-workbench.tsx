@@ -26,11 +26,7 @@ import {
   removeBlock,
   updateBlock,
 } from "@/lib/content/canvas-doc";
-import {
-  defaultScheduleDate,
-  deleteContent,
-  type ContentSummary,
-} from "@/lib/content/client";
+import { deleteContent, type ContentSummary } from "@/lib/content/client";
 import { hookTexts } from "@/lib/content/normalize";
 import { ideaToScript } from "@/lib/inspiration/idea-format";
 import {
@@ -111,7 +107,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
             rows.filter((row) => row.id !== id),
           );
       }
-      router.push(item?.stage === "bank" ? "/studio/ideas" : "/studio/library");
+      router.push("/studio/ideas");
     }, "The delete couldn’t be confirmed. Your item is kept; try again.");
 
   if (loading) {
@@ -138,8 +134,8 @@ export default function CanvasWorkbench({ id }: { id: string }) {
           This item doesn’t exist, or isn’t yours.
         </p>
         <Button asChild variant="link" className="mt-2 px-0">
-          <Link href="/studio/library">
-            <ArrowLeft className="h-4 w-4" /> Back to the library
+          <Link href="/studio/ideas">
+            <ArrowLeft className="h-4 w-4" /> Back to Ideas
           </Link>
         </Button>
       </div>
@@ -205,17 +201,10 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       )}
 
       <CanvasHeader
-        inBank={item.stage === "bank"}
         title={item.title}
         onTitle={(title) => update({ title })}
         status={item.status}
-        onStatus={(status) =>
-          update(
-            status === "scheduled" && !item.scheduledFor
-              ? { status, scheduledFor: defaultScheduleDate() }
-              : { status },
-          )
-        }
+        onStatus={(status) => update({ status })}
         saveState={saveState}
         busy={busy}
         hasRecording={Boolean(item.submissionId)}
@@ -223,7 +212,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         menu={
           <CanvasMenu
             hasRecording={Boolean(item.submissionId)}
-            inBank={item.stage === "bank"}
             busy={busy}
             onCopyScript={() => {
               void navigator.clipboard
@@ -235,7 +223,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
             onSendToPhone={() => setPhoneOpen(true)}
             onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
             onCrossPost={() => void navigate(`/studio/poster?item=${item.id}`)}
-            onMoveToLibrary={() => update({ stage: "library" })}
             onDelete={() => void remove()}
           />
         }

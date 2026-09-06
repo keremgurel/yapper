@@ -6,7 +6,7 @@ import type { ContentStage, ContentStatus } from "@/lib/db/schema";
 function row(fields: Partial<ContentSummary> & { id: string }): ContentSummary {
   return {
     title: "",
-    status: "drafted" as ContentStatus,
+    status: "drafting" as ContentStatus,
     formats: [],
     scheduledFor: null,
     submissionId: null,
@@ -53,16 +53,16 @@ describe("sortContent", () => {
   it("sorts status in pipeline order, not alphabetically", () => {
     const rows = [
       row({ id: "posted", status: "posted" }),
-      row({ id: "drafted", status: "drafted" }),
-      row({ id: "scheduled", status: "scheduled" }),
-      row({ id: "planned", status: "planned" }),
+      row({ id: "drafting", status: "drafting" }),
+      row({ id: "ready", status: "ready" }),
+      row({ id: "ready", status: "ready" }),
     ];
     // Alphabetical would give drafted, planned, posted, scheduled — the point of
     // the rank is that posted comes last.
     expect(by(rows, { key: "status", dir: "asc" })).toEqual([
-      "drafted",
-      "planned",
-      "scheduled",
+      "drafting",
+      "ready",
+      "ready",
       "posted",
     ]);
   });
@@ -82,9 +82,9 @@ describe("sortContent", () => {
 
   it("is stable: rows tied on the sort column keep their incoming order", () => {
     const rows = [
-      row({ id: "first", status: "drafted" }),
-      row({ id: "second", status: "drafted" }),
-      row({ id: "third", status: "drafted" }),
+      row({ id: "first", status: "drafting" }),
+      row({ id: "second", status: "drafting" }),
+      row({ id: "third", status: "drafting" }),
     ];
     // All tie on status, so neither direction may reorder them.
     expect(by(rows, { key: "status", dir: "asc" })).toEqual([

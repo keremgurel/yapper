@@ -190,5 +190,6 @@ export function useIdeaBank() {
     importInstagramSaves,
     retry,
     refresh,
+    patchRow,
   };
 }

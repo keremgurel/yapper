@@ -95,9 +95,9 @@ function ideaTextFrom(command: string): string {
 }
 
 function routeLabel(pathname: string): string {
-  if (pathname.startsWith("/studio/ideas")) return "Idea Bank";
+  if (pathname.startsWith("/studio/ideas")) return "Ideas";
   if (pathname.startsWith("/studio/brain")) return "Brain";
-  if (pathname.startsWith("/studio/library")) return "Library";
+  if (pathname.startsWith("/studio/library")) return "Ideas";
   if (pathname.startsWith("/studio/inspiration")) return "Inspiration";
   if (pathname.startsWith("/studio/brand")) return "Brand kit";
   return "Studio";

@@ -8,7 +8,7 @@ function item(
 ): ContentSummary {
   return {
     title: "A video",
-    status: "drafted",
+    status: "drafting",
     scheduledFor: null,
     submissionId: null,
     pillar: null,

@@ -8,9 +8,9 @@ import { itemTitle } from "@/components/studio-home/item-title";
 import { upNextItems } from "@/components/studio-home/up-next";
 
 const STATUS_LABEL: Record<ContentStatus, string> = {
-  drafted: "Drafted",
-  planned: "Planned",
-  scheduled: "Scheduled",
+  captured: "Captured",
+  drafting: "Drafting",
+  ready: "Ready",
   posted: "Posted",
 };
 
@@ -67,7 +67,7 @@ export default function UpNextSection({
                 <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
                   {itemTitle(item)}
                 </span>
-                {item.status === "scheduled" && item.scheduledFor && (
+                {item.status === "ready" && item.scheduledFor && (
                   <span className="text-muted-foreground font-mono text-xs tabular-nums">
                     {scheduledLabel(item.scheduledFor)}
                   </span>

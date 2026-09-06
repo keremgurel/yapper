@@ -45,7 +45,7 @@ export function setupSteps(signals: StudioSignals): SetupStep[] {
     {
       id: "content",
       title: "Draft your first script",
-      href: "/studio/library",
+      href: "/studio/ideas",
       done: signals.hasContent,
     },
     {

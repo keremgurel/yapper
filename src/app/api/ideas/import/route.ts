@@ -62,8 +62,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
     items.push({
       projectId: project.id,
-      stage: "bank",
-      status: "drafted",
+      status: "captured",
       ideaType: "inspiration",
       sourceUrl: url,
       sourceTitle: str(rec.title, 300) ?? null,

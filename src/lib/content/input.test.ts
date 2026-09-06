@@ -62,8 +62,8 @@ describe("parseContentInput", () => {
   });
 
   it("accepts a valid status", () => {
-    const { input, badStatus } = parseContentInput({ status: "scheduled" });
-    expect(input.status).toBe("scheduled");
+    const { input, badStatus } = parseContentInput({ status: "ready" });
+    expect(input.status).toBe("ready");
     expect(badStatus).toBe(false);
   });
 

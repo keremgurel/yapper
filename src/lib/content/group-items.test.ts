@@ -8,7 +8,7 @@ const row = (
 ): ContentSummary =>
   ({
     title: "",
-    status: "drafted" as ContentStatus,
+    status: "drafting" as ContentStatus,
     stage: "library",
     formats: [],
     ideaType: null,
@@ -29,9 +29,9 @@ const row = (
 
 describe("applyViewFilters", () => {
   const rows = [
-    row({ id: "a", status: "drafted", formats: ["short"] }),
+    row({ id: "a", status: "drafting", formats: ["short"] }),
     row({ id: "b", status: "posted", formats: ["short", "article"] }),
-    row({ id: "c", status: "drafted", pillarId: "p1" }),
+    row({ id: "c", status: "drafting", pillarId: "p1" }),
   ];
 
   it("does not narrow anything when the view has no filters", () => {
@@ -40,7 +40,7 @@ describe("applyViewFilters", () => {
 
   it("keeps only the wanted statuses", () => {
     expect(
-      applyViewFilters(rows, { status: ["drafted"] }).map((r) => r.id),
+      applyViewFilters(rows, { status: ["drafting"] }).map((r) => r.id),
     ).toEqual(["a", "c"]);
   });
 
@@ -57,7 +57,7 @@ describe("applyViewFilters", () => {
 
   it("combines filters with AND", () => {
     expect(
-      applyViewFilters(rows, { status: ["drafted"], formats: ["short"] }).map(
+      applyViewFilters(rows, { status: ["drafting"], formats: ["short"] }).map(
         (r) => r.id,
       ),
     ).toEqual(["a"]);
@@ -82,9 +82,9 @@ describe("groupItems", () => {
   it("keeps every status group, in pipeline order", () => {
     const groups = groupItems([row({ id: "a", status: "posted" })], "status");
     expect(groups.map((g) => g.key)).toEqual([
-      "drafted",
-      "planned",
-      "scheduled",
+      "captured",
+      "drafting",
+      "ready",
       "posted",
     ]);
     expect(groups[3].items).toHaveLength(1);

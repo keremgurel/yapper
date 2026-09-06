@@ -506,10 +506,16 @@ export const skillCatalog = pgTable(
   ],
 );
 
+/**
+ * Where an idea is on the loop. Captured is the raw note, Drafting is being
+ * developed on the canvas, Ready is shot-or-shootable and, with `scheduledFor`
+ * set, queued to publish; Posted is out. Scheduled is a date on a Ready item,
+ * not a status of its own.
+ */
 export const contentStatuses = [
-  "drafted",
-  "planned",
-  "scheduled",
+  "captured",
+  "drafting",
+  "ready",
   "posted",
 ] as const;
 export type ContentStatus = (typeof contentStatuses)[number];
@@ -609,7 +615,7 @@ export const contentItems = pgTable(
     script: text("script"),
     status: text("status", { enum: contentStatuses })
       .notNull()
-      .default("drafted"),
+      .default("captured"),
     // The content pillar this idea belongs to (a free-form name, matched to the
     // user's inspiration pillars at capture time). Superseded by pillarId;
     // retained so legacy rows keep their classification until reconciled.
@@ -646,7 +652,7 @@ export const contentItems = pgTable(
     index("content_items_stage_idx").on(t.userId, t.stage, t.updatedAt),
     check(
       "content_items_status_check",
-      sql`${t.status} in ('drafted','planned','scheduled','posted')`,
+      sql`${t.status} in ('captured','drafting','ready','posted')`,
     ),
     check("content_items_stage_check", sql`${t.stage} in ('bank','library')`),
     check(
@@ -659,10 +665,6 @@ export const contentItems = pgTable(
     ),
     // A scheduled item must have a date; enforced at the DB so no API path
     // (create, update, import, future writers) can produce the invalid pairing.
-    check(
-      "content_items_scheduled_check",
-      sql`${t.status} <> 'scheduled' or ${t.scheduledFor} is not null`,
-    ),
     uniqueIndex("content_items_import_unique").on(t.userId, t.sourceClientId),
   ],
 );

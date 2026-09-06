@@ -111,8 +111,7 @@ private struct WorkspaceProfileMenu: View {
                 .padding(.bottom, 4)
 
             row("Brain", "brain", .brain)
-            row("Idea Bank", "lightbulb", .ideas)
-            row("Content Library", "square.stack.3d.up", .library)
+            row("Ideas", "lightbulb", .ideas)
             Divider().padding(.vertical, 4)
             row("Brand", "paintpalette", .brand)
             row("Storage", "externaldrive", .storage)

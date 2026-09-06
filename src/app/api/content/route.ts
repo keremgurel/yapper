@@ -17,9 +17,6 @@ export async function GET(req: NextRequest): Promise<Response> {
   const poster = req.nextUrl.searchParams.get("surface") === "poster";
   const items = await listContentItems(userId, {
     includePosterUploads: poster,
-    // The library is the pipeline, not the inbox. The poster surface wants
-    // everything recordable, so it is the one caller that spans both stages.
-    stage: poster ? undefined : "library",
   });
   return Response.json({ items });
 }
@@ -61,11 +58,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       input.submissionId = own.id;
     }
   }
-  // Same invariant as PATCH (and the DB CHECK): scheduled requires a date.
-  if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {
-    return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
-  }
-
   // Anything created through this route is a library item; ideas go through
   // /api/ideas, which stamps stage explicitly.
   const item = await createContentItem(userId, { ...input, stage: "library" });

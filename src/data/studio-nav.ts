@@ -33,11 +33,11 @@ const home: StudioNavItem = {
   icon: "home",
 };
 
-const inspiration: StudioNavItem = {
-  title: "Idea bank",
+const ideas: StudioNavItem = {
+  title: "Ideas",
   href: "/studio/ideas",
   description:
-    "Drop a link or a voice note. We keep your words and build the idea.",
+    "Capture a thought or a link, develop it into a script, track it to posted.",
   icon: "library",
 };
 
@@ -47,14 +47,6 @@ const brain: StudioNavItem = {
   description:
     "What you make, who it is for, and why. Everything we write reads this first.",
   icon: "brain",
-};
-
-const contentLibrary: StudioNavItem = {
-  title: "Content Library",
-  href: "/studio/library",
-  description:
-    "Your pipeline: shape ideas into scripts and track them to posted.",
-  icon: "layers",
 };
 
 const recorder: StudioNavItem = {
@@ -131,7 +123,7 @@ const brand: StudioNavItem = {
  */
 export const studioNavGroups: StudioNavGroup[] = [
   { label: "", items: [home] },
-  { label: "Lab", items: [brain, inspiration, contentLibrary] },
+  { label: "Lab", items: [brain, ideas] },
   { label: "Studio", items: [recorder, editor] },
   { label: "Press", items: [poster, calendar, automations] },
   { label: "Settings", items: [brand, storage, dictionary, connections] },
@@ -142,13 +134,7 @@ export const studioNavGroups: StudioNavGroup[] = [
  * section. Calendar and Connections are left out: they are surfaces you visit,
  * not steps you move through.
  */
-export const studioFlowNav: StudioNavItem[] = [
-  inspiration,
-  contentLibrary,
-  recorder,
-  editor,
-  poster,
-];
+export const studioFlowNav: StudioNavItem[] = [ideas, recorder, editor, poster];
 
 /** Every Studio surface, in sidebar order. For menus and active-route matching
  * that need the full list (header dropdown, mobile nav, page-title lookup). */

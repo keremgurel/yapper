@@ -13,8 +13,8 @@ function deferred() {
 
 describe("calendar rescheduling", () => {
   it("keeps a confirmed library status and date together when a later edit fails", async () => {
-    const initial = { status: "drafted", scheduledFor: null };
-    const scheduled = { status: "scheduled", scheduledFor: "2026-09-06" };
+    const initial = { status: "drafting", scheduledFor: null };
+    const scheduled = { status: "ready", scheduledFor: "2026-09-06" };
     const recorded = { status: "recorded", scheduledFor: "2026-09-06" };
     const save = vi
       .fn()

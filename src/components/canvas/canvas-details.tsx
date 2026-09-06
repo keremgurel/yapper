@@ -28,7 +28,7 @@ export default function CanvasDetails({
         formats={item.formats}
         onChange={(formats) => update({ formats })}
       />
-      {item.status === "scheduled" && (
+      {item.status === "ready" && (
         <Input
           type="datetime-local"
           value={toLocalInput(item.scheduledFor)}

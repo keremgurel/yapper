@@ -106,7 +106,7 @@ export async function seedViewsIfEmpty(
             name: "Not posted",
             kind: "table",
             groupBy: null,
-            filters: { status: ["drafted", "planned", "scheduled"] },
+            filters: { status: ["captured", "drafting", "ready"] },
             columns: [],
           },
           {

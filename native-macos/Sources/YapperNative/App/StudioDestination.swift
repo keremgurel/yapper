@@ -4,7 +4,6 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     case home
     case brain
     case ideas
-    case library
     case recorder
     case editor
     case audio
@@ -33,8 +32,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         switch self {
         case .home: "Home"
         case .brain: "Brain"
-        case .ideas: "Idea bank"
-        case .library: "Content Library"
+        case .ideas: "Ideas"
         case .recorder: "Recorder"
         case .editor: "Editor"
         case .audio: "Audio"
@@ -54,7 +52,6 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .home: "house"
         case .brain: "brain"
         case .ideas: "lightbulb"
-        case .library: "square.stack.3d.up"
         case .recorder: "video"
         case .editor: "scissors"
         case .audio: "music.note.list"
@@ -72,7 +69,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     var group: String {
         switch self {
         case .home: ""
-        case .brain, .ideas, .library: "Lab"
+        case .brain, .ideas: "Lab"
         case .recorder, .editor, .audio: "Studio"
         case .poster, .calendar, .automations: "Press"
         case .brand, .storage, .dictionary, .connections: "Settings"
@@ -82,7 +79,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
 
     static let groups: [(String, [StudioDestination])] = [
         ("", [.home]),
-        ("Lab", [.brain, .ideas, .library]),
+        ("Lab", [.brain, .ideas]),
         ("Studio", [.recorder, .editor]),
         ("Press", [.poster, .calendar, .automations]),
         ("Settings", [.brand, .storage, .dictionary, .connections]),

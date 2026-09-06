@@ -13,7 +13,6 @@ import type { ContentStatus } from "@/lib/db/schema";
  * you do to a piece besides writing it: set its status and record it.
  */
 export default function CanvasHeader({
-  inBank,
   title,
   onTitle,
   status,
@@ -24,7 +23,6 @@ export default function CanvasHeader({
   onRecord,
   menu,
 }: {
-  inBank: boolean;
   title: string;
   onTitle: (title: string) => void;
   status: ContentStatus;
@@ -44,14 +42,14 @@ export default function CanvasHeader({
           size="sm"
           className="text-muted-foreground -ml-2"
         >
-          <Link href={inBank ? "/studio/ideas" : "/studio/library"}>
+          <Link href="/studio/ideas">
             <ArrowLeft className="h-4 w-4" />
-            {inBank ? "Idea bank" : "Library"}
+            Ideas
           </Link>
         </Button>
         <div className="flex items-center gap-2">
           <SaveIndicator state={saveState} />
-          {!inBank && <StatusSelect value={status} onChange={onStatus} />}
+          <StatusSelect value={status} onChange={onStatus} />
           <Button type="button" size="sm" disabled={busy} onClick={onRecord}>
             <Video className="h-4 w-4" />
             {hasRecording ? "Record again" : "Record"}

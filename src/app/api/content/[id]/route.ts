@@ -79,19 +79,6 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     input.pillar = null;
   }
 
-  if (input.status === "scheduled" && !(input.scheduledFor instanceof Date)) {
-    // Explicitly nulling the date while setting scheduled is also invalid.
-    if (input.scheduledFor === null) {
-      return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
-    }
-    const existing = await getContentItem(userId, id);
-    if (!existing)
-      return Response.json({ error: "not_found" }, { status: 404 });
-    if (!existing.scheduledFor) {
-      return Response.json({ error: "scheduled_needs_date" }, { status: 400 });
-    }
-  }
-
   const item = await updateContentItem(userId, id, input);
   if (!item) return Response.json({ error: "not_found" }, { status: 404 });
   return Response.json({ item });

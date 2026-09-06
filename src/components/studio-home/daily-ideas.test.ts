@@ -7,7 +7,7 @@ const idea = (over: Partial<ItemSummary> = {}): ItemSummary =>
   ({
     id: "i",
     title: "",
-    status: "drafted",
+    status: "drafting",
     stage: "bank",
     formats: [],
     ideaType: null,
