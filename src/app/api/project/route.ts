@@ -62,9 +62,12 @@ export async function PATCH(req: NextRequest): Promise<Response> {
   const existing = await getActiveProject(userId);
 
   const input = parseProjectInput(body);
-  let project = Object.keys(input).length
-    ? ((await updateProject(userId, input)) ?? existing)
-    : existing;
+  let project = existing;
+  if (Object.keys(input).length) {
+    const saved = await updateProject(userId, input);
+    if (!saved) return Response.json({ error: "not_found" }, { status: 404 });
+    project = saved;
+  }
 
   const pillarInput = parsePillarInput(body.pillars);
   let pillars;

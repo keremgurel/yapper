@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { mergeRecordPatches } from "@/lib/save-queue";
 import { useAutosave, type SaveState } from "@/hooks/use-autosave";
 import {
   createBlock,
@@ -24,7 +25,12 @@ import {
 export function useBrainBlocks(): {
   blocks: BrainBlock[];
   loading: boolean;
+  available: boolean;
   saveState: SaveState;
+  error: string | null;
+  refresh: () => Promise<void>;
+  retry: () => Promise<void>;
+  editAndSave: (id: string, patch: BrainBlockPatch) => Promise<void>;
   edit: (id: string, patch: BrainBlockPatch) => void;
   add: (block: NewBrainBlock) => Promise<BrainBlock>;
   remove: (id: string) => Promise<void>;
@@ -32,17 +38,27 @@ export function useBrainBlocks(): {
   reorder: (ids: string[]) => Promise<void>;
 } {
   const [blocks, setBlocks] = useState<BrainBlock[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const revision = useRef(0);
+  const deleting = useRef(new Set<string>());
+  const ordering = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     let active = true;
     listBlocks().then(
       (loaded) => {
-        if (active) setBlocks(loaded);
+        if (active) {
+          setBlocks(loaded);
+          setLoaded(true);
+          setError(null);
+        }
       },
       () => {
-        // An empty page the creator can still write into beats an error they
-        // can do nothing about; the next save reports the real failure.
-        if (active) setBlocks([]);
+        if (active) {
+          setError("Your Knowledge couldn’t be loaded. Try again.");
+          setLoaded(true);
+        }
       },
     );
     return () => {
@@ -61,11 +77,34 @@ export function useBrainBlocks(): {
     },
     [],
   );
-  const { state: saveState, queue } =
-    useAutosave<Record<string, BrainBlockPatch>>(save);
+  const {
+    state: saveState,
+    queue,
+    flush,
+  } = useAutosave<Record<string, BrainBlockPatch>>(
+    save,
+    800,
+    mergeRecordPatches,
+  );
+
+  const refresh = useCallback(async () => {
+    try {
+      await flush();
+      const started = revision.current;
+      const result = await listBlocks();
+      if (started === revision.current) setBlocks(result);
+      setError(null);
+    } catch {
+      setError("Your Knowledge couldn’t be loaded. Try again.");
+    } finally {
+      setLoaded(true);
+    }
+  }, [flush]);
 
   const edit = useCallback(
     (id: string, patch: BrainBlockPatch) => {
+      if (deleting.current.has(id)) return;
+      revision.current++;
       setBlocks((prev) =>
         prev
           ? prev.map((block) =>
@@ -80,16 +119,87 @@ export function useBrainBlocks(): {
     [queue],
   );
 
-  const add = useCallback(async (input: NewBrainBlock) => {
-    const block = await createBlock(input);
-    setBlocks((prev) => [...(prev ?? []), block]);
-    return block;
-  }, []);
+  const add = useCallback(
+    async (input: NewBrainBlock) => {
+      if (blocks === null) throw new Error("knowledge_not_loaded");
+      try {
+        const block = await createBlock(input);
+        revision.current++;
+        setBlocks((prev) => [...(prev ?? []), block]);
+        setError(null);
+        return block;
+      } catch (cause) {
+        setError("That Knowledge couldn’t be added. Try again.");
+        throw cause;
+      }
+    },
+    [blocks],
+  );
 
-  const remove = useCallback(async (id: string) => {
-    setBlocks((prev) => prev?.filter((block) => block.id !== id) ?? prev);
-    await deleteBlock(id);
-  }, []);
+  const remove = useCallback(
+    async (id: string) => {
+      if (deleting.current.has(id)) return;
+      deleting.current.add(id);
+      try {
+        await flush();
+        await deleteBlock(id);
+        revision.current++;
+        setBlocks((prev) => prev?.filter((block) => block.id !== id) ?? prev);
+        setError(null);
+      } catch (cause) {
+        setError(
+          "That memory couldn’t be removed. Your Knowledge is still here.",
+        );
+        throw cause;
+      } finally {
+        deleting.current.delete(id);
+      }
+    },
+    [flush],
+  );
+
+  const editAndSave = useCallback(
+    async (id: string, patch: BrainBlockPatch) => {
+      if (deleting.current.has(id)) throw new Error("knowledge_removing");
+      edit(id, patch);
+      await flush();
+    },
+    [edit, flush],
+  );
+
+  const reorder = useCallback(
+    (ids: string[]) => {
+      const run = ordering.current.then(async () => {
+        try {
+          await flush();
+          const saved = await reorderBlocks(ids);
+          revision.current++;
+          // Reordering changes order, not text that may be edited meanwhile.
+          setBlocks((previous) => {
+            const byId = new Map(previous?.map((block) => [block.id, block]));
+            const ordered = saved.map((block) => ({
+              ...(byId.get(block.id) ?? block),
+              sortOrder: block.sortOrder,
+            }));
+            const known = new Set(saved.map((block) => block.id));
+            return [
+              ...ordered,
+              ...(previous ?? []).filter((block) => !known.has(block.id)),
+            ];
+          });
+          setError(null);
+        } catch (cause) {
+          setError(
+            "The new order couldn’t be saved. Drag the memory again to retry.",
+          );
+          throw cause;
+        }
+      });
+      ordering.current = run.catch(() => {});
+      return run;
+    },
+    [flush],
+  );
 
   const move = useCallback(
     async (id: string, direction: -1 | 1) => {
@@ -100,28 +210,19 @@ export function useBrainBlocks(): {
       const next = [...current];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
-      setBlocks(next);
-      setBlocks(await reorderBlocks(next.map((block) => block.id)));
+      await reorder(next.map((block) => block.id));
     },
-    [blocks],
+    [blocks, reorder],
   );
-
-  /** An explicit order, for a drag. Applied locally first so the row lands
-   * where it was dropped rather than after the round trip. */
-  const reorder = useCallback(async (ids: string[]) => {
-    setBlocks((prev) => {
-      if (!prev) return prev;
-      const byId = new Map(prev.map((block) => [block.id, block]));
-      return ids
-        .map((id) => byId.get(id))
-        .filter((block): block is BrainBlock => Boolean(block));
-    });
-    setBlocks(await reorderBlocks(ids));
-  }, []);
 
   return {
     blocks: blocks ?? [],
-    loading: blocks === null,
+    loading: !loaded,
+    available: blocks !== null,
+    error,
+    refresh,
+    retry: flush,
+    editAndSave,
     saveState,
     edit,
     add,

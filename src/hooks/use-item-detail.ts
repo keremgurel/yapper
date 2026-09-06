@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getContent, type ContentDetail } from "@/lib/content/client";
 
 /**
@@ -10,29 +10,33 @@ import { getContent, type ContentDetail } from "@/lib/content/client";
  * of a few hundred ideas would otherwise ship megabytes of transcript to render
  * rows that show a title. This fills that in on demand, once per item.
  */
-export function useItemDetail(
-  id: string,
-  open: boolean,
-): { detail: ContentDetail | null; loading: boolean } {
-  const [detail, setDetail] = useState<ContentDetail | null>(null);
-  const [failed, setFailed] = useState(false);
+export function useItemDetail(id: string, open: boolean, revision = "") {
+  const [attempt, setAttempt] = useState(0);
+  const key = `${id}:${revision}:${attempt}`;
+  const [result, setResult] = useState<{
+    key: string;
+    detail: ContentDetail | null;
+  } | null>(null);
+  const detail = result?.key === key ? result.detail : null;
+  const failed = result?.key === key && result.detail === null;
+  const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
     if (!open || detail || failed) return;
     let active = true;
     getContent(id).then(
       (row) => {
-        if (active) setDetail(row);
+        if (active) setResult({ key, detail: row });
       },
       () => {
         // One failed fetch must not retry on every render.
-        if (active) setFailed(true);
+        if (active) setResult({ key, detail: null });
       },
     );
     return () => {
       active = false;
     };
-  }, [id, open, detail, failed]);
+  }, [id, key, open, detail, failed]);
 
-  return { detail, loading: open && !detail && !failed };
+  return { detail, loading: open && !detail && !failed, retry };
 }

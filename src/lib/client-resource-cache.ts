@@ -82,6 +82,9 @@ export function mutateClientResource<T>(
     typeof update === "function"
       ? (update as (value: T | null) => T)(previous)
       : update;
+  // A read started before this mutation cannot overwrite the newer value.
+  current.generation += 1;
+  current.promise = undefined;
   current.data = next;
   current.updatedAt = Date.now();
   publish(current);
@@ -110,6 +113,7 @@ export const STUDIO_RESOURCE_KEYS = {
   posterContent: "studio:content:poster",
   connections: "studio:connections",
   project: "studio:project",
+  brand: "studio:brand",
   billing: "studio:billing",
   views: (stage: string) => `studio:views:${stage}`,
   channel: (platform: string) => `studio:channel:${platform}`,

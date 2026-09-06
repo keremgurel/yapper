@@ -1,121 +1,71 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { failedSaveRetargets } from "@/lib/save-queue";
+import {
+  SaveQueue,
+  type MergeFields,
+  type SaveFunction,
+  type SaveOptions,
+  type SaveState,
+} from "@/lib/save-queue";
 
-export type SaveState = "idle" | "saving" | "saved" | "error";
+export type { SaveState } from "@/lib/save-queue";
 
-interface SaveOpts {
-  keepalive?: boolean;
-}
-
-type SaveFn<T> = (dirty: Partial<T>, opts?: SaveOpts) => Promise<void>;
-
-/**
- * A debounced, serialized save queue for autosaving a form to the server.
- * One concern: collect dirty fields, save them in order, never overlap.
- *
- * - queue(fields) merges into the pending dirty set and (re)arms the debounce.
- * - Saves are chained on one promise, so a slow response can never land after
- *   (and clobber) a newer one.
- * - Each batch is bound to the save function that was current when its first
- *   field was queued. If the save identity changes mid-batch (e.g. the caller
- *   re-targets to a different record id), the old batch flushes with ITS save
- *   first, so pending fields can never be written to the wrong record.
- * - Failed saves re-merge their fields into pending (newer edits win), so the
- *   next edit retries them.
- * - On unmount and on pagehide, pending fields flush immediately; pagehide uses
- *   keepalive so the request survives a hard navigation. (The pagehide flush
- *   rides the promise chain: with no in-flight save it issues in a microtask,
- *   which survives unload; behind a slow in-flight save it may not. Accepted.)
- */
+/** Debounce edits, serialize writes, retain failed changes, and flush on exit. */
 export function useAutosave<T extends object>(
-  save: SaveFn<T>,
+  save: SaveFunction<T>,
   debounceMs = 800,
+  merge?: MergeFields<T>,
 ) {
   const [state, setState] = useState<SaveState>("idle");
-  const pendingRef = useRef<Partial<T>>({});
-  // The save function the CURRENT pending batch belongs to (null = no batch).
-  const batchSaveRef = useRef<SaveFn<T> | null>(null);
-  const timerRef = useRef<number | null>(null);
-  const chainRef = useRef<Promise<void>>(Promise.resolve());
   const saveRef = useRef(save);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [engine] = useState(() => new SaveQueue<T>(setState, merge));
+
   useEffect(() => {
     saveRef.current = save;
   }, [save]);
-
-  const mountedRef = useRef(true);
   useEffect(() => {
-    mountedRef.current = true;
+    engine.setListener(setState);
     return () => {
-      mountedRef.current = false;
+      engine.setListener(() => {});
     };
-  }, []);
+  }, [engine]);
 
-  const set = (s: SaveState) => {
-    if (mountedRef.current) setState(s);
-  };
-
-  const flush = useCallback((opts?: SaveOpts): Promise<void> => {
-    if (timerRef.current !== null) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-    const dirty = pendingRef.current;
-    const saveFn = batchSaveRef.current;
-    if (Object.keys(dirty).length === 0 || !saveFn) return chainRef.current;
-    pendingRef.current = {};
-    batchSaveRef.current = null;
-    set("saving");
-    chainRef.current = chainRef.current
-      .then(() => saveFn(dirty, opts))
-      .then(
-        () => {
-          // Only report saved if nothing new queued up meanwhile.
-          if (Object.keys(pendingRef.current).length === 0) set("saved");
-        },
-        () => {
-          set("error");
-          // If the queue was re-pointed at another record while this save was in
-          // flight, the pending batch now belongs to that record. Re-merging the
-          // failed fields would write them to the WRONG record, so drop them
-          // instead. Losing one unsaved increment beats cross-record corruption.
-          if (failedSaveRetargets(saveFn, batchSaveRef.current)) return;
-          // Same target: newer pending edits win over the failed payload's
-          // values, and the retry batch keeps the failed batch's save target.
-          pendingRef.current = { ...dirty, ...pendingRef.current };
-          batchSaveRef.current ??= saveFn;
-        },
-      );
-    return chainRef.current;
-  }, []);
+  const flush = useCallback(
+    (options?: SaveOptions) => {
+      if (timer.current !== null) {
+        clearTimeout(timer.current);
+        timer.current = null;
+      }
+      return engine.settle(options);
+    },
+    [engine],
+  );
 
   const queue = useCallback(
     (fields: Partial<T>) => {
-      // Re-targeted (save identity changed) with a batch still pending: flush
-      // the old batch to its own target before starting the new one.
-      if (batchSaveRef.current && batchSaveRef.current !== saveRef.current) {
-        void flush();
-      }
-      batchSaveRef.current ??= saveRef.current;
-      Object.assign(pendingRef.current, fields);
-      set("saving");
-      if (timerRef.current !== null) clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(() => void flush(), debounceMs);
+      engine.enqueue(fields, saveRef.current);
+      if (timer.current !== null) clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        void flush().catch(() => {});
+      }, debounceMs);
     },
-    [flush, debounceMs],
+    [engine, flush, debounceMs],
   );
 
-  // Flush on hard navigation (keepalive) and on unmount (SPA nav keeps JS
-  // alive, so a normal fetch is fine there).
+  const unsent = useCallback(() => engine.unsent(), [engine]);
+
   useEffect(() => {
-    const onPageHide = () => void flush({ keepalive: true });
+    const onPageHide = () => {
+      void flush({ keepalive: true }).catch(() => {});
+    };
     window.addEventListener("pagehide", onPageHide);
     return () => {
       window.removeEventListener("pagehide", onPageHide);
-      void flush();
+      void flush({ keepalive: true }).catch(() => {});
     };
   }, [flush]);
 
-  return { state, queue, flush };
+  return { state, queue, flush, unsent };
 }

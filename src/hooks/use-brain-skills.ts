@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAutosave, type SaveState } from "@/hooks/use-autosave";
+import { mergeRecordPatches } from "@/lib/save-queue";
 import {
   createSkill,
   deleteSkill,
@@ -23,7 +24,10 @@ import { installCatalogEntry } from "@/lib/brain/catalog-client";
 export function useBrainSkills(): {
   skills: BrainSkill[];
   loading: boolean;
+  available: boolean;
   saveState: SaveState;
+  error: string | null;
+  retry: () => Promise<void>;
   edit: (id: string, patch: BrainSkillPatch) => void;
   add: (skill: BrainSkillPatch & { name: string }) => Promise<BrainSkill>;
   remove: (id: string) => Promise<void>;
@@ -31,25 +35,26 @@ export function useBrainSkills(): {
   refresh: () => Promise<void>;
 } {
   const [skills, setSkills] = useState<BrainSkill[] | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setSkills(await listSkills());
-    } catch {
-      // An empty list the creator can still add to beats an error they can do
-      // nothing about; the next save reports the real failure.
-      setSkills([]);
-    }
-  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const revision = useRef(0);
+  const deleting = useRef(new Set<string>());
 
   useEffect(() => {
     let active = true;
     listSkills().then(
       (loaded) => {
-        if (active) setSkills(loaded);
+        if (active) {
+          setSkills(loaded);
+          setLoaded(true);
+          setError(null);
+        }
       },
       () => {
-        if (active) setSkills([]);
+        if (active) {
+          setError("Your Skills couldn’t be loaded. Try again.");
+          setLoaded(true);
+        }
       },
     );
     return () => {
@@ -72,10 +77,30 @@ export function useBrainSkills(): {
     state: saveState,
     queue,
     flush,
-  } = useAutosave<Record<string, BrainSkillPatch>>(save);
+  } = useAutosave<Record<string, BrainSkillPatch>>(
+    save,
+    800,
+    mergeRecordPatches,
+  );
+
+  const load = useCallback(async () => {
+    try {
+      await flush();
+      const started = revision.current;
+      const result = await listSkills();
+      if (started === revision.current) setSkills(result);
+      setError(null);
+    } catch {
+      setError("Your Skills couldn’t be loaded. Try again.");
+    } finally {
+      setLoaded(true);
+    }
+  }, [flush]);
 
   const edit = useCallback(
     (id: string, patch: BrainSkillPatch) => {
+      if (deleting.current.has(id)) return;
+      revision.current++;
       setSkills((prev) =>
         prev
           ? prev.map((skill) =>
@@ -89,16 +114,42 @@ export function useBrainSkills(): {
     [queue],
   );
 
-  const add = useCallback(async (input: BrainSkillPatch & { name: string }) => {
-    const skill = await createSkill(input);
-    setSkills((prev) => [...(prev ?? []), skill]);
-    return skill;
-  }, []);
+  const add = useCallback(
+    async (input: BrainSkillPatch & { name: string }) => {
+      if (skills === null) throw new Error("skills_not_loaded");
+      try {
+        const skill = await createSkill(input);
+        revision.current++;
+        setSkills((prev) => [...(prev ?? []), skill]);
+        setError(null);
+        return skill;
+      } catch (cause) {
+        setError("That Skill couldn’t be added. Try again.");
+        throw cause;
+      }
+    },
+    [skills],
+  );
 
-  const remove = useCallback(async (id: string) => {
-    setSkills((prev) => prev?.filter((skill) => skill.id !== id) ?? prev);
-    await deleteSkill(id);
-  }, []);
+  const remove = useCallback(
+    async (id: string) => {
+      if (deleting.current.has(id)) return;
+      deleting.current.add(id);
+      try {
+        await flush();
+        await deleteSkill(id);
+        revision.current++;
+        setSkills((prev) => prev?.filter((skill) => skill.id !== id) ?? prev);
+        setError(null);
+      } catch (cause) {
+        setError("That Skill couldn’t be removed. It is still here.");
+        throw cause;
+      } finally {
+        deleting.current.delete(id);
+      }
+    },
+    [flush],
+  );
 
   const reset = useCallback(
     async (current: BrainSkill) => {
@@ -109,6 +160,7 @@ export function useBrainSkills(): {
       await flush();
       const result = await installCatalogEntry(current.catalogSlug);
       if (!result.skill) throw new Error("catalog_skill_not_found");
+      revision.current++;
       setSkills(
         (previous) =>
           previous?.map((skill) =>
@@ -122,7 +174,10 @@ export function useBrainSkills(): {
 
   return {
     skills: skills ?? [],
-    loading: skills === null,
+    loading: !loaded,
+    available: skills !== null,
+    error,
+    retry: flush,
     saveState,
     edit,
     add,

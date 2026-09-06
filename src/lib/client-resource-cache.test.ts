@@ -8,6 +8,25 @@ import {
 } from "@/lib/client-resource-cache";
 
 describe("client resource cache", () => {
+  it("does not replace a successful mutation with an older in-flight read", async () => {
+    const key = `test:mutation:${crypto.randomUUID()}`;
+    let finish!: (value: string[]) => void;
+    const stale = loadClientResource(
+      key,
+      () =>
+        new Promise<string[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    mutateClientResource(key, ["saved palette"]);
+    finish(["old palette"]);
+    await stale;
+    expect(readClientResource(key)).toEqual(["saved palette"]);
+    await expect(
+      loadClientResource(key, async () => ["unexpected read"]),
+    ).resolves.toEqual(["saved palette"]);
+  });
+
   it("deduplicates simultaneous reads and serves the warm value", async () => {
     const key = `test:dedupe:${crypto.randomUUID()}`;
     const loader = vi.fn(async () => ["calendar item"]);
