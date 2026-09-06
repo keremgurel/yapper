@@ -31,7 +31,11 @@ export interface RetimeInput {
   quoteHint?: string;
 }
 
-export type ReviseInput = RestyleInput | RetimeInput;
+export interface EditInput extends Omit<RestyleInput, "op"> {
+  op: "edit";
+  words: TranscriptWord[];
+}
+export type ReviseInput = RestyleInput | RetimeInput | EditInput;
 
 /** The stored scene as JSON text. Anything larger is not a scene we wrote. */
 const MAX_SCENE_BYTES = 64 * 1024;
@@ -104,5 +108,10 @@ export function parseReviseInput(value: unknown): ReviseInput | null {
   const op = body.op ?? "restyle";
   if (op === "restyle") return parseRestyle(body);
   if (op === "retime") return parseRetime(body);
+  if (op === "edit") {
+    const scene = parseRestyle(body);
+    const words = parseTranscriptWords(body.words);
+    return scene && words ? { ...scene, op: "edit", words } : null;
+  }
   return null;
 }

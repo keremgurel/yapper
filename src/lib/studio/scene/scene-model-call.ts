@@ -16,6 +16,8 @@ export interface SceneModelCall {
   model: string;
   system: string;
   user: string;
+  /** Validated JPEG data, supplied by the native composition inspector. */
+  images?: readonly string[];
   maxCompletionTokens: number;
   /** Wall clock for every attempt together. */
   timeoutMs: number;
@@ -93,7 +95,21 @@ export async function callSceneModel(
               : {}),
             messages: [
               { role: "system", content: call.system },
-              { role: "user", content: call.user },
+              {
+                role: "user",
+                content: call.images?.length
+                  ? [
+                      { type: "text", text: call.user },
+                      ...call.images.map((jpeg) => ({
+                        type: "image_url",
+                        image_url: {
+                          url: `data:image/jpeg;base64,${jpeg}`,
+                          detail: "high",
+                        },
+                      })),
+                    ]
+                  : call.user,
+              },
             ],
           }),
         },

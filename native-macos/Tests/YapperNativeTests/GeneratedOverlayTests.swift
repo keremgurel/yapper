@@ -6,6 +6,15 @@ import Testing
 
 @Suite(.serialized)
 struct GeneratedOverlayTests {
+    @MainActor @Test func duplicateRevisionProjectForOptInQA() async throws {
+        guard ProcessInfo.processInfo.environment["REVISION_QA_COPY"] == "1",
+              let source = ProcessInfo.processInfo.environment["OVERLAY_EVAL_PROJECT"],
+              let destination = ProcessInfo.processInfo.environment["OVERLAY_EVAL_OUTPUT"] else { return }
+        let directory = URL(fileURLWithPath:destination)
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        let copy = try await ProjectLibrary(directory:directory).duplicate(ProjectPackage(url:URL(fileURLWithPath:source)))
+        print("Revision QA copy: \(copy.url.path)")
+    }
     @MainActor @Test func exportReviewedEditorialForOptInVisualQA() async throws {
         guard ProcessInfo.processInfo.environment["OVERLAY_EDITORIAL_EXPORT"] == "1",
               let directory = ProcessInfo.processInfo.environment["OVERLAY_EVAL_OUTPUT"],

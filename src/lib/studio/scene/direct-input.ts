@@ -7,6 +7,10 @@ import {
   requiredString,
 } from "./input-guards";
 import { parseTranscriptWords, type TranscriptWord } from "./transcript-words";
+import {
+  parseTimelineInspection,
+  type TimelineInspection,
+} from "./timeline-inspection";
 
 export interface DirectSpeakerSample {
   at: number;
@@ -29,6 +33,7 @@ export interface DirectOnScreenText {
 }
 
 export interface DirectInput {
+  inspection?: TimelineInspection;
   instruction: string;
   words: TranscriptWord[];
   frameAspect?: number;
@@ -108,6 +113,11 @@ function parseTexts(value: unknown): DirectOnScreenText[] | null {
 export function parseDirectInput(value: unknown): DirectInput | null {
   const body = record(value);
   if (!body) return null;
+  const inspection =
+    body.inspection === undefined
+      ? undefined
+      : parseTimelineInspection(body.inspection);
+  if (inspection === null) return null;
   const words = parseTranscriptWords(body.words);
   if (!words) return null;
   const instruction = optionalString(body.instruction, MAX_INSTRUCTION);
@@ -135,6 +145,7 @@ export function parseDirectInput(value: unknown): DirectInput | null {
 
   return {
     instruction: instruction ?? "",
+    ...(inspection ? { inspection } : {}),
     words,
     speaker,
     placed,

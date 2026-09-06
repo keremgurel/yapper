@@ -49,7 +49,7 @@ enum MediaAvailability {
         in project: EditorProject,
         available: (URL) -> Bool = isRegularReadableFile,
         bundledAudioURL: (String) -> URL? = { id in
-            guard let effect = SoundEffectDescriptor.library.first(where: { $0.id == id }) else { return nil }
+            guard let effect = SoundEffectDescriptor.effect(id: id) else { return nil }
             return SoundEffectService.shared.bundledURL(for: effect)
         }
     ) -> [OfflineAsset] {

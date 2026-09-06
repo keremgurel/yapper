@@ -99,6 +99,7 @@ export const config = {
     "/api/direct-overlays",
     "/api/design-overlays",
     "/api/revise-overlay",
+    "/api/review-overlay",
     "/api/project/:path*",
     "/api/publish/:path*",
     "/api/submissions/:path*",

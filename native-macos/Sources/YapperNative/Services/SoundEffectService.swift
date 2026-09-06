@@ -38,13 +38,26 @@ enum SoundEffectCategory: String, CaseIterable, Identifiable, Sendable {
 }
 
 struct SoundEffectDescriptor: Identifiable, Equatable, Sendable {
-    /// Also the file name in the bundle.
+    /// Stable library identifier, independent of the selected recording.
     let id: String
     let name: String
     let detail: String
     let icon: String
     let duration: Double
     let category: SoundEffectCategory
+
+    var resourceName: String {
+        switch id {
+        case "pop": "cheek-pop"
+        case "mouse-click": "mouse-click-classic"
+        default: id
+        }
+    }
+
+    static func effect(id: String) -> SoundEffectDescriptor? {
+        let canonical = ["cheek-pop": "pop", "mouse-click-classic": "mouse-click"][id] ?? id
+        return library.first { $0.id == canonical }
+    }
 
     /// The shipped library, levelled to one shared loudness so dropping any two
     /// of them on a timeline does not mean reaching for the volume.
@@ -60,12 +73,11 @@ struct SoundEffectDescriptor: Identifiable, Equatable, Sendable {
         .init(id: "drum-roll", name: "Drum roll", detail: "Builds to a reveal", icon: "chart.line.uptrend.xyaxis", duration: 3.10, category: .risers),
 
         // Pops
-        .init(id: "pop", name: "Pop", detail: "Bright accent", icon: "circle.fill", duration: 0.26, category: .pops),
-        .init(id: "cheek-pop", name: "Cheek pop", detail: "Comedy mouth pop", icon: "mouth", duration: 0.40, category: .pops),
+        .init(id: "pop", name: "Pop", detail: "Comedy mouth pop", icon: "mouth", duration: 0.40, category: .pops),
 
         // Clicks
-        .init(id: "mouse-click", name: "Mouse click", detail: "Single UI click", icon: "cursorarrow.click", duration: 0.32, category: .clicks),
-        .init(id: "mouse-click-classic", name: "Classic click", detail: "Crisp mechanical click", icon: "cursorarrow.click", duration: 0.04, category: .clicks),
+        .init(id: "mouse-click", name: "Mouse click", detail: "Crisp mechanical click", icon: "cursorarrow.click", duration: 0.04, category: .clicks),
+        .init(id: "ratchet", name: "Ratchet", detail: "Mechanical rotary clicks for counting up", icon: "gearshape", duration: 3.23, category: .clicks),
         .init(id: "keyboard-click", name: "Keyboard click", detail: "A few keys", icon: "keyboard", duration: 4.38, category: .clicks),
         .init(id: "keyboard-typing", name: "Keyboard typing", detail: "Ten seconds of typing", icon: "keyboard", duration: 9.80, category: .clicks),
         .init(id: "shutter-snap", name: "Shutter snap", detail: "One fast frame", icon: "camera", duration: 0.17, category: .clicks),
@@ -91,7 +103,7 @@ actor SoundEffectService {
     /// are real recordings now, levelled once when they were brought in.
     nonisolated func bundledURL(for effect: SoundEffectDescriptor) -> URL? {
         Bundle.module.url(
-            forResource: effect.id,
+            forResource: effect.resourceName,
             withExtension: "m4a",
             subdirectory: "SoundEffects"
         )

@@ -7,6 +7,10 @@ import {
 } from "./input-guards";
 import { isMomentKind, type MomentKind } from "./moment-kinds";
 import { SCENE_LIMITS } from "./scene-limits";
+import {
+  parseTimelineInspection,
+  type TimelineInspection,
+} from "./timeline-inspection";
 
 export interface DesignBox {
   /** Width over height. */
@@ -16,6 +20,7 @@ export interface DesignBox {
 }
 
 export interface DesignMoment {
+  inspection?: TimelineInspection;
   id: string;
   brief: string;
   name: string;
@@ -81,6 +86,11 @@ export function parseDuration(value: unknown): number | null {
 function parseMoment(value: unknown): DesignMoment | null {
   const m = record(value);
   if (!m || typeof m.id !== "string" || !ID.test(m.id)) return null;
+  const inspection =
+    m.inspection === undefined
+      ? undefined
+      : parseTimelineInspection(m.inspection);
+  if (inspection === null) return null;
   const brief = requiredString(m.brief, 600);
   const name = optionalString(m.name, 80);
   const description = optionalString(m.description, 200);
@@ -123,6 +133,7 @@ function parseMoment(value: unknown): DesignMoment | null {
   }
   return {
     id: m.id,
+    ...(inspection ? { inspection } : {}),
     brief,
     name: name ?? "",
     description: description ?? "",

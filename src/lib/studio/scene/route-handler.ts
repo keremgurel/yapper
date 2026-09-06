@@ -4,6 +4,7 @@ import {
   reservePaidActionOrResponse,
   refundCreditReservation,
   PAID_ACTIONS,
+  type CreditReservation,
 } from "@/lib/billing/actions";
 import {
   guardProviderIngress,
@@ -29,6 +30,12 @@ import {
 } from "./prompts/revise-prompt";
 import { extractJsonObject, replyString } from "./reply-json";
 import { designChecked } from "./design-checked";
+import {
+  planRevision,
+  withOpeningHold,
+  type RevisionPlan,
+} from "./revision-plan";
+import { validateScene } from "./scene-validate";
 
 type Mode = "direct" | "design" | "revise";
 
@@ -45,7 +52,10 @@ export async function handleSceneRequest(
     return Response.json({ error: "no_provider" }, { status: 501 });
   let raw: unknown;
   try {
-    raw = await readBoundedJson(req, { maxBytes: 256 * 1024 });
+    raw = await readBoundedJson(req, {
+      maxBytes:
+        mode === "direct" || mode === "design" ? 3 * 1024 * 1024 : 256 * 1024,
+    });
   } catch (error) {
     const response = requestBodyErrorResponse(error);
     if (response) return response;
@@ -53,7 +63,7 @@ export async function handleSceneRequest(
   }
   const direct = mode === "direct" ? parseDirectInput(raw) : null;
   const design = mode === "design" ? parseDesignInput(raw) : null;
-  const revise = mode === "revise" ? parseReviseInput(raw) : null;
+  let revise = mode === "revise" ? parseReviseInput(raw) : null;
   if (!direct && !design && !revise)
     return Response.json({ error: "bad_request" }, { status: 400 });
   if (direct && !direct.words.length)
@@ -152,22 +162,70 @@ export async function handleSceneRequest(
         cue: replyString(reply.cue, 80),
       });
     }
-    if (revise?.op === "restyle") {
-      const content = await designChecked({
-        model,
-        system: REVISE_SYSTEM,
-        user: buildReviseUserMessage(revise, brand),
-        quality: {
-          widthPx: revise.box.widthPx,
-          heightPx: revise.box.heightPx,
-          frameHeightPx: revise.frameHeightPx,
-          requireMotion: /animat|motion|counter/i.test(revise.instruction),
-        },
-        duration: revise.duration,
-        hasBrandLogo: brand.logos.length > 0,
-        existingImageKeys: sceneImageKeys(revise.asset.scene),
-        signal: req.signal,
+    let revisionPlan: RevisionPlan | undefined;
+    let preciseRevision: string | undefined;
+    if (revise?.op === "edit") {
+      revisionPlan = await planRevision(revise, model, req.signal);
+      const plan = revisionPlan;
+      const changingScene =
+        plan.openingHoldSeconds !== null ||
+        plan.sceneInstruction !== null ||
+        plan.duration !== null;
+      if (!changingScene) {
+        if (!plan.placementQuote && plan.timelineShiftSeconds === null)
+          throw new Error("empty_revision");
+        await refundPlanOnlyRemainder(userId, reservation, "move_only");
+        return Response.json({ sceneChanged: false, ...plan });
+      }
+      const valid = validateScene(revise.asset.scene, {
+        imageKeys: sceneImageKeys(revise.asset.scene),
+        hasBrandLogo: true,
       });
+      if (!valid) throw new Error("invalid_scene");
+      let scene = valid.scene;
+      let precise = false;
+      if (plan.openingHoldSeconds !== null) {
+        try {
+          scene = withOpeningHold(scene, plan.openingHoldSeconds);
+          precise = true;
+        } catch {
+          /* Complex sequences are handled by the existing scene designer. */
+        }
+      }
+      if (precise && plan.sceneInstruction === null && plan.duration === null) {
+        preciseRevision = JSON.stringify({
+          scene,
+          name: revise.asset.name,
+          description: revise.asset.description,
+          images: [],
+        });
+      }
+      revise = {
+        ...revise,
+        op: "restyle",
+        duration: plan.duration ?? scene.duration,
+        asset: { ...revise.asset, scene },
+        instruction: plan.sceneInstruction ?? revise.instruction,
+      };
+    }
+    if (revise?.op === "restyle") {
+      const content =
+        preciseRevision ??
+        (await designChecked({
+          model,
+          system: REVISE_SYSTEM,
+          user: buildReviseUserMessage(revise, brand),
+          quality: {
+            widthPx: revise.box.widthPx,
+            heightPx: revise.box.heightPx,
+            frameHeightPx: revise.frameHeightPx,
+            requireMotion: /animat|motion|counter/i.test(revise.instruction),
+          },
+          duration: revise.duration,
+          hasBrandLogo: brand.logos.length > 0,
+          existingImageKeys: sceneImageKeys(revise.asset.scene),
+          signal: req.signal,
+        }));
       const result = await deliverScene({
         id: "revision",
         reply: content,
@@ -181,7 +239,22 @@ export async function handleSceneRequest(
         hasBrandLogo: brand.logos.length > 0,
       });
       if (!result.ok) throw new Error(result.failed.reason);
-      return Response.json({ ...result.scene, brand, model });
+      if (preciseRevision) {
+        await refundPlanOnlyRemainder(userId, reservation, "precise_edit");
+      }
+      return Response.json({
+        ...result.scene,
+        brand,
+        model,
+        sceneChanged: true,
+        ...(revisionPlan
+          ? {
+              placementQuote: revisionPlan.placementQuote,
+              timelineShiftSeconds: revisionPlan.timelineShiftSeconds,
+              openingHoldSeconds: revisionPlan.openingHoldSeconds,
+            }
+          : {}),
+      });
     }
     throw new Error("bad_request");
   } catch (error) {
@@ -196,6 +269,29 @@ export async function handleSceneRequest(
       { status: 502 },
     );
   }
+}
+
+/**
+ * What an edit costs when the designer was never asked.
+ *
+ * An edit reserves the full revision price up front because it may turn into
+ * a redesign. A move, or a hold applied arithmetically to the existing scene,
+ * is one small planning call, the same work as a retime, so the difference is
+ * returned. A number here rather than PAID_ACTIONS.retime_overlay so the
+ * handler's tests, which replace the billing module, still exercise it.
+ */
+const PLAN_ONLY_CREDITS = 1;
+
+async function refundPlanOnlyRemainder(
+  userId: string,
+  reservation: CreditReservation,
+  reason: string,
+): Promise<void> {
+  const remainder = reservation.cost - PLAN_ONLY_CREDITS;
+  if (remainder <= 0) return;
+  await refundCreditReservation(userId, reservation, reason, {
+    amount: remainder,
+  });
 }
 
 /** Existing references survive restyling; they remain local to the asset. */

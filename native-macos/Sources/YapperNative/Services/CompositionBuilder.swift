@@ -180,7 +180,9 @@ enum CompositionBuilder {
 
     static func build(
         project: EditorProject,
-        for purpose: CompositionPurpose = .export
+        for purpose: CompositionPurpose = .export,
+        maximumRenderDimension: Double? = nil,
+        animationTimeOffset: Double = 0
     ) async throws -> BuiltComposition {
         guard !project.clips.isEmpty else { throw NativeEditorError.emptyTimeline }
 
@@ -197,11 +199,16 @@ enum CompositionBuilder {
         )
 
         let firstMedia = try media(for: project.clips[0], in: project)
-        let renderSize = renderSize(
+        var renderSize = renderSize(
             sourceWidth: firstMedia.width,
             sourceHeight: firstMedia.height,
             aspectRatio: project.selectedAspectRatio
         )
+        if let maximumRenderDimension, maximumRenderDimension.isFinite, maximumRenderDimension >= 240 {
+            let scale = min(1, maximumRenderDimension / max(renderSize.width, renderSize.height))
+            renderSize = CGSize(width: max(2, floor(renderSize.width * scale / 2) * 2),
+                                height: max(2, floor(renderSize.height * scale / 2) * 2))
+        }
         var cursor = CMTime.zero
         var segments: [MainSegment] = []
         var maximumFrameRate: Float = 30
@@ -378,6 +385,7 @@ enum CompositionBuilder {
                 project: project,
                 renderSize: renderSize,
                 duration: cursor.seconds,
+                timeOffset: usesCustomCompositor ? animationTimeOffset : 0,
                 to: videoComposition
             )
         }
@@ -799,7 +807,7 @@ enum CompositionBuilder {
         for layer in layers {
             let sourceURL: URL
             if let id = layer.builtInID {
-                guard let effect = SoundEffectDescriptor.library.first(where: { $0.id == id }),
+                guard let effect = SoundEffectDescriptor.effect(id: id),
                       let bundled = SoundEffectService.shared.bundledURL(for: effect)
                 else { throw NativeEditorError.missingSoundEffect(layer.name) }
                 sourceURL = bundled
@@ -860,6 +868,7 @@ enum CompositionBuilder {
         project: EditorProject,
         renderSize: CGSize,
         duration: Double,
+        timeOffset: Double = 0,
         to videoComposition: AVMutableVideoComposition
     ) throws {
         var imageOverlays: [(ProjectOverlay, ProjectMedia, CGImage?)] = []
@@ -886,6 +895,9 @@ enum CompositionBuilder {
         let videoLayer = CALayer()
         videoLayer.frame = CGRect(origin: .zero, size: renderSize)
         let parentLayer = CALayer()
+        // A ranged two-pass export starts its intermediate video at zero.
+        // Keep the original scene/caption clocks on that shortened video.
+        parentLayer.timeOffset = timeOffset
         parentLayer.frame = videoLayer.frame
         parentLayer.addSublayer(videoLayer)
 

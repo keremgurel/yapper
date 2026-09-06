@@ -10,8 +10,8 @@ struct SoundPlanTests {
     @Test func aLibraryIdOrNameIsFoundExactly() {
         #expect(SoundPlan.effect(named: "pop")?.id == "pop")
         #expect(SoundPlan.effect(named: "Pop")?.id == "pop")
-        #expect(SoundPlan.effect(named: "cheek-pop")?.id == "cheek-pop")
-        #expect(SoundPlan.effect(named: "Cheek pop")?.id == "cheek-pop")
+        #expect(SoundPlan.effect(named: "cheek-pop")?.id == "pop")
+        #expect(SoundPlan.effect(named: "Cheek pop")?.id == "pop")
         #expect(SoundPlan.effect(named: "camera-shutter")?.id == "camera-shutter")
     }
 
@@ -32,7 +32,7 @@ struct SoundPlanTests {
 
     /// Longest name first, or "cheek pop" inside a sentence loses to "pop".
     @Test func theMoreSpecificNameWins() {
-        #expect(SoundPlan.effect(named: "give me a cheek pop there")?.id == "cheek-pop")
+        #expect(SoundPlan.effect(named: "give me a cheek pop there")?.id == "pop")
         #expect(SoundPlan.effect(named: "a keyboard typing bed")?.id == "keyboard-typing")
     }
 

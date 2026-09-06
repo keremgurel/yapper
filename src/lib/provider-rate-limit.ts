@@ -32,6 +32,7 @@ export type ProviderSpendEndpoint =
   | "instagram-import"
   | "direct-overlays"
   | "design-overlays"
+  | "review-overlay"
   | "revise-overlay";
 
 const HOUR = 60 * 60;
@@ -79,6 +80,7 @@ const ENDPOINT_POLICIES: Record<
   // mid-action. Credits plus shared user/IP budgets still bound provider spend.
   "direct-overlays": { capacity: 4, refillPerSecond: 20 / HOUR },
   "design-overlays": { capacity: 12, refillPerSecond: 60 / HOUR },
+  "review-overlay": { capacity: 24, refillPerSecond: 80 / HOUR },
   "revise-overlay": { capacity: 6, refillPerSecond: 40 / HOUR },
 };
 

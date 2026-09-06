@@ -17,7 +17,7 @@ extension EditorSession {
         var replacements: [UUID: URL] = [:]
         for layer in project.audioLayers ?? [] {
             guard let id = layer.builtInID,
-                  let effect = SoundEffectDescriptor.library.first(where: { $0.id == id }),
+                  let effect = SoundEffectDescriptor.effect(id: id),
                   let canonical = soundEffectService.bundledURL(for: effect),
                   MediaAvailability.isRegularReadableFile(canonical), layer.url != canonical
             else { continue }

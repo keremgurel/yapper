@@ -100,6 +100,99 @@ beforeEach(() => {
 });
 
 describe("generated overlay routes", () => {
+  it("applies a precise hold and returns placement separately in one revision", async () => {
+    mocks.model.mockResolvedValue({
+      content: JSON.stringify({
+        openingHoldSeconds: 3,
+        sceneInstruction: null,
+        duration: null,
+        placementQuote: null,
+        timelineShiftSeconds: -2,
+      }),
+    });
+    const counter = {
+      version: 1,
+      duration: 4.2,
+      nodes: [
+        {
+          id: "n",
+          type: "number",
+          from: 324,
+          to: 553,
+          x: 0.1,
+          y: 0.1,
+          width: 0.8,
+          height: 0.5,
+          size: 0.3,
+        },
+      ],
+      animations: [
+        { node: "n", property: "value", from: 0, to: 1, start: 0.7, end: 2.5 },
+      ],
+    };
+    const response = await handleSceneRequest(
+      request({
+        op: "edit",
+        instruction: "Hold for 3 seconds and move 2 seconds earlier",
+        words: [],
+        asset: { name: "Growth counter", scene: counter },
+        box: moment.box,
+        duration: 4.2,
+        frameAspect: 1.77,
+        frameHeightPx: 1080,
+      }),
+      "revise",
+    );
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.scene.duration).toBeCloseTo(6.5);
+    expect(result.scene.animations[0].start).toBe(3);
+    expect(result.timelineShiftSeconds).toBe(-2);
+    expect(result.sceneChanged).toBe(true);
+    expect(mocks.model).toHaveBeenCalledTimes(1);
+    // The designer was never asked, so the edit costs what a retime costs.
+    expect(mocks.refund).toHaveBeenCalledWith(
+      "user",
+      expect.objectContaining({ cost: 2 }),
+      "precise_edit",
+      { amount: 1 },
+    );
+  });
+  it("does not generate a new asset for a move-only revision", async () => {
+    mocks.model.mockResolvedValue({
+      content: JSON.stringify({
+        openingHoldSeconds: null,
+        sceneInstruction: null,
+        duration: null,
+        placementQuote: null,
+        timelineShiftSeconds: -2,
+      }),
+    });
+    const response = await handleSceneRequest(
+      request({
+        op: "edit",
+        instruction: "Move 2 seconds earlier",
+        words: [],
+        asset: { name: "Existing graphic", scene },
+        box: moment.box,
+        duration: 2,
+        frameAspect: 1.77,
+        frameHeightPx: 1080,
+      }),
+      "revise",
+    );
+    expect(response.status).toBe(200);
+    const result = await response.json();
+    expect(result.sceneChanged).toBe(false);
+    expect(result.scene).toBeUndefined();
+    expect(result.timelineShiftSeconds).toBe(-2);
+    expect(mocks.refund).toHaveBeenCalledWith(
+      "user",
+      expect.objectContaining({ cost: 2 }),
+      "move_only",
+      { amount: 1 },
+    );
+  });
   it("requires authentication before model or billing calls", async () => {
     mocks.auth.mockResolvedValue({ userId: null });
     expect((await handleSceneRequest(request(design), "design")).status).toBe(

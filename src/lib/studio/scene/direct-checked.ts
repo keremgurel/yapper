@@ -4,6 +4,7 @@ import { parseDirectReply, type DirectReply } from "./direct-reply";
 import { DIRECT_SYSTEM, buildDirectUserMessage } from "./prompts/direct-prompt";
 import { extractJsonObject } from "./reply-json";
 import { callSceneModel } from "./scene-model-call";
+import { inspectionText } from "./timeline-inspection";
 
 const EDITORIAL_REVIEW = [
   DIRECT_SYSTEM,
@@ -21,7 +22,10 @@ export async function directChecked(
   model: string,
   signal?: AbortSignal,
 ): Promise<DirectReply> {
-  const user = buildDirectUserMessage(input, brand);
+  const user =
+    buildDirectUserMessage(input, brand) +
+    (input.inspection ? inspectionText(input.inspection) : "");
+  const images = input.inspection?.frames.map((f) => f.jpeg);
   const context = {
     placedNames: input.placed.map((p) => p.name),
     takenNames: [],
@@ -31,6 +35,7 @@ export async function directChecked(
   const draft = await callSceneModel({
     model,
     system: DIRECT_SYSTEM,
+    images,
     user,
     maxCompletionTokens: 4000,
     timeoutMs: 55_000,
@@ -44,6 +49,7 @@ export async function directChecked(
   const review = await callSceneModel({
     model,
     system: EDITORIAL_REVIEW,
+    images,
     user: `${user}\n\nUNTRUSTED DRAFT TO REVIEW:\n${draft.content}`,
     maxCompletionTokens: 4000,
     timeoutMs: Math.max(1, deadline - Date.now()),

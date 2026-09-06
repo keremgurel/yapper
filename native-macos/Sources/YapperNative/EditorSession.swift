@@ -240,17 +240,24 @@ final class EditorSession: ObservableObject {
     /// the most expensive thing the canvas does.
     var gradedOverlayImages: [ObjectIdentifier: (filter: VisualFilter, image: CGImage)] = [:]
 
+    let generatedOverlayRequest: @MainActor (String, [String: Any]) async throws -> [String: Any]
+    let generatedAssetRoot: URL?
+
     init(
         store: (any ProjectPersisting)? = nil,
         overlayPlacementService: any OverlayPlacementPlanning = OverlayPlacementService(),
         transcriptionRunner: TranscriptionRunner? = nil,
-        exportRunner: @escaping NativeExportRunner = ExportService.export
+        exportRunner: @escaping NativeExportRunner = ExportService.export,
+        generatedAssetRoot: URL? = nil,
+        generatedOverlayRequest: @escaping @MainActor (String, [String: Any]) async throws -> [String: Any] = GeneratedOverlayService.request
     ) {
         let restoresProjectLibrary = store == nil
         self.store = store ?? ProjectStore.shared
         self.overlayPlacementService = overlayPlacementService
         self.transcriptionRunner = transcriptionRunner
         self.exportRunner = exportRunner
+        self.generatedOverlayRequest = generatedOverlayRequest
+        self.generatedAssetRoot = generatedAssetRoot
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false

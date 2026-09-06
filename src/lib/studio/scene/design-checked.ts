@@ -9,6 +9,7 @@ export async function designChecked(input: {
   model: string;
   system: string;
   user: string;
+  images?: readonly string[];
   quality: QualityContext;
   duration: number;
   hasBrandLogo: boolean;
@@ -24,6 +25,7 @@ export async function designChecked(input: {
         model: input.model,
         system: input.system,
         user: input.user + feedback,
+        images: input.images,
         maxCompletionTokens: 8_000,
         timeoutMs: Math.min(100_000, Math.max(1, deadline - Date.now())),
         signal: input.signal,

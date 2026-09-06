@@ -11,6 +11,7 @@ import {
 import { sceneModelFailureReason } from "./scene-model-call";
 import { uniqueOverlayName } from "./overlay-name";
 import { designChecked } from "./design-checked";
+import { inspectionText } from "./timeline-inspection";
 
 export interface DesignMomentsInput {
   moments: readonly DesignMoment[];
@@ -56,7 +57,10 @@ export async function designMoments(
         content = await designChecked({
           model: input.model,
           system: DESIGN_SYSTEM,
-          user: buildDesignUserMessage(moment, context),
+          user:
+            buildDesignUserMessage(moment, context) +
+            (moment.inspection ? inspectionText(moment.inspection) : ""),
+          images: moment.inspection?.frames.map((f) => f.jpeg),
           quality: {
             widthPx: moment.box.widthPx,
             heightPx: moment.box.heightPx,

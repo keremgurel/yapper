@@ -228,12 +228,18 @@ The route reserves credits for every moment and refunds the ones in `failed`.
 
 ### `POST /api/revise-overlay`
 
+The native client uses `op: "edit"` with the kept transcript `words` and the
+current asset. A short interpretation pass separates scene changes from
+timeline placement. Either or both may be requested. The scene designer still
+handles free-form visual changes; these operations are not a template list.
+
 Request:
 
 ```json
 {
-  "op": "restyle",
+  "op": "edit",
   "instruction": "Make it more minimal.",
+  "words": [{ "text": "Example" }],
   "asset": {
     "name": "…",
     "description": "…",
@@ -248,7 +254,19 @@ Request:
 }
 ```
 
-Reply: one entry in the same shape as a design reply's `scenes[]`, plus
-`brand` (including `palette` and `logos`) and `model`. Retiming uses
+Scene-changing replies include one entry in the same shape as a design reply's
+`scenes[]`, `brand` (including `palette` and `logos`), `model`, and
+`sceneChanged: true`. Placement-only replies have `sceneChanged: false` and
+do not create an asset version. Both include nullable `placementQuote`,
+`timelineShiftSeconds` (negative means earlier), and `openingHoldSeconds`.
+Only one placement field may be set. The client applies scene and placement
+changes in the same undo transaction.
+
+For a supported counter sequence, an opening hold is applied directly to the
+existing animation: the hold is a total duration, not extra time on every
+request. Transition lengths, final hold, geometry, text, and colors remain
+intact. Complex sequences use the scene designer.
+
+Legacy clients can still use `op: "restyle"`. Retiming/reuse also supports
 `op: "retime"` with transcript `words`, `instruction` and `quoteHint`; it returns
 a transcript quote/cue rather than a redesigned scene.

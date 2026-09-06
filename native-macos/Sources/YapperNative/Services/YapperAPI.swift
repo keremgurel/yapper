@@ -137,6 +137,12 @@ enum YapperAPI {
         case "unsafe_alignment":
             return "the cleaned script could not be matched back to the recording safely, "
                 + "so nothing was cut rather than cutting the wrong thing"
+        case "empty_revision":
+            return "nothing in that sentence reads as a change. Say what should look different, "
+                + "or where it should move"
+        case "invalid_revision_plan", "invalid_quote":
+            return "that could not be turned into an edit. Name the change, or quote the words "
+                + "it should move to"
         case "no_provider":
             return "the AI editor is not configured on the server"
         case "rate_limited":

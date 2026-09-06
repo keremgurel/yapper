@@ -16,15 +16,29 @@ private final class ExportSessionCancellation: @unchecked Sendable {
 
 enum ExportService {
     static func export(project: EditorProject, to outputURL: URL) async throws {
+        try await export(project: project, to: outputURL, maximumRenderDimension: nil)
+    }
+
+    static func export(project: EditorProject, to outputURL: URL, maximumRenderDimension: Double?, range: CMTimeRange? = nil) async throws {
         let snapshot = try await ExportSourceSnapshot.create(project: project)
         defer { snapshot.discard() }
 
         // Everything, including the captions and the text: this is the one that
         // has to look like the finished video, because it is.
-        let built = try await CompositionBuilder.build(project: snapshot.project, for: .export)
+        let built = try await CompositionBuilder.build(project: snapshot.project, for: .export,
+                                                        maximumRenderDimension: maximumRenderDimension,
+                                                        animationTimeOffset: range?.start.seconds ?? 0)
         let cancellation = ExportSessionCancellation()
 
-        let expectedDuration = CMTimeGetSeconds(try await built.asset.load(.duration))
+        let fullDuration = CMTimeGetSeconds(try await built.asset.load(.duration))
+        if let range {
+            guard range.start.seconds.isFinite, range.duration.seconds.isFinite,
+                  range.start.seconds >= 0, range.duration.seconds > 0,
+                  range.end.seconds <= fullDuration + 0.001 else {
+                throw NativeEditorError.exportFailed("The inspection range is outside the video.")
+            }
+        }
+        let expectedDuration = range?.duration.seconds ?? fullDuration
         let durationTolerance = max(
             0.25,
             (built.videoComposition?.frameDuration.seconds ?? 1.0 / 30.0) * 2
@@ -40,6 +54,7 @@ enum ExportService {
                         try await exportInTwoPasses(
                             built: built,
                             animationTool: animationTool,
+                            range: range,
                             to: stagedURL,
                             cancellation: cancellation
                         )
@@ -48,6 +63,7 @@ enum ExportService {
                             asset: built.asset,
                             videoComposition: built.videoComposition,
                             audioMix: built.audioMix,
+                            range: range,
                             to: stagedURL,
                             cancellation: cancellation
                         )
@@ -105,6 +121,7 @@ enum ExportService {
     private static func exportInTwoPasses(
         built: BuiltComposition,
         animationTool: AVVideoCompositionCoreAnimationTool,
+        range: CMTimeRange?,
         to outputURL: URL,
         cancellation: ExportSessionCancellation
     ) async throws {
@@ -120,6 +137,7 @@ enum ExportService {
             asset: built.asset,
             videoComposition: firstPass,
             audioMix: built.audioMix,
+            range: range,
             to: intermediateURL,
             cancellation: cancellation
         )
@@ -173,6 +191,7 @@ enum ExportService {
         asset: AVAsset,
         videoComposition: AVVideoComposition?,
         audioMix: AVAudioMix?,
+        range: CMTimeRange? = nil,
         to outputURL: URL,
         cancellation: ExportSessionCancellation
     ) async throws {
@@ -185,6 +204,7 @@ enum ExportService {
         }
         session.videoComposition = videoComposition
         session.audioMix = audioMix
+        if let range { session.timeRange = range }
         session.shouldOptimizeForNetworkUse = true
         cancellation.use(session)
         try await session.export(to: outputURL, as: .mp4)
