@@ -9,7 +9,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { columnDef, gridTemplate, type ColumnKey } from "@/lib/content/columns";
 import type { ContentSummary } from "@/lib/content/client";
 import type { ContentSort, ContentSortKey } from "@/lib/content/sort";
-import type { ContentStatus } from "@/lib/db/schema";
+import { groupItems } from "@/lib/content/group-items";
+import type { ContentStatus, LibraryGrouping } from "@/lib/db/schema";
 
 /**
  * The one table both the Idea Bank and the Content Library render.
@@ -25,6 +26,7 @@ import type { ContentStatus } from "@/lib/db/schema";
  */
 export default function ItemTable({
   rows,
+  groupBy = null,
   columns,
   sort,
   onToggleSort,
@@ -37,6 +39,7 @@ export default function ItemTable({
   emptyLabel,
 }: {
   rows: ContentSummary[];
+  groupBy?: LibraryGrouping | null;
   columns: ColumnKey[];
   sort: ContentSort;
   onToggleSort: (key: ContentSortKey) => void;
@@ -113,18 +116,33 @@ export default function ItemTable({
       {rows.length === 0 ? (
         <EmptyState title={emptyLabel} />
       ) : (
-        rows.map((row) => (
-          <ItemRow
-            key={row.id}
-            row={row}
-            columns={visible}
-            selected={selectedIds.has(row.id)}
-            onToggleSelect={() => onToggleSelect(row.id)}
-            onOpen={() => onOpen(row.id)}
-            onStatus={(status) => onStatus(row, status)}
-            onPost={() => onPost(row)}
-          />
-        ))
+        groupItems(rows, groupBy)
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
+            <section
+              key={group.key}
+              aria-label={groupBy ? group.label : undefined}
+            >
+              {groupBy && (
+                <h3 className="bg-muted/50 text-muted-foreground border-b px-4 py-2 text-xs font-semibold">
+                  {group.label}{" "}
+                  <span className="ml-2 font-mono">{group.items.length}</span>
+                </h3>
+              )}
+              {group.items.map((row) => (
+                <ItemRow
+                  key={row.id}
+                  row={row}
+                  columns={visible}
+                  selected={selectedIds.has(row.id)}
+                  onToggleSelect={() => onToggleSelect(row.id)}
+                  onOpen={() => onOpen(row.id)}
+                  onStatus={(status) => onStatus(row, status)}
+                  onPost={() => onPost(row)}
+                />
+              ))}
+            </section>
+          ))
       )}
     </Card>
   );

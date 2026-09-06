@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import {
   libraryViews,
@@ -76,9 +76,6 @@ export async function seedViewsIfEmpty(
   userId: string,
   stage: ContentStage,
 ): Promise<LibraryViewRow[]> {
-  const existing = await listViews(userId, stage);
-  if (existing.length) return existing;
-
   const defaults: LibraryViewInput[] =
     stage === "bank"
       ? [
@@ -128,9 +125,30 @@ export async function seedViewsIfEmpty(
           },
         ];
 
-  const created: LibraryViewRow[] = [];
-  for (const [i, view] of defaults.entries()) {
-    created.push(await createView(userId, stage, view, i));
-  }
-  return created;
+  return getDb().transaction(async (tx) => {
+    // Two tabs can load a new workspace together. Keep the empty check and
+    // complete default set in one owner/stage lock and one atomic commit.
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(hashtext(${`library-views:${userId}:${stage}`}))`,
+    );
+    const existing = await tx
+      .select()
+      .from(libraryViews)
+      .where(
+        and(eq(libraryViews.userId, userId), eq(libraryViews.stage, stage)),
+      )
+      .orderBy(asc(libraryViews.sortOrder), asc(libraryViews.createdAt));
+    if (existing.length) return existing;
+    return tx
+      .insert(libraryViews)
+      .values(
+        defaults.map((view, sortOrder) => ({
+          userId,
+          stage,
+          sortOrder,
+          ...view,
+        })),
+      )
+      .returning();
+  });
 }
