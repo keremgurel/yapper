@@ -8,10 +8,10 @@ describe("irreversible publish route boundary", () => {
     "%s replays an existing attempt before body, token, media, or provider work",
     (platform) => {
       const source = readFileSync(
-        `src/app/api/publish/${platform}/route.ts`,
+        `src/lib/publish/server/${platform}.ts`,
         "utf8",
       );
-      const handler = source.indexOf("export async function POST");
+      const handler = source.indexOf("export async function publish");
       const replay = source.indexOf("await findPublishJobClaim", handler);
       const bodyRead = source.indexOf("PublishRequest(req)", replay);
 

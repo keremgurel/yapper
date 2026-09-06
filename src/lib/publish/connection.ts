@@ -17,9 +17,16 @@ export class NoConnectionError extends Error {}
 export async function getFreshAccessToken(
   userId: string,
   platform: PublishPlatform,
+  expectedAccountId?: string,
 ): Promise<string> {
   const row = await getConnectionRow(userId, platform);
   if (!row) throw new NoConnectionError(`${platform}_not_connected`);
+  if (
+    expectedAccountId &&
+    (row.externalAccountId !== expectedAccountId || row.status !== "active")
+  ) {
+    throw new NoConnectionError(`${platform}_account_changed`);
+  }
 
   const stillValid =
     row.expiresAt && row.expiresAt.getTime() - SKEW_MS > Date.now();
@@ -31,7 +38,7 @@ export async function getFreshAccessToken(
   }
   const refreshToken = decryptToken(row.refreshTokenEnc);
   const fresh = await refreshAccessToken(platform, refreshToken);
-  await updateAccessToken(
+  const saved = await updateAccessToken(
     userId,
     platform,
     fresh.accessToken,
@@ -39,6 +46,8 @@ export async function getFreshAccessToken(
     // Instagram rotates its token on refresh; persist the new one so the next
     // refresh does not reach for the expired original.
     fresh.refreshToken,
+    { id: row.id, accessTokenEnc: row.accessTokenEnc },
   );
+  if (!saved) throw new NoConnectionError(`${platform}_connection_changed`);
   return fresh.accessToken;
 }

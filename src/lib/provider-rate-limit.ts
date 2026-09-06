@@ -121,6 +121,46 @@ export async function guardProviderIngress(
 }
 
 /** Fail-closed guard for authenticated routes that can spend provider money. */
+export async function guardBackgroundProviderSpend(
+  userId: string,
+  endpoint: ProviderSpendEndpoint,
+): Promise<Response | null> {
+  try {
+    const subjectHash = rateLimitUserSubject(userId);
+    const decisions = await consumeRateLimits([
+      {
+        subjectHash,
+        policy: {
+          scope: "user:provider-spend",
+          capacity: 40,
+          refillPerSecond: 400 / DAY,
+        },
+      },
+      {
+        subjectHash,
+        policy: {
+          scope: `user:provider-spend:${endpoint}`,
+          ...ENDPOINT_POLICIES[endpoint],
+        },
+      },
+    ]);
+    const denied = decisions.find((decision) => !decision.allowed);
+    recordRateLimitTelemetry({
+      outcome: denied ? "denied" : "allowed",
+      scope: denied?.scope ?? `user:provider-spend:${endpoint}`,
+      actor: "user",
+    });
+    return denied ? rateLimitErrorResponse(denied) : null;
+  } catch (error) {
+    return rateLimitErrorResponse(
+      error instanceof RateLimitUnavailableError
+        ? error
+        : new RateLimitUnavailableError({ cause: error }),
+    );
+  }
+}
+
+/** Fail-closed guard for authenticated routes that can spend provider money. */
 export async function guardProviderSpend(
   request: Request,
   userId: string,

@@ -53,10 +53,18 @@ describe("provider-spend route boundary", () => {
   it.each(ROUTES)(
     "%s separates ingress from validated provider spend",
     (relativePath, endpoint, firstCost) => {
-      const source = readFileSync(
+      const route = readFileSync(
         join(process.cwd(), "src/app/api", relativePath),
         "utf8",
       );
+      const source =
+        relativePath === "publish/instagram/import/route.ts"
+          ? route +
+            readFileSync(
+              join(process.cwd(), "src/lib/publish/server/instagram-import.ts"),
+              "utf8",
+            )
+          : route;
       const auth = source.indexOf("await auth()");
       const ingress = source.indexOf("guardProviderIngress(req)");
       const spend = source.lastIndexOf("guardProviderSpend(");

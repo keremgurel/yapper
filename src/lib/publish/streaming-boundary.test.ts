@@ -1,11 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
-const route = (platform: string) =>
-  readFile(
-    new URL(`../../app/api/publish/${platform}/route.ts`, import.meta.url),
-    "utf8",
-  );
+const route = async (platform: string) =>
+  (
+    await Promise.all([
+      readFile(new URL(`./server/${platform}.ts`, import.meta.url), "utf8"),
+      readFile(
+        new URL(`../../app/api/publish/${platform}/route.ts`, import.meta.url),
+        "utf8",
+      ),
+    ])
+  ).join("\n");
 
 describe("publish route streaming boundary", () => {
   it.each(["youtube", "tiktok"])(

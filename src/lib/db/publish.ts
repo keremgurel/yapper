@@ -90,8 +90,9 @@ export async function updateAccessToken(
   // Persisted only when the provider rotated its refresh token (e.g. Instagram's
   // self-refreshing long-lived token); omitted keeps the stored refresh token.
   newRefreshToken?: string | null,
-): Promise<void> {
-  await getDb()
+  expected?: { id: string; accessTokenEnc: string },
+): Promise<boolean> {
+  const rows = await getDb()
     .update(platformConnections)
     .set({
       accessTokenEnc: encryptToken(accessToken),
@@ -106,8 +107,14 @@ export async function updateAccessToken(
       and(
         eq(platformConnections.userId, userId),
         eq(platformConnections.platform, platform),
+        expected ? eq(platformConnections.id, expected.id) : undefined,
+        expected
+          ? eq(platformConnections.accessTokenEnc, expected.accessTokenEnc)
+          : undefined,
       ),
-    );
+    )
+    .returning({ id: platformConnections.id });
+  return rows.length > 0;
 }
 
 /** The user's connections for display (no tokens leave the DB layer). */

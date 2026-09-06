@@ -27,6 +27,7 @@ vi.mock("@/lib/rate-limit/telemetry", () => ({
 
 import { RateLimitUnavailableError } from "@/lib/db/rate-limit";
 import {
+  guardBackgroundProviderSpend,
   guardProviderIngress,
   guardProviderSpend,
 } from "./provider-rate-limit";
@@ -45,6 +46,38 @@ beforeEach(() => {
 });
 
 describe("guardProviderSpend", () => {
+  it("charges background imports to the same owner's budgets without a fabricated client IP", async () => {
+    mocks.consumeRateLimits.mockResolvedValue([{ allowed: true }]);
+    expect(
+      await guardBackgroundProviderSpend("user_test", "instagram-import"),
+    ).toBeNull();
+    expect(mocks.rateLimitUserSubject).toHaveBeenCalledWith("user_test");
+    expect(mocks.rateLimitClientIdentity).not.toHaveBeenCalled();
+    expect(mocks.consumeRateLimits).toHaveBeenCalledWith([
+      expect.objectContaining({
+        subjectHash: "subject_hash",
+        policy: expect.objectContaining({ scope: "user:provider-spend" }),
+      }),
+      expect.objectContaining({
+        subjectHash: "subject_hash",
+        policy: expect.objectContaining({
+          scope: "user:provider-spend:instagram-import",
+        }),
+      }),
+    ]);
+  });
+  it("stops background work if its durable rate limit cannot be checked", async () => {
+    mocks.consumeRateLimits.mockRejectedValueOnce(
+      new Error("database_unavailable"),
+    );
+    expect(
+      (await guardBackgroundProviderSpend("user_test", "instagram-import"))
+        ?.status,
+    ).toBe(429);
+    expect(mocks.rateLimitErrorResponse).toHaveBeenCalledWith(
+      expect.any(RateLimitUnavailableError),
+    );
+  });
   it("allows the native director's twelve-moment batch without an endpoint burst denial", async () => {
     mocks.consumeRateLimits.mockResolvedValue([{ allowed: true }]);
     await expect(
