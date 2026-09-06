@@ -15,18 +15,23 @@ import {
 import { useUser } from "@clerk/nextjs";
 import { ArrowUp, CheckCircle2, Loader2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Chirpy, type ChirpyExpression } from "@/components/brand/chirpy";
 import { Button } from "@/components/ui/button";
-import { ask, createBlock } from "@/lib/brain/client";
+import { ask, createBlock, listBlocks, patchBlock } from "@/lib/brain/client";
+import { findKnowledge } from "@/lib/brain/find-knowledge";
 import type {
   BlockSuggestion,
   BrainBlock,
   NewBrainBlock,
 } from "@/lib/brain/client";
 import { createIdea } from "@/lib/ideas/client";
-import type { ProjectPatch } from "@/lib/project/client";
+import { parseBrandCommand } from "@/lib/brand/command";
+import { executeBrandCommand } from "@/lib/brand/command-client";
+import { patchProject, type ProjectPatch } from "@/lib/project/client";
 import {
   invalidateClientResource,
+  mutateClientResource,
   STUDIO_RESOURCE_KEYS,
 } from "@/lib/client-resource-cache";
 
@@ -38,6 +43,7 @@ interface ChirpyMessage {
   text: string;
   notes?: string[];
   suggestions?: BlockSuggestion[];
+  brandColors?: string[];
   tone?: "done" | "trouble";
 }
 
@@ -45,6 +51,11 @@ type NativeChirpyReply = Pick<ChirpyMessage, "text" | "notes" | "tone">;
 
 interface NativeChirpyWindow extends Window {
   __yapperNativeChirpy?: (instruction: string) => Promise<NativeChirpyReply>;
+  webkit?: {
+    messageHandlers?: {
+      yapperNative?: { postMessage: (body: unknown) => void };
+    };
+  };
 }
 
 export interface ChirpyBrainTools {
@@ -52,8 +63,8 @@ export interface ChirpyBrainTools {
   editKnowledge: (
     query: string,
     patch: { body: string; digest: string },
-  ) => BrainBlock | null;
-  updateEssentials: (patch: ProjectPatch) => void;
+  ) => Promise<BrainBlock | null>;
+  updateEssentials: (patch: ProjectPatch) => Promise<void>;
 }
 
 interface StudioChirpyValue {
@@ -63,7 +74,8 @@ interface StudioChirpyValue {
 
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
 
-const IDEA_COMMAND = /\b(?:create|make|bank|capture)\b.*\bidea\b/i;
+const IDEA_COMMAND =
+  /^(?:please\s+)?(?:(?:can|could)\s+you\s+)?(?:create|make|bank|capture)\b.*\bidea\b/i;
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
@@ -87,10 +99,14 @@ function routeLabel(pathname: string): string {
   if (pathname.startsWith("/studio/brain")) return "Brain";
   if (pathname.startsWith("/studio/library")) return "Library";
   if (pathname.startsWith("/studio/inspiration")) return "Inspiration";
+  if (pathname.startsWith("/studio/brand")) return "Brand kit";
   return "Studio";
 }
 
 function openers(pathname: string): string[] {
+  if (pathname.startsWith("/studio/brand")) {
+    return ["Show my brand kit", "What can you help me do here?"];
+  }
   if (pathname.startsWith("/studio/brain")) {
     return [
       "Add that my audience distrusts overnight-success promises",
@@ -105,7 +121,7 @@ function openers(pathname: string): string[] {
       "Which pillar needs more attention?",
     ];
   }
-  return ["What can you help me do here?"];
+  return ["What can you help me do here?", "Show my brand kit"];
 }
 
 export function useStudioChirpy(): StudioChirpyValue {
@@ -126,6 +142,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const [isNativeShell, setIsNativeShell] = useState(false);
   const brainTools = useRef<ChirpyBrainTools | null>(null);
   const nextID = useRef(1);
+  const sending = useRef(false);
   const composer = useRef<HTMLTextAreaElement>(null);
 
   const append = useCallback(
@@ -138,6 +155,15 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   );
 
   const open = useCallback((prompt?: string) => {
+    const native = (window as NativeChirpyWindow).webkit?.messageHandlers
+      ?.yapperNative;
+    if (
+      document.documentElement.hasAttribute("data-yapper-native-swift") &&
+      native
+    ) {
+      native.postMessage({ command: "open_assistant", args: { prompt } });
+      return;
+    }
     setIsOpen(true);
     if (prompt) setDraft(prompt);
     window.setTimeout(() => composer.current?.focus(), 30);
@@ -209,7 +235,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       } catch {
         append({
           author: "chirpy",
-          text: "I couldn’t save that just now. Nothing was changed.",
+          text: "I couldn’t confirm that save. Check your Knowledge before trying again.",
           tone: "trouble",
         });
       }
@@ -220,7 +246,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const send = useCallback(
     async (raw: string) => {
       const text = raw.trim();
-      if (!text || working) return;
+      if (!text || sending.current) return;
+      sending.current = true;
       const answer = (message: Omit<ChirpyMessage, "id" | "author">) => {
         append({ author: "chirpy", ...message });
         return message;
@@ -230,6 +257,22 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       setWorking(true);
 
       try {
+        const brandCommand = parseBrandCommand(
+          text,
+          pathname.startsWith("/studio/brand") ||
+            messages.at(-1)?.brandColors !== undefined,
+        );
+        if (brandCommand) {
+          const reply = answer(await executeBrandCommand(brandCommand));
+          if (reply.brandColors !== undefined)
+            startTransition(() => router.push("/studio/brand"));
+          return reply;
+        }
+        if (/^what can you help me (?:do here|with)\??$/i.test(text)) {
+          return answer({
+            text: "Tell me your brand colors and I’ll set up your kit—for example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, create ideas from your Brain, and help shape your content.",
+          });
+        }
         if (IDEA_COMMAND.test(text)) {
           const ideaRequest = ideaTextFrom(text);
           const generated = await ask([
@@ -257,32 +300,48 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         }
 
         const essential = text.match(EDIT_ESSENTIAL_COMMAND);
-        if (essential && brainTools.current) {
+        if (essential) {
           const [, field, value] = essential;
-          brainTools.current.updateEssentials(
+          const patch =
             field.toLowerCase() === "voice"
               ? { voice: value.trim() }
-              : { audience: value.trim() },
-          );
+              : { audience: value.trim() };
+          if (brainTools.current)
+            await brainTools.current.updateEssentials(patch);
+          else
+            mutateClientResource(
+              STUDIO_RESOURCE_KEYS.project,
+              await patchProject(patch),
+            );
           return answer({
             text: `Updated your ${field.toLowerCase()}.`,
-            notes: ["Changed in Your Essentials", "Autosaving…"],
+            notes: ["Saved in Your Essentials"],
             tone: "done",
           });
         }
 
         const contextEdit = text.match(EDIT_CONTEXT_COMMAND);
-        if (contextEdit && brainTools.current) {
+        if (contextEdit) {
           const [, query, body] = contextEdit;
-          const changed = brainTools.current.editKnowledge(query.trim(), {
+          const patch = {
             body: body.trim(),
             digest: titleFrom(body.trim()),
-          });
+          };
+          let changed: BrainBlock | null;
+          if (brainTools.current)
+            changed = await brainTools.current.editKnowledge(
+              query.trim(),
+              patch,
+            );
+          else {
+            const found = findKnowledge(await listBlocks(), query.trim());
+            changed = found ? await patchBlock(found.id, patch) : null;
+          }
           return answer(
             changed
               ? {
                   text: `Updated “${changed.title}” in your Knowledge.`,
-                  notes: ["Autosaving…"],
+                  notes: ["Saved in Knowledge"],
                   tone: "done",
                 }
               : {
@@ -329,16 +388,22 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           text: response.reply,
           suggestions: response.suggestions,
         });
-      } catch {
+      } catch (cause) {
         return answer({
-          text: "That didn’t go through. Nothing was changed—ask me again.",
+          text:
+            cause instanceof Error && cause.message === "knowledge_ambiguous"
+              ? "More than one memory matches that name. Use its full, unique title so I update the right one."
+              : cause instanceof Error && cause.message === "brand_color_limit"
+                ? "Your kit can hold up to 8 colors. Remove a color first, then try adding this one."
+                : "I couldn’t confirm that change. Check your saved work, then try again.",
           tone: "trouble",
         });
       } finally {
+        sending.current = false;
         setWorking(false);
       }
     },
-    [addKnowledge, append, messages, router, working],
+    [addKnowledge, append, messages, pathname, router],
   );
 
   useEffect(() => {
@@ -476,6 +541,35 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                                   ))}
                                 </ul>
                               ) : null}
+                              {message.brandColors !== undefined ? (
+                                <div className="border-border bg-card mt-2 rounded-lg border p-2.5">
+                                  <div
+                                    className="flex flex-wrap gap-1.5"
+                                    aria-label="Saved brand colors"
+                                  >
+                                    {message.brandColors.map((color, index) => (
+                                      <span
+                                        key={color}
+                                        className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px]"
+                                      >
+                                        <span
+                                          className="size-3.5 rounded-sm border border-black/15"
+                                          style={{ backgroundColor: color }}
+                                          aria-hidden="true"
+                                        />
+                                        {color}
+                                        {index === 0 ? " · Primary" : ""}
+                                      </span>
+                                    ))}
+                                  </div>
+                                  <Link
+                                    href="/studio/brand"
+                                    className="mt-2 inline-block text-xs font-semibold underline underline-offset-2"
+                                  >
+                                    Open brand kit
+                                  </Link>
+                                </div>
+                              ) : null}
                               {message.suggestions?.length ? (
                                 <div className="mt-2 space-y-1.5">
                                   {message.suggestions.map((suggestion) => (
@@ -542,7 +636,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                     className="text-foreground placeholder:text-muted-foreground min-h-0 resize-none bg-transparent px-2.5 pt-2 text-xs outline-none"
                   />
                   <div className="text-muted-foreground flex items-center gap-2 px-2.5 pb-1 text-[10px]">
-                    <span>@ to name something</span>
+                    <span>Your Brain and brand, in one place</span>
                     <span className="hidden sm:inline">
                       ⏎ send · ⇧⏎ new line
                     </span>

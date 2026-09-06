@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Check,
   ImagePlus,
@@ -21,8 +21,16 @@ import {
   type BrandKit,
   type BrandLogo,
 } from "@/lib/brand/client";
+import {
+  MAX_BRAND_COLORS,
+  nextBrandColor,
+  normalizeBrandColor,
+} from "@/lib/brand/colors";
+import { useClientResource } from "@/hooks/use-client-resource";
+import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
+import { useStudioChirpy } from "@/components/studio-shell/studio-chirpy";
 
-const MAX_COLORS = 8;
+const MAX_COLORS = MAX_BRAND_COLORS;
 const MAX_LOGOS = 8;
 const ACCEPTED_LOGOS = "image/png,image/jpeg,image/webp,image/svg+xml";
 const STARTER_COLORS = ["#FF7A21", "#151515", "#FFFFFF", "#FFD93D"];
@@ -59,9 +67,11 @@ function ColorSwatch({
   const [draft, setDraft] = useState(color);
 
   const commit = () => {
-    const next = draft.trim().toUpperCase();
-    if (HEX_COLOR.test(next) && next !== color) onChange(next);
-    else setDraft(color);
+    const next = normalizeBrandColor(draft);
+    if (next && next !== color) onChange(next);
+    // The new server-confirmed color remounts this swatch. Until then keep the
+    // saved color visible, including when the request fails.
+    setDraft(color);
   };
 
   return (
@@ -187,7 +197,17 @@ function LogoCard({
 }
 
 export default function BrandPanel() {
-  const [kit, setKit] = useState<BrandKit | null>(null);
+  const {
+    data: kit,
+    error: loadError,
+    refresh,
+    mutate: setKit,
+  } = useClientResource<BrandKit | null>(
+    STUDIO_RESOURCE_KEYS.brand,
+    true,
+    getBrandKit,
+  );
+  const chirpy = useStudioChirpy();
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,21 +215,16 @@ export default function BrandPanel() {
 
   const load = useCallback(() => {
     setError(null);
-    getBrandKit().then(setKit, (cause) => setError(message(cause)));
-  }, []);
-
-  useEffect(load, [load]);
+    return refresh(true).catch((cause: unknown) => setError(message(cause)));
+  }, [refresh]);
 
   const persistColors = async (colors: string[]) => {
     if (!kit || busy) return;
-    const previous = kit;
-    setKit({ ...kit, colors });
     setBusy(true);
     setError(null);
     try {
-      setKit(await saveBrandColors(colors));
+      await saveBrandColors([...new Set(colors)]);
     } catch (cause) {
-      setKit(previous);
       setError(message(cause));
     } finally {
       setBusy(false);
@@ -264,6 +279,13 @@ export default function BrandPanel() {
             Set it once. Chirpy will use these colors and logos whenever it
             creates graphics for your videos.
           </p>
+          <button
+            type="button"
+            onClick={() => chirpy.open("My brand colors are ")}
+            className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-[color:var(--sg-accent-strong)] hover:underline"
+          >
+            <Sparkles className="h-3.5 w-3.5" /> Tell Chirpy your colors
+          </button>
         </div>
       </header>
 
@@ -304,12 +326,21 @@ export default function BrandPanel() {
         </div>
       </section>
 
-      {error ? (
+      {error || (!kit && loadError) ? (
         <div
           role="alert"
           className="mb-5 rounded-2xl border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm font-bold text-amber-700 dark:text-amber-300"
         >
-          {error}
+          {error ?? "Your brand kit couldn’t be loaded."}
+          {!kit ? (
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="ml-3 font-bold underline underline-offset-2"
+            >
+              Try again
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -325,7 +356,7 @@ export default function BrandPanel() {
           <button
             type="button"
             onClick={() => picker.current?.click()}
-            disabled={busy || (kit?.logos.length ?? 0) >= MAX_LOGOS}
+            disabled={busy || !kit || (kit?.logos.length ?? 0) >= MAX_LOGOS}
             className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-black disabled:opacity-50"
           >
             {busy ? (
@@ -348,7 +379,14 @@ export default function BrandPanel() {
 
         {kit === null ? (
           <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-12 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading your brand kit…
+            {loadError || error ? (
+              "Your logos will appear when the brand kit loads."
+            ) : (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading your brand
+                kit…
+              </>
+            )}
           </div>
         ) : kit.logos.length ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -400,6 +438,7 @@ export default function BrandPanel() {
         ) : (
           <button
             type="button"
+            disabled={busy}
             onClick={() => picker.current?.click()}
             onDragEnter={(event) => {
               event.preventDefault();
@@ -441,10 +480,8 @@ export default function BrandPanel() {
             disabled={busy || !kit || kit.colors.length >= MAX_COLORS}
             onClick={() => {
               if (!kit) return;
-              const next =
-                STARTER_COLORS.find((color) => !kit.colors.includes(color)) ??
-                "#3B9DFF";
-              void persistColors([...kit.colors, next]);
+              const next = nextBrandColor(kit.colors);
+              if (next) void persistColors([...kit.colors, next]);
             }}
             className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black disabled:opacity-50"
           >
@@ -454,7 +491,13 @@ export default function BrandPanel() {
 
         {kit === null ? (
           <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-12 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading colors…
+            {loadError || error ? (
+              "Your colors will appear when the brand kit loads."
+            ) : (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading colors…
+              </>
+            )}
           </div>
         ) : kit.colors.length ? (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

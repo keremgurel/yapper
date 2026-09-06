@@ -70,7 +70,7 @@ describe("brand API", () => {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          brandColors: [" #ff7a21 ", "#FF7A21", "nope", "#FFFFFF"],
+          brandColors: [" #ff7a21 ", "#FF7A21", "white"],
         }),
       }),
     );
@@ -79,6 +79,53 @@ describe("brand API", () => {
     expect(mocks.updateProject).toHaveBeenCalledWith("user_test", {
       brandColors: ["#FF7A21", "#FFFFFF"],
     });
+    expect((await response.json()).colors).toEqual(["#FF7A21", "#FFFFFF"]);
+  });
+
+  it.each(
+    [["nope"], ["#FF7A21", "#12345"], [null], Array(9).fill("#FFFFFF")].map(
+      (colors) => ({ colors }),
+    ),
+  )(
+    "rejects invalid palettes without changing saved colors: %j",
+    async ({ colors }) => {
+      const response = await PATCH(
+        new Request("https://ypr.app/api/brand", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ brandColors: colors }),
+        }),
+      );
+      expect(response.status).toBe(400);
+      expect(mocks.updateProject).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not commit colors if logo signing fails", async () => {
+    mocks.presignView.mockRejectedValueOnce(new Error("signing_failed"));
+    await expect(
+      PATCH(
+        new Request("https://ypr.app/api/brand", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ brandColors: ["#000"] }),
+        }),
+      ),
+    ).rejects.toThrow("signing_failed");
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("allows an explicit empty palette while preserving logos", async () => {
+    const response = await PATCH(
+      new Request("https://ypr.app/api/brand", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ brandColors: [] }),
+      }),
+    );
+    const kit = await response.json();
+    expect(kit.colors).toEqual([]);
+    expect(kit.logos).toHaveLength(1);
   });
 
   it("rejects anonymous access before touching brand data", async () => {

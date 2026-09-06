@@ -39,6 +39,7 @@ import type { SaveState } from "@/hooks/use-autosave";
 import { useBrainBlocks } from "@/hooks/use-brain-blocks";
 import { useBrainSkills } from "@/hooks/use-brain-skills";
 import { useProject } from "@/hooks/use-project";
+import { findKnowledge } from "@/lib/brain/find-knowledge";
 import { PROJECT_FIELDS, type ProjectPatch } from "@/lib/project/client";
 
 type BrainView = "overview" | "knowledge" | "skills";
@@ -90,6 +91,7 @@ function EssentialsSheet({
   pillars,
   saveState,
   onUpdate,
+  onRetry,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -97,6 +99,7 @@ function EssentialsSheet({
   pillars: ReturnType<typeof useProject>["pillars"];
   saveState: SaveState;
   onUpdate: (patch: ProjectPatch) => void;
+  onRetry: () => Promise<unknown>;
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -113,6 +116,20 @@ function EssentialsSheet({
             The foundation Yapper reads whenever it helps you create.
           </SheetDescription>
         </SheetHeader>
+
+        {saveState === "error" ? (
+          <div role="alert" className="text-destructive px-4 pb-4 text-sm">
+            Your changes are still here but couldn’t be saved.
+            <Button
+              variant="outline"
+              size="sm"
+              className="ml-2"
+              onClick={() => void onRetry().catch(() => {})}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
 
         {project ? (
           <div className="space-y-6 px-4 pb-8">
@@ -148,9 +165,16 @@ function EssentialsSheet({
             />
           </div>
         ) : (
-          <p className="text-muted-foreground px-4 py-10 text-sm">
-            Your Essentials could not be loaded. Close this and try again.
-          </p>
+          <div className="text-muted-foreground px-4 py-10 text-sm">
+            <p>Your Essentials could not be loaded.</p>
+            <Button
+              variant="outline"
+              className="mt-3"
+              onClick={() => void onRetry().catch(() => {})}
+            >
+              Try again
+            </Button>
+          </div>
         )}
       </SheetContent>
     </Sheet>
@@ -173,7 +197,12 @@ export default function BrainPage() {
   const {
     blocks,
     loading: blocksLoading,
+    available: blocksAvailable,
     saveState: blockSaveState,
+    error: blockError,
+    refresh: refreshBlocks,
+    retry: retryBlocks,
+    editAndSave: saveBlock,
     edit: editBlock,
     add: addBlock,
     remove: removeBlock,
@@ -182,7 +211,10 @@ export default function BrainPage() {
   const {
     skills,
     loading: skillsLoading,
+    available: skillsAvailable,
     saveState: skillSaveState,
+    error: skillError,
+    retry: retrySkills,
     edit: editSkill,
     add: addSkill,
     remove: removeSkill,
@@ -194,6 +226,10 @@ export default function BrainPage() {
     pillars,
     loading: projectLoading,
     saveState: projectSaveState,
+    loadError: projectError,
+    refresh: refreshProject,
+    retry: retryProject,
+    updateAndSave: saveProject,
     update: updateProject,
   } = useProject(true);
   const chirpy = useStudioChirpy();
@@ -214,23 +250,25 @@ export default function BrainPage() {
     [addBlock, changed],
   );
   const editKnowledge = useCallback<ChirpyBrainTools["editKnowledge"]>(
-    (query, patch) => {
-      const needle = query.toLowerCase();
-      const block = blocks.find(
-        (candidate) =>
-          candidate.title.toLowerCase() === needle ||
-          candidate.title.toLowerCase().includes(needle),
-      );
+    async (query, patch) => {
+      const block = findKnowledge(blocks, query);
       if (!block) return null;
-      editBlock(block.id, patch);
+      await saveBlock(block.id, patch);
       changed();
       return block;
     },
-    [blocks, changed, editBlock],
+    [blocks, changed, saveBlock],
+  );
+  const saveEssentials = useCallback(
+    async (patch: ProjectPatch) => {
+      await saveProject(patch);
+      changed();
+    },
+    [saveProject, changed],
   );
   const brainTools = useMemo<ChirpyBrainTools>(
-    () => ({ addKnowledge, editKnowledge, updateEssentials }),
-    [addKnowledge, editKnowledge, updateEssentials],
+    () => ({ addKnowledge, editKnowledge, updateEssentials: saveEssentials }),
+    [addKnowledge, editKnowledge, saveEssentials],
   );
 
   useEffect(() => {
@@ -271,12 +309,67 @@ export default function BrainPage() {
               ⌘K
             </kbd>
           </Button>
-          <Button type="button" onClick={() => setAdding(true)}>
+          <Button
+            type="button"
+            disabled={!blocksAvailable}
+            onClick={() => setAdding(true)}
+          >
             <Plus className="size-4" aria-hidden="true" />
             Teach Your Brain
           </Button>
         </div>
       </header>
+
+      {[
+        {
+          name: "Essentials",
+          error: projectError
+            ? "Your Essentials couldn’t be loaded."
+            : projectSaveState === "error"
+              ? "Your latest Essentials edits couldn’t be saved."
+              : null,
+          retry:
+            projectSaveState === "error"
+              ? retryProject
+              : () => refreshProject(true),
+        },
+        {
+          name: "Knowledge",
+          error:
+            blockError ??
+            (blockSaveState === "error"
+              ? "Your latest Knowledge edits couldn’t be saved."
+              : null),
+          retry: blockSaveState === "error" ? retryBlocks : refreshBlocks,
+        },
+        {
+          name: "Skills",
+          error:
+            skillError ??
+            (skillSaveState === "error"
+              ? "Your latest Skill edits couldn’t be saved."
+              : null),
+          retry: skillSaveState === "error" ? retrySkills : refreshSkills,
+        },
+      ]
+        .filter((item) => item.error)
+        .map((item) => (
+          <div
+            key={item.name}
+            role="alert"
+            className="border-destructive/25 bg-destructive/5 text-destructive mb-4 flex items-center justify-between gap-3 rounded-xl border px-4 py-3 text-sm"
+          >
+            <span>{item.error}</span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void item.retry().catch(() => {})}
+            >
+              Try again
+            </Button>
+          </div>
+        ))}
 
       <div
         role="tablist"
@@ -675,7 +768,11 @@ export default function BrainPage() {
                 they matter.
               </p>
             </div>
-            <Button type="button" onClick={() => setAdding(true)}>
+            <Button
+              type="button"
+              disabled={!blocksAvailable}
+              onClick={() => setAdding(true)}
+            >
               <Plus className="size-4" aria-hidden="true" /> Add Knowledge
             </Button>
           </div>
@@ -690,6 +787,10 @@ export default function BrainPage() {
                 <Loader2 className="size-4 animate-spin" aria-hidden="true" />
                 Loading Knowledge…
               </p>
+            ) : !blocksAvailable ? (
+              <p className="text-muted-foreground py-6 text-sm">
+                Your Knowledge will appear after it loads successfully.
+              </p>
             ) : (
               <BlockList
                 blocks={blocks}
@@ -699,9 +800,15 @@ export default function BrainPage() {
                 }}
                 onRemove={(id) => {
                   if (window.confirm("Remove this from your Brain?"))
-                    void removeBlock(id).then(changed);
+                    void removeBlock(id)
+                      .then(changed)
+                      .catch(() => {});
                 }}
-                onReorder={(ids) => void reorderBlocks(ids).then(changed)}
+                onReorder={(ids) =>
+                  void reorderBlocks(ids)
+                    .then(changed)
+                    .catch(() => {})
+                }
               />
             )}
           </div>
@@ -730,10 +837,15 @@ export default function BrainPage() {
               </Button>
               <Button
                 type="button"
+                disabled={!skillsAvailable}
                 onClick={async () => {
-                  const created = await addSkill({ name: "New skill" });
-                  setEditingSkillID(created.id);
-                  changed();
+                  try {
+                    const created = await addSkill({ name: "New skill" });
+                    setEditingSkillID(created.id);
+                    changed();
+                  } catch {
+                    /* The persistent error banner provides retry. */
+                  }
                 }}
               >
                 <Plus className="size-4" aria-hidden="true" /> Create a Skill
@@ -767,6 +879,10 @@ export default function BrainPage() {
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Loading Skills…
             </p>
+          ) : !skillsAvailable ? (
+            <p className="text-muted-foreground py-6 text-sm">
+              Your Skills will appear after they load successfully.
+            </p>
           ) : skills.length ? (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {skills.map((skill) => (
@@ -780,7 +896,9 @@ export default function BrainPage() {
                   onOpen={() => setEditingSkillID(skill.id)}
                   onRemove={() => {
                     if (window.confirm(`Remove “${skill.name}”?`))
-                      void removeSkill(skill.id).then(changed);
+                      void removeSkill(skill.id)
+                        .then(changed)
+                        .catch(() => {});
                   }}
                 />
               ))}
@@ -813,6 +931,7 @@ export default function BrainPage() {
         pillars={pillars}
         saveState={projectSaveState}
         onUpdate={updateEssentials}
+        onRetry={project ? retryProject : () => refreshProject(true)}
       />
       <AddContextSheet
         open={adding}

@@ -12,7 +12,7 @@ extension EditorSession {
         defer { assistantRunInFlight = false }
         let text = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        if assistantUsesStudioBrain {
+        if assistantUsesStudioBrain || AssistantRouter.requestsBrandKit(text) {
             conversation.ask(text)
             do {
                 let reply = try await StudioWebCommands.shared.askChirpy(text)
@@ -26,7 +26,7 @@ extension EditorSession {
             } catch {
                 conversation.answer(
                     .chirpy(
-                        "I couldn’t reach your Brain just now. Nothing was changed.",
+                        "I couldn’t confirm that Studio change. Check your saved work, then try again.",
                         tone: .trouble
                     )
                 )

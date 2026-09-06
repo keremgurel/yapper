@@ -6,7 +6,7 @@ import {
   readBoundedJson,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
-import { parseProjectInput } from "@/lib/project/input";
+import { parseBrandColors } from "@/lib/brand/colors";
 import { presignView } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -47,14 +47,20 @@ export async function PATCH(req: Request): Promise<Response> {
     if (response) return response;
     throw error;
   }
-  await ensureUser(userId);
-  const input = parseProjectInput(
-    body && typeof body === "object" ? (body as Record<string, unknown>) : {},
+  const brandColors = parseBrandColors(
+    body && typeof body === "object"
+      ? (body as Record<string, unknown>).brandColors
+      : undefined,
   );
-  if (!input.brandColors) {
+  if (!brandColors) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  await getActiveProject(userId);
-  await updateProject(userId, { brandColors: input.brandColors });
-  return Response.json(await payload(userId));
+  await ensureUser(userId);
+  // Resolve logo URLs before the write: a signing failure must not turn a
+  // completed color save into an apparent failure that the user retries.
+  const kit = await payload(userId);
+  const project = await updateProject(userId, { brandColors });
+  if (!project)
+    return Response.json({ error: "project_unavailable" }, { status: 503 });
+  return Response.json({ ...kit, colors: brandColors });
 }

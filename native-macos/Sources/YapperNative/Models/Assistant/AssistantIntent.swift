@@ -82,6 +82,19 @@ enum AssistantIntent: Equatable, Sendable {
 /// through to the overlay pass, which does involve the model — that is the one
 /// job here that genuinely needs judgement.
 enum AssistantRouter {
+    /// Brand setup belongs to the persistent Studio kit even while editing a
+    /// video. Visual requests that merely use a brand stay in the editor.
+    static func requestsBrandKit(_ instruction: String) -> Bool {
+        let text = instruction.lowercased()
+        let patterns = [
+            #"\b(?:my|our)\s+(?:brand\s+)?colou?rs?\s+(?:are|is|:)"#,
+            #"\b(?:set|save|remember|change|update|create|build|set up)\s+(?:(?:my|our|the)\s+)?(?:brand(?:\s+kit|\s+colou?rs?)?|palette)\b"#,
+            #"\b(?:show|open|put up|pull up|bring up|view)\s+(?:me\s+)?(?:(?:my|our|the)\s+)?(?:brand\s+kit|brand\s+colou?rs?|palette)\s*[.!?]?$"#,
+            #"\b(?:add|remove|delete)\s+.+\s+(?:to|from)\s+(?:(?:my|our|the)\s+)?(?:brand\s+kit|brand\s+colou?rs?|palette)\s*[.!?]?$"#,
+        ]
+        return patterns.contains { text.range(of: $0, options: .regularExpression) != nil }
+    }
+
     /// - Parameter mentionsFile: true when the sentence names a file with `@`,
     ///   which settles it: naming a file is asking for that file to be placed.
     static func route(_ instruction: String, mentionsFile: Bool = false) -> AssistantIntent {

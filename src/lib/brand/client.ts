@@ -1,3 +1,9 @@
+import {
+  invalidateClientResource,
+  mutateClientResource,
+  STUDIO_RESOURCE_KEYS,
+} from "@/lib/client-resource-cache";
+
 export interface BrandLogo {
   id: string;
   name: string;
@@ -26,12 +32,15 @@ export function getBrandKit(): Promise<BrandKit> {
   return fetch("/api/brand").then(json<BrandKit>);
 }
 
-export function saveBrandColors(colors: string[]): Promise<BrandKit> {
-  return fetch("/api/brand", {
+export async function saveBrandColors(colors: string[]): Promise<BrandKit> {
+  const kit = await fetch("/api/brand", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ brandColors: colors }),
   }).then(json<BrandKit>);
+  mutateClientResource(STUDIO_RESOURCE_KEYS.brand, kit);
+  invalidateClientResource(STUDIO_RESOURCE_KEYS.project);
+  return kit;
 }
 
 export async function uploadBrandLogo(file: File): Promise<BrandLogo> {

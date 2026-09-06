@@ -10,6 +10,15 @@ import Testing
 /// cover the phrasings a creator actually uses rather than the ones the matcher
 /// was written against.
 @Suite struct AssistantRouterTests {
+    @Test func brandSetupUsesTheStudioKitFromTheEditor() {
+        #expect(AssistantRouter.requestsBrandKit("My colors are orange and black"))
+        #expect(AssistantRouter.requestsBrandKit("Please create my brand kit with #123 and #456"))
+        #expect(AssistantRouter.requestsBrandKit("Put up my brand kit"))
+        #expect(AssistantRouter.requestsBrandKit("Add red to my brand colors"))
+        #expect(!AssistantRouter.requestsBrandKit("Generate an overlay using my brand colors"))
+        #expect(!AssistantRouter.requestsBrandKit("Make the caption color orange"))
+    }
+
     @Test func itHearsARequestToTranscribe() {
         #expect(AssistantRouter.route("transcribe this") == .transcribe)
         #expect(AssistantRouter.route("get me a transcript") == .transcribe)

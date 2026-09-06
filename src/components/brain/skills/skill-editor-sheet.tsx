@@ -48,6 +48,7 @@ export default function SkillEditorSheet({
   onReset: (skill: BrainSkill) => Promise<void>;
 }) {
   const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
   if (!skill) return null;
 
   const resetToDefault = async () => {
@@ -58,8 +59,11 @@ export default function SkillEditorSheet({
     )
       return;
     setResetting(true);
+    setResetError(null);
     try {
       await onReset(skill);
+    } catch {
+      setResetError("The default couldn’t be restored. Try again.");
     } finally {
       setResetting(false);
     }
@@ -84,7 +88,15 @@ export default function SkillEditorSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-4 overflow-y-auto px-4 pb-6">
+        <fieldset
+          disabled={resetting}
+          className="space-y-4 overflow-y-auto px-4 pb-6"
+        >
+          {resetError ? (
+            <p role="alert" className="text-destructive text-sm">
+              {resetError}
+            </p>
+          ) : null}
           <div className="space-y-1.5">
             <Label htmlFor="skill-name" className="sg-field-label">
               Name
@@ -185,7 +197,7 @@ export default function SkillEditorSheet({
               </div>
             </div>
           ) : null}
-        </div>
+        </fieldset>
       </SheetContent>
     </Sheet>
   );
