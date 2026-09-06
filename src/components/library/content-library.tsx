@@ -1,49 +1,63 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { Lightbulb, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
+import CrossPostSheet, {
+  type CrossPostTarget,
+} from "@/components/publish/cross-post-sheet";
 import BulkBar from "@/components/items/bulk-bar";
-import ItemList from "@/components/items/item-list";
-import ItemListRow from "@/components/items/item-list-row";
-import StatusSelect from "@/components/library/status-select";
-import {
-  Chip,
-  EmptyState,
-  PageHeader,
-  pillarTone,
-} from "@/components/studio-ui";
+import ItemFilters from "@/components/items/item-filters";
+import ItemTable from "@/components/items/item-table";
+import ItemTableSkeleton from "@/components/items/item-table-skeleton";
+import { EmptyState, PageHeader } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
+import { useContentSort } from "@/hooks/use-content-sort";
+import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
+import BoardView from "@/components/views/board-view";
+import ViewBar from "@/components/views/view-bar";
+import { useLibraryViews } from "@/hooks/use-library-views";
+import { LIBRARY_COLUMNS, resolveColumns } from "@/lib/content/columns";
+import { applyViewFilters } from "@/lib/content/group-items";
 import {
   createContent,
   defaultScheduleDate,
   patchContent,
   type ContentSummary,
 } from "@/lib/content/client";
-import { relativeTime } from "@/lib/content/relative-time";
 import { createOptimisticUpdater } from "@/lib/content/reschedule";
 import type { ContentStatus } from "@/lib/db/schema";
 
 /**
- * The Content Library: the ideas you have decided to make, as a list.
+ * The Content Library: the ideas you have decided to make.
  *
- * Each row is a title, its status, its pillar and its age. Opening a row goes
- * to the canvas where the words get written; changing status happens here
- * because that is the one thing you do to many items in a sitting.
+ * A page title, a New button, and the saved views: a table with the columns
+ * you chose, or a board grouped by status or pillar, the way a Notion
+ * database works. Opening a row goes to the canvas where the words get
+ * written; status changes happen here because that is the one thing you do
+ * to many items in a sitting.
  */
 export default function ContentLibrary() {
   const router = useRouter();
   const { isSignedIn } = useUser();
   const { items, loadFailed, refresh, patchRow } = useContentList(!!isSignedIn);
   const { importing } = useContentImport(!!isSignedIn, refresh);
+
+  const views = useLibraryViews("library", !!isSignedIn);
+  // The saved view narrows first, then the ad-hoc search narrows further. A
+  // view is the shape of the surface; the search is what you are looking for
+  // inside it right now.
+  const inView = applyViewFilters(items ?? [], views.active?.filters ?? {});
+  const filters = useItemFilters(inView);
+  const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
+  const columns = resolveColumns("library", views.active?.columns);
   const selection = useItemSelection(refresh);
-  const [query, setQuery] = useState("");
+  const [postItem, setPostItem] = useState<CrossPostTarget | null>(null);
   const [creating, setCreating] = useState(false);
   const [createFailed, setCreateFailed] = useState(false);
   const createLock = useRef(false);
@@ -97,18 +111,6 @@ export default function ContentLibrary() {
     }
   };
 
-  const rows = useMemo(() => {
-    const all = items ?? [];
-    const needle = query.trim().toLowerCase();
-    if (!needle) return all;
-    return all.filter((item) =>
-      [item.title, item.originalNote, item.pillar ?? "", item.status]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [items, query]);
-
   return (
     <div className="w-full pb-24">
       <PageHeader
@@ -140,6 +142,9 @@ export default function ContentLibrary() {
           Importing your saved ideas…
         </p>
       )}
+
+      <ViewBar views={views} />
+
       {Object.entries(statusErrors).map(([id, retry]) => (
         <div
           key={id}
@@ -160,7 +165,6 @@ export default function ContentLibrary() {
           </Button>
         </div>
       ))}
-
       {loadFailed ? (
         <EmptyState
           icon={Lightbulb}
@@ -173,11 +177,7 @@ export default function ContentLibrary() {
           }
         />
       ) : items === null ? (
-        <div className="space-y-2" aria-busy>
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-12 w-full rounded-xl" />
-        </div>
+        <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Lightbulb}
@@ -190,44 +190,45 @@ export default function ContentLibrary() {
           }
         />
       ) : (
-        <ItemList
-          total={items.length}
-          query={query}
-          onQuery={setQuery}
-          isEmpty={rows.length === 0}
-          emptyLabel="Nothing matches that search."
-        >
-          {rows.map((row) => (
-            <ItemListRow
-              key={row.id}
-              title={row.title.trim() || "Untitled"}
-              preview={row.script?.trim() ? null : row.originalNote || null}
-              selected={selection.ids.has(row.id)}
-              onToggleSelect={() => selection.toggle(row.id)}
-              onOpen={() => router.push(`/studio/library/${row.id}`)}
-              trailing={
-                <>
-                  {row.pillar && (
-                    <Chip
-                      variant="dot"
-                      tone={pillarTone(row.pillar)}
-                      className="hidden sm:inline-flex"
-                    >
-                      {row.pillar}
-                    </Chip>
-                  )}
-                  <StatusSelect
-                    value={row.status}
-                    onChange={(status) => changeStatus(row, status)}
-                  />
-                  <span className="text-muted-foreground hidden w-10 text-right text-xs tabular-nums sm:inline">
-                    {relativeTime(row.updatedAt)}
-                  </span>
-                </>
-              }
+        <>
+          <ItemFilters
+            query={filters.query}
+            onQuery={filters.setQuery}
+            pillar={filters.pillar}
+            onPillar={filters.setPillar}
+            pillarOptions={filters.pillarOptions}
+            resultLabel={filters.resultLabel}
+          />
+          {views.active?.kind === "board" ? (
+            <BoardView
+              rows={filters.filtered}
+              groupBy={views.active.groupBy}
+              onOpen={(id) => router.push(`/studio/library/${id}`)}
+              onStatusChange={changeStatus}
             />
-          ))}
-        </ItemList>
+          ) : (
+            <ItemTable
+              rows={sorted ?? []}
+              groupBy={views.active?.groupBy}
+              columns={columns}
+              sort={sort}
+              onToggleSort={toggleSort}
+              selectedIds={selection.ids}
+              onToggleSelect={selection.toggle}
+              onSelectAll={selection.selectAll}
+              onOpen={(id) => router.push(`/studio/library/${id}`)}
+              onStatus={changeStatus}
+              onPost={(row) =>
+                setPostItem({
+                  id: row.id,
+                  title: row.title.trim() || "Untitled",
+                  submissionId: row.submissionId!,
+                })
+              }
+              emptyLabel="Nothing matches those filters."
+            />
+          )}
+        </>
       )}
 
       <BulkBar
@@ -239,6 +240,14 @@ export default function ContentLibrary() {
         onDelete={selection.actions.remove}
         onClear={selection.clear}
       />
+
+      {postItem && (
+        <CrossPostSheet
+          key={postItem.id}
+          item={postItem}
+          onClose={() => setPostItem(null)}
+        />
+      )}
     </div>
   );
 }

@@ -183,7 +183,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl pb-16">
+    <div className="w-full pb-16">
       {actionError && (
         <p role="alert" className="text-destructive mb-4 text-sm">
           {actionError}
@@ -243,58 +243,70 @@ export default function CanvasWorkbench({ id }: { id: string }) {
 
       <CanvasDetails item={item} update={update} />
 
-      <div className="mt-10 space-y-9">
-        <CanvasHooks hooks={hooks} onChange={setHooks} />
+      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)] lg:gap-12">
+        <div className="min-w-0">
+          <div className="space-y-9">
+            <CanvasHooks hooks={hooks} onChange={setHooks} />
 
-        {blocks.map((block, index) => (
-          <CanvasBlock
-            key={block.id}
-            block={block}
-            index={index}
-            isFirst={index === 0}
-            isLast={index === blocks.length - 1}
-            onChange={(patch) =>
-              setBlocks((current) => updateBlock(current, block.id, patch))
-            }
-            onKind={(kind) =>
-              setBlocks((current) => changeKind(current, block.id, kind))
-            }
-            onMove={(direction) =>
-              setBlocks((current) => moveBlock(current, block.id, direction))
-            }
-            onRemove={() =>
-              setBlocks((current) => removeBlock(current, block.id))
-            }
-            onAsk={() => {
-              setTarget(block.id);
-              setFocusToken((token) => token + 1);
-            }}
+            {blocks.map((block, index) => (
+              <CanvasBlock
+                key={block.id}
+                block={block}
+                index={index}
+                isFirst={index === 0}
+                isLast={index === blocks.length - 1}
+                onChange={(patch) =>
+                  setBlocks((current) => updateBlock(current, block.id, patch))
+                }
+                onKind={(kind) =>
+                  setBlocks((current) => changeKind(current, block.id, kind))
+                }
+                onMove={(direction) =>
+                  setBlocks((current) =>
+                    moveBlock(current, block.id, direction),
+                  )
+                }
+                onRemove={() =>
+                  setBlocks((current) => removeBlock(current, block.id))
+                }
+                onAsk={() => {
+                  setTarget(block.id);
+                  setFocusToken((token) => token + 1);
+                }}
+              />
+            ))}
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() =>
+                setBlocks((current) => [...current, blockFrom({})])
+              }
+              className="text-muted-foreground -ml-2"
+            >
+              <Plus className="h-4 w-4" /> Add a block
+            </Button>
+          </div>
+
+          <CanvasPromptBar
+            busy={chirpy.busy}
+            error={chirpy.error}
+            note={note}
+            target={targetBlock ? { label: targetBlock.label } : null}
+            onClearTarget={() => setTarget(null)}
+            onAsk={ask}
+            focusToken={focusToken}
           />
-        ))}
+          {used && <ReadLine used={used} />}
+        </div>
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setBlocks((current) => [...current, blockFrom({})])}
-          className="text-muted-foreground -ml-2"
-        >
-          <Plus className="h-4 w-4" /> Add a block
-        </Button>
+        {/* The reference stays in view while you write: adapting a transcript
+            means reading it and the draft at the same time. */}
+        <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
+          <CanvasReference item={item} update={update} />
+        </aside>
       </div>
-
-      <CanvasPromptBar
-        busy={chirpy.busy}
-        error={chirpy.error}
-        note={note}
-        target={targetBlock ? { label: targetBlock.label } : null}
-        onClearTarget={() => setTarget(null)}
-        onAsk={ask}
-        focusToken={focusToken}
-      />
-      {used && <ReadLine used={used} />}
-
-      <CanvasReference item={item} update={update} />
 
       <CanvasPhoneSheet
         open={phoneOpen}

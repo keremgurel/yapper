@@ -1,62 +1,56 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Lightbulb, Loader2 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { Archive, Lightbulb } from "lucide-react";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
+import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
+import { useContentSort } from "@/hooks/use-content-sort";
+import { useLibraryViews } from "@/hooks/use-library-views";
 import IdeaCapture from "@/components/ideas/idea-capture";
 import InstagramImportSheet from "@/components/ideas/instagram-import-sheet";
 import BulkBar from "@/components/items/bulk-bar";
-import ItemList from "@/components/items/item-list";
-import ItemListRow from "@/components/items/item-list-row";
-import {
-  Chip,
-  EmptyState,
-  PageHeader,
-  pillarTone,
-} from "@/components/studio-ui";
+import ItemFilters from "@/components/items/item-filters";
+import ItemTable from "@/components/items/item-table";
+import ItemTableSkeleton from "@/components/items/item-table-skeleton";
+import BoardView from "@/components/views/board-view";
+import ViewBar from "@/components/views/view-bar";
+import { EmptyState, PageHeader } from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { relativeTime } from "@/lib/content/relative-time";
-import type { ItemSummary } from "@/lib/ideas/client";
+import { BANK_COLUMNS, resolveColumns } from "@/lib/content/columns";
+import { applyViewFilters } from "@/lib/content/group-items";
 
 /**
- * The Idea bank: a place to put a thought down, and the list of what is there.
+ * The Idea bank: a place to put a thought down, and the ideas already there.
  *
- * Capture at the top, list below, nothing else. Opening an idea goes to its
- * canvas, where it gets developed; selecting rows brings up the bulk bar,
- * which is how ideas move to the Library.
+ * Capture at the top. Below it, the same saved views the Library has: a table
+ * with the columns you chose, or a board grouped by pillar or status. Opening
+ * an idea goes to its canvas; selecting rows brings up the bulk bar, which is
+ * how ideas move to the Library.
  */
 export default function IdeaBank() {
   const router = useRouter();
+  const { isSignedIn } = useUser();
   const {
     bank,
     loading,
     loadFailed,
     refreshFailed,
-    working,
-    analysisErrors,
     sourceUrls,
     capture,
     importInstagramSaves,
-    retry,
     refresh,
   } = useIdeaBank();
   const [importOpen, setImportOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const selection = useItemSelection(refresh);
 
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return bank;
-    return bank.filter((item) =>
-      [item.title, item.originalNote, item.sourceTitle ?? "", item.pillar ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [bank, query]);
+  const views = useLibraryViews("bank", !!isSignedIn);
+  const inView = applyViewFilters(bank, views.active?.filters ?? {});
+  const filters = useItemFilters(inView);
+  const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
+  const columns = resolveColumns("bank", views.active?.columns);
+  const selection = useItemSelection(refresh);
 
   return (
     <div className="w-full pb-24">
@@ -98,11 +92,7 @@ export default function IdeaBank() {
             }
           />
         ) : loading ? (
-          <div className="space-y-2" aria-busy>
-            <Skeleton className="h-12 w-full rounded-xl" />
-            <Skeleton className="h-12 w-full rounded-xl" />
-            <Skeleton className="h-12 w-full rounded-xl" />
-          </div>
+          <ItemTableSkeleton columns={BANK_COLUMNS} />
         ) : bank.length === 0 ? (
           <EmptyState
             icon={Lightbulb}
@@ -110,32 +100,40 @@ export default function IdeaBank() {
             description="Write or dictate a thought above. It lands here."
           />
         ) : (
-          <ItemList
-            total={bank.length}
-            query={query}
-            onQuery={setQuery}
-            isEmpty={rows.length === 0}
-            emptyLabel="Nothing matches that search."
-          >
-            {rows.map((item) => (
-              <ItemListRow
-                key={item.id}
-                title={titleOf(item)}
-                preview={previewOf(item)}
-                selected={selection.ids.has(item.id)}
-                onToggleSelect={() => selection.toggle(item.id)}
-                onOpen={() => router.push(`/studio/library/${item.id}`)}
-                trailing={
-                  <IdeaRowTrailing
-                    item={item}
-                    working={working.has(item.id)}
-                    failed={analysisErrors.has(item.id)}
-                    onRetry={() => retry(item.id)}
-                  />
-                }
+          <>
+            <ViewBar views={views} />
+            <ItemFilters
+              query={filters.query}
+              onQuery={filters.setQuery}
+              pillar={filters.pillar}
+              onPillar={filters.setPillar}
+              pillarOptions={filters.pillarOptions}
+              resultLabel={filters.resultLabel}
+            />
+            {views.active?.kind === "board" ? (
+              <BoardView
+                rows={filters.filtered}
+                groupBy={views.active.groupBy}
+                onOpen={(id) => router.push(`/studio/library/${id}`)}
+                onStatusChange={() => undefined}
               />
-            ))}
-          </ItemList>
+            ) : (
+              <ItemTable
+                rows={sorted ?? []}
+                groupBy={views.active?.groupBy}
+                columns={columns}
+                sort={sort}
+                onToggleSort={toggleSort}
+                selectedIds={selection.ids}
+                onToggleSelect={selection.toggle}
+                onSelectAll={selection.selectAll}
+                onOpen={(id) => router.push(`/studio/library/${id}`)}
+                onStatus={() => undefined}
+                onPost={() => undefined}
+                emptyLabel="Nothing matches those filters."
+              />
+            )}
+          </>
         )}
       </div>
 
@@ -157,72 +155,4 @@ export default function IdeaBank() {
       />
     </div>
   );
-}
-
-/** Pillar, then either the age of the idea or what is happening to it. */
-function IdeaRowTrailing({
-  item,
-  working,
-  failed,
-  onRetry,
-}: {
-  item: ItemSummary;
-  working: boolean;
-  failed: boolean;
-  onRetry: () => void;
-}) {
-  return (
-    <>
-      {item.pillar && (
-        <Chip
-          variant="dot"
-          tone={pillarTone(item.pillar)}
-          className="hidden sm:inline-flex"
-        >
-          {item.pillar}
-        </Chip>
-      )}
-      {working ? (
-        <span className="text-muted-foreground flex items-center gap-1 text-xs">
-          <Loader2 aria-hidden className="h-3 w-3 animate-spin" />
-          Reading
-        </span>
-      ) : failed ? (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="text-xs font-semibold text-[color-mix(in_oklab,var(--sg-yellow-500)_48%,var(--sg-text))] underline-offset-2 hover:underline"
-        >
-          Couldn’t read it · Retry
-        </button>
-      ) : (
-        <span className="text-muted-foreground w-10 text-right text-xs tabular-nums">
-          {relativeTime(item.updatedAt)}
-        </span>
-      )}
-    </>
-  );
-}
-
-function titleOf(item: ItemSummary): string {
-  return (
-    item.title ||
-    firstLine(item.originalNote) ||
-    item.sourceTitle ||
-    item.sourceUrl ||
-    "New idea"
-  );
-}
-
-/** The captured words, unless the title still is the captured words. */
-function previewOf(item: ItemSummary): string | null {
-  if (item.title && item.originalNote) return item.originalNote;
-  if (!item.title && item.sourceTitle && item.originalNote)
-    return item.sourceTitle;
-  return null;
-}
-
-function firstLine(text: string): string {
-  const line = text.split(/[.\n]/)[0]?.trim() ?? "";
-  return line.length > 80 ? line.slice(0, 80) : line;
 }
