@@ -47,6 +47,7 @@ export async function createView(
 export async function updateView(
   id: string,
   draft: ViewDraft,
+  options?: { keepalive?: boolean },
 ): Promise<LibraryView> {
   return (
     await json<{ view: LibraryView }>(
@@ -54,6 +55,7 @@ export async function updateView(
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(draft),
+        keepalive: options?.keepalive,
       }),
     )
   ).view;

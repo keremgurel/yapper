@@ -35,7 +35,11 @@ export default function IdeaCard({
   onRetry: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { detail, loading } = useItemDetail(item.id, open);
+  const {
+    detail,
+    loading,
+    retry: retryDetail,
+  } = useItemDetail(item.id, open, item.updatedAt);
 
   const title =
     item.title ||
@@ -95,7 +99,9 @@ export default function IdeaCard({
             the usual cause is a depleted scraper or a rate limit, so the same
             retry is the cheapest thing worth trying before attaching the file
             by hand in the workbench. */}
-        {(analysisFailed || item.transcriptStatus === "needs_media") &&
+        {(analysisFailed ||
+          item.transcriptStatus === "needs_media" ||
+          !item.script?.trim()) &&
           !working && (
             <button
               type="button"
@@ -103,12 +109,16 @@ export default function IdeaCard({
               title={
                 analysisFailed
                   ? "Retry analysis"
-                  : "Retry fetching the transcript"
+                  : item.transcriptStatus === "needs_media"
+                    ? "Retry fetching the transcript"
+                    : "Develop this idea"
               }
               aria-label={
                 analysisFailed
                   ? "Retry analysis"
-                  : "Retry fetching the transcript"
+                  : item.transcriptStatus === "needs_media"
+                    ? "Retry fetching the transcript"
+                    : "Develop this idea"
               }
               className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 rounded-md p-1 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
             >
@@ -153,7 +163,10 @@ export default function IdeaCard({
             <IdeaDetail detail={detail} />
           ) : (
             <p className="text-muted-foreground text-sm">
-              Couldn&apos;t load this idea. Close and reopen to retry.
+              Couldn&apos;t load this idea.{" "}
+              <button className="underline" onClick={retryDetail}>
+                Try again
+              </button>
             </p>
           )}
         </div>

@@ -86,5 +86,7 @@ export function useTranscriptionDictionary() {
     removeEntry,
     rememberCorrection,
     clearError: () => dictionaryRepository.clearError(owner),
+    reload: () =>
+      owner ? dictionaryRepository.load(owner) : Promise.resolve(),
   };
 }

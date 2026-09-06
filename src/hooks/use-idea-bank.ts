@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { patchContent } from "@/lib/content/client";
 import {
   createIdea,
@@ -30,11 +30,14 @@ import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
 export function useIdeaBank() {
   const [working, setWorking] = useState<Set<string>>(new Set());
   const [analysisErrors, setAnalysisErrors] = useState<Set<string>>(new Set());
+  const activeAnalysis = useRef(new Set<string>());
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
   // Hand over any ideas still in this browser BEFORE listing, so a returning
   // creator never sees an empty bank where their ideas used to be.
   const { migrating } = useIdeaMigration(true);
   const {
     data: items,
+    error: loadError,
     refresh: refreshResource,
     mutate,
   } = useClientResource(STUDIO_RESOURCE_KEYS.ideas, !migrating, listIdeas);
@@ -76,6 +79,8 @@ export function useIdeaBank() {
    */
   const enrich = useCallback(
     async (id: string, url: string | null, note: string) => {
+      if (activeAnalysis.current.has(id)) return;
+      activeAnalysis.current.add(id);
       mark(id, true);
       setAnalysisErrors((prev) => {
         const next = new Set(prev);
@@ -87,8 +92,9 @@ export function useIdeaBank() {
         if (url) {
           source = await resolveIdeaSourceRemote(url);
           const patch = sourceToPatch(source);
-          await patchContent(id, patch);
+          const saved = await patchContent(id, patch);
           patchRow(id, {
+            updatedAt: saved.updatedAt,
             sourceTitle: patch.sourceTitle,
             sourcePlatform: patch.sourcePlatform,
             transcriptStatus: patch.transcriptStatus,
@@ -101,8 +107,9 @@ export function useIdeaBank() {
           source,
         });
         const patch = expansionToPatch(expansion);
-        await patchContent(id, patch);
+        const saved = await patchContent(id, patch);
         patchRow(id, {
+          updatedAt: saved.updatedAt,
           title: patch.title ?? "",
           script: patch.script ?? null,
           pillar: patch.pillar ?? null,
@@ -112,6 +119,7 @@ export function useIdeaBank() {
         // creator gets a visible failure and a retry rather than a silent loss.
         setAnalysisErrors((prev) => new Set(prev).add(id));
       } finally {
+        activeAnalysis.current.delete(id);
         mark(id, false);
       }
     },
@@ -160,14 +168,19 @@ export function useIdeaBank() {
   const refresh = useCallback(async () => {
     try {
       await refreshResource(true);
-    } catch {
-      // Keep what is on screen; the next action will try again.
+      setRefreshError(null);
+    } catch (cause) {
+      setRefreshError(
+        cause instanceof Error ? cause : new Error("load_failed"),
+      );
     }
   }, [refreshResource]);
 
   return {
     bank: items ?? [],
-    loading: migrating || items === null,
+    loading: migrating || (items === null && !loadError && !refreshError),
+    loadFailed: items === null && Boolean(loadError ?? refreshError),
+    refreshFailed: items !== null && Boolean(refreshError),
     working,
     analysisErrors,
     sourceUrls: (items ?? [])

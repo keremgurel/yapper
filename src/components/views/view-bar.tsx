@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+
 import ViewSettings from "@/components/views/view-settings";
 import ViewTabs from "@/components/views/view-tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +25,29 @@ const CAUTION_TEXT =
  */
 export default function ViewBar({ views }: { views: LibraryViewsState }) {
   const loading = views.views.length === 0 && !views.failed;
+  const creating = useRef(false);
+  const [createError, setCreateError] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    if (creating.current) return;
+    creating.current = true;
+    setBusy(true);
+    setCreateError(false);
+    try {
+      await views.create({
+        name: "New view",
+        kind: "table",
+        groupBy: null,
+        filters: {},
+        columns: [],
+      });
+    } catch {
+      setCreateError(true);
+    } finally {
+      creating.current = false;
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="mb-4">
@@ -32,40 +57,68 @@ export default function ViewBar({ views }: { views: LibraryViewsState }) {
             <Skeleton className="h-4 w-20" />
             <Skeleton className="h-4 w-16" />
           </div>
-        ) : views.failed ? (
+        ) : views.failed && views.views.length === 0 ? (
           <p
             className={`px-1 pb-2 text-xs font-semibold ${CAUTION_TEXT}`}
             role="alert"
           >
             Couldn&apos;t load your saved views. Showing the default table.
+            <button
+              type="button"
+              className="ml-2 underline"
+              onClick={() => void views.reload()}
+            >
+              Try again
+            </button>
           </p>
         ) : (
           <ViewTabs
             views={views.views}
             activeId={views.active?.id ?? null}
             onSelect={views.setActiveId}
-            onAdd={() =>
-              void views.create({
-                name: "New view",
-                kind: "table",
-                groupBy: null,
-                filters: {},
-                columns: [],
-              })
-            }
+            onAdd={() => void create()}
+            busy={busy}
           />
         )}
 
         {views.active && (
           <div className="ml-auto">
             <ViewSettings
+              key={views.active.id}
               view={views.active}
-              onSave={(draft) => void views.save(views.active!.id, draft)}
-              onDelete={() => void views.remove(views.active!.id)}
+              onSave={(draft, options) =>
+                views.save(views.active!.id, draft, options)
+              }
+              onDelete={() => views.remove(views.active!.id)}
             />
           </div>
         )}
       </div>
+      {views.failed && views.views.length > 0 && (
+        <p role="alert" className={`mt-2 text-xs ${CAUTION_TEXT}`}>
+          Your saved views couldn’t be refreshed. Showing the last loaded views.
+          <button
+            type="button"
+            className="ml-2 underline"
+            onClick={() => void views.reload()}
+          >
+            Try again
+          </button>
+        </p>
+      )}
+      {createError && (
+        <p role="alert" className="text-destructive mt-2 text-xs">
+          A new view couldn’t be created.{" "}
+          <button
+            type="button"
+            className="underline"
+            disabled={busy}
+            onClick={() => void create()}
+          >
+            Try again
+          </button>
+        </p>
+      )}
     </div>
   );
 }

@@ -35,6 +35,8 @@ export default function IdeaBank() {
   const {
     bank,
     loading,
+    loadFailed,
+    refreshFailed,
     working,
     analysisErrors,
     sourceUrls,
@@ -107,7 +109,26 @@ export default function IdeaBank() {
             production pipeline.
           </p>
         </div>
-        {loading ? (
+        {refreshFailed && (
+          <p role="alert" className="text-destructive mb-3 text-sm">
+            Your latest changes couldn’t be loaded.{" "}
+            <button className="underline" onClick={() => void refresh()}>
+              Try again
+            </button>
+          </p>
+        )}
+        {loadFailed ? (
+          <EmptyState
+            icon={Lightbulb}
+            title="Your ideas couldn’t be loaded"
+            description="Your saved ideas are still in your account. Try loading them again."
+            action={
+              <Button variant="outline" onClick={() => void refresh()}>
+                Try again
+              </Button>
+            }
+          />
+        ) : loading ? (
           <ItemTableSkeleton columns={BANK_COLUMNS} />
         ) : bank.length === 0 ? (
           <EmptyState

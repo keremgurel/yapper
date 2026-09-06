@@ -27,13 +27,22 @@ export function pullLink(value: string): ComposerDraft {
 export function useCaptureDraft() {
   const [text, setText] = useState("");
   const [link, setLink] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem(DRAFT_KEY);
-    if (!saved) return;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(DRAFT_KEY);
+    } catch {
+      // Capturing still works when this browser disallows local storage.
+    }
     // Deferred a frame: restoring in the effect body itself would set state
     // synchronously during mount, which the lint rules (rightly) reject.
     const restore = window.requestAnimationFrame(() => {
+      if (!saved) {
+        setReady(true);
+        return;
+      }
       try {
         const parsed = JSON.parse(saved) as ComposerDraft;
         // A draft saved by the old composer kept its link in a field of its
@@ -44,18 +53,25 @@ export function useCaptureDraft() {
       } catch {
         // Drafts from the previous plain-text composer remain valid.
         setText(saved);
+      } finally {
+        setReady(true);
       }
     });
     return () => window.cancelAnimationFrame(restore);
   }, []);
 
   useEffect(() => {
-    if (!text && !link) {
-      localStorage.removeItem(DRAFT_KEY);
-      return;
+    if (!ready) return;
+    try {
+      if (!text && !link) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, link }));
+    } catch {
+      // Keep the in-memory draft usable; saving to the account is independent.
     }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({ text, link }));
-  }, [text, link]);
+  }, [text, link, ready]);
 
   /**
    * Typed input, kept exactly as typed.
@@ -75,5 +91,5 @@ export function useCaptureDraft() {
     setLink(null);
   };
 
-  return { text, link, updateText, setLink, clear };
+  return { text, link, ready, updateText, setLink, clear };
 }

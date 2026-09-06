@@ -34,9 +34,11 @@ export function useItemSelection(onDone: () => void | Promise<void>) {
       if (!targets.length) return;
       setBusy(true);
       try {
-        await bulkItems(targets, action);
-        setIds(new Set());
+        const updated = await bulkItems(targets, action);
         await onDone();
+        if (updated !== targets.length)
+          throw new Error("bulk_partially_applied");
+        setIds(new Set());
       } finally {
         setBusy(false);
       }

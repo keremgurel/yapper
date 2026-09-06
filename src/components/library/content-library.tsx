@@ -30,6 +30,7 @@ import {
   patchContent,
   type ContentSummary,
 } from "@/lib/content/client";
+import { createOptimisticUpdater } from "@/lib/content/reschedule";
 import type { ContentStatus } from "@/lib/db/schema";
 
 /**
@@ -41,7 +42,7 @@ import type { ContentStatus } from "@/lib/db/schema";
 export default function ContentLibrary() {
   const router = useRouter();
   const { isSignedIn } = useUser();
-  const { items, refresh, patchRow } = useContentList(!!isSignedIn);
+  const { items, loadFailed, refresh, patchRow } = useContentList(!!isSignedIn);
   const { importing } = useContentImport(!!isSignedIn, refresh);
 
   const views = useLibraryViews("library", !!isSignedIn);
@@ -55,18 +56,36 @@ export default function ContentLibrary() {
   const selection = useItemSelection(refresh);
   const [postItem, setPostItem] = useState<CrossPostTarget | null>(null);
 
+  const [statusErrors, setStatusErrors] = useState<
+    Record<string, () => Promise<void>>
+  >({});
+  const [saveStatus] = useState(() =>
+    createOptimisticUpdater<Pick<ContentSummary, "status" | "scheduledFor">>({
+      save: async (id, fields) => {
+        const saved = await patchContent(id, fields);
+        return { status: saved.status, scheduledFor: saved.scheduledFor };
+      },
+      show: patchRow,
+      failed: (id, retry) =>
+        setStatusErrors((current) => ({ ...current, [id]: retry })),
+      saved: (id) =>
+        setStatusErrors((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        }),
+    }),
+  );
   const changeStatus = (row: ContentSummary, status: ContentStatus) => {
     const scheduledFor =
       status === "scheduled"
         ? (row.scheduledFor ?? defaultScheduleDate())
         : row.scheduledFor;
-    patchRow(row.id, { status, scheduledFor });
-    patchContent(row.id, { status, scheduledFor }).catch(() => {
-      patchRow(row.id, {
-        status: row.status,
-        scheduledFor: row.scheduledFor,
-      });
-    });
+    void saveStatus(
+      row.id,
+      { status, scheduledFor },
+      { status: row.status, scheduledFor: row.scheduledFor },
+    ).catch(() => {});
   };
 
   return (
@@ -99,7 +118,38 @@ export default function ContentLibrary() {
 
       <ViewBar views={views} />
 
-      {items === null ? (
+      {Object.entries(statusErrors).map(([id, retry]) => (
+        <div
+          key={id}
+          role="alert"
+          className="text-destructive mb-3 flex items-center gap-3 text-sm"
+        >
+          <p>
+            The status change for{" "}
+            {items?.find((row) => row.id === id)?.title || "this item"} couldn’t
+            be saved.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void retry().catch(() => {})}
+          >
+            Retry
+          </Button>
+        </div>
+      ))}
+      {loadFailed ? (
+        <EmptyState
+          icon={Lightbulb}
+          title="Your Library couldn’t be loaded"
+          description="Try again to load your saved content."
+          action={
+            <Button variant="outline" onClick={() => void refresh()}>
+              Try again
+            </Button>
+          }
+        />
+      ) : items === null ? (
         <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
       ) : items.length === 0 ? (
         <EmptyState
@@ -132,6 +182,7 @@ export default function ContentLibrary() {
           ) : (
             <ItemTable
               rows={sorted ?? []}
+              groupBy={views.active?.groupBy}
               columns={columns}
               sort={sort}
               onToggleSort={toggleSort}

@@ -27,6 +27,9 @@ export default function IdeaCapture({
 }) {
   const draft = useCaptureDraft();
   const ref = useRef<HTMLTextAreaElement>(null);
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   /// The link Backspace has taken hold of, waiting for the second press.
   const [armedLink, setArmedLink] = useState<string | null>(null);
 
@@ -115,24 +118,38 @@ export default function IdeaCapture({
   };
 
   const submit = async () => {
-    let words = draft.text;
-    if (recording) {
-      // Sending mid-take means "include what I just said". A failed or silent
-      // take returns null, and the draft is deliberately left alone: dropping
-      // the creator's words and clearing the composer anyway is the one
-      // outcome that loses work.
-      const inserted = await finishRecording();
-      if (inserted === null) return;
-      words = inserted;
+    if (savingRef.current || transcribing || !draft.ready) return;
+    savingRef.current = true;
+    setSaving(true);
+    setCaptureError(null);
+    try {
+      let words = draft.text;
+      if (recording) {
+        // Sending mid-take means "include what I just said". A failed or silent
+        // take returns null, and the draft is deliberately left alone: dropping
+        // the creator's words and clearing the composer anyway is the one
+        // outcome that loses work.
+        const inserted = await finishRecording();
+        if (inserted === null) return;
+        words = inserted;
+      }
+      // The links are already in the words, where they were typed.
+      const capture = words.trim();
+      if (!capture) return;
+      await onCapture(capture);
+      draft.clear();
+    } catch {
+      setCaptureError(
+        "Your idea couldn’t be saved. Your draft is still here; try again.",
+      );
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
-    // The links are already in the words, where they were typed.
-    const capture = words.trim();
-    if (!capture) return;
-    onCapture(capture);
-    draft.clear();
   };
 
   const toggleVoice = async () => {
+    if (savingRef.current) return;
     if (phase === "idle" && permissionBlocked && canOpenMicrophoneSettings) {
       await openMicrophoneSettings();
     } else if (phase === "idle") await start();
@@ -163,6 +180,7 @@ export default function IdeaCapture({
           event.preventDefault();
       }}
       onDrop={(event) => {
+        if (savingRef.current) return;
         const dropped =
           event.dataTransfer.getData("text/uri-list") ||
           event.dataTransfer.getData("text/plain");
@@ -185,6 +203,7 @@ export default function IdeaCapture({
         <textarea
           ref={ref}
           value={draft.text}
+          disabled={saving || transcribing || !draft.ready}
           autoFocus
           onChange={(event) => {
             draft.updateText(event.target.value);
@@ -235,15 +254,29 @@ export default function IdeaCapture({
               aria-live="polite"
               className="flex min-h-10 min-w-0 items-center justify-end gap-2"
             >
-              <p className="text-muted-foreground min-w-0 truncate text-xs">
-                {error ??
+              <p className="text-muted-foreground min-w-0 text-xs">
+                {captureError ??
+                  error ??
                   (transcribing
                     ? "Transcribing your thought…"
-                    : "⌘D to dictate · ⌘Enter to bank it")}
+                    : saving
+                      ? "Saving your idea…"
+                      : "⌘D to dictate · ⌘Enter to bank it")}
               </p>
+              {captureError && (
+                <button
+                  type="button"
+                  onClick={() => void submit()}
+                  disabled={saving}
+                  className="shrink-0 text-xs font-semibold underline"
+                >
+                  Try again
+                </button>
+              )}
               {error && (
                 <button
                   type="button"
+                  disabled={saving}
                   onClick={() =>
                     void (permissionBlocked && canOpenMicrophoneSettings
                       ? openMicrophoneSettings()
@@ -264,6 +297,7 @@ export default function IdeaCapture({
           <button
             type="button"
             onClick={() => void finishRecording()}
+            disabled={saving}
             aria-label="Stop dictating"
             title="Stop dictating"
             className="bg-muted text-foreground hover:bg-muted/80 grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
@@ -274,7 +308,7 @@ export default function IdeaCapture({
           <button
             type="button"
             onClick={() => void toggleVoice()}
-            disabled={transcribing}
+            disabled={transcribing || saving}
             aria-label="Dictate an idea"
             title="Dictate an idea (⌘D)"
             className="text-foreground hover:bg-muted grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-50"
@@ -291,12 +325,16 @@ export default function IdeaCapture({
         <button
           type="button"
           onClick={() => void submit()}
-          disabled={!canSubmit || transcribing}
+          disabled={!canSubmit || transcribing || saving}
           aria-label="Add to Idea Bank"
           title="Add to Idea Bank (⌘Enter)"
           className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-white shadow-sm transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-35"
         >
-          <ArrowUp className="h-5 w-5 stroke-[2.4]" />
+          {saving ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <ArrowUp className="h-5 w-5 stroke-[2.4]" />
+          )}
         </button>
       </div>
     </div>

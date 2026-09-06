@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeftToLine, Layers, Loader2, Tag, Trash2, X } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,20 +47,37 @@ export default function BulkBar({
 }) {
   const { pillars } = usePillars();
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+  const running = useRef(false);
 
   if (count === 0) return null;
 
   const run = async (action: () => Promise<void>) => {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
+    setError(false);
     try {
       await action();
+    } catch {
+      setError(true);
     } finally {
+      running.current = false;
       setBusy(false);
     }
   };
 
   return (
     <div className="fixed inset-x-0 bottom-6 z-40 flex justify-center px-4">
+      {error && (
+        <p
+          role="alert"
+          className="bg-card text-destructive absolute bottom-full mb-2 rounded-lg border px-4 py-2 text-sm"
+        >
+          The change couldn’t be confirmed. Your selection is kept; check the
+          items and try again.
+        </p>
+      )}
       <div className="sg-glass flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl">
         <span className="text-foreground px-2 text-sm font-bold whitespace-nowrap">
           {count} selected
@@ -168,6 +185,7 @@ export default function BulkBar({
         <button
           type="button"
           onClick={onClear}
+          disabled={busy}
           aria-label="Clear selection"
           className="text-muted-foreground hover:text-foreground ml-1 p-1.5"
         >

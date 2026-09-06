@@ -20,11 +20,13 @@ export default function ViewTabs({
   activeId,
   onSelect,
   onAdd,
+  busy = false,
 }: {
   views: LibraryView[];
   activeId: string | null;
   onSelect: (id: string) => void;
   onAdd: () => void;
+  busy?: boolean;
 }) {
   // Plain buttons with aria-current rather than role="tablist": the ARIA tabs
   // pattern demands roving tabindex and arrow-key movement, and claiming the
@@ -57,6 +59,7 @@ export default function ViewTabs({
         variant="ghost"
         size="sm"
         onClick={onAdd}
+        disabled={busy}
         className="text-muted-foreground h-7 px-2"
         aria-label="New view"
       >

@@ -20,15 +20,14 @@ import { useClientResource } from "@/hooks/use-client-resource";
  * mean two browser windows fought over it.
  */
 export function useLibraryViews(stage: ContentStage, enabled: boolean) {
-  const [failed, setFailed] = useState(false);
-  const { data: views, mutate: setViews } = useClientResource(
-    STUDIO_RESOURCE_KEYS.views(stage),
-    enabled,
-    () =>
-      listViews(stage).catch(() => {
-        setFailed(true);
-        return [];
-      }),
+  const [refreshFailed, setRefreshFailed] = useState(false);
+  const {
+    data: views,
+    error,
+    mutate: setViews,
+    refresh: reloadResource,
+  } = useClientResource(STUDIO_RESOURCE_KEYS.views(stage), enabled, () =>
+    listViews(stage),
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -42,8 +41,8 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
   );
 
   const save = useCallback(
-    async (id: string, draft: ViewDraft) => {
-      const view = await updateView(id, draft);
+    async (id: string, draft: ViewDraft, options?: { keepalive?: boolean }) => {
+      const view = await updateView(id, draft, options);
       setViews((rows) => (rows ?? []).map((r) => (r.id === id ? view : r)));
     },
     [setViews],
@@ -52,15 +51,25 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
   const remove = useCallback(
     async (id: string) => {
       await deleteView(id);
+      let empty = false;
       setViews((rows) => {
         const next = (rows ?? []).filter((r) => r.id !== id);
+        empty = next.length === 0;
         setActiveId((current) =>
           current === id ? (next[0]?.id ?? null) : current,
         );
         return next;
       });
+      if (empty) {
+        try {
+          await reloadResource(true);
+          setRefreshFailed(false);
+        } catch {
+          setRefreshFailed(true);
+        }
+      }
     },
-    [setViews],
+    [setViews, reloadResource],
   );
 
   const resolvedActiveId = activeId ?? views?.[0]?.id ?? null;
@@ -70,7 +79,15 @@ export function useLibraryViews(stage: ContentStage, enabled: boolean) {
   return {
     views: views ?? [],
     active,
-    failed,
+    failed: (views === null && Boolean(error)) || refreshFailed,
+    reload: async () => {
+      try {
+        await reloadResource(true);
+        setRefreshFailed(false);
+      } catch {
+        setRefreshFailed(true);
+      }
+    },
     setActiveId,
     create,
     save,

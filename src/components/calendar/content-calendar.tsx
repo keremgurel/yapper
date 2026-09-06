@@ -1,12 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { CalendarDays, Loader2 } from "lucide-react";
 import { useCalendarNav } from "@/hooks/use-calendar-nav";
 import { useContentList } from "@/hooks/use-content-list";
 import { patchContent } from "@/lib/content/client";
+import { createRescheduler } from "@/lib/content/reschedule";
+import { Button } from "@/components/ui/button";
 import {
   bucketByDay,
   monthLabel,
@@ -23,7 +25,27 @@ import WeekView from "./week-view";
 export default function ContentCalendar() {
   const router = useRouter();
   const { isSignedIn } = useUser();
-  const { items, patchRow } = useContentList(!!isSignedIn);
+  const { items, patchRow, loadFailed, refresh } = useContentList(!!isSignedIn);
+  const [failedMoves, setFailedMoves] = useState<
+    Record<string, () => Promise<void>>
+  >({});
+  const saveDate = useMemo(
+    () =>
+      createRescheduler({
+        save: async (id, scheduledFor) =>
+          (await patchContent(id, { scheduledFor })).scheduledFor,
+        show: (id, scheduledFor) => patchRow(id, { scheduledFor }),
+        failed: (id, retry) =>
+          setFailedMoves((previous) => ({ ...previous, [id]: retry })),
+        saved: (id) =>
+          setFailedMoves((previous) => {
+            const next = { ...previous };
+            delete next[id];
+            return next;
+          }),
+      }),
+    [patchRow],
+  );
   const { view, setView, focus, next, prev, today } = useCalendarNav();
 
   const byDay = useMemo(
@@ -38,15 +60,28 @@ export default function ContentCalendar() {
     if (!row) return;
     const scheduledFor = rescheduleIso(row.scheduledFor, day);
     if (scheduledFor === row.scheduledFor) return;
-    // Optimistic; roll back the date if the write fails.
-    patchRow(id, { scheduledFor });
-    patchContent(id, { scheduledFor }).catch(() =>
-      patchRow(id, { scheduledFor: row.scheduledFor }),
-    );
+    void saveDate(id, scheduledFor, row.scheduledFor).catch(() => {});
   };
 
   const label = view === "month" ? monthLabel(focus) : weekLabel(focus);
   const now = new Date();
+
+  if (loadFailed) {
+    return (
+      <div role="alert" className="border-border bg-card rounded-xl border p-6">
+        <p className="text-foreground text-sm font-bold">
+          Your calendar couldn’t be loaded.
+        </p>
+        <Button
+          className="mt-3"
+          variant="outline"
+          onClick={() => void refresh()}
+        >
+          Try again
+        </Button>
+      </div>
+    );
+  }
 
   if (items === null) {
     return (
@@ -58,6 +93,24 @@ export default function ContentCalendar() {
 
   return (
     <div>
+      {Object.entries(failedMoves).map(([id, retry]) => (
+        <div
+          key={id}
+          role="alert"
+          className="border-destructive/25 bg-destructive/5 mb-4 flex items-center justify-between gap-3 rounded-xl border p-3 text-sm"
+        >
+          <span>
+            That date couldn’t be saved. The last saved date is shown.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void retry().catch(() => {})}
+          >
+            Try again
+          </Button>
+        </div>
+      ))}
       <CalendarHeader
         view={view}
         setView={setView}
@@ -95,7 +148,8 @@ export default function ContentCalendar() {
       )}
       <p className="text-muted-foreground mt-3 text-xs">
         Drag a post to another day to reschedule it. Only items with a schedule
-        date appear here.
+        date appear here. These are planning dates; they do not automatically
+        publish your video.
       </p>
     </div>
   );

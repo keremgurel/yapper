@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   BookType,
   Check,
@@ -29,18 +29,31 @@ function DictionaryRow({
   const [term, setTerm] = useState(entry.term);
   const [alias, setAlias] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<"save" | "delete" | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const running = useRef(false);
+  const [failed, setFailed] = useState<{
+    term: string;
+    aliases: string[];
+  } | null>(null);
 
   const save = async (nextTerm: string, aliases: string[]) => {
+    if (running.current) return false;
+    running.current = true;
     setSaving(true);
-    setError(false);
+    setError(null);
     try {
       const next = await updateEntry(entry.id, nextTerm, aliases);
       setTerm(next.term);
+      setFailed(null);
+      if (aliases.includes(alias.trim())) setAlias("");
+      return true;
     } catch {
-      setTerm(entry.term);
-      setError(true);
+      setFailed({ term: nextTerm, aliases });
+      setError("save");
+      return false;
     } finally {
+      running.current = false;
       setSaving(false);
     }
   };
@@ -50,7 +63,22 @@ function DictionaryRow({
     const next = alias.trim();
     if (!next) return;
     await save(term, [...entry.aliases, next]);
-    setAlias("");
+  };
+
+  const remove = async () => {
+    if (running.current) return;
+    running.current = true;
+    setSaving(true);
+    setError(null);
+    setFailed(null);
+    try {
+      await removeEntry(entry.id);
+    } catch {
+      setError("delete");
+    } finally {
+      running.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -63,9 +91,10 @@ function DictionaryRow({
           <input
             id={`term-${entry.id}`}
             value={term}
+            disabled={saving}
             onChange={(e) => setTerm(e.target.value)}
             onBlur={() => {
-              if (term.trim() && term.trim() !== entry.term) {
+              if (term.trim() !== entry.term) {
                 void save(term, entry.aliases);
               }
             }}
@@ -80,19 +109,40 @@ function DictionaryRow({
         ) : null}
         <button
           type="button"
-          onClick={() => {
-            if (
-              window.confirm(`Remove “${entry.term}” from your dictionary?`)
-            ) {
-              void removeEntry(entry.id);
-            }
-          }}
+          disabled={saving}
+          onClick={() => setConfirmDelete(true)}
           className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-2 transition-colors"
           aria-label={`Delete ${entry.term}`}
         >
           <Trash2 className="h-4 w-4" />
         </button>
       </div>
+
+      {confirmDelete && (
+        <div
+          role="group"
+          aria-label={`Remove ${entry.term}`}
+          className="border-border flex flex-wrap items-center gap-3 border-t px-4 py-3 text-sm sm:px-5"
+        >
+          <p className="flex-1">Remove “{entry.term}” from your dictionary?</p>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => setConfirmDelete(false)}
+            className="rounded-md px-2 py-1 font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => void remove()}
+            className="text-destructive rounded-md px-2 py-1 font-semibold"
+          >
+            Remove word
+          </button>
+        </div>
+      )}
 
       <div className="border-border bg-muted/25 border-t px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center gap-2">
@@ -102,6 +152,7 @@ function DictionaryRow({
           {entry.aliases.map((item) => (
             <button
               key={item}
+              disabled={saving}
               type="button"
               onClick={() =>
                 void save(
@@ -122,6 +173,8 @@ function DictionaryRow({
           >
             <input
               value={alias}
+              disabled={saving}
+              aria-label={`Add a mishearing for ${entry.term}`}
               onChange={(e) => setAlias(e.target.value)}
               placeholder={
                 entry.aliases.length ? "Add another mishearing" : "e.g. Salpip"
@@ -139,9 +192,26 @@ function DictionaryRow({
           </form>
         </div>
         {error ? (
-          <p className="text-destructive mt-2 text-xs font-bold">
-            That change couldn&apos;t be saved. The spelling may already exist.
-          </p>
+          <div role="alert" className="text-destructive mt-2 text-xs font-bold">
+            <p>
+              {error === "delete"
+                ? "This spelling couldn’t be removed. Try again."
+                : "That change couldn’t be saved. Your current spelling is kept; check that the new spelling is valid and unique."}
+            </p>
+            {failed && (
+              <button
+                type="button"
+                disabled={saving}
+                className="mt-2 underline"
+                onClick={() => {
+                  const retry = failed;
+                  if (retry) void save(retry.term, retry.aliases);
+                }}
+              >
+                Retry change
+              </button>
+            )}
+          </div>
         ) : null}
       </div>
     </article>
@@ -157,6 +227,7 @@ export default function DictionaryPanel() {
     updateEntry,
     removeEntry,
     clearError,
+    reload,
   } = useTranscriptionDictionary();
   const [term, setTerm] = useState("");
   const [alias, setAlias] = useState("");
@@ -171,6 +242,8 @@ export default function DictionaryPanel() {
       await addEntry(term, alias.trim() ? [alias] : []);
       setTerm("");
       setAlias("");
+    } catch {
+      // Repository errors remain visible; preserve the input for a retry.
     } finally {
       setAdding(false);
     }
@@ -214,6 +287,7 @@ export default function DictionaryPanel() {
                 onChange={(e) => setTerm(e.target.value)}
                 placeholder="CELPIP"
                 autoComplete="off"
+                disabled={adding || loading}
                 className="border-border bg-background text-foreground h-11 rounded-xl border px-3 text-sm outline-none focus:border-[color:var(--sg-accent)]"
               />
             </label>
@@ -227,12 +301,13 @@ export default function DictionaryPanel() {
                 onChange={(e) => setAlias(e.target.value)}
                 placeholder="Salpip"
                 autoComplete="off"
+                disabled={adding || loading}
                 className="border-border bg-background text-foreground h-11 rounded-xl border px-3 text-sm outline-none focus:border-[color:var(--sg-accent)]"
               />
             </label>
             <button
               type="submit"
-              disabled={!term.trim() || adding}
+              disabled={!term.trim() || adding || loading}
               className="bg-foreground text-background inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-black disabled:opacity-50"
             >
               {adding ? (
@@ -244,7 +319,16 @@ export default function DictionaryPanel() {
             </button>
           </form>
           {error ? (
-            <p className="mt-3 text-xs font-bold text-amber-600">{error}</p>
+            <div role="alert" className="mt-3 text-xs font-bold text-amber-600">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="mt-2 underline"
+                onClick={() => void reload()}
+              >
+                Retry sync
+              </button>
+            </div>
           ) : null}
         </div>
       </section>
@@ -259,6 +343,20 @@ export default function DictionaryPanel() {
       {loading ? (
         <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading your dictionary…
+        </div>
+      ) : error && entries.length === 0 ? (
+        <div
+          role="alert"
+          className="border-border rounded-xl border p-4 text-sm"
+        >
+          <p>Your dictionary couldn’t be loaded.</p>
+          <button
+            type="button"
+            className="mt-2 underline"
+            onClick={() => void reload()}
+          >
+            Try again
+          </button>
         </div>
       ) : entries.length === 0 ? (
         <div className="border-border bg-muted/20 rounded-2xl border border-dashed px-6 py-10 text-center">

@@ -1,6 +1,8 @@
 "use client";
 
 import { Settings2, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useAutosave } from "@/hooks/use-autosave";
 import { formatTone, statusTone } from "@/components/studio-ui";
 import ViewColumnPicker from "@/components/views/view-column-picker";
 import ViewFilterChips from "@/components/views/view-filter-chips";
@@ -59,23 +61,54 @@ function Field({
  * should not hide them everywhere.
  */
 export default function ViewSettings({
-  view,
+  view: savedView,
   onSave,
   onDelete,
 }: {
   view: LibraryView;
-  onSave: (draft: ViewDraft) => void;
-  onDelete: () => void;
+  onSave: (
+    draft: ViewDraft,
+    options?: { keepalive?: boolean },
+  ) => Promise<void>;
+  onDelete: () => Promise<void>;
 }) {
-  const patch = (fields: Partial<ViewDraft>) =>
-    onSave({
-      name: view.name,
-      kind: view.kind,
-      groupBy: view.groupBy,
-      filters: view.filters,
-      columns: view.columns,
-      ...fields,
-    });
+  const [view, setView] = useState<ViewDraft>(() => ({
+    name: savedView.name,
+    kind: savedView.kind,
+    groupBy: savedView.groupBy,
+    filters: savedView.filters,
+    columns: savedView.columns,
+  }));
+  const draft = useRef(view);
+  const deleting = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
+  const { state, queue, flush } = useAutosave<{ draft: ViewDraft }>(
+    (fields, options) =>
+      fields.draft ? onSave(fields.draft, options) : Promise.resolve(),
+    500,
+  );
+  const patch = (fields: Partial<ViewDraft>) => {
+    const next = { ...draft.current, ...fields };
+    draft.current = next;
+    setView(next);
+    queue({ draft: next });
+  };
+  const remove = async () => {
+    if (deleting.current) return;
+    deleting.current = true;
+    setBusy(true);
+    setDeleteError(false);
+    try {
+      await flush().catch(() => {});
+      await onDelete();
+    } catch {
+      setDeleteError(true);
+    } finally {
+      deleting.current = false;
+      setBusy(false);
+    }
+  };
 
   const toggleIn = (list: string[], id: string) =>
     list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -103,14 +136,41 @@ export default function ViewSettings({
           className="text-muted-foreground h-7 px-2 text-xs"
         >
           <Settings2 aria-hidden className="h-3.5 w-3.5" />
-          View options
+          {state === "error" ? "View options · Unsaved" : "View options"}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={8} className="w-80">
-        <div className="max-h-[70vh] space-y-4 overflow-y-auto">
+      <PopoverContent
+        align="end"
+        sideOffset={8}
+        className="max-h-[min(70vh,var(--radix-popover-content-available-height))] w-80 overflow-y-auto"
+      >
+        <fieldset disabled={busy} className="space-y-4">
+          {state === "error" && (
+            <div role="alert" className="text-destructive text-xs">
+              Your view changes couldn’t be saved. Your edits are kept here.
+              <button
+                type="button"
+                className="ml-2 underline"
+                onClick={() => void flush().catch(() => {})}
+              >
+                Retry
+              </button>
+            </div>
+          )}
+          {state === "saving" && (
+            <p role="status" className="text-muted-foreground text-xs">
+              Saving view…
+            </p>
+          )}
+          {deleteError && (
+            <p role="alert" className="text-destructive text-xs">
+              This view couldn’t be deleted. Try again.
+            </p>
+          )}
           <Field label="Name">
             <Input
               value={view.name}
+              maxLength={60}
               onChange={(e) => patch({ name: e.target.value })}
               aria-label="View name"
               className="h-8 text-[13px]"
@@ -133,7 +193,11 @@ export default function ViewSettings({
           </Field>
 
           <Field label="Group by">
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              role="group"
+              aria-label="Group by"
+              className="flex flex-wrap gap-1.5"
+            >
               {GROUPINGS.map((g) => (
                 <ViewToggle
                   key={g.label}
@@ -185,14 +249,14 @@ export default function ViewSettings({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={onDelete}
+              onClick={() => void remove()}
               className="text-muted-foreground hover:text-destructive h-7 px-2 text-xs"
             >
               <Trash2 aria-hidden className="h-3.5 w-3.5" />
               Delete this view
             </Button>
           </div>
-        </div>
+        </fieldset>
       </PopoverContent>
     </Popover>
   );
