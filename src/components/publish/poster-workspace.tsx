@@ -60,9 +60,16 @@ export default function PosterWorkspace() {
     { includePosterUploads: true },
   );
   const library = useMemo(() => postableVideos(items), [items]);
-  const { connections } = useConnections(!!isSignedIn);
+  const {
+    connections,
+    error: connectionsError,
+    refresh: refreshConnections,
+  } = useConnections(!!isSignedIn);
   const connectedPlatforms = useMemo(
-    () => connections?.map((connection) => connection.platform) ?? [],
+    () =>
+      connections
+        ?.filter((connection) => connection.status === "active")
+        .map((connection) => connection.platform) ?? [],
     [connections],
   );
 
@@ -228,13 +235,42 @@ export default function PosterWorkspace() {
           </p>
         ) : null}
 
+        {connectionsError && (
+          <div
+            role="alert"
+            className="text-destructive flex items-center gap-3 text-sm"
+          >
+            <p>Your connected accounts couldn’t be refreshed.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refreshConnections()}
+            >
+              Try again
+            </Button>
+          </div>
+        )}
         <SourceTabs
           source={source}
           connected={connectedPlatforms}
           onChange={changeSource}
         />
 
-        {source === "yapper" && items === null && loadFailed ? (
+        {sourceVideos.error ? (
+          <EmptyState
+            icon={RefreshCw}
+            title="This channel couldn’t be loaded"
+            description="Check the connection and try loading its videos again."
+            action={
+              <Button
+                variant="outline"
+                onClick={() => void sourceVideos.refresh()}
+              >
+                Try again
+              </Button>
+            }
+          />
+        ) : source === "yapper" && items === null && loadFailed ? (
           <EmptyState
             icon={RefreshCw}
             title="Your videos could not be loaded"

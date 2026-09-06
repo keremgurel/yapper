@@ -61,24 +61,23 @@ export async function fetchPlatformVideos(platform: PublishPlatform): Promise<{
   connected: boolean;
   videos: PlatformVideo[];
 }> {
-  try {
-    // Channel libraries are live provider data. Never let the browser reuse a
-    // response after the creator has published something in another app.
-    const res = await fetch(`/api/publish/${platform}/videos`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return { connected: false, videos: [] };
-    return (await res.json()) as {
-      connected: boolean;
-      videos: PlatformVideo[];
-    };
-  } catch {
-    // A network error (offline, DNS, CORS) or a non-JSON body would otherwise
-    // reject. The videos hook keys loading off `videos === null`, so a rejection
-    // leaves the Posts tab spinning forever. Fail to the same empty shape a
-    // non-ok response already yields.
-    return { connected: false, videos: [] };
-  }
+  const res = await fetch(`/api/publish/${platform}/videos`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`videos_${res.status}`);
+  const body = (await res.json()) as {
+    connected?: unknown;
+    videos?: unknown;
+    error?: unknown;
+  };
+  if (
+    !body ||
+    typeof body.connected !== "boolean" ||
+    !Array.isArray(body.videos) ||
+    body.error
+  )
+    throw new Error("videos_unavailable");
+  return { connected: body.connected, videos: body.videos as PlatformVideo[] };
 }
 
 /** YouTube's own uploads. Kept as a named alias for the existing content hub. */

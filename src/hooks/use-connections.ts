@@ -1,19 +1,17 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { disconnectPlatform, fetchConnections } from "@/lib/publish/client";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
 import { useClientResource } from "@/hooks/use-client-resource";
 
-/**
- * The user's platform connections: which are connected, which can be connected,
- * and disconnecting. One concern — the connect flow itself is a full-page
- * redirect (see `connectUrl`), so it isn't handled here.
- */
+/** Shared saved connections. A disconnect becomes visible only after the server
+ * confirms it, and a failed read remains distinguishable from no accounts. */
 export function useConnections(enabled: boolean) {
   const {
     data,
+    error: loadError,
     refresh: refreshResource,
     mutate,
   } = useClientResource(
@@ -21,40 +19,60 @@ export function useConnections(enabled: boolean) {
     enabled,
     fetchConnections,
   );
-  // `available` starts empty before the first fetch resolves, so a caller
-  // that reads "not available yet" as "coming soon" would flash every
-  // platform as unconfigured on every load. Exposed so the panel can render
-  // a neutral loading state instead of that false negative.
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
+  const [disconnectError, setDisconnectError] = useState<Error | null>(null);
+  const [pending, setPending] = useState<PublishPlatform[]>([]);
+  const running = useRef(new Set<PublishPlatform>());
   const refresh = useCallback(async () => {
     try {
-      return await refreshResource(true);
-    } catch {
-      return data ?? { connections: [], available: [] };
+      const saved = await refreshResource(true);
+      setRefreshError(null);
+      return saved;
+    } catch (cause) {
+      setRefreshError(
+        cause instanceof Error ? cause : new Error("load_failed"),
+      );
+      return null;
     }
-  }, [refreshResource, data]);
-
+  }, [refreshResource]);
   const disconnect = useCallback(
     async (platform: PublishPlatform) => {
-      // Optimistic: drop it, then reconcile.
-      mutate((prev) => ({
-        connections:
-          prev?.connections.filter((c) => c.platform !== platform) ?? [],
-        available: prev?.available ?? [],
-      }));
+      if (running.current.has(platform)) return false;
+      running.current.add(platform);
+      setPending([...running.current]);
+      setDisconnectError(null);
       try {
         await disconnectPlatform(platform);
-      } finally {
+        mutate((current) => ({
+          connections:
+            current?.connections.filter(
+              (connection) => connection.platform !== platform,
+            ) ?? [],
+          available: current?.available ?? [],
+        }));
         void refresh();
+        return true;
+      } catch (cause) {
+        setDisconnectError(
+          cause instanceof Error ? cause : new Error("disconnect_failed"),
+        );
+        return false;
+      } finally {
+        running.current.delete(platform);
+        setPending([...running.current]);
       }
     },
-    [refresh, mutate],
+    [mutate, refresh],
   );
-
+  const error = refreshError ?? (data === null ? loadError : null);
   return {
     connections: data?.connections ?? null,
     available: data?.available ?? [],
     refresh,
     disconnect,
-    loading: data === null,
+    loading: data === null && !error,
+    error,
+    disconnectError,
+    pending,
   };
 }

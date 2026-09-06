@@ -16,10 +16,12 @@ export default function ChannelsSection({
   channels,
   connections,
   loading,
+  unavailable = false,
 }: {
   channels: ChannelResult[] | null;
   connections: ConnectionSummary[] | null;
   loading: boolean;
+  unavailable?: boolean;
 }) {
   const pending = channels === null || loading;
 
@@ -39,8 +41,7 @@ export default function ChannelsSection({
               (item) => item.platform === platform,
             );
             const connection = connections?.find(
-              (item) =>
-                item.platform === platform && item.status === "connected",
+              (item) => item.platform === platform && item.status === "active",
             );
             const connected = isChannelConnected(
               platform,
@@ -80,6 +81,10 @@ export default function ChannelsSection({
                     aria-hidden
                     className="bg-muted h-4 w-24 animate-pulse rounded"
                   />
+                ) : unavailable || channel?.error ? (
+                  <Chip tone="neutral" pill>
+                    Couldn’t load
+                  </Chip>
                 ) : (
                   <>
                     {connected && (

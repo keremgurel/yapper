@@ -32,7 +32,7 @@ describe("isChannelConnected", () => {
    * connected as disconnected until its history loaded. */
   it("is connected when only the stored connection row says so", () => {
     expect(
-      isChannelConnected("youtube", null, [connection("youtube", "connected")]),
+      isChannelConnected("youtube", null, [connection("youtube", "active")]),
     ).toBe(true);
   });
 
@@ -47,7 +47,7 @@ describe("isChannelConnected", () => {
       isChannelConnected(
         "tiktok",
         [channel("youtube", true)],
-        [connection("youtube", "connected")],
+        [connection("youtube", "active")],
       ),
     ).toBe(false);
   });

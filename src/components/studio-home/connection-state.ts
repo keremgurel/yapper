@@ -16,7 +16,7 @@ export function isChannelConnected(
     ) ||
     connections?.some(
       (connection) =>
-        connection.platform === platform && connection.status === "connected",
+        connection.platform === platform && connection.status === "active",
     ),
   );
 }

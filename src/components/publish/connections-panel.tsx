@@ -24,7 +24,10 @@ const ICON: Record<PublishPlatform, typeof Video> = {
  * it, but the current render keeps the notice visible. */
 function useConnectNotice(): { ok?: PublishPlatform; error?: string } {
   const params = useSearchParams();
-  const ok = (params.get("connected") as PublishPlatform | null) ?? undefined;
+  const raw = params.get("connected");
+  const ok = publishPlatforms.includes(raw as PublishPlatform)
+    ? (raw as PublishPlatform)
+    : undefined;
   const error = params.get("connect_error") ?? undefined;
   useEffect(() => {
     if (ok || error) {
@@ -42,8 +45,16 @@ function useConnectNotice(): { ok?: PublishPlatform; error?: string } {
  */
 export default function ConnectionsPanel() {
   const { isSignedIn } = useUser();
-  const { connections, available, disconnect, loading } =
-    useConnections(!!isSignedIn);
+  const {
+    connections,
+    available,
+    disconnect,
+    loading,
+    error,
+    refresh,
+    disconnectError,
+    pending,
+  } = useConnections(!!isSignedIn);
   const notice = useConnectNotice();
 
   return (
@@ -59,6 +70,20 @@ export default function ConnectionsPanel() {
         </p>
       )}
 
+      {error && (
+        <div role="alert" className="mb-4 space-y-2 text-sm">
+          <p>Your connections couldn’t be refreshed.</p>
+          <Button size="sm" variant="outline" onClick={() => void refresh()}>
+            Try again
+          </Button>
+        </div>
+      )}
+      {disconnectError && (
+        <p role="alert" className="text-destructive mb-4 text-sm">
+          The disconnect couldn’t be confirmed. Refresh your connections to
+          check the saved result, then try again if needed.
+        </p>
+      )}
       <Card className="gap-0 overflow-hidden py-0">
         {publishPlatforms.map((p) => {
           const spec = PLATFORMS[p];
@@ -85,9 +110,22 @@ export default function ConnectionsPanel() {
               {connected ? (
                 <span className="flex items-center gap-3">
                   <span className="flex items-center gap-1 text-xs font-bold text-[color:var(--sg-green-500)]">
-                    <Check className="h-3.5 w-3.5" /> Connected
+                    <Check className="h-3.5 w-3.5" />{" "}
+                    {connected.status === "active"
+                      ? "Connected"
+                      : "Reconnect required"}
                   </span>
+                  {connected.status !== "active" && canConnect && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => beginConnect(p)}
+                    >
+                      Reconnect
+                    </Button>
+                  )}
                   <Button
+                    disabled={pending.includes(p)}
                     type="button"
                     variant="ghost"
                     size="sm"
@@ -101,6 +139,10 @@ export default function ConnectionsPanel() {
                 // this, every platform reads as unconfigured and flashes
                 // "Coming soon" on every load, configured or not.
                 <span className="bg-muted h-7 w-20 animate-pulse rounded-lg" />
+              ) : error && connections === null ? (
+                <span className="text-muted-foreground text-xs">
+                  Unavailable
+                </span>
               ) : canConnect ? (
                 <button
                   type="button"

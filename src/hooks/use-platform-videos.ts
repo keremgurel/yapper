@@ -27,7 +27,12 @@ export function usePlatformVideos(
 ) {
   const [refreshing, setRefreshing] = useState(false);
 
-  const { data, refresh: refreshResource } = useClientResource(
+  const [refreshError, setRefreshError] = useState<Error | null>(null);
+  const {
+    data,
+    error: loadError,
+    refresh: refreshResource,
+  } = useClientResource(
     STUDIO_RESOURCE_KEYS.channel(platform),
     enabled,
     () => fetchPlatformVideos(platform),
@@ -39,6 +44,11 @@ export function usePlatformVideos(
     setRefreshing(true);
     try {
       await refreshResource(true);
+      setRefreshError(null);
+    } catch (cause) {
+      setRefreshError(
+        cause instanceof Error ? cause : new Error("videos_unavailable"),
+      );
     } finally {
       setRefreshing(false);
     }
@@ -72,6 +82,7 @@ export function usePlatformVideos(
 
   return {
     videos: sorted,
+    error: refreshError ?? (data === null ? loadError : null),
     connected: data?.connected ?? false,
     refreshing,
     refresh,

@@ -33,6 +33,8 @@ export function useSourceVideos(
       videos: library.videos.map(fromPostable) as PosterVideo[],
       loading: library.loading,
       connected: true,
+      error: null,
+      refresh: channel.refresh,
       sort,
       setSort,
     };
@@ -41,7 +43,9 @@ export function useSourceVideos(
     videos: (channel.videos ?? []).map((video) =>
       fromPlatform(platform, video),
     ),
-    loading: channel.videos === null,
+    loading: channel.videos === null && !channel.error,
+    error: channel.error,
+    refresh: channel.refresh,
     connected: channel.connected,
     sort,
     setSort,

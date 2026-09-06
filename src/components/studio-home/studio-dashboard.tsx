@@ -24,9 +24,14 @@ import { usePipelineItems } from "@/components/studio-home/use-pipeline-items";
  * section is render-only, so this file only wires them together. */
 export default function StudioDashboard() {
   const { isSignedIn } = useUser();
-  const { connections, loading: connectionsLoading } =
-    useConnections(!!isSignedIn);
-  const channels = useChannelVideos(!!isSignedIn);
+  const {
+    connections,
+    loading: connectionsLoading,
+    error: connectionsError,
+    refresh: refreshConnections,
+  } = useConnections(!!isSignedIn);
+  const channelResource = useChannelVideos(!!isSignedIn);
+  const channels = channelResource.data;
   const pipeline = usePipelineItems(!!isSignedIn);
   const ideas = useBankIdeas(!!isSignedIn);
 
@@ -38,7 +43,18 @@ export default function StudioDashboard() {
   const connectedCount = publishPlatforms.filter((platform) =>
     isChannelConnected(platform, channels, connections),
   ).length;
-  const todaysIdeas = dailyIdeas(ideas, ranked[0]);
+  const todaysIdeas = dailyIdeas(ideas.data ?? [], ranked[0]);
+  const channelError = Boolean(channels?.some((channel) => channel.error));
+  const pipelineError = pipeline.data === null && Boolean(pipeline.error);
+  const ideasError = ideas.data === null && Boolean(ideas.error);
+  const refresh = () => {
+    void Promise.allSettled([
+      channelResource.refresh(),
+      pipeline.refresh(),
+      ideas.refresh(),
+      refreshConnections(),
+    ]);
+  };
 
   return (
     <div className="w-full pb-8">
@@ -61,7 +77,22 @@ export default function StudioDashboard() {
         }
       />
       <div className="space-y-8">
+        {(channelError || pipelineError || ideasError || connectionsError) && (
+          <div
+            role="alert"
+            className="border-border bg-card flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm"
+          >
+            <p>
+              Some Studio data couldn’t be loaded. Refresh to check your
+              channels, Library, and ideas again.
+            </p>
+            <Button size="sm" variant="outline" onClick={refresh}>
+              Refresh
+            </Button>
+          </div>
+        )}
         <PerformanceBand
+          unavailable={channelError || Boolean(connectionsError)}
           loaded={channels !== null}
           totalViews={totalViews}
           postCount={ranked.length}
@@ -69,15 +100,30 @@ export default function StudioDashboard() {
           connectedCount={connectedCount}
         />
         <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-          <UpNextSection items={pipeline} />
+          {pipelineError ? (
+            <p className="text-muted-foreground text-sm">
+              Your Library queue couldn’t be loaded. Use Refresh above to try
+              again.
+            </p>
+          ) : (
+            <UpNextSection items={pipeline.data} />
+          )}
           <DailyIdeasSection ideas={todaysIdeas} />
         </div>
         <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-          <TopContentSection ranked={channels === null ? null : ranked} />
+          {channelError && !ranked.length ? (
+            <p className="text-muted-foreground text-sm">
+              Channel performance is unavailable. Use Refresh above to try
+              again.
+            </p>
+          ) : (
+            <TopContentSection ranked={channels === null ? null : ranked} />
+          )}
           <ChannelsSection
             channels={channels}
             connections={connections}
             loading={connectionsLoading}
+            unavailable={Boolean(connectionsError)}
           />
         </div>
       </div>

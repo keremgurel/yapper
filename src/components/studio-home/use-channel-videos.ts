@@ -7,22 +7,30 @@ import { useClientResource } from "@/hooks/use-client-resource";
 export type ChannelResult = {
   platform: PublishPlatform;
   connected: boolean;
+  error?: string;
   videos: PlatformVideo[];
 };
 
-/** Loads every platform's published videos once. `null` means still loading;
- * `fetchPlatformVideos` never rejects, so the value always settles. */
-export function useChannelVideos(enabled: boolean): ChannelResult[] | null {
+/** Keep per-channel failures visible without blocking healthy channels. */
+export function useChannelVideos(enabled: boolean) {
   return useClientResource(
     "studio:channels",
     enabled,
     () =>
       Promise.all(
-        publishPlatforms.map(async (platform) => ({
-          platform,
-          ...(await fetchPlatformVideos(platform)),
-        })),
+        publishPlatforms.map(async (platform): Promise<ChannelResult> => {
+          try {
+            return { platform, ...(await fetchPlatformVideos(platform)) };
+          } catch {
+            return {
+              platform,
+              connected: false,
+              videos: [],
+              error: "videos_unavailable",
+            };
+          }
+        }),
       ),
     60_000,
-  ).data;
+  );
 }

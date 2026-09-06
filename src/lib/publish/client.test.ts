@@ -17,20 +17,15 @@ describe("fetchYouTubeVideos", () => {
     await expect(fetchYouTubeVideos()).resolves.toEqual(body);
   });
 
-  it("resolves to a safe empty result when the request rejects", async () => {
-    // A network error (offline, DNS, CORS) rejects fetch. The videos hook keys
-    // loading off `videos === null`, so a rejection here would spin forever.
+  it("preserves a network failure instead of reporting a disconnected empty account", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
     );
-    await expect(fetchYouTubeVideos()).resolves.toEqual({
-      connected: false,
-      videos: [],
-    });
+    await expect(fetchYouTubeVideos()).rejects.toThrow();
   });
 
-  it("resolves to empty when the body is not JSON", async () => {
+  it("preserves an invalid response as a load failure", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -38,17 +33,11 @@ describe("fetchYouTubeVideos", () => {
         json: () => Promise.reject(new SyntaxError("Unexpected token")),
       }),
     );
-    await expect(fetchYouTubeVideos()).resolves.toEqual({
-      connected: false,
-      videos: [],
-    });
+    await expect(fetchYouTubeVideos()).rejects.toThrow();
   });
 
-  it("resolves to empty on a non-ok response", async () => {
+  it("rejects an unsuccessful response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
-    await expect(fetchYouTubeVideos()).resolves.toEqual({
-      connected: false,
-      videos: [],
-    });
+    await expect(fetchYouTubeVideos()).rejects.toThrow();
   });
 });

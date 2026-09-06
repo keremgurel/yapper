@@ -15,7 +15,8 @@ export default function Page() {
         Connections
       </h1>
       <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        Connect an account once. Posting and your calendar live in the Poster.
+        Connect your accounts, prepare posts in Poster, and manage scheduled
+        sending in Calendar.
       </p>
       <Suspense>
         <ConnectionsPanel />

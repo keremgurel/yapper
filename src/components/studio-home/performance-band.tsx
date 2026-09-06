@@ -10,12 +10,14 @@ export default function PerformanceBand({
   postCount,
   averageViews,
   connectedCount,
+  unavailable = false,
 }: {
   loaded: boolean;
   totalViews: number;
   postCount: number;
   averageViews: number;
   connectedCount: number;
+  unavailable?: boolean;
 }) {
   const stats = [
     {
@@ -53,8 +55,10 @@ export default function PerformanceBand({
           >
             <StatBlock
               label={stat.label}
-              value={loaded ? stat.value : null}
-              detail={stat.detail}
+              value={loaded ? (unavailable ? "—" : stat.value) : null}
+              detail={
+                unavailable ? "Some data couldn’t be loaded" : stat.detail
+              }
             />
           </div>
         ))}
