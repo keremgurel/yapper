@@ -34,10 +34,13 @@ Repeated scans, import retries, and expired leases reuse durable identities.
 - Configure the publishing worker described in `scheduled-publishing.md` first.
   Set `STUDIO_SCHEDULER_ENABLED=1`, `CRON_SECRET`, and then
   `STUDIO_AUTOMATIONS_ENABLED=1` when the automation worker is ready.
-- `vercel.json` checks `/api/internal/automations` every five minutes with the
-  protected cron secret. Each invocation claims up to three rules and three
-  imports; a six-minute lease allows interrupted work to recover. A compatible
-  hosting plan or external scheduler is required for this cadence.
+- The automation worker runs from `/api/internal/automations` every five
+  minutes with the protected cron secret. Each invocation claims up to three
+  rules and three imports; a six-minute lease allows interrupted work to
+  recover. The cron entry is not in `vercel.json` while the project is on the
+  Hobby plan, which allows daily schedules only; on Pro, add
+  `{ "path": "/api/internal/automations", "schedule": "*/5 * * * *" }` beside
+  the publishing cron, or drive the endpoint from an external scheduler.
 - Turning off the automation flag pauses discovery/import work. Deliveries
   already in the publishing queue may continue while the publishing flag is
   enabled. Pause the user's rule to cancel its waiting deliveries. The screen

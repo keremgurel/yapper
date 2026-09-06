@@ -243,6 +243,11 @@ not silently added to the definition of completing the existing Studio.
 
 ## Remaining release and capacity checks
 
+- The Vercel team is on the Hobby plan, which allows daily cron schedules
+  only. The publishing and automation crons were removed from `vercel.json` so
+  the site can deploy; both workers stay off until the plan is upgraded (or an
+  external scheduler is configured) and the crons are restored as documented
+  in `scheduled-publishing.md` and `studio-automations.md`.
 - Apply and verify the two new migrations in staging; configure both protected
   workers and run duplicate/timeout/account-change cases with controlled media
   and connected accounts before enabling production. Current signed-in local

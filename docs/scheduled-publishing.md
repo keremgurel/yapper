@@ -17,11 +17,20 @@ delay completion beyond the selected time.
 2. Configure `CRON_SECRET` and a worker with access to the same database,
    encrypted OAuth connections, R2 storage, and provider configuration as
    Studio. The existing deployment validation remains required.
-3. `vercel.json` invokes `/api/internal/publishing` each minute. This requires
-   a Vercel plan supporting that cadence, or an equivalent external scheduler
-   calling the protected endpoint with `Authorization: Bearer <CRON_SECRET>`.
-   Vercel Hobby permits daily schedules only; see the official
-   [cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing).
+3. The worker needs a scheduler. The project is on the Vercel Hobby plan,
+   which permits daily cron schedules only (see the official
+   [cron limits](https://vercel.com/docs/cron-jobs/usage-and-pricing)), so the
+   per-minute cron is not in `vercel.json`: a deploy carrying it fails
+   validation. After upgrading to Pro, add it back next to the storage cleanup
+   entry:
+
+   ```json
+   { "path": "/api/internal/publishing", "schedule": "* * * * *" }
+   ```
+
+   Until then an external scheduler can call the protected endpoint with
+   `Authorization: Bearer <CRON_SECRET>` at the same cadence.
+
 4. Set `STUDIO_SCHEDULER_ENABLED=1` only when the worker is configured. The flag
    is off by default. Creating/rescheduling/retrying posts is unavailable while
    off; existing rows stay visible and can be cancelled. An already claimed

@@ -3,14 +3,6 @@
   "ignoreCommand": "bash scripts/vercel-should-build.sh",
   "crons": [
     {
-      "path": "/api/internal/automations",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/internal/publishing",
-      "schedule": "* * * * *"
-    },
-    {
       "path": "/api/internal/r2-lifecycle",
       "schedule": "17 4 * * *"
     }
