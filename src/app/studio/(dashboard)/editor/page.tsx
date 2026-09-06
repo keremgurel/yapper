@@ -9,6 +9,11 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function EditorPage() {
-  return <DesktopEditorGate />;
+export default async function EditorPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ item?: string | string[] }>;
+}) {
+  const { item } = await searchParams;
+  return <DesktopEditorGate itemId={typeof item === "string" ? item : null} />;
 }

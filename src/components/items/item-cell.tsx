@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studioEditorUrl } from "@/lib/studio/editor-handoff";
 import { ArrowUpRight, FileText, Film, Link2, Minus, Send } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import FormatChips from "@/components/views/format-chips";
@@ -138,7 +139,7 @@ export default function ItemCell({
       return (
         <span className="flex items-center gap-1 justify-self-end">
           <Link
-            href="/studio/editor"
+            href={studioEditorUrl(row.id)}
             onClick={(e) => e.stopPropagation()}
             className="text-muted-foreground hover:text-foreground block p-1"
             title="Open the native editor"

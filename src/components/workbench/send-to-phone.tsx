@@ -16,11 +16,20 @@ type Phase = "idle" | "minting" | "ready" | "expired" | "error";
  * rendered with the page, it is never persisted, and it visibly expires on a
  * timer so a code left on a shared screen stops being a way in.
  */
-export default function SendToPhone({ itemId }: { itemId: string }) {
+export default function SendToPhone({
+  itemId,
+  beforeOpen,
+  disabled,
+}: {
+  itemId: string;
+  beforeOpen?: () => Promise<void>;
+  disabled?: boolean;
+}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [url, setUrl] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const running = useRef(false);
 
   const stopTimer = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
@@ -30,8 +39,11 @@ export default function SendToPhone({ itemId }: { itemId: string }) {
   useEffect(() => stopTimer, [stopTimer]);
 
   const mint = async () => {
+    if (running.current || disabled) return;
+    running.current = true;
     setPhase("minting");
     try {
+      await beforeOpen?.();
       const res = await fetch("/api/handoff/phone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -60,6 +72,8 @@ export default function SendToPhone({ itemId }: { itemId: string }) {
       }, 1000);
     } catch {
       setPhase("error");
+    } finally {
+      running.current = false;
     }
   };
 
@@ -85,7 +99,7 @@ export default function SendToPhone({ itemId }: { itemId: string }) {
         variant="outline"
         size="sm"
         onClick={() => void mint()}
-        disabled={phase === "minting"}
+        disabled={disabled || phase === "minting"}
         className="w-full"
       >
         {phase === "minting" ? (
@@ -97,7 +111,7 @@ export default function SendToPhone({ itemId }: { itemId: string }) {
       </Button>
       {phase === "error" && (
         <p className="text-destructive text-xs" role="alert">
-          Couldn&apos;t create a code. Try again.
+          Couldn&apos;t save the latest script or create a code. Try again.
         </p>
       )}
       {phase === "expired" && (

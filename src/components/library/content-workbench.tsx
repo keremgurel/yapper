@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -14,6 +15,12 @@ import { useHookGeneration } from "@/hooks/use-hook-generation";
 import { useIdeaGeneration } from "@/hooks/use-idea-generation";
 import { deleteContent } from "@/lib/content/client";
 import { hookTexts, mergeHookTexts } from "@/lib/content/normalize";
+import {
+  mutateClientResource,
+  readClientResource,
+  STUDIO_RESOURCE_KEYS,
+} from "@/lib/client-resource-cache";
+import type { ContentSummary } from "@/lib/content/client";
 
 /**
  * The Lab: one item's shoot sheet.
@@ -34,7 +41,36 @@ import { hookTexts, mergeHookTexts } from "@/lib/content/normalize";
  */
 export default function ContentWorkbench({ id }: { id: string }) {
   const router = useRouter();
-  const { item, loading, missing, saveState, update } = useContentItem(id);
+  const {
+    item,
+    loading,
+    missing,
+    loadError,
+    reload,
+    saveState,
+    update,
+    flush,
+  } = useContentItem(id);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const operation = useRef(false);
+  const navigate = async (href: string) => {
+    if (operation.current) return;
+    operation.current = true;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await flush();
+      router.push(href);
+    } catch {
+      setActionError(
+        "Your latest edits couldn’t be saved. Try again before opening the next step.",
+      );
+    } finally {
+      operation.current = false;
+      setBusy(false);
+    }
+  };
 
   const { generating, error, used, runIdea, runScript } = useIdeaGeneration(
     {
@@ -73,6 +109,15 @@ export default function ContentWorkbench({ id }: { id: string }) {
       </div>
     );
   }
+  if (loadError)
+    return (
+      <div role="alert" className="space-y-3 py-12 text-sm">
+        <p>This Library item couldn’t be loaded.</p>
+        <Button variant="outline" onClick={reload}>
+          Try again
+        </Button>
+      </div>
+    );
   if (missing || !item) {
     return (
       <div className="py-12">
@@ -89,11 +134,32 @@ export default function ContentWorkbench({ id }: { id: string }) {
   }
 
   const remove = async () => {
+    if (operation.current) return;
+    operation.current = true;
+    setBusy(true);
+    setActionError(null);
     try {
+      await flush().catch(() => {});
       await deleteContent(id);
+      for (const key of [
+        STUDIO_RESOURCE_KEYS.content,
+        STUDIO_RESOURCE_KEYS.posterContent,
+      ]) {
+        const rows = readClientResource<ContentSummary[]>(key);
+        if (rows)
+          mutateClientResource(
+            key,
+            rows.filter((row) => row.id !== id),
+          );
+      }
       router.push("/studio/library");
     } catch {
-      // row stays; a failed delete is visible by the item still being here
+      setActionError(
+        "The delete couldn’t be confirmed. Your item is kept here; try again.",
+      );
+    } finally {
+      operation.current = false;
+      setBusy(false);
     }
   };
 
@@ -101,6 +167,27 @@ export default function ContentWorkbench({ id }: { id: string }) {
 
   return (
     <div className="w-full pb-16">
+      {actionError && (
+        <p role="alert" className="text-destructive mb-4 text-sm">
+          {actionError}
+        </p>
+      )}
+      {saveState === "error" && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-4"
+          onClick={() => {
+            void flush().catch(() =>
+              setActionError(
+                "Your edits still couldn’t be saved. Please try again.",
+              ),
+            );
+          }}
+        >
+          Retry saving
+        </Button>
+      )}
       <Button
         asChild
         variant="ghost"
@@ -154,6 +241,9 @@ export default function ContentWorkbench({ id }: { id: string }) {
         </div>
 
         <ShootRail
+          busy={busy}
+          onNavigate={(href) => void navigate(href)}
+          beforePhone={flush}
           item={item}
           saveState={saveState}
           update={update}

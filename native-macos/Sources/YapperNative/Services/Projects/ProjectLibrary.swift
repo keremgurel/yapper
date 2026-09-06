@@ -73,6 +73,16 @@ actor ProjectLibrary {
         return package
     }
 
+    /// Reopen the latest edited project for this account and this exact take.
+    func project(for source: StudioContentSource) throws -> ProjectPackage? {
+        for listing in try listings() {
+            if decodeProject(in: listing.package)?.studioSource == source {
+                return listing.package
+            }
+        }
+        return nil
+    }
+
     func rename(_ package: ProjectPackage, to name: String) throws -> ProjectPackage {
         let destination = uniqueURL(for: name, excluding: package.url)
         guard destination != package.url else { return package }
@@ -148,7 +158,8 @@ actor ProjectLibrary {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let data = try? Data(contentsOf: package.projectFileURL) else { return nil }
-        return try? decoder.decode(EditorProject.self, from: data)
+        guard let project = try? decoder.decode(EditorProject.self, from: data) else { return nil }
+        return PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: package.url), to: package.url)
     }
 
     private func ensureDirectory() throws {

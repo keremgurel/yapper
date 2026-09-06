@@ -61,6 +61,9 @@ struct YapperNativeApp: App {
                     // A project double-clicked in Finder, or the sign-in ticket.
                     if url.isFileURL, ProjectPackage.isPackage(url) {
                         Task { await session.openProject(ProjectPackage(url: url)) }
+                    } else if let request = StudioEditorRequest(url: url) {
+                        StudioWebCommands.shared.openEditor(request)
+                        NSApp.activate(ignoringOtherApps: true)
                     } else {
                         NativeAuthHandoff.shared.receive(url)
                     }

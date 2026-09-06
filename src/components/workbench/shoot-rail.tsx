@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { studioEditorUrl } from "@/lib/studio/editor-handoff";
 import { Send, Video } from "lucide-react";
 import CopyScriptButton from "@/components/library/copy-script-button";
 import ItemPillarField from "@/components/library/item-pillar-field";
@@ -35,11 +35,17 @@ export default function ShootRail({
   saveState,
   update,
   onDelete,
+  busy,
+  onNavigate,
+  beforePhone,
 }: {
   item: ContentDetail;
   saveState: SaveState;
   update: (patch: ContentPatch) => void;
   onDelete: () => void;
+  busy: boolean;
+  onNavigate: (href: string) => void;
+  beforePhone: () => Promise<void>;
 }) {
   const meter = scriptMeter(item.script);
   const hasSource = Boolean(item.sourceTitle || item.sourceUrl || item.format);
@@ -62,7 +68,7 @@ export default function ShootRail({
           </RailRow>
 
           {item.status === "scheduled" && (
-            <RailRow label="Goes out">
+            <RailRow label="Plan date">
               <Input
                 type="datetime-local"
                 value={toLocalInput(item.scheduledFor)}
@@ -122,26 +128,45 @@ export default function ShootRail({
             <SaveIndicator state={saveState} />
           </div>
 
-          <Button asChild className="w-full">
-            <Link href={`/studio/recorder?item=${item.id}`}>
-              <Video className="h-4 w-4" />
-              {item.submissionId ? "Record another take" : "Record"}
-            </Link>
+          <Button
+            disabled={busy}
+            onClick={() => onNavigate(`/studio/recorder?item=${item.id}`)}
+            className="w-full"
+          >
+            <Video className="h-4 w-4" />
+            {item.submissionId ? "Record another take" : "Record"}
           </Button>
 
           {/* Once there is a take behind this item there is somewhere to send
               it, and making the creator go and find it again in the Poster grid
               is the friction this removes. */}
           {item.submissionId && (
-            <Button asChild variant="outline" className="mt-2 w-full">
-              <Link href={`/studio/poster?item=${item.id}`}>
-                <Send className="h-4 w-4" />
-                Cross-post this
-              </Link>
+            <Button
+              disabled={busy}
+              onClick={() => onNavigate(studioEditorUrl(item.id))}
+              variant="outline"
+              className="mt-2 w-full"
+            >
+              Edit this recording on Mac
+            </Button>
+          )}
+          {item.submissionId && (
+            <Button
+              disabled={busy}
+              onClick={() => onNavigate(`/studio/poster?item=${item.id}`)}
+              variant="outline"
+              className="mt-2 w-full"
+            >
+              <Send className="h-4 w-4" />
+              Cross-post this
             </Button>
           )}
           <div className="mt-2">
-            <SendToPhone itemId={item.id} />
+            <SendToPhone
+              itemId={item.id}
+              beforeOpen={beforePhone}
+              disabled={busy}
+            />
           </div>
           <div className="mt-2 flex items-center justify-between">
             <CopyScriptButton
@@ -152,6 +177,7 @@ export default function ShootRail({
               variant="ghost"
               size="sm"
               onClick={onDelete}
+              disabled={busy}
               className="text-muted-foreground hover:text-destructive"
             >
               Delete

@@ -16,12 +16,14 @@ export default function TeleprompterViewPicker({
   available,
   onSelect,
   onStart,
+  previewText,
 }: {
   title: string;
   value: TeleprompterView;
   available: (view: TeleprompterView) => boolean;
   onSelect: (view: TeleprompterView) => void;
   onStart: () => void;
+  previewText: string;
 }) {
   return (
     <div className="mx-auto w-full max-w-md px-6 py-12">
@@ -44,6 +46,7 @@ export default function TeleprompterViewPicker({
               key={view}
               type="button"
               disabled={!enabled}
+              aria-pressed={selected}
               onClick={() => onSelect(view)}
               className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors disabled:opacity-40 ${
                 selected
@@ -66,6 +69,17 @@ export default function TeleprompterViewPicker({
           );
         })}
       </div>
+
+      {previewText && (
+        <details className="border-border text-foreground mt-4 rounded-xl border p-4 text-sm">
+          <summary className="cursor-pointer font-semibold">
+            Preview your prompt
+          </summary>
+          <p className="text-muted-foreground mt-3 max-h-64 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+            {previewText}
+          </p>
+        </details>
+      )}
 
       <Button type="button" size="lg" onClick={onStart} className="mt-6 w-full">
         Set up camera

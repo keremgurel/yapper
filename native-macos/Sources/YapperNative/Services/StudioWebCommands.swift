@@ -38,6 +38,9 @@ final class StudioWebCommands: ObservableObject {
     @Published private(set) var manageAccountGeneration = 0
     @Published private(set) var posterGeneration = 0
     @Published private(set) var posterItemID: String?
+    @Published private(set) var assistantGeneration = 0
+    @Published private(set) var editorRequest: StudioEditorRequest?
+    private var assistantPrompt: String?
     private weak var webView: WKWebView?
 
     func signOut() {
@@ -51,6 +54,26 @@ final class StudioWebCommands: ObservableObject {
         }
     }
     func manageAccount() { manageAccountGeneration += 1 }
+
+    func openAssistant(prompt: String?) {
+        assistantPrompt = prompt
+        assistantGeneration += 1
+    }
+
+    func openEditor(_ request: StudioEditorRequest) {
+        // Web navigation and its committed page can both report the same click.
+        guard editorRequest?.itemID != request.itemID || editorRequest == nil else { return }
+        editorRequest = request
+    }
+
+    func finishEditorRequest(_ id: UUID) {
+        if editorRequest?.id == id { editorRequest = nil }
+    }
+
+    func takeAssistantPrompt() -> String? {
+        defer { assistantPrompt = nil }
+        return assistantPrompt
+    }
 
     func openPoster(itemID: String) {
         posterItemID = itemID

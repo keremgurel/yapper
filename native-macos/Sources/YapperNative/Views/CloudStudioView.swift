@@ -6,6 +6,7 @@ enum CloudLinkDisposition: Equatable {
     case allowInApp
     case navigateInShell(StudioDestination)
     case openInBrowser
+    case openEditor(UUID?)
 }
 
 enum CloudLinkRouter {
@@ -13,7 +14,14 @@ enum CloudLinkRouter {
         for url: URL,
         nativeDestination: StudioDestination?
     ) -> CloudLinkDisposition {
+        if let request = StudioEditorRequest(url: url) { return .openEditor(request.itemID) }
         if isYapperHost(url.host) {
+            if url.path == "/studio/editor",
+               let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.percentEncodedQuery,
+               let deepLink = URL(string: "yapper-studio://open/editor?\(query)"),
+               let request = StudioEditorRequest(url: deepLink) {
+                return .openEditor(request.itemID)
+            }
             if let destination = StudioDestination(cloudPath: url.path) {
                 return destination == nativeDestination
                     ? .allowInApp
@@ -569,6 +577,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
             else { return }
 
             switch command {
+            case "open_editor":
+                guard message.frameInfo.isMainFrame,
+                      Self.isYapperHost(message.frameInfo.securityOrigin.host)
+                else { return }
+                let arguments = payload["args"] as? [String: Any]
+                if let raw = arguments?["itemId"] as? String {
+                    guard let id = UUID(uuidString: raw) else { return }
+                    StudioWebCommands.shared.openEditor(StudioEditorRequest(itemID: id))
+                } else {
+                    StudioWebCommands.shared.openEditor(StudioEditorRequest())
+                }
+            case "open_assistant":
+                let arguments = payload["args"] as? [String: Any]
+                StudioWebCommands.shared.openAssistant(prompt: arguments?["prompt"] as? String)
             case "open_auth_flow":
                 guard
                     let arguments = payload["args"] as? [String: Any],
@@ -786,6 +808,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
             guard navigationAction.navigationType == .linkActivated else { return .allow }
 
             switch CloudLinkRouter.disposition(for: url, nativeDestination: nativeDestination) {
+            case let .openEditor(itemID):
+                StudioWebCommands.shared.openEditor(StudioEditorRequest(itemID: itemID))
+                return .cancel
             case .allowInApp:
                 return .allow
             case let .navigateInShell(destination):
@@ -810,6 +835,8 @@ private struct CloudStudioWebView: NSViewRepresentable {
                 }
 
                 switch CloudLinkRouter.disposition(for: url, nativeDestination: nativeDestination) {
+                case let .openEditor(itemID):
+                    StudioWebCommands.shared.openEditor(StudioEditorRequest(itemID: itemID))
                 case .allowInApp:
                     webView.load(URLRequest(url: url))
                 case let .navigateInShell(destination):

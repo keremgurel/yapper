@@ -7,7 +7,10 @@ import {
   requestVideoStream,
   resetTrackZoom,
 } from "@/lib/media";
-import { recordingFileName } from "@/lib/studio/recording-file";
+import {
+  recordingFileName,
+  recordingMimeType,
+} from "@/lib/studio/recording-file";
 
 /** getUserMedia audio constraint for an optional specific microphone. Defined
  * at module scope so it stays stable and never lands in a callback's deps. */
@@ -138,20 +141,9 @@ export function useMediaStream() {
     chunksRef.current = [];
     setIsPreparingDownload(true);
     try {
-      const mimeTypes = [
-        "video/webm;codecs=vp9,opus",
-        "video/webm;codecs=vp8,opus",
-        "video/webm",
-        "video/mp4",
-      ];
-
-      let selectedMimeType = "video/webm";
-      for (const mimeType of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(mimeType)) {
-          selectedMimeType = mimeType;
-          break;
-        }
-      }
+      const selectedMimeType = recordingMimeType((type) =>
+        MediaRecorder.isTypeSupported(type),
+      );
 
       const recorder = new MediaRecorder(streamRef.current, {
         mimeType: selectedMimeType,
@@ -169,7 +161,8 @@ export function useMediaStream() {
         // URL that no cleanup can ever revoke.
         if (!mountedRef.current) return;
         const nextBlob = new Blob(chunksRef.current, {
-          type: selectedMimeType,
+          type:
+            recorder.mimeType || selectedMimeType || chunksRef.current[0]?.type,
         });
         const nextUrl = URL.createObjectURL(nextBlob);
         setIsRecording(false);

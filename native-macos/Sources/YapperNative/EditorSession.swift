@@ -2349,7 +2349,9 @@ final class EditorSession: ObservableObject {
 
         pausePlayback()
         project = target
-        if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
+        if let root = projectNavigation.currentPackage?.url {
+            project = PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: root), to: root)
+        }
         reconcileSelectionAfterProjectChange()
         currentTime = min(currentTime, project.duration)
         do {
@@ -2466,6 +2468,39 @@ final class EditorSession: ObservableObject {
 
     func setStatus(_ message: String) {
         statusMessage = message
+    }
+
+    /// Resolve the owned Library item before switching projects. Failed reads,
+    /// downloads, or saves leave the current timeline intact.
+    func openStudioRecording(_ itemID: UUID) async throws {
+        await restorationTask?.value
+        guard let operation = beginLongOperation(.importingMedia) else { throw StudioEditorError.busy }
+        defer { endLongOperation(operation) }
+        guard await beginPreparedTimelineEdit() != nil else { throw StudioEditorError.busy }
+        defer { endPreparedTimelineEdit() }
+        statusMessage = "Opening your Studio recording…"
+        let recording = try await StudioEditorService.resolve(itemID: itemID)
+        try Task.checkCancellation()
+        if project.studioSource == recording.source, projectNavigation.currentPackage != nil {
+            projectNavigation.showsProjectsHome = false
+            statusMessage = "Opened \(project.name)"
+            return
+        }
+        // Do not replace work whose final save failed.
+        try await persist()
+        let package: ProjectPackage
+        if let existing = try await library.project(for: recording.source) {
+            package = existing
+        } else {
+            statusMessage = "Downloading your recording…"
+            package = try await StudioEditorService.prepare(recording, in: library)
+            projectNavigation.noteLibraryChanged()
+        }
+        try Task.checkCancellation()
+        errorMessage = nil
+        await openProject(package)
+        guard project.studioSource == recording.source else { throw StudioEditorError.invalidResponse }
+        if let errorMessage { throw NativeEditorError.aiFailed(errorMessage) }
     }
 
     func setOverlayPlacement(_ status: OverlayPlacementStatus) {

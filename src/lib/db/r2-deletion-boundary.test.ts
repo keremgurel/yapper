@@ -29,6 +29,8 @@ describe("R2 deletion boundary", () => {
       "lib/db/r2-lifecycle-protocol.test.ts",
       // These tests assert that feedback never deletes client-owned media.
       "app/api/feedback/route.test.ts",
+      // Saved-recording SQL tests replace physical deletion with a no-op mock.
+      "app/api/submissions/persistence.test.ts",
     ]);
     const offenders = sourceFiles(sourceRoot)
       .map((file) => ({

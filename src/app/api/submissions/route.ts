@@ -3,7 +3,12 @@ import { and, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
-import { importedPlatformMedia, submissions } from "@/lib/db/schema";
+import {
+  contentItems,
+  importedPlatformMedia,
+  submissions,
+} from "@/lib/db/schema";
+import { getActiveProject } from "@/lib/db/projects";
 import { activateObjectWithinTx } from "@/lib/db/r2-lifecycle";
 import {
   countMediaOnceWithinTx,
@@ -69,6 +74,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
+  if (
+    body.createLibraryItem !== undefined &&
+    typeof body.createLibraryItem !== "boolean"
+  )
+    return Response.json({ error: "bad_request" }, { status: 400 });
   const mediaKey = typeof body.mediaKey === "string" ? body.mediaKey : "";
   if (!mediaKey || !ownsKey(userId, mediaKey)) {
     return Response.json({ error: "bad_media" }, { status: 400 });
@@ -127,6 +137,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   // saves race on the same key, the per-object advisory lock lets the first
   // transaction count it and the second observe that committed reference.
   const quota = await getStorageQuota(userId);
+  const project =
+    body.createLibraryItem === true ? await getActiveProject(userId) : null;
   let submission;
   try {
     submission = await db.transaction(async (tx) => {
@@ -135,32 +147,89 @@ export async function POST(req: NextRequest): Promise<Response> {
       // this transaction is still inserting a row that will point at it.
       await lockStorageUserWithinTx(tx, userId);
       await lockMediaReferenceWithinTx(tx, userId, mediaKey);
-      const [inserted] = await tx
-        .insert(submissions)
-        .values({
-          userId,
-          kind: "video",
-          status: "complete", // saved, no analysis; feedback/scores stay null
-          title,
-          mediaKey,
-          mediaBytes: bytes,
-          durationSec,
-        })
-        .returning({
+      // A retry after a lost response must return the same saved recording.
+      // Check under the shared object lock so concurrent retries also agree.
+      const [saved] = await tx
+        .select({
           id: submissions.id,
           mediaKey: submissions.mediaKey,
           createdAt: submissions.createdAt,
-        });
-      await activateObjectWithinTx(tx, userId, mediaKey, bytes, "recording");
-      await countMediaOnceWithinTx(
-        tx,
-        userId,
-        mediaKey,
-        bytes,
-        inserted.id,
-        quota,
-      );
-      return inserted;
+        })
+        .from(submissions)
+        .where(
+          and(
+            eq(submissions.userId, userId),
+            eq(submissions.mediaKey, mediaKey),
+            eq(submissions.surface, "studio"),
+            eq(submissions.kind, "video"),
+            eq(submissions.status, "complete"),
+          ),
+        )
+        .limit(1);
+      let registered = saved;
+      if (!registered) {
+        const [inserted] = await tx
+          .insert(submissions)
+          .values({
+            userId,
+            kind: "video",
+            status: "complete", // saved, no analysis; feedback/scores stay null
+            title,
+            mediaKey,
+            mediaBytes: bytes,
+            durationSec,
+          })
+          .returning({
+            id: submissions.id,
+            mediaKey: submissions.mediaKey,
+            createdAt: submissions.createdAt,
+          });
+        await activateObjectWithinTx(tx, userId, mediaKey, bytes, "recording");
+        await countMediaOnceWithinTx(
+          tx,
+          userId,
+          mediaKey,
+          bytes,
+          inserted.id,
+          quota,
+        );
+        registered = inserted;
+      }
+      if (!project) return registered;
+
+      // A plain Recorder take has no prior idea. Create its Library item in
+      // this transaction and reuse the existing unique import identity on replay.
+      const sourceClientId = `recording:${registered.id}`;
+      const [createdItem] = await tx
+        .insert(contentItems)
+        .values({
+          userId,
+          projectId: project.id,
+          title: title?.trim() || "Untitled recording",
+          stage: "library",
+          submissionId: registered.id,
+          sourceClientId,
+        })
+        .onConflictDoNothing({
+          target: [contentItems.userId, contentItems.sourceClientId],
+        })
+        .returning({ id: contentItems.id });
+      const item =
+        createdItem ??
+        (
+          await tx
+            .select({ id: contentItems.id })
+            .from(contentItems)
+            .where(
+              and(
+                eq(contentItems.userId, userId),
+                eq(contentItems.sourceClientId, sourceClientId),
+              ),
+            )
+            .limit(1)
+        )[0];
+      if (!item) throw new Error("recording_item_unavailable");
+      return { ...registered, contentItemId: item.id };
     });
   } catch (error) {
     if (error instanceof StorageQuotaError) {

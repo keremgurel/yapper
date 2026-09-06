@@ -126,7 +126,9 @@ extension EditorSession {
             copy.id = UUID()
             copy.name = destination.displayName
             try GeneratedAssetLayout.copyAssets(in: copy, to: destination.url)
+            try PackagedMediaLayout.copyAssets(in: copy, to: destination.url)
             copy = GeneratedAssetLayout.relocated(copy, to: destination.url)
+            copy = PackagedMediaLayout.relocated(copy, to: destination.url)
             store = ProjectPackageStore(package: destination)
             projectNavigation.noteOpened(destination)
             resetProject(to: copy)

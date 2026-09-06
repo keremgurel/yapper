@@ -58,7 +58,15 @@ const txInsertReturning = vi.fn(async () => [
 const txInsert = vi.fn(() => ({
   values: vi.fn(() => ({ returning: txInsertReturning })),
 }));
-const tx = { insert: txInsert };
+const txExisting = vi.fn(
+  async (): Promise<{ id: string; mediaKey: string; createdAt: Date }[]> => [],
+);
+const tx = {
+  insert: txInsert,
+  select: vi.fn(() => ({
+    from: vi.fn(() => ({ where: vi.fn(() => ({ limit: txExisting })) })),
+  })),
+};
 const transaction = vi.fn(async (callback: (value: typeof tx) => unknown) =>
   callback(tx),
 );
@@ -79,6 +87,7 @@ function request(): NextRequest {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  txExisting.mockResolvedValue([]);
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.canUsePremium.mockResolvedValue(true);
   mocks.getStorageBytes.mockResolvedValue(0);
@@ -92,6 +101,19 @@ beforeEach(() => {
 });
 
 describe("POST /api/submissions atomic storage registration", () => {
+  it("replays a saved recording after a lost response without inserting or accounting twice", async () => {
+    const saved = {
+      id: "submission_original",
+      mediaKey: "user_test/clip.mp4",
+      createdAt: new Date(),
+    };
+    txExisting.mockResolvedValue([saved]);
+    const response = await POST(request());
+    expect((await response.json()).submission.id).toBe(saved.id);
+    expect(txInsert).not.toHaveBeenCalled();
+    expect(mocks.countMediaOnceWithinTx).not.toHaveBeenCalled();
+    expect(mocks.lockMediaReferenceWithinTx).toHaveBeenCalledBefore(txExisting);
+  });
   it("inserts and accounts for the reference in one transaction", async () => {
     const response = await POST(request());
 

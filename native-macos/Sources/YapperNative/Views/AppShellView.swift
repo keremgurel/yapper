@@ -72,6 +72,9 @@ struct AppShellView: View {
             if isSignedIn {
                 FloatingAssistant(session: session, conversation: session.conversation)
             }
+            StudioEditorHandoffView(session: session, signedIn: auth.isSignedIn == true) {
+                navigate(.editor)
+            }
         }
             .background {
                 PreviewFullScreenWindowBridge(
@@ -103,6 +106,9 @@ struct AppShellView: View {
             }
             .onChange(of: webCommands.posterGeneration) { _, _ in
                 navigate(.poster)
+            }
+            .onChange(of: webCommands.assistantGeneration) { _, _ in
+                session.isAssistantOpen = true
             }
     }
 

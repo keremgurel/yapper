@@ -212,6 +212,7 @@ struct FloatingAssistant: View {
 /// The command bar itself, once the bird has grown into it.
 private struct AssistantPanel: View {
     @ObservedObject var session: EditorSession
+    @ObservedObject private var studioCommands = StudioWebCommands.shared
     /// Watched here as well as through the session: a reply landing has to
     /// redraw the transcript, and the session never hears about it.
     @ObservedObject var conversation: AssistantConversation
@@ -270,7 +271,17 @@ private struct AssistantPanel: View {
         // Opening it is asking to say something. The panel is built the moment
         // it opens and torn down when it closes, so appearing is exactly the
         // event, whether that was ⌘K or the bird being clicked.
-        .onAppear { focusRequest += 1 }
+        .onAppear { applyStudioPrompt(); focusRequest += 1 }
+        .onChange(of: studioCommands.assistantGeneration) { _, _ in
+            applyStudioPrompt()
+        }
+    }
+
+    private func applyStudioPrompt() {
+        guard let prompt = studioCommands.takeAssistantPrompt() else { return }
+        draft = prompt
+        caret = prompt.utf16.count
+        focusRequest += 1
     }
 
     /// The conversation, and the `@` list when there is one.

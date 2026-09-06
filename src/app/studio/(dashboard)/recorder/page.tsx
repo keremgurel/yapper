@@ -8,6 +8,21 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://ypr.app/studio/recorder" },
 };
 
-export default function Page() {
-  return <RecordClient />;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ item?: string | string[]; idea?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const requestedItem =
+    typeof params.item === "string" ? params.item : undefined;
+  const legacyIdeaId =
+    typeof params.idea === "string" ? params.idea : undefined;
+  return (
+    <RecordClient
+      key={`${requestedItem ?? ""}:${legacyIdeaId ?? ""}`}
+      requestedItem={requestedItem}
+      legacyIdeaId={legacyIdeaId}
+    />
+  );
 }

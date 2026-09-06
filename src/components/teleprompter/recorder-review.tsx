@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { studioEditorUrl } from "@/lib/studio/editor-handoff";
 import { Check, Download, Library, Loader2, RotateCcw } from "lucide-react";
 import { recordingFileName } from "@/lib/studio/recording-file";
 import { useSaveTake } from "@/hooks/use-save-take";
@@ -21,7 +22,7 @@ export default function RecorderReview({
   title?: string;
   onRetake: () => void;
 }) {
-  const { state, error, save } = useSaveTake(itemId);
+  const { state, error, save, savedItemId } = useSaveTake(itemId);
 
   const download = () => {
     const a = document.createElement("a");
@@ -42,30 +43,36 @@ export default function RecorderReview({
         className="mb-5 w-full rounded-2xl bg-black"
       />
       <div className="space-y-2">
-        {itemId && (
-          <button
-            type="button"
-            onClick={() => void save(blob, title)}
-            disabled={state === "saving" || state === "saved"}
-            className="flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
-          >
-            {state === "saving" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : state === "saved" ? (
-              <Check className="h-4 w-4" />
-            ) : (
-              <Library className="h-4 w-4" />
-            )}
-            {state === "saving"
-              ? "Saving to library…"
-              : state === "saved"
-                ? "Saved to library"
-                : "Save to library"}
-          </button>
-        )}
-        {state === "saved" && itemId && (
+        <button
+          type="button"
+          onClick={() => void save(blob, title)}
+          disabled={state === "saving" || state === "saved"}
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
+        >
+          {state === "saving" ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : state === "saved" ? (
+            <Check className="h-4 w-4" />
+          ) : (
+            <Library className="h-4 w-4" />
+          )}
+          {state === "saving"
+            ? "Saving to library…"
+            : state === "saved"
+              ? "Saved to library"
+              : "Save to library"}
+        </button>
+        {state === "saved" && savedItemId && (
           <Link
-            href={`/studio/library/${itemId}`}
+            href={studioEditorUrl(savedItemId)}
+            className="border-border hover:bg-muted/40 flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-bold"
+          >
+            Edit this recording on Mac
+          </Link>
+        )}
+        {state === "saved" && savedItemId && (
+          <Link
+            href={`/studio/library/${savedItemId}`}
             className="text-foreground/60 hover:text-foreground block text-center text-xs font-bold no-underline"
           >
             Open it in the library
@@ -80,7 +87,11 @@ export default function RecorderReview({
               ? "You're out of storage. Delete old sessions or upgrade."
               : error === "locked"
                 ? "Saving recordings needs a subscription."
-                : "Could not save the take. It's still here; try again."}
+                : error === "too_large"
+                  ? "This take exceeds the upload limit. Download it to keep a copy and shorten it before uploading."
+                  : error === "unavailable"
+                    ? "Cloud storage is unavailable. Your take is still here; download it or try saving again later."
+                    : "Could not save the take. It's still here; try again."}
           </p>
         )}
 
@@ -88,6 +99,7 @@ export default function RecorderReview({
           <button
             type="button"
             onClick={onRetake}
+            disabled={state === "saving"}
             className="border-border hover:bg-muted/40 flex flex-1 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-bold transition-colors"
           >
             <RotateCcw className="h-4 w-4" />

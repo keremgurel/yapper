@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AppWindowMac,
@@ -16,8 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-
-const DESKTOP_OPEN_URL = "yapper-studio://open/editor";
+import { desktopEditorUrl } from "@/lib/studio/editor-handoff";
 
 const BENEFITS = [
   {
@@ -38,12 +37,30 @@ const BENEFITS = [
 ];
 
 /** Browser handoff for the one Studio surface that requires the native app. */
-export default function DesktopEditorGate() {
+export default function DesktopEditorGate({
+  itemId,
+}: {
+  itemId: string | null;
+}) {
   const [opening, setOpening] = useState(false);
+
+  useEffect(() => {
+    // Client-side navigation inside the Mac app does not invoke onOpenURL.
+    const bridge = (
+      window as Window & {
+        webkit?: {
+          messageHandlers?: {
+            yapperNative?: { postMessage: (body: unknown) => void };
+          };
+        };
+      }
+    ).webkit?.messageHandlers?.yapperNative;
+    bridge?.postMessage({ command: "open_editor", args: { itemId } });
+  }, [itemId]);
 
   function openDesktopEditor() {
     setOpening(true);
-    window.location.assign(DESKTOP_OPEN_URL);
+    window.location.assign(desktopEditorUrl(itemId));
     window.setTimeout(() => setOpening(false), 1800);
   }
 
@@ -77,11 +94,17 @@ export default function DesktopEditorGate() {
           <div className="mt-7 flex flex-wrap gap-3">
             <Button type="button" size="lg" onClick={openDesktopEditor}>
               <AppWindowMac className="h-4 w-4" />
-              {opening ? "Opening Yapper Studio…" : "Open desktop editor"}
+              {opening
+                ? "Opening Yapper Studio…"
+                : itemId
+                  ? "Edit this recording on Mac"
+                  : "Open desktop editor"}
             </Button>
           </div>
           <p className="text-muted-foreground mt-3 text-xs">
-            Available to approved private-beta installations on macOS.
+            {itemId
+              ? "Sign in to the same account in the Mac app. Your saved recording will download into a local project."
+              : "Available to approved private-beta installations on macOS."}
           </p>
         </div>
 
