@@ -1,4 +1,12 @@
 import { sql } from "drizzle-orm";
+import type {
+  AutomationAccount,
+  AutomationSettings,
+} from "@/lib/publish/automation-types";
+import {
+  scheduleStatuses,
+  type ScheduledPublishInput,
+} from "@/lib/publish/schedule-types";
 import {
   bigint,
   boolean,
@@ -775,6 +783,65 @@ export const publishJobs = pgTable(
   ],
 );
 
+/** One explicitly armed destination. A worker lease never changes the
+ * platform idempotency key, including recovery after a process dies. */
+export const publishingSchedules = pgTable(
+  "publishing_schedules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    requestKey: uuid("request_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    entryIndex: integer("entry_index").notNull(),
+    platform: text("platform", { enum: publishPlatforms }).notNull(),
+    externalAccountId: text("external_account_id").notNull(),
+    accountLabel: text("account_label").notNull(),
+    title: text("title").notNull(),
+    contentItemId: uuid("content_item_id").references(() => contentItems.id, {
+      onDelete: "set null",
+    }),
+    input: jsonb("input").$type<ScheduledPublishInput>().notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    timezone: text("timezone").notNull(),
+    status: text("status", { enum: scheduleStatuses })
+      .notNull()
+      .default("scheduled"),
+    attempt: integer("attempt").notNull().default(0),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    publishJobId: uuid("publish_job_id").references(() => publishJobs.id, {
+      onDelete: "set null",
+    }),
+    error: text("error"),
+    externalUrl: text("external_url"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("publishing_schedules_request_entry_unique").on(
+      t.userId,
+      t.requestKey,
+      t.entryIndex,
+    ),
+    index("publishing_schedules_due_idx").on(t.status, t.scheduledFor),
+    index("publishing_schedules_user_idx").on(t.userId, t.scheduledFor),
+    check(
+      "publishing_schedules_status_check",
+      sql`${t.status} in ('scheduled','running','published','draft','failed','needs_attention','cancelled')`,
+    ),
+    check(
+      "publishing_schedules_platform_check",
+      sql`${t.platform} in ('youtube','instagram','tiktok')`,
+    ),
+  ],
+);
+
 /**
  * One of the creator's own platform posts whose video file we pulled back into
  * their storage, so it can be cross-posted.
@@ -895,6 +962,92 @@ export const r2Objects = pgTable(
     check(
       "r2_objects_upload_expiry_check",
       sql`${t.state} <> 'pending_upload' or ${t.uploadExpiresAt} is not null`,
+    ),
+  ],
+);
+
+/** Saved, explicitly enabled Instagram repurposing rules and their runs. */
+export const automationRules = pgTable(
+  "automation_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+    enabled: boolean("enabled").notNull().default(false),
+    settings: jsonb("settings").$type<AutomationSettings>().notNull(),
+    sourceAccountId: text("source_account_id"),
+    sourceLabel: text("source_label"),
+    accounts: jsonb("accounts")
+      .$type<AutomationAccount[]>()
+      .notNull()
+      .default([]),
+    enabledAt: timestamp("enabled_at", { withTimezone: true }),
+    scanCursor: text("scan_cursor"),
+    lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
+    nextCheckAt: timestamp("next_check_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("automation_rules_user_unique").on(t.userId),
+    index("automation_rules_due_idx").on(t.enabled, t.nextCheckAt),
+    check(
+      "automation_rules_enabled_check",
+      sql`not ${t.enabled} or (${t.enabledAt} is not null and ${t.sourceAccountId} is not null)`,
+    ),
+  ],
+);
+
+export const automationRuns = pgTable(
+  "automation_runs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ruleId: uuid("rule_id")
+      .notNull()
+      .references(() => automationRules.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceAccountId: text("source_account_id").notNull(),
+    sourcePostId: text("source_post_id").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    title: text("title").notNull(),
+    caption: text("caption").notNull(),
+    settings: jsonb("settings").$type<AutomationSettings>().notNull(),
+    accounts: jsonb("accounts").$type<AutomationAccount[]>().notNull(),
+    status: text("status", {
+      enum: ["pending", "importing", "queued", "failed", "cancelled"],
+    })
+      .notNull()
+      .default("pending"),
+    error: text("error"),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("automation_runs_source_unique").on(t.ruleId, t.sourcePostId),
+    index("automation_runs_user_idx").on(t.userId, t.createdAt),
+    index("automation_runs_status_idx").on(t.status, t.createdAt),
+    check(
+      "automation_runs_status_check",
+      sql`${t.status} in ('pending','importing','queued','failed','cancelled')`,
     ),
   ],
 );

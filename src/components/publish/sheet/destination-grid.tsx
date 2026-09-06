@@ -13,12 +13,14 @@ export default function DestinationGrid({
   disabled,
   onToggle,
   onToggleAll,
+  accounts,
 }: {
   connected: PublishPlatform[];
   selected: Set<PublishPlatform>;
   disabled: boolean;
   onToggle: (platform: PublishPlatform) => void;
   onToggleAll: () => void;
+  accounts?: Partial<Record<PublishPlatform, string>>;
 }) {
   const chosenCount = connected.filter((platform) =>
     selected.has(platform),
@@ -30,7 +32,13 @@ export default function DestinationGrid({
         <p className="text-muted-foreground text-xs font-semibold">
           Destinations
         </p>
-        <Button type="button" variant="ghost" size="sm" onClick={onToggleAll}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={disabled}
+          onClick={onToggleAll}
+        >
           {chosenCount === connected.length ? "Clear" : "Select all"}
         </Button>
       </div>
@@ -53,6 +61,11 @@ export default function DestinationGrid({
               <span className="text-foreground block text-[13px] font-semibold">
                 {PLATFORMS[platform].label}
               </span>
+              {accounts?.[platform] && (
+                <span className="text-muted-foreground mt-1 block truncate text-xs">
+                  {accounts[platform]}
+                </span>
+              )}
               <span className="text-muted-foreground mt-1 block text-xs leading-4">
                 {PLATFORMS[platform].postMeaning}
               </span>

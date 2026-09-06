@@ -33,6 +33,7 @@ import OutcomeList, {
 } from "@/components/publish/sheet/outcome-list";
 import PublishButton from "@/components/publish/sheet/publish-button";
 import SingleCopyFields from "@/components/publish/sheet/single-copy-fields";
+import SchedulePanel from "@/components/publish/sheet/schedule-panel";
 import SourceList from "@/components/publish/sheet/source-list";
 import type { CrossPostTarget } from "./compose/types";
 
@@ -121,10 +122,17 @@ export default function CrossPostSheet({
   );
   const [caption, setCaption] = useState(single?.initialDescription ?? "");
   const [posting, setPosting] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const operation = useRef(false);
+  const [scheduled, setScheduled] = useState(false);
   const [outcomes, setOutcomes] = useState<SourceOutcome[]>([]);
   const attemptKeys = useRef<PublishAttemptRegistry | null>(null);
   attemptKeys.current ??= new PublishAttemptRegistry();
-  const { connections } = useConnections(open);
+  const {
+    connections,
+    error: connectionsError,
+    refresh: refreshConnections,
+  } = useConnections(open);
 
   const close = (next: boolean) => {
     setOpen(next);
@@ -132,7 +140,9 @@ export default function CrossPostSheet({
   };
 
   const connected = connectedInOrder(
-    connections?.map((connection) => connection.platform) ?? [],
+    connections
+      ?.filter((connection) => connection.status === "active")
+      .map((connection) => connection.platform) ?? [],
   );
   // A platform chosen upstream but never connected has no button here, so it
   // must not be posted to either.
@@ -152,7 +162,14 @@ export default function CrossPostSheet({
   };
 
   const publish = async () => {
-    if (posting || sources.length === 0 || targets.length === 0) return;
+    if (
+      operation.current ||
+      scheduled ||
+      sources.length === 0 ||
+      targets.length === 0
+    )
+      return;
+    operation.current = true;
     setPosting(true);
     setOutcomes([]);
     const finished: SourceOutcome[] = [];
@@ -177,6 +194,7 @@ export default function CrossPostSheet({
       );
       setOutcomes([...finished]);
     }
+    operation.current = false;
     setPosting(false);
   };
 
@@ -204,7 +222,7 @@ export default function CrossPostSheet({
             <SingleCopyFields
               title={title}
               caption={caption}
-              disabled={posting}
+              disabled={posting || scheduling || scheduled}
               onTitle={setTitle}
               onCaption={setCaption}
             />
@@ -212,7 +230,18 @@ export default function CrossPostSheet({
             <SourceList sources={sources} />
           )}
 
-          {connections === null ? (
+          {connections === null && connectionsError ? (
+            <div role="alert" className="space-y-2 text-sm">
+              <p>Your connections couldn’t be loaded.</p>
+              <button
+                type="button"
+                className="underline"
+                onClick={() => void refreshConnections()}
+              >
+                Try again
+              </button>
+            </div>
+          ) : connections === null ? (
             <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
               <Loader2 aria-hidden className="h-4 w-4 animate-spin" />
               Loading your connections…
@@ -222,9 +251,17 @@ export default function CrossPostSheet({
           ) : (
             <>
               <DestinationGrid
+                accounts={Object.fromEntries(
+                  (connections ?? []).map((connection) => [
+                    connection.platform,
+                    connection.handle ??
+                      connection.externalAccountId ??
+                      "Connected account",
+                  ]),
+                )}
                 connected={connected}
                 selected={selected}
-                disabled={posting}
+                disabled={posting || scheduling || scheduled}
                 onToggle={togglePlatform}
                 onToggleAll={() =>
                   setSelected(
@@ -245,20 +282,48 @@ export default function CrossPostSheet({
                 </p>
               )}
 
-              <PublishButton
-                videos={sources.length}
-                platforms={chosen.length}
-                postedSoFar={outcomes.length}
-                posting={posting}
-                done={done}
-                disabled={
-                  posting ||
-                  sources.length === 0 ||
-                  chosen.length === 0 ||
-                  (editable ? !title.trim() : false)
-                }
-                onPublish={() => void publish()}
-              />
+              {!scheduled && (
+                <PublishButton
+                  videos={sources.length}
+                  platforms={chosen.length}
+                  postedSoFar={outcomes.length}
+                  posting={posting}
+                  done={done}
+                  disabled={
+                    posting ||
+                    scheduling ||
+                    sources.length === 0 ||
+                    chosen.length === 0 ||
+                    (editable ? !title.trim() : false)
+                  }
+                  onPublish={() => void publish()}
+                />
+              )}
+              {outcomes.length === 0 && (
+                <SchedulePanel
+                  accounts={Object.fromEntries(
+                    (connections ?? []).map((connection) => [
+                      connection.platform,
+                      connection.externalAccountId ?? "",
+                    ]),
+                  )}
+                  sources={sources}
+                  platforms={chosen}
+                  override={editable}
+                  disabled={
+                    posting ||
+                    scheduling ||
+                    sources.length === 0 ||
+                    chosen.length === 0 ||
+                    (editable ? !title.trim() : false)
+                  }
+                  onBusy={(busy) => {
+                    operation.current = busy;
+                    setScheduling(busy);
+                  }}
+                  onScheduled={() => setScheduled(true)}
+                />
+              )}
               <p className="text-muted-foreground text-center text-xs">
                 YouTube posts are requested as public. TikTok lands in your
                 drafts and takes no caption over its API, so paste it in the

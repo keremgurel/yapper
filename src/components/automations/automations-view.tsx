@@ -1,162 +1,405 @@
 "use client";
 
-import { useState } from "react";
-import { Camera, Hash, Sparkles, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import Link from "next/link";
+import { Camera, Check, Hash, Loader2, Sparkles, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useConnections } from "@/hooks/use-connections";
+import {
+  automationErrorMessage,
+  fetchAutomation,
+  saveAutomation,
+} from "@/lib/publish/automation-client";
+import {
+  DEFAULT_AUTOMATION_SETTINGS,
+  type AutomationDestination,
+  type AutomationResponse,
+  type AutomationSettings,
+} from "@/lib/publish/automation-types";
 import AutomationToggle from "./automation-toggle";
+import AutomationHistory from "./automation-history";
 
-/** One destination the Instagram source can fan out to. */
+type Draft = {
+  version: number;
+  enabled: boolean;
+  settings: AutomationSettings;
+};
+const initialDraft = (data: AutomationResponse): Draft => ({
+  version: data.rule?.version ?? 0,
+  enabled: data.rule?.enabled ?? false,
+  settings: data.rule?.settings ?? DEFAULT_AUTOMATION_SETTINGS,
+});
 const DESTINATIONS = [
+  { id: "youtube", label: "YouTube" },
   { id: "tiktok", label: "TikTok" },
-  { id: "youtube", label: "YouTube Shorts" },
 ] as const;
 
-type DestinationId = (typeof DESTINATIONS)[number]["id"];
-
-/**
- * The Automations setup: configure the repurpose flow where posting to
- * Instagram fans a video out to your other platforms, with hashtag stripping
- * and caption reformatting. This is the setup surface; the background runner
- * that watches for new posts and fires the cross-post is the next piece, so a
- * banner is honest about that rather than pretending it is already live.
- */
 export default function AutomationsView() {
-  const [enabled, setEnabled] = useState(false);
-  const [destinations, setDestinations] = useState<DestinationId[]>([
-    "tiktok",
-    "youtube",
-  ]);
-  const [stripHashtags, setStripHashtags] = useState(true);
-  const [reformatForYouTube, setReformatForYouTube] = useState(true);
+  const { user } = useUser();
+  return user ? <AutomationEditor key={user.id} /> : null;
+}
 
-  const toggleDestination = (id: DestinationId) =>
-    setDestinations((prev) =>
-      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id],
+function AutomationEditor() {
+  const {
+    connections,
+    error: connectionsError,
+    refresh: refreshConnections,
+  } = useConnections(true);
+  const [data, setData] = useState<AutomationResponse | null>(null);
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loadingError, setLoadingError] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const busy = useRef(false);
+  const revision = useRef(0);
+  useEffect(() => {
+    let active = true;
+    fetchAutomation().then(
+      (result) => {
+        if (active) {
+          setData(result);
+          setDraft(initialDraft(result));
+          setLoadingError(false);
+        }
+      },
+      () => {
+        if (active) setLoadingError(true);
+      },
     );
-
+    return () => {
+      active = false;
+    };
+  }, [version]);
+  const refresh = useCallback(() => {
+    const current = ++revision.current;
+    void fetchAutomation().then(
+      (result) => {
+        if (current === revision.current) {
+          setData(result);
+          setLoadingError(false);
+        }
+      },
+      () => {
+        if (current === revision.current) setLoadingError(true);
+      },
+    );
+  }, []);
+  useEffect(() => {
+    if (!data?.available || !data.rule?.enabled) return;
+    const counter = revision;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 30_000);
+    return () => {
+      window.clearInterval(timer);
+      counter.current++;
+    };
+  }, [data?.available, data?.rule?.enabled, refresh]);
+  const change = (patch: Partial<Draft>) => {
+    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setSaved(false);
+  };
+  const toggleDestination = (platform: AutomationDestination) => {
+    if (!draft) return;
+    change({
+      settings: {
+        ...draft.settings,
+        destinations: draft.settings.destinations.includes(platform)
+          ? draft.settings.destinations.filter((value) => value !== platform)
+          : [...draft.settings.destinations, platform],
+      },
+    });
+  };
+  const save = async () => {
+    if (busy.current || !draft) return;
+    busy.current = true;
+    revision.current++;
+    setSaving(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const result = await saveAutomation({
+        ...draft,
+        expectedAccounts: Object.fromEntries(
+          (connections ?? [])
+            .filter((connection) => connection.status === "active")
+            .map((connection) => [
+              connection.platform,
+              connection.externalAccountId ?? "",
+            ]),
+        ),
+      });
+      setData((current) =>
+        current ? { ...current, rule: result.rule } : current,
+      );
+      setDraft({
+        enabled: result.rule.enabled,
+        version: result.rule.version,
+        settings: result.rule.settings,
+      });
+      setSaved(true);
+      refresh();
+    } catch (cause) {
+      setError(automationErrorMessage(cause));
+    } finally {
+      busy.current = false;
+      setSaving(false);
+    }
+  };
+  const account = (platform: string) =>
+    connections?.find(
+      (connection) =>
+        connection.platform === platform && connection.status === "active",
+    );
+  const accountLabel = (platform: string) =>
+    connections === null
+      ? connectionsError
+        ? "Couldn’t load account"
+        : "Loading account…"
+      : (account(platform)?.handle ??
+        account(platform)?.externalAccountId ??
+        "Not connected");
+  const missingAccount =
+    draft?.enabled &&
+    (!account("instagram") ||
+      draft.settings.destinations.some((platform) => !account(platform)));
+  if (!data || !draft)
+    return (
+      <div className="text-muted-foreground text-sm">
+        {loadingError ? (
+          <>
+            <p role="alert">Your automation settings couldn’t be loaded.</p>
+            <Button
+              className="mt-3"
+              variant="outline"
+              onClick={() => setVersion((value) => value + 1)}
+            >
+              Try again
+            </Button>
+          </>
+        ) : (
+          <p>Loading your automation…</p>
+        )}
+      </div>
+    );
   return (
     <div className="flex flex-col gap-5">
-      <div className="rounded-xl border border-[color:var(--sg-accent)]/30 bg-[color:var(--sg-accent)]/5 px-4 py-3 text-sm">
-        <p className="text-foreground font-bold">Early access</p>
-        <p className="text-muted-foreground mt-0.5">
-          Set your automation up here now. The background runner that watches
-          for new Instagram posts and fires the cross-post is rolling out, and
-          it will use exactly what you configure below, no need to set it up
-          twice.
+      {!data.available && (
+        <p className="border-border bg-muted/40 text-muted-foreground rounded-xl border px-4 py-3 text-sm">
+          {data.setupAvailable === false
+            ? "Automation setup isn’t available on this server yet."
+            : "New video checks are paused on this server. Prepared deliveries may still send; pause the rule below to cancel waiting work."}
         </p>
-      </div>
-
-      <div className="border-border bg-card rounded-2xl border p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--sg-accent)]/10 text-[color:var(--sg-accent)]">
-              <Zap className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-foreground text-base font-black tracking-tight">
-                Repurpose my Instagram posts
-              </h2>
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                When you post a video to Instagram, Yapper pulls it in and
-                cross-posts it to the platforms you pick.
-              </p>
-            </div>
-          </div>
-          <AutomationToggle
-            checked={enabled}
-            onChange={setEnabled}
-            label="Enable this automation"
-          />
-        </div>
-
+      )}
+      {connectionsError && (
         <div
-          className={`mt-5 flex flex-col gap-5 border-t border-dashed pt-5 transition-opacity ${
-            enabled ? "opacity-100" : "pointer-events-none opacity-40"
-          }`}
+          role="alert"
+          className="text-destructive flex items-center gap-3 text-sm"
+        >
+          <p>Your connected accounts couldn’t be loaded.</p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void refreshConnections()}
+          >
+            Try again
+          </Button>
+        </div>
+      )}
+      {loadingError && (
+        <p role="alert" className="text-destructive text-sm">
+          Activity couldn’t be refreshed. Your displayed settings are kept.
+        </p>
+      )}
+      <div className="border-border bg-card rounded-2xl border p-5">
+        <div className="flex items-start gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[color:var(--sg-accent)]/10 text-[color:var(--sg-accent)]">
+            <Zap className="size-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-black tracking-tight">
+              Repurpose my Instagram videos
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              New videos from your connected Instagram account are imported and
+              sent to your selected destinations.
+            </p>
+          </div>
+        </div>
+        <fieldset
+          disabled={saving || data.setupAvailable === false}
+          className="mt-5 space-y-5 border-t border-dashed pt-5"
         >
           <div>
-            <p className="text-muted-foreground mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase">
-              <Camera className="h-3.5 w-3.5" /> Source
+            <p className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-bold uppercase">
+              <Camera className="size-3.5" /> Source
             </p>
-            <div className="border-border text-foreground inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-bold">
-              <Camera className="h-4 w-4" /> Instagram
-            </div>
-            <p className="text-muted-foreground mt-1.5 text-xs">
-              Instagram is the source because it is the one platform that lets
-              us pull your posted video back out to repurpose it.
+            <p className="text-sm font-bold">
+              Instagram · {accountLabel("instagram")}
             </p>
           </div>
-
           <div>
-            <p className="text-muted-foreground mb-2 text-xs font-bold tracking-wide uppercase">
-              Cross-post to
+            <p className="text-muted-foreground mb-2 text-xs font-bold uppercase">
+              Send new videos to
             </p>
-            <div className="flex flex-wrap gap-2">
-              {DESTINATIONS.map((d) => {
-                const on = destinations.includes(d.id);
-                return (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => toggleDestination(d.id)}
-                    aria-pressed={on}
-                    className={`rounded-lg border px-3 py-2 text-sm font-bold transition-colors ${
-                      on
-                        ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/10 text-[color:var(--sg-accent)]"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                );
-              })}
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DESTINATIONS.map((destination) => (
+                <button
+                  key={destination.id}
+                  type="button"
+                  aria-pressed={draft.settings.destinations.includes(
+                    destination.id,
+                  )}
+                  onClick={() => toggleDestination(destination.id)}
+                  className={`rounded-xl border p-3 text-left ${draft.settings.destinations.includes(destination.id) ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/10" : "border-border"}`}
+                >
+                  <span className="block text-sm font-bold">
+                    {destination.label}
+                  </span>
+                  <span className="text-muted-foreground mt-1 block text-xs">
+                    {accountLabel(destination.id)}
+                  </span>
+                  <span className="text-muted-foreground mt-1 block text-xs">
+                    {destination.id === "tiktok"
+                      ? "Drafts to finish in TikTok"
+                      : "Requested as public"}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
-
-          <div className="flex flex-col gap-3">
-            <p className="text-muted-foreground text-xs font-bold tracking-wide uppercase">
-              Options
+          <label className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2 text-sm font-bold">
+              <Hash className="text-muted-foreground size-4" /> Strip hashtags
+            </span>
+            <AutomationToggle
+              checked={draft.settings.stripHashtags}
+              onChange={(value) =>
+                change({
+                  settings: { ...draft.settings, stripHashtags: value },
+                })
+              }
+              label="Strip hashtags"
+            />
+          </label>
+          <label className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-2 text-sm">
+              <Sparkles className="text-muted-foreground size-4" />
+              <span>
+                <span className="block font-bold">Reformat for YouTube</span>
+                <span className="text-muted-foreground block text-xs">
+                  Use the opening line as the title and the full caption as the
+                  description.
+                </span>
+              </span>
+            </span>
+            <AutomationToggle
+              checked={draft.settings.reformatForYouTube}
+              onChange={(value) =>
+                change({
+                  settings: { ...draft.settings, reformatForYouTube: value },
+                })
+              }
+              label="Reformat caption for YouTube"
+            />
+          </label>
+          <div className="space-y-3 border-t pt-4">
+            <label className="flex items-center justify-between gap-4">
+              <span className="text-sm font-bold">
+                Enable automatic sending
+              </span>
+              <AutomationToggle
+                checked={draft.enabled}
+                disabled={!data.available && !draft.enabled}
+                onChange={(enabled) => change({ enabled })}
+                label="Enable automatic sending"
+              />
+            </label>
+            <p className="text-muted-foreground text-xs">
+              Changes take effect when saved. Enabling starts with videos posted
+              from that moment. Old posts and videos posted while paused are not
+              backfilled. Existing prepared deliveries keep their original
+              settings.
             </p>
-            <label className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-2 text-sm">
-                <Hash className="text-muted-foreground h-4 w-4" />
-                <span>
-                  <span className="text-foreground font-bold">
-                    Strip hashtags
-                  </span>
-                  <span className="text-muted-foreground block text-xs">
-                    Remove the #tags from the caption on the other platforms.
-                  </span>
-                </span>
-              </span>
-              <AutomationToggle
-                checked={stripHashtags}
-                onChange={setStripHashtags}
-                label="Strip hashtags"
-                disabled={!enabled}
-              />
-            </label>
-            <label className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-2 text-sm">
-                <Sparkles className="text-muted-foreground h-4 w-4" />
-                <span>
-                  <span className="text-foreground font-bold">
-                    Reformat for YouTube
-                  </span>
-                  <span className="text-muted-foreground block text-xs">
-                    Turn the caption into a YouTube title and description.
-                  </span>
-                </span>
-              </span>
-              <AutomationToggle
-                checked={reformatForYouTube}
-                onChange={setReformatForYouTube}
-                label="Reformat caption for YouTube"
-                disabled={!enabled}
-              />
-            </label>
+            <p className="text-muted-foreground text-xs">
+              Pausing cancels waiting imports and deliveries. Sending already
+              underway may finish. TikTok always receives a draft.
+            </p>
           </div>
-        </div>
+          {missingAccount && (
+            <p className="text-destructive text-sm">
+              Connect Instagram and every selected destination before enabling.{" "}
+              <Link href="/studio/connections" className="underline">
+                Open Connections
+              </Link>
+            </p>
+          )}
+          <Button
+            disabled={
+              Boolean(missingAccount) ||
+              (draft.enabled &&
+                (!data.available || !draft.settings.destinations.length))
+            }
+            onClick={() => void save()}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" /> Saving…
+              </>
+            ) : draft.enabled ? (
+              "Save and enable"
+            ) : (
+              "Save while paused"
+            )}
+          </Button>
+        </fieldset>
+        {saved && (
+          <p role="status" className="mt-3 flex items-center gap-2 text-sm">
+            <Check className="size-4" />
+            {data.rule?.enabled
+              ? "Saved. New Instagram videos will be checked automatically."
+              : "Saved. This automation is paused."}
+          </p>
+        )}
+        {error && (
+          <div role="alert" className="mt-3 space-y-2 text-sm">
+            <p className="text-destructive">{error}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={saving}
+              onClick={() => {
+                setError(null);
+                setSaved(false);
+                setVersion((value) => value + 1);
+              }}
+            >
+              Reload saved settings
+            </Button>
+          </div>
+        )}
+        {data.rule?.error && (
+          <p className="text-destructive mt-3 text-sm">
+            {automationErrorMessage(new Error(data.rule.error))}
+          </p>
+        )}
+        {data.rule && (
+          <p className="text-muted-foreground mt-4 text-xs">
+            Saved rule: {data.rule.enabled ? "Enabled" : "Paused"}
+            {data.rule.lastCheckedAt
+              ? ` · Last checked ${new Date(data.rule.lastCheckedAt).toLocaleString()}`
+              : " · No check completed yet"}
+          </p>
+        )}
       </div>
+      <AutomationHistory
+        runs={data.runs}
+        canRetry={data.available && Boolean(data.rule?.enabled)}
+        onRefresh={refresh}
+      />
     </div>
   );
 }

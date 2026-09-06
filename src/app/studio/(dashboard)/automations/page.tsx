@@ -15,8 +15,7 @@ export default function Page() {
         Automations
       </h1>
       <p className="text-muted-foreground mt-1 mb-6 text-sm">
-        Post once and let Yapper repurpose it everywhere. Set an automation up
-        and your posts cross-post themselves.
+        Choose how new Instagram videos are reused on your connected channels.
       </p>
       <AutomationsView />
     </div>

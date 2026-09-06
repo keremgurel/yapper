@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import ContentCalendar from "@/components/calendar/content-calendar";
+import PublishingSchedules from "@/components/calendar/publishing-schedules";
 
 export const metadata: Metadata = {
   title: "Calendar",
@@ -14,8 +15,9 @@ export default function Page() {
         Calendar
       </h1>
       <p className="text-muted-foreground mt-1 mb-5 text-sm">
-        Everything you have scheduled to post, at a glance.
+        Plan your content dates and see what’s coming next.
       </p>
+      <PublishingSchedules />
       <ContentCalendar />
     </div>
   );
