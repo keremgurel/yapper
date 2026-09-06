@@ -75,11 +75,13 @@ struct CloudLinkRouterTests {
         )
     }
 
-    @Test func nestedLibraryRoutesBelongToTheLibrarySurface() {
+    /// The canvas kept its old address when the Library merged into Ideas, so
+    /// a nested Library route is an Ideas page, and only an Ideas page.
+    @Test func nestedLibraryRoutesBelongToIdeas() {
         #expect(StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123"))
         #expect(StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123/"))
         #expect(!StudioDestination.ideas.contains(cloudPath: "/studio/brain"))
-        #expect(!StudioDestination.ideas.contains(cloudPath: "/studio/library/item-123"))
+        #expect(!StudioDestination.brain.contains(cloudPath: "/studio/library/item-123"))
     }
 
     @Test func sameOriginPublicLinksStillLeaveTheAppShell() throws {
