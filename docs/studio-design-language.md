@@ -2,9 +2,10 @@
 
 The contract for every Studio work surface (Home, Idea Bank, Content Library,
 workbench). Three agents build against this in parallel; where this doc and a
-personal instinct disagree, this doc wins. The workbench redesign
-(`src/components/workbench/*`, `src/components/library/script-section.tsx`) is
-the reference implementation: match it, do not contradict it.
+personal instinct disagree, this doc wins. The canvas
+(`src/components/canvas/*`) and the simple item list
+(`src/components/items/item-list.tsx`) are the reference implementation: match
+them, do not contradict them.
 
 The shared primitives live in `src/components/studio-ui/`. Use them instead of
 inventing per-surface variants. Import from the barrel:

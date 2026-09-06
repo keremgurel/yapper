@@ -1,60 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Lightbulb } from "lucide-react";
+import { Lightbulb, Loader2, Plus } from "lucide-react";
 import Link from "next/link";
-import CrossPostSheet, {
-  type CrossPostTarget,
-} from "@/components/publish/cross-post-sheet";
 import BulkBar from "@/components/items/bulk-bar";
-import ItemFilters from "@/components/items/item-filters";
-import ItemTable from "@/components/items/item-table";
-import ItemTableSkeleton from "@/components/items/item-table-skeleton";
-import LabOverview, { LabSwitchLink } from "@/components/items/lab-overview";
-import { EmptyState } from "@/components/studio-ui";
+import ItemList from "@/components/items/item-list";
+import ItemListRow from "@/components/items/item-list-row";
+import StatusSelect from "@/components/library/status-select";
+import {
+  Chip,
+  EmptyState,
+  PageHeader,
+  pillarTone,
+} from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useContentImport } from "@/hooks/use-content-import";
 import { useContentList } from "@/hooks/use-content-list";
-import { useContentSort } from "@/hooks/use-content-sort";
-import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
-import BoardView from "@/components/views/board-view";
-import ViewBar from "@/components/views/view-bar";
-import { useLibraryViews } from "@/hooks/use-library-views";
-import { LIBRARY_COLUMNS, resolveColumns } from "@/lib/content/columns";
-import { applyViewFilters } from "@/lib/content/group-items";
 import {
+  createContent,
   defaultScheduleDate,
   patchContent,
   type ContentSummary,
 } from "@/lib/content/client";
+import { relativeTime } from "@/lib/content/relative-time";
 import { createOptimisticUpdater } from "@/lib/content/reschedule";
 import type { ContentStatus } from "@/lib/db/schema";
 
 /**
- * The Content Library: the pipeline of ideas you have committed to making.
+ * The Content Library: the ideas you have decided to make, as a list.
  *
- * Renders the same table as the Idea Bank, filtered to `stage = 'library'` and
- * showing the pipeline columns instead of the capture ones.
+ * Each row is a title, its status, its pillar and its age. Opening a row goes
+ * to the canvas where the words get written; changing status happens here
+ * because that is the one thing you do to many items in a sitting.
  */
 export default function ContentLibrary() {
   const router = useRouter();
   const { isSignedIn } = useUser();
   const { items, loadFailed, refresh, patchRow } = useContentList(!!isSignedIn);
   const { importing } = useContentImport(!!isSignedIn, refresh);
-
-  const views = useLibraryViews("library", !!isSignedIn);
-  // The saved view narrows first, then the ad-hoc search and pillar picker
-  // narrow further. A view is the shape of the surface; the filter bar is what
-  // you are looking for inside it right now.
-  const inView = applyViewFilters(items ?? [], views.active?.filters ?? {});
-  const filters = useItemFilters(inView);
-  const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
-  const columns = resolveColumns("library", views.active?.columns);
   const selection = useItemSelection(refresh);
-  const [postItem, setPostItem] = useState<CrossPostTarget | null>(null);
+  const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createFailed, setCreateFailed] = useState(false);
+  const createLock = useRef(false);
 
   const [statusErrors, setStatusErrors] = useState<
     Record<string, () => Promise<void>>
@@ -88,36 +80,66 @@ export default function ContentLibrary() {
     ).catch(() => {});
   };
 
+  /** A blank item, opened straight away: the canvas is where it gets written. */
+  const startNew = async () => {
+    if (createLock.current) return;
+    createLock.current = true;
+    setCreating(true);
+    setCreateFailed(false);
+    try {
+      const created = await createContent({ stage: "library" });
+      router.push(`/studio/library/${created.id}`);
+    } catch {
+      setCreateFailed(true);
+    } finally {
+      createLock.current = false;
+      setCreating(false);
+    }
+  };
+
+  const rows = useMemo(() => {
+    const all = items ?? [];
+    const needle = query.trim().toLowerCase();
+    if (!needle) return all;
+    return all.filter((item) =>
+      [item.title, item.originalNote, item.pillar ?? "", item.status]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [items, query]);
+
   return (
     <div className="w-full pb-24">
-      <LabOverview
-        mode="library"
-        items={items}
-        action={<LabSwitchLink mode="library" />}
+      <PageHeader
+        title="Content Library"
+        actions={
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void startNew()}
+            disabled={creating || !isSignedIn}
+          >
+            {creating ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
+            New
+          </Button>
+        }
       />
 
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
-            Your working slate
-          </p>
-          <h2 className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]">
-            Content pipeline
-          </h2>
-          {importing && (
-            <p className="text-muted-foreground mt-1 text-xs">
-              Importing your saved ideas…
-            </p>
-          )}
-        </div>
-        <p className="text-muted-foreground max-w-md text-xs leading-5 sm:text-right">
-          Open any row to develop its hook and script. Change status here as the
-          work moves forward.
+      {createFailed && (
+        <p role="alert" className="text-destructive mb-3 text-sm">
+          A new item couldn’t be created. Try again.
         </p>
-      </div>
-
-      <ViewBar views={views} />
-
+      )}
+      {importing && (
+        <p className="text-muted-foreground mb-3 text-xs">
+          Importing your saved ideas…
+        </p>
+      )}
       {Object.entries(statusErrors).map(([id, retry]) => (
         <div
           key={id}
@@ -138,6 +160,7 @@ export default function ContentLibrary() {
           </Button>
         </div>
       ))}
+
       {loadFailed ? (
         <EmptyState
           icon={Lightbulb}
@@ -150,58 +173,61 @@ export default function ContentLibrary() {
           }
         />
       ) : items === null ? (
-        <ItemTableSkeleton columns={LIBRARY_COLUMNS} />
+        <div className="space-y-2" aria-busy>
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-xl" />
+        </div>
       ) : items.length === 0 ? (
         <EmptyState
           icon={Lightbulb}
-          title="Nothing in the pipeline yet"
-          description="Capture ideas in the Idea Bank, then send the ones you want to develop here."
+          title="Nothing here yet"
+          description="Start a new one, or send ideas over from the Idea bank."
           action={
-            <Button asChild>
-              <Link href="/studio/ideas">Go to Idea Bank</Link>
+            <Button asChild variant="outline">
+              <Link href="/studio/ideas">Open Idea bank</Link>
             </Button>
           }
         />
       ) : (
-        <>
-          <ItemFilters
-            query={filters.query}
-            onQuery={filters.setQuery}
-            pillar={filters.pillar}
-            onPillar={filters.setPillar}
-            pillarOptions={filters.pillarOptions}
-            resultLabel={filters.resultLabel}
-          />
-          {views.active?.kind === "board" ? (
-            <BoardView
-              rows={filters.filtered}
-              groupBy={views.active.groupBy}
-              onOpen={(id) => router.push(`/studio/library/${id}`)}
-              onStatusChange={changeStatus}
-            />
-          ) : (
-            <ItemTable
-              rows={sorted ?? []}
-              groupBy={views.active?.groupBy}
-              columns={columns}
-              sort={sort}
-              onToggleSort={toggleSort}
-              selectedIds={selection.ids}
-              onToggleSelect={selection.toggle}
-              onSelectAll={selection.selectAll}
-              onOpen={(id) => router.push(`/studio/library/${id}`)}
-              onStatus={changeStatus}
-              onPost={(row) =>
-                setPostItem({
-                  id: row.id,
-                  title: row.title.trim() || "Untitled",
-                  submissionId: row.submissionId!,
-                })
+        <ItemList
+          total={items.length}
+          query={query}
+          onQuery={setQuery}
+          isEmpty={rows.length === 0}
+          emptyLabel="Nothing matches that search."
+        >
+          {rows.map((row) => (
+            <ItemListRow
+              key={row.id}
+              title={row.title.trim() || "Untitled"}
+              preview={row.script?.trim() ? null : row.originalNote || null}
+              selected={selection.ids.has(row.id)}
+              onToggleSelect={() => selection.toggle(row.id)}
+              onOpen={() => router.push(`/studio/library/${row.id}`)}
+              trailing={
+                <>
+                  {row.pillar && (
+                    <Chip
+                      variant="dot"
+                      tone={pillarTone(row.pillar)}
+                      className="hidden sm:inline-flex"
+                    >
+                      {row.pillar}
+                    </Chip>
+                  )}
+                  <StatusSelect
+                    value={row.status}
+                    onChange={(status) => changeStatus(row, status)}
+                  />
+                  <span className="text-muted-foreground hidden w-10 text-right text-xs tabular-nums sm:inline">
+                    {relativeTime(row.updatedAt)}
+                  </span>
+                </>
               }
-              emptyLabel="Nothing matches those filters."
             />
-          )}
-        </>
+          ))}
+        </ItemList>
       )}
 
       <BulkBar
@@ -213,14 +239,6 @@ export default function ContentLibrary() {
         onDelete={selection.actions.remove}
         onClear={selection.clear}
       />
-
-      {postItem && (
-        <CrossPostSheet
-          key={postItem.id}
-          item={postItem}
-          onClose={() => setPostItem(null)}
-        />
-      )}
     </div>
   );
 }

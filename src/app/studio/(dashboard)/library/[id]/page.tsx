@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import ContentWorkbench from "@/components/library/content-workbench";
+import CanvasWorkbench from "@/components/canvas/canvas-workbench";
 
 export const metadata: Metadata = {
-  title: "Script Workbench",
+  title: "Canvas",
   robots: { index: false }, // personal dashboard surface
 };
 
@@ -12,5 +12,5 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ContentWorkbench key={id} id={id} />;
+  return <CanvasWorkbench key={id} id={id} />;
 }

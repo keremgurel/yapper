@@ -1,34 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Archive, Lightbulb, Sparkles } from "lucide-react";
+import { Archive, Lightbulb, Loader2 } from "lucide-react";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
-import { useItemFilters } from "@/hooks/use-item-filters";
 import { useItemSelection } from "@/hooks/use-item-selection";
-import { useContentSort } from "@/hooks/use-content-sort";
 import IdeaCapture from "@/components/ideas/idea-capture";
-import IdeaCardList from "@/components/ideas/idea-card-list";
-import IdeaViewToggle, {
-  type BankView,
-} from "@/components/ideas/idea-view-toggle";
 import InstagramImportSheet from "@/components/ideas/instagram-import-sheet";
 import BulkBar from "@/components/items/bulk-bar";
-import ItemFilters from "@/components/items/item-filters";
-import ItemTable from "@/components/items/item-table";
-import ItemTableSkeleton from "@/components/items/item-table-skeleton";
-import LabOverview, { LabSwitchLink } from "@/components/items/lab-overview";
-import { EmptyState } from "@/components/studio-ui";
+import ItemList from "@/components/items/item-list";
+import ItemListRow from "@/components/items/item-list-row";
+import {
+  Chip,
+  EmptyState,
+  PageHeader,
+  pillarTone,
+} from "@/components/studio-ui";
 import { Button } from "@/components/ui/button";
-import { BANK_COLUMNS } from "@/lib/content/columns";
+import { Skeleton } from "@/components/ui/skeleton";
+import { relativeTime } from "@/lib/content/relative-time";
+import type { ItemSummary } from "@/lib/ideas/client";
 
 /**
- * The Idea bank: capture at the top, then the same table the Content Library
- * renders, filtered to `stage = 'bank'`.
+ * The Idea bank: a place to put a thought down, and the list of what is there.
  *
- * The card view is kept as an alternate mode rather than dropped: a bank entry
- * carries a reference, a verbatim note and an AI body, and sometimes you want
- * to read those rather than scan a row.
+ * Capture at the top, list below, nothing else. Opening an idea goes to its
+ * canvas, where it gets developed; selecting rows brings up the bulk bar,
+ * which is how ideas move to the Library.
  */
 export default function IdeaBank() {
   const router = useRouter();
@@ -45,70 +43,41 @@ export default function IdeaBank() {
     retry,
     refresh,
   } = useIdeaBank();
-
-  const [view, setView] = useState<BankView>("cards");
   const [importOpen, setImportOpen] = useState(false);
-  const filters = useItemFilters(bank);
-  const { sort, toggle: toggleSort, sorted } = useContentSort(filters.filtered);
+  const [query, setQuery] = useState("");
   const selection = useItemSelection(refresh);
 
-  const rows = sorted ?? [];
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return bank;
+    return bank.filter((item) =>
+      [item.title, item.originalNote, item.sourceTitle ?? "", item.pillar ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [bank, query]);
 
   return (
     <div className="w-full pb-24">
-      <LabOverview
-        mode="ideas"
-        items={loading ? null : bank}
-        action={<LabSwitchLink mode="ideas" />}
-      />
-
-      <section aria-labelledby="quick-capture-title">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
-              Start here
-            </p>
-            <h2
-              id="quick-capture-title"
-              className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]"
-            >
-              Quick capture
-            </h2>
-          </div>
+      <PageHeader
+        title="Idea bank"
+        actions={
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => setImportOpen(true)}
-            title="Step-by-step Instagram saved-post import"
           >
             <Archive className="h-3.5 w-3.5" />
-            Import Instagram saves
+            Import from Instagram
           </Button>
-        </div>
-        <p className="text-muted-foreground mb-3 max-w-2xl text-sm leading-6">
-          Write the unfinished version. Add a reference link if there is
-          one—Yapper keeps your words separate from the source and the AI
-          expansion.
-        </p>
-        <IdeaCapture onCapture={capture} />
-      </section>
+        }
+      />
 
-      <div className="mt-10">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-[0.14em] text-[color:var(--sg-accent-strong)] uppercase">
-              <Sparkles className="h-3.5 w-3.5" /> Curate next
-            </p>
-            <h2 className="font-display text-foreground mt-1 text-2xl font-semibold tracking-[-0.04em]">
-              Your idea bank
-            </h2>
-          </div>
-          <p className="text-muted-foreground max-w-md text-xs leading-5 sm:text-right">
-            Open an idea to develop it. Select one or more to send them into the
-            production pipeline.
-          </p>
-        </div>
+      <IdeaCapture onCapture={capture} />
+
+      <div className="mt-8">
         {refreshFailed && (
           <p role="alert" className="text-destructive mb-3 text-sm">
             Your latest changes couldn’t be loaded.{" "}
@@ -121,7 +90,7 @@ export default function IdeaBank() {
           <EmptyState
             icon={Lightbulb}
             title="Your ideas couldn’t be loaded"
-            description="Your saved ideas are still in your account. Try loading them again."
+            description="They are still in your account. Try loading them again."
             action={
               <Button variant="outline" onClick={() => void refresh()}>
                 Try again
@@ -129,57 +98,44 @@ export default function IdeaBank() {
             }
           />
         ) : loading ? (
-          <ItemTableSkeleton columns={BANK_COLUMNS} />
+          <div className="space-y-2" aria-busy>
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+          </div>
         ) : bank.length === 0 ? (
           <EmptyState
             icon={Lightbulb}
-            title="No ideas banked yet"
-            description="Capture your first idea above: type it or press the mic, and Chirpy expands it against your project."
+            title="Nothing here yet"
+            description="Write or dictate a thought above. It lands here."
           />
         ) : (
-          <>
-            {/* ItemFilters carries the toolbar rhythm (mb-3) itself, so the
-                view toggle rides beside it instead of inside a second Toolbar
-                wrapper that would double the margin. */}
-            <div className="flex flex-wrap items-start gap-2">
-              <div className="min-w-0 flex-1">
-                <ItemFilters
-                  query={filters.query}
-                  onQuery={filters.setQuery}
-                  pillar={filters.pillar}
-                  onPillar={filters.setPillar}
-                  pillarOptions={filters.pillarOptions}
-                  resultLabel={filters.resultLabel}
-                />
-              </div>
-              <IdeaViewToggle view={view} onChange={setView} />
-            </div>
-
-            {view === "table" ? (
-              <ItemTable
-                rows={rows}
-                columns={BANK_COLUMNS}
-                sort={sort}
-                onToggleSort={toggleSort}
-                selectedIds={selection.ids}
-                onToggleSelect={selection.toggle}
-                onSelectAll={selection.selectAll}
-                onOpen={(id) => router.push(`/studio/library/${id}`)}
-                onStatus={() => undefined}
-                onPost={() => undefined}
-                emptyLabel="Nothing matches those filters."
+          <ItemList
+            total={bank.length}
+            query={query}
+            onQuery={setQuery}
+            isEmpty={rows.length === 0}
+            emptyLabel="Nothing matches that search."
+          >
+            {rows.map((item) => (
+              <ItemListRow
+                key={item.id}
+                title={titleOf(item)}
+                preview={previewOf(item)}
+                selected={selection.ids.has(item.id)}
+                onToggleSelect={() => selection.toggle(item.id)}
+                onOpen={() => router.push(`/studio/library/${item.id}`)}
+                trailing={
+                  <IdeaRowTrailing
+                    item={item}
+                    working={working.has(item.id)}
+                    failed={analysisErrors.has(item.id)}
+                    onRetry={() => retry(item.id)}
+                  />
+                }
               />
-            ) : (
-              <IdeaCardList
-                rows={rows}
-                selectedIds={selection.ids}
-                working={working}
-                analysisErrors={analysisErrors}
-                onToggleSelect={selection.toggle}
-                onRetry={retry}
-              />
-            )}
-          </>
+            ))}
+          </ItemList>
         )}
       </div>
 
@@ -201,4 +157,72 @@ export default function IdeaBank() {
       />
     </div>
   );
+}
+
+/** Pillar, then either the age of the idea or what is happening to it. */
+function IdeaRowTrailing({
+  item,
+  working,
+  failed,
+  onRetry,
+}: {
+  item: ItemSummary;
+  working: boolean;
+  failed: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      {item.pillar && (
+        <Chip
+          variant="dot"
+          tone={pillarTone(item.pillar)}
+          className="hidden sm:inline-flex"
+        >
+          {item.pillar}
+        </Chip>
+      )}
+      {working ? (
+        <span className="text-muted-foreground flex items-center gap-1 text-xs">
+          <Loader2 aria-hidden className="h-3 w-3 animate-spin" />
+          Reading
+        </span>
+      ) : failed ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          className="text-xs font-semibold text-[color-mix(in_oklab,var(--sg-yellow-500)_48%,var(--sg-text))] underline-offset-2 hover:underline"
+        >
+          Couldn’t read it · Retry
+        </button>
+      ) : (
+        <span className="text-muted-foreground w-10 text-right text-xs tabular-nums">
+          {relativeTime(item.updatedAt)}
+        </span>
+      )}
+    </>
+  );
+}
+
+function titleOf(item: ItemSummary): string {
+  return (
+    item.title ||
+    firstLine(item.originalNote) ||
+    item.sourceTitle ||
+    item.sourceUrl ||
+    "New idea"
+  );
+}
+
+/** The captured words, unless the title still is the captured words. */
+function previewOf(item: ItemSummary): string | null {
+  if (item.title && item.originalNote) return item.originalNote;
+  if (!item.title && item.sourceTitle && item.originalNote)
+    return item.sourceTitle;
+  return null;
+}
+
+function firstLine(text: string): string {
+  const line = text.split(/[.\n]/)[0]?.trim() ?? "";
+  return line.length > 80 ? line.slice(0, 80) : line;
 }

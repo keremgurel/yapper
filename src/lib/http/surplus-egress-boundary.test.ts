@@ -14,6 +14,7 @@ const CALLERS = [
   "lib/feedback/coach.ts",
   "lib/generate/hooks.ts",
   "lib/generate/idea.ts",
+  "lib/generate/canvas.ts",
   "lib/generate/script.ts",
   "lib/ideas/expand.ts",
   "lib/inspiration/web-resource.ts",

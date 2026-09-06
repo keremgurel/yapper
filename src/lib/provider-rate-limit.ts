@@ -18,6 +18,7 @@ export type ProviderSpendEndpoint =
   | "generate-hooks"
   | "generate-idea"
   | "generate-script"
+  | "generate-canvas"
   | "brain-ask"
   | "brain-spin"
   | "brain-ingest"
@@ -55,6 +56,9 @@ const ENDPOINT_POLICIES: Record<
   "generate-hooks": { capacity: 3, refillPerSecond: 20 / HOUR },
   "generate-idea": { capacity: 3, refillPerSecond: 20 / HOUR },
   "generate-script": { capacity: 3, refillPerSecond: 20 / HOUR },
+  // A canvas ask is one short model call and creators fire several in a row
+  // while shaping a piece, so it gets more room than a full script.
+  "generate-canvas": { capacity: 6, refillPerSecond: 40 / HOUR },
   "brain-ask": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-spin": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-ingest": { capacity: 4, refillPerSecond: 20 / HOUR },
