@@ -16,6 +16,7 @@ export interface BrainProjectSource {
   whatIMake: string;
   audience: string;
   voice: string;
+  scriptingPatterns: string;
   offers: string;
   doNots: string;
 }
@@ -66,6 +67,8 @@ export interface BrainSnapshot {
   pillars: BrainPillarSource[];
   blocks: BrainBlockSource[];
   skills: BrainSkillSource[];
+  /** An excerpt of the creator's most recent voice sample, verbatim. */
+  voiceExample?: string;
 }
 
 /** Which skills and blocks a given prompt loads in full, by index reference. */

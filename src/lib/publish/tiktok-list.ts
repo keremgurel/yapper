@@ -6,6 +6,7 @@ export interface TikTokListVideo {
   cover_image_url?: string;
   share_url?: string;
   view_count?: number;
+  duration?: number;
 }
 
 export interface TikTokVideo {
@@ -16,6 +17,7 @@ export interface TikTokVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
+  durationSec: number | null;
 }
 
 /** Map Display API metadata into the same platform-library shape as YouTube
@@ -36,6 +38,10 @@ export function mapTikTokVideos(videos: TikTokListVideo[]): TikTokVideo[] {
         : "",
       privacyStatus: "public",
       url: video.share_url ?? `https://www.tiktok.com/video/${video.id}`,
+      durationSec:
+        typeof video.duration === "number" && video.duration > 0
+          ? video.duration
+          : null,
     }))
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }
@@ -51,6 +57,7 @@ export async function listTikTokVideos(
     "cover_image_url",
     "share_url",
     "view_count",
+    "duration",
   ].join(",");
   const response = await fetch(
     `https://open.tiktokapis.com/v2/video/list/?fields=${fields}`,

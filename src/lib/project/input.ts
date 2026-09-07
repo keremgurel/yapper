@@ -33,6 +33,7 @@ export function parseProjectInput(body: Record<string, unknown>): ProjectInput {
     "whatIMake",
     "audience",
     "voice",
+    "scriptingPatterns",
     "offers",
     "doNots",
   ] as const;

@@ -57,7 +57,12 @@ export function compileStable(
     snapshot.project,
     snapshot.pillars,
     snapshot.blocks.filter((block) => block.usage === "core"),
-    { maxChars: budget.core, includeProject: surface !== "capture" },
+    {
+      maxChars: budget.core,
+      includeProject: surface !== "capture",
+      includeWriting: surface !== "capture" && surface !== "caption",
+      voiceExample: snapshot.voiceExample,
+    },
   );
   const index =
     budget.index > 0

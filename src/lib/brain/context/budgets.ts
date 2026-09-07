@@ -28,13 +28,15 @@ export const SURFACE_BUDGETS: Record<BrainSurface, SurfaceBudget> = {
   // sections cannot answer that question, so none of them are read.
   capture: { core: 600, index: 0, loaded: 0 },
   caption: { core: 900, index: 400, loaded: 900 },
-  hooks: { core: 1200, index: 600, loaded: 1600 },
-  ideate: { core: 1400, index: 800, loaded: 2200 },
-  expand: { core: 1400, index: 800, loaded: 2600 },
-  script: { core: 1400, index: 800, loaded: 2600 },
+  // Writing surfaces carry the scripting patterns and a spoken example on top
+  // of who the creator is, so their core is wider than a caption's.
+  hooks: { core: 1600, index: 600, loaded: 1600 },
+  ideate: { core: 2000, index: 800, loaded: 2200 },
+  expand: { core: 2000, index: 800, loaded: 2600 },
+  script: { core: 2000, index: 800, loaded: 2600 },
   // The coach conversation is where a creator asks about their own material, so
   // it sees the most of the index and has the most room to quote from it.
-  chat: { core: 1400, index: 1200, loaded: 3000 },
+  chat: { core: 2000, index: 1200, loaded: 3000 },
 };
 
 export function budgetFor(surface: BrainSurface): SurfaceBudget {

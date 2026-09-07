@@ -21,6 +21,7 @@ const CALLERS = [
   "lib/publish/caption.ts",
   "lib/studio/scene/scene-model-call.ts",
   "lib/training-feedback/coach.ts",
+  "lib/voice/derive.ts",
 ] as const;
 
 function productionSources(directory: string): string[] {

@@ -42,6 +42,7 @@ const snapshot = (patch: Partial<BrainSnapshot> = {}): BrainSnapshot => ({
     whatIMake: "Short lessons",
     audience: "Newcomers sitting CELPIP",
     voice: "Direct",
+    scriptingPatterns: "",
     offers: "",
     doNots: "",
   },

@@ -221,6 +221,10 @@ export const projects = pgTable(
     whatIMake: text("what_i_make").notNull().default(""),
     audience: text("audience").notNull().default(""),
     voice: text("voice").notNull().default(""),
+    /** How this creator's scripts are built: openings, structure, closes.
+     * Derived from their own videos, then edited; read when writing scripts,
+     * never when writing captions. */
+    scriptingPatterns: text("scripting_patterns").notNull().default(""),
     offers: text("offers").notNull().default(""),
     doNots: text("do_nots").notNull().default(""),
     links: jsonb("links").$type<string[]>().notNull().default([]),
@@ -1175,5 +1179,56 @@ export const contentMessages = pgTable(
       "content_messages_role_check",
       sql`${t.role} in ('creator','chirpy')`,
     ),
+  ],
+);
+
+export const voiceSampleStatuses = ["ready", "failed"] as const;
+export type VoiceSampleStatus = (typeof voiceSampleStatuses)[number];
+
+/**
+ * One of the creator's own published videos, transcribed so the brain can
+ * hear how they actually talk.
+ *
+ * The set is always editable: removing a sample takes it out of the voice
+ * derivation but never out of the channel. The transcript is kept verbatim
+ * and never AI-rewritten; the derived profile lives on the project row.
+ */
+export const voiceSamples = pgTable(
+  "voice_samples",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform", { enum: publishPlatforms }).notNull(),
+    externalPostId: text("external_post_id").notNull(),
+    url: text("url").notNull().default(""),
+    title: text("title").notNull().default(""),
+    thumbnail: text("thumbnail"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    durationSec: real("duration_sec"),
+    transcript: text("transcript").notNull().default(""),
+    status: text("status", { enum: voiceSampleStatuses })
+      .$type<VoiceSampleStatus>()
+      .notNull()
+      .default("ready"),
+    /** What the transcription actually cost, after the duration was known. */
+    creditsCharged: integer("credits_charged").notNull().default(0),
+    error: text("error"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("voice_samples_post_unique").on(
+      t.projectId,
+      t.platform,
+      t.externalPostId,
+    ),
+    index("voice_samples_project_idx").on(t.projectId, t.createdAt),
+    check("voice_samples_status_check", sql`${t.status} in ('ready','failed')`),
   ],
 );

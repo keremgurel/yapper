@@ -73,14 +73,20 @@ edited flows back onto its idea, so captions come from what was said; and
 
 ## Phases
 
-1. One Ideas surface. Statuses Captured, Drafting, Ready, Posted with a
-   migration from drafted, planned, scheduled and the bank stage. Capture
-   produces the content direction. Navigation, native destinations, calendar
-   and home follow.
-2. Canvas conversation. A persisted thread per idea; replies can carry canvas
-   actions; answers can be added to the page.
-3. Brain voice. Video picker from connected channels, per-video transcription
-   with credit math, derived voice profile and scripting patterns, inline
-   essentials, and the per-task context table above.
+1. Done 2026-09-07. One Ideas surface. Statuses Captured, Drafting, Ready,
+   Posted with a migration from drafted, planned, scheduled and the bank
+   stage. Capture produces the content direction. Navigation, native
+   destinations, calendar and home follow.
+2. Done 2026-09-07. Canvas conversation. A persisted thread per idea
+   (content_messages); the last twelve lines feed the next ask; replies carry
+   canvas actions; answers can be added to the page; the newest change can be
+   undone.
+3. Done 2026-09-07. Brain voice. Video picker from connected channels
+   (Instagram, TikTok, YouTube), one video per request, credits reserved on
+   the reported length and settled on the length heard (YouTube captions
+   free), voice_samples table (migration 0025), derived voice profile and
+   scripting patterns written onto the project (what you make and audience
+   only while blank), Essentials edited inline, scripting patterns and a
+   spoken excerpt in the core for writing surfaces and never for captions.
 4. Caption memory and the closing of the loop: recorded transcript back onto
    the idea, learn from what I post.

@@ -44,6 +44,8 @@ export interface PlatformVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
+  /** Length in seconds when the platform reports one (YouTube, TikTok). */
+  durationSec?: number | null;
   /** The downloadable source file, present only for platforms we can backfill
    * from (Instagram). Absent for YouTube and TikTok, whose APIs do not hand
    * back a file, and null for an Instagram Reel whose licensed audio makes

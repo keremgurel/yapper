@@ -14,6 +14,7 @@ export interface Project {
   whatIMake: string;
   audience: string;
   voice: string;
+  scriptingPatterns: string;
   offers: string;
   doNots: string;
   links: string[];
@@ -34,6 +35,7 @@ export interface ProjectPatch {
   whatIMake?: string;
   audience?: string;
   voice?: string;
+  scriptingPatterns?: string;
   offers?: string;
   doNots?: string;
   links?: string[];
@@ -77,6 +79,7 @@ export type ProjectTextFieldKey =
   | "whatIMake"
   | "audience"
   | "voice"
+  | "scriptingPatterns"
   | "offers"
   | "doNots";
 
@@ -101,6 +104,13 @@ export const PROJECT_FIELDS = [
     key: "voice",
     label: "How I sound",
     placeholder: "Direct and warm. Second person. Fast cold opens. No filler.",
+    rows: 3,
+  },
+  {
+    key: "scriptingPatterns",
+    label: "How my scripts are built",
+    placeholder:
+      "Open on the mistake, not the topic. One idea per video. Close with the next step, never a recap.",
     rows: 3,
   },
   {

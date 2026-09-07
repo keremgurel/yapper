@@ -28,6 +28,8 @@ export interface InstagramVideo {
   privacyStatus: string;
   url: string;
   sourceFileUrl: string | null;
+  /** Graph does not report a length for media, so this is always null. */
+  durationSec: null;
 }
 
 /** One item from the Graph `me/media` edge, only the fields we request. */
@@ -77,6 +79,7 @@ export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
       privacyStatus: "public",
       url: m.permalink ?? "",
       sourceFileUrl: m.media_url ?? null,
+      durationSec: null,
     }))
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
 }

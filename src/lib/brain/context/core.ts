@@ -30,6 +30,7 @@ const FIELD_CAPS = {
   whatIMake: 320,
   audience: 320,
   voice: 240,
+  scriptingPatterns: 400,
   offers: 200,
   doNots: 200,
   pillarName: 60,
@@ -61,10 +62,15 @@ function pillarLine(pillar: BrainPillarSource): string {
 
 export interface CoreOptions {
   maxChars: number;
-  /** False for the classification tier, which asks only which pillar something
-   * belongs to and cannot use voice or audience to answer it. */
   includeProject?: boolean;
+  /** Scripting patterns and the spoken example belong to writing tasks. A
+   * caption reads the voice line but not how a script is built. */
+  includeWriting?: boolean;
+  /** A verbatim excerpt from one of the creator's own videos. */
+  voiceExample?: string;
 }
+
+const EXAMPLE_CAP = 600;
 
 /**
  * Build the core block. Returns "" when there is nothing worth saying, so a
@@ -87,6 +93,15 @@ export function buildCore(
       ["Makes", project.whatIMake, FIELD_CAPS.whatIMake],
       ["Audience", project.audience, FIELD_CAPS.audience],
       ["Voice", project.voice, FIELD_CAPS.voice],
+      ...(options.includeWriting
+        ? ([
+            [
+              "Scripting patterns",
+              project.scriptingPatterns,
+              FIELD_CAPS.scriptingPatterns,
+            ],
+          ] as [string, string, number][])
+        : []),
       ["Offers", project.offers, FIELD_CAPS.offers],
       ["Never", project.doNots, FIELD_CAPS.doNots],
     ];
@@ -101,6 +116,14 @@ export function buildCore(
     .slice(0, MAX_PILLARS)
     .map(pillarLine);
   if (named.length) lines.push("PILLARS:", ...named);
+
+  // How they actually talk, in their own words. After the pillars so a tight
+  // budget drops the example before it drops who the creator is.
+  const example = options.includeWriting
+    ? clamp((options.voiceExample ?? "").trim(), EXAMPLE_CAP)
+    : "";
+  if (example)
+    lines.push(`HOW I ACTUALLY TALK (from a recent video):\n${example}`);
 
   // Last, so the global ceiling drops these before it drops who the creator is
   // talking to. A missing rule costs less than a missing audience.

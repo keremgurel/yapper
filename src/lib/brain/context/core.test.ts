@@ -11,6 +11,7 @@ const project: BrainProjectSource = {
   whatIMake: "Short lessons for test takers",
   audience: "Newcomers to Canada sitting CELPIP",
   voice: "Direct, warm, no jargon",
+  scriptingPatterns: "",
   offers: "A 30 day speaking course",
   doNots: "Never promise a score",
 };

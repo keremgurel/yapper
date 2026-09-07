@@ -22,6 +22,8 @@ export type ProviderSpendEndpoint =
   | "brain-ask"
   | "brain-spin"
   | "brain-ingest"
+  | "brain-voice-sample"
+  | "brain-voice-derive"
   | "brain-route"
   | "content-capture"
   | "content-brainstorm"
@@ -66,6 +68,8 @@ const ENDPOINT_POLICIES: Record<
   // the creator already paid for, so the ceiling is set to catch a runaway loop
   // rather than to ration the creator. Running out costs them nothing but a
   // slightly blunter selection.
+  "brain-voice-sample": { capacity: 8, refillPerSecond: 40 / HOUR },
+  "brain-voice-derive": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-route": { capacity: 40, refillPerSecond: 400 / HOUR },
   "content-capture": { capacity: 3, refillPerSecond: 12 / HOUR },
   "content-brainstorm": { capacity: 3, refillPerSecond: 12 / HOUR },

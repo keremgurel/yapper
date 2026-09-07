@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ChevronRight,
   Loader2,
   MessageCircle,
   Plus,
@@ -11,172 +10,23 @@ import {
   Wand2,
 } from "lucide-react";
 import AddContextSheet from "@/components/brain/add/add-context-sheet";
+import EssentialsView from "@/components/brain/essentials/essentials-view";
 import BlockList from "@/components/brain/blocks/block-list";
-import PromptPreview from "@/components/brain/recall/prompt-preview";
 import CatalogSheet from "@/components/brain/skills/catalog-sheet";
 import SkillCard from "@/components/brain/skills/skill-card";
 import SkillEditorSheet from "@/components/brain/skills/skill-editor-sheet";
-import PillarEditor from "@/components/project/pillar-editor";
-import ProjectField from "@/components/project/project-field";
 import {
   useStudioChirpy,
   type ChirpyBrainTools,
 } from "@/components/studio-shell/studio-chirpy";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import type { SaveState } from "@/hooks/use-autosave";
 import { useBrainBlocks } from "@/hooks/use-brain-blocks";
 import { useBrainSkills } from "@/hooks/use-brain-skills";
 import { useProject } from "@/hooks/use-project";
 import { findKnowledge } from "@/lib/brain/find-knowledge";
-import { PROJECT_FIELDS, type ProjectPatch } from "@/lib/project/client";
+import type { ProjectPatch } from "@/lib/project/client";
 
 type BrainView = "essentials" | "knowledge" | "skills";
-
-function SaveIndicator({ state }: { state: SaveState }) {
-  if (state === "idle") return null;
-  return (
-    <span
-      className={`text-xs ${
-        state === "error" ? "text-destructive" : "text-muted-foreground"
-      }`}
-      role={state === "error" ? "alert" : undefined}
-    >
-      {state === "saving"
-        ? "Saving…"
-        : state === "saved"
-          ? "Saved"
-          : "Save failed. Your next edit retries it."}
-    </span>
-  );
-}
-
-function EmptyValue({
-  children,
-  prompt,
-}: {
-  children?: string;
-  prompt: string;
-}) {
-  return children ? (
-    <span className="text-foreground block text-sm leading-relaxed font-semibold text-pretty">
-      {children}
-    </span>
-  ) : (
-    <span className="text-muted-foreground group-hover:text-foreground block text-sm transition-colors">
-      {prompt}
-      <ChevronRight
-        className="ml-1 inline size-3.5 transition-transform group-hover:translate-x-0.5"
-        aria-hidden="true"
-      />
-    </span>
-  );
-}
-
-function EssentialsSheet({
-  open,
-  onOpenChange,
-  project,
-  pillars,
-  saveState,
-  onUpdate,
-  onRetry,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  project: ReturnType<typeof useProject>["project"];
-  pillars: ReturnType<typeof useProject>["pillars"];
-  saveState: SaveState;
-  onUpdate: (patch: ProjectPatch) => void;
-  onRetry: () => Promise<unknown>;
-}) {
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="right"
-        className="w-full gap-0 overflow-y-auto sm:max-w-lg"
-      >
-        <SheetHeader>
-          <div className="flex items-center justify-between gap-3">
-            <SheetTitle>Your Essentials</SheetTitle>
-            <SaveIndicator state={saveState} />
-          </div>
-          <SheetDescription>
-            The foundation Yapper reads whenever it helps you create.
-          </SheetDescription>
-        </SheetHeader>
-
-        {saveState === "error" ? (
-          <div role="alert" className="text-destructive px-4 pb-4 text-sm">
-            Your changes are still here but couldn’t be saved.
-            <Button
-              variant="outline"
-              size="sm"
-              className="ml-2"
-              onClick={() => void onRetry().catch(() => {})}
-            >
-              Try again
-            </Button>
-          </div>
-        ) : null}
-
-        {project ? (
-          <div className="space-y-6 px-4 pb-8">
-            <div className="space-y-1.5">
-              <Label htmlFor="brain-project-name" className="sg-field-label">
-                What you call this
-              </Label>
-              <Input
-                id="brain-project-name"
-                name="brain-project-name"
-                value={project.name}
-                placeholder="My channel…"
-                autoComplete="off"
-                onChange={(event) => onUpdate({ name: event.target.value })}
-              />
-            </div>
-
-            {PROJECT_FIELDS.map((field) => (
-              <ProjectField
-                key={field.key}
-                id={`brain-essential-${field.key}`}
-                label={field.label}
-                placeholder={field.placeholder}
-                rows={field.rows}
-                value={project[field.key]}
-                onChange={(value) => onUpdate({ [field.key]: value })}
-              />
-            ))}
-
-            <PillarEditor
-              pillars={pillars}
-              onChange={(next) => onUpdate({ pillars: next })}
-            />
-          </div>
-        ) : (
-          <div className="text-muted-foreground px-4 py-10 text-sm">
-            <p>Your Essentials could not be loaded.</p>
-            <Button
-              variant="outline"
-              className="mt-3"
-              onClick={() => void onRetry().catch(() => {})}
-            >
-              Try again
-            </Button>
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  );
-}
 
 /** Essentials say who the creator is, Knowledge says what they know, and
  * Skills say how Yapper should work. Creation and prompt internals stay out of
@@ -184,10 +34,8 @@ function EssentialsSheet({
 export default function BrainPage() {
   const [view, setView] = useState<BrainView>("essentials");
   const [adding, setAdding] = useState(false);
-  const [editingEssentials, setEditingEssentials] = useState(false);
   const [browsingSkills, setBrowsingSkills] = useState(false);
   const [editingSkillID, setEditingSkillID] = useState<string | null>(null);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [version, setVersion] = useState(0);
   const changed = useCallback(() => setVersion((current) => current + 1), []);
 
@@ -393,119 +241,16 @@ export default function BrainPage() {
       </div>
 
       {view === "essentials" ? (
-        <div className="space-y-6">
-          <section className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
-            <div className="flex items-start justify-between gap-4 p-5">
-              <div>
-                <h2 className="text-base font-bold">Your Essentials</h2>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  The foundation Yapper uses every time.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingEssentials(true)}
-              >
-                Edit
-              </Button>
-            </div>
-            {projectLoading ? (
-              <p className="text-muted-foreground border-border flex items-center gap-2 border-t p-5 text-sm">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Loading your Essentials…
-              </p>
-            ) : (
-              <div className="border-border bg-border grid gap-px border-t sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingEssentials(true)}
-                  className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-                >
-                  <span className="text-muted-foreground mb-3 block text-[11px] font-bold tracking-[0.16em] uppercase">
-                    You make
-                  </span>
-                  <EmptyValue prompt="Describe what you create">
-                    {project?.whatIMake}
-                  </EmptyValue>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingEssentials(true)}
-                  className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-                >
-                  <span className="text-muted-foreground mb-3 block text-[11px] font-bold tracking-[0.16em] uppercase">
-                    Your audience
-                  </span>
-                  <EmptyValue prompt="Describe who it is for">
-                    {project?.audience}
-                  </EmptyValue>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingEssentials(true)}
-                  className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-                >
-                  <span className="text-muted-foreground mb-3 block text-[11px] font-bold tracking-[0.16em] uppercase">
-                    Your voice
-                  </span>
-                  <EmptyValue prompt="Define how you should sound">
-                    {project?.voice}
-                  </EmptyValue>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingEssentials(true)}
-                  className="bg-card hover:bg-muted/35 group min-h-28 p-5 text-left transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-                >
-                  <span className="text-muted-foreground mb-3 block text-[11px] font-bold tracking-[0.16em] uppercase">
-                    Content pillars
-                  </span>
-                  {pillars.length ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {pillars.map((pillar) => (
-                        <span
-                          key={pillar.id ?? pillar.name}
-                          className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-[11px]"
-                        >
-                          {pillar.name}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="text-muted-foreground group-hover:text-foreground block text-sm transition-colors">
-                      Add your recurring themes
-                      <ChevronRight
-                        className="ml-1 inline size-3.5 transition-transform group-hover:translate-x-0.5"
-                        aria-hidden="true"
-                      />
-                    </span>
-                  )}
-                </button>
-              </div>
-            )}
-          </section>
-          <section className="border-border/70 border-t pt-4">
-            <button
-              type="button"
-              aria-expanded={advancedOpen}
-              onClick={() => setAdvancedOpen((current) => !current)}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-            >
-              <ChevronRight
-                className={`size-3.5 transition-transform ${advancedOpen ? "rotate-90" : ""}`}
-                aria-hidden="true"
-              />
-              What Yapper reads
-            </button>
-            {advancedOpen ? (
-              <div className="mt-4">
-                <PromptPreview version={version} />
-              </div>
-            ) : null}
-          </section>
-        </div>
+        <EssentialsView
+          project={project}
+          pillars={pillars}
+          loading={projectLoading}
+          saveState={projectSaveState}
+          onUpdate={updateEssentials}
+          onRetry={retryProject}
+          onRefresh={() => refreshProject(true)}
+          version={version}
+        />
       ) : null}
 
       {view === "knowledge" ? (
@@ -675,16 +420,6 @@ export default function BrainPage() {
           )}
         </section>
       ) : null}
-
-      <EssentialsSheet
-        open={editingEssentials}
-        onOpenChange={setEditingEssentials}
-        project={project}
-        pillars={pillars}
-        saveState={projectSaveState}
-        onUpdate={updateEssentials}
-        onRetry={project ? retryProject : () => refreshProject(true)}
-      />
       <AddContextSheet
         open={adding}
         onOpenChange={setAdding}

@@ -11,6 +11,19 @@ export interface YouTubeVideo {
   publishedAt: string;
   privacyStatus: string;
   url: string;
+  /** Length in seconds when the platform reports one. */
+  durationSec: number | null;
+}
+
+/** ISO 8601 durations as YouTube writes them: PT1H2M3S. */
+export function parseIsoDuration(value: string | undefined): number | null {
+  const match = value?.match(
+    /^P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/,
+  );
+  if (!match) return null;
+  const [, d, h, m, sec] = match.map((part) => Number(part ?? 0));
+  const total = d * 86_400 + h * 3_600 + m * 60 + sec;
+  return Number.isFinite(total) ? total : null;
 }
 
 interface JsonList<T> {
@@ -44,7 +57,7 @@ export async function listYouTubeVideos(
   if (ids.length === 0) return [];
 
   const vids = (await getJson(
-    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status&id=${ids.join(",")}`,
+    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,status,contentDetails&id=${ids.join(",")}`,
     headers,
     "videos",
   )) as JsonList<{
@@ -56,6 +69,7 @@ export async function listYouTubeVideos(
     };
     statistics?: { viewCount?: string };
     status?: { privacyStatus?: string };
+    contentDetails?: { duration?: string };
   }>;
 
   return (vids.items ?? [])
@@ -71,6 +85,7 @@ export async function listYouTubeVideos(
       publishedAt: v.snippet?.publishedAt ?? "",
       privacyStatus: v.status?.privacyStatus ?? "public",
       url: `https://youtube.com/watch?v=${v.id}`,
+      durationSec: parseIsoDuration(v.contentDetails?.duration),
     }));
 }
 

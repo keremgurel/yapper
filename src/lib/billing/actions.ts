@@ -9,6 +9,8 @@ import { ensureUser } from "@/lib/db/users";
 
 export const PAID_ACTIONS = {
   transcribe: { credits: 1, label: "Transcription" },
+  /** Per three minutes of one of the creator's own videos. */
+  voice_sample: { credits: 1, label: "Voice sample transcription" },
   clean_transcript: { credits: 1, label: "AI edit cleanup" },
   place_overlays: { credits: 1, label: "AI media placement" },
   reference_analysis: { credits: 2, label: "Reference analysis" },

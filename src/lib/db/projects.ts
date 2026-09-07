@@ -8,6 +8,7 @@ export interface ProjectInput {
   whatIMake?: string;
   audience?: string;
   voice?: string;
+  scriptingPatterns?: string;
   offers?: string;
   doNots?: string;
   links?: string[];

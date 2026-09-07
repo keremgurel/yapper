@@ -1,6 +1,7 @@
 import { listBrainBlocks, listBrainChunks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
 import { listProjectSkillsWithDefaults } from "@/lib/db/project-skills";
+import { latestVoiceExcerpt } from "@/lib/db/voice-samples";
 import { getActiveProject } from "@/lib/db/projects";
 import { guardRouterSpend } from "@/lib/provider-rate-limit";
 import { compileBrain, type CompiledBrain } from "./compile";
@@ -70,10 +71,11 @@ async function loadSnapshot(
   const cached = readCache(projectId, version);
   if (cached) return cached;
 
-  const [blockRows, pillars, skillRows] = await Promise.all([
+  const [blockRows, pillars, skillRows, voiceExample] = await Promise.all([
     listBrainBlocks(projectId),
     listPillars(projectId),
     listProjectSkillsWithDefaults(projectId),
+    latestVoiceExcerpt(projectId),
   ]);
 
   // One query for every document's slices rather than one per document.
@@ -90,6 +92,7 @@ async function loadSnapshot(
 
   const snapshot: BrainSnapshot = {
     project: null,
+    voiceExample,
     pillars: pillars.map((pillar) => ({
       name: pillar.name,
       description: pillar.description,
