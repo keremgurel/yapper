@@ -16,6 +16,10 @@ final class StudioAuth: ObservableObject {
     /// nil until the first look, so the window does not flash a sign-in screen
     /// at somebody who is already signed in.
     @Published private(set) var isSignedIn: Bool?
+    @Published private(set) var account: StudioAccountIdentity?
+
+    var accountName: String { account?.displayName ?? "Account" }
+    var accountInitial: String { String(accountName.prefix(1)).uppercased() }
 
     /// Set once the web session has spoken for itself. From then on the cookie
     /// guess is ignored: Clerk knows, and it is right.
@@ -23,8 +27,18 @@ final class StudioAuth: ObservableObject {
     private var watcher: Task<Void, Never>?
 
     /// What the web session says about itself.
-    func report(signedIn: Bool) {
+    func report(
+        signedIn: Bool,
+        userID: String? = nil,
+        displayName: String? = nil,
+        email: String? = nil
+    ) {
         reportedByWeb = true
+        // Replace the entire identity on every report, including reports from
+        // older web builds without profile fields. Never retain another user's label.
+        account = signedIn
+            ? StudioAccountIdentity(userID: userID, displayName: displayName, email: email)
+            : nil
         isSignedIn = signedIn
         if signedIn { stopWatching() }
     }
@@ -53,6 +67,7 @@ final class StudioAuth: ObservableObject {
     /// After a sign-out, the web view's own report is stale by definition.
     func forgetWebReport() {
         reportedByWeb = false
+        account = nil
     }
 
     /// Put the actual sign-in surface in front of a request that discovered an
@@ -61,6 +76,7 @@ final class StudioAuth: ObservableObject {
     /// complete sign-in flow.
     func requireSignIn() {
         reportedByWeb = false
+        account = nil
         firstLook = nil
         isSignedIn = false
         startWatching()
@@ -89,5 +105,27 @@ final class StudioAuth: ObservableObject {
     func stopWatching() {
         watcher?.cancel()
         watcher = nil
+    }
+}
+
+/// Display-only profile supplied by Clerk through the authenticated web shell.
+/// Kept in memory so an earlier account cannot survive a new session or launch.
+struct StudioAccountIdentity: Equatable {
+    let userID: String
+    let displayName: String
+    let email: String?
+
+    init?(userID: String?, displayName: String?, email: String?) {
+        func nonempty(_ value: String?) -> String? {
+            guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty else { return nil }
+            return value
+        }
+        guard let userID = nonempty(userID) else { return nil }
+        self.userID = userID
+        self.email = nonempty(email)
+        self.displayName = nonempty(displayName)
+            ?? self.email?.split(separator: "@").first.map(String.init)
+            ?? "Account"
     }
 }

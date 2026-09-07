@@ -613,7 +613,12 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     let arguments = payload["args"] as? [String: Any],
                     let signedIn = arguments["signedIn"] as? Bool
                 else { return }
-                StudioAuth.shared.report(signedIn: signedIn)
+                StudioAuth.shared.report(
+                    signedIn: signedIn,
+                    userID: arguments["userId"] as? String,
+                    displayName: arguments["displayName"] as? String,
+                    email: arguments["email"] as? String
+                )
             case "route_changed":
                 guard
                     let arguments = payload["args"] as? [String: Any],

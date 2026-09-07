@@ -224,6 +224,7 @@ struct AppShellView: View {
 }
 
 private struct StudioSidebar: View {
+    @ObservedObject private var auth = StudioAuth.shared
     let destination: StudioDestination
     let expanded: Bool
     let selectionNamespace: Namespace.ID
@@ -316,16 +317,17 @@ private struct StudioSidebar: View {
             HStack(spacing: 10) {
                 Circle()
                     .fill(Color(red: 0.78, green: 0.20, blue: 0.08))
-                    .overlay(Text("C").font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
+                    .overlay(Text(auth.accountInitial).font(.system(size: 12, weight: .bold)).foregroundStyle(.white))
                     .frame(width: 30, height: 30)
                 if expanded {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Celpip Speaking Team")
+                        Text(auth.accountName)
                             .font(.system(size: 12, weight: .semibold))
                             .lineLimit(1)
-                        Text("Workspace")
+                        Text(auth.account?.email ?? "Account")
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
                     Spacer(minLength: 0)
                 }
@@ -346,6 +348,7 @@ private struct StudioSidebar: View {
 }
 
 private struct StudioTopBar: View {
+    @ObservedObject private var auth = StudioAuth.shared
     let destination: StudioDestination
     let sidebarExpanded: Bool
     @ObservedObject var session: EditorSession
@@ -477,7 +480,8 @@ private struct StudioTopBar: View {
             NativeThemeSwitcher(theme: theme, action: toggleTheme)
 
             WorkspaceProfileBadge(
-                name: "Celpip Speaking Team",
+                name: auth.accountName,
+                email: auth.account?.email,
                 onNavigate: onNavigate,
                 // The editor's own controls take the middle of this bar, so on a
                 // narrow window the badge is what gets squeezed. It gives up its
