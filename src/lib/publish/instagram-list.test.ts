@@ -61,6 +61,7 @@ describe("mapInstagramMedia", () => {
   it("titles the row from the caption's first line", () => {
     const [v] = mapInstagramMedia([video({ caption: "Line one\nLine two" })]);
     expect(v.title).toBe("Line one");
+    expect(v.caption).toBe("Line one\nLine two");
   });
 
   it("sorts newest first by timestamp", () => {

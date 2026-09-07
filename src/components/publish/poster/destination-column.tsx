@@ -23,6 +23,10 @@ import {
  */
 export default function DestinationColumn({
   captions,
+  hasOriginalCaption = false,
+  onUseOriginalCaption,
+  onGenerateTitle,
+  reading = false,
   chosen,
   connected,
   hasCover,
@@ -38,6 +42,10 @@ export default function DestinationColumn({
   onPublish,
 }: {
   captions: CaptionSet | undefined;
+  hasOriginalCaption?: boolean;
+  onUseOriginalCaption?: () => void;
+  onGenerateTitle?: () => void;
+  reading?: boolean;
   chosen: Set<PublishPlatform>;
   connected: PublishPlatform[];
   hasCover: boolean;
@@ -61,7 +69,7 @@ export default function DestinationColumn({
     }),
   );
   const summary = publishSummary(readiness);
-  const readingVideo = transcriptStatus === "pending";
+  const readingVideo = reading || transcriptStatus === "pending";
 
   return (
     <div className="space-y-4">
@@ -74,6 +82,34 @@ export default function DestinationColumn({
 
       {chosen.size > 0 ? (
         <>
+          {hasOriginalCaption ? (
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs">
+                Starts with your original Instagram caption.
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={onUseOriginalCaption}
+                disabled={generating}
+              >
+                Use original caption
+              </Button>
+              {chosen.has("youtube") ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={onGenerateTitle}
+                  disabled={generating || readingVideo}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generate YouTube title
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -90,7 +126,9 @@ export default function DestinationColumn({
               ? "Reading what the video says…"
               : generating
                 ? "Writing…"
-                : "Write the captions"}
+                : hasOriginalCaption
+                  ? "Rewrite the captions"
+                  : "Write the captions"}
           </Button>
           <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-xs">
             {transcriptStatus === "ready" ? (
@@ -100,9 +138,11 @@ export default function DestinationColumn({
             )}
             {transcriptStatus === "ready"
               ? "From the video's transcript, one per platform"
-              : transcriptStatus === "pending"
+              : readingVideo
                 ? "Transcript is being prepared"
-                : "From the title and your caption prompt"}
+                : hasOriginalCaption
+                  ? "Generation reads the video transcript first"
+                  : "From the title and your caption prompt"}
           </p>
           {captionError && (
             <p

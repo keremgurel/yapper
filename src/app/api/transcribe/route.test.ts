@@ -30,6 +30,8 @@ const r2 = vi.hoisted(() => ({
   discardTranscriptionAudio: vi.fn(),
   getObjectBytes: vi.fn(),
 }));
+const media = vi.hoisted(() => ({ resolveOwnedMediaKey: vi.fn() }));
+vi.mock("@/lib/publish/media", () => media);
 const submissions = vi.hoisted(() => ({ getOwnedMediaKey: vi.fn() }));
 
 vi.mock("@/lib/db/submissions", () => ({
@@ -506,6 +508,47 @@ describe("POST /api/transcribe with audio already in storage", () => {
     expect(response.status).toBe(400);
     expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
     expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+  });
+
+  it("transcribes an owned imported master without deleting it", async () => {
+    media.resolveOwnedMediaKey.mockResolvedValue({
+      ok: true,
+      mediaKey: "u/user_test/import.mp4",
+    });
+    mocks.fetchBoundedJson.mockResolvedValue({
+      response: { ok: true },
+      data: transcript,
+    });
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaKey: "u/user_test/import.mp4" }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(media.resolveOwnedMediaKey).toHaveBeenCalledWith("user_test", {
+      mediaKey: "u/user_test/import.mp4",
+    });
+    expect(r2.presignView).toHaveBeenCalledWith("u/user_test/import.mp4", 900);
+    expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+  });
+  it("rejects unowned imported media before transcription or billing", async () => {
+    media.resolveOwnedMediaKey.mockResolvedValue({
+      ok: false,
+      error: "forbidden",
+      status: 403,
+    });
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaKey: "u/other/import.mp4" }),
+      }),
+    );
+    expect(response.status).toBe(403);
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
   });
 
   it("throws the audio away even when the transcriber fails", async () => {

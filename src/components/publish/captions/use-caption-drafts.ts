@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { CaptionSet } from "@/components/publish/captions/caption-draft";
+import {
+  mergeGeneratedCaptions,
+  type CaptionSet,
+} from "@/components/publish/captions/caption-draft";
 import type { PlatformCaption } from "@/lib/publish/caption";
 
 /**
@@ -25,10 +28,19 @@ export function useCaptionDrafts() {
   );
 
   const applyGenerated = useCallback(
-    (videoId: string, captions: PlatformCaption[]) => {
+    (
+      videoId: string,
+      captions: PlatformCaption[],
+      titleOnly = false,
+      sourceCaption = "",
+    ) => {
       setByVideo((current) => {
-        const merged = { ...current[videoId] };
-        for (const caption of captions) merged[caption.platform] = caption;
+        const merged = mergeGeneratedCaptions(
+          current[videoId],
+          captions,
+          titleOnly,
+          sourceCaption,
+        );
         return { ...current, [videoId]: merged };
       });
     },

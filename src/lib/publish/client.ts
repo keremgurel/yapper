@@ -37,6 +37,7 @@ export function connectUrl(platform: PublishPlatform): string {
 }
 
 export interface PlatformVideo {
+  caption?: string;
   id: string;
   title: string;
   thumbnail: string | null;
@@ -174,6 +175,10 @@ export async function generateCaptions(input: {
   context?: string;
   matchStyle: boolean;
   instructions?: string;
+  transcript?: string;
+  sourceCaption?: string;
+  titleOnly?: boolean;
+  requireTranscript?: boolean;
 }): Promise<PlatformCaption[]> {
   const res = await fetch("/api/publish/caption", {
     method: "POST",

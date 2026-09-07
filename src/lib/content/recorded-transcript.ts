@@ -38,10 +38,23 @@ export function transcriptJsonToText(value: unknown): string {
  */
 export async function loadRecordedTranscript(
   userId: string,
-  item: { recordedTranscript?: string | null; submissionId?: string | null },
+  item: {
+    recordedTranscript?: string | null;
+    submissionId?: string | null;
+    sourceUrl?: string | null;
+    sourceTranscript?: string | null;
+  },
 ): Promise<string | null> {
   const own = item.recordedTranscript?.trim();
   if (own) return own;
+  // Older Poster uploads saved the export's speech in the inspiration field.
+  // Only this explicit upload marker makes that field the creator's own video.
+  if (
+    item.sourceUrl === "yapper://poster-upload" &&
+    item.sourceTranscript?.trim()
+  ) {
+    return item.sourceTranscript.trim();
+  }
   if (!item.submissionId) return null;
   const [row] = await getDb()
     .select({ transcript: submissions.transcript })

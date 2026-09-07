@@ -17,6 +17,21 @@ const caption = (platform: string, over: Record<string, unknown> = {}) => ({
 });
 
 describe("buildCaptionMessages", () => {
+  it("grounds title-only generation in the transcript and preserves the source caption as context", () => {
+    const { system, user } = buildCaptionMessages({
+      title: "ep 11.",
+      platforms: ["youtube"],
+      titleOnly: true,
+      sourceCaption: "ep 11.\nOriginal caption #build",
+      script: "intro ".repeat(800) + "The actual outcome is here.",
+    });
+    expect(system).toContain(
+      "Only generate a YouTube title grounded in the transcript",
+    );
+    expect(user).toContain("Original caption #build");
+    expect(user).toContain("The actual outcome is here.");
+    expect(user).toContain("Write only the YouTube title.");
+  });
   it("asks only for the platforms being posted to", () => {
     const { system } = buildCaptionMessages({
       title: "T",

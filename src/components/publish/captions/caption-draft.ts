@@ -91,3 +91,26 @@ export function captionOverBy(caption: PlatformCaption): {
     body: Math.max(0, renderCaption(caption).length - spec.bodyMax),
   };
 }
+
+/** Title generation must never replace a caption edited while the request ran. */
+export function mergeGeneratedCaptions(
+  current: CaptionSet | undefined,
+  captions: PlatformCaption[],
+  titleOnly = false,
+  sourceCaption = "",
+): CaptionSet {
+  const merged = { ...current };
+  for (const caption of captions) {
+    merged[caption.platform] = titleOnly
+      ? {
+          ...(merged[caption.platform] ?? {
+            platform: caption.platform,
+            body: sourceCaption,
+            hashtags: [],
+          }),
+          title: caption.title,
+        }
+      : caption;
+  }
+  return merged;
+}

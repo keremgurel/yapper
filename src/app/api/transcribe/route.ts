@@ -28,6 +28,7 @@ import {
   viaOpenAiCompatible,
 } from "@/lib/transcription/providers";
 import { getObjectBytes } from "@/lib/r2";
+import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { getOwnedMediaKey } from "@/lib/db/submissions";
 import { mergeAsrChunks, type TimedAsrChunk } from "@/lib/transcription/chunks";
 
@@ -128,6 +129,7 @@ export async function POST(req: Request): Promise<Response> {
       key?: unknown;
       chunks?: unknown;
       submissionId?: unknown;
+      mediaKey?: unknown;
     } | null;
     const key = value?.key;
     const chunks = value?.chunks;
@@ -184,6 +186,15 @@ export async function POST(req: Request): Promise<Response> {
         return Response.json({ error: "bad_request" }, { status: 400 });
       }
       storedChunks = [{ key: storedKey, offset: 0, duration: 0 }];
+    } else if (typeof value?.mediaKey === "string") {
+      const media = await resolveOwnedMediaKey(userId, {
+        mediaKey: value.mediaKey,
+      });
+      if (!media.ok)
+        return Response.json({ error: media.error }, { status: media.status });
+      durableVideoMaster = true;
+      contentType = "video/mp4";
+      storedChunks = [{ key: media.mediaKey, offset: 0, duration: 0 }];
     } else {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }

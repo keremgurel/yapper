@@ -36,7 +36,7 @@ export interface DownloadedInstagramClip {
   cleanup(): Promise<void>;
 }
 
-function assertSafeRemoteUrl(raw: string): URL {
+export function assertSafeRemoteUrl(raw: string): URL {
   let url: URL;
   try {
     url = new URL(raw);

@@ -1,6 +1,6 @@
 export type CoverPosition = "top" | "center" | "bottom";
 export type CoverTextStyle = "shadow" | "label";
-export type CoverSource = "frame" | "generated" | "uploaded";
+export type CoverSource = "frame" | "generated" | "uploaded" | "original";
 
 /** The cover image a post ships with, kept separate from its captions: one
  * cover serves every platform, the captions do not. */
