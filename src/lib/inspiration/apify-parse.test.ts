@@ -131,3 +131,32 @@ describe("youtubeVideo", () => {
     expect(youtubeVideo({ viewCount: "4200" }).views).toBe(0);
   });
 });
+
+describe("tiktokMedia captions", () => {
+  it("prefers the English caption track and reads the duration", async () => {
+    const { tiktokMedia } = await import("./apify-parse");
+    const media = tiktokMedia({
+      text: "Plan",
+      videoMeta: {
+        duration: 91,
+        subtitleLinks: [
+          { language: "fra-FR", downloadLink: "https://x/fr.vtt" },
+          { language: "eng-US", downloadLink: "https://x/en.vtt" },
+        ],
+      },
+      mediaUrls: [],
+    });
+    expect(media.subtitleUrl).toBe("https://x/en.vtt");
+    expect(media.durationSec).toBe(91);
+    expect(media.mediaUrl).toBeUndefined();
+  });
+  it("carries the scraper's reason when a post cannot be opened", async () => {
+    const { instagramMedia } = await import("./apify-parse");
+    expect(
+      instagramMedia({
+        error: "not_found",
+        errorDescription: "Post does not exist",
+      }).issue,
+    ).toBe("Post does not exist");
+  });
+});

@@ -19,6 +19,7 @@ export interface CreatorScrape {
 }
 
 const RUN_BASE = "https://api.apify.com/v2/acts";
+const ACTOR_TIMEOUT_MS = 100_000;
 
 /** Run an Apify actor synchronously and get its dataset items back in one call.
  * The response body is the items array directly. Callers keep the result count
@@ -37,7 +38,9 @@ async function runActor(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
-      signal,
+      // A sync run that has not answered in this long is not going to; the
+      // route has its own budget and the creator is waiting on it.
+      signal: signal ?? AbortSignal.timeout(ACTOR_TIMEOUT_MS),
     },
   );
   if (!res.ok) throw new Error(`apify_${actorId}_${res.status}`);
@@ -87,7 +90,10 @@ export async function resolveTikTokMedia(url: string): Promise<TikTokMedia> {
     postURLs: [url],
     shouldDownloadCovers: false,
     shouldDownloadSlideshowImages: false,
-    shouldDownloadSubtitles: false,
+    // Captions are the transcript for most talking videos and cost nothing to
+    // read; the video file itself stays behind Apify's store, so it is not
+    // requested.
+    shouldDownloadSubtitles: true,
     shouldDownloadVideos: false,
   });
   return tiktokMedia(items[0]);

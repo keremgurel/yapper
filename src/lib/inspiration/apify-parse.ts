@@ -4,12 +4,37 @@ export interface InstagramMedia {
   title?: string;
   thumbnail?: string;
   mediaUrl?: string;
+  /** The actor's own reason when it could not open the post. */
+  issue?: string;
 }
 
 export interface TikTokMedia {
   title?: string;
   thumbnail?: string;
   mediaUrl?: string;
+  /** TikTok's own captions for the video, as a WebVTT file. Free to read and
+   * present on most talking videos, so it is tried before any transcription. */
+  subtitleUrl?: string;
+  durationSec?: number;
+  issue?: string;
+}
+
+interface SubtitleLink {
+  language?: string;
+  downloadLink?: string;
+  tiktokLink?: string;
+  source?: string;
+}
+
+/** The caption track to read: an English one when present, else the first. */
+export function pickSubtitleUrl(links: unknown): string | undefined {
+  if (!Array.isArray(links)) return undefined;
+  const typed = links.filter(
+    (link): link is SubtitleLink => Boolean(link) && typeof link === "object",
+  );
+  const chosen =
+    typed.find((link) => /^en/i.test(link.language ?? "")) ?? typed[0];
+  return str(chosen?.downloadLink) ?? str(chosen?.tiktokLink);
 }
 
 /** A positive number, else 0. Guards against missing fields and, crucially,
@@ -62,6 +87,7 @@ export function instagramMedia(it: unknown): InstagramMedia {
     // Reels normally expose videoUrl. audioUrl is a useful fallback for actor
     // payloads that separate the audible track from the video container.
     mediaUrl: str(pick(it, "videoUrl")) ?? str(pick(it, "audioUrl")),
+    issue: str(pick(it, "errorDescription")) ?? str(pick(it, "error")),
   };
 }
 
@@ -72,7 +98,14 @@ export function tiktokMedia(it: unknown): TikTokMedia {
     thumbnail:
       str(pick(it, "videoMeta", "coverUrl")) ??
       str(pick(it, "videoMeta", "originalCoverUrl")),
-    mediaUrl: str(pick(it, "videoMeta", "downloadAddr")),
+    mediaUrl:
+      str(pick(it, "videoMeta", "downloadAddr")) ??
+      str(pick(it, "mediaUrls", "0")),
+    subtitleUrl:
+      pickSubtitleUrl(pick(it, "videoMeta", "subtitleLinks")) ??
+      str(pick(it, "videoMeta", "transcriptionLink")),
+    durationSec: num(pick(it, "videoMeta", "duration")) || undefined,
+    issue: str(pick(it, "errorDescription")) ?? str(pick(it, "error")),
   };
 }
 

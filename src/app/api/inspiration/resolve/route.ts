@@ -18,6 +18,7 @@ import {
   resolveTikTokMedia,
 } from "@/lib/inspiration/apify";
 import { transcribeRemoteMedia } from "@/lib/inspiration/remote-transcript";
+import { fetchTikTokSubtitles } from "@/lib/inspiration/tiktok-subtitles";
 import { resolveWebResource } from "@/lib/inspiration/web-resource";
 import { fetchYoutubeTranscript } from "@/lib/inspiration/youtube-transcript";
 import type {
@@ -193,12 +194,23 @@ async function resolveSocialVideo(
     mediaUrl?: string;
     title?: string;
     thumbnail?: string;
+    /** Words the platform already published (captions), when it has them. */
+    transcript?: string;
+    /** The scraper's own reason when it could not open the post. */
+    issue?: string;
   }>,
   label: string,
 ): Promise<SourceDetails> {
   try {
-    const resolved = await media();
-    if (!resolved.mediaUrl) throw new Error("missing_reference_media");
+    const { transcript: captions, issue, ...resolved } = await media();
+    if (captions?.trim()) {
+      return {
+        ...resolved,
+        transcript: captions.trim(),
+        referenceType: "social-video",
+      };
+    }
+    if (!resolved.mediaUrl) throw new Error(issue ?? "missing_reference_media");
     const key = process.env.DEEPGRAM_API_KEY;
     if (!key) throw new Error("no_transcription_provider");
     const transcript = await transcribeRemoteMedia(resolved.mediaUrl, key);
@@ -207,7 +219,7 @@ async function resolveSocialVideo(
   } catch (error) {
     console.warn(
       `[inspiration] ${label} media unavailable; reporting needs_media`,
-      error instanceof Error ? error.message : "unknown_error",
+      { url, reason: error instanceof Error ? error.message : "unknown_error" },
     );
     // No summary: handing back page text for a video is what made the old
     // behaviour dishonest. The card still renders from oembed metadata.
@@ -219,7 +231,17 @@ const resolveInstagramReference = (url: string) =>
   resolveSocialVideo(url, () => resolveInstagramMedia(url), "Instagram");
 
 const resolveTikTokReference = (url: string) =>
-  resolveSocialVideo(url, () => resolveTikTokMedia(url), "TikTok");
+  resolveSocialVideo(
+    url,
+    async () => {
+      const media = await resolveTikTokMedia(url);
+      const transcript = media.subtitleUrl
+        ? await fetchTikTokSubtitles(media.subtitleUrl)
+        : null;
+      return { ...media, transcript: transcript ?? undefined };
+    },
+    "TikTok",
+  );
 
 async function resolveWrittenReference(
   url: string,

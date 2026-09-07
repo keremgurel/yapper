@@ -3,6 +3,7 @@ import {
   resolveInstagramMedia,
   resolveTikTokMedia,
 } from "@/lib/inspiration/apify";
+import { fetchTikTokSubtitles } from "@/lib/inspiration/tiktok-subtitles";
 import { fetchYoutubeTranscript } from "@/lib/inspiration/youtube-transcript";
 import { getFreshAccessToken } from "@/lib/publish/connection";
 
@@ -40,7 +41,8 @@ async function instagramMediaUrl(
  *
  * YouTube publishes captions, so those are read as they are. Instagram hands
  * back the file through Graph, or through a scrape when licensed audio makes
- * Graph withhold it. TikTok's API has no file, so it is always scraped.
+ * Graph withhold it. TikTok's API has no file, so the post is scraped and its
+ * own captions read; only a video without captions needs a transcription.
  */
 export async function resolveSampleSource(
   userId: string,
@@ -65,6 +67,11 @@ export async function resolveSampleSource(
   }
   if (!video.url) throw new Error("no_source_file");
   const media = await resolveTikTokMedia(video.url);
+  // TikTok publishes captions for most talking videos; reading them is free.
+  const captions = media.subtitleUrl
+    ? await fetchTikTokSubtitles(media.subtitleUrl, signal)
+    : null;
+  if (captions) return { kind: "transcript", transcript: captions };
   if (!media.mediaUrl) throw new Error("no_source_file");
   return { kind: "media", mediaUrl: media.mediaUrl };
 }
