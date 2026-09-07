@@ -11,14 +11,13 @@ import SwiftUI
 /// renders.
 struct WorkspaceProfileBadge: View {
     let name: String
+    var email: String? = nil
     let onNavigate: (StudioDestination) -> Void
     /// The account actions, which the web session carries out because Clerk
     /// owns the session. See `StudioWebCommands`.
     var onManageAccount: () -> Void = { StudioWebCommands.shared.manageAccount() }
     var onSignOut: () -> Void = { StudioWebCommands.shared.signOut() }
-    /// Hidden when the bar is tight, because a truncated workspace name is
-    /// worse than none: "Celpip Speak…" reads as an error, and the avatar
-    /// already identifies it.
+    /// The avatar identifies the account when the bar is too tight for its name.
     var showsName = true
 
     @State private var isHovering = false
@@ -73,10 +72,11 @@ struct WorkspaceProfileBadge: View {
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.14), value: isHovering)
         .help(name)
-        .accessibilityLabel("Workspace: \(name)")
+        .accessibilityLabel("Account: \(name)")
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             WorkspaceProfileMenu(
                 name: name,
+                email: email,
                 onNavigate: { destination in
                     isOpen = false
                     onNavigate(destination)
@@ -97,6 +97,7 @@ struct WorkspaceProfileBadge: View {
 /// What the badge opens: where else in the workspace you can go.
 private struct WorkspaceProfileMenu: View {
     let name: String
+    let email: String?
     let onNavigate: (StudioDestination) -> Void
     let onManageAccount: () -> Void
     let onSignOut: () -> Void
@@ -109,6 +110,15 @@ private struct WorkspaceProfileMenu: View {
                 .padding(.horizontal, 10)
                 .padding(.top, 8)
                 .padding(.bottom, 4)
+
+            if let email {
+                Text(email)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 4)
+            }
 
             row("Brain", "brain", .brain)
             row("Ideas", "lightbulb", .ideas)

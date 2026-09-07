@@ -79,9 +79,12 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     /// True when only the speaker is kept and the room behind them is thrown
     /// away, leaving the project's backdrop showing. `nil` reads as off.
     var backgroundRemoved: Bool?
+    /// How much the face on this clip is retouched. `nil` reads as not at all.
+    var retouch: ClipRetouch?
 
     var duration: Double { max(0, sourceEnd - sourceStart) }
     var removesBackground: Bool { backgroundRemoved == true }
+    var resolvedRetouch: ClipRetouch { retouch ?? .none }
 
     init(
         id: UUID = UUID(),
@@ -90,7 +93,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         sourceEnd: Double,
         framing: VideoFraming? = nil,
         framingKeys: [FramingKey]? = nil,
-        backgroundRemoved: Bool? = nil
+        backgroundRemoved: Bool? = nil,
+        retouch: ClipRetouch? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -99,6 +103,7 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         self.framing = framing
         self.framingKeys = framingKeys
         self.backgroundRemoved = backgroundRemoved
+        self.retouch = retouch
     }
 }
 
@@ -718,6 +723,7 @@ struct EditorProject: Codable, Equatable, Sendable {
             || cutsOutTheSpeaker
             || removesAnyBackground
             || hasBackdrop
+            || retouchesAnyClip
             || hasImageClip
             || !keyframedPictureIDs.isEmpty
     }
@@ -729,6 +735,12 @@ struct EditorProject: Codable, Equatable, Sendable {
         clips.contains { clip in
             media.first(where: { $0.id == clip.mediaID })?.isImage == true
         }
+    }
+
+    /// True when any clip is retouched, which the editor has to composite
+    /// because it means finding a face on every frame and painting inside it.
+    var retouchesAnyClip: Bool {
+        !isVideoTrackHidden && clips.contains { !$0.resolvedRetouch.isNeutral }
     }
 
     /// What the main track actually plays at: the fader, or nothing at all when
@@ -1076,7 +1088,11 @@ struct EditorProject: Codable, Equatable, Sendable {
             return kept.compactMap { start, end in
                 let containsWord = spokenAnchors.contains { $0 >= start && $0 <= end }
                 guard end - start >= Self.shortestClipWorthKeeping || containsWord else { return nil }
-                return TimelineClip(mediaID: clip.mediaID, sourceStart: start, sourceEnd: end)
+                var fragment = clip
+                fragment.id = UUID()
+                fragment.sourceStart = start
+                fragment.sourceEnd = end
+                return fragment
             }
         }
         updatedAt = Date()
@@ -1105,6 +1121,10 @@ struct EditorProject: Codable, Equatable, Sendable {
         for clip in clips where clip.duration >= 0.02 {
             guard var previous = result.last,
                   previous.mediaID == clip.mediaID,
+                  previous.framing == clip.framing,
+                  previous.framingKeys == clip.framingKeys,
+                  previous.backgroundRemoved == clip.backgroundRemoved,
+                  previous.resolvedRetouch == clip.resolvedRetouch,
                   clip.sourceStart <= previous.sourceEnd + 0.06,
                   clip.sourceEnd >= previous.sourceStart
             else {
@@ -1175,18 +1195,13 @@ struct EditorProject: Codable, Equatable, Sendable {
             sourceTime < clip.sourceEnd - minimumSide
         else { return false }
 
-        clips.replaceSubrange(index ... index, with: [
-            TimelineClip(
-                mediaID: clip.mediaID,
-                sourceStart: clip.sourceStart,
-                sourceEnd: sourceTime
-            ),
-            TimelineClip(
-                mediaID: clip.mediaID,
-                sourceStart: sourceTime,
-                sourceEnd: clip.sourceEnd
-            ),
-        ])
+        var head = clip
+        head.id = UUID()
+        head.sourceEnd = sourceTime
+        var tail = clip
+        tail.id = UUID()
+        tail.sourceStart = sourceTime
+        clips.replaceSubrange(index ... index, with: [head, tail])
         updatedAt = Date()
         return true
     }

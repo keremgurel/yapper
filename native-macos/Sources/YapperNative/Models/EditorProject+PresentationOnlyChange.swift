@@ -3,8 +3,9 @@ import Foundation
 extension EditorProject {
     /// Whether the only things that have changed since `other` are ones the
     /// composition the player is already holding can simply be re-dressed for:
-    /// how the clips are framed, whether the room behind the speaker is kept,
-    /// what fills the frame behind them, and how loud each track plays.
+    /// how the clips are framed, how they are retouched, whether the room
+    /// behind the speaker is kept, what fills the frame behind them, and how
+    /// loud each track plays.
     ///
     /// This is the licence to take a shortcut. A composition's tracks are built
     /// from the clips' media and source ranges, the cutaways and the audio
@@ -69,9 +70,11 @@ extension EditorProject {
         var normalised = self
         for index in normalised.clips.indices {
             normalised.clips[index].framing = other.clips[index].framing
-            // Cutting the background away is a pass the compositor makes over
-            // frames it already has. It changes nothing in a track, so it is
-            // not worth blacking the preview out for.
+            // Retouching and cutting the background away are both passes the
+            // compositor makes over frames it already has. Neither changes what
+            // is in a track, so neither is worth blacking the preview out for,
+            // and both are dragged on a slider where that would be constant.
+            normalised.clips[index].retouch = other.clips[index].retouch
             normalised.clips[index].backgroundRemoved = other.clips[index].backgroundRemoved
         }
         // The colour the frame is filled with before anything is drawn on it.

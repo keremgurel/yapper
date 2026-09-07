@@ -67,21 +67,24 @@ struct CutawayLook: Equatable, Sendable {
     }
 }
 
-/// A clip's framing and whether its background is taken out.
+/// A clip's framing, retouch, and whether its background is taken out.
 struct ClipLook: Equatable, Sendable {
     var framing: VideoFraming?
     var backgroundRemoved: Bool?
+    var retouch: ClipRetouch?
 
     static func of(_ clip: TimelineClip) -> ClipLook {
         ClipLook(
             framing: VideoFramingTrack.isKeyed(clip) ? nil : clip.resolvedFraming,
-            backgroundRemoved: clip.backgroundRemoved
+            backgroundRemoved: clip.backgroundRemoved,
+            retouch: clip.retouch
         )
     }
 
     func applied(to clip: TimelineClip) -> TimelineClip {
         var copy = clip
         copy.backgroundRemoved = backgroundRemoved
+        copy.retouch = retouch
         guard !VideoFramingTrack.isKeyed(clip), let framing else { return copy }
         copy.framing = framing.isIdentity ? nil : framing
         return copy

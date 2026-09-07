@@ -89,6 +89,12 @@ extension Color {
         dark: NSColor.white.withAlphaComponent(0.17)
     )
     static let yapperOrange = Color(red: 1, green: 0.48, blue: 0.13)
+    /// The brackets around the face the retouch is reading. Deliberately not
+    /// `yapperOrange`: the framing box is orange and sits a few points away, and
+    /// two orange rectangles around the same head is one rectangle too many.
+    /// Cyan also survives being drawn on skin, which is the only place this is
+    /// ever drawn.
+    static let faceIndicator = Color(red: 0.20, green: 0.87, blue: 0.90)
     /// `--destructive`
     static let studioDanger = Color(red: 0.898, green: 0.282, blue: 0.302)
     /// `--sg-glass-bg`

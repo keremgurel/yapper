@@ -43,6 +43,9 @@ export default function AppChrome() {
   const router = useRouter();
   const { isLoaded, user } = useUser();
   const { signOut, openUserProfile } = useClerk();
+  const userId = user?.id ?? null;
+  const displayName = user?.fullName || user?.firstName || null;
+  const email = user?.primaryEmailAddress?.emailAddress ?? null;
 
   // Tell the native shell who is signed in.
   //
@@ -56,9 +59,9 @@ export default function AppChrome() {
       ?.yapperNative;
     bridge?.postMessage({
       command: "auth_state",
-      args: { signedIn: !!user },
+      args: { signedIn: !!userId, userId, displayName, email },
     });
-  }, [isLoaded, user]);
+  }, [isLoaded, userId, displayName, email]);
 
   useEffect(() => {
     if (!isLoaded) return;

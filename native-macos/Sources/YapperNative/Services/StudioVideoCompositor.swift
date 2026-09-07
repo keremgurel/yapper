@@ -67,6 +67,9 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         /// of off the card and the card came out with four sharp ones. So a
         /// turned card is stood upright, rounded, and turned back.
         let cardRotation: Double
+        /// How much the face in this layer is retouched. Neutral on everything
+        /// but the speaker's own clip.
+        let retouch: ClipRetouch
 
         /// The track this layer draws, when it draws one.
         var trackID: CMPersistentTrackID? {
@@ -83,7 +86,8 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             opacity: Float = 1,
             matte: Bool = false,
             card: OverlayCardStyle? = nil,
-            cardRotation: Double = 0
+            cardRotation: Double = 0,
+            retouch: ClipRetouch = .none
         ) {
             self.source = source
             self.transform = transform
@@ -94,6 +98,7 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
             self.matte = matte
             self.card = card
             self.cardRotation = cardRotation
+            self.retouch = retouch
         }
 
         /// The transform this layer has at `progress` through the instruction,
@@ -143,7 +148,9 @@ final class StudioCompositionInstruction: NSObject, AVVideoCompositionInstructio
         self.backdrop = backdrop
         // A matted layer is a different shape on every frame even when nothing
         // in the edit moves, so an instruction carrying one is never a still.
-        containsTweening = layers.contains { $0.endTransform != nil || $0.overlayMotion != nil || $0.matte }
+        containsTweening = layers.contains {
+            $0.endTransform != nil || $0.overlayMotion != nil || $0.matte || !$0.retouch.isNeutral
+        }
         // A track drawn both whole and cut out is named twice, and asking
         // AVFoundation for the same source twice is not a request it honours.
         // Stills are not sources at all: they are already decoded.
@@ -175,6 +182,8 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
     private let queue = DispatchQueue(label: "yapper.compositor", qos: .userInitiated)
     /// Only ever touched from `queue`.
     private let mattes = PersonMatteService()
+    private let faces = FaceRegionService()
+    private let blemishes = BlemishDetector()
 
     let sourcePixelBufferAttributes: [String: any Sendable]? = [
         kCVPixelBufferPixelFormatTypeKey as String: [kCVPixelFormatType_32BGRA],
@@ -221,6 +230,18 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
                 case let .track(trackID):
                     guard let source = request.sourceFrame(byTrackID: trackID) else { continue }
                     image = CIImage(cvPixelBuffer: source)
+                    // Before the cut, so the two agree about where the face is,
+                    // and before the crop and the transform, so everything the
+                    // face was measured in is still the frame's own pixels.
+                    if !layer.retouch.isNeutral {
+                        image = self.retouched(
+                            image,
+                            source: source,
+                            trackID: trackID,
+                            at: request.compositionTime,
+                            settings: layer.retouch
+                        )
+                    }
                     if layer.matte {
                         // Cut out before the crop and the transform, so the
                         // mask is measured in the same pixels it was worked out
@@ -308,6 +329,49 @@ final class StudioVideoCompositor: NSObject, AVVideoCompositing {
             )
             request.finish(withComposedVideoFrame: destination)
         }
+    }
+
+    /// The frame retouched. A frame with no face in it comes back untouched,
+    /// which is the right answer: there is nothing there to retouch.
+    private func retouched(
+        _ image: CIImage,
+        source: CVPixelBuffer,
+        trackID: CMPersistentTrackID,
+        at time: CMTime,
+        settings: ClipRetouch
+    ) -> CIImage {
+        guard let face = faces.face(in: source, trackID: trackID, at: time) else { return image }
+        var output = image
+
+        if
+            settings.clearBlemishes > 0,
+            let patches = blemishes.mask(
+                for: image,
+                face: face.bounds,
+                trackID: trackID,
+                at: time,
+                context: context
+            )
+        {
+            output = BlemishSmoothing.applied(
+                to: output,
+                patches: patches,
+                faceWidth: face.bounds.width,
+                strength: settings.clearBlemishes
+            )
+        }
+
+        if
+            settings.whitenTeeth > 0,
+            let mask = RetouchMask.mouth(face.innerLips, in: image.extent)
+        {
+            output = TeethWhitening.applied(
+                to: output,
+                mouthMask: mask,
+                strength: settings.whitenTeeth
+            )
+        }
+        return output
     }
 
     func cancelAllPendingVideoCompositionRequests() {}

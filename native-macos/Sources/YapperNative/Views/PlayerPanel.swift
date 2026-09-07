@@ -105,6 +105,18 @@ struct PlayerPanel: View {
                             )
                         }
                     }
+                    // Over the picture and under the offline banner: it points
+                    // at something in the picture, so it has to be on top of
+                    // it, and it has nothing to say when there is no picture.
+                    .overlay {
+                        if session.showsFaceIndicator {
+                            SpeakerFaceIndicator(
+                                session: session,
+                                clock: session.playbackClock,
+                                stageSize: stageSize
+                            )
+                        }
+                    }
                     // Over everything on the canvas: when the footage cannot be
                     // read, why that is beats anything drawn on top of it.
                     .overlay {
@@ -135,6 +147,12 @@ struct PlayerPanel: View {
                         RoundedRectangle(cornerRadius: 6, style: .continuous)
                             .stroke(Color.previewCanvasBorder, lineWidth: 1)
                     )
+                    // Past the fit the stage is larger than the panel, so it is
+                    // put on a scroller and the rest of it is a scroll away.
+                    // Always a scroller rather than one that appears at 101%,
+                    // so the player view underneath keeps its identity and does
+                    // not tear down and rebuild on the way past.
+                    .modifier(ScrollableStage(size: proxy.size, enabled: zoom.isPastFit))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // Handles hanging outside the stage are the point, handles
