@@ -88,5 +88,9 @@ edited flows back onto its idea, so captions come from what was said; and
    scripting patterns written onto the project (what you make and audience
    only while blank), Essentials edited inline, scripting patterns and a
    spoken excerpt in the core for writing surfaces and never for captions.
-4. Caption memory and the closing of the loop: recorded transcript back onto
-   the idea, learn from what I post.
+4. Done 2026-09-07. Caption memory and the closing of the loop. Captions
+   read what was posted through Yapper (publish_jobs) before the channel's
+   history, per platform; the export's transcript lands on the idea as
+   recorded_transcript (migration 0026) and captions are written from it,
+   never from the inspiration's transcript; a successful publish marks the
+   idea Posted; every posted outcome offers "Add to your voice".

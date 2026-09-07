@@ -11,6 +11,7 @@ import type { ContentItemInput } from "@/lib/db/content";
 const TITLE_MAX = 300;
 const LINE_MAX = 300; // one hook
 const SCRIPT_MAX = 20_000;
+const RECORDED_MAX = 60_000;
 const ARRAY_MAX = 20;
 
 const str = (v: unknown, max: number): string | undefined =>
@@ -81,6 +82,14 @@ export function parseContentInput(body: Record<string, unknown>): {
 
   const scheduledFor = date(body.scheduledFor);
   if (scheduledFor !== undefined) input.scheduledFor = scheduledFor;
+
+  // The transcript of the video actually shot. Written by the editor's handoff
+  // once the export is transcribed; null clears it.
+  if (body.recordedTranscript === null) input.recordedTranscript = null;
+  else {
+    const recorded = str(body.recordedTranscript, RECORDED_MAX);
+    if (recorded !== undefined) input.recordedTranscript = recorded;
+  }
 
   const sourceUrl = str(body.sourceUrl, 600);
   if (sourceUrl !== undefined) input.sourceUrl = sourceUrl;

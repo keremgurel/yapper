@@ -44,6 +44,7 @@ export interface ContentItemInput {
   sourceUrl?: string | null;
   sourceTitle?: string | null;
   sourceTranscript?: string | null;
+  recordedTranscript?: string | null;
   sourceSummary?: string | null;
   sourceReferenceType?: string | null;
   sourcePlatform?: string | null;

@@ -100,7 +100,7 @@ enum PosterHandoffService {
             let _: ContentEnvelope = try await jsonRequest(
                 path: "api/content/\(content.item.id)",
                 method: "PATCH",
-                body: ["sourceTranscript": text, "transcriptStatus": "ready"]
+                body: ["recordedTranscript": text, "transcriptStatus": "ready"]
             )
         } catch {
             // The stored export is still completely usable. Poster names the

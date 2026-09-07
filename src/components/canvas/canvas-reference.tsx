@@ -22,15 +22,24 @@ export default function CanvasReference({
 }) {
   const note = item.originalNote.trim();
   const transcript = item.sourceTranscript?.trim() ?? "";
+  const recorded = item.recordedTranscript?.trim() ?? "";
   const summary = item.sourceSummary?.trim() ?? "";
   const hasReference = Boolean(item.sourceTitle || item.sourceUrl);
   const [noteOpen, setNoteOpen] = useState(true);
-  if (!note && !hasReference && !transcript && !summary) return null;
+  if (!note && !hasReference && !transcript && !summary && !recorded)
+    return null;
 
   const NoteChevron = noteOpen ? ChevronDown : ChevronRight;
 
   return (
     <div className="space-y-10">
+      {recorded && (
+        <Section title="What you said" rank="lead" meta="from your recording">
+          <p className="text-foreground/80 max-w-[68ch] text-[15px] leading-relaxed whitespace-pre-wrap">
+            {recorded}
+          </p>
+        </Section>
+      )}
       {(transcript || summary || hasReference) && (
         <Section
           title="Reference"

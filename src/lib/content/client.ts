@@ -40,6 +40,7 @@ export interface ContentDetail extends ContentSummary {
   format: string | null;
   summary: string | null;
   sourceTranscript: string | null;
+  recordedTranscript: string | null;
   sourceSummary: string | null;
   sourceReferenceType: string | null;
   // Legacy body columns, still read through the normalizer for old rows.
@@ -66,6 +67,7 @@ export interface ContentPatch {
   sourceUrl?: string | null;
   sourceTitle?: string | null;
   sourceTranscript?: string | null;
+  recordedTranscript?: string | null;
   sourceSummary?: string | null;
   sourceReferenceType?: string | null;
   sourcePlatform?: string | null;

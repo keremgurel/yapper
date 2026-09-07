@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
 import { getDb } from "./client";
 import {
+  contentItems,
   platformConnections,
   publishJobs,
   r2Objects,
@@ -259,7 +260,8 @@ export async function completePublishJob(
   id: string,
   result: { externalPostId: string; externalUrl: string },
 ): Promise<void> {
-  await getDb()
+  const db = getDb();
+  const [job] = await db
     .update(publishJobs)
     .set({
       status: "published",
@@ -267,7 +269,41 @@ export async function completePublishJob(
       externalUrl: result.externalUrl,
       updatedAt: new Date(),
     })
-    .where(eq(publishJobs.id, id));
+    .where(eq(publishJobs.id, id))
+    .returning({ contentItemId: publishJobs.contentItemId });
+  // The idea this video came from has reached the end of the loop.
+  if (job?.contentItemId) {
+    await db
+      .update(contentItems)
+      .set({ status: "posted", updatedAt: new Date() })
+      .where(eq(contentItems.id, job.contentItemId));
+  }
+}
+
+/** Captions the creator published through Yapper on one platform, newest
+ * first. The part of caption memory that does not depend on a channel API. */
+export async function recentPublishedCaptions(
+  userId: string,
+  platform: PublishPlatform,
+  limit = 12,
+): Promise<string[]> {
+  const rows = await getDb()
+    .select({ caption: publishJobs.caption, title: publishJobs.title })
+    .from(publishJobs)
+    .where(
+      and(
+        eq(publishJobs.userId, userId),
+        eq(publishJobs.platform, platform),
+        eq(publishJobs.status, "published"),
+      ),
+    )
+    .orderBy(desc(publishJobs.updatedAt))
+    .limit(limit);
+  return rows
+    .map(
+      (row) => (platform === "youtube" ? row.title : row.caption)?.trim() ?? "",
+    )
+    .filter(Boolean);
 }
 
 export async function failPublishJob(id: string, error: string): Promise<void> {

@@ -2,6 +2,7 @@ import { getFreshAccessToken } from "@/lib/publish/connection";
 import { listYouTubeVideos } from "@/lib/publish/youtube-list";
 import { listInstagramVideos } from "@/lib/publish/instagram-list";
 import type { PublishPlatform } from "@/lib/db/schema";
+import { recentPublishedCaptions } from "@/lib/db/publish";
 
 const PER_PLATFORM = 8;
 
@@ -24,15 +25,21 @@ export async function collectStyleSamples(
 ): Promise<Partial<Record<PublishPlatform, string[]>>> {
   const entries = await Promise.all(
     platforms.map(async (platform) => {
-      try {
-        const samples = await samplesFor(userId, platform);
-        return {
-          platform,
-          samples: samples.filter(Boolean).slice(0, PER_PLATFORM),
-        };
-      } catch {
-        return { platform, samples: [] as string[] };
-      }
+      // What was posted through Yapper first: it is the creator's own final
+      // copy on this platform and needs no channel API. Then the channel's
+      // recent history, which also covers what was posted elsewhere.
+      const [own, channel] = await Promise.all([
+        recentPublishedCaptions(userId, platform).catch(() => [] as string[]),
+        samplesFor(userId, platform).catch(() => [] as string[]),
+      ]);
+      const seen = new Set<string>();
+      const samples = [...own, ...channel].filter((sample) => {
+        const key = sample.trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { platform, samples: samples.slice(0, PER_PLATFORM) };
     }),
   );
 

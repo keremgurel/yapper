@@ -1,5 +1,6 @@
 "use client";
 
+import AddToVoiceButton from "@/components/brain/voice/add-to-voice-button";
 import { ExternalLink } from "lucide-react";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import type { CrossPostOutcome } from "@/lib/publish/run-cross-post";
@@ -41,14 +42,21 @@ export default function OutcomeList({
             </p>
           </div>
           {outcome.url ? (
-            <a
-              href={outcome.url}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-1 text-xs font-semibold text-[color:var(--sg-accent)]"
-            >
-              Posted <ExternalLink aria-hidden className="h-3 w-3" />
-            </a>
+            <span className="flex items-center gap-3">
+              <AddToVoiceButton
+                platform={outcome.platform}
+                url={outcome.url}
+                title={outcome.sourceTitle}
+              />
+              <a
+                href={outcome.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-xs font-semibold text-[color:var(--sg-accent)]"
+              >
+                Posted <ExternalLink aria-hidden className="h-3 w-3" />
+              </a>
+            </span>
           ) : (
             <span
               className={`text-xs font-semibold ${

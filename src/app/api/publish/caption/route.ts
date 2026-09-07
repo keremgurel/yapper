@@ -10,6 +10,7 @@ import { hookTexts, normalizeBody } from "@/lib/content/normalize";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 import { generateCaptions } from "@/lib/publish/caption";
 import { collectStyleSamples } from "@/lib/publish/caption-style";
+import { loadRecordedTranscript } from "@/lib/content/recorded-transcript";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -74,14 +75,16 @@ export async function POST(req: Request): Promise<Response> {
   let script: string | undefined;
   let hook: string | undefined;
   let originalNote: string | undefined;
-  let sourceTranscript: string | undefined;
+  let spoken: string | undefined;
   let pillar: string | undefined;
   const itemId = str(body.contentItemId, 100);
   if (itemId) {
     const item = await getContentItem(userId, itemId);
     if (item) {
       script = item.script ?? undefined;
-      sourceTranscript = item.sourceTranscript ?? undefined;
+      // What was actually said beats what was planned. The inspiration's own
+      // transcript is someone else's video and is never captioned from.
+      spoken = (await loadRecordedTranscript(userId, item)) ?? undefined;
       hook = hookTexts(normalizeBody(item).hooks)[0];
       originalNote = item.originalNote || undefined;
       pillar = item.pillar ?? undefined;
@@ -94,7 +97,7 @@ export async function POST(req: Request): Promise<Response> {
 
   const brain = await getBrainContextSafe(userId, {
     surface: "caption",
-    task: [title, hook, (script ?? sourceTranscript)?.slice(0, 1200), pillar]
+    task: [title, hook, (spoken ?? script)?.slice(0, 1200), pillar]
       .filter(Boolean)
       .join("\n"),
     signal: req.signal,
@@ -106,7 +109,7 @@ export async function POST(req: Request): Promise<Response> {
         title,
         context: brain.section,
         hook,
-        script: script ?? sourceTranscript,
+        script: spoken ?? script,
         // The item's own words win; the client's free-text context is the
         // fallback for a video with no library row behind it.
         originalNote: originalNote ?? str(body.context, 2000),

@@ -634,6 +634,10 @@ export const contentItems = pgTable(
      * Previously client-only; without it, moving ideas to the server would lose
      * the single most valuable thing an idea carries. */
     sourceTranscript: text("source_transcript"),
+    /** What the creator actually said in the video they shot for this idea,
+     * verbatim from the export's transcription. Captions are written from it;
+     * the inspiration's transcript above never is. */
+    recordedTranscript: text("recorded_transcript"),
     /** A faithful summary, for articles and papers that never had dialogue. */
     sourceSummary: text("source_summary"),
     sourceReferenceType: text("source_reference_type"),
