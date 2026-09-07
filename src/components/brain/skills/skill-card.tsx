@@ -1,6 +1,7 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { DeleteButton } from "@/components/ui/delete-button";
+import { Pencil } from "lucide-react";
 import { Chip } from "@/components/studio-ui";
 import { isStarterSkill } from "@/lib/brain/default-skills";
 import type { BrainSkill } from "@/lib/brain/skills-client";
@@ -62,14 +63,12 @@ export default function SkillCard({
             <Pencil className="h-3.5 w-3.5" />
           </button>
           {!starter ? (
-            <button
-              type="button"
-              aria-label={`Remove ${skill.name}`}
-              onClick={onRemove}
-              className="text-muted-foreground hover:text-destructive rounded p-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
+            <DeleteButton
+              size="sm"
+              label={`Remove ${skill.name}`}
+              onConfirm={onRemove}
+              className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 data-[status=deleted]:opacity-100"
+            />
           ) : null}
         </div>
       </div>

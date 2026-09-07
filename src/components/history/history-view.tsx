@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { Loader2, Mic, Sparkles, Trash2, Video } from "lucide-react";
+import { Loader2, Mic, Sparkles, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DeleteButton } from "@/components/ui/delete-button";
 import FeedbackResult from "@/components/studio/feedback/feedback-result";
 import type { Coaching } from "@/lib/feedback/coach";
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
@@ -23,23 +24,25 @@ interface Detail extends Summary {
   error: string | null;
 }
 
-function DeleteButton({
-  onClick,
-  disabled,
+function DeleteSession({
+  onConfirm,
+  deleting,
 }: {
-  onClick: () => void;
-  disabled: boolean;
+  onConfirm: () => void;
+  deleting: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="text-foreground/40 inline-flex items-center gap-1.5 text-xs font-bold hover:text-red-500 disabled:opacity-50"
-    >
-      <Trash2 className="h-3.5 w-3.5" />
-      {disabled ? "Deleting…" : "Delete session"}
-    </button>
+    <div className="flex items-center gap-3">
+      <DeleteButton
+        size="sm"
+        label="Delete session"
+        disabled={deleting}
+        onConfirm={onConfirm}
+      />
+      <span className="text-foreground/40 text-xs font-bold">
+        {deleting ? "Deleting…" : "Delete session"}
+      </span>
+    </div>
   );
 }
 
@@ -181,9 +184,9 @@ export default function HistoryView() {
               coaching={selected.feedback.coaching}
               metrics={selected.feedback.metrics}
             />
-            <DeleteButton
-              onClick={() => void remove(selected.id)}
-              disabled={deleting}
+            <DeleteSession
+              onConfirm={() => void remove(selected.id)}
+              deleting={deleting}
             />
           </div>
         ) : selected ? (
@@ -200,9 +203,9 @@ export default function HistoryView() {
               No feedback stored for this session
               {selected.error ? ` (${selected.error})` : ""}.
             </p>
-            <DeleteButton
-              onClick={() => void remove(selected.id)}
-              disabled={deleting}
+            <DeleteSession
+              onConfirm={() => void remove(selected.id)}
+              deleting={deleting}
             />
           </div>
         ) : (

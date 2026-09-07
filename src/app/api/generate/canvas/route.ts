@@ -12,6 +12,13 @@ import { ensureUser } from "@/lib/db/users";
 import { askCanvas, type CanvasAskInput } from "@/lib/generate/canvas";
 import { parseCanvasBlocks } from "@/lib/content/canvas-request";
 import {
+  appendContentMessages,
+  listContentMessages,
+  THREAD_CONTEXT,
+} from "@/lib/db/content-messages";
+import { getContentItem } from "@/lib/db/content";
+import { describeCanvasActions } from "@/lib/content/canvas-actions";
+import {
   guardProviderIngress,
   guardProviderSpend,
 } from "@/lib/provider-rate-limit";
@@ -55,6 +62,16 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
   const target = Number.isInteger(body.target) ? (body.target as number) : null;
+  // The idea this ask belongs to. Optional for older clients; when present the
+  // thread is read for context and the exchange is written back to it.
+  const contentId =
+    typeof body.contentId === "string" &&
+    /^[0-9a-f-]{36}$/i.test(body.contentId)
+      ? body.contentId
+      : null;
+  if (contentId && !(await getContentItem(userId, contentId))) {
+    return Response.json({ error: "not_found" }, { status: 404 });
+  }
   const source =
     body.source && typeof body.source === "object"
       ? (body.source as Record<string, unknown>)
@@ -91,6 +108,12 @@ export async function POST(req: NextRequest): Promise<Response> {
     signal: req.signal,
   });
   input.context = brain.section;
+  if (contentId) {
+    const thread = await listContentMessages(userId, contentId, 200);
+    input.history = thread
+      .slice(-THREAD_CONTEXT)
+      .map((line) => ({ role: line.role, text: line.text.slice(0, 1200) }));
+  }
 
   let result;
   try {
@@ -114,5 +137,29 @@ export async function POST(req: NextRequest): Promise<Response> {
     balance = await getBalance(userId);
   }
 
-  return Response.json({ ...result, balance, used: brain.used });
+  let messages: {
+    id: string;
+    role: string;
+    text: string;
+    actions: unknown[];
+    createdAt: Date;
+  }[] = [];
+  if (contentId) {
+    try {
+      messages = await appendContentMessages(userId, contentId, [
+        { role: "creator", text: instruction },
+        {
+          role: "chirpy",
+          text: result.note ?? describeCanvasActions(result.actions),
+          actions: result.actions,
+        },
+      ]);
+    } catch (error) {
+      // The reply was delivered and paid for; a thread write that fails is a
+      // gap in the history, not a reason to fail the ask.
+      console.error("canvas ask: thread write failed", error);
+    }
+  }
+
+  return Response.json({ ...result, balance, used: brain.used, messages });
 }

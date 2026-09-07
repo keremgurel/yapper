@@ -9,13 +9,16 @@ import CanvasDetails from "@/components/canvas/canvas-details";
 import CanvasHeader from "@/components/canvas/canvas-header";
 import CanvasHooks from "@/components/canvas/canvas-hooks";
 import CanvasMenu from "@/components/canvas/canvas-menu";
+import { DeleteButton } from "@/components/ui/delete-button";
 import CanvasPhoneSheet from "@/components/canvas/canvas-phone-sheet";
 import CanvasPromptBar from "@/components/canvas/canvas-prompt-bar";
 import CanvasReference from "@/components/canvas/canvas-reference";
+import CanvasThread from "@/components/canvas/canvas-thread";
 import ReadLine from "@/components/brain/recall/read-line";
 import { Button } from "@/components/ui/button";
 import { useCanvasAsk } from "@/hooks/use-canvas-ask";
 import { useCanvasDoc } from "@/hooks/use-canvas-doc";
+import { useCanvasThread, type CanvasMessage } from "@/hooks/use-canvas-thread";
 import { useContentItem } from "@/hooks/use-content-item";
 import type { BrainUsed } from "@/lib/brain/context/types";
 import { applyCanvasActions } from "@/lib/content/canvas-actions";
@@ -25,7 +28,9 @@ import {
   moveBlock,
   removeBlock,
   updateBlock,
+  type CanvasBlock as CanvasBlockDoc,
 } from "@/lib/content/canvas-doc";
+import { noteToBlock } from "@/lib/content/note-to-block";
 import { deleteContent, type ContentSummary } from "@/lib/content/client";
 import { hookTexts } from "@/lib/content/normalize";
 import { ideaToScript } from "@/lib/inspiration/idea-format";
@@ -62,7 +67,17 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   } = useContentItem(id);
   const { blocks, setBlocks, hooks, setHooks } = useCanvasDoc(item, update);
   const chirpy = useCanvasAsk();
+  const thread = useCanvasThread(item?.id ?? null);
   const [target, setTarget] = useState<string | null>(null);
+  // Replies already placed on the page, and the one change that can still be
+  // taken back: the newest reply's, with the canvas as it was before it.
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
+  const [undoable, setUndoable] = useState<{
+    messageId: string;
+    blocks: CanvasBlockDoc[];
+    hooks: string[];
+    title: string;
+  } | null>(null);
   const [focusToken, setFocusToken] = useState(0);
   const [note, setNote] = useState<string | null>(null);
   const [used, setUsed] = useState<BrainUsed | null>(null);
@@ -147,6 +162,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
 
   const ask = async (instruction: string) => {
     setNote(null);
+    const pendingId = thread.pendingAsk(instruction);
     const reply = await chirpy.ask(
       instruction,
       {
@@ -164,8 +180,13 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         },
       },
       targetIndex,
+      item.id,
     );
-    if (!reply) return;
+    if (!reply) {
+      thread.settle(pendingId, null);
+      return;
+    }
+    const before = { blocks, hooks, title: item.title };
     const next = applyCanvasActions(
       { title: item.title, blocks, hooks },
       reply.actions,
@@ -173,9 +194,34 @@ export default function CanvasWorkbench({ id }: { id: string }) {
     if (next.blocks !== blocks) setBlocks(next.blocks);
     if (next.hooks !== hooks) setHooks(next.hooks);
     if (next.title !== item.title) update({ title: next.title });
-    setNote(reply.note);
+    thread.settle(pendingId, reply.messages);
+    const replyId = (reply.messages ?? [])
+      .map((m) => m as { id?: unknown; role?: unknown })
+      .find((m) => m.role === "chirpy")?.id;
+    setUndoable(
+      reply.actions.length > 0 && typeof replyId === "string"
+        ? { messageId: replyId, ...before }
+        : null,
+    );
+    setNote(reply.messages ? null : reply.note);
     setUsed(reply.used);
     setTarget(null);
+  };
+
+  const addToPage = (message: CanvasMessage, asked: string) => {
+    setBlocks((current) => [
+      ...current,
+      blockFrom(noteToBlock(message.text, asked)),
+    ]);
+    setAddedIds((current) => new Set(current).add(message.id));
+  };
+
+  const undoLast = () => {
+    if (!undoable) return;
+    setBlocks(undoable.blocks);
+    setHooks(undoable.hooks);
+    if (undoable.title !== item.title) update({ title: undoable.title });
+    setUndoable(null);
   };
 
   return (
@@ -210,21 +256,30 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         hasRecording={Boolean(item.submissionId)}
         onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
         menu={
-          <CanvasMenu
-            hasRecording={Boolean(item.submissionId)}
-            busy={busy}
-            onCopyScript={() => {
-              void navigator.clipboard
-                .writeText(
-                  ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
-                )
-                .catch(() => {});
-            }}
-            onSendToPhone={() => setPhoneOpen(true)}
-            onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
-            onCrossPost={() => void navigate(`/studio/poster?item=${item.id}`)}
-            onDelete={() => void remove()}
-          />
+          <>
+            <DeleteButton
+              size="sm"
+              label={`Delete ${item.title || "this piece"}`}
+              disabled={busy}
+              onConfirm={() => void remove()}
+            />
+            <CanvasMenu
+              hasRecording={Boolean(item.submissionId)}
+              busy={busy}
+              onCopyScript={() => {
+                void navigator.clipboard
+                  .writeText(
+                    ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
+                  )
+                  .catch(() => {});
+              }}
+              onSendToPhone={() => setPhoneOpen(true)}
+              onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
+              onCrossPost={() =>
+                void navigate(`/studio/poster?item=${item.id}`)
+              }
+            />
+          </>
         }
       />
 
@@ -275,6 +330,16 @@ export default function CanvasWorkbench({ id }: { id: string }) {
               <Plus className="h-4 w-4" /> Add a block
             </Button>
           </div>
+
+          <CanvasThread
+            messages={thread.messages}
+            failed={thread.failed}
+            onClear={() => void thread.clear()}
+            addedIds={addedIds}
+            undoableId={undoable?.messageId ?? null}
+            onAddToPage={addToPage}
+            onUndo={undoLast}
+          />
 
           <CanvasPromptBar
             busy={chirpy.busy}

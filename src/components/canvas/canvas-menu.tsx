@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Copy,
-  MoreHorizontal,
-  Send,
-  Smartphone,
-  Trash2,
-  Video,
-} from "lucide-react";
+import { Copy, MoreHorizontal, Send, Smartphone, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +24,6 @@ export default function CanvasMenu({
   onSendToPhone,
   onEditOnMac,
   onCrossPost,
-  onDelete,
 }: {
   hasRecording: boolean;
   busy: boolean;
@@ -39,7 +31,6 @@ export default function CanvasMenu({
   onSendToPhone: () => void;
   onEditOnMac: () => void;
   onCrossPost: () => void;
-  onDelete: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -72,13 +63,6 @@ export default function CanvasMenu({
             </DropdownMenuItem>
           </>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onSelect={onDelete}
-          className="text-destructive focus:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" /> Delete
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

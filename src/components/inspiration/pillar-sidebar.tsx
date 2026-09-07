@@ -1,7 +1,8 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useState } from "react";
-import { FolderPlus, Layers, Pencil, Trash2 } from "lucide-react";
+import { FolderPlus, Layers, Pencil } from "lucide-react";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
 
 export default function PillarSidebar() {
@@ -100,14 +101,11 @@ export default function PillarSidebar() {
               >
                 <Pencil className="h-3.5 w-3.5" />
               </button>
-              <button
-                type="button"
-                onClick={() => deletePillar(pillar.id)}
-                className={`rounded p-1 hover:text-red-500 ${activePillarId === pillar.id ? "text-background/70" : "text-foreground/40"}`}
-                aria-label={`Delete ${pillar.name}`}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+              <DeleteButton
+                size="sm"
+                label={`Delete ${pillar.name}`}
+                onConfirm={() => deletePillar(pillar.id)}
+              />
             </div>
           </div>
         ),

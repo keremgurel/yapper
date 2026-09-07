@@ -31,6 +31,8 @@ export interface CanvasAskInput {
     url?: string | null;
     excerpt?: string | null;
   };
+  /** The conversation so far, oldest first, so a follow-up means something. */
+  history?: { role: "creator" | "chirpy"; text: string }[];
 }
 
 export interface CanvasAskResult {
@@ -78,7 +80,12 @@ const SYSTEM =
   "them over anything a summary says.\n" +
   "- If a reference source is given, draw on it but do not copy it.\n" +
   "- If the ask is a question or a chat rather than a writing task, answer it " +
-  'in "note" and return no actions.\n' +
+  'in "note" and return no actions. When the answer is material that belongs ' +
+  "on the page (key points, a list of objections, a CTA, a caption idea), put " +
+  'it on the page as an insert or append action AND keep "note" to one line.\n' +
+  '- A follow-up refers to the conversation above it: "shorter" means the ' +
+  'thing you just wrote, "the second one" means the second option you ' +
+  "offered.\n" +
   "- Never use em dashes or en dashes in anything you write. Use a comma, a " +
   "colon, or a new sentence.";
 
@@ -106,6 +113,15 @@ function describe(input: CanvasAskInput): string {
         (input.source.excerpt ? `\n${input.source.excerpt}` : "")
       : "",
     `Canvas:\n${blocks}`,
+    input.history?.length
+      ? "Conversation so far:\n" +
+        input.history
+          .map(
+            (line) =>
+              `${line.role === "creator" ? "Creator" : "Chirpy"}: ${line.text}`,
+          )
+          .join("\n")
+      : "",
     input.target !== null && input.target !== undefined
       ? `The ask is about block [${input.target}].`
       : "",

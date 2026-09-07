@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useCallback, useRef, useState } from "react";
 import {
   Check,
@@ -9,7 +10,6 @@ import {
   Plus,
   Sparkles,
   Star,
-  Trash2,
   Upload,
 } from "lucide-react";
 import {
@@ -120,15 +120,12 @@ function ColorSwatch({
             <Star className="h-3.5 w-3.5" />
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={onRemove}
+        <DeleteButton
+          size="sm"
+          label={`Remove ${color}`}
           disabled={busy}
-          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-1.5"
-          aria-label={`Remove ${color}`}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+          onConfirm={onRemove}
+        />
       </div>
     </div>
   );
@@ -182,15 +179,12 @@ function LogoCard({
             <Star className="h-4 w-4" />
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={onRemove}
+        <DeleteButton
+          size="sm"
+          label={`Remove ${logo.name}`}
           disabled={busy}
-          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-2"
-          aria-label={`Remove ${logo.name}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+          onConfirm={onRemove}
+        />
       </div>
     </article>
   );
@@ -417,12 +411,6 @@ export default function BrandPanel() {
                     .finally(() => setBusy(false));
                 }}
                 onRemove={() => {
-                  if (
-                    !window.confirm(
-                      `Remove “${logo.name}” from your brand kit?`,
-                    )
-                  )
-                    return;
                   setBusy(true);
                   setError(null);
                   deleteBrandLogo(logo.id)

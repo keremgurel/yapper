@@ -1,15 +1,10 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
-import {
-  ExternalLink,
-  FileText,
-  Lightbulb,
-  Loader2,
-  Trash2,
-} from "lucide-react";
+import { ExternalLink, FileText, Lightbulb, Loader2 } from "lucide-react";
 import PlatformBadge from "@/components/inspiration/platform-badge";
 import ItemNote from "@/components/inspiration/item-note";
 import { useInspiration } from "@/components/inspiration/inspiration-context";
@@ -153,14 +148,7 @@ export default function ItemCard({ item }: { item: InspirationItem }) {
           >
             <ExternalLink className="h-4 w-4" />
           </a>
-          <button
-            type="button"
-            onClick={() => deleteItem(item.id)}
-            className="text-foreground/50 rounded-lg p-1.5 hover:text-red-500"
-            aria-label="Delete"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <DeleteButton size="sm" onConfirm={() => deleteItem(item.id)} />
         </div>
       </div>
     </article>

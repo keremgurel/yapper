@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { DeleteButton } from "@/components/ui/delete-button";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -79,16 +80,11 @@ export default function PillarRow({
             className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
           />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onRemove}
-          aria-label={`Delete ${pillar.name || "pillar"}`}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <DeleteButton
+          size="sm"
+          label={`Delete ${pillar.name || "pillar"}`}
+          onConfirm={onRemove}
+        />
       </div>
 
       {open && (

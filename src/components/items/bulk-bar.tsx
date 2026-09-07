@@ -1,7 +1,8 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useRef, useState } from "react";
-import { Tag, Trash2, X } from "lucide-react";
+import { Tag, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,15 +137,12 @@ export default function BulkBar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <button
-          type="button"
+        <DeleteButton
+          size="sm"
+          label="Delete selected"
           disabled={busy}
-          onClick={() => void run(onDelete)}
-          className="text-muted-foreground hover:bg-muted hover:text-destructive flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-semibold transition-colors disabled:opacity-50"
-        >
-          <Trash2 className="h-4 w-4" />
-          Delete
-        </button>
+          onConfirm={() => void run(onDelete)}
+        />
         <button
           type="button"
           onClick={onClear}

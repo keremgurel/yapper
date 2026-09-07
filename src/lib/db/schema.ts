@@ -1138,3 +1138,42 @@ export const libraryViews = pgTable(
     ),
   ],
 );
+
+/** Who said a line in an idea's conversation with Chirpy. */
+export const contentMessageRoles = ["creator", "chirpy"] as const;
+export type ContentMessageRole = (typeof contentMessageRoles)[number];
+
+/**
+ * The conversation on one idea's canvas.
+ *
+ * Every ask and every reply is kept, so the page reopens mid-conversation and
+ * a follow-up ("shorter") means something. A reply that changed the canvas
+ * records the actions it applied, so the thread reads as a history of the
+ * piece as well as a chat.
+ */
+export const contentMessages = pgTable(
+  "content_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", { enum: contentMessageRoles }).notNull(),
+    text: text("text").notNull().default(""),
+    /** The canvas actions this reply applied, as sent to the client. */
+    actions: jsonb("actions").$type<unknown[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("content_messages_item_idx").on(t.contentItemId, t.createdAt),
+    check(
+      "content_messages_role_check",
+      sql`${t.role} in ('creator','chirpy')`,
+    ),
+  ],
+);

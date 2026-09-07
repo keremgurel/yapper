@@ -1,15 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  BookType,
-  Check,
-  Loader2,
-  Plus,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { BookType, Check, Loader2, Plus, Sparkles, X } from "lucide-react";
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useTranscriptionDictionary } from "@/hooks/use-transcription-dictionary";
 import type { TranscriptionDictionaryEntry } from "@/lib/studio/transcription-dictionary";
 
@@ -30,7 +23,6 @@ function DictionaryRow({
   const [alias, setAlias] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<"save" | "delete" | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const running = useRef(false);
   const [failed, setFailed] = useState<{
     term: string;
@@ -107,42 +99,13 @@ function DictionaryRow({
         {saving ? (
           <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
         ) : null}
-        <button
-          type="button"
+        <DeleteButton
+          size="sm"
+          label={`Delete ${entry.term}`}
           disabled={saving}
-          onClick={() => setConfirmDelete(true)}
-          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg p-2 transition-colors"
-          aria-label={`Delete ${entry.term}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+          onConfirm={() => void remove()}
+        />
       </div>
-
-      {confirmDelete && (
-        <div
-          role="group"
-          aria-label={`Remove ${entry.term}`}
-          className="border-border flex flex-wrap items-center gap-3 border-t px-4 py-3 text-sm sm:px-5"
-        >
-          <p className="flex-1">Remove “{entry.term}” from your dictionary?</p>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => setConfirmDelete(false)}
-            className="rounded-md px-2 py-1 font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void remove()}
-            className="text-destructive rounded-md px-2 py-1 font-semibold"
-          >
-            Remove word
-          </button>
-        </div>
-      )}
 
       <div className="border-border bg-muted/25 border-t px-4 py-3 sm:px-5">
         <div className="flex flex-wrap items-center gap-2">

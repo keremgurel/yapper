@@ -1,7 +1,8 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, RefreshCw, Trash2, TrendingUp, X } from "lucide-react";
+import { ExternalLink, RefreshCw, TrendingUp, X } from "lucide-react";
 import { PLATFORM_BY_ID } from "@/components/onboarding/platforms";
 import VideoStatCard from "@/components/inspiration/video-stat-card";
 import ItemNote from "@/components/inspiration/item-note";
@@ -291,17 +292,14 @@ export default function CreatorProfile({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={() => {
+          <DeleteButton
+            size="sm"
+            label="Remove from inspiration"
+            onConfirm={() => {
               deleteItem(item.id);
               close();
             }}
-            className="text-foreground/50 hover:bg-muted flex h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-bold hover:text-red-500"
-          >
-            <Trash2 className="h-4 w-4" />
-            Remove
-          </button>
+          />
         </div>
       </div>
 

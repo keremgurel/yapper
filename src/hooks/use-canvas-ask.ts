@@ -27,6 +27,8 @@ export interface CanvasAskReply {
   actions: CanvasAction[];
   note: string | null;
   used: BrainUsed | null;
+  /** The exchange as the server saved it to the idea's thread, when it did. */
+  messages: unknown[] | null;
 }
 
 function readUsed(data: Record<string, unknown>): BrainUsed | null {
@@ -56,6 +58,7 @@ export function useCanvasAsk() {
     instruction: string,
     context: CanvasAskContext,
     target: number | null,
+    contentId: string | null = null,
   ): Promise<CanvasAskReply | null> => {
     if (inFlight.current || !instruction.trim()) return null;
     inFlight.current = true;
@@ -73,6 +76,7 @@ export function useCanvasAsk() {
           originalNote: context.originalNote,
           source: context.source,
           target,
+          contentId,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as Record<
@@ -95,6 +99,7 @@ export function useCanvasAsk() {
         actions: parseCanvasActions(data, context.blocks.length),
         note: typeof data.note === "string" ? data.note : null,
         used: readUsed(data),
+        messages: Array.isArray(data.messages) ? data.messages : null,
       };
     } catch {
       setError("failed");

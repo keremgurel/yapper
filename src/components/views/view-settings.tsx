@@ -1,6 +1,7 @@
 "use client";
 
-import { Settings2, Trash2 } from "lucide-react";
+import { DeleteButton } from "@/components/ui/delete-button";
+import { Settings2 } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAutosave } from "@/hooks/use-autosave";
 import { formatTone, statusTone } from "@/components/studio-ui";
@@ -244,17 +245,15 @@ export default function ViewSettings({
             </Field>
           )}
 
-          <div className="border-border/60 border-t pt-2">
-            <Button
-              type="button"
-              variant="ghost"
+          <div className="border-border/60 flex items-center gap-2 border-t pt-2">
+            <DeleteButton
               size="sm"
-              onClick={() => void remove()}
-              className="text-muted-foreground hover:text-destructive h-7 px-2 text-xs"
-            >
-              <Trash2 aria-hidden className="h-3.5 w-3.5" />
+              label="Delete this view"
+              onConfirm={() => void remove()}
+            />
+            <span className="text-muted-foreground text-xs">
               Delete this view
-            </Button>
+            </span>
           </div>
         </fieldset>
       </PopoverContent>

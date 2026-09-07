@@ -251,3 +251,24 @@ export function blocksForRequest(blocks: CanvasBlock[]): ContentBlock[] {
       : { text: block.text.slice(0, CANVAS_LIMITS.maxText) }),
   }));
 }
+
+/** One line saying what a reply did, for a thread entry that had no note. */
+export function describeCanvasActions(actions: CanvasAction[]): string {
+  if (actions.length === 0) return "No changes.";
+  const parts = actions.map((action) => {
+    switch (action.type) {
+      case "replace":
+        return `Rewrote ${action.block.label || `block ${action.index + 1}`}`;
+      case "insert":
+      case "append":
+        return `Added ${action.block.label || "a block"}`;
+      case "hooks":
+        return action.replace
+          ? `Replaced the hooks with ${action.options.length} new ones`
+          : `Added ${action.options.length} hook${action.options.length === 1 ? "" : "s"}`;
+      case "title":
+        return `Renamed the piece to "${action.title}"`;
+    }
+  });
+  return parts.join(". ") + ".";
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import {
   ChevronRight,
   FileText,
@@ -7,7 +8,6 @@ import {
   List,
   ScrollText,
   Table2,
-  Trash2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import BlockEditor from "@/components/brain/blocks/block-editor";
@@ -99,14 +99,12 @@ export default function BlockRow({
             usage={block.usage}
             onChange={(usage) => onEdit({ usage })}
           />
-          <button
-            type="button"
-            aria-label={`Delete ${block.title || "section"}`}
-            onClick={onRemove}
-            className="text-muted-foreground hover:text-destructive rounded p-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          <DeleteButton
+            size="sm"
+            label={`Delete ${block.title || "section"}`}
+            onConfirm={onRemove}
+            className="opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100 data-[status=deleted]:opacity-100"
+          />
         </div>
       </div>
 

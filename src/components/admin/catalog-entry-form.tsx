@@ -1,7 +1,7 @@
 "use client";
 
+import { DeleteButton } from "@/components/ui/delete-button";
 import { Chip } from "@/components/studio-ui";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -128,9 +128,7 @@ export default function CatalogEntryForm({
           />
           Published
         </label>
-        <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
-          Delete
-        </Button>
+        <DeleteButton size="sm" label="Delete entry" onConfirm={onDelete} />
       </div>
     </div>
   );
