@@ -22,6 +22,7 @@ const GRAPH = "https://graph.instagram.com/v21.0";
 export interface InstagramVideo {
   id: string;
   title: string;
+  caption: string;
   thumbnail: string | null;
   viewCount: number;
   publishedAt: string;
@@ -73,6 +74,7 @@ export function mapInstagramMedia(data: InstagramMedia[]): InstagramVideo[] {
     .map((m) => ({
       id: m.id,
       title: captionToTitle(m.caption),
+      caption: m.caption ?? "",
       thumbnail: m.thumbnail_url ?? null,
       viewCount: 0,
       publishedAt: m.timestamp ?? "",

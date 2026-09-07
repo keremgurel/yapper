@@ -23,7 +23,7 @@ describe("Poster thumbnail defaults", () => {
 });
 
 describe("custom thumbnail selection", () => {
-  it.each(["uploaded", "generated"] as const)(
+  it.each(["uploaded", "generated", "original"] as const)(
     "preserves %s artwork when the selected video frame changes",
     (source) => {
       const draft = { ...defaultCover("Video"), source, image: "custom-image" };

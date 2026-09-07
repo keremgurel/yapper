@@ -3,10 +3,8 @@
 import { useCallback, useState } from "react";
 import type { CaptionSet } from "@/components/publish/captions/caption-draft";
 import type { CrossPostTarget } from "@/components/publish/compose/types";
-import {
-  defaultCover,
-  type CoverDraft,
-} from "@/components/publish/poster/cover-draft";
+import { type CoverDraft } from "@/components/publish/poster/cover-draft";
+import { sourceCover, sourceCaptions } from "./source-defaults";
 import type { PosterVideo } from "@/components/publish/poster/poster-video";
 import { renderCover } from "@/components/publish/poster/render-cover";
 import { uploadThumbnailFile } from "@/hooks/use-thumbnail-upload";
@@ -33,7 +31,7 @@ export function usePublishPrep() {
       setWarning("");
       const prepared = await Promise.all(
         videos.map(async (video) => {
-          const cover = covers[video.id] ?? defaultCover(video.title);
+          const cover = covers[video.id] ?? sourceCover(video);
           let thumbnail: { key: string; previewUrl: string } | undefined;
           if (cover.image) {
             try {
@@ -47,7 +45,7 @@ export function usePublishPrep() {
             id: video.id,
             title: video.title,
             initialTitle: cover.headline || video.title,
-            captions: captions[video.id],
+            captions: { ...sourceCaptions(video), ...captions[video.id] },
             submissionId:
               video.kind === "yapper" ? video.submissionId : undefined,
             mediaKey: video.kind === "platform" ? video.mediaKey : undefined,
@@ -59,7 +57,9 @@ export function usePublishPrep() {
         }),
       );
       if (
-        videos.some((video) => covers[video.id]?.image) &&
+        videos.some(
+          (video) => (covers[video.id] ?? sourceCover(video)).image,
+        ) &&
         prepared.some((item) => !item.thumbnailKey)
       ) {
         setWarning(

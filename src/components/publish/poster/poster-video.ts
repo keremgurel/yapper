@@ -26,6 +26,7 @@ export type PosterVideo =
       title: string;
       platform: PublishPlatform;
       sourceId: string;
+      caption?: string;
       thumbnail: string | null;
       viewCount: number;
       publishedAt: string;
@@ -69,6 +70,7 @@ export function fromPlatform(
     title: video.title.trim() || "Untitled",
     platform,
     sourceId: video.id,
+    caption: video.caption,
     thumbnail: video.thumbnail,
     viewCount: video.viewCount,
     publishedAt: video.publishedAt,

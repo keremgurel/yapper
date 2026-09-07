@@ -11,10 +11,12 @@ import { useCaptionDrafts } from "@/components/publish/captions/use-caption-draf
 import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
 import CaptionBriefDisclosure from "@/components/publish/poster/caption-brief-disclosure";
 import CoverStudio from "@/components/publish/poster/cover/cover-studio";
+import { type CoverDraft } from "@/components/publish/poster/cover-draft";
 import {
-  defaultCover,
-  type CoverDraft,
-} from "@/components/publish/poster/cover-draft";
+  originalThumbnail,
+  sourceCaptions,
+  sourceCover,
+} from "@/components/publish/poster/source-defaults";
 import DestinationColumn from "@/components/publish/poster/destination-column";
 import PosterActions from "@/components/publish/poster/poster-actions";
 import {
@@ -97,7 +99,8 @@ export default function PosterWorkspace() {
   );
 
   const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
-  const { generating, error, generate } = useCaptionGeneration(applyGenerated);
+  const { generating, reading, error, generate } =
+    useCaptionGeneration(applyGenerated);
   const prep = usePublishPrep();
 
   const openUploaded = useCallback(
@@ -137,9 +140,7 @@ export default function PosterWorkspace() {
     if (video) bench.setActive(fromPostable(video));
   }, [requested, library, bench]);
 
-  const cover = active
-    ? (covers[active.id] ?? defaultCover(active.title))
-    : null;
+  const cover = active ? (covers[active.id] ?? sourceCover(active)) : null;
   // Default destinations: every connected channel except the one the video is
   // already on. That is the whole point of reposting.
   const destinations = useMemo(() => {
@@ -170,22 +171,30 @@ export default function PosterWorkspace() {
     [active, destinations],
   );
 
-  const draftCaptions = () => {
+  const captions = active
+    ? { ...sourceCaptions(active), ...byVideo[active.id] }
+    : {};
+
+  const draftCaptions = (titleOnly = false) => {
     if (!active) return;
     void generate(
       [
         {
           id: active.id,
           title: active.title,
+          mediaKey: active.kind === "platform" ? active.mediaKey : undefined,
+          sourceCaption:
+            active.kind === "platform" ? active.caption : undefined,
           // Present for a library take; it lets the server read the script
           // instead of writing from the title alone.
           contentItemId:
             active.kind === "yapper" ? active.contentItemId : undefined,
         },
       ],
-      [...destinations],
+      titleOnly ? ["youtube"] : [...destinations],
       true,
       brief,
+      titleOnly,
     );
   };
 
@@ -331,6 +340,7 @@ export default function PosterWorkspace() {
                 key={active.id}
                 draft={cover}
                 media={mediaOf(active)}
+                originalImage={originalThumbnail(active)}
                 onChange={(next) =>
                   setCovers((current) => ({ ...current, [active.id]: next }))
                 }
@@ -342,7 +352,21 @@ export default function PosterWorkspace() {
             <Section title="Send to">
               <div className="space-y-4">
                 <DestinationColumn
-                  captions={byVideo[active.id]}
+                  captions={captions}
+                  hasOriginalCaption={
+                    active.kind === "platform" && Boolean(active.caption)
+                  }
+                  onUseOriginalCaption={() =>
+                    applyGenerated(
+                      active.id,
+                      Object.values(sourceCaptions(active)).map((caption) => ({
+                        ...caption,
+                        title: captions[caption.platform]?.title ?? "",
+                      })),
+                    )
+                  }
+                  onGenerateTitle={() => draftCaptions(true)}
+                  reading={reading}
                   chosen={destinations}
                   connected={connectedPlatforms}
                   hasCover={Boolean(cover.image)}
@@ -356,8 +380,14 @@ export default function PosterWorkspace() {
                   onToggle={toggleDestination}
                   onConnect={beginConnect}
                   onCaptionChange={(caption) => setCaption(active.id, caption)}
-                  onGenerate={draftCaptions}
-                  onPublish={() => void prep.prepare([active], covers, byVideo)}
+                  onGenerate={() => draftCaptions()}
+                  onPublish={() =>
+                    void prep.prepare(
+                      [active],
+                      { ...covers, [active.id]: cover },
+                      { ...byVideo, [active.id]: captions },
+                    )
+                  }
                 />
                 <CaptionBriefDisclosure
                   value={brief}

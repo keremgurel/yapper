@@ -27,12 +27,14 @@ import { useThumbnailGeneration } from "./use-thumbnail-generation";
  */
 export default function CoverStudio({
   draft,
+  originalImage,
   media,
   onChange,
   onDownload,
   onFramePendingChange,
 }: {
   draft: CoverDraft;
+  originalImage?: string;
   media: CoverMediaRef;
   onChange: (draft: CoverDraft) => void;
   onDownload: () => void;
@@ -93,6 +95,17 @@ export default function CoverStudio({
               })
             }
           />
+          {originalImage && draft.source !== "original" ? (
+            <button
+              type="button"
+              onClick={() =>
+                onChange({ ...draft, image: originalImage, source: "original" })
+              }
+              className="text-muted-foreground hover:text-foreground mx-auto my-2 block text-xs underline underline-offset-4"
+            >
+              Use original Instagram thumbnail
+            </button>
+          ) : null}
           <ThumbnailUpload
             replacing={draft.source === "uploaded"}
             disabled={generation.generating}

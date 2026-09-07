@@ -54,7 +54,13 @@ export async function POST(req: Request): Promise<Response> {
   if (!title) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  const platforms = platformsOf(body.platforms);
+  const platforms =
+    body.titleOnly === true
+      ? ["youtube" as const]
+      : platformsOf(body.platforms);
+  if (body.requireTranscript === true && !str(body.transcript, 24000)) {
+    return Response.json({ error: "transcript_required" }, { status: 422 });
+  }
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
@@ -70,40 +76,40 @@ export async function POST(req: Request): Promise<Response> {
   if (access.response) return access.response;
   const { reservation } = access;
 
-  // The library item carries what the video actually says. Read server-side and
-  // scoped to the caller, so a client cannot caption someone else's script.
-  let script: string | undefined;
-  let hook: string | undefined;
-  let originalNote: string | undefined;
-  let spoken: string | undefined;
-  let pillar: string | undefined;
-  const itemId = str(body.contentItemId, 100);
-  if (itemId) {
-    const item = await getContentItem(userId, itemId);
-    if (item) {
-      script = item.script ?? undefined;
-      // What was actually said beats what was planned. The inspiration's own
-      // transcript is someone else's video and is never captioned from.
-      spoken = (await loadRecordedTranscript(userId, item)) ?? undefined;
-      hook = hookTexts(normalizeBody(item).hooks)[0];
-      originalNote = item.originalNote || undefined;
-      pillar = item.pillar ?? undefined;
-    }
-  }
-
-  const styleSamples = body.matchStyle
-    ? await collectStyleSamples(userId, platforms)
-    : undefined;
-
-  const brain = await getBrainContextSafe(userId, {
-    surface: "caption",
-    task: [title, hook, (spoken ?? script)?.slice(0, 1200), pillar]
-      .filter(Boolean)
-      .join("\n"),
-    signal: req.signal,
-  });
-
   try {
+    // The library item carries what the video actually says. Read server-side and
+    // scoped to the caller, so a client cannot caption someone else's script.
+    let script: string | undefined;
+    let hook: string | undefined;
+    let originalNote: string | undefined;
+    let spoken = str(body.transcript, 24000);
+    let pillar: string | undefined;
+    const itemId = str(body.contentItemId, 100);
+    if (itemId) {
+      const item = await getContentItem(userId, itemId);
+      if (item) {
+        script = item.script ?? undefined;
+        // What was actually said beats what was planned. The inspiration's own
+        // transcript is someone else's video and is never captioned from.
+        spoken = (await loadRecordedTranscript(userId, item)) ?? undefined;
+        hook = hookTexts(normalizeBody(item).hooks)[0];
+        originalNote = item.originalNote || undefined;
+        pillar = item.pillar ?? undefined;
+      }
+    }
+
+    const styleSamples = body.matchStyle
+      ? await collectStyleSamples(userId, platforms)
+      : undefined;
+
+    const brain = await getBrainContextSafe(userId, {
+      surface: "caption",
+      task: [title, hook, (spoken ?? script)?.slice(0, 1200), pillar]
+        .filter(Boolean)
+        .join("\n"),
+      signal: req.signal,
+    });
+
     const captions = await generateCaptions(
       {
         title,
@@ -117,6 +123,8 @@ export async function POST(req: Request): Promise<Response> {
         platforms,
         styleSamples,
         instructions: str(body.instructions, 2000),
+        sourceCaption: str(body.sourceCaption, 5000),
+        titleOnly: body.titleOnly === true,
       },
       req.signal,
     );

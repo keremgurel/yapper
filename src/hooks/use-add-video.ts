@@ -178,7 +178,7 @@ export function useAddVideo(
             .trim();
           if (!transcript) throw new Error("transcript_failed");
           const updated = await patchContent(linked.id, {
-            sourceTranscript: transcript,
+            recordedTranscript: transcript,
             transcriptStatus: "ready",
           });
           onUpdated?.(updated);

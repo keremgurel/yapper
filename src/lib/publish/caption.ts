@@ -62,7 +62,17 @@ export async function generateCaptions(
     },
   );
   if (!response.ok) throw new Error(`caption_${response.status}`);
-  return parseCaptions(data.choices?.[0]?.message?.content ?? "{}", platforms);
+  const captions = parseCaptions(
+    data.choices?.[0]?.message?.content ?? "{}",
+    platforms,
+  );
+  if (
+    input.titleOnly &&
+    !captions.find((caption) => caption.platform === "youtube")?.title.trim()
+  ) {
+    throw new Error("caption_empty");
+  }
+  return captions;
 }
 
 /**

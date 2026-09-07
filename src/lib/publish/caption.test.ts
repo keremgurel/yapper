@@ -1,5 +1,9 @@
-import { describe, expect, it } from "vitest";
-import { captionFits, renderCaption } from "@/lib/publish/caption";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  captionFits,
+  generateCaptions,
+  renderCaption,
+} from "@/lib/publish/caption";
 import type { PlatformCaption } from "@/lib/publish/caption-prompt";
 
 const caption = (over: Partial<PlatformCaption> = {}): PlatformCaption => ({
@@ -52,5 +56,46 @@ describe("captionFits", () => {
     expect(
       captionFits(caption({ platform: "youtube", title: "t".repeat(100) })),
     ).toBe(true);
+  });
+});
+
+describe("title-only generation", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+  it("rejects a response without a title instead of clearing the creator's title", async () => {
+    vi.stubEnv("SURPLUS_API_KEY", "test");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  captions: [
+                    {
+                      platform: "youtube",
+                      title: "",
+                      body: "Unexpected rewrite",
+                      hashtags: [],
+                    },
+                  ],
+                }),
+              },
+            },
+          ],
+        }),
+      ),
+    );
+    await expect(
+      generateCaptions({
+        title: "ep 11.",
+        platforms: ["youtube"],
+        titleOnly: true,
+        script: "Actual speech",
+      }),
+    ).rejects.toThrow("caption_empty");
   });
 });
