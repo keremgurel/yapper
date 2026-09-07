@@ -13,7 +13,8 @@ struct RetouchEditingTests {
     func split() {
         let source = clip()
         var project = EditorProject(clips: [source])
-        #expect(project.split(clipID: source.id, atTimelineTime: 3))
+        let didSplit = project.split(clipID: source.id, atTimelineTime: 3)
+        #expect(didSplit)
         #expect(project.clips.count == 2)
         #expect(project.clips.allSatisfy { $0.resolvedRetouch == settings })
         #expect(Set(project.clips.map(\.id)).count == 2)
