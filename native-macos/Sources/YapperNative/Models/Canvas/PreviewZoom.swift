@@ -6,11 +6,15 @@ import Foundation
 /// finished video shows, and this is only how large the finished video is drawn
 /// while you work on it. Exporting cannot see it at all.
 ///
-/// It exists because a picture zoomed past the frame has its corners outside
-/// the frame, and a corner outside the frame is a corner you cannot reach.
-/// Pulling the stage back puts them back on screen. Fitted is as large as it
-/// goes: the panel does not scroll, so growing past the fit would push the
-/// picture under the timeline.
+/// Zooming out exists because a picture zoomed past the frame has its corners
+/// outside the frame, and a corner outside the frame is a corner you cannot
+/// reach. Pulling the stage back puts them back on screen.
+///
+/// Zooming in exists for the opposite reason. Some of what the editor does is
+/// measured in single pixels of a face: whether a blemish went, whether an edge
+/// around a cut-out speaker is clean. Fitted, a 3072-pixel-tall frame is drawn
+/// about 700 points high, and at that size neither is visible at all. Past the
+/// fit the stage scrolls, which is what makes going past it worth anything.
 struct PreviewZoom: Equatable, Sendable {
     /// As large as the panel allows, which is where the preview starts.
     static let fit = PreviewZoom(scale: 1)
@@ -19,7 +23,10 @@ struct PreviewZoom: Equatable, Sendable {
     /// its corners still on screen, and is small enough that going further
     /// would be looking at a thumbnail.
     static let minimumScale = 0.25
-    static let maximumScale = 1.0
+
+    /// Four times fitted, which on a 4K portrait frame in a laptop-sized panel
+    /// is around actual pixels. Further than that is looking at the codec.
+    static let maximumScale = 4.0
 
     /// One press is a visible step without being a jump.
     static let step = 0.1
@@ -30,8 +37,14 @@ struct PreviewZoom: Equatable, Sendable {
         self.scale = min(Self.maximumScale, max(Self.minimumScale, scale))
     }
 
-    var isFit: Bool { scale >= Self.maximumScale }
+    /// Exactly fitted, which is what the readout resets to.
+    var isFit: Bool { scale == 1 }
+    var isMaximum: Bool { scale >= Self.maximumScale }
     var isMinimum: Bool { scale <= Self.minimumScale }
+
+    /// True when the stage is larger than the panel holding it, which is the
+    /// only time there is anywhere to scroll to.
+    var isPastFit: Bool { scale > 1 }
 
     /// What the readout shows: 100% is fitted to the panel, not the footage's
     /// own pixels, which no one is counting here.

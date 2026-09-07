@@ -47,6 +47,23 @@ extension EditorSession {
         }
     }
 
+    /// Gives every clip the retouch settings of the one under the playhead.
+    func applyRetouchToAllClips() {
+        guard let clip = backgroundClip else { return }
+        let settings = clip.resolvedRetouch
+        let updated = ApplyToAll.retouch(settings, to: project.clips)
+        let changed = ApplyToAll.changeCount(from: project.clips, to: updated)
+        guard changed > 0 else { return }
+
+        scheduleCompositionCommitResolvingStatus { [self] in
+            updateProject { project in
+                project.clips = ApplyToAll.retouch(settings, to: project.clips)
+                project.updatedAt = Date()
+            }
+            return Self.status("Retouch", changed: changed, noun: "clip")
+        }
+    }
+
     /// Gives every clip the background setting of the one under the playhead.
     func applyBackgroundToAllClips() {
         guard let clip = backgroundClip else { return }

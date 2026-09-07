@@ -716,7 +716,8 @@ enum CompositionBuilder {
                     opacity: isMainTrackHidden ? 0 : 1,
                     // The clip with its background thrown away: one copy, cut
                     // out, with the backdrop showing through what is gone.
-                    matte: segment.clip.removesBackground
+                    matte: segment.clip.removesBackground,
+                    retouch: segment.clip.resolvedRetouch
                 )
             )
             // The speaker again, cut out, over the overlays that asked to sit
@@ -730,7 +731,11 @@ enum CompositionBuilder {
                         endTransform: mainEnd == mainStart ? nil : mainEnd,
                         cropRect: nil,
                         opacity: 1,
-                        matte: true
+                        matte: true,
+                        // Retouched to match the copy underneath. This is the
+                        // copy anyone actually sees, so leaving it off here
+                        // would make the slider look broken.
+                        retouch: segment.clip.resolvedRetouch
                     ),
                     at: matteIndex
                 )
