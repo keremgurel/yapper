@@ -40,18 +40,27 @@ export async function POST(req: Request): Promise<Response> {
 
   let body: unknown;
   try {
-    body = await readBoundedJson(req, { maxBytes: 4 * 1024 });
+    body = await readBoundedJson(req, { maxBytes: 16 * 1024 });
   } catch (error) {
     const response = requestBodyErrorResponse(error);
     if (response) return response;
     throw error;
   }
-  const bytes = (body as { bytes?: unknown } | null)?.bytes;
+  const value = body as { bytes?: unknown; sizes?: unknown } | null;
+  const batch = value?.sizes !== undefined;
+  const sizes = batch ? value?.sizes : [value?.bytes];
   if (
-    typeof bytes !== "number" ||
-    !Number.isInteger(bytes) ||
-    bytes <= 0 ||
-    bytes > MAX_AUDIO_BYTES
+    !Array.isArray(sizes) ||
+    sizes.length === 0 ||
+    sizes.length > 648 ||
+    !sizes.every(
+      (bytes) =>
+        typeof bytes === "number" &&
+        Number.isInteger(bytes) &&
+        bytes > 0 &&
+        bytes <= MAX_AUDIO_BYTES,
+    ) ||
+    sizes.reduce((sum, bytes) => sum + bytes, 0) > 256 * 1024 * 1024
   ) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
@@ -62,12 +71,19 @@ export async function POST(req: Request): Promise<Response> {
   const spendLimited = await guardProviderSpend(req, userId, "transcribe");
   if (spendLimited) return spendLimited;
 
-  const key = transcriptionKey(userId, randomUUID());
-  const url = await presignUpload(
-    key,
-    "audio/mp4",
-    bytes,
-    UPLOAD_WINDOW_SECONDS,
+  // One logical upload plan consumes one rate-limit token. Charging every
+  // small recovery excerpt separately exhausts the limit on a single video.
+  const tickets = await Promise.all(
+    sizes.map(async (bytes: number) => {
+      const key = transcriptionKey(userId, randomUUID());
+      const url = await presignUpload(
+        key,
+        "audio/mp4",
+        bytes,
+        UPLOAD_WINDOW_SECONDS,
+      );
+      return { key, url };
+    }),
   );
-  return Response.json({ key, url });
+  return Response.json(batch ? { tickets } : tickets[0]);
 }

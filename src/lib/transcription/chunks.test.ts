@@ -47,3 +47,28 @@ describe("mergeAsrChunks", () => {
     expect(merged.heardSec).toBe(16);
   });
 });
+
+it("does not erase a real repeated word near a chunk seam", () => {
+  const result = mergeAsrChunks([
+    {
+      offset: 0,
+      duration: 10,
+      heardSec: 10,
+      words: [{ text: "that", start: 7.7, end: 7.95 }],
+    },
+    {
+      offset: 6,
+      duration: 10,
+      heardSec: 10,
+      words: [
+        { text: "that", start: 1.94, end: 2.06 },
+        { text: "works", start: 2.07, end: 2.5 },
+      ],
+    },
+  ]);
+  expect(result.words.map((word) => word.text)).toEqual([
+    "that",
+    "that",
+    "works",
+  ]);
+});

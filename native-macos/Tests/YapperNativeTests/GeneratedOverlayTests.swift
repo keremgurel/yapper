@@ -110,6 +110,27 @@ struct GeneratedOverlayTests {
         #expect(!GeneratedOverlayCommand.creates("place my overlays"))
     }
 
+    @Test func placementLanguageDoesNotStartVisualGeneration() {
+        for instruction in [
+            "put all the overlays we got where they make sense. use sound effects with them",
+            "place the overlays wherever it makes sense",
+            "add sound effects with the overlays",
+            "make sure the overlays do not cover my face",
+            "use the imported charts and add a pop to each",
+            "place my overlays",
+        ] {
+            #expect(!GeneratedOverlayCommand.creates(instruction))
+            #expect(!GeneratedOverlayCommand.creates(instruction, hasImportedMedia: true))
+        }
+        #expect(!GeneratedOverlayCommand.creates("add overlays where they fit", hasImportedMedia: true))
+        #expect(!GeneratedOverlayCommand.creates("add an animated overlay", hasImportedMedia: true))
+        for instruction in ["create a new overlay", "make me a chart", "design a branded visual",
+                            "animate the numbers from 1200 to 2850", "add a new animated overlay"] {
+            #expect(GeneratedOverlayCommand.creates(instruction, hasImportedMedia: true))
+        }
+        #expect(GeneratedOverlayCommand.creates("add an animated overlay"))
+    }
+
     @Test func deletingAnElementDoesNotDeleteTheAsset() {
         #expect(GeneratedOverlayCommand.removesWholeAsset("remove from the video"))
         #expect(GeneratedOverlayCommand.removesWholeAsset("delete"))

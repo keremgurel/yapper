@@ -10,9 +10,8 @@ import Foundation
 /// on a a monthly or weekly weekly plan. Plan", and captions and cuts inherit
 /// it.
 ///
-/// The tell is the overlap. Two words genuinely said one after another do not
-/// occupy the same instant, so a repeat that starts before its twin has
-/// finished is the transcriber speaking twice, not the creator.
+/// Substantial overlap identifies a doubled emission. ASR timestamps have
+/// jitter: a tiny overlap at the boundary can still be two real words.
 enum HeardWords {
     static func withoutDoubledEmissions(_ words: [TranscriptWord]) -> [TranscriptWord] {
         var kept: [TranscriptWord] = []
@@ -21,7 +20,9 @@ enum HeardWords {
                last.mediaID == word.mediaID,
                normalized(last.text) == normalized(word.text),
                !normalized(word.text).isEmpty,
-               word.start < last.end
+               min(last.end, word.end) - max(last.start, word.start) >=
+                   0.5 * min(last.end - last.start, word.end - word.start),
+               min(last.end, word.end) > max(last.start, word.start)
             {
                 // Keep whichever reaches further, so the pair's whole extent
                 // survives on the one word that remains.

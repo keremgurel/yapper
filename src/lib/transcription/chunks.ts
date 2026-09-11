@@ -48,12 +48,16 @@ export function mergeAsrChunks(chunks: TimedAsrChunk[]): AsrResult {
   for (const candidate of shifted.flatMap((chunk) => chunk.words)) {
     const token = normalize(candidate.text);
     if (!token) continue;
-    const at = midpoint(candidate);
     if (
       merged.some(
         (word) =>
           normalize(word.text) === token &&
-          Math.abs(midpoint(word) - at) <= 0.55,
+          Math.min(word.end, candidate.end) -
+            Math.max(word.start, candidate.start) >=
+            Math.min(word.end - word.start, candidate.end - candidate.start) *
+              0.5 &&
+          Math.min(word.end, candidate.end) >
+            Math.max(word.start, candidate.start),
       )
     ) {
       continue;

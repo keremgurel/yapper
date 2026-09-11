@@ -30,9 +30,10 @@ struct PersistentEditorHost: NSViewRepresentable {
     }
 
     @MainActor
-    final class Container: NSView {
+    final class Container: NSView, EditorKeyboardCommandScope {
         private let editor: NSHostingView<EditorRootView>
         private var isActive: Bool
+        var editorKeyboardCommandsEnabled: Bool { isActive }
         private var lastActiveSize = CGSize(width: 1_100, height: 700)
 
         init(session: EditorSession, isActive: Bool) {

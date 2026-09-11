@@ -16,17 +16,17 @@ enum MeasuredSilence {
         settings: SilenceScan.Settings = SilenceScan.Settings()
     ) -> [(Double, Double)] {
         guard !envelope.loudness.isEmpty else { return [] }
-        // The broad silence line admits soft consonants, but it also admits
-        // low room-noise spikes long after a word's real release. Use the
-        // stronger "worth hearing" line to find the word's audible extent;
-        // its playback anchor still protects every word when the signal is
-        // unusually soft.
+        // A known word's quiet syllables and release are speech, even when
+        // they would not make a wordless noise island worth keeping. Using
+        // the stronger island threshold here let island absorption cut sound
+        // that the silence detector itself classified as audible. Protect
+        // words with the same threshold used to detect silence.
         let lively = SilenceScan.livelyLine(for: envelope, settings: settings)
         let heard = SpokenExtent.audible(
             words: words,
             loudness: envelope.loudness,
             hop: envelope.hop,
-            threshold: lively.line
+            threshold: SilenceScan.threshold(loudness: envelope.loudness, settings: settings)
         )
         // Keep frame-sized quiet runs until after noise-island absorption. If
         // the minimum is enforced first, 40 ms of quiet, a 20 ms room-noise

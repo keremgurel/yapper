@@ -21,9 +21,9 @@ interface DeepgramResponse {
   results?: { channels?: { alternatives?: { words?: DeepgramWord[] }[] }[] };
 }
 
-function listenEndpoint(keyterms: string[]): URL {
+function listenEndpoint(keyterms: string[], model = "nova-3"): URL {
   const endpoint = new URL("https://api.deepgram.com/v1/listen");
-  endpoint.searchParams.set("model", "nova-3");
+  endpoint.searchParams.set("model", model);
   endpoint.searchParams.set("smart_format", "true");
   endpoint.searchParams.set("punctuate", "true");
   // Editing needs a verbatim record, not a polished meeting transcript.
@@ -31,7 +31,11 @@ function listenEndpoint(keyterms: string[]): URL {
   // disappear from the transcript and can cause the edit model to cut through
   // a real hesitation or sentence onset.
   endpoint.searchParams.set("filler_words", "true");
-  for (const term of keyterms) endpoint.searchParams.append("keyterm", term);
+  for (const term of keyterms)
+    endpoint.searchParams.append(
+      model === "nova-2" ? "keywords" : "keyterm",
+      term,
+    );
   return endpoint;
 }
 
@@ -87,9 +91,10 @@ export async function viaDeepgramURL(
   keyterms: string[],
   signal: AbortSignal,
   timeoutMs: number,
+  model = "nova-3",
 ): Promise<AsrResult> {
   const { response, data } = await fetchBoundedJson<DeepgramResponse>(
-    listenEndpoint(keyterms),
+    listenEndpoint(keyterms, model),
     {
       method: "POST",
       headers: {

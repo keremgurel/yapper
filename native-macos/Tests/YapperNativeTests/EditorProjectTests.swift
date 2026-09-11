@@ -1483,11 +1483,8 @@ struct EditorProjectTests {
         ) == Set([clip, overlay]))
     }
 
-    /// The handles the word-gap fallback leaves, for media whose audio cannot
-    /// be measured. They are tighter than they were: a take that keeps 100ms of
-    /// room tone at every cut still sounds slack, and the creator asked for
-    /// less of it. 30ms before a word, 40ms after.
-    @Test func silenceDetectionLeavesTightSpeechHandles() async throws {
+    /// Without audio there is no evidence that a transcript gap is silence.
+    @Test func silenceDetectionRequiresAudioEvidence() async throws {
         let mediaID = UUID()
         let words = [
             TranscriptWord(mediaID: mediaID, text: "First", start: 0.5, end: 0.8),
@@ -1496,12 +1493,6 @@ struct EditorProjectTests {
 
         let ranges = try await AIEditService().silenceRanges(words: words, duration: 3)
 
-        #expect(ranges.count == 3)
-        #expect(abs(ranges[0].0 - 0) < 0.000_001)
-        #expect(abs(ranges[0].1 - 0.47) < 0.000_001)
-        #expect(abs(ranges[1].0 - 0.84) < 0.000_001)
-        #expect(abs(ranges[1].1 - 1.57) < 0.000_001)
-        #expect(abs(ranges[2].0 - 2.04) < 0.000_001)
-        #expect(abs(ranges[2].1 - 3) < 0.000_001)
+        #expect(ranges.isEmpty)
     }
 }

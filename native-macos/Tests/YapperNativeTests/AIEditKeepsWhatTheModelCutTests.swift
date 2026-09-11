@@ -10,6 +10,27 @@ import Testing
 /// it puts the false start straight back into the edit. Measured on a real
 /// CELPIP walkthrough, five did, and the creator saw every one of them.
 struct AIEditKeepsWhatTheModelCutTests {
+    @Test("ep12's parallel clauses survive the AI finishing pass")
+    func preservesDistinctClausesWithRepeatedOpenings() {
+        let text = "some of this worked quite well, some of it was a waste of time, and some of it was definitely better done by somebody else."
+        let words = Self.transcript(text)
+        #expect(Self.kept(EditFinishing.aiCuts([], words: words), words) == text)
+    }
+
+    @Test("similar sentences selected by the cleaner keep their distinct details")
+    func preservesSimilarSelectedSentences() {
+        let text = "I use this tool to write my scripts. I use this tool to review my edits."
+        let words = Self.transcript(text)
+        #expect(Self.kept(EditFinishing.aiCuts([], words: words), words) == text)
+    }
+
+    @Test("grammatical repeated words selected by the cleaner survive")
+    func preservesGrammaticalRepetition() {
+        let text = "I knew that that was the problem. I had had enough."
+        let words = Self.transcript(text)
+        #expect(Self.kept(EditFinishing.aiCuts([], words: words), words) == text)
+    }
+
     private static func transcript(_ text: String) -> [TranscriptWord] {
         let media = UUID()
         return text.split(separator: " ").enumerated().map { index, word in

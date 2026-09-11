@@ -639,7 +639,7 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// Bump when the bytes supplied to ASR materially change. Existing
     /// projects then get one clean refresh the next time one-click relies on
     /// their transcript, without charging for a fresh transcript forever.
-    static let currentTranscriptionRevision = 3
+    static let currentTranscriptionRevision = 4
 
     func hasCurrentTranscription(for mediaID: UUID) -> Bool {
         (transcript ?? []).contains { $0.mediaID == mediaID }

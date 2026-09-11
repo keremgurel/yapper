@@ -32,6 +32,13 @@ import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { getOwnedMediaKey } from "@/lib/db/submissions";
 import { mergeAsrChunks, type TimedAsrChunk } from "@/lib/transcription/chunks";
 
+import {
+  uncoveredSpeech,
+  recoverWords,
+  mapTranscriptionWork,
+  type SpeechRange,
+} from "@/lib/transcription/coverage";
+
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
@@ -113,13 +120,15 @@ export async function POST(req: Request): Promise<Response> {
   let contentType = "audio/mp4";
   let storedChunks: { key: string; offset: number; duration: number }[] = [];
   let durableVideoMaster = false;
+  let recoveryChunks: { key: string; offset: number; duration: number }[] = [];
+  let speech: SpeechRange[] | undefined;
 
   if (stored) {
     if (!r2Configured())
       return Response.json({ error: "no_storage" }, { status: 501 });
     let body: unknown;
     try {
-      body = await readBoundedJson(req, { maxBytes: 4 * 1024 });
+      body = await readBoundedJson(req, { maxBytes: 256 * 1024 });
     } catch (error) {
       const response = requestBodyErrorResponse(error);
       if (response) return response;
@@ -130,6 +139,8 @@ export async function POST(req: Request): Promise<Response> {
       chunks?: unknown;
       submissionId?: unknown;
       mediaKey?: unknown;
+      recoveryChunks?: unknown;
+      speech?: unknown;
     } | null;
     const key = value?.key;
     const chunks = value?.chunks;
@@ -162,6 +173,12 @@ export async function POST(req: Request): Promise<Response> {
             index &&
           Number.isFinite(chunk.offset) &&
           chunk.offset >= 0 &&
+          (index === 0
+            ? chunk.offset === 0
+            : chunk.offset <=
+              parsed[index - 1]!.offset +
+                parsed[index - 1]!.duration +
+                0.001) &&
           (index === 0 || chunk.offset > parsed[index - 1]!.offset) &&
           Number.isFinite(chunk.duration) &&
           chunk.duration > 0 &&
@@ -198,6 +215,61 @@ export async function POST(req: Request): Promise<Response> {
     } else {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
+    if (value?.recoveryChunks !== undefined || value?.speech !== undefined) {
+      const recovery = value.recoveryChunks;
+      const ranges = value.speech;
+      const duration = Math.max(
+        ...storedChunks.map((chunk) => chunk.offset + chunk.duration),
+      );
+      if (
+        durableVideoMaster ||
+        !Array.isArray(chunks) ||
+        !Array.isArray(recovery) ||
+        recovery.length > 600 ||
+        !Array.isArray(ranges) ||
+        ranges.length > 7200
+      ) {
+        return Response.json({ error: "bad_request" }, { status: 400 });
+      }
+      const keys = new Set(storedChunks.map((chunk) => chunk.key));
+      for (const chunk of recovery) {
+        if (
+          !chunk ||
+          typeof chunk.key !== "string" ||
+          !isTranscriptionKey(userId, chunk.key) ||
+          keys.has(chunk.key) ||
+          !Number.isFinite(chunk.offset) ||
+          chunk.offset < 0 ||
+          !Number.isFinite(chunk.duration) ||
+          chunk.duration <= 0 ||
+          chunk.duration > 10.01 ||
+          chunk.offset + chunk.duration > duration + 0.001
+        ) {
+          return Response.json({ error: "bad_request" }, { status: 400 });
+        }
+        keys.add(chunk.key);
+      }
+      // Limit duplicated audio as well as object count, so a recovery plan
+      // cannot multiply provider work without bound.
+      if (
+        recovery.reduce((sum, chunk) => sum + chunk.duration, 0) >
+          duration * 2 + 10 ||
+        !ranges.every(
+          (range, index) =>
+            Array.isArray(range) &&
+            range.length === 2 &&
+            range.every(Number.isFinite) &&
+            range[0] >= 0 &&
+            range[1] > range[0] &&
+            range[1] <= duration + 0.1 &&
+            (index === 0 || range[0] >= ranges[index - 1][1]),
+        )
+      ) {
+        return Response.json({ error: "bad_request" }, { status: 400 });
+      }
+      recoveryChunks = recovery;
+      speech = ranges;
+    }
   } else {
     try {
       const body = await readBoundedBody(req, {
@@ -232,15 +304,34 @@ export async function POST(req: Request): Promise<Response> {
     ) => Promise<AsrResult>,
     timeoutMs: number,
   ): Promise<AsrResult> => {
-    const completed = await Promise.all(
-      storedChunks.map(
-        async (chunk): Promise<TimedAsrChunk> => ({
-          ...(await run(chunk, timeoutMs)),
+    const completed = await mapTranscriptionWork(
+      storedChunks,
+      async (chunk): Promise<TimedAsrChunk> => {
+        const remaining = Math.min(timeoutMs, providerDeadline - Date.now());
+        if (remaining <= 0 || req.signal.aborted)
+          throw new OutboundHttpError(
+            req.signal.aborted ? "aborted" : "timeout",
+          );
+        return {
+          ...(await run(chunk, remaining)),
           offset: chunk.offset,
           duration: chunk.duration,
-        }),
-      ),
+        };
+      },
     );
+    // The last chunk reaching the end says nothing about earlier chunks.
+    // Validate each decoded duration before merging; otherwise a truncated
+    // middle upload silently becomes missing speech in the transcript tab.
+    for (const chunk of completed) {
+      if (
+        chunk.duration > 0 &&
+        (!Number.isFinite(chunk.heardSec) ||
+          chunk.heardSec <= 0 ||
+          isAudioTruncated(chunk.duration, chunk.heardSec))
+      ) {
+        throw new Error("audio_truncated");
+      }
+    }
     return mergeAsrChunks(completed);
   };
   const providers: {
@@ -328,7 +419,7 @@ export async function POST(req: Request): Promise<Response> {
   const discard = async () => {
     if (durableVideoMaster || storedChunks.length === 0) return;
     await Promise.all(
-      storedChunks.map(async ({ key }) => {
+      [...storedChunks, ...recoveryChunks].map(async ({ key }) => {
         try {
           await discardTranscriptionAudio(key);
         } catch (error) {
@@ -348,7 +439,96 @@ export async function POST(req: Request): Promise<Response> {
       break;
     }
     try {
-      const { words, heardSec } = await provider.run(remainingMs);
+      const result = await provider.run(remainingMs);
+      const heardSec = result.heardSec;
+      let words = result.words;
+      if (speech !== undefined) {
+        // A successful HTTP response is not proof that all speech was heard.
+        // Retry only windows containing independently detected missing speech.
+        let missing = uncoveredSpeech(words, speech);
+        const pending = new Set(recoveryChunks);
+        for (let round = 0; round < 2 && missing.length > 0; round++) {
+          const selected = [
+            ...new Set(
+              missing.flatMap(([start, end]) => {
+                const center = (start + end) / 2;
+                const candidates = [...pending]
+                  .filter(
+                    (chunk) =>
+                      chunk.offset < end &&
+                      chunk.offset + chunk.duration > start,
+                  )
+                  .sort(
+                    (a, b) =>
+                      Math.abs(a.offset + a.duration / 2 - center) -
+                      Math.abs(b.offset + b.duration / 2 - center),
+                  );
+                return candidates.slice(0, 1);
+              }),
+            ),
+          ];
+          if (selected.length === 0) break;
+          const recovered = await mapTranscriptionWork(
+            selected,
+            async (chunk): Promise<TimedAsrChunk> => {
+              pending.delete(chunk);
+              const remaining = providerDeadline - Date.now();
+              if (remaining <= 0 || req.signal.aborted)
+                throw new OutboundHttpError(
+                  req.signal.aborted ? "aborted" : "timeout",
+                );
+              const result = deepgram
+                ? await viaDeepgramURL(
+                    await presignView(chunk.key, 900),
+                    deepgram,
+                    keyterms,
+                    req.signal,
+                    remaining,
+                    round === 0 ? "nova-2" : "nova-3",
+                  )
+                : await viaOpenAiCompatible(
+                    await bytes(chunk.key),
+                    groq!,
+                    "https://api.groq.com/openai/v1",
+                    "whisper-large-v3",
+                    "audio/mp4",
+                    keyterms,
+                    req.signal,
+                    remaining,
+                  );
+              if (
+                !Number.isFinite(result.heardSec) ||
+                result.heardSec <= 0 ||
+                isAudioTruncated(chunk.duration, result.heardSec)
+              )
+                throw new Error("audio_truncated");
+              return {
+                ...result,
+                offset: chunk.offset,
+                duration: chunk.duration,
+              };
+            },
+          );
+          for (const chunk of recovered.sort((a, b) => a.offset - b.offset))
+            words = recoverWords(words, chunk);
+          missing = uncoveredSpeech(words, speech);
+        }
+        if (missing.length > 0) {
+          // Do not run cleanup against an incomplete transcript or charge for
+          // a transcript we refused. A different long-context provider may
+          // still suppress the same speech, so this is terminal.
+          await refundCreditReservation(
+            userId,
+            reservation,
+            "transcription_incomplete",
+          );
+          await discard();
+          return Response.json(
+            { error: "transcription_incomplete", missing },
+            { status: 422 },
+          );
+        }
+      }
       if (req.signal.aborted) {
         throw new OutboundHttpError("aborted", { cause: req.signal.reason });
       }
@@ -370,7 +550,11 @@ export async function POST(req: Request): Promise<Response> {
         );
       }
       await discard();
-      return Response.json({ words, balance: reservation.balance });
+      return Response.json({
+        words,
+        coverageChecked: speech !== undefined,
+        balance: reservation.balance,
+      });
     } catch (e) {
       lastError = e;
       console.error(`[transcribe] ${provider.name} failed`, e);

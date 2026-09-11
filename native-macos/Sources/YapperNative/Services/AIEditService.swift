@@ -123,11 +123,13 @@ actor AIEditService {
 
     private struct TranscriptionResponse: Codable {
         let words: [RemoteWord]?
+        let coverageChecked: Bool?
     }
 
-    private struct UploadTicketRequest: Codable { let bytes: Int }
+    private struct UploadTicketBatchRequest: Codable { let sizes: [Int] }
+    private struct UploadTicketBatch: Codable { let tickets: [UploadTicket] }
 
-    private struct UploadTicket: Codable {
+    private struct UploadTicket: Codable, Sendable {
         let key: String
         let url: String
     }
@@ -140,6 +142,8 @@ actor AIEditService {
 
     private struct StoredTranscriptionRequest: Codable {
         let chunks: [StoredTranscriptionChunk]
+        let recoveryChunks: [StoredTranscriptionChunk]
+        let speech: [[Double]]
     }
 
     private struct CleanRequest: Codable {
@@ -165,14 +169,8 @@ actor AIEditService {
         let sampleRate: Int
     }
 
-    // Keep camera speech detail at its native rate. The previous forced 16 kHz
-    // path could smear quiet sentence onsets before ASR heard them.
-    // Two-minute windows are short enough that a dense run of near-identical
-    // retakes stays legible to ASR. Measured on the reported DJI source, the
-    // former three-minute window omitted an entire repeated sentence opening;
-    // this window heard both complete attempts from the exact same native PCM.
-    // Thirty seconds of overlap keeps every seam well inside another pass; the
-    // server joins all answers under one billable transcription request.
+    // Broad context supplies vocabulary. Independent acoustic coverage and
+    // short recovery windows catch restarts that broad ASR context suppresses.
     private let chunkSeconds = 120.0
     private let overlapSeconds = 30.0
     private let maximumConcurrentUploads = 3
@@ -221,6 +219,9 @@ actor AIEditService {
         // Before the decode, not after the upload: a signed-out account should
         // cost a sentence, not a minute of chunking and sending.
         try await Self.requireSession()
+        guard media.duration <= 3_600 else {
+            throw NativeEditorError.aiFailed("Transcription supports recordings up to one hour. Split this recording before editing.")
+        }
         Self.purgeStaleTranscriptionFiles()
         let keyterms = TranscriptionDictionary.keyterms(dictionary)
         return try await TranscriptionTemporaryFile.withPCMFile { temporaryURL in
@@ -233,40 +234,60 @@ actor AIEditService {
                 chunkSeconds: chunkSeconds,
                 overlapSeconds: overlapSeconds
             )
+            let speech = try TranscriptionSpeechCoverage.measure(url: media.url)
+            let recovery = TranscriptionChunkPlan.make(
+                byteCount: decoded.byteCount, sampleRate: decoded.sampleRate,
+                chunkSeconds: 10, overlapSeconds: 4
+            ).filter { chunk in
+                speech.contains { $0[0] < chunk.offset + chunk.duration && $0[1] > chunk.offset }
+            }
+            let plans = chunks + recovery
+            // Encode to disk with bounded memory; even an hour-long source
+            // never retains every compressed window in RAM simultaneously.
+            let directory = FileManager.default.temporaryDirectory
+                .appending(path: "yapper-transcription-\(UUID().uuidString)", directoryHint: .isDirectory)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let files = try await BoundedTranscriptionWork.run(count: plans.count, limit: 3) { index in
+                let chunk = plans[index]
+                let payload = try Self.compressedChunk(at: decoded.url, start: chunk.start, length: chunk.length, sampleRate: decoded.sampleRate)
+                let file = directory.appending(path: "\(index).m4a")
+                try payload.write(to: file)
+                return file
+            }
+            let sizes = try files.map { try Data(contentsOf: $0, options: .mappedIfSafe).count }
+            let tickets = try await Self.uploadTickets(sizes: sizes, baseURL: YapperAPI.baseURL)
+            guard tickets.count == plans.count else {
+                throw NativeEditorError.aiFailed("The upload plan was incomplete. Please retry transcription.")
+            }
             let completionCounter = TranscriptionCompletionCounter()
             let uploaded = try await BoundedTranscriptionWork.run(
-                count: chunks.count,
-                limit: maximumConcurrentUploads,
+                count: plans.count, limit: maximumConcurrentUploads,
                 operation: { index in
-                    let chunk = chunks[index]
-                    let payload = try Self.compressedChunk(
-                        at: decoded.url,
-                        start: chunk.start,
-                        length: chunk.length,
-                        sampleRate: decoded.sampleRate
-                    )
-                    let key = try await Self.uploadForTranscription(
-                        payload,
-                        baseURL: YapperAPI.baseURL
-                    )
-                    return StoredTranscriptionChunk(
-                        key: key,
-                        offset: chunk.offset,
-                        duration: chunk.duration
-                    )
+                    let ticket = tickets[index]
+                    guard let url = URL(string: ticket.url) else {
+                        throw NativeEditorError.aiFailed("The transcriber returned an unusable upload address.")
+                    }
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "PUT"
+                    request.timeoutInterval = 300
+                    request.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
+                    let (_, response) = try await URLSession.shared.upload(for: request, fromFile: files[index])
+                    guard let response = response as? HTTPURLResponse, (200 ..< 300).contains(response.statusCode) else {
+                        throw NativeEditorError.aiFailed("The take's audio could not be uploaded for transcription.")
+                    }
+                    return StoredTranscriptionChunk(key: ticket.key, offset: plans[index].offset, duration: plans[index].duration)
                 },
                 completed: { _, _ in
-                    let completedCount = await completionCounter.increment()
-                    await progress?(
-                        0.35 + 0.25 * Double(completedCount) / Double(max(1, chunks.count))
-                    )
+                    let count = await completionCounter.increment()
+                    await progress?(0.35 + 0.25 * Double(count) / Double(max(1, plans.count)))
                 }
             )
             await progress?(0.6)
             let spoken = try await Self.transcribeStored(
-                chunks: uploaded,
-                keyterms: keyterms,
-                baseURL: YapperAPI.baseURL
+                chunks: Array(uploaded.prefix(chunks.count)),
+                recoveryChunks: Array(uploaded.dropFirst(chunks.count)), speech: speech,
+                keyterms: keyterms, baseURL: YapperAPI.baseURL
             )
             await progress?(1)
 
@@ -280,57 +301,27 @@ actor AIEditService {
         }
     }
 
-    /// Puts the take's audio where the transcriber can read it.
-    ///
-    /// The write ticket is issued by the API and is good for this one object:
-    /// it carries no provider credential, so it cannot be spent on anything but
-    /// storing these bytes. The transcript still costs a credit at the route
-    /// that does the transcribing.
-    private static func uploadForTranscription(
-        _ audio: Data,
-        baseURL: URL
-    ) async throws -> String {
-        var ticketRequest = await YapperAPI.authenticatedRequest(
-            url: baseURL.appending(path: "api/transcribe/upload-url")
-        )
-        ticketRequest.httpMethod = "POST"
-        ticketRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        ticketRequest.httpBody = try JSONEncoder().encode(UploadTicketRequest(bytes: audio.count))
-        let (ticketData, ticketResponse) = try await URLSession.shared.data(for: ticketRequest)
-        guard let ticketHTTP = ticketResponse as? HTTPURLResponse else {
+    private static func uploadTickets(sizes: [Int], baseURL: URL) async throws -> [UploadTicket] {
+        var request = await YapperAPI.authenticatedRequest(url: baseURL.appending(path: "api/transcribe/upload-url"))
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(UploadTicketBatchRequest(sizes: sizes))
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
             throw NativeEditorError.aiFailed("The transcriber returned no response.")
         }
-        guard (200 ..< 300).contains(ticketHTTP.statusCode) else {
-            throw YapperAPI.failure(
-                status: ticketHTTP.statusCode,
-                body: ticketData,
-                action: "Transcribing",
-                note: EdgeRefusalNote.text(for: ticketHTTP, body: ticketData)
-            )
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw YapperAPI.failure(status: http.statusCode, body: data, action: "Transcribing", note: EdgeRefusalNote.text(for: http, body: data))
         }
-        let ticket = try JSONDecoder().decode(UploadTicket.self, from: ticketData)
-        guard let uploadURL = URL(string: ticket.url) else {
-            throw NativeEditorError.aiFailed("The transcriber returned an unusable upload address.")
-        }
-
-        var upload = URLRequest(url: uploadURL)
-        upload.httpMethod = "PUT"
-        upload.timeoutInterval = 300
-        upload.setValue("audio/mp4", forHTTPHeaderField: "Content-Type")
-        let (_, uploadResponse) = try await URLSession.shared.upload(for: upload, from: audio)
-        guard
-            let uploadHTTP = uploadResponse as? HTTPURLResponse,
-            (200 ..< 300).contains(uploadHTTP.statusCode)
-        else {
-            throw NativeEditorError.aiFailed("The take's audio could not be uploaded for transcription.")
-        }
-        return ticket.key
+        return try JSONDecoder().decode(UploadTicketBatch.self, from: data).tickets
     }
 
     /// Asks for the transcript of audio already in storage. The request is a
     /// few dozen bytes however long the take is.
     private static func transcribeStored(
         chunks: [StoredTranscriptionChunk],
+        recoveryChunks: [StoredTranscriptionChunk],
+        speech: [[Double]],
         keyterms: [String],
         baseURL: URL
     ) async throws -> [RemoteWord] {
@@ -344,7 +335,7 @@ actor AIEditService {
                 request.httpMethod = "POST"
                 request.timeoutInterval = 300
                 request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.httpBody = try JSONEncoder().encode(StoredTranscriptionRequest(chunks: chunks))
+                request.httpBody = try JSONEncoder().encode(StoredTranscriptionRequest(chunks: chunks, recoveryChunks: recoveryChunks, speech: speech))
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
                     throw NativeEditorError.aiFailed("The transcriber returned no response.")
@@ -359,7 +350,11 @@ actor AIEditService {
                         note: EdgeRefusalNote.text(for: http, body: data)
                     )
                 }
-                return try JSONDecoder().decode(TranscriptionResponse.self, from: data).words ?? []
+                let result = try JSONDecoder().decode(TranscriptionResponse.self, from: data)
+                guard result.coverageChecked == true, let words = result.words else {
+                    throw NativeEditorError.aiFailed("The transcription service did not verify speech coverage. Please update the service before editing this take.")
+                }
+                return words
             } catch let error as CancellationError {
                 throw error
             } catch {
@@ -448,8 +443,7 @@ actor AIEditService {
     /// silence.
     ///
     /// - Parameter url: the media, for measuring where it is actually quiet.
-    ///   Word gaps stand in when it cannot be read, which is the old behaviour
-    ///   and a good deal gentler.
+    ///   When it cannot be read, no automatic silence cuts are authorized.
     func autoEditRanges(
         words: [TranscriptWord],
         duration: Double,
@@ -480,25 +474,12 @@ actor AIEditService {
             ranges.append(contentsOf: measured)
         }
 
-        // A waveform can tell quiet from sound; it cannot tell the kept take
-        // from an abandoned one the transcriber did not write down. Treating
-        // measured silence as a replacement for transcript gaps therefore
-        // left loud, untranscribed retakes in the finished video. They also
-        // could never have captions, because there were no words to build a
-        // card from. The two signals are complementary: measured ranges remove
-        // dead air hidden inside generous word timings, while these ranges
-        // guarantee that every surviving spoken stretch is backed by the
-        // transcript and can be captioned.
-        ranges.append(contentsOf: wordGapSilences(
-            words: kept,
-            duration: duration,
-            minimumPause: 0.20
-        ))
+        // Missing words are not evidence of silence. Only the measured
+        // waveform may authorize pause cuts; explicit AI cuts handle retakes.
         let fillers = Set(["um", "umm", "uh", "uhh", "uhm", "er", "err", "ah", "ahh", "hmm", "mhm"])
         for word in kept where fillers.contains(normalize(word.text)) {
             ranges.append((word.start, word.end))
         }
-        // `wordGapSilences` also handles both source edges.
         return merge(ranges, sparing: kept.map(\.midpoint))
     }
 
@@ -522,27 +503,7 @@ actor AIEditService {
             if duration > 0, total < duration * 0.98 { return merge(ranges) }
             ranges.removeAll()
         }
-        return wordGapSilences(words: words, duration: duration, minimumPause: minimumPause)
-    }
-
-    private func wordGapSilences(
-        words: [TranscriptWord],
-        duration: Double,
-        minimumPause: Double
-    ) -> [(Double, Double)] {
-        let ordered = words.sorted { $0.start < $1.start }
-        guard let first = ordered.first, let last = ordered.last else { return [] }
-        var ranges: [(Double, Double)] = []
-        for index in ordered.indices.dropLast() {
-            let next = ordered.index(after: index)
-            guard ordered[next].start - ordered[index].end >= minimumPause else { continue }
-            let start = ordered[index].end + 0.04
-            let end = ordered[next].start - 0.03
-            if end > start { ranges.append((start, end)) }
-        }
-        if first.start >= 0.15 { ranges.append((0, max(0, first.start - 0.03))) }
-        if duration - last.end >= 0.15 { ranges.append((last.end + 0.04, duration)) }
-        return merge(ranges, sparing: ordered.map(\.midpoint))
+        return []
     }
 
     private func decodeAudio(

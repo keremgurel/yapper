@@ -2,6 +2,11 @@
 import SwiftUI
 import WebKit
 
+@MainActor
+protocol EditorKeyboardCommandScope: AnyObject {
+    var editorKeyboardCommandsEnabled: Bool { get }
+}
+
 /// Unmodified keys the editor claims while the timeline is on screen.
 enum TimelineKeyCommand {
     case togglePlayback
@@ -94,7 +99,8 @@ struct TimelineKeyCommandView: NSViewRepresentable {
         func install() {
             guard monitor == nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-                self?.handle(event) ?? event
+                guard let self else { return event }
+                return self.handle(event)
             }
         }
 
@@ -104,14 +110,14 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             self.monitor = nil
         }
 
-        private func handle(_ event: NSEvent) -> NSEvent? {
+        func handle(_ event: NSEvent) -> NSEvent? {
             guard let view, let window = view.window, event.window === window else { return event }
             // The editor stays mounted behind the other Studio destinations,
             // so this monitor is alive while a web page is on screen. A space
             // typed into a Brain field there is a space, not play; a letter is
             // a letter, not a panel toggle. Anything typed into a web view, or
             // while this view is not the one being looked at, is left alone.
-            if view.isHiddenOrHasHiddenAncestor || view.visibleRect.isEmpty { return event }
+            guard Self.isEditorActive(view) else { return event }
             if Self.isInsideWebView(window.firstResponder) { return event }
             // Typing a space in the transcript or a caption field must stay a
             // space, so a field being edited is left alone. A selectable label
@@ -119,19 +125,43 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             if let text = window.firstResponder as? NSTextView, text.isEditable {
                 return event
             }
-            if window.firstResponder is NSTextField { return event }
-            // Holding a key must not toggle playback over and over.
-            if event.isARepeat { return event }
-            let disallowedModifiers: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
-            guard event.modifierFlags.intersection(disallowedModifiers).isEmpty else { return event }
-
-            guard let command = Self.command(
-                keyCode: event.keyCode,
-                characters: event.charactersIgnoringModifiers
-            ) else { return event }
+            if let field = window.firstResponder as? NSTextField, field.isEditable { return event }
+            guard let command = Self.command(for: event) else { return event }
+            // Consume repeats too: passing Space to a focused button can
+            // toggle playback a second time through that control's own action.
+            if event.isARepeat { return nil }
             guard Self.claim(event) else { return nil }
             onCommand(command)
             return nil
+        }
+
+        /// The listener is an invisible background view and can have an empty
+        /// drawing rect even while its editor is active. Ask the persistent
+        /// host, which already owns navigation/visibility, rather than using
+        /// the listener's incidental SwiftUI layout as an input permission.
+        static func isEditorActive(_ view: NSView) -> Bool {
+            var ancestor: NSView? = view
+            while let current = ancestor {
+                if let host = current as? any EditorKeyboardCommandScope {
+                    return host.editorKeyboardCommandsEnabled
+                }
+                ancestor = current.superview
+            }
+            // Standalone editor previews have no persistent shell host.
+            return !view.isHiddenOrHasHiddenAncestor &&
+                !(view.superview?.visibleRect.isEmpty ?? true)
+        }
+
+        static func command(for event: NSEvent) -> TimelineKeyCommand? {
+            let modifiers = event.modifierFlags
+            guard modifiers.intersection([.command, .control]).isEmpty else { return nil }
+            // On several layouts [ and ] need Option or Shift. Honor the
+            // character actually produced, without stealing Option-letter
+            // combinations or shortcuts such as Command-[.
+            if event.characters == "[" { return .trimLeading }
+            if event.characters == "]" { return .trimTrailing }
+            guard modifiers.intersection([.option, .shift]).isEmpty else { return nil }
+            return command(keyCode: event.keyCode, characters: event.charactersIgnoringModifiers)
         }
 
         /// True when keystrokes are going to a web page: the Studio surfaces
@@ -140,7 +170,14 @@ struct TimelineKeyCommandView: NSViewRepresentable {
         static func isInsideWebView(_ responder: NSResponder?) -> Bool {
             var current: NSResponder? = responder
             while let candidate = current {
-                if candidate is WKWebView { return true }
+                if let web = candidate as? WKWebView {
+                    // Authentication keeps a web view parked offscreen. It
+                    // can retain first responder after navigation, but must
+                    // not capture the visible native editor's shortcuts.
+                    guard let window = web.window, let content = window.contentView else { return false }
+                    return !web.isHiddenOrHasHiddenAncestor &&
+                        web.convert(web.bounds, to: content).intersects(content.bounds)
+                }
                 current = candidate.nextResponder
             }
             return false
