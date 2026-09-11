@@ -172,6 +172,9 @@ final class EditorSession: ObservableObject {
     /// What you and Chirpy have said to each other lately. Published on its own
     /// so a reply arriving redraws the panel and nothing else.
     let conversation = AssistantConversation()
+    let actionSessionID = UUID()
+    var assistantTask: Task<Void, Never>?
+    var chirpyPlanner: (([String: ActionJSON]) async throws -> ChirpyPlanReply)?
     /// The transcript's reading order, rebuilt only when the words or cuts move.
     let transcriptFlowCache = TranscriptFlowCache()
     /// The shape of every sound on the audio track, so an effect can be lined
@@ -3197,6 +3200,7 @@ final class EditorSession: ObservableObject {
             // made against it is still exactly right. See MediaAvailability.
             project = saved
             persistedLockBaseline = saved
+            conversation.attach(projectID: saved.id, root: projectNavigation.currentPackage?.url)
             repairBuiltInAudioURLs()
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
@@ -3243,6 +3247,7 @@ final class EditorSession: ObservableObject {
         }
         project = next
         persistedLockBaseline = next
+        conversation.attach(projectID: next.id, root: projectNavigation.currentPackage?.url)
         if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
         if !keepingHistory {
             selectedClipID = project.clips.first?.id
@@ -3380,7 +3385,7 @@ final class EditorSession: ObservableObject {
     func closeAssistant() -> Bool {
         guard isAssistantOpen else { return false }
         isAssistantOpen = false
-        if assistantRunInFlight { cancelCurrentOperation() }
+        if assistantRunInFlight { assistantTask?.cancel(); cancelCurrentOperation() }
         return true
     }
 }

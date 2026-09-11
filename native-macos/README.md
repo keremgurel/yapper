@@ -32,13 +32,23 @@ elements at clip boundaries.
 
 ## Shared app actions
 
-Clip speed, clip/caption locks, and caption visibility now execute through
-`AppActionRegistry`. UI controls retain their existing session entry points;
-those entry points and Chirpy's current command adapter invoke the same typed
-actions. The registry validates explicit target IDs and the current project
-revision, commits once, and returns a result after persistence. The conversational
-model loop is a separate migration described in `docs/chirpy-shared-actions.md`
-at the repository root.
+Chirpy now sends the current project, selection, saved reveal events, and recent
+project conversation to `/api/chirpy/plan`. The model sees the catalog generated
+from `AppActionRegistry`. It can propose up to eight deterministic actions in
+one atomic edit, or one existing generation workflow. Replies come from committed
+execution results. Closing Chirpy cancels pending planning and editing work.
+
+Clip speed, locks, caption visibility, and number-reveal policies/sounds share
+executors with their UI controls. Existing transcription, cleanup, silence trim,
+and visual design workflows are registered separately and retain their own
+transactions. The remaining native controls and web Studio migration are tracked
+in `docs/chirpy-shared-actions.md` at the repository root.
+
+Conversation lives in `chirpy-history.json` within each project package and is
+independent of Undo. Planning costs one credit per user turn; deterministic local
+button actions are free. Deploy migration `0028_chirpy_plans` with the planning
+endpoint before distributing this native build. The package script embeds the
+source revision in the app's `YapperBuildCommit` Info.plist key.
 
 To add a registered feature, define its action and input in
 `protocol/app-actions.schema.json`, regenerate the Swift and TypeScript contract,

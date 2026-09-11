@@ -23,6 +23,10 @@ struct OverlayInspectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             essentials
+            if let media, media.generated?.revealSourceMediaID != nil {
+                Divider()
+                RevealInspector(session: session, overlay: overlay, media: media)
+            }
 
             Divider()
 

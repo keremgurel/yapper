@@ -1,0 +1,149 @@
+import { randomUUID } from "node:crypto";
+import { expect, it } from "vitest";
+import { planChirpy } from "./planner";
+import type { PlanInput } from "./protocol";
+import contract from "../../../protocol/app-actions.schema.json";
+
+const projectID = randomUUID(),
+  sessionID = randomUUID();
+const overlayID = "1385EF9B-98A4-4480-B58F-954A2685609B";
+const context = {
+  projectID,
+  sessionID,
+  revision: 1,
+  duration: 90,
+  playhead: 9,
+  reveals: [
+    {
+      overlayID,
+      name: "Google Ads spoken reveal",
+      regions: [
+        { id: "number-0", label: "Clicks", text: "34", policy: "untilCue" },
+        {
+          id: "number-1",
+          label: "Impressions",
+          text: "291",
+          policy: "alwaysHidden",
+        },
+        {
+          id: "number-2",
+          label: "Avg. CPC",
+          text: "CA$1.10",
+          policy: "alwaysHidden",
+        },
+        { id: "number-3", label: "Cost", text: "CA$37.47", policy: "untilCue" },
+      ],
+    },
+  ],
+  revealEvents: [
+    {
+      id: `${overlayID}/number-3`,
+      overlayID,
+      regionID: "number-3",
+      label: "Cost",
+      text: "CA$37.47",
+      timelineTime: 6.524,
+    },
+    {
+      id: `${overlayID}/number-0`,
+      overlayID,
+      regionID: "number-0",
+      label: "Clicks",
+      text: "34",
+      timelineTime: 8.249,
+    },
+  ],
+  soundLibrary: [{ id: "mouse-click", name: "Mouse click" }],
+  sounds: [],
+  selectedOverlayID: overlayID,
+};
+function input(messages: PlanInput["messages"]): PlanInput {
+  return {
+    protocolVersion: 1,
+    projectID,
+    sessionID,
+    executionID: randomUUID(),
+    revision: 1,
+    context,
+    catalog: contract["x-actions"],
+    messages,
+  };
+}
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "interprets the reported masking correction without touching cost or clicks",
+  async () => {
+    const reply = await planChirpy(
+      input([
+        {
+          role: "user",
+          content:
+            "well i still see the google ads overlay hide the impression and cpc. Keep those visible at all times.",
+        },
+      ]),
+    );
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.reveals.setPolicy");
+    expect(reply.actions[0].arguments.overlayID).toBe(overlayID);
+    expect(reply.actions[0].arguments.regions).toEqual(
+      expect.arrayContaining([
+        { regionID: "number-1", policy: "alwaysVisible" },
+        { regionID: "number-2", policy: "alwaysVisible" },
+      ]),
+    );
+    expect(reply.actions[0].arguments.regions).toHaveLength(2);
+  },
+  50_000,
+);
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "binds the exact sound request to saved click and cost reveals",
+  async () => {
+    const reply = await planChirpy(
+      input([
+        {
+          role: "user",
+          content: "add click sound effects when we reveal the clicks and cost",
+        },
+      ]),
+    );
+    expect(reply.actions).toEqual([
+      {
+        action: "editor.sounds.addAtReveals",
+        arguments: {
+          effectID: "mouse-click",
+          eventIDs: expect.arrayContaining(
+            context.revealEvents.map((event) => event.id),
+          ),
+        },
+      },
+    ]);
+    expect(reply.actions[0].arguments.eventIDs).toHaveLength(2);
+  },
+  50_000,
+);
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "resolves a follow-up using the previous exchange",
+  async () => {
+    const reply = await planChirpy(
+      input([
+        {
+          role: "user",
+          content:
+            "The clicks and cost are the two numbers that reveal as I speak.",
+        },
+        {
+          role: "assistant",
+          content:
+            "Clicks reveal at 8.249s and cost at 6.524s in the saved scene.",
+        },
+        { role: "user", content: "Put a click sound on those two reveals." },
+      ]),
+    );
+    expect(reply.actions.map((action) => action.action)).toEqual([
+      "editor.sounds.addAtReveals",
+    ]);
+    expect(reply.actions[0].arguments.eventIDs).toEqual(
+      expect.arrayContaining(context.revealEvents.map((event) => event.id)),
+    );
+  },
+  50_000,
+);

@@ -48,6 +48,12 @@ extension EditorSession {
                 size: CGSize(width: source.width, height: source.height), instruction: instruction,
                 root: root, existing: existing, takenNames: project.media.filter { $0.id != existing?.id }.map(\.name))
             revised.generated?.revealSourceMediaID = source.id
+            revised.generated?.revealRegions = regions.enumerated().map { index, region in
+                let cue = cues.first { $0.region == index }
+                return SavedRevealRegion(id: "number-\(index)", text: region.text, label: region.label,
+                    confidence: region.confidence, box: region.box, background: region.background,
+                    policy: cue == nil ? .alwaysVisible : .untilCue, cueTime: cue.map { $0.at - overlay.timelineStart })
+            }
             try Task.checkCancellation()
             updateProject { project in
                 if let index = project.media.firstIndex(where: { $0.id == revised.id }) { project.media[index] = revised }

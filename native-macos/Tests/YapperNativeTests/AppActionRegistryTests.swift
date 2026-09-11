@@ -30,6 +30,23 @@ struct AppActionRegistryTests {
         let session = EditorSession(store: store)
         await Task.yield()
         session.updateProject { $0 = project }
+        session.chirpyPlanner = { payload in
+            let instruction = payload["messages"]!.list!.last!["content"]!.text!
+            let action: String
+            let arguments: ActionJSON
+            if instruction.contains("captions") && instruction.contains("lock") {
+                action = AppActionID.timelineLock.rawValue
+                arguments = try .encoding(TimelineLockInput(clipIDs: [], captionIDs: project.storedCaptions.map(\.id), locked: !instruction.hasPrefix("unlock")))
+            } else if instruction == "hide captions" {
+                action = AppActionID.captionVisibility.rawValue
+                arguments = try .encoding(CaptionVisibilityInput(visible: false))
+            } else {
+                action = AppActionID.clipSpeed.rawValue
+                arguments = try .encoding(ClipSpeedInput(clipIDs: project.clips.map(\.id), rate: 2))
+            }
+            guard case .object(let fields) = arguments else { throw AppActionError("Invalid test arguments") }
+            return .init(message: "Planned", actions: [.init(action: action, arguments: fields)])
+        }
         return session
     }
 
@@ -144,6 +161,10 @@ struct AppActionRegistryTests {
         #expect(session.conversation.messages.last?.tone == .trouble)
         let result = try #require(session.appActions.recentResults.last)
         #expect(result.status == .failed && !result.persisted && result.changes.isEmpty)
+    }
+
+    @Test func everyDeclaredNativeActionHasAnExecutor() {
+        #expect(Set(AppActionRegistry.editor().descriptors.map(\.id)) == Set(AppActionID.allCases.map(\.rawValue)))
     }
 
     @Test func registeringAFeatureMakesItDiscoverableAndExecutableWithoutRouterChanges() async throws {

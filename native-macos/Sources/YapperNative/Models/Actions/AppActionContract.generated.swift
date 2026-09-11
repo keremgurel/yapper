@@ -5,6 +5,12 @@ enum AppActionID: String, CaseIterable, Sendable {
     case clipSpeed = "editor.clips.setSpeed"
     case timelineLock = "editor.timeline.setLocked"
     case captionVisibility = "editor.captions.setVisible"
+    case revealPolicy = "editor.reveals.setPolicy"
+    case revealSounds = "editor.sounds.addAtReveals"
+    case transcribeWorkflow = "editor.transcribe"
+    case cleanupWorkflow = "editor.cleanup"
+    case silenceWorkflow = "editor.trimSilences"
+    case overlayWorkflow = "editor.designOverlays"
 }
 
 struct ClipSpeedInput: Codable, Equatable, Sendable {
@@ -59,6 +65,53 @@ struct AppActionResult: Codable, Equatable, Sendable {
     let persisted: Bool
 }
 
+enum RevealPolicy: String, Codable, Equatable, Sendable {
+    case alwaysVisible
+    case untilCue
+    case alwaysHidden
+}
+
+struct RevealRegionPolicy: Codable, Equatable, Sendable {
+    let regionID: String
+    let policy: RevealPolicy
+}
+
+struct RevealPolicyInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regions: [RevealRegionPolicy]
+}
+
+struct RevealSoundsInput: Codable, Equatable, Sendable {
+    let effectID: String
+    let eventIDs: [String]
+}
+
+struct ChirpyActionCall: Codable, Equatable, Sendable {
+    let action: String
+    let arguments: [String: ActionJSON]
+}
+
+struct ChirpyPlanReply: Codable, Equatable, Sendable {
+    let message: String
+    let actions: [ChirpyActionCall]
+}
+
+struct TranscribeWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+}
+
+struct CleanupWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+}
+
+struct SilenceWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+}
+
+struct OverlayWorkflowInput: Codable, Equatable, Sendable {
+    let instruction: String
+}
+
 extension ClipSpeedInput: AppActionInput {
     static var actionID: AppActionID { .clipSpeed }
 }
@@ -71,9 +124,33 @@ extension CaptionVisibilityInput: AppActionInput {
     static var actionID: AppActionID { .captionVisibility }
 }
 
+extension RevealPolicyInput: AppActionInput {
+    static var actionID: AppActionID { .revealPolicy }
+}
+
+extension RevealSoundsInput: AppActionInput {
+    static var actionID: AppActionID { .revealSounds }
+}
+
+extension TranscribeWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .transcribeWorkflow }
+}
+
+extension CleanupWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .cleanupWorkflow }
+}
+
+extension SilenceWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .silenceWorkflow }
+}
+
+extension OverlayWorkflowInput: AppActionInput {
+    static var actionID: AppActionID { .overlayWorkflow }
+}
+
 enum AppActionContract {
     static let version = 1
     static let schemaJSON = #"""
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false}],"$defs":{"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}}}}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.reveals.setPolicy","symbol":"revealPolicy","input":"RevealPolicyInput","description":"Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.sounds.addAtReveals","symbol":"revealSounds","input":"RevealSoundsInput","description":"Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.transcribe","symbol":"transcribeWorkflow","input":"TranscribeWorkflowInput","description":"Transcribe the project speech using the app transcription workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.cleanup","symbol":"cleanupWorkflow","input":"CleanupWorkflowInput","description":"Run the app one-click AI cleanup workflow on the project.","effect":"workflow","requiresRebuild":true},{"id":"editor.trimSilences","symbol":"silenceWorkflow","input":"SilenceWorkflowInput","description":"Trim silences using the app silence trimming workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.designOverlays","symbol":"overlayWorkflow","input":"OverlayWorkflowInput","description":"Create or revise visual overlays using the app visual design workflow. Use only when the user requests visual creation or redesign. Never use this to add sounds or to change existing number visibility policies.","effect":"workflow","requiresRebuild":true}],"$defs":{"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}},"RevealPolicy":{"type":"string","enum":["alwaysVisible","untilCue","alwaysHidden"]},"RevealRegionPolicy":{"type":"object","additionalProperties":false,"required":["regionID","policy"],"properties":{"regionID":{"type":"string","minLength":1,"maxLength":120},"policy":{"$ref":"#/$defs/RevealPolicy"}}},"RevealPolicyInput":{"type":"object","additionalProperties":false,"required":["overlayID","regions"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regions":{"type":"array","items":{"$ref":"#/$defs/RevealRegionPolicy"},"minItems":1,"maxItems":32,"uniqueItems":true}}},"RevealSoundsInput":{"type":"object","additionalProperties":false,"required":["effectID","eventIDs"],"properties":{"effectID":{"type":"string","minLength":1,"maxLength":120},"eventIDs":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"minItems":1,"maxItems":64,"uniqueItems":true}}},"ChirpyActionCall":{"type":"object","additionalProperties":false,"required":["action","arguments"],"properties":{"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"ChirpyPlanReply":{"type":"object","additionalProperties":false,"required":["message","actions"],"properties":{"message":{"type":"string","maxLength":2000},"actions":{"type":"array","items":{"$ref":"#/$defs/ChirpyActionCall"},"maxItems":8}}},"TranscribeWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"CleanupWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"SilenceWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"OverlayWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}}}}
 """#
 }

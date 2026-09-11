@@ -6,6 +6,17 @@ extension AppActionRegistry {
         registry.registerClipSpeed()
         registry.registerTimelineLock()
         registry.registerCaptionVisibility()
+        registry.registerRevealActions()
+        registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
+            await session.transcribeProject(); return session.lastTranscriptionWasCanceled
+        }
+        registry.registerWorkflow(CleanupWorkflowInput.self) { session, _ in await session.runOneClickEdit() }
+        registry.registerWorkflow(SilenceWorkflowInput.self) { session, _ in await session.autoTrimSilences() }
+        registry.registerWorkflow(OverlayWorkflowInput.self) { session, input in
+            let canceled = await session.placeOverlaysWithAI(instruction: input.instruction)
+            if case let .failed(message) = session.overlayPlacement { throw AppActionError(message) }
+            return canceled
+        }
         return registry
     }
 

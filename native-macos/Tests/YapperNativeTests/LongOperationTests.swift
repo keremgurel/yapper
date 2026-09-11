@@ -201,6 +201,8 @@ struct LongOperationTests {
             project.clips = [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 1)]
             project.transcript = [originalWord]
         }
+        session.chirpyPlanner = { _ in .init(message: "Transcribe", actions: [.init(action: AppActionID.transcribeWorkflow.rawValue,
+            arguments: ["instruction": .string("transcribe my video")])]) }
         session.toggleAssistant()
 
         let request = Task { @MainActor in
@@ -220,7 +222,7 @@ struct LongOperationTests {
         #expect(session.errorMessage == nil)
         #expect(session.statusMessage == "Transcription canceled")
         #expect(session.conversation.messages.last?.tone == .trouble)
-        #expect(session.conversation.messages.last?.text == "Transcription was canceled.")
+        #expect(session.conversation.messages.last?.notes.contains("The workflow was canceled.") == true)
     }
 
     @Test("Tracked export cancellation reaches work, preserves destination, and releases the lease")

@@ -37,6 +37,7 @@ final class AppActionRegistry {
         let execute: (EditorSession, ActionJSON) async throws -> AppActionMutation
     }
     private var entries: [String: Entry] = [:]
+    private var workflows: [String: (EditorSession, ActionJSON) async throws -> Bool] = [:]
     private(set) var recentResults: [AppActionResult] = []
 
     var descriptors: [AppActionDescriptor] { entries.values.map(\.descriptor).sorted { $0.id < $1.id } }
@@ -63,10 +64,105 @@ final class AppActionRegistry {
             })
     }
 
+    func registerWorkflow<Input: AppActionInput>(_ type: Input.Type,
+        execute: @escaping (EditorSession, Input) async throws -> Bool) {
+        register(type, availability: { _ in .available }) { _, _ in
+            throw AppActionError("Run this workflow on its own.")
+        }
+        workflows[Input.actionID.rawValue] = { session, arguments in
+            let input = try JSONDecoder().decode(Input.self, from: JSONEncoder().encode(arguments))
+            return try await execute(session, input)
+        }
+    }
+
     func availability(_ id: AppActionID, in session: EditorSession) -> AppActionAvailability {
         guard let entry = entries[id.rawValue] else { return .init(reason: "This action is unavailable in this app version.") }
         if session.activeOperation != nil { return .init(reason: "Wait for the current operation to finish.") }
         return entry.availability(session)
+    }
+
+    /// One model plan is one edit: no intermediate saves or Undo entries.
+    /// All mutations share the edit slot and a single outer operation lease.
+    func executeBatch(_ calls: [ChirpyActionCall], projectID: UUID, revision: Int,
+                      in session: EditorSession, invocationIDs suppliedIDs: [UUID]? = nil) async -> [AppActionResult] {
+        guard !calls.isEmpty else { return [] }
+        let invocationIDs = suppliedIDs ?? calls.map { _ in UUID() }
+        precondition(invocationIDs.count == calls.count)
+        func receipts(_ status: AppActionStatus, _ message: String, mutations: [AppActionMutation] = []) -> [AppActionResult] {
+            let replies = calls.enumerated().map { index, call in
+                let mutation = mutations.indices.contains(index) ? mutations[index] : nil
+                return AppActionResult(protocolVersion: AppActionContract.version, invocationID: invocationIDs[index],
+                    projectID: projectID, revision: session.actionRevision, action: call.action,
+                    status: status == .applied && mutation?.changes.isEmpty == true ? .unchanged : status,
+                    message: mutation?.message ?? message, changes: status == .applied ? mutation?.changes ?? [] : [],
+                    skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied && mutation?.changes.isEmpty == false)
+            }
+            recentResults = Array((recentResults + replies).suffix(64))
+            return replies
+        }
+        guard calls.count <= 8, session.activeOperation == nil else {
+            return receipts(.rejected, "Wait for the current operation to finish.")
+        }
+        do {
+            for call in calls {
+                guard let entry = entries[call.action] else { throw AppActionError("This app version does not support that action.") }
+                try ActionSchema.validate(.object(call.arguments), against: entry.descriptor.parameters)
+            }
+        } catch { return receipts(.rejected, error.localizedDescription) }
+        if calls.contains(where: { workflows[$0.action] != nil }) {
+            guard calls.count == 1, let call = calls.first, let workflow = workflows[call.action] else {
+                return receipts(.rejected, "Run generation or transcription as its own request before making other edits.")
+            }
+            guard session.project.id == projectID, session.actionRevision == revision else {
+                return receipts(.rejected, "The project changed while I was planning. Ask again using its current state.")
+            }
+            let before = session.project
+            session.clearError()
+            do {
+                let canceled = try await workflow(session, .object(call.arguments))
+                if canceled { return receipts(.canceled, "The workflow was canceled.") }
+                if let error = session.errorMessage { return receipts(.failed, error) }
+                guard before != session.project else { return receipts(.unchanged, session.statusMessage) }
+                return receipts(.applied, session.statusMessage, mutations: [.init(message: session.statusMessage,
+                    changes: [.init(targetID: projectID, property: "project", before: "Before workflow", after: "Saved workflow result")])])
+            } catch { return receipts(.failed, error.localizedDescription) }
+        }
+        var replies: [AppActionResult] = []
+        _ = await session.runTrackedLongOperation(.overlayAI) { _ in
+            guard let rollback = await session.beginPreparedTimelineEdit() else {
+                replies = receipts(.failed, "The pending edit could not be saved."); return
+            }
+            defer { session.endPreparedTimelineEdit() }
+            guard session.project.id == projectID, session.actionRevision == revision else {
+                replies = receipts(.rejected, "The project changed while I was planning. Ask again using its current state."); return
+            }
+            session.clearError()
+            do {
+                var mutations: [AppActionMutation] = []
+                for call in calls {
+                    try Task.checkCancellation()
+                    let entry = self.entries[call.action]!
+                    if let reason = entry.availability(session).reason { throw AppActionError(reason) }
+                    mutations.append(try await entry.execute(session, .object(call.arguments)))
+                }
+                try Task.checkCancellation()
+                guard session.project != rollback.project else {
+                    replies = receipts(.unchanged, "Nothing needed changing.", mutations: mutations); return
+                }
+                let rebuild = calls.contains { self.entries[$0.action]!.descriptor.requiresRebuild }
+                guard await session.commitPreparedTimelineEdit(rollbackState: rollback, requiresRebuild: rebuild,
+                    successStatus: "Chirpy edit saved · ⌘Z to undo") else {
+                    replies = receipts(.failed, session.errorMessage ?? "The changes could not be saved."); return
+                }
+                for mutation in mutations { mutation.afterCommit() }
+                replies = receipts(.applied, "Saved.", mutations: mutations)
+            } catch {
+                await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
+                replies = receipts(error is CancellationError ? .canceled : .failed,
+                    error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription)
+            }
+        }
+        return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
     }
 
     func execute(_ request: AppActionRequest, in session: EditorSession, owner: LongOperationLease? = nil) async -> AppActionResult {
@@ -95,6 +191,10 @@ final class AppActionRegistry {
         }
         if let reason = preflight() { return result(.rejected, reason) }
         guard !Task.isCancelled else { return result(.canceled, "Action canceled.") }
+        if workflows[request.action] != nil {
+            return await executeBatch([.init(action: request.action, arguments: request.arguments)],
+                projectID: request.projectID, revision: request.revision, in: session, invocationIDs: [request.id])[0]
+        }
         if let operation = entry.operation, owner == nil {
             var reply: AppActionResult?
             let canceled = await session.runTrackedLongOperation(operation) { lease in
