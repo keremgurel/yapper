@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   VoiceCaptureController,
-  VOICE_CAPTURE_MAX_BYTES,
-  VOICE_CAPTURE_MAX_DURATION_MS,
   VOICE_CAPTURE_TIMESLICE_MS,
   type VoiceCaptureErrorKind,
   type VoiceCapturePhase,
@@ -59,8 +57,6 @@ function createHarness(options?: {
   const errors: { message: string | null; kind: VoiceCaptureErrorKind }[] = [];
   const streams: (MediaStream | null)[] = [];
   const recorders: FakeRecorder[] = [];
-  const timers = new Map<number, () => void>();
-  let timerID = 0;
   const defaultStream = fakeStream();
   const transcribe = vi.fn(
     options?.transcribe ?? (async () => "hello from the microphone"),
@@ -76,14 +72,6 @@ function createHarness(options?: {
         return recorder as unknown as MediaRecorder;
       },
       transcribe,
-      setTimer: (callback) => {
-        timerID += 1;
-        timers.set(timerID, callback);
-        return timerID as unknown as ReturnType<typeof setTimeout>;
-      },
-      clearTimer: (timer) => {
-        timers.delete(timer as unknown as number);
-      },
     },
     {
       phase: (phase) => phases.push(phase),
@@ -98,7 +86,6 @@ function createHarness(options?: {
     phases,
     recorders,
     streams,
-    timers,
     transcribe,
   };
 }
@@ -122,39 +109,30 @@ describe("VoiceCaptureController", () => {
     expect(harness.phases).toEqual(["recording", "transcribing", "idle"]);
   });
 
-  it("discards a recording as soon as its cumulative byte budget is crossed", async () => {
-    const harness = createHarness();
-    await harness.controller.start();
-    const oversized = {
-      size: VOICE_CAPTURE_MAX_BYTES + 1,
-      type: "audio/webm",
-    } as Blob;
+  it("keeps recording past two minutes and the former byte cap until stopped", async () => {
+    vi.useFakeTimers();
+    try {
+      const harness = createHarness();
+      await harness.controller.start();
+      const recorder = harness.recorders[0]!;
+      const chunk = new Blob([new Uint8Array(16_000)], { type: "audio/webm" });
+      for (let second = 0; second < 600; second++) {
+        recorder.emit(chunk);
+        await vi.advanceTimersByTimeAsync(1_000);
+      }
 
-    harness.recorders[0]!.emit(oversized);
-    const text = await harness.controller.stop();
+      expect(recorder.state).toBe("recording");
+      expect(harness.defaultStream.track.stops).toBe(0);
+      expect(harness.phases).toEqual(["recording"]);
+      expect(harness.errors).toEqual([{ message: null, kind: null }]);
+      expect(harness.transcribe).not.toHaveBeenCalled();
 
-    expect(text).toBe("");
-    expect(harness.transcribe).not.toHaveBeenCalled();
-    expect(harness.defaultStream.track.stops).toBe(1);
-    expect(harness.errors.at(-1)).toEqual({
-      message: "Voice notes can be up to 3.9 MB.",
-      kind: "recording",
-    });
-  });
-
-  it("stops and discards a recording at the duration ceiling", async () => {
-    const harness = createHarness();
-    await harness.controller.start();
-    expect(harness.timers.size).toBe(1);
-
-    harness.timers.values().next().value?.();
-    const text = await harness.controller.stop();
-
-    expect(VOICE_CAPTURE_MAX_DURATION_MS).toBe(120_000);
-    expect(text).toBe("");
-    expect(harness.transcribe).not.toHaveBeenCalled();
-    expect(harness.defaultStream.track.stops).toBe(1);
-    expect(harness.errors.at(-1)?.message).toContain("two minutes");
+      expect(await harness.controller.stop()).toBe("hello from the microphone");
+      expect(harness.transcribe.mock.calls[0]![0].size).toBe(600 * chunk.size);
+      expect(harness.defaultStream.track.stops).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("dispose stops the microphone and aborts an in-flight transcription", async () => {
@@ -190,7 +168,6 @@ describe("VoiceCaptureController", () => {
 
     expect(harness.recorders[0]!.stops).toBe(1);
     expect(harness.defaultStream.track.stops).toBe(1);
-    expect(harness.timers.size).toBe(0);
   });
 
   it("stops an acquired stream when recorder construction fails", async () => {

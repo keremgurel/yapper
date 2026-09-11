@@ -11,9 +11,13 @@ enum GeneratedOverlayCommand {
         // "put the overlays where they make sense" as "make overlays" and
         // started expensive rendering/design instead of placing the bin.
         let target = #"(?:overlays?|visuals?|animations?|diagrams?|counters?|charts?|illustrations?|graphics?|numbers?)\b"#
-        let qualifiers = #"(?:(?:me|us|a|an|the|some|new|another|one|two|three|few|custom|animated|simple|small|branded|visual|dynamic)\s+)*"#
-        let creation = #"\b(?:create|generate|design|draw|build|make|animate)\s+"# + qualifiers + target
-        if instruction.range(of: creation, options: [.regularExpression, .caseInsensitive]) != nil {
+        let qualifiers = #"(?:(?:me|us|a|an|the|some|more|additional|several|new|another|one|two|three|few|couple of|\d+|custom|animated|simple|small|branded|visual|dynamic)\s+)*"#
+        let creation = #"\b(?:create|generate|design|draw|build|animate)\s+"# + qualifiers + target
+        // "Make overlays" creates them; "make the overlays bigger" modifies
+        // an existing visual. Do not let the broader creation route claim it.
+        let making = #"\bmake\s+"# + qualifiers + target +
+            #"(?!\s+(?:bigger|smaller|larger|wider|narrower|taller|shorter|longer|brighter|darker|louder|quieter)\b)"#
+        if [creation, making].contains(where: { instruction.range(of: $0, options: [.regularExpression, .caseInsensitive]) != nil }) {
             return true
         }
         // "Add overlays" means use the imported assets when there are any.
@@ -124,7 +128,7 @@ extension EditorSession {
             let anchor = OverlayCue.anchor(in: words, span: span, cue: moment["cue"] as? String ?? "") ?? span.lowerBound
             let start = OverlayCue.start(forWordAt: project.nearestTimelineTime(for: words[anchor]))
             let last = words[span.upperBound]
-            let end = min(project.duration, project.nearestTimelineTime(for: last) + max(0.08, last.end - last.start))
+            let end = min(project.duration, (project.timelineEnd(for: last) ?? project.nearestTimelineTime(for: last)))
             let duration = min(30, end - start)
             guard duration >= 0.5 else { continue }
             var avoid = await speakerRegions(from: start, to: end)

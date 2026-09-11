@@ -7,6 +7,7 @@ import {
   type PosterVideo,
 } from "@/components/publish/poster/poster-video";
 import type { PosterSource } from "@/components/publish/poster/sources/use-source-videos";
+import SavedVideoThumbnail from "./saved-video-thumbnail";
 
 /**
  * The selected source's videos as a bin beside the work. Once a video is open
@@ -57,6 +58,9 @@ export default function VideoRail({
             } ${openable ? "" : "opacity-50"}`}
           >
             <span className="relative h-9 w-6 shrink-0 overflow-hidden rounded-md bg-[linear-gradient(160deg,#2a2a2a,#0c0c0c)]">
+              {video.kind === "yapper" ? (
+                <SavedVideoThumbnail submissionId={video.submissionId} />
+              ) : null}
               {video.kind === "platform" && video.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img

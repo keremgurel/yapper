@@ -7,55 +7,12 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Film,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Filmstrip from "./filmstrip";
 import { formatFrameTime } from "./frame-timeline";
 import type { FilmstripTile } from "./use-filmstrip";
-
-export function FramePreview({
-  image,
-  capturing,
-}: {
-  image: string | null;
-  capturing: boolean;
-}) {
-  return (
-    <div
-      aria-busy={capturing}
-      className="relative mx-auto aspect-[9/16] w-full max-w-[270px] overflow-hidden rounded-xl bg-black ring-1 ring-white/10"
-    >
-      {image ? (
-        // The preview and saved cover share these exact decoded pixels.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={image}
-          alt="Selected video frame"
-          className="absolute inset-0 h-full w-full object-contain"
-        />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/45">
-          {capturing ? (
-            <Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />
-          ) : (
-            <Film className="h-6 w-6" />
-          )}
-          <span className="text-xs">
-            {capturing ? "Opening your video…" : "No frame selected"}
-          </span>
-        </div>
-      )}
-      {capturing && image ? (
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 bg-gradient-to-t from-black/80 to-transparent px-4 pt-10 pb-4 text-xs text-white">
-          <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
-          Finding your frame…
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 /** A full-width timeline for finding the moment, then stepping to its exact frame. */
 export default function FramePicker({
@@ -117,7 +74,7 @@ export default function FramePicker({
           ) : capturing ? (
             <>
               <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
-              {ready ? "Finding frame…" : "Loading frames…"}
+              {ready ? "Updating thumbnail…" : "Loading frames…"}
             </>
           ) : ready ? (
             <>

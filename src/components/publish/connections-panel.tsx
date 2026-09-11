@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Camera, Check, Music2, Video } from "lucide-react";
+import { Camera, Check, Music2, Video, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConnections } from "@/hooks/use-connections";
 import { beginConnect } from "@/lib/publish/begin-connect";
+import FacebookPagePicker from "./facebook-page-picker";
 import TikTokInsightsRow from "@/components/publish/tiktok-insights-row";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
@@ -15,6 +16,7 @@ import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 // Lucide dropped its brand marks, so these are neutral stand-ins.
 const ICON: Record<PublishPlatform, typeof Video> = {
   youtube: Video,
+  facebook: Users,
   tiktok: Music2,
   instagram: Camera,
 };
@@ -106,6 +108,12 @@ export default function ConnectionsPanel() {
                     : spec.postMeaning}
                 </p>
                 {connected && p === "tiktok" && <TikTokInsightsRow />}
+                {connected && p === "facebook" && (
+                  <FacebookPagePicker
+                    key={connected.updatedAt}
+                    onSelected={() => void refresh()}
+                  />
+                )}
               </div>
               {connected ? (
                 <span className="flex items-center gap-3">

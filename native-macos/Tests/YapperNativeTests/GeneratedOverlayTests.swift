@@ -103,9 +103,12 @@ struct GeneratedOverlayTests {
         }
     }
     @Test func routesCreationWithoutImportedMedia() {
-        for instruction in ["create an overlay where it makes sense", "animate the numbers from 1200 to 2850", "design a visual metaphor for the transcript"] {
+        for instruction in ["create an overlay where it makes sense", "animate the numbers from 1200 to 2850", "design a visual metaphor for the transcript",
+                            "make some overlays", "make some more overlays", "make a couple of overlays",
+                            "generate 4 additional overlays", "make me a few more overlays"] {
             #expect(AssistantRouter.route(instruction) == .placeOverlays)
             #expect(GeneratedOverlayCommand.creates(instruction))
+            #expect(GeneratedOverlayCommand.creates(instruction, hasImportedMedia: true))
         }
         #expect(!GeneratedOverlayCommand.creates("place my overlays"))
     }
@@ -118,6 +121,8 @@ struct GeneratedOverlayTests {
             "make sure the overlays do not cover my face",
             "use the imported charts and add a pop to each",
             "place my overlays",
+            "put some more overlays where they make sense",
+            "make the overlays bigger",
         ] {
             #expect(!GeneratedOverlayCommand.creates(instruction))
             #expect(!GeneratedOverlayCommand.creates(instruction, hasImportedMedia: true))

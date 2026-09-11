@@ -1,5 +1,6 @@
 "use client";
 
+import { publishErrorCopy } from "@/lib/publish/error-copy";
 import AddToVoiceButton from "@/components/brain/voice/add-to-voice-button";
 import { ExternalLink } from "lucide-react";
 import { PLATFORMS } from "@/lib/publish/platforms";
@@ -12,7 +13,8 @@ export interface SourceOutcome extends CrossPostOutcome {
 
 const STATUS_LABEL: Record<CrossPostOutcome["status"], string> = {
   posted: "Posted",
-  draft: "Sent to drafts",
+  draft: "Delivered to TikTok inbox",
+  pending: "Awaiting confirmation",
   failed: "Failed",
 };
 
@@ -40,6 +42,17 @@ export default function OutcomeList({
             <p className="text-muted-foreground text-xs">
               {PLATFORMS[outcome.platform].label}
             </p>
+            {outcome.error && (
+              <p className="text-muted-foreground mt-1 max-w-sm text-xs">
+                {publishErrorCopy(outcome.error)}
+              </p>
+            )}
+            {outcome.status === "draft" && (
+              <p className="text-muted-foreground mt-1 max-w-sm text-xs">
+                Open TikTok → Inbox and tap “Your content from Yapper is ready”
+                to finish posting.
+              </p>
+            )}
           </div>
           {outcome.url ? (
             <span className="flex items-center gap-3">
@@ -62,7 +75,9 @@ export default function OutcomeList({
               className={`text-xs font-semibold ${
                 outcome.status === "failed"
                   ? "text-[color:var(--sg-pink-500)]"
-                  : "text-[color:var(--sg-green-500)]"
+                  : outcome.status === "pending"
+                    ? "text-muted-foreground"
+                    : "text-[color:var(--sg-green-500)]"
               }`}
             >
               {STATUS_LABEL[outcome.status]}

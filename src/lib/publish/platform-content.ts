@@ -10,7 +10,7 @@ export interface PostDraft {
  * contentItemId; this owns only the wording, which differs by platform. */
 export type PlatformContent =
   | { platform: "youtube"; title: string; description?: string }
-  | { platform: "instagram"; caption?: string }
+  | { platform: "instagram" | "facebook"; caption?: string }
   | { platform: "tiktok" };
 
 /**
@@ -49,6 +49,7 @@ export function platformContent(
         title: draft.title.trim(),
         description: draft.description.trim() || undefined,
       };
+    case "facebook":
     case "instagram":
       return { platform, caption: combinedCaption(draft) };
     case "tiktok":

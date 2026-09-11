@@ -28,11 +28,14 @@ export async function getFreshAccessToken(
     throw new NoConnectionError(`${platform}_account_changed`);
   }
 
+  if (platform === "facebook" && row.externalAccountId && !row.expiresAt)
+    return decryptToken(row.accessTokenEnc);
+
   const stillValid =
     row.expiresAt && row.expiresAt.getTime() - SKEW_MS > Date.now();
   if (stillValid) return decryptToken(row.accessTokenEnc);
 
-  if (!row.refreshTokenEnc) {
+  if (!row.refreshTokenEnc || platform === "facebook") {
     // Expired and nothing to refresh with: the user must reconnect.
     throw new NoConnectionError(`${platform}_reauth_required`);
   }

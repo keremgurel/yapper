@@ -89,7 +89,7 @@ struct FramingKeyMarkers: View {
         let keys = VideoFramingTrack.keys(of: clip)
             .filter { $0.at >= clip.sourceStart - 0.001 && $0.at <= clip.sourceEnd + 0.001 }
         TimelineKeyMarkers(
-            times: keys.map { $0.at - clip.sourceStart },
+            times: keys.map { clip.timelineOffset(forSource: $0.at) },
             span: clip.duration,
             cellWidth: cellWidth,
             activeTime: activeTime,
@@ -99,12 +99,12 @@ struct FramingKeyMarkers: View {
             onMove: { from, to in
                 session.moveFramingKey(
                     in: clip,
-                    fromSource: clip.sourceStart + from,
-                    toSource: clip.sourceStart + to
+                    fromSource: clip.sourceTime(atOffset: from),
+                    toSource: clip.sourceTime(atOffset: to)
                 )
             },
             onRemove: { intoClip in
-                session.removeFramingKey(in: clip, atSource: clip.sourceStart + intoClip)
+                session.removeFramingKey(in: clip, atSource: clip.sourceTime(atOffset: intoClip))
             }
         )
         .allowsHitTesting(!keys.isEmpty)

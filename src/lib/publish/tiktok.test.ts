@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { planChunks, uploadTikTokDraft } from "./tiktok";
+import { fetchTikTokPostStatus, planChunks, uploadTikTokDraft } from "./tiktok";
 import { createPublishWorkflow } from "./workflow";
 
 const MB = 1024 * 1024;
@@ -193,5 +193,75 @@ describe("uploadTikTokDraft", () => {
       await rm(directory, { recursive: true, force: true });
     }
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("TikTok asynchronous status", () => {
+  it("checks API errors even when HTTP status is 200", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: { status: "SEND_TO_USER_INBOX" },
+          error: { code: "access_token_invalid", log_id: "log-1" },
+        }),
+      ),
+    );
+    await expect(
+      fetchTikTokPostStatus(
+        "token",
+        "publish-1",
+        createPublishWorkflow(new AbortController().signal),
+      ),
+    ).rejects.toMatchObject({ code: "access_token_invalid", logId: "log-1" });
+  });
+  it("rejects pending share limits during initialization", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        error: { code: "spam_risk_too_many_pending_share", log_id: "log-2" },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      uploadTikTokDraft(
+        {
+          accessToken: "token",
+          filePath: "/unused",
+          byteLength: 4,
+          contentType: "video/mp4",
+        },
+        createPublishWorkflow(new AbortController().signal),
+      ),
+    ).rejects.toMatchObject({
+      code: "spam_risk_too_many_pending_share",
+      logId: "log-2",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("does not send bytes if the provider identity cannot be persisted", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        data: {
+          publish_id: "publish-1",
+          upload_url: "https://upload.example/tiktok",
+        },
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await expect(
+      uploadTikTokDraft(
+        {
+          accessToken: "token",
+          filePath: "/unused",
+          byteLength: 4,
+          contentType: "video/mp4",
+          onInitialized: async () => {
+            throw new Error("database unavailable");
+          },
+        },
+        createPublishWorkflow(new AbortController().signal),
+      ),
+    ).rejects.toThrow("database unavailable");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

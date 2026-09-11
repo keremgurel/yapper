@@ -25,6 +25,10 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
     /// the normal case, and it is what keeps an Apply-to-all change visible on
     /// every card the creator has not deliberately restyled.
     var overrides: TextStylePatch
+    var isLocked: Bool?
+    var lockedText: String?
+    var lockedStyle: TextStyle?
+    var locked: Bool { isLocked == true }
 
     init(
         id: UUID = UUID(),
@@ -47,7 +51,7 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
     }
 
     func resolvedStyle(base: TextStyle) -> TextStyle {
-        base.resolving(overrides)
+        locked ? (lockedStyle ?? base.resolving(overrides)) : base.resolving(overrides)
     }
 
     /// True once the creator has restyled this card away from the shared look.
@@ -67,7 +71,7 @@ struct ProjectCaption: Equatable, Identifiable, Sendable {
 
 extension ProjectCaption: Codable {
     private enum CodingKeys: String, CodingKey {
-        case id, mediaID, text, isTextEdited, sourceStart, sourceEnd, wordIDs, overrides
+        case id, mediaID, text, isTextEdited, sourceStart, sourceEnd, wordIDs, overrides, isLocked, lockedText, lockedStyle
     }
 
     /// Cards saved before the appearance model kept their overrides as flat
@@ -89,6 +93,9 @@ extension ProjectCaption: Codable {
         sourceStart = try container.decode(Double.self, forKey: .sourceStart)
         sourceEnd = try container.decode(Double.self, forKey: .sourceEnd)
         wordIDs = try container.decodeIfPresent([UUID].self, forKey: .wordIDs)
+        isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked)
+        lockedText = try container.decodeIfPresent(String.self, forKey: .lockedText)
+        lockedStyle = try container.decodeIfPresent(TextStyle.self, forKey: .lockedStyle)
         if let stored = try container.decodeIfPresent(TextStylePatch.self, forKey: .overrides) {
             overrides = stored
             return

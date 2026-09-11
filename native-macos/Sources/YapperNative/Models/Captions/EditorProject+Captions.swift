@@ -67,7 +67,15 @@ extension EditorProject {
 
     /// Cards regenerated from the current transcript and cut.
     func generatedCaptions() -> [ProjectCaption] {
-        CaptionGenerator.captions(from: captionSourceWords, wordsPerCard: wordsPerCaptionCard)
+        let protected = (captions ?? []).filter(\.locked)
+        let words = captionSourceWords.filter { word in
+            !protected.contains { caption in
+                caption.mediaID == word.mediaID &&
+                    (word.id.map { caption.wordIDs?.contains($0) == true } == true ||
+                     (word.sourceStart < caption.sourceEnd && word.sourceEnd > caption.sourceStart))
+            }
+        }
+        return CaptionGenerator.captions(from: words, wordsPerCard: wordsPerCaptionCard) + protected
     }
 
     /// Kept words in timeline order, which is the only order captions can be
@@ -89,7 +97,7 @@ extension EditorProject {
                 sourceStart: word.start,
                 sourceEnd: word.end,
                 timelineStart: start,
-                timelineEnd: min(duration, start + max(0.12, word.end - word.start)),
+                timelineEnd: min(duration, timelineEnd(for: word) ?? start),
                 clip: clip.map { $0.sourceStart ... $0.sourceEnd }
             )
         }
@@ -147,7 +155,7 @@ extension EditorProject {
                     timelineStart: max(0, firstTime - CaptionGenerator.leadSeconds),
                     timelineEnd: min(
                         duration,
-                        lastTime + max(0.12, last.end - last.start) + CaptionGenerator.tailSeconds
+                        (timelineEnd(for: last) ?? lastTime) + CaptionGenerator.tailSeconds
                     ),
                     style: caption.resolvedStyle(base: base)
                 )
@@ -203,7 +211,7 @@ extension EditorProject {
             let clipDuration = clip.duration
             if clip.mediaID == mediaID {
                 if sourceTime >= clip.sourceStart, sourceTime <= clip.sourceEnd {
-                    return cursor + (sourceTime - clip.sourceStart)
+                    return cursor + clip.timelineOffset(forSource: sourceTime)
                 }
                 let isBefore = sourceTime < clip.sourceStart
                 let gap = isBefore ? clip.sourceStart - sourceTime : sourceTime - clip.sourceEnd
@@ -223,7 +231,7 @@ extension EditorProject {
         for clip in clips {
             let clipDuration = clip.duration
             if timelineTime >= cursor, timelineTime <= cursor + clipDuration {
-                return (clip.mediaID, clip.sourceStart + (timelineTime - cursor))
+                return (clip.mediaID, clip.sourceTime(atOffset: timelineTime - cursor))
             }
             cursor += clipDuration
         }

@@ -87,8 +87,8 @@ final class TimelineInspectionService {
         var result: [TimedWord] = []
         for clip in project.clips {
             for word in byMedia[clip.mediaID] ?? [] where word.playbackAnchor >= clip.sourceStart && word.playbackAnchor < clip.sourceEnd {
-                let start = cursor + max(0, word.start - clip.sourceStart)
-                let end = cursor + min(clip.duration, word.end - clip.sourceStart)
+                let start = cursor + max(0, clip.timelineOffset(forSource: word.start))
+                let end = cursor + min(clip.duration, clip.timelineOffset(forSource: word.end))
                 if end > start { result.append(.init(id: word.id, text: word.text, at: start, end: end)) }
             }
             cursor += clip.duration

@@ -5,8 +5,6 @@ export type VoiceCaptureErrorKind =
   | "recording"
   | null;
 
-export const VOICE_CAPTURE_MAX_BYTES = 3_900_000;
-export const VOICE_CAPTURE_MAX_DURATION_MS = 120_000;
 export const VOICE_CAPTURE_TIMESLICE_MS = 1_000;
 
 type VoiceCaptureEvents = {
@@ -19,28 +17,20 @@ type VoiceCaptureDependencies = {
   getUserMedia(): Promise<MediaStream>;
   createRecorder(stream: MediaStream): MediaRecorder;
   transcribe(blob: Blob, signal: AbortSignal): Promise<string>;
-  setTimer(
-    callback: () => void,
-    delayMs: number,
-  ): ReturnType<typeof setTimeout>;
-  clearTimer(timer: ReturnType<typeof setTimeout>): void;
 };
 
 class VoiceRecording {
   private readonly chunks: Blob[] = [];
-  private bytes = 0;
   private discard = false;
   private settled = false;
   private tracksStopped = false;
-  private timer: ReturnType<typeof setTimeout> | null = null;
   private resolveStop: ((blob: Blob | null) => void) | null = null;
   private readonly stopped: Promise<Blob | null>;
 
   constructor(
     private readonly stream: MediaStream,
     private readonly recorder: MediaRecorder,
-    private readonly dependencies: VoiceCaptureDependencies,
-    private readonly onLimit: (message: string) => void,
+    private readonly onError: (message: string) => void,
     private readonly onSettled: () => void,
   ) {
     this.stopped = new Promise((resolve) => {
@@ -51,26 +41,17 @@ class VoiceRecording {
   start() {
     this.recorder.ondataavailable = (event) => {
       if (this.discard || event.data.size === 0) return;
-      this.bytes += event.data.size;
-      if (this.bytes > VOICE_CAPTURE_MAX_BYTES) {
-        this.discardAndStop("Voice notes can be up to 3.9 MB.");
-        return;
-      }
       this.chunks.push(event.data);
     };
     this.recorder.onerror = () => {
       this.discardAndStop("Couldn't finish the recording.");
     };
     this.recorder.onstop = () => this.settle();
-    this.timer = this.dependencies.setTimer(() => {
-      this.discardAndStop("Voice notes can be up to two minutes long.");
-    }, VOICE_CAPTURE_MAX_DURATION_MS);
     this.recorder.start(VOICE_CAPTURE_TIMESLICE_MS);
   }
 
   stop(discard = false): Promise<Blob | null> {
     this.discard ||= discard;
-    this.clearDurationTimer();
     if (this.recorder.state !== "inactive") {
       try {
         this.recorder.stop();
@@ -90,14 +71,13 @@ class VoiceRecording {
     if (this.discard) return;
     this.discard = true;
     this.chunks.length = 0;
-    this.onLimit(message);
+    this.onError(message);
     void this.stop(true);
   }
 
   private settle() {
     if (this.settled) return;
     this.settled = true;
-    this.clearDurationTimer();
     this.stopTracks();
     const type = this.recorder.mimeType || this.chunks[0]?.type || "audio/webm";
     const blob = this.discard ? null : new Blob(this.chunks, { type });
@@ -105,12 +85,6 @@ class VoiceRecording {
     this.onSettled();
     this.resolveStop?.(blob);
     this.resolveStop = null;
-  }
-
-  private clearDurationTimer() {
-    if (this.timer === null) return;
-    this.dependencies.clearTimer(this.timer);
-    this.timer = null;
   }
 
   private stopTracks() {
@@ -147,7 +121,6 @@ export class VoiceCaptureController {
       const recording = new VoiceRecording(
         stream,
         recorder,
-        this.dependencies,
         (message) => {
           if (!this.owns(generation)) return;
           this.events.error(message, "recording");

@@ -889,7 +889,7 @@ final class EditorSession: ObservableObject {
                 for sourceTime in sourceTimes where sourceTime >= clip.sourceStart && sourceTime <= clip.sourceEnd {
                     anchors.append(
                         TimelineSnapAnchor(
-                            time: cursor + sourceTime - clip.sourceStart,
+                            time: cursor + clip.timelineOffset(forSource: sourceTime),
                             kind: .audio
                         )
                     )
@@ -1202,7 +1202,7 @@ final class EditorSession: ObservableObject {
                 let left = OverlayKeyTrack.portion(of: overlay, from: 0, duration: elapsed)
                 var right = OverlayKeyTrack.portion(of: overlay, from: elapsed, duration: overlay.duration - elapsed)
                 right.id = UUID()
-                if media(for: overlay)?.isImage != true { right.sourceStart += elapsed }
+                if media(for: overlay)?.isImage != true { right.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                 project.overlays?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.overlay(right.id))
                 didSplit = true
@@ -1299,7 +1299,7 @@ final class EditorSession: ObservableObject {
                 var clip = project.clips[index]
                 let elapsed = currentTime - start
                 guard elapsed > 1.0 / 30.0, elapsed < clip.duration - 1.0 / 30.0 else { continue }
-                let sourceTime = clip.sourceStart + elapsed
+                let sourceTime = clip.sourceTime(atOffset: elapsed)
                 if edge == .leading {
                     clip.sourceStart = sourceTime
                     leadingClipBoundary = min(leadingClipBoundary ?? start, start)
@@ -1340,7 +1340,7 @@ final class EditorSession: ObservableObject {
                 if edge == .leading {
                     let elapsed = currentTime - overlay.timelineStart
                     overlay.timelineStart = currentTime
-                    if media(for: overlay)?.isImage != true { overlay.sourceStart += elapsed }
+                    if media(for: overlay)?.isImage != true { overlay.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                     overlay.duration = end - currentTime
                     overlay = OverlayKeyTrack.rebased(overlay, by: elapsed)
                 } else {
@@ -2356,7 +2356,7 @@ final class EditorSession: ObservableObject {
         currentTime = min(currentTime, project.duration)
         do {
             try await rebuildComposition(preserveTime: true)
-            try await persist()
+            try await persist(allowLockedChanges: true)
             await reconcileDerivedMedia(from: current)
             statusMessage = direction == .undo ? "Undo" : "Redo"
         } catch {
@@ -2393,6 +2393,7 @@ final class EditorSession: ObservableObject {
         }
         project.updatedAt = Date()
         do {
+            try project.validateLocks(since: rollback.project)
             if requiresRebuild {
                 try await rebuildComposition(preserveTime: true)
             }
@@ -2418,6 +2419,7 @@ final class EditorSession: ObservableObject {
     ) async -> Bool {
         project.updatedAt = Date()
         do {
+            try project.validateLocks(since: rollbackState.project)
             if requiresRebuild {
                 try await rebuildComposition(preserveTime: true)
             }
@@ -2656,6 +2658,13 @@ final class EditorSession: ObservableObject {
         let rollback = pendingEdit?.rollback ?? mutationRollback
         guard let successStatus = edit.mutation() else {
             restoreEditStateWithoutRebuild(mutationRollback)
+            return
+        }
+
+        do { try project.validateLocks(since: mutationRollback.project) }
+        catch {
+            restoreEditStateWithoutRebuild(mutationRollback)
+            show(error)
             return
         }
 
@@ -3202,6 +3211,7 @@ final class EditorSession: ObservableObject {
             // that is not there right now is a file to reconnect, and every cut
             // made against it is still exactly right. See MediaAvailability.
             project = saved
+            persistedLockBaseline = saved
             repairBuiltInAudioURLs()
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
@@ -3227,8 +3237,14 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    func persist() async throws {
+    private var persistedLockBaseline: EditorProject?
+
+    func persist(allowLockedChanges: Bool = false) async throws {
+        if !allowLockedChanges, let previous = persistedLockBaseline {
+            try project.validateLocks(since: previous)
+        }
         try await store.save(project)
+        persistedLockBaseline = project
     }
 
     /// Make `next` the open project outright: no undo across projects, no
@@ -3241,6 +3257,7 @@ final class EditorSession: ObservableObject {
             syncHistoryAvailability()
         }
         project = next
+        persistedLockBaseline = next
         if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
         if !keepingHistory {
             selectedClipID = project.clips.first?.id

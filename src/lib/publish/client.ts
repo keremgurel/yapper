@@ -269,14 +269,78 @@ export async function crossPostToTikTok(
   input: TikTokPostInput,
   idempotencyKey: string,
 ): Promise<CrossPostResult> {
-  const res = await fetch("/api/publish/tiktok", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Idempotency-Key": idempotencyKey,
-    },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) throw await publishError(res);
-  return (await res.json()) as CrossPostResult;
+  return pollPublish("/api/publish/tiktok", input, idempotencyKey, "tiktok");
+}
+
+export function crossPostToTikTokDirect(
+  input: TikTokPostInput & {
+    caption: string;
+    settings: import("./tiktok-direct-settings").TikTokDirectSettings;
+  },
+  idempotencyKey: string,
+): Promise<CrossPostResult> {
+  return pollPublish(
+    "/api/publish/tiktok/direct",
+    input,
+    idempotencyKey,
+    "tiktok",
+  );
+}
+export function crossPostToFacebook(
+  input: InstagramPostInput & { expectedAccountId: string },
+  idempotencyKey: string,
+): Promise<CrossPostResult> {
+  return pollPublish(
+    "/api/publish/facebook",
+    input,
+    idempotencyKey,
+    "facebook",
+  );
+}
+async function pollPublish(
+  path: string,
+  input: object,
+  idempotencyKey: string,
+  platform: string,
+): Promise<CrossPostResult> {
+  for (let attempt = 0; attempt < 24; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
+        body: JSON.stringify(input),
+      });
+    } catch {
+      throw new Error("publish_in_progress");
+    }
+    if (res.ok) return (await res.json()) as CrossPostResult;
+    const data = (await res
+      .clone()
+      .json()
+      .catch(() => ({}))) as {
+      error?: string;
+      reason?: string;
+      message?: string;
+      reconcilable?: boolean;
+    };
+    if (
+      data.reconcilable &&
+      (data.error === "publish_state_pending" ||
+        data.error === "publish_in_progress")
+    ) {
+      if (attempt < 23)
+        await new Promise((resolve) => setTimeout(resolve, 5_000));
+      continue;
+    }
+    if (data.reason) throw new Error(`${platform}_${data.reason}`);
+    if (data.error?.startsWith(`${platform}_`)) throw new Error(data.error);
+    if (data.message && platform === "facebook")
+      throw new Error(`facebook_${data.message}`);
+    throw await publishError(res);
+  }
+  throw new Error("publish_in_progress");
 }

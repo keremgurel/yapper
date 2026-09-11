@@ -242,3 +242,35 @@ export async function headObjectBytes(key: string): Promise<number | null> {
     throw e;
   }
 }
+
+/** Stream a signed single-object grant to TikTok without exposing R2 credentials. */
+export async function streamPublishMedia(
+  key: string,
+  range: string | null,
+  signal: AbortSignal,
+): Promise<Response> {
+  if (range && !/^bytes=\d*-\d*$/.test(range))
+    return new Response(null, { status: 416 });
+  const object = await s3().send(
+    new GetObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Range: range ?? undefined,
+    }),
+    { abortSignal: signal },
+  );
+  if (!object.Body) return new Response(null, { status: 404 });
+  const headers = new Headers({
+    "Content-Type": object.ContentType ?? "video/mp4",
+    "Cache-Control": "private, no-store",
+    "Accept-Ranges": "bytes",
+    "X-Content-Type-Options": "nosniff",
+  });
+  if (object.ContentLength !== undefined)
+    headers.set("Content-Length", String(object.ContentLength));
+  if (object.ContentRange) headers.set("Content-Range", object.ContentRange);
+  return new Response(object.Body.transformToWebStream(), {
+    status: object.ContentRange ? 206 : 200,
+    headers,
+  });
+}

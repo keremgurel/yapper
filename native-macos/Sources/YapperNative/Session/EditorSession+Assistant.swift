@@ -45,7 +45,7 @@ extension EditorSession {
         let requiresLongOperation: Bool = switch intent {
         case .transcribe, .oneClickEdit, .trimSilences, .generateCaptions,
              .hideCaptions, .showCaptions, .placeOverlays, .addSounds,
-             .placeText, .setLevels, .addHook:
+             .placeText, .setLevels, .addHook, .clipControls:
             true
         default:
             false
@@ -67,6 +67,28 @@ extension EditorSession {
 
         var canceled = false
         switch intent {
+        case .clipControls:
+            guard let command = ClipControlCommand.parse(text) else { return }
+            let changed: Bool
+            switch command {
+            case let .speed(rate, all):
+                changed = await setClipSpeed(rate, applyToAll: all)
+            case let .lock(locked, captions, all):
+                let items: Set<TimelineSelectionItem>
+                if captions {
+                    items = Set((all ? project.storedCaptions.map(\.id) : Array(selectedCaptionIDs)).map { .caption($0) })
+                } else {
+                    let selected = timelineSelection.compactMap { item -> UUID? in
+                        if case let .clip(id) = item { return id }; return nil
+                    }
+                    let ids = all ? project.clips.map(\.id) : (selected.isEmpty ? [speedClip?.id].compactMap { $0 } : selected)
+                    items = Set(ids.map { .clip($0) })
+                }
+                changed = await setTimelineItemsLocked(locked, items: items)
+            }
+            conversation.answer(.chirpy(changed ? statusMessage : (errorMessage ?? "No settings changed. Check the selection and locks."),
+                                        tone: changed ? .done : .trouble))
+            return
         case .transcribe:
             await transcribeProject()
             canceled = lastTranscriptionWasCanceled

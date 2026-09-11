@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { transcribeVoiceCapture } from "@/lib/voice/transcribe-capture";
 import { invoke, isNative } from "@/lib/studio/native/bridge";
 import {
   VoiceCaptureController,
@@ -9,7 +10,7 @@ import {
 } from "@/lib/voice/voice-capture-controller";
 
 /**
- * Record a short voice note from the mic and transcribe it via /api/transcribe.
+ * Record a voice note from the mic and transcribe it via /api/transcribe.
  * Exposes the live `stream` while recording so a visualizer can draw the real
  * waveform, plus `cancel` to throw the take away without transcribing.
  */
@@ -26,22 +27,7 @@ export function useVoiceCapture() {
         getUserMedia: () =>
           navigator.mediaDevices.getUserMedia({ audio: true }),
         createRecorder: (mediaStream) => new MediaRecorder(mediaStream),
-        transcribe: async (blob, signal) => {
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            headers: { "Content-Type": blob.type || "audio/webm" },
-            body: blob,
-            signal,
-          });
-          if (!res.ok) throw new Error("transcribe_failed");
-          const data = (await res.json()) as { words?: { text: string }[] };
-          return (data.words ?? [])
-            .map((word) => word.text)
-            .join(" ")
-            .trim();
-        },
-        setTimer: (callback, delayMs) => setTimeout(callback, delayMs),
-        clearTimer: (timer) => clearTimeout(timer),
+        transcribe: transcribeVoiceCapture,
       },
       {
         phase: setPhase,

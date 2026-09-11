@@ -1,5 +1,6 @@
 import type { PublishPlatform } from "@/lib/db/schema";
 import { PLATFORMS } from "@/lib/publish/platforms";
+import { facebook } from "./oauth/facebook";
 import { google } from "./oauth/google";
 import { instagram } from "./oauth/instagram";
 import {
@@ -21,6 +22,7 @@ export type { OAuthAccount, OAuthTokens } from "./oauth/provider";
  */
 const PROVIDERS: Record<PublishPlatform, OAuthProvider> = {
   youtube: google,
+  facebook,
   tiktok,
   instagram,
 };

@@ -4,7 +4,7 @@ extension EditorProject {
     /// Materialises the derived cards of a legacy project so an edit has
     /// something concrete to change. Regeneration is always explicit from here
     /// on, exactly like the web editor.
-    private mutating func ensureCaptionsMaterialized() {
+    mutating func ensureCaptionsMaterialized() {
         guard captions == nil else { return }
         captions = storedCaptions
     }
@@ -449,6 +449,7 @@ extension EditorProject {
             style.apply(patch)
             captionStyle = style
             captions = (captions ?? []).map { caption in
+                guard !caption.locked else { return caption }
                 var updated = caption
                 updated.clearOverrides(in: patch)
                 return updated
@@ -456,7 +457,7 @@ extension EditorProject {
         } else {
             guard !selection.isEmpty else { return }
             captions = (captions ?? []).map { caption in
-                guard selection.contains(caption.id) else { return caption }
+                guard selection.contains(caption.id), !caption.locked else { return caption }
                 var updated = caption
                 updated.override(with: patch)
                 return updated

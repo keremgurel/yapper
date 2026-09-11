@@ -305,7 +305,8 @@ struct ReferenceMediaIntegrationTests {
         )
         let built = try await CompositionBuilder.build(project: project)
         #expect(try await built.asset.loadTracks(withMediaType: .audio).count == 2)
-        #expect(built.audioMix?.inputParameters.count == 1)
+        #expect(built.audioMix?.inputParameters.count == 2)
+        #expect(built.audioMix?.inputParameters.contains { $0.audioTimePitchAlgorithm == .spectral } == true)
 
         try await ExportService.export(project: project, to: output)
         let rendered = AVURLAsset(url: output)

@@ -7,6 +7,7 @@ struct PlacedOverlayBatch: Sendable {
     let notes: [String]
     /// The effects that ride along with those overlays.
     let sounds: [ResolvedSound]
+    var skippedExisting = 0
 
     static let empty = PlacedOverlayBatch(notes: [], sounds: [])
 }
@@ -34,8 +35,29 @@ extension EditorSession {
         words: [TranscriptWord],
         files: [ProjectMedia]
     ) async -> PlacedOverlayBatch {
-        let timed = spans.compactMap { resolve($0, words: words, files: files) }
-        guard !timed.isEmpty else { return .empty }
+        // The model is told about existing placements, but can still return
+        // them again. Filter before grouping so rejected copies neither shrink
+        // a row nor add a second sound. A reveal and its original are one asset.
+        var timed: [TimedSpan] = []
+        var skippedExisting = 0
+        func sourceID(_ media: ProjectMedia) -> UUID { media.generated?.revealSourceMediaID ?? media.id }
+        for span in spans {
+            guard let candidate = resolve(span, words: words, files: files) else { continue }
+            let source = sourceID(candidate.media)
+            let alreadyPlaced = (project.overlays ?? []).contains { overlay in
+                guard let media = project.media.first(where: { $0.id == overlay.mediaID }) else { return false }
+                return sourceID(media) == source && overlay.timelineStart < candidate.end &&
+                    overlay.timelineStart + overlay.duration > candidate.start
+            }
+            let repeatedInReply = timed.contains {
+                sourceID($0.media) == source && $0.start < candidate.end && $0.end > candidate.start
+            }
+            if alreadyPlaced || repeatedInReply { skippedExisting += 1 }
+            else { timed.append(candidate) }
+        }
+        guard !timed.isEmpty else {
+            return PlacedOverlayBatch(notes: [], sounds: [], skippedExisting: skippedExisting)
+        }
 
         var placed: [ProjectOverlay] = []
         var notes: [String] = []
@@ -61,6 +83,15 @@ extension EditorSession {
                     max(0.1, project.duration - member.start)
                 )
                 guard duration >= OverlayPlan.minimumSpanSeconds else { continue }
+                // Grouping can extend a member beyond its original quote.
+                // Recheck the final interval against earlier members as well.
+                let clashes = ((project.overlays ?? []) + placed).contains { overlay in
+                    guard let media = project.media.first(where: { $0.id == overlay.mediaID }) else { return false }
+                    return sourceID(media) == sourceID(member.media) &&
+                        overlay.timelineStart < member.start + duration &&
+                        overlay.timelineStart + overlay.duration > member.start
+                }
+                if clashes { skippedExisting += 1; continue }
                 placed.append(
                     introducedOverlay(
                         media: member.media,
@@ -79,12 +110,15 @@ extension EditorSession {
             }
         }
 
-        guard !Task.isCancelled, !placed.isEmpty else { return .empty }
+        guard !Task.isCancelled else { return .empty }
+        guard !placed.isEmpty else {
+            return PlacedOverlayBatch(notes: [], sounds: [], skippedExisting: skippedExisting)
+        }
         updateProject { project in
             project.overlays = (project.overlays ?? []) + placed
         }
         if let last = placed.last { selectTimelineItem(.overlay(last.id)) }
-        return PlacedOverlayBatch(notes: notes, sounds: sounds)
+        return PlacedOverlayBatch(notes: notes, sounds: sounds, skippedExisting: skippedExisting)
     }
 
     /// A span with its seconds worked out.
@@ -106,7 +140,7 @@ extension EditorSession {
         let start = OverlayCue.start(
             forWordAt: project.nearestTimelineTime(for: words[span.anchorWord])
         )
-        let end = project.nearestTimelineTime(for: last) + max(0.08, last.end - last.start)
+        let end = (project.timelineEnd(for: last) ?? project.nearestTimelineTime(for: last))
         guard end > start else { return nil }
         return TimedSpan(span: span, media: media, start: start, end: end)
     }

@@ -22,7 +22,7 @@ describe("crossPostTargets", () => {
     expect(ig.mode).toBe("direct");
     expect(ig.requiresProfessional).toBe(true);
     const [tt] = crossPostTargets(["tiktok"]);
-    expect(tt.mode).toBe("draft-inbox");
+    expect(tt.mode).toBe("direct");
     expect(tt.requiresProfessional).toBe(false);
   });
 
@@ -41,11 +41,11 @@ describe("crossPostTargets", () => {
 
 describe("crossPostSummary", () => {
   it("counts direct posts and draft-inbox posts separately", () => {
-    // youtube + instagram are direct; tiktok is draft-inbox.
+    // Inbox is an explicit per-post TikTok fallback.
     const s = crossPostSummary(
-      crossPostTargets(["youtube", "tiktok", "instagram"]),
+      crossPostTargets(["youtube", "tiktok", "instagram", "facebook"]),
     );
-    expect(s).toEqual({ total: 3, direct: 2, draftInbox: 1 });
+    expect(s).toEqual({ total: 4, direct: 4, draftInbox: 0 });
   });
 
   it("is all zeros for no targets", () => {

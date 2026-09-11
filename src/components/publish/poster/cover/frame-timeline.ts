@@ -21,3 +21,14 @@ export function formatFrameTime(time: number): string {
   const milliseconds = Math.round(Math.max(0, time) * 1000);
   return `${Math.floor(milliseconds / 60000)}:${String(Math.floor(milliseconds / 1000) % 60).padStart(2, "0")}.${String(milliseconds % 1000).padStart(3, "0")}`;
 }
+
+/** Seek inside the frame's actual interval, avoiding timestamp rounding to its predecessor. */
+export function framePreviewTime(
+  times: readonly number[],
+  index: number,
+  duration: number,
+): number {
+  const start = times[index] ?? 0;
+  const end = times[index + 1] ?? duration;
+  return start + Math.max(0, end - start) / 2;
+}

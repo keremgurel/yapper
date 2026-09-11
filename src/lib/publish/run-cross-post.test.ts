@@ -65,9 +65,22 @@ describe("crossPostOutcomeSummary", () => {
         { platform: "instagram", status: "posted" },
         { platform: "tiktok", status: "draft" },
       ]),
-    ).toEqual({ posted: 2, draft: 1, failed: 0 });
+    ).toEqual({ posted: 2, draft: 1, failed: 0, pending: 0 });
     expect(
       crossPostOutcomeSummary([{ platform: "youtube", status: "failed" }]),
-    ).toEqual({ posted: 0, draft: 0, failed: 1 });
+    ).toEqual({ posted: 0, draft: 0, failed: 1, pending: 0 });
+  });
+});
+
+it("does not label an uncertain delivery as a failure", async () => {
+  const outcomes = await runCrossPost(targets("tiktok"), async () => {
+    throw new Error("publish_in_progress");
+  });
+  expect(outcomes[0].status).toBe("pending");
+  expect(crossPostOutcomeSummary(outcomes)).toEqual({
+    posted: 0,
+    draft: 0,
+    failed: 0,
+    pending: 1,
   });
 });

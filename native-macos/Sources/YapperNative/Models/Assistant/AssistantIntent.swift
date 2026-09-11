@@ -30,6 +30,7 @@ enum AssistantIntent: Equatable, Sendable {
     /// sounds and what level is the whole of the sentence. See
     /// `SoundLevelCommand`.
     case setLevels
+    case clipControls
     /// Nothing here matches. Better to say so than to guess and run an edit
     /// nobody asked for.
     case unknown
@@ -48,6 +49,7 @@ enum AssistantIntent: Equatable, Sendable {
         case .addSounds: "Finding the moments those sounds belong on…"
         case .placeText: "Finding the moments those words belong on…"
         case .setLevels: "Setting the levels…"
+        case .clipControls: "Updating clip and caption settings…"
         case .unknown:
             "I can edit, transcribe, trim silences, caption, place your overlays, put text on screen, or add sounds."
         }
@@ -68,7 +70,7 @@ enum AssistantIntent: Equatable, Sendable {
         // These three never get here: the overlay pass reports its own
         // changes, line by line, and `AssistantReply.toPlacement` speaks for
         // them.
-        case .placeOverlays, .addSounds, .placeText, .setLevels: "Done."
+        case .placeOverlays, .addSounds, .placeText, .setLevels, .clipControls: "Done."
         case .unknown: spoken
         }
     }
@@ -100,6 +102,7 @@ enum AssistantRouter {
     static func route(_ instruction: String, mentionsFile: Bool = false) -> AssistantIntent {
         let text = instruction.lowercased()
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .unknown }
+        if ClipControlCommand.parse(instruction) != nil { return .clipControls }
         if mentionsFile { return .placeOverlays }
         if GeneratedOverlayCommand.creates(instruction) { return .placeOverlays }
 

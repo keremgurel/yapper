@@ -33,6 +33,27 @@ export interface TikTokUploadInput {
   filePath: string;
   byteLength: number;
   contentType: string;
+  /** Persist the provider identity before sending any irreversible bytes. */
+  onInitialized?: (publishId: string) => Promise<void>;
+}
+
+export class TikTokPublishError extends Error {
+  constructor(
+    public readonly code: string,
+    public readonly logId?: string,
+  ) {
+    super(`tiktok_${code}`);
+    this.name = "TikTokPublishError";
+  }
+}
+
+class TikTokUploadFailedError extends TikTokPublishError {}
+
+interface TikTokStatusData {
+  status?: string;
+  uploaded_bytes?: unknown;
+  fail_reason?: string;
+  publicaly_available_post_id?: (string | number)[];
 }
 
 export interface TikTokUploadResult {
@@ -67,7 +88,7 @@ async function initUpload(
   const { chunkSize, count } = planChunks(size);
   const { response, data: json } = await fetchBoundedJson<{
     data?: { publish_id?: string; upload_url?: string };
-    error?: { code?: string; message?: string };
+    error?: { code?: string; message?: string; log_id?: string };
   }>(
     INBOX_INIT,
     {
@@ -91,7 +112,10 @@ async function initUpload(
       signal: workflow.signal,
     },
   );
-  if (!response.ok) {
+  if (!response.ok || (json.error?.code && json.error.code !== "ok")) {
+    if (json.error?.code && json.error.code !== "ok") {
+      throw new TikTokPublishError(json.error.code, json.error.log_id);
+    }
     const code = (json.error?.code ?? "unknown").slice(0, 100);
     const message = (
       json.error?.message ?? "upload initialization failed"
@@ -146,14 +170,14 @@ async function putChunk(
   }
 }
 
-async function uploadedBytes(
+export async function fetchTikTokPostStatus(
   accessToken: string,
   publishId: string,
-  total: number,
   workflow: PublishWorkflow,
-): Promise<number> {
+): Promise<TikTokStatusData> {
   const { response, data } = await fetchBoundedJson<{
-    data?: { status?: unknown; uploaded_bytes?: unknown };
+    data?: TikTokStatusData;
+    error?: { code?: string; log_id?: string };
   }>(
     STATUS_FETCH,
     {
@@ -170,9 +194,30 @@ async function uploadedBytes(
       signal: workflow.signal,
     },
   );
+  if (data.error?.code && data.error.code !== "ok") {
+    throw new TikTokPublishError(data.error.code, data.error.log_id);
+  }
   if (!response.ok) throw new Error(`tiktok_status_${response.status}`);
-  if (data.data?.status === "FAILED") throw new Error("tiktok_upload_failed");
-  const value = data.data?.uploaded_bytes;
+  if (!data.data?.status) throw new Error("tiktok_status_missing");
+  return data.data;
+}
+
+async function uploadedBytes(
+  accessToken: string,
+  publishId: string,
+  total: number,
+  workflow: PublishWorkflow,
+): Promise<number> {
+  const data = await fetchTikTokPostStatus(accessToken, publishId, workflow);
+  if (data.status === "FAILED") {
+    throw new TikTokUploadFailedError(data.fail_reason ?? "upload_failed");
+  }
+  if (
+    data.status === "SEND_TO_USER_INBOX" ||
+    data.status === "PUBLISH_COMPLETE"
+  )
+    return total;
+  const value = data.uploaded_bytes;
   if (
     !Number.isSafeInteger(value) ||
     (value as number) < 0 ||
@@ -214,6 +259,7 @@ export async function uploadTikTokDraft(
     size,
     workflow,
   );
+  await input.onInitialized?.(publishId);
 
   for (let i = 0; i < count; i++) {
     const start = i * chunkSize;
@@ -242,6 +288,7 @@ export async function uploadTikTokDraft(
         }
         lastError = new Error(`tiktok_upload_${status}`);
       } catch (error) {
+        if (error instanceof TikTokUploadFailedError) throw error;
         if (
           error instanceof OutboundHttpError &&
           (error.code === "aborted" ||
@@ -272,6 +319,7 @@ export async function uploadTikTokDraft(
         }
         if (progress !== start) throw new Error("tiktok_bad_upload_progress");
       } catch (error) {
+        if (error instanceof TikTokUploadFailedError) throw error;
         if (
           error instanceof OutboundHttpError &&
           (error.code === "aborted" ||
@@ -282,7 +330,11 @@ export async function uploadTikTokDraft(
         lastError = error;
       }
       if (attempt < 2) {
-        await retryDelay(250 * 2 ** attempt, workflow.signal);
+        try {
+          await retryDelay(2_000 * 2 ** attempt, workflow.signal);
+        } catch (error) {
+          throw new PublishOutcomeUnknownError("tiktok", error);
+        }
       }
     }
     if (!completed) {

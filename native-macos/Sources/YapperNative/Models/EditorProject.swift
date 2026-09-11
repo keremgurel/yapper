@@ -81,8 +81,16 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     var backgroundRemoved: Bool?
     /// How much the face on this clip is retouched. `nil` reads as not at all.
     var retouch: ClipRetouch?
+    /// Source seconds consumed per timeline second. Missing in older projects.
+    var playbackRate: Double?
+    var isLocked: Bool?
 
-    var duration: Double { max(0, sourceEnd - sourceStart) }
+    var sourceDuration: Double { max(0, sourceEnd - sourceStart) }
+    var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
+    var duration: Double { sourceDuration / resolvedPlaybackRate }
+    var locked: Bool { isLocked == true }
+    func sourceTime(atOffset offset: Double) -> Double { sourceStart + offset * resolvedPlaybackRate }
+    func timelineOffset(forSource time: Double) -> Double { (time - sourceStart) / resolvedPlaybackRate }
     var removesBackground: Bool { backgroundRemoved == true }
     var resolvedRetouch: ClipRetouch { retouch ?? .none }
 
@@ -94,7 +102,9 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         framing: VideoFraming? = nil,
         framingKeys: [FramingKey]? = nil,
         backgroundRemoved: Bool? = nil,
-        retouch: ClipRetouch? = nil
+        retouch: ClipRetouch? = nil,
+        playbackRate: Double? = nil,
+        isLocked: Bool? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -104,6 +114,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         self.framingKeys = framingKeys
         self.backgroundRemoved = backgroundRemoved
         self.retouch = retouch
+        self.playbackRate = playbackRate
+        self.isLocked = isLocked
     }
 }
 
@@ -256,6 +268,10 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     var timelineStart: Double
     var duration: Double
     var sourceStart: Double
+    /// Retained when a speed-adjusted clip is moved onto an overlay lane.
+    var playbackRate: Double?
+    var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
+    var sourceDuration: Double { duration * resolvedPlaybackRate }
     var x: Double
     var y: Double
     var width: Double
@@ -300,7 +316,8 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         rotation: Double? = nil,
         isHidden: Bool? = nil,
         behindSpeaker: Bool? = nil,
-        keys: [OverlayKey]? = nil
+        keys: [OverlayKey]? = nil,
+        playbackRate: Double? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -317,6 +334,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.isHidden = isHidden
         self.behindSpeaker = behindSpeaker
         self.keys = keys
+        self.playbackRate = playbackRate
     }
 
     var resolvedCrop: OverlayCrop { crop ?? .full }
@@ -894,7 +912,8 @@ struct EditorProject: Codable, Equatable, Sendable {
             track: requestedLane ?? OverlayTracks.firstFreeTrack(
                 for: (id: UUID(), start: start, duration: placed),
                 in: overlays ?? []
-            )
+            ),
+            playbackRate: clip.playbackRate
         )
         var updatedOverlays = overlays ?? []
         updatedOverlays.append(overlay)
@@ -920,7 +939,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         let clip = TimelineClip(
             mediaID: overlay.mediaID,
             sourceStart: overlay.sourceStart,
-            sourceEnd: overlay.sourceStart + overlay.duration
+            sourceEnd: overlay.sourceStart + overlay.sourceDuration,
+            playbackRate: overlay.playbackRate
         )
         overlays?.remove(at: overlayIndex)
         clips.insert(clip, at: min(max(0, insertionIndex), clips.count))
@@ -1000,7 +1020,7 @@ struct EditorProject: Codable, Equatable, Sendable {
                word.playbackAnchor >= clip.sourceStart,
                word.playbackAnchor <= clip.sourceEnd
             {
-                return cursor + min(clip.duration, max(0, word.start - clip.sourceStart))
+                return cursor + min(clip.duration, max(0, clip.timelineOffset(forSource: word.start)))
             }
             cursor += clip.duration
         }
@@ -1125,6 +1145,8 @@ struct EditorProject: Codable, Equatable, Sendable {
                   previous.framingKeys == clip.framingKeys,
                   previous.backgroundRemoved == clip.backgroundRemoved,
                   previous.resolvedRetouch == clip.resolvedRetouch,
+                  previous.resolvedPlaybackRate == clip.resolvedPlaybackRate,
+                  !previous.locked, !clip.locked,
                   clip.sourceStart <= previous.sourceEnd + 0.06,
                   clip.sourceEnd >= previous.sourceStart
             else {
@@ -1173,7 +1195,7 @@ struct EditorProject: Codable, Equatable, Sendable {
             if clamped <= end || index == clips.count - 1 {
                 return (
                     index,
-                    min(clip.sourceEnd, clip.sourceStart + max(0, clamped - cursor))
+                    min(clip.sourceEnd, clip.sourceTime(atOffset: max(0, clamped - cursor)))
                 )
             }
             cursor = end
@@ -1188,8 +1210,8 @@ struct EditorProject: Codable, Equatable, Sendable {
         else { return false }
 
         let clip = clips[index]
-        let sourceTime = clip.sourceStart + timelineTime - timelineStart
-        let minimumSide = 1.0 / 30.0
+        let sourceTime = clip.sourceTime(atOffset: timelineTime - timelineStart)
+        let minimumSide = clip.resolvedPlaybackRate / 30.0
         guard
             sourceTime > clip.sourceStart + minimumSide,
             sourceTime < clip.sourceEnd - minimumSide

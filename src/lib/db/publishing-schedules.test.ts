@@ -67,6 +67,36 @@ afterAll(async () => {
 });
 
 describe("durable publishing schedules", () => {
+  it("supports an explicitly selected Facebook Page through the real migrations", async () => {
+    await save([
+      entry({
+        platform: "facebook",
+        externalAccountId: "123",
+        input: { mediaKey, caption: "Reviewed Reel" },
+      }),
+    ]);
+    expect(await listPublishingSchedules("user_test")).toEqual([
+      expect.objectContaining({
+        platform: "facebook",
+        externalAccountId: "123",
+      }),
+    ]);
+    const [job] = await db
+      .insert(schema.publishJobs)
+      .values({
+        userId: "user_test",
+        platform: "facebook",
+        mediaKey,
+        status: "uploading",
+        providerState: { mode: "direct", accountId: "123", publishId: "456" },
+      })
+      .returning();
+    expect(job.providerState).toEqual({
+      mode: "direct",
+      accountId: "123",
+      publishId: "456",
+    });
+  });
   it("saves the entire selection and replays it even if its source was removed later", async () => {
     const key = randomUUID();
     const entries = [entry(), entry({ platform: "instagram" })];

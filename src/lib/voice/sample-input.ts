@@ -19,6 +19,7 @@ export function parseSampleRequest(
   const platform = body.platform;
   if (
     typeof platform !== "string" ||
+    platform === "facebook" ||
     !(publishPlatforms as readonly string[]).includes(platform)
   )
     return null;

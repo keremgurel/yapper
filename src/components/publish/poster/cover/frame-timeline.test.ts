@@ -1,11 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   formatFrameTime,
+  framePreviewTime,
   nearestFrame,
   presentationTimes,
 } from "./frame-timeline";
 
 describe("frame timeline", () => {
+  it("previews inside each actual frame interval, including variable frame rates and the last frame", () => {
+    const times = [0, 0.02, 0.07, 0.15];
+    expect(framePreviewTime(times, 0, 0.2)).toBeCloseTo(0.01);
+    expect(framePreviewTime(times, 1, 0.2)).toBeCloseTo(0.045);
+    expect(framePreviewTime(times, 2, 0.2)).toBeCloseTo(0.11);
+    expect(framePreviewTime(times, 3, 0.2)).toBeCloseTo(0.175);
+    expect(framePreviewTime(times, 3, 0.15)).toBe(0.15);
+    expect(framePreviewTime([], 0, 0)).toBe(0);
+  });
   it("indexes presentation order even when B-frames arrive out of order", () => {
     expect(
       presentationTimes([0, 0.125, 0.041667, 0.083333, 0.125, -1, NaN]),

@@ -894,7 +894,7 @@ private struct TimelineVideoClipItem: View {
         )
         let leadingPreviewOffset = activeTrimEdge == .leading
             ? TimelineTrimGeometry.x(
-                for: displayed.sourceStart - clip.sourceStart,
+                for: clip.timelineOffset(forSource: displayed.sourceStart),
                 contentWidth: contentWidth,
                 projectDuration: projectDuration
             )
@@ -926,6 +926,19 @@ private struct TimelineVideoClipItem: View {
             // looks the same whether or not anything is happening to it.
             .overlay(alignment: .bottomLeading) {
                 FramingKeyMarkers(session: session, clip: displayed, cellWidth: displayedWidth)
+            }
+            .overlay(alignment: .topTrailing) {
+                if clip.resolvedPlaybackRate != 1 || clip.locked {
+                    HStack(spacing: 4) {
+                        if clip.resolvedPlaybackRate != 1 { Text(ClipSpeed.label(clip.resolvedPlaybackRate)) }
+                        if clip.locked { Image(systemName: "lock.fill") }
+                    }
+                    .font(.system(size: 10, weight: .semibold))
+                    .padding(4)
+                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 4))
+                    .padding(4)
+                    .allowsHitTesting(false)
+                }
             }
             .contentShape(Rectangle())
             .onTapGesture { selectTimelineItemFromPointer(.clip(clip.id), session: session) }
@@ -1122,7 +1135,7 @@ private struct TimelineVideoClipItem: View {
                             ? timelineStart
                             : timelineStart + trimOrigin.duration
                         let proposedEdgeTime = edge == .leading
-                            ? timelineStart + rawDraft.sourceStart - trimOrigin.sourceStart
+                            ? timelineStart + trimOrigin.timelineOffset(forSource: rawDraft.sourceStart)
                             : timelineStart + rawDraft.duration
                         let adjusted = TimelineSnapDragGeometry.trimTranslation(
                             originalEdgeTime: originalEdgeTime,
@@ -1178,15 +1191,16 @@ enum TimelineClipGeometry {
             contentWidth: contentWidth,
             projectDuration: projectDuration
         )
-        let minimumDuration = 1.0 / 30.0
+        let minimumDuration = clip.resolvedPlaybackRate / 30.0
+        let sourceDelta = delta * clip.resolvedPlaybackRate
         switch edge {
         case .leading:
             updated.sourceStart = min(
                 clip.sourceEnd - minimumDuration,
-                max(0, clip.sourceStart + delta)
+                max(0, clip.sourceStart + sourceDelta)
             )
         case .trailing:
-            let wanted = max(clip.sourceStart + minimumDuration, clip.sourceEnd + delta)
+            let wanted = max(clip.sourceStart + minimumDuration, clip.sourceEnd + sourceDelta)
             updated.sourceEnd = mediaDuration.map { min(wanted, $0) } ?? wanted
         }
         return updated
@@ -1310,7 +1324,7 @@ private struct TimelineOverlayItem: View {
         TimelineMediaCell(
             name: media.name,
             sourceStart: displayed.sourceStart,
-            sourceEnd: displayed.sourceStart + displayed.duration,
+            sourceEnd: displayed.sourceStart + displayed.sourceDuration,
             mediaDuration: media.duration,
             thumbnails: thumbnails,
             peaks: [],
@@ -2120,36 +2134,36 @@ enum TimelineOverlayGeometry {
 
         // Footage saved before this was source-aware can already claim more
         // than the file holds; that is what it is showing, so it is the floor.
-        let available = max(sourceDuration, overlay.sourceStart + overlay.duration)
+        let available = max(sourceDuration, overlay.sourceStart + overlay.sourceDuration)
         switch edge {
         case .leading:
             // Dragging the left edge moves the in point with it, so the cell
             // loses its opening rather than starting the same footage later.
-            let sourceEnd = overlay.sourceStart + overlay.duration
+            let sourceEnd = overlay.sourceStart + overlay.sourceDuration
             // Neither past the head of the footage nor off the front of the
             // video: whichever runs out first stops the drag.
-            let earliest = max(0, overlay.sourceStart - overlay.timelineStart)
+            let earliest = max(0, overlay.sourceStart - overlay.timelineStart * overlay.resolvedPlaybackRate)
             let newSourceStart = min(
-                sourceEnd - minimumDuration,
-                max(earliest, overlay.sourceStart + delta)
+                sourceEnd - minimumDuration * overlay.resolvedPlaybackRate,
+                max(earliest, overlay.sourceStart + delta * overlay.resolvedPlaybackRate)
             )
             updated.sourceStart = newSourceStart
             updated.timelineStart = max(
                 0,
-                overlay.timelineStart + (newSourceStart - overlay.sourceStart)
+                overlay.timelineStart + (newSourceStart - overlay.sourceStart) / overlay.resolvedPlaybackRate
             )
-            updated.duration = sourceEnd - newSourceStart
+            updated.duration = (sourceEnd - newSourceStart) / overlay.resolvedPlaybackRate
             updated = OverlayKeyTrack.rebased(updated, by: updated.timelineStart - overlay.timelineStart)
         case .trailing:
             let sourceEnd = min(
                 available,
                 max(
-                    overlay.sourceStart + minimumDuration,
-                    overlay.sourceStart + overlay.duration + delta
+                    overlay.sourceStart + minimumDuration * overlay.resolvedPlaybackRate,
+                    overlay.sourceStart + overlay.sourceDuration + delta * overlay.resolvedPlaybackRate
                 )
             )
             updated.duration = min(
-                sourceEnd - overlay.sourceStart,
+                (sourceEnd - overlay.sourceStart) / overlay.resolvedPlaybackRate,
                 max(minimumDuration, projectDuration - overlay.timelineStart)
             )
         }

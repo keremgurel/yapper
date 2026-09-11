@@ -45,7 +45,27 @@ it("preserves the legacy one-object response", async () => {
     key: expect.any(String),
     url: "https://r2.test/put",
   });
+  expect(mocks.sign.mock.calls[0]?.[1]).toBe("audio/mp4");
 });
+it("signs a browser recording with its actual media type", async () => {
+  const response = await POST(
+    request({ bytes: 5_000_000, contentType: "audio/webm;codecs=opus" }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.sign).toHaveBeenCalledWith(
+    expect.any(String),
+    "audio/webm",
+    5_000_000,
+    900,
+  );
+});
+it.each(["text/html", "", null, 42])(
+  "rejects unsupported upload type %s",
+  async (contentType) => {
+    expect((await POST(request({ bytes: 100, contentType }))).status).toBe(400);
+    expect(mocks.sign).not.toHaveBeenCalled();
+  },
+);
 it.each([
   [],
   [0],

@@ -16,9 +16,9 @@ describe("platform registry", () => {
     expect(Object.keys(PLATFORMS).sort()).toEqual([...publishPlatforms].sort());
   });
 
-  it("only Instagram pulls the video from a public URL", () => {
+  it("TikTok Direct Post and Meta fetch hosted videos", () => {
     const needing = publishPlatforms.filter((p) => PLATFORMS[p].needsPublicUrl);
-    expect(needing).toEqual(["instagram"]);
+    expect(needing).toEqual(["tiktok", "instagram", "facebook"]);
   });
 
   it("only Instagram requires a Professional (Business/Creator) account", () => {

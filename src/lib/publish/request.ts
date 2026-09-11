@@ -86,3 +86,21 @@ export async function readTikTokPublishRequest(request: Request) {
     caption: optionalString(body.caption, 2_200),
   };
 }
+
+export async function readTikTokDirectRequest(request: Request) {
+  const body = await read(request);
+  return {
+    ...common(body),
+    caption: optionalString(body.caption, 2200) ?? "",
+    settings: body.settings,
+  };
+}
+
+export async function readFacebookPublishRequest(request: Request) {
+  const body = await read(request);
+  return {
+    ...common(body),
+    caption: optionalString(body.caption, 2200),
+    expectedAccountId: optionalString(body.expectedAccountId, 200),
+  };
+}

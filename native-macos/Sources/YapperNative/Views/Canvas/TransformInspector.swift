@@ -23,7 +23,9 @@ struct TransformInspector: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            speedSection
             essentials
+                .disabled(session.framingClip?.locked == true)
             Divider().opacity(0.45)
             InspectorSection("Position", id: "video.position") {
                 positionRow
@@ -37,6 +39,40 @@ struct TransformInspector: View {
             }
             Divider().opacity(0.45)
             RetouchInspector(session: session, clock: clock)
+        }
+    }
+
+    private var speedSection: some View {
+        InspectorSection("Clip", id: "video.clip") {
+            if let clip = session.speedClip {
+                InspectorRow("Speed") {
+                    InspectorSelect(
+                        options: ClipSpeed.presets.map { .init(value: $0, label: ClipSpeed.label($0)) },
+                        selection: clip.resolvedPlaybackRate,
+                        onSelect: { rate in Task { await session.setClipSpeed(rate) } }
+                    )
+                    .disabled(clip.locked || session.project.media(for: clip)?.isImage != false)
+                    InspectorNumberField(value: clip.resolvedPlaybackRate, range: ClipSpeed.range, decimals: 2) { rate in
+                        Task { await session.setClipSpeed(rate) }
+                    }
+                    .disabled(clip.locked || session.project.media(for: clip)?.isImage != false)
+                    ApplyToAllButton(what: "speed", count: session.otherClipCount) {
+                        Task { await session.setClipSpeed(clip.resolvedPlaybackRate, applyToAll: true) }
+                    }
+                }
+                .help("Playback speed from 0.25× to 4×; the number field accepts a custom speed.")
+                InspectorRow("Voice") {
+                    Text("Pitch preserved").font(.studioCaption).foregroundStyle(.secondary)
+                }
+                InspectorRow("Lock") {
+                    Button {
+                        Task { await session.toggleTimelineLock(.clip(clip.id)) }
+                    } label: {
+                        Label(clip.locked ? "Unlock clip" : "Lock clip", systemImage: clip.locked ? "lock.fill" : "lock.open")
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                }
+            }
         }
     }
 

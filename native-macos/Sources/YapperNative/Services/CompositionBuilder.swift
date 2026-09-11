@@ -49,7 +49,7 @@ private struct MainSegment {
         let intoClip = max(0, time - range.start.seconds)
         let framing = VideoFramingTrack.framing(
             of: clip,
-            atSource: clip.sourceStart + intoClip
+            atSource: clip.sourceTime(atOffset: intoClip)
         )
         return CompositionBuilder.fittedTransform(
             naturalSize: naturalSize,
@@ -65,7 +65,7 @@ private struct MainSegment {
     /// The moments this clip's framing changes direction, in timeline seconds.
     var keyframeTimes: [Double] {
         VideoFramingTrack.keys(of: clip).map {
-            range.start.seconds + ($0.at - clip.sourceStart)
+            range.start.seconds + clip.timelineOffset(forSource: $0.at)
         }
     }
 }
@@ -256,11 +256,12 @@ enum CompositionBuilder {
             }
             let sourceRange = CMTimeRange(
                 start: CMTime(seconds: clip.sourceStart, preferredTimescale: timeScale),
-                duration: CMTime(seconds: clip.duration, preferredTimescale: timeScale)
+                duration: tick(clip.sourceDuration)
             )
             try compositionVideo.insertTimeRange(sourceRange, of: source.video, at: cursor)
 
-            let segmentRange = CMTimeRange(start: cursor, duration: sourceRange.duration)
+            let insertedRange = CMTimeRange(start: cursor, duration: sourceRange.duration)
+            let segmentRange = CMTimeRange(start: cursor, duration: tick(clip.duration))
             segments.append(
                 MainSegment(
                     range: segmentRange,
@@ -283,17 +284,30 @@ enum CompositionBuilder {
                     )
                     if intersection.duration > .zero {
                         let offset = intersection.start - sourceRange.start
+                        if offset > .zero {
+                            compositionAudio.insertEmptyTimeRange(CMTimeRange(start: cursor, duration: offset))
+                        }
                         try compositionAudio.insertTimeRange(
                             intersection,
                             of: sourceAudio,
                             at: cursor + offset
                         )
+                        let tail = sourceRange.duration - offset - intersection.duration
+                        if tail > .zero {
+                            compositionAudio.insertEmptyTimeRange(CMTimeRange(start: cursor + offset + intersection.duration, duration: tail))
+                        }
+                    } else {
+                        compositionAudio.insertEmptyTimeRange(insertedRange)
                     }
                 } else {
-                    compositionAudio.insertEmptyTimeRange(segmentRange)
+                    compositionAudio.insertEmptyTimeRange(insertedRange)
                 }
             }
-            cursor = cursor + sourceRange.duration
+            if clip.resolvedPlaybackRate != 1 {
+                compositionVideo.scaleTimeRange(insertedRange, toDuration: segmentRange.duration)
+                compositionAudio?.scaleTimeRange(insertedRange, toDuration: segmentRange.duration)
+            }
+            cursor = cursor + segmentRange.duration
         }
 
         let overlays = project.overlays ?? []
@@ -521,7 +535,7 @@ enum CompositionBuilder {
                     }
 
                     let available = min(
-                        max(0, source.duration - max(0, overlay.sourceStart)),
+                        max(0, source.duration - max(0, overlay.sourceStart)) / overlay.resolvedPlaybackRate,
                         max(0, compositionDuration - start)
                     )
                     duration = min(overlay.duration, available)
@@ -533,11 +547,14 @@ enum CompositionBuilder {
                                 seconds: max(0, overlay.sourceStart),
                                 preferredTimescale: timeScale
                             ),
-                            duration: CMTime(seconds: duration, preferredTimescale: timeScale)
+                            duration: CMTime(seconds: duration * overlay.resolvedPlaybackRate, preferredTimescale: timeScale)
                         ),
                         of: source.video,
                         at: CMTime(seconds: start, preferredTimescale: timeScale)
                     )
+                    if overlay.resolvedPlaybackRate != 1 {
+                        track.scaleTimeRange(CMTimeRange(start: tick(start), duration: tick(duration * overlay.resolvedPlaybackRate)), toDuration: tick(duration))
+                    }
                     naturalSize = source.videoSize
                     preferredTransform = source.videoTransform
                 }
@@ -802,8 +819,11 @@ enum CompositionBuilder {
         guard compositionDuration > .zero else { return nil }
         var parameters: [AVMutableAudioMixInputParameters] = []
 
-        if let mainTrack, abs(mainVolume - 1) > 0.001 {
+        if let mainTrack {
             let input = AVMutableAudioMixInputParameters(track: mainTrack)
+            // This applies to scaled composition edits in playback AND export;
+            // setting only AVPlayerItem's algorithm does not cover export.
+            input.audioTimePitchAlgorithm = .spectral
             input.setVolume(Float(AudioLevel.clamped(mainVolume)), at: .zero)
             parameters.append(input)
         }

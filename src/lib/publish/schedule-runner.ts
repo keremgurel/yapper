@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/publishing-schedules";
 import { findPublishJobClaim, getConnectionRow } from "@/lib/db/publish";
 import { getContentItem } from "@/lib/db/content";
+import { publishFacebook } from "./server/facebook";
 import { publishInstagram } from "./server/instagram";
 import { publishTikTok } from "./server/tiktok";
 import { publishYouTube } from "./server/youtube";
@@ -14,6 +15,7 @@ import { createPublishWorkflow } from "./workflow";
 
 const publishers = {
   youtube: publishYouTube,
+  facebook: publishFacebook,
   instagram: publishInstagram,
   tiktok: publishTikTok,
 };

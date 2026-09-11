@@ -38,7 +38,11 @@ export default function VoiceSection({
   const platforms = useMemo(
     () =>
       (connections ?? [])
-        .filter((connection) => connection.status === "active")
+        .filter(
+          (connection) =>
+            connection.status === "active" &&
+            connection.platform !== "facebook",
+        )
         .map((connection) => connection.platform as PublishPlatform),
     [connections],
   );

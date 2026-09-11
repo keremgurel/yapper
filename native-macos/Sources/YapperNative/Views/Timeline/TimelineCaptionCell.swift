@@ -43,7 +43,7 @@ struct TimelineCaptionCell: View {
             .fill(Color(red: 0.13, green: 0.29, blue: 0.42).opacity(0.9))
             .overlay(alignment: .leading) {
                 HStack(spacing: 5) {
-                    Image(systemName: "captions.bubble")
+                    Image(systemName: session.isLocked(.caption(cue.id)) ? "lock.fill" : "captions.bubble")
                     Text(cue.displayText).lineLimit(1)
                 }
                 .font(.studioCaptionStrong)

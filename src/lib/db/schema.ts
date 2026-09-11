@@ -679,7 +679,12 @@ export const contentItems = pgTable(
 
 /** The social platforms one edited video can be cross-posted to. Shared by the
  * connection and the job so a job can only target a platform we can connect. */
-export const publishPlatforms = ["youtube", "tiktok", "instagram"] as const;
+export const publishPlatforms = [
+  "youtube",
+  "tiktok",
+  "instagram",
+  "facebook",
+] as const;
 export type PublishPlatform = (typeof publishPlatforms)[number];
 
 export const connectionStatuses = ["active", "revoked", "expired"] as const;
@@ -721,7 +726,7 @@ export const platformConnections = pgTable(
     ),
     check(
       "platform_connections_platform_check",
-      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+      sql`${t.platform} in ('youtube','tiktok','instagram','facebook')`,
     ),
     check(
       "platform_connections_status_check",
@@ -760,6 +765,12 @@ export const publishJobs = pgTable(
     // nullable column keeps historical jobs decodable while every new route
     // claim supplies a key.
     idempotencyKey: text("idempotency_key"),
+    providerState: jsonb("provider_state").$type<{
+      mode?: "direct" | "inbox";
+      accountId?: string;
+      publishId?: string;
+      username?: string;
+    }>(),
     status: text("status", { enum: publishJobStatuses })
       .notNull()
       .default("queued"),
@@ -784,7 +795,7 @@ export const publishJobs = pgTable(
     ),
     check(
       "publish_jobs_platform_check",
-      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+      sql`${t.platform} in ('youtube','tiktok','instagram','facebook')`,
     ),
     check(
       "publish_jobs_status_check",
@@ -847,7 +858,7 @@ export const publishingSchedules = pgTable(
     ),
     check(
       "publishing_schedules_platform_check",
-      sql`${t.platform} in ('youtube','instagram','tiktok')`,
+      sql`${t.platform} in ('youtube','instagram','tiktok','facebook')`,
     ),
   ],
 );
@@ -893,7 +904,7 @@ export const importedPlatformMedia = pgTable(
     ),
     check(
       "imported_platform_media_platform_check",
-      sql`${t.platform} in ('youtube','tiktok','instagram')`,
+      sql`${t.platform} in ('youtube','tiktok','instagram','facebook')`,
     ),
   ],
 );

@@ -2,6 +2,7 @@
 
 import { Chip, statusTone } from "@/components/studio-ui";
 import type { PosterVideo } from "@/components/publish/poster/poster-video";
+import SavedVideoThumbnail from "./saved-video-thumbnail";
 
 function readableDate(iso: string | null): string {
   if (!iso) return "Not scheduled";
@@ -37,6 +38,7 @@ export default function VideoCard({
         className="block w-full text-left focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
       >
         <div className="relative aspect-[9/16] overflow-hidden bg-[linear-gradient(160deg,#2a2a2a,#0c0c0c)]">
+          <SavedVideoThumbnail submissionId={video.submissionId} />
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10">
             <p className="line-clamp-3 text-[13px] leading-snug font-semibold text-white">
               {video.title}

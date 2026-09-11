@@ -41,7 +41,7 @@ extension EditorSession {
             let existing = media(for: overlay).flatMap { $0.generated?.revealSourceMediaID == source.id ? $0 : nil }
             var revised = try await GeneratedOverlayService.save(reply: [
                 "name": existing?.name ?? "\(source.name) · spoken reveal",
-                "description": "Original image with each recognized number revealed at its spoken cue.",
+                "description": "Original image with spoken numbers revealed at their cues and other values always visible.",
                 "scene": try JSONSerialization.jsonObject(with: scene.encoded()),
                 "images": [["key": "original", "data": prepared.png.base64EncodedString()]],
             ], brand: nil, moment: ["quote": cues.map(\.spoken).joined(separator: " · ")],
@@ -63,8 +63,8 @@ extension EditorSession {
                 return
             }
             var notes = cues.map { "\(regions[$0.region].text) appears at \(formatTime($0.at)) as you say “\($0.spoken)”" }
-            let hidden = regions.indices.filter { index in !cues.contains { $0.region == index } }.map { regions[$0].text }
-            if !hidden.isEmpty { notes.append("Not spoken here, kept hidden: \(hidden.joined(separator: ", ")).") }
+            let visible = regions.indices.filter { index in !cues.contains { $0.region == index } }.map { regions[$0].text }
+            if !visible.isEmpty { notes.append("Visible throughout: \(visible.joined(separator: ", ")).") }
             setOverlayPlacement(.generated(notes: notes, changed: 1))
         } catch is CancellationError {
             markCurrentLongOperationCanceled()

@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Input, VideoSampleSink } from "mediabunny";
-import { nearestFrame, presentationTimes } from "./frame-timeline";
+import {
+  framePreviewTime,
+  nearestFrame,
+  presentationTimes,
+} from "./frame-timeline";
+
+type CapturedFrame = { image: string; time: number };
 
 type Engine = {
   input: Input;
@@ -10,6 +16,7 @@ type Engine = {
   times: number[];
   running: boolean;
   disposed: boolean;
+  frames: Map<number, CapturedFrame>;
 };
 
 /** Decode the indexed frame once; preview and cover share those exact pixels. */
@@ -21,9 +28,7 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
   const [times, setTimes] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [frame, setFrame] = useState<{ image: string; time: number } | null>(
-    null,
-  );
+  const [frame, setFrame] = useState<CapturedFrame | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -37,6 +42,11 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
       // Coalesce rapid input, never let two decodes race to update the cover.
       while (!current.disposed) {
         const wanted = selected.current;
+        const cached = current.frames.get(wanted);
+        if (cached) {
+          setFrame(cached);
+          break;
+        }
         const time = current.times[wanted];
         const timer = setTimeout(() => current.input.dispose(), 30_000);
         const sample = await current.sink
@@ -66,7 +76,12 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
             width,
             height,
           );
-          setFrame({ image: canvas.toDataURL("image/jpeg", 0.9), time });
+          const captured = { image: canvas.toDataURL("image/jpeg", 0.9), time };
+          current.frames.set(wanted, captured);
+          // Bound full-resolution JPEG storage while keeping recent frame steps instant.
+          if (current.frames.size > 12)
+            current.frames.delete(current.frames.keys().next().value!);
+          setFrame(captured);
           break;
         } finally {
           sample.close();
@@ -82,13 +97,15 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
   }, []);
 
   useEffect(() => {
-    if (!mediaUrl) return;
     let live = true;
     let input: Input | undefined;
     setTimes([]);
+    setIndex(0);
+    setDuration(0);
     setFrame(null);
-    setBusy(true);
+    setBusy(Boolean(mediaUrl));
     setError("");
+    if (!mediaUrl) return;
     const timer = setTimeout(() => {
       if (live) {
         live = false;
@@ -134,6 +151,7 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
           times: timeline,
           running: false,
           disposed: false,
+          frames: new Map(),
         };
         const start = nearestFrame(timeline, initial.current);
         selected.current = start;
@@ -172,6 +190,17 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
       );
       selected.current = bounded;
       setIndex(bounded);
+      const cached = current.frames.get(bounded);
+      if (cached) {
+        current.frames.delete(bounded);
+        current.frames.set(bounded, cached);
+        setFrame(cached);
+        setBusy(false);
+        setError("");
+        return;
+      }
+      setBusy(true);
+      setError("");
       void decode();
     },
     [decode],
@@ -188,6 +217,7 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
   return {
     duration,
     time: times[index] ?? 0,
+    previewTime: framePreviewTime(times, index, duration),
     index,
     frameCount: times.length,
     frame,

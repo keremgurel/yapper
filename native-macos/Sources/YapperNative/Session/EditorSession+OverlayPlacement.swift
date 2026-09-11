@@ -84,9 +84,10 @@ extension EditorSession {
         // nothing in it. Anything else asking for overlays with no overlays to
         // place is answered here rather than paid for and answered by the model.
         let intent = AssistantRouter.route(instruction)
-        let revisions = generatedMediaMentioned(in: instruction)
         let creates = GeneratedOverlayCommand.creates(instruction, hasImportedMedia: !placeableMedia.isEmpty)
-            && OverlayMention.mentioned(in: instruction, names: placeableMedia.map(\.name)).isEmpty
+        // A file can be a reference for a new design. Its mention must not
+        // override an explicit creation request and place or revise it instead.
+        let revisions = creates ? [] : generatedMediaMentioned(in: instruction)
         guard !placeableMedia.isEmpty || intent == .addSounds || intent == .placeText || creates else {
             setOverlayPlacement(.failed("Import the overlays you want placed first."))
             return
@@ -195,7 +196,9 @@ extension EditorSession {
             addSounds(placed.sounds + standalone.sounds)
             let notes = placed.notes + textNotes + soundNotes(standalone.sounds)
             guard !notes.isEmpty else {
-                setOverlayPlacement(.failed(nothingLanded(unknownEffects: standalone.unknown)))
+                setOverlayPlacement(.failed(placed.skippedExisting > 0 && standalone.unknown.isEmpty
+                    ? "Those overlays are already at those moments. No duplicate copies were added."
+                    : nothingLanded(unknownEffects: standalone.unknown)))
                 setStatus("Ready")
                 return
             }

@@ -9,6 +9,7 @@ import {
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
 import { presignUpload, r2Configured, transcriptionKey } from "@/lib/r2";
+import { captureMediaType } from "@/lib/voice/capture-media";
 
 export const runtime = "nodejs";
 
@@ -46,10 +47,19 @@ export async function POST(req: Request): Promise<Response> {
     if (response) return response;
     throw error;
   }
-  const value = body as { bytes?: unknown; sizes?: unknown } | null;
+  const value = body as {
+    bytes?: unknown;
+    sizes?: unknown;
+    contentType?: unknown;
+  } | null;
+  const contentType =
+    value?.contentType === undefined
+      ? "audio/mp4"
+      : captureMediaType(value.contentType);
   const batch = value?.sizes !== undefined;
   const sizes = batch ? value?.sizes : [value?.bytes];
   if (
+    !contentType ||
     !Array.isArray(sizes) ||
     sizes.length === 0 ||
     sizes.length > 648 ||
@@ -78,7 +88,7 @@ export async function POST(req: Request): Promise<Response> {
       const key = transcriptionKey(userId, randomUUID());
       const url = await presignUpload(
         key,
-        "audio/mp4",
+        contentType,
         bytes,
         UPLOAD_WINDOW_SECONDS,
       );

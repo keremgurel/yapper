@@ -1,7 +1,7 @@
 import type { PublishPlatform } from "@/lib/db/schema";
 import type { CrossPostResult } from "@/lib/publish/client";
 
-export type CrossPostStatus = "posted" | "draft" | "failed";
+export type CrossPostStatus = "posted" | "draft" | "pending" | "failed";
 
 /** What happened on one platform in a fan-out. `url` is present for a live post
  * that landed somewhere linkable; `error` for a failure. */
@@ -38,7 +38,10 @@ export async function runCrossPost(
     }
     return {
       platform,
-      status: "failed",
+      status:
+        s.reason instanceof Error && s.reason.message === "publish_in_progress"
+          ? "pending"
+          : "failed",
       error: s.reason instanceof Error ? s.reason.message : "failed",
     };
   });
@@ -49,14 +52,17 @@ export function crossPostOutcomeSummary(outcomes: CrossPostOutcome[]): {
   posted: number;
   draft: number;
   failed: number;
+  pending: number;
 } {
   let posted = 0;
   let draft = 0;
   let failed = 0;
+  let pending = 0;
   for (const o of outcomes) {
     if (o.status === "posted") posted += 1;
     else if (o.status === "draft") draft += 1;
+    else if (o.status === "pending") pending += 1;
     else failed += 1;
   }
-  return { posted, draft, failed };
+  return { posted, draft, failed, pending };
 }

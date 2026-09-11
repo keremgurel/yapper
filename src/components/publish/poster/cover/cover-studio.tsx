@@ -10,7 +10,8 @@ import {
 import CoverPreview from "./cover-preview";
 import ThumbnailUpload from "./thumbnail-upload";
 import Disclosure from "./disclosure";
-import FramePicker, { FramePreview } from "./frame-picker";
+import FramePicker from "./frame-picker";
+import FramePreview from "./frame-preview";
 import RemixPanel from "./remix-panel";
 import TextOverlayPanel from "./text-overlay-panel";
 import { useCoverMedia, type CoverMediaRef } from "./use-cover-media";
@@ -49,9 +50,11 @@ export default function CoverStudio({
   const [useFrame, setUseFrame] = useState(true);
 
   useEffect(() => {
-    onFramePendingChange(draft.source === "frame" && picker.busy);
+    onFramePendingChange(
+      draft.source === "frame" && (picker.busy || Boolean(picker.error)),
+    );
     return () => onFramePendingChange(false);
-  }, [draft.source, picker.busy, onFramePendingChange]);
+  }, [draft.source, picker.busy, picker.error, onFramePendingChange]);
 
   const draftRef = useRef(draft);
   const onChangeRef = useRef(onChange);
@@ -79,8 +82,11 @@ export default function CoverStudio({
       <div className="grid gap-5 sm:grid-cols-2">
         <Section title="Pick the frame" rank="quiet">
           <FramePreview
+            key={source.url}
+            mediaUrl={source.url}
+            time={picker.previewTime}
             image={picker.frame?.image ?? null}
-            capturing={picker.busy}
+            capturing={picker.busy || picker.frame?.time !== picker.time}
           />
         </Section>
         <Section title="Your thumbnail" rank="quiet">

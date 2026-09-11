@@ -89,3 +89,49 @@ describe("publish client idempotency", () => {
     ).rejects.toThrow("publish_in_progress");
   });
 });
+
+it("polls TikTok with the original key until inbox delivery", async () => {
+  vi.useFakeTimers();
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(
+      Response.json(
+        { error: "publish_state_pending", reconcilable: true },
+        { status: 503 },
+      ),
+    )
+    .mockResolvedValueOnce(Response.json({ jobId: "tt", draft: true }));
+  vi.stubGlobal("fetch", fetchMock);
+  try {
+    const result = crossPostToTikTok({ mediaKey: "video" }, "same_attempt");
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await result).toEqual({ jobId: "tt", draft: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0][1]).toEqual(fetchMock.mock.calls[1][1]);
+  } finally {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("preserves TikTok's pending-share cap reason", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(
+      Response.json(
+        {
+          error: "upload_failed",
+          reason: "spam_risk_too_many_pending_share",
+        },
+        { status: 502 },
+      ),
+    ),
+  );
+  try {
+    await expect(
+      crossPostToTikTok({ mediaKey: "video" }, "same_attempt"),
+    ).rejects.toThrow("tiktok_spam_risk_too_many_pending_share");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

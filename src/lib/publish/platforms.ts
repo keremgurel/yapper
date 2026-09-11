@@ -32,7 +32,7 @@ export interface PlatformSpec {
 }
 
 /**
- * The single source of truth for the three platforms. The OAuth flow reads
+ * The single source of truth for publishing platforms. The OAuth flow reads
  * `scopes` and `env`, the publish pipeline reads `mode` and `needsPublicUrl`,
  * and the UI reads `label`, `postMeaning`, and `requiresProfessional`.
  */
@@ -56,29 +56,33 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
   tiktok: {
     id: "tiktok",
     label: "TikTok",
-    mode: "draft-inbox",
-    // Four products' worth, and every one of them has to be added to the app
-    // in TikTok's developer portal or the whole authorization is refused with
-    // "scope" and nothing else. Login Kit grants user.info.basic; the Display
-    // API grants user.info.profile, user.info.stats and video.list; the
-    // Content Posting API grants video.upload. `TIKTOK_SCOPES` overrides this
-    // for an app that is only half approved. video.publish (direct posting) is
-    // deliberately absent: asking for a scope nothing uses fails TikTok's own
-    // review, and direct posting needs an audit and a compliance UI first.
+    mode: "direct",
+    // Direct Post requires video.publish; the inbox fallback uses video.upload.
     scopes: [
       "user.info.basic",
       "user.info.profile",
       "user.info.stats",
       "video.list",
       "video.upload",
+      "video.publish",
     ],
-    needsPublicUrl: false,
+    needsPublicUrl: true,
     requiresProfessional: false,
     env: {
       clientId: "TIKTOK_CLIENT_KEY",
       clientSecret: "TIKTOK_CLIENT_SECRET",
     },
-    postMeaning: "Sends to your TikTok drafts to finish in the app.",
+    postMeaning: "Posts to TikTok with the audience and settings you choose.",
+  },
+  facebook: {
+    id: "facebook",
+    label: "Facebook",
+    mode: "direct",
+    scopes: ["pages_show_list", "pages_read_engagement", "pages_manage_posts"],
+    needsPublicUrl: true,
+    requiresProfessional: false,
+    env: { clientId: "FACEBOOK_APP_ID", clientSecret: "FACEBOOK_APP_SECRET" },
+    postMeaning: "Posts a public Reel to the Facebook Page you choose.",
   },
   instagram: {
     id: "instagram",

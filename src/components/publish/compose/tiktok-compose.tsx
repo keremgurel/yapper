@@ -1,13 +1,13 @@
 "use client";
-
-import { crossPostToTikTok } from "@/lib/publish/client";
+import { useCallback, useState } from "react";
+import {
+  crossPostToTikTok,
+  crossPostToTikTokDirect,
+} from "@/lib/publish/client";
 import { useCrossPost } from "@/hooks/use-cross-post";
+import TikTokPostReview, { type TikTokReview } from "../tiktok-post-review";
 import ComposeActions from "./compose-actions";
 import type { CrossPostTarget } from "./types";
-
-/** Compose a TikTok post: there's nothing to write here. Until the app passes
- * TikTok's direct-post audit, we send the video to the user's TikTok drafts and
- * they add the caption and publish in the app. */
 export default function TikTokCompose({
   item,
   onDone,
@@ -15,36 +15,41 @@ export default function TikTokCompose({
   item: CrossPostTarget;
   onDone: () => void;
 }) {
-  const { state, error, result, post } = useCrossPost();
-  const busy = state === "posting";
-
+  const { state, error, errorDetail, result, post } = useCrossPost();
+  const [review, setReview] = useState<TikTokReview | null>(null);
+  const onReview = useCallback(
+    (_id: string, next: TikTokReview) => setReview(next),
+    [],
+  );
   const onPost = () => {
-    if (busy) return;
-    void post((idempotencyKey) =>
-      crossPostToTikTok(
-        {
-          submissionId: item.submissionId,
-          mediaKey: item.mediaKey,
-          contentItemId: item.contentItemId,
-        },
-        idempotencyKey,
-      ),
+    if (!review?.ready || state === "posting") return;
+    void post((key) =>
+      review.mode === "direct"
+        ? crossPostToTikTokDirect(
+            { ...item, caption: review.caption, settings: review.settings },
+            key,
+          )
+        : crossPostToTikTok(item, key),
     );
   };
-
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-muted-foreground text-xs">
-        We send the video to your TikTok drafts. You add the caption and publish
-        it in the TikTok app, where it shows up in your notifications.
-      </p>
-
+    <div className="space-y-4">
+      <TikTokPostReview
+        source={item}
+        initialCaption={item.initialDescription ?? item.title}
+        disabled={state !== "idle"}
+        onChange={onReview}
+      />
       <ComposeActions
         platform="tiktok"
         state={state}
         error={error}
+        errorDetail={errorDetail}
         result={result}
-        postLabel="Send to TikTok drafts"
+        disabled={!review?.ready}
+        postLabel={
+          review?.mode === "inbox" ? "Send to TikTok inbox" : "Post to TikTok"
+        }
         onPost={onPost}
         onDone={onDone}
       />

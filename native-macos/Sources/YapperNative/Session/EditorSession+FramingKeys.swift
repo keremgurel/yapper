@@ -100,7 +100,7 @@ extension EditorSession {
 
     private func seekToKey(_ key: FramingKey, in clip: TimelineClip) {
         let clipStart = project.timelineStart(for: clip.id) ?? 0
-        seekToTimelineTime(clipStart + (key.at - clip.sourceStart))
+        seekToTimelineTime(clipStart + clip.timelineOffset(forSource: key.at))
     }
 
     // MARK: - Dragging one on the timeline

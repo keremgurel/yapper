@@ -26,7 +26,12 @@ const request = (enabled = true) =>
       enabled,
       version: 0,
       settings,
-      expectedAccounts: { instagram: "ig", youtube: "yt", tiktok: "tt" },
+      expectedAccounts: {
+        instagram: "ig",
+        youtube: "yt",
+        tiktok: "tt",
+        facebook: "fb",
+      },
     }),
   });
 beforeEach(() => {
@@ -46,9 +51,12 @@ beforeEach(() => {
   vi.mocked(getConnectionRow).mockImplementation(
     async (_user, platform) =>
       ({
-        externalAccountId: { instagram: "ig", youtube: "yt", tiktok: "tt" }[
-          platform
-        ],
+        externalAccountId: {
+          instagram: "ig",
+          youtube: "yt",
+          tiktok: "tt",
+          facebook: "fb",
+        }[platform],
         status: "active",
         handle: platform,
       }) as Awaited<ReturnType<typeof getConnectionRow>>,

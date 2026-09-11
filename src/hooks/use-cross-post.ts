@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { CrossPostResult } from "@/lib/publish/client";
+import { publishErrorCopy } from "@/lib/publish/error-copy";
 import { PublishAttempt } from "@/lib/publish/attempt";
 
 export type CrossPostState = "idle" | "posting" | "done" | "error";
@@ -25,6 +26,7 @@ function toError(e: unknown): CrossPostError {
 export function useCrossPost() {
   const [state, setState] = useState<CrossPostState>("idle");
   const [error, setError] = useState<CrossPostError | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [result, setResult] = useState<CrossPostResult | null>(null);
   const attempt = useRef<PublishAttempt | null>(null);
   attempt.current ??= new PublishAttempt();
@@ -35,11 +37,13 @@ export function useCrossPost() {
       if (!idempotencyKey) return;
       setState("posting");
       setError(null);
+      setErrorDetail(null);
       try {
         setResult(await run(idempotencyKey));
         setState("done");
       } catch (e) {
         setError(toError(e));
+        setErrorDetail(e instanceof Error ? publishErrorCopy(e.message) : null);
         setState("error");
       } finally {
         attempt.current?.finish();
@@ -51,9 +55,10 @@ export function useCrossPost() {
   const reset = useCallback(() => {
     setState("idle");
     setError(null);
+    setErrorDetail(null);
     setResult(null);
     attempt.current?.reset();
   }, []);
 
-  return { state, error, result, post, reset };
+  return { state, error, errorDetail, result, post, reset };
 }

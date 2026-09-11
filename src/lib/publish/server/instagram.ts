@@ -147,10 +147,10 @@ export async function publishInstagram(
       console.error("[publish] instagram failure state write failed", failure),
     );
     console.error("[publish] instagram publish failed", message);
-    const professional = message.includes("instagram_container_");
+
     return Response.json(
       {
-        error: professional ? "not_professional" : "publish_failed",
+        error: "publish_failed",
         jobId,
       },
       { status: publishFailureStatus(e, workflow) },

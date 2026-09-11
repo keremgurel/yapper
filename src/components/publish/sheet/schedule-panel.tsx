@@ -105,7 +105,7 @@ export default function SchedulePanel({
                       description: copy.body,
                       privacyStatus: "public",
                     }
-                  : platform === "instagram"
+                  : platform === "instagram" || platform === "facebook"
                     ? { caption: copy.body || copy.title }
                     : {}),
               },

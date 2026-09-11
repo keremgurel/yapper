@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import {
   Sheet,
@@ -13,6 +13,8 @@ import { useConnections } from "@/hooks/use-connections";
 import type { PublishPlatform } from "@/lib/db/schema";
 import {
   crossPostToInstagram,
+  crossPostToFacebook,
+  crossPostToTikTokDirect,
   crossPostToTikTok,
   crossPostToYouTube,
 } from "@/lib/publish/client";
@@ -35,6 +37,7 @@ import PublishButton from "@/components/publish/sheet/publish-button";
 import SingleCopyFields from "@/components/publish/sheet/single-copy-fields";
 import SchedulePanel from "@/components/publish/sheet/schedule-panel";
 import SourceList from "@/components/publish/sheet/source-list";
+import TikTokPostReview, { type TikTokReview } from "./tiktok-post-review";
 import type { CrossPostTarget } from "./compose/types";
 
 export type { CrossPostTarget } from "./compose/types";
@@ -44,6 +47,8 @@ function postSource(
   platform: PublishPlatform,
   override: CopyOverride | null,
   idempotencyKey: string,
+  tiktokReview?: TikTokReview,
+  expectedAccountId?: string,
 ) {
   const { title, body } = outgoingCopy(source, platform, override);
   if (platform === "youtube") {
@@ -60,18 +65,32 @@ function postSource(
       idempotencyKey,
     );
   }
-  if (platform === "instagram") {
-    return crossPostToInstagram(
+  if (platform === "instagram" || platform === "facebook") {
+    const input = {
+      submissionId: source.submissionId,
+      mediaKey: source.mediaKey,
+      caption: body || title || undefined,
+      contentItemId: source.contentItemId,
+      thumbnailKey: source.thumbnailKey,
+    };
+    return platform === "facebook"
+      ? crossPostToFacebook(
+          { ...input, expectedAccountId: expectedAccountId ?? "" },
+          idempotencyKey,
+        )
+      : crossPostToInstagram(input, idempotencyKey);
+  }
+  if (tiktokReview?.mode === "direct")
+    return crossPostToTikTokDirect(
       {
         submissionId: source.submissionId,
         mediaKey: source.mediaKey,
-        caption: body || title || undefined,
         contentItemId: source.contentItemId,
-        thumbnailKey: source.thumbnailKey,
+        caption: tiktokReview.caption,
+        settings: tiktokReview.settings,
       },
       idempotencyKey,
     );
-  }
   // TikTok's inbox endpoint takes no caption at all: the video lands in the
   // creator's drafts and they paste the caption in the app.
   return crossPostToTikTok(
@@ -124,6 +143,14 @@ export default function CrossPostSheet({
   const [posting, setPosting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const operation = useRef(false);
+  const [tiktokReviews, setTikTokReviews] = useState<
+    Record<string, TikTokReview>
+  >({});
+  const onTikTokReview = useCallback(
+    (id: string, review: TikTokReview) =>
+      setTikTokReviews((current) => ({ ...current, [id]: review })),
+    [],
+  );
   const [scheduled, setScheduled] = useState(false);
   const [outcomes, setOutcomes] = useState<SourceOutcome[]>([]);
   const attemptKeys = useRef<PublishAttemptRegistry | null>(null);
@@ -141,7 +168,12 @@ export default function CrossPostSheet({
 
   const connected = connectedInOrder(
     connections
-      ?.filter((connection) => connection.status === "active")
+      ?.filter(
+        (connection) =>
+          connection.status === "active" &&
+          (connection.platform !== "facebook" ||
+            !!connection.externalAccountId),
+      )
       .map((connection) => connection.platform) ?? [],
   );
   // A platform chosen upstream but never connected has no button here, so it
@@ -161,8 +193,13 @@ export default function CrossPostSheet({
     });
   };
 
+  const tiktokReady =
+    !chosen.includes("tiktok") ||
+    sources.every((source) => tiktokReviews[source.id]?.ready);
+
   const publish = async () => {
     if (
+      !tiktokReady ||
       operation.current ||
       scheduled ||
       sources.length === 0 ||
@@ -183,6 +220,9 @@ export default function CrossPostSheet({
           platform,
           editable,
           attemptKeys.current!.forTarget(`${source.id}:${platform}`),
+          tiktokReviews[source.id],
+          connections?.find((connection) => connection.platform === platform)
+            ?.externalAccountId ?? undefined,
         ),
       );
       finished.push(
@@ -272,6 +312,25 @@ export default function CrossPostSheet({
                 }
               />
 
+              {chosen.includes("tiktok") &&
+                sources.map((source) => (
+                  <TikTokPostReview
+                    key={source.id}
+                    source={source}
+                    initialCaption={
+                      outgoingCopy(source, "tiktok", editable).body ||
+                      outgoingCopy(source, "tiktok", editable).title
+                    }
+                    disabled={posting || outcomes.length > 0}
+                    onChange={onTikTokReview}
+                  />
+                ))}
+              {chosen.includes("facebook") && (
+                <p className="text-muted-foreground text-xs">
+                  Facebook Reels will be public on your selected Page. Use
+                  vertical videos, 3–90 seconds, at least 540 × 960 pixels.
+                </p>
+              )}
               <OutcomeList outcomes={outcomes} />
 
               {failures.length > 0 && done && (
@@ -291,6 +350,7 @@ export default function CrossPostSheet({
                   done={done}
                   disabled={
                     posting ||
+                    !tiktokReady ||
                     scheduling ||
                     sources.length === 0 ||
                     chosen.length === 0 ||
@@ -299,7 +359,7 @@ export default function CrossPostSheet({
                   onPublish={() => void publish()}
                 />
               )}
-              {outcomes.length === 0 && (
+              {outcomes.length === 0 && !chosen.includes("tiktok") && (
                 <SchedulePanel
                   accounts={Object.fromEntries(
                     (connections ?? []).map((connection) => [
@@ -312,6 +372,7 @@ export default function CrossPostSheet({
                   override={editable}
                   disabled={
                     posting ||
+                    !tiktokReady ||
                     scheduling ||
                     sources.length === 0 ||
                     chosen.length === 0 ||
@@ -325,9 +386,8 @@ export default function CrossPostSheet({
                 />
               )}
               <p className="text-muted-foreground text-center text-xs">
-                YouTube posts are requested as public. TikTok lands in your
-                drafts and takes no caption over its API, so paste it in the
-                app.
+                YouTube posts are requested as public. For TikTok, review the
+                audience and posting method above.
               </p>
             </>
           )}

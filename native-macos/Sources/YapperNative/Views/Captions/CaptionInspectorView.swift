@@ -58,6 +58,18 @@ struct CaptionInspectorView: View {
     /// feeling like a filing cabinet.
     private var essentials: some View {
         VStack(alignment: .leading, spacing: 9) {
+            if !session.selectedCaptionIDs.isEmpty {
+                let items = Set(session.selectedCaptionIDs.map { TimelineSelectionItem.caption($0) })
+                let locked = items.allSatisfy { session.isLocked($0) }
+                InspectorRow("Lock") {
+                    Button {
+                        Task { await session.setTimelineItemsLocked(!locked, items: items) }
+                    } label: {
+                        Label(locked ? "Unlock selected captions" : "Lock selected captions", systemImage: locked ? "lock.open" : "lock.fill")
+                    }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                }
+            }
             InspectorCheckbox(
                 title: "Apply to all captions",
                 isOn: Binding(

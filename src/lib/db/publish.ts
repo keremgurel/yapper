@@ -142,6 +142,8 @@ export type PublishJobClaim =
       status: (typeof publishJobs.$inferSelect)["status"];
       externalPostId: string | null;
       externalUrl: string | null;
+      error?: string | null;
+      providerState?: (typeof publishJobs.$inferSelect)["providerState"];
     }
   | { kind: "unavailable" };
 
@@ -156,6 +158,8 @@ export async function findPublishJobClaim(
       status: publishJobs.status,
       externalPostId: publishJobs.externalPostId,
       externalUrl: publishJobs.externalUrl,
+      error: publishJobs.error,
+      providerState: publishJobs.providerState,
     })
     .from(publishJobs)
     .where(
@@ -173,6 +177,8 @@ export async function findPublishJobClaim(
         status: row.status,
         externalPostId: row.externalPostId,
         externalUrl: row.externalUrl,
+        error: row.error,
+        providerState: row.providerState,
       }
     : null;
 }
@@ -192,6 +198,7 @@ export async function claimPublishJob(
     title?: string | null;
     caption?: string | null;
     contentItemId?: string | null;
+    providerState?: (typeof publishJobs.$inferSelect)["providerState"];
   },
 ): Promise<PublishJobClaim> {
   return getDb().transaction(async (tx) => {
@@ -203,6 +210,8 @@ export async function claimPublishJob(
         status: publishJobs.status,
         externalPostId: publishJobs.externalPostId,
         externalUrl: publishJobs.externalUrl,
+        error: publishJobs.error,
+        providerState: publishJobs.providerState,
       })
       .from(publishJobs)
       .where(
@@ -220,6 +229,8 @@ export async function claimPublishJob(
         status: existing.status,
         externalPostId: existing.externalPostId,
         externalUrl: existing.externalUrl,
+        error: existing.error,
+        providerState: existing.providerState,
       };
     }
 
@@ -250,6 +261,7 @@ export async function claimPublishJob(
         title: input.title ?? null,
         caption: input.caption ?? null,
         contentItemId: input.contentItemId ?? null,
+        providerState: input.providerState,
       })
       .returning({ id: publishJobs.id });
     return { kind: "created", jobId: row.id };
@@ -258,7 +270,7 @@ export async function claimPublishJob(
 
 export async function completePublishJob(
   id: string,
-  result: { externalPostId: string; externalUrl: string },
+  result: { externalPostId: string; externalUrl: string; draft?: boolean },
 ): Promise<void> {
   const db = getDb();
   const [job] = await db
@@ -267,17 +279,38 @@ export async function completePublishJob(
       status: "published",
       externalPostId: result.externalPostId,
       externalUrl: result.externalUrl,
+      error: null,
       updatedAt: new Date(),
     })
     .where(eq(publishJobs.id, id))
     .returning({ contentItemId: publishJobs.contentItemId });
   // The idea this video came from has reached the end of the loop.
-  if (job?.contentItemId) {
+  if (job?.contentItemId && !result.draft) {
     await db
       .update(contentItems)
       .set({ status: "posted", updatedAt: new Date() })
       .where(eq(contentItems.id, job.contentItemId));
   }
+}
+
+/** Keep the TikTok publish ID durable even if the upload request disconnects. */
+export async function recordTikTokPublishId(
+  id: string,
+  publishId: string,
+): Promise<void> {
+  await getDb()
+    .update(publishJobs)
+    .set({
+      externalPostId: publishId,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(publishJobs.id, id),
+        eq(publishJobs.platform, "tiktok"),
+        eq(publishJobs.status, "uploading"),
+      ),
+    );
 }
 
 /** Captions the creator published through Yapper on one platform, newest
@@ -383,4 +416,53 @@ export async function deleteConnection(
     )
     .returning({ platform: platformConnections.platform });
   return rows.length > 0;
+}
+
+/** Update only the connection whose Facebook user authorized this selection. */
+export async function selectFacebookPage(
+  userId: string,
+  expected: { id: string; refreshTokenEnc: string },
+  page: { id: string; name: string; access_token: string },
+): Promise<boolean> {
+  const rows = await getDb()
+    .update(platformConnections)
+    .set({
+      accessTokenEnc: encryptToken(page.access_token),
+      externalAccountId: page.id,
+      handle: page.name,
+      expiresAt: null,
+      status: "active",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(platformConnections.userId, userId),
+        eq(platformConnections.platform, "facebook"),
+        eq(platformConnections.id, expected.id),
+        eq(platformConnections.refreshTokenEnc, expected.refreshTokenEnc),
+      ),
+    )
+    .returning({ id: platformConnections.id });
+  return rows.length === 1;
+}
+
+/** Checkpoint the provider identity so delivery can be checked after a timeout. */
+export async function recordProviderPublishId(
+  id: string,
+  publishId: string,
+  state: NonNullable<(typeof publishJobs.$inferSelect)["providerState"]>,
+): Promise<void> {
+  await getDb()
+    .update(publishJobs)
+    .set({
+      externalPostId: publishId,
+      providerState: { ...state, publishId },
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(publishJobs.id, id),
+        inArray(publishJobs.status, ["uploading", "processing"]),
+      ),
+    );
 }

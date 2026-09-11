@@ -335,6 +335,34 @@ describe("POST /api/transcribe with audio already in storage", () => {
       body: JSON.stringify({ key }),
     });
 
+  it("sends stored browser audio to the backup with the correct file type", async () => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "");
+    vi.stubEnv("GROQ_API_KEY", "groq_test");
+    r2.getObjectBytes.mockResolvedValue(new Uint8Array([1, 2, 3]).buffer);
+    mocks.fetchBoundedJson.mockResolvedValue({
+      response: new Response(null, { status: 200 }),
+      data: { duration: 300, words: [{ word: "thought", start: 0, end: 1 }] },
+    });
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          key: "u/user_test/asr/abc.m4a",
+          contentType: "audio/webm",
+        }),
+      }),
+    );
+    expect(response.status).toBe(200);
+    const form = mocks.fetchBoundedJson.mock.calls[0]?.[1]?.body as FormData;
+    const file = form.get("file") as File;
+    expect(file.name).toBe("audio.webm");
+    expect(file.type).toBe("audio/webm");
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledWith(
+      "u/user_test/asr/abc.m4a",
+    );
+  });
+
   const storedChunks = (
     chunks: { key: string; offset: number; duration: number }[],
   ) =>

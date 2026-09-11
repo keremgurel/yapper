@@ -23,9 +23,11 @@ export function sourceCaptions(video: PosterVideo): CaptionSet {
   if (video.kind !== "platform" || video.caption === undefined) return {};
   // Keep line breaks and inline hashtags exactly where the creator put them.
   return Object.fromEntries(
-    (["youtube", "tiktok", "instagram"] as const).map((platform) => [
-      platform,
-      { platform, title: "", body: video.caption!, hashtags: [] },
-    ]),
+    (["youtube", "tiktok", "instagram", "facebook"] as const).map(
+      (platform) => [
+        platform,
+        { platform, title: "", body: video.caption!, hashtags: [] },
+      ],
+    ),
   );
 }

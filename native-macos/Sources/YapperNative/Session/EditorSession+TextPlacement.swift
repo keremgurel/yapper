@@ -74,7 +74,7 @@ extension EditorSession {
         let start = OverlayCue.start(
             forWordAt: project.nearestTimelineTime(for: words[span.anchorWord])
         )
-        let end = project.nearestTimelineTime(for: last) + max(0.08, last.end - last.start)
+        let end = (project.timelineEnd(for: last) ?? project.nearestTimelineTime(for: last))
         guard end > start else { return nil }
         return TimedText(span: span, start: start, end: end)
     }
@@ -101,8 +101,7 @@ extension EditorSession {
                     words.indices.contains(holdWord)
                 else { return unit.end }
                 let word = words[holdWord]
-                let held = project.nearestTimelineTime(for: word)
-                    + max(0.08, word.end - word.start)
+                let held = project.timelineEnd(for: word) ?? project.nearestTimelineTime(for: word)
                 // Never shorter than its own sentence: a hold is a request for
                 // more time, and words the speaker had already finished saying
                 // would take it away.

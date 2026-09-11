@@ -8,6 +8,8 @@ struct PropertiesMenuItems: View {
     let item: TimelineSelectionItem
 
     var body: some View {
+        if case .clip = item { lockButton }
+        if case .caption = item { lockButton }
         Button {
             session.copyProperties(of: item)
         } label: {
@@ -22,6 +24,14 @@ struct PropertiesMenuItems: View {
             } label: {
                 Label(title, systemImage: "paintbrush.fill")
             }
+        }
+    }
+
+    private var lockButton: some View {
+        Button {
+            Task { await session.toggleTimelineLock(item) }
+        } label: {
+            Label(session.isLocked(item) ? "Unlock" : "Lock", systemImage: session.isLocked(item) ? "lock.open" : "lock.fill")
         }
     }
 }

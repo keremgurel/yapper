@@ -50,6 +50,18 @@ export const CAPTION_SPECS: Record<PublishPlatform, CaptionSpec> = {
       "link or a next step.",
     postable: true,
   },
+  facebook: {
+    platform: "facebook",
+    label: "Facebook Reels",
+    hasTitle: false,
+    titleMax: 0,
+    bodyMax: 2200,
+    visibleChars: 125,
+    hashtags: { min: 0, max: 3 },
+    guidance:
+      "A clear opening line followed by useful context and a natural invitation to discuss. Keep hashtags sparse.",
+    postable: true,
+  },
   instagram: {
     platform: "instagram",
     label: "Instagram Reels",
@@ -77,7 +89,7 @@ export const CAPTION_SPECS: Record<PublishPlatform, CaptionSpec> = {
       "One or two lines, spoken not written, the way a person captions their " +
       "own video. No throat-clearing and no marketing cadence. Tags are part " +
       "of the sentence's world, not a block of SEO.",
-    postable: false,
+    postable: true,
   },
 };
 

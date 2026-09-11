@@ -3,6 +3,7 @@ import { sampleCredits } from "@/lib/voice/units";
 
 export const PLATFORM_LABEL: Record<PublishPlatform, string> = {
   instagram: "Instagram",
+  facebook: "Facebook",
   tiktok: "TikTok",
   youtube: "YouTube",
 };

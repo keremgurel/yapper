@@ -57,6 +57,7 @@ struct CaptionWordIndex: Sendable {
     /// What a card says right now: what was typed if it was typed, otherwise the
     /// words that are still in the cut.
     func text(for caption: ProjectCaption) -> String {
+        if caption.locked, let text = caption.lockedText { return text }
         guard !caption.isTextEdited else { return caption.text }
         return words(for: caption.id)
             .map { $0.text.trimmingCharacters(in: .whitespacesAndNewlines) }

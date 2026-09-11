@@ -26,6 +26,7 @@ export default function ComposeActions({
   platform,
   state,
   error,
+  errorDetail,
   result,
   postLabel,
   postedSuffix,
@@ -36,6 +37,7 @@ export default function ComposeActions({
   platform: PublishPlatform;
   state: CrossPostState;
   error: CrossPostError | null;
+  errorDetail?: string | null;
   result: CrossPostResult | null;
   postLabel: string;
   postedSuffix?: string;
@@ -51,7 +53,8 @@ export default function ComposeActions({
       <div className="flex flex-col gap-3">
         {result.draft ? (
           <p className="text-sm font-bold text-[color:var(--sg-green-500)]">
-            Sent to your {label} drafts. Open the app to finish posting.
+            Delivered to your {label} inbox. Open TikTok and tap “Your content
+            from Yapper is ready” to finish posting.
           </p>
         ) : (
           <>
@@ -93,7 +96,7 @@ export default function ComposeActions({
       ) : (
         error && (
           <p className="text-sm font-bold text-[color:var(--sg-pink-500)]">
-            {ERROR_COPY[error]}
+            {errorDetail ?? ERROR_COPY[error]}
           </p>
         )
       )}
@@ -109,7 +112,11 @@ export default function ComposeActions({
         ) : (
           <Send className="h-4 w-4" />
         )}
-        {busy ? "Posting…" : postLabel}
+        {busy
+          ? "Posting…"
+          : error === "in_progress"
+            ? "Check delivery status"
+            : postLabel}
       </Button>
     </div>
   );

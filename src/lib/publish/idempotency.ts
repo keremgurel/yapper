@@ -8,7 +8,7 @@ export function publishIdempotencyKey(request: Request): string | null {
 }
 
 export function existingPublishResponse(
-  platform: "youtube" | "instagram" | "tiktok",
+  platform: "youtube" | "instagram" | "tiktok" | "facebook",
   claim: Extract<PublishJobClaim, { kind: "existing" }>,
 ): Response {
   if (claim.status === "published") {
@@ -20,7 +20,7 @@ export function existingPublishResponse(
         replayed: true,
       });
     }
-    if (platform === "instagram") {
+    if (platform === "instagram" || platform === "facebook") {
       return Response.json({
         jobId: claim.jobId,
         mediaId: claim.externalPostId,
@@ -43,6 +43,11 @@ export function existingPublishResponse(
           ? "publish_attempt_failed"
           : "publish_in_progress",
       jobId: claim.jobId,
+      ...(platform === "tiktok" &&
+      claim.status === "failed" &&
+      claim.error?.startsWith("tiktok_")
+        ? { reason: claim.error.slice(7) }
+        : {}),
     },
     { status: 409 },
   );

@@ -52,7 +52,7 @@ enum ApplyToAll {
         ids: Set<UUID>? = nil
     ) -> [TimelineClip] {
         clips.map { clip in
-            guard ids?.contains(clip.id) ?? true, !VideoFramingTrack.isKeyed(clip) else { return clip }
+            guard ids?.contains(clip.id) ?? true, !VideoFramingTrack.isKeyed(clip), !clip.locked else { return clip }
             var copy = clip
             copy.framing = framing.isIdentity ? nil : framing
             return copy
@@ -61,6 +61,7 @@ enum ApplyToAll {
 
     static func retouch(_ settings: ClipRetouch, to clips: [TimelineClip]) -> [TimelineClip] {
         clips.map { clip in
+            guard !clip.locked else { return clip }
             var copy = clip
             copy.retouch = settings.isNeutral ? nil : settings
             return copy
@@ -69,6 +70,7 @@ enum ApplyToAll {
 
     static func background(removed: Bool, to clips: [TimelineClip]) -> [TimelineClip] {
         clips.map { clip in
+            guard !clip.locked else { return clip }
             var copy = clip
             copy.backgroundRemoved = removed ? true : nil
             return copy

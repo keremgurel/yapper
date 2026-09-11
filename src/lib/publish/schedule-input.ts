@@ -77,12 +77,12 @@ export async function readScheduleInput(
       target.expectedAccountId.length > 200
     )
       throw new RequestBodyError("invalid_body");
-    if (!["youtube", "instagram", "tiktok"].includes(platform))
+    if (!["youtube", "instagram", "tiktok", "facebook"].includes(platform))
       throw new RequestBodyError("invalid_body");
     const read =
       platform === "youtube"
         ? readYouTubePublishRequest
-        : platform === "instagram"
+        : platform === "instagram" || platform === "facebook"
           ? readInstagramPublishRequest
           : readTikTokPublishRequest;
     const input = await read(

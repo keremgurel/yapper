@@ -50,6 +50,7 @@ export async function resolveSampleSource(
   video: SampleVideoRef,
   signal?: AbortSignal,
 ): Promise<SampleSource> {
+  if (platform === "facebook") throw new Error("no_source_file");
   if (platform === "youtube") {
     const transcript = await fetchYoutubeTranscript(video.id);
     if (!transcript?.trim()) throw new Error("no_captions");

@@ -28,6 +28,7 @@ import {
   viaOpenAiCompatible,
 } from "@/lib/transcription/providers";
 import { getObjectBytes } from "@/lib/r2";
+import { captureMediaType } from "@/lib/voice/capture-media";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { getOwnedMediaKey } from "@/lib/db/submissions";
 import { mergeAsrChunks, type TimedAsrChunk } from "@/lib/transcription/chunks";
@@ -109,8 +110,8 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "invalid_audio_duration" }, { status: 400 });
   }
 
-  // Two ways a take arrives. A browser posts the audio, because it has nowhere
-  // to put it first. The editor uploads it to storage and sends the key, which
+  // Two ways a take arrives. Small recordings post the audio directly.
+  // Larger recordings upload it to storage and send the key, which
   // is what lets a long take through at all: the audio never passes through
   // this function, so the hosting body limit stops capping the recording.
   const stored = (req.headers.get("content-type") ?? "").includes(
@@ -136,6 +137,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     const value = body as {
       key?: unknown;
+      contentType?: unknown;
       chunks?: unknown;
       submissionId?: unknown;
       mediaKey?: unknown;
@@ -146,7 +148,13 @@ export async function POST(req: Request): Promise<Response> {
     const chunks = value?.chunks;
     const submissionId = value?.submissionId;
     if (typeof key === "string" && isTranscriptionKey(userId, key)) {
-      // Legacy native clients upload one whole take.
+      // Browser voice capture and legacy native clients upload one whole take.
+      if (value?.contentType !== undefined) {
+        const type = captureMediaType(value.contentType);
+        if (!type)
+          return Response.json({ error: "bad_request" }, { status: 400 });
+        contentType = type;
+      }
       storedChunks = [{ key, offset: 0, duration: 0 }];
     } else if (
       Array.isArray(chunks) &&
@@ -379,7 +387,7 @@ export async function POST(req: Request): Promise<Response> {
                   groq,
                   "https://api.groq.com/openai/v1",
                   "whisper-large-v3",
-                  "audio/mp4",
+                  contentType,
                   keyterms,
                   req.signal,
                   chunkTimeoutMs,

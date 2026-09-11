@@ -177,16 +177,18 @@ enum ImageNumberReveal {
         var nodes = [image]
         var animations: [SceneAnimation] = []
         for (index, region) in regions.enumerated() {
+            // Only cover values that have a spoken cue to uncover them.
+            // An unmatched value is part of the original image throughout;
+            // timing the spoken numbers must not erase unrelated metrics.
+            guard let cue = cues.first(where: { $0.region == index }) else { continue }
             let box = region.box
             var cover = SceneNode(id: "number-\(index)", kind: .rect,
                                   x: box.minX, y: box.minY, width: box.width, height: box.height)
             cover.fill = .hex(region.background)
             nodes.append(cover)
-            if let cue = cues.first(where: { $0.region == index }) {
-                let at = max(0, cue.at - start)
-                animations.append(.init(node: cover.id, property: .opacity, from: 1, to: 0,
-                                        start: at, end: min(duration, at + 0.16), easing: .outCubic))
-            }
+            let at = max(0, cue.at - start)
+            animations.append(.init(node: cover.id, property: .opacity, from: 1, to: 0,
+                                    start: at, end: min(duration, at + 0.16), easing: .outCubic))
         }
         return OverlayScene(duration: duration, poster: min(duration - 0.04, (cues.last?.at ?? start) - start + 0.3),
                             nodes: nodes, animations: animations)

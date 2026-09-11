@@ -4,6 +4,11 @@ import Foundation
 import Testing
 @testable import YapperNative
 
+private actor NumberRevealTestStore: ProjectPersisting {
+    func load() async throws -> EditorProject? { nil }
+    func save(_: EditorProject) async throws {}
+}
+
 @MainActor
 struct ImageNumberRevealTests {
     private func region(_ text: String, _ value: Double, currency: Bool = false) -> ImageNumberRevealService.Region {
@@ -21,7 +26,7 @@ struct ImageNumberRevealTests {
         #expect(!ImageNumberReveal.requested("show the numbers all at once"))
     }
 
-    @Test func bindsCurrencyAndCountsWithoutRevealingUnspokenFigures() {
+    @Test func bindsCurrencyAndCountsWhileKeepingUnspokenFiguresVisible() throws {
         let regions = [region("34", 34), region("291", 291), region("CA$1.10", 1.1, currency: true), region("CA$37.47", 37.47, currency: true)]
         let words = [word("spent", 6.2), word("$37", 6.52), word("That", 7.6), word("got", 7.85), word("me", 8.08), word("34", 8.25), word("clicks", 8.73)]
         let overlay = ProjectOverlay(mediaID: UUID(), timelineStart: 3.67, duration: 4.14)
@@ -30,15 +35,16 @@ struct ImageNumberRevealTests {
         #expect(cues.map(\.at) == [6.52, 8.25])
         let scene = ImageNumberReveal.scene(regions: regions, cues: cues, start: overlay.timelineStart, duration: 6)
         let timeline = SceneTimeline(scene: scene)
-        func opacity(_ index: Int, _ at: Double) -> Double {
-            SceneNodeState.resolve(node: scene.nodes[index + 1], timeline: timeline, at: at).opacity
+        func opacity(_ index: Int, _ at: Double) throws -> Double {
+            let node = try #require(scene.nodes.first { $0.id == "number-\(index)" })
+            return SceneNodeState.resolve(node: node, timeline: timeline, at: at).opacity
         }
-        #expect(opacity(3, 2.8) == 1) // Cost is still hidden immediately before speech.
-        #expect(opacity(3, 3.1) == 0)
-        #expect(opacity(0, 3.1) == 1)
-        #expect(opacity(0, 4.9) == 0)
-        #expect(opacity(1, 5.9) == 1)
-        #expect(opacity(2, 5.9) == 1)
+        #expect(try opacity(3, 2.8) == 1) // Cost is still hidden immediately before speech.
+        #expect(try opacity(3, 3.1) == 0)
+        #expect(try opacity(0, 3.1) == 1)
+        #expect(try opacity(0, 4.9) == 0)
+        #expect(!scene.nodes.contains { $0.id == "number-1" }) // Impressions are never covered.
+        #expect(!scene.nodes.contains { $0.id == "number-2" }) // Neither is average CPC.
     }
 
     @Test func spokenPhrasesAreWholeNumbersAndSearchStaysNearTheOverlay() {
@@ -51,6 +57,102 @@ struct ImageNumberRevealTests {
         #expect(ImageNumberReveal.number("CA$37.47") == 37.47)
         #expect(ImageNumberReveal.number("1,234") == 1234)
         #expect(ImageNumberReveal.number("clicks 34") == nil)
+    }
+
+    @Test func chatCorrectionRemovesLegacyMasksWithoutDuplicatingTheOverlay() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "reveal-correction-\(UUID())")
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let size = CGSize(width: 1000, height: 160)
+        let context = try #require(CGContext(data: nil, width: Int(size.width), height: Int(size.height),
+            bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColor(NSColor.white.cgColor)
+        context.fill(CGRect(origin: .zero, size: size))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+        for (index, value) in ["34", "291", "CA$1.10", "CA$37.47"].enumerated() {
+            NSAttributedString(string: value, attributes: [.font: NSFont.systemFont(ofSize: 44),
+                .foregroundColor: NSColor.black]).draw(at: CGPoint(x: 20 + index * 250, y: 50))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+        let sourceURL = root.appending(path: "google ads.png")
+        let sourceImage = try #require(context.makeImage())
+        let png = try #require(NSBitmapImageRep(cgImage: sourceImage).representation(using: .png, properties: [:]))
+        try png.write(to: sourceURL)
+        let source = try await MediaProbe.inspect(url: sourceURL)
+        let prepared = try await ImageNumberRevealService().prepare(sourceURL)
+        #expect(prepared.regions.map(\.value) == [34, 291, 1.1, 37.47])
+        let cues: [ImageNumberReveal.Cue] = [.init(region: 3, at: 2, end: 2.3, spoken: "$37"),
+                                           .init(region: 0, at: 4, end: 4.3, spoken: "34")]
+        var legacyScene = ImageNumberReveal.scene(regions: prepared.regions, cues: cues, start: 0, duration: 6)
+        // Recreate the old on-disk scene, including its permanent masks.
+        for index in [1, 2] {
+            let region = prepared.regions[index]
+            var cover = SceneNode(id: "number-\(index)", kind: .rect, x: region.box.minX, y: region.box.minY,
+                                  width: region.box.width, height: region.box.height)
+            cover.fill = .hex(region.background)
+            legacyScene.nodes.append(cover)
+        }
+        var legacy = try await GeneratedOverlayService.save(reply: [
+            "name": "google ads.png · spoken reveal", "scene": try JSONSerialization.jsonObject(with: legacyScene.encoded()),
+            "images": [["key": "original", "data": prepared.png.base64EncodedString()]],
+        ], brand: nil, moment: [:], size: size, instruction: "reveal the numbers as I say them", root: root)
+        legacy.generated?.revealSourceMediaID = source.id
+        let legacyBytes = try Data(contentsOf: legacy.url)
+        let videoURL = root.appending(path: "video.mov")
+        try await SyntheticVideo.write(color: NSColor.black.cgColor, size: CGSize(width: 160, height: 90),
+                                       seconds: 6, to: videoURL)
+        let video = try await MediaProbe.inspect(url: videoURL)
+        let overlay = ProjectOverlay(mediaID: legacy.id, timelineStart: 0, duration: 6)
+        let session = EditorSession(store: NumberRevealTestStore(), generatedAssetRoot: root)
+        await Task.yield()
+        session.updateProject { project in
+            project = EditorProject(media: [video, source, legacy],
+                clips: [.init(mediaID: video.id, sourceStart: 0, sourceEnd: 6)],
+                transcript: [TranscriptWord(mediaID: video.id, text: "$37", start: 2, end: 2.3),
+                             TranscriptWord(mediaID: video.id, text: "34", start: 4, end: 4.3)],
+                overlays: [overlay])
+        }
+        let correction = """
+        I previously said "can we make the @google ads.png one reveal the numbers as i say them instead of showing the full overlay all at once?"
+        you did this perfectly but also hid impressions and avg cpc. please leave them visible (don't hide them) at all times since i don't mention them
+        """
+        for version in 2...3 {
+            await session.runAssistant(instruction: correction)
+            #expect(session.errorMessage == nil)
+            #expect(session.project.overlays?.count == 1)
+            #expect(session.project.overlays?.first?.id == overlay.id)
+            #expect(session.project.overlays?.first?.mediaID == legacy.id)
+            #expect(session.project.media.count == 3)
+            let revised = try #require(session.project.media.first { $0.id == legacy.id })
+            #expect(revised.generated?.versions.count == version)
+            #expect(revised.generated?.revealSourceMediaID == source.id)
+            let reply = try #require(session.conversation.messages.last)
+            #expect(reply.tone == .done)
+            #expect(reply.notes.contains { $0.contains("Visible throughout: 291, CA$1.10") })
+            #expect(!reply.notes.contains { $0.contains("kept hidden") })
+            let scene = try SceneExportLayer.loadScene(for: revised)
+            for time in [0.0, 2.4, 4.4, 5.9] {
+                let rendered = try #require(ScenePosterRenderer.render(scene: scene, size: size,
+                    palette: .house, assets: FileSceneAssetResolver(folder: revised.url.deletingLastPathComponent()), at: time))
+                let bitmap = NSBitmapImageRep(cgImage: rendered)
+                for (index, region) in prepared.regions.enumerated() {
+                    var darkPixels = 0
+                    for y in Int(region.box.minY * size.height)..<Int(region.box.maxY * size.height) {
+                        for x in Int(region.box.minX * size.width)..<Int(region.box.maxX * size.width) {
+                            if let color = bitmap.colorAt(x: x, y: y)?.usingColorSpace(.sRGB),
+                               color.redComponent < 0.5 { darkPixels += 1 }
+                        }
+                    }
+                    let visible = index == 1 || index == 2 || (index == 3 ? time > 2.3 : time > 4.3)
+                    #expect(visible ? darkPixels > 50 : darkPixels == 0,
+                            "\(region.text) at \(time)s, revision \(version): \(darkPixels) dark pixels")
+                }
+            }
+        }
+        #expect(try Data(contentsOf: legacy.url) == legacyBytes) // Undo still has the original version.
+        session.player.replaceCurrentItem(with: nil)
     }
 
     @Test func maskingPreservesTheImagesColorProfile() async throws {
