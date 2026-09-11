@@ -92,15 +92,15 @@ The existing correction that leaves all unmatched values visible is a good defau
 
 The feature registry owns clip speed, clip/caption locks, and caption visibility. UI entry points and existing Chirpy command translations reach the same registry and persistence transaction. Typed arguments resolve selection to explicit IDs before execution. Unknown actions, extra arguments, invalid values, missing targets, wrong projects, and stale revisions are rejected. The registry rechecks state after waiting for the edit slot, reports committed before/after property changes and skipped targets, and preserves rollback and Undo. Caption toggles preserve their existing queue behavior; structured actions set an explicit visibility state.
 
-The current keyword router remains an input adapter. No model call was introduced for these deterministic edits. Tests compare UI and assistant saved state and exercise registration/discovery, no-op results, rejection, persistence failure, cancellation, and Undo/Redo. The full model/context migration remains separate.
+At this checkpoint the keyword router remained an input adapter, without a model call. Tests compare UI and assistant saved state and exercise registration/discovery, no-op results, rejection, persistence failure, cancellation, and Undo/Redo. Step 1b now replaces that native input adapter with contextual planning.
 
-### 1b. Add contextual model execution (next)
+### 1b. Add contextual model execution (bounded release implemented)
 
-Implement the client-driven loop, server turn/credit ledger, persistent conversation and execution receipts, catalog discovery, and result-based replanning. Replace keyword routing only after this boundary is verified. Test paraphrases and contextual follow-ups against a real provider without conflating executor failures with model interpretation errors.
+Native requests now use the discovered action catalog, project context, persistent conversation, and server execution/credit ledger. Paraphrases and contextual follow-ups have been tested against a real provider separately from executor tests. This release returns one bounded plan per user turn; result-based replanning happens on the next user turn. Autonomous multi-call execution remains future work.
 
 This slice proves the mechanism. It must be described as a partial migration until the inventory below is complete.
 
-### 2. Make overlay edits addressable
+### 2. Make overlay edits addressable (region policies and reveal sounds implemented)
 
 Expose overlay inspection, placement, transforms, timing, and scene changes through the registry. Add region visibility metadata and an inspector control. Wrap OCR, cue binding, and rendered review as reusable feature services. Replace the spoken-number keyword branch with structured action arguments.
 
