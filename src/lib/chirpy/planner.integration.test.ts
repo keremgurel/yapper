@@ -147,3 +147,25 @@ it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
   },
   50_000,
 );
+it.skipIf(!process.env.CHIRPY_QA_CONTEXT)(
+  "plans the sound request from captured native project context",
+  async () => {
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const { parsePlanInput } = await import("./protocol");
+    const captured = parsePlanInput(
+      JSON.parse(await readFile(process.env.CHIRPY_QA_CONTEXT!, "utf8")),
+    );
+    expect(captured).not.toBeNull();
+    const reply = await planChirpy(captured!);
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.sounds.addAtReveals");
+    expect(reply.actions[0].arguments.effectID).toBe("mouse-click");
+    expect(reply.actions[0].arguments.eventIDs).toHaveLength(2);
+    if (process.env.CHIRPY_QA_PLAN)
+      await writeFile(
+        process.env.CHIRPY_QA_PLAN,
+        JSON.stringify(reply, null, 2),
+      );
+  },
+  50_000,
+);
