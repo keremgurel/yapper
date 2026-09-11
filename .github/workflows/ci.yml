@@ -87,7 +87,9 @@ jobs:
         run: swift --version
 
       - name: Test native app
-        run: swift test
+        # These suites share AppKit/AVFoundation process state. Passing this
+        # explicitly also disables Swift Testing's default suite parallelism.
+        run: swift test --no-parallel
 
       - name: Build release executable
         run: swift build --configuration release
