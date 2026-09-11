@@ -56,6 +56,10 @@ struct GeneratedOverlayRecord: Codable, Equatable, Sendable {
     var sourceMediaID: UUID?
     var sourceStart: Double?
     var sourceEnd: Double?
+    /// Original imported image behind a locally timed number reveal.
+    /// Separate from the footage anchor above; repeated requests revise the
+    /// same placed instance while leaving the source image in the media bin.
+    var revealSourceMediaID: UUID?
     /// What the brand tokens meant when it was designed.
     var palette: ScenePalette
     var model: String?

@@ -85,7 +85,7 @@ extension EditorSession {
         // place is answered here rather than paid for and answered by the model.
         let intent = AssistantRouter.route(instruction)
         let revisions = generatedMediaMentioned(in: instruction)
-        let creates = GeneratedOverlayCommand.creates(instruction)
+        let creates = GeneratedOverlayCommand.creates(instruction, hasImportedMedia: !placeableMedia.isEmpty)
             && OverlayMention.mentioned(in: instruction, names: placeableMedia.map(\.name)).isEmpty
         guard !placeableMedia.isEmpty || intent == .addSounds || intent == .placeText || creates else {
             setOverlayPlacement(.failed("Import the overlays you want placed first."))
@@ -118,6 +118,11 @@ extension EditorSession {
                 setOverlayPlacement(.failed("This video has no transcript to place overlays against."))
                 return
             }
+        }
+
+        if ImageNumberReveal.requested(instruction) {
+            await performImageNumberReveal(instruction: instruction)
+            return
         }
 
         if creates || !revisions.isEmpty {

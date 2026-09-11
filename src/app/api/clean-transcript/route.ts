@@ -8,6 +8,7 @@ import {
   numberedTranscript,
   RETAKE_PROMPT,
 } from "@/lib/studio/retake-clusters";
+import { clippedRetakeOpenings } from "@/lib/studio/retake-boundaries";
 import { cutsFromKeptSpans } from "@/lib/studio/retake-keep-spans";
 import {
   guardProviderIngress,
@@ -132,6 +133,7 @@ export async function POST(req: Request): Promise<Response> {
   const deadline = Date.now() + PROVIDER_TIMEOUT_MS;
   try {
     let answer = "";
+    let boundaryFeedback = "";
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new Error("timeout");
@@ -152,6 +154,12 @@ export async function POST(req: Request): Promise<Response> {
                 messages: [
                   { role: "system", content: RETAKE_PROMPT },
                   { role: "user", content: numberedTranscript(words) },
+                  ...(boundaryFeedback
+                    ? [
+                        { role: "assistant", content: answer },
+                        { role: "user", content: boundaryFeedback },
+                      ]
+                    : []),
                 ],
               }),
             },
@@ -168,7 +176,16 @@ export async function POST(req: Request): Promise<Response> {
           throw new Error("transcript_too_long");
         }
         answer = data.choices?.[0]?.message?.content ?? "";
-        if (answer.trim() && !data.error) break;
+        if (answer.trim() && !data.error) {
+          const proposed = cutsFromKeptSpans(answer, words.length);
+          const clipped = proposed
+            ? clippedRetakeOpenings(words, proposed)
+            : [];
+          if (clipped.length === 0) break;
+          if (attempt === ATTEMPTS - 1) throw new Error("unsafe_take_boundary");
+          boundaryFeedback = `Your edit clips the opening of a repeated phrase at these source word indices: ${clipped.join(", ")}. Each excluded word is directly attached to the retained phrase and appears in the earlier delivery of the same phrase. Recheck those take boundaries and keep the complete chosen delivery, including its opening. Return the full corrected keep list.`;
+          continue;
+        }
         // An overloaded model comes back in a couple of seconds, so asking again
         // costs almost nothing and usually works. What must not happen is this
         // returning as an edit with nothing in it: the editor reads no cuts as a

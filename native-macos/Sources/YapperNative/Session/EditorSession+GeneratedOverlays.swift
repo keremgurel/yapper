@@ -6,12 +6,22 @@ enum GeneratedOverlayCommand {
         text.range(of: #"^\s*(please\s+)?(remove|delete)\s*(it|this overlay|the overlay)?\s*(from (the )?(video|timeline))?\s*[.!]?\s*$"#,
                    options: [.regularExpression, .caseInsensitive]) != nil
     }
-    static func creates(_ instruction: String) -> Bool {
-        let text = instruction.lowercased()
-        let nouns = ["overlay", "visual", "animation", "diagram", "counter", "chart", "illustration", "graphic", "number"]
-        let verbs = ["create", "generate", "design", "animate", "make", "add"]
-        return nouns.contains(where: text.contains) && verbs.contains(where: text.contains)
-            && !["existing", "imported", "my overlays", "these overlays"].contains(where: text.contains)
+    static func creates(_ instruction: String, hasImportedMedia: Bool = false) -> Bool {
+        // The verb must act on a visual. Independent substring checks read
+        // "put the overlays where they make sense" as "make overlays" and
+        // started expensive rendering/design instead of placing the bin.
+        let target = #"(?:overlays?|visuals?|animations?|diagrams?|counters?|charts?|illustrations?|graphics?|numbers?)\b"#
+        let qualifiers = #"(?:(?:me|us|a|an|the|some|new|another|one|two|three|few|custom|animated|simple|small|branded|visual|dynamic)\s+)*"#
+        let creation = #"\b(?:create|generate|design|draw|build|make|animate)\s+"# + qualifiers + target
+        if instruction.range(of: creation, options: [.regularExpression, .caseInsensitive]) != nil {
+            return true
+        }
+        // "Add overlays" means use the imported assets when there are any.
+        // A new design must be explicit before we leave the placement path.
+        let addition = hasImportedMedia
+            ? #"\badd\s+(?:(?:me|us|a|an|some)\s+)*new\s+"# + qualifiers + target
+            : #"\badd\s+"# + qualifiers + target
+        return instruction.range(of: addition, options: [.regularExpression, .caseInsensitive]) != nil
     }
 }
 

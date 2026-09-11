@@ -226,3 +226,51 @@ describe("POST /api/clean-transcript when the model does not answer", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
+
+describe("complete repeated take boundaries", () => {
+  const words =
+    "Now it's just maintenance work and adding new Now it's just maintenance work and adding new questions"
+      .split(" ")
+      .map((text, index) => ({
+        text,
+        start: index * 0.2,
+        end: (index + 1) * 0.2,
+      }));
+  const answer = (first: number) =>
+    Response.json({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({ keep: [[first, words.length - 1]] }),
+          },
+        },
+      ],
+    });
+  it("asks for a corrected complete take under the original reservation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementationOnce(async () => answer(9))
+      .mockImplementationOnce(async () => answer(8));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await POST(request({ words }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ cuts: [[0, 7]] });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(fetchMock.mock.calls[1]![1].body).messages.at(-1).content,
+    ).toContain("source word indices: 8");
+    expect(mocks.reserve).toHaveBeenCalledOnce();
+    expect(mocks.refund).not.toHaveBeenCalled();
+  });
+  it("refuses and refunds when the model keeps clipping the same onset", async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => answer(9));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await POST(request({ words }));
+    expect(response.status).toBe(502);
+    expect(await response.json()).toMatchObject({
+      error: "unsafe_take_boundary",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(mocks.refund).toHaveBeenCalledOnce();
+  });
+});

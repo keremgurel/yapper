@@ -134,9 +134,13 @@ enum YapperAPI {
     /// The server's own word for what went wrong, in the creator's language.
     private static func readable(_ code: String) -> String {
         switch code {
+        case "unsafe_take_boundary":
+            return "the edit clipped the beginning of a take and could not be corrected, so your edit was left unchanged"
         case "unsafe_alignment":
             return "the cleaned script could not be matched back to the recording safely, "
                 + "so nothing was cut rather than cutting the wrong thing"
+        case "transcription_incomplete":
+            return "Speech is still missing from the transcript after recovery. Your edit was left unchanged and the transcription credit was returned."
         case "empty_revision":
             return "nothing in that sentence reads as a change. Say what should look different, "
                 + "or where it should move"

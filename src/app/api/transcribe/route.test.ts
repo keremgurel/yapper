@@ -452,6 +452,52 @@ describe("POST /api/transcribe with audio already in storage", () => {
     expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
   });
 
+  it.each([4, 0, undefined])(
+    "does not let a complete final chunk hide an earlier decoded duration of %s",
+    async (heardSec) => {
+      vi.stubEnv("GROQ_API_KEY", "");
+      mocks.fetchBoundedJson
+        .mockResolvedValueOnce({
+          response: { ok: true },
+          data: { ...transcript, metadata: { duration: heardSec } },
+        })
+        .mockResolvedValueOnce({
+          response: { ok: true },
+          data: { ...transcript, metadata: { duration: 10 } },
+        });
+
+      const response = await POST(
+        storedChunks([
+          { key: "u/user_test/asr/first.m4a", offset: 0, duration: 10 },
+          { key: "u/user_test/asr/last.m4a", offset: 6, duration: 10 },
+        ]),
+      );
+
+      expect(response.status).toBe(502);
+      await expect(response.json()).resolves.toMatchObject({
+        error: "audio_truncated",
+      });
+      expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+      expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+    },
+  );
+
+  it.each([
+    [{ key: "u/user_test/asr/first.m4a", offset: 3, duration: 10 }],
+    [
+      { key: "u/user_test/asr/first.m4a", offset: 0, duration: 10 },
+      { key: "u/user_test/asr/last.m4a", offset: 12, duration: 10 },
+    ],
+  ])(
+    "refuses an upload plan with missing audio coverage: %j",
+    async (...chunks) => {
+      const response = await POST(storedChunks(chunks));
+      expect(response.status).toBe(400);
+      expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+      expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+    },
+  );
+
   it("refuses a key belonging to somebody else", async () => {
     const response = await POST(stored("u/someone_else/asr/abc.m4a"));
 
@@ -564,5 +610,110 @@ describe("POST /api/transcribe with audio already in storage", () => {
       "u/user_test/asr/abc.m4a",
     );
     expect(mocks.refundCreditReservation).toHaveBeenCalled();
+  });
+});
+
+describe("acoustic coverage and short-context recovery", () => {
+  const key = (name: string) => `u/user_test/asr/${name}.m4a`;
+  const plan = {
+    chunks: [{ key: key("primary"), offset: 0, duration: 10 }],
+    recoveryChunks: [{ key: key("recovery"), offset: 0, duration: 10 }],
+    speech: [[2, 2.75]],
+  };
+  const request = (body: unknown = plan) =>
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  beforeEach(() => {
+    vi.stubEnv("DEEPGRAM_API_KEY", "dg_test");
+    vi.stubEnv("R2_ENDPOINT", "https://r2.test");
+    vi.stubEnv("R2_ACCESS_KEY_ID", "id");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret");
+    r2.presignView.mockImplementation(
+      async (key: string) => `https://r2.test/${key}`,
+    );
+    r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+  });
+  const provider = (
+    words: { word: string; start: number; end: number }[],
+    duration = 10,
+  ) => ({
+    response: { ok: true },
+    data: {
+      metadata: { duration },
+      results: { channels: [{ alternatives: [{ words }] }] },
+    },
+  });
+
+  it("repairs a successful but incomplete primary result under one reservation", async () => {
+    mocks.fetchBoundedJson.mockImplementation(async (url: URL) =>
+      provider(
+        url.searchParams.get("model") === "nova-2"
+          ? [{ word: "recovered", start: 2, end: 2.75 }]
+          : [{ word: "original", start: 1, end: 1.5 }],
+      ),
+    );
+    const response = await POST(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      coverageChecked: true,
+      words: [
+        { text: "original", start: 1, end: 1.5 },
+        { text: "recovered", start: 2, end: 2.75 },
+      ],
+    });
+    expect(mocks.fetchBoundedJson).toHaveBeenCalledTimes(2);
+    expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledOnce();
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it("refuses unresolved speech, refunds once, and cleans up all excerpts", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue(provider([]));
+    const response = await POST(request());
+    expect(response.status).toBe(422);
+    expect(await response.json()).toMatchObject({
+      error: "transcription_incomplete",
+      missing: [[2, 2.75]],
+    });
+    expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not spend provider calls on already covered speech", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue(
+      provider([{ word: "covered", start: 2, end: 2.75 }]),
+    );
+    expect((await POST(request())).status).toBe(200);
+    expect(mocks.fetchBoundedJson).toHaveBeenCalledOnce();
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    {
+      ...plan,
+      recoveryChunks: [
+        { key: "u/other/asr/stolen.m4a", offset: 0, duration: 10 },
+      ],
+    },
+    {
+      ...plan,
+      recoveryChunks: [{ key: key("primary"), offset: 0, duration: 10 }],
+    },
+    { ...plan, speech: [[3, 2]] },
+    {
+      ...plan,
+      speech: [
+        [1, 3],
+        [2, 4],
+      ],
+    },
+    { ...plan, speech: [[0, 12]] },
+  ])("validates recovery plans before billing", async (body) => {
+    expect((await POST(request(body))).status).toBe(400);
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
   });
 });

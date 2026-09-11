@@ -3,15 +3,15 @@ import Foundation
 import Testing
 @testable import YapperNative
 
-/// One-click output may only keep stretches that the transcript can caption.
-/// Waveform silence alone is not enough: a loud abandoned take can be missing
-/// from ASR and used to survive as uncaptained speech.
+/// Missing ASR words are not evidence that the audio is an abandoned take.
+/// Speech coverage is verified before cleanup; trimming itself must never use
+/// an untranscribed gap to authorize removal of audible content.
 @Suite
 struct OneClickCaptionCoverageTests {
     private let mediaID = UUID()
 
-    @Test("Loud audio with no transcript words is removed even when waveform silence was found")
-    func removesUncaptionedLoudGap() async throws {
+    @Test("Loud audio missing from ASR is preserved while measured silence is trimmed")
+    func preservesUntranscribedLoudGap() async throws {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "yapper-one-click-caption-coverage-\(UUID().uuidString).wav")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -29,9 +29,10 @@ struct OneClickCaptionCoverageTests {
         )
 
         #expect(
-            ranges.contains { $0.0 < 1.5 && $0.1 > 1.5 },
-            "loud audio with no word and therefore no caption must not survive one-click edit"
+            !ranges.contains { $0.0 < 1.5 && $0.1 > 1.5 },
+            "an ASR omission must never silently authorize cutting speech"
         )
+        #expect(ranges.contains { $0.0 < 0.75 && $0.1 > 0.75 })
         #expect(words.allSatisfy { word in
             !ranges.contains { $0.0 <= word.midpoint && word.midpoint <= $0.1 }
         })

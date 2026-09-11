@@ -42,9 +42,19 @@ struct HeardWordsTests {
     func ignoresSpelling() {
         let heard = HeardWords.withoutDoubledEmissions([
             Self.word("plan.", 872.320 ... 872.800),
-            Self.word("Plan", 872.775 ... 872.900),
+            Self.word("Plan", 872.345 ... 872.825),
         ])
         #expect(heard.map { $0.text } == ["plan."])
+    }
+
+    @Test("timestamp jitter does not erase grammatical repetitions")
+    func keepsTouchingRepeats() {
+        let heard = HeardWords.withoutDoubledEmissions([
+            Self.word("that", 1.0 ... 1.3),
+            Self.word("that", 1.28 ... 1.6),
+            Self.word("works", 1.6 ... 2.0),
+        ])
+        #expect(heard.map(\.text) == ["that", "that", "works"])
     }
 
     @Test("a different word at the same moment stays")

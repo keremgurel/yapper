@@ -121,6 +121,24 @@ struct SpokenExtentTests {
         #expect(pause.0 < 1.04)
         #expect(pause.1 > 1.50)
     }
+
+    @Test("quiet syllables inside a kept word are not absorbed as noise islands")
+    func protectsQuietWordRelease() throws {
+        // Loud speech, a quieter release, then room tone. The release clears
+        // the silence threshold but not the stronger wordless-noise threshold.
+        var loudness = [Double](repeating: -16, count: 200)
+        for frame in 15 ..< 30 { loudness[frame] = -31 }
+        for frame in 15 ..< 20 { loudness[frame] = -60 }
+        for frame in 30 ..< 55 { loudness[frame] = -60 }
+        let envelope = LoudnessEnvelope.Envelope(loudness: loudness, hop: hop)
+        let ranges = MeasuredSilence.ranges(
+            envelope: envelope,
+            words: [(0, 1.0), (1.1, 4.0)]
+        )
+        let pause = try #require(ranges.first)
+        #expect(pause.0 >= 0.60, "the quieter release is speech, not a noise island")
+        #expect(pause.0 < 0.70, "the silent tail should still be trimmed")
+    }
 }
 
 /// A word must survive the silence around it.

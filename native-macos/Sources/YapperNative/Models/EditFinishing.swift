@@ -32,19 +32,13 @@ import Foundation
 enum EditFinishing {
     static let rounds = 4
 
-    /// Cuts the cleaner chose. Only the passes that remove more run, so a take
-    /// the model rejected cannot come back.
+    /// The cleaner already judged which repeated wording is a mistake.
+    /// Text similarity must not override that decision: in ep12 it deleted
+    /// "some of it was a waste of time, and" from a three-part list. Even
+    /// adjacent identical words can be grammatical ("I knew that that...").
+    /// Keep the semantic repeat heuristics on the local fallback only.
     static func aiCuts(_ cuts: [(Int, Int)], words: [TranscriptWord]) -> [(Int, Int)] {
-        var settled = cuts
-        for _ in 0 ..< rounds {
-            let deduped = KeptStreamRepair.withoutRepeatedSentences(words: words, cuts: settled)
-            let unstuttered = KeptStreamRepair.withoutImmediateRepeats(words: words, cuts: deduped)
-            let undoubled = KeptStreamRepair.withoutDoubledPhrases(words: words, cuts: unstuttered)
-            let withoutOrphans = withoutDetachedDiscourseStarters(words: words, cuts: undoubled)
-            if same(withoutOrphans, settled) { break }
-            settled = withoutOrphans
-        }
-        return settled
+        withoutDetachedDiscourseStarters(words: words, cuts: cuts)
     }
 
     /// Drops a one-word connector stranded between rejected takes.
