@@ -95,7 +95,7 @@ final class EditorSession: ObservableObject {
     private var pendingMediaRecovery: PendingMediaRecovery?
     var assistantRunInFlight = false
     /// Brain-backed Studio pages answer through the persistent web session;
-    /// the Editor keeps using the native command router below.
+    /// the Editor uses the native action catalog and project context.
     var assistantUsesStudioBrain = false
     private var captionOperationWaiters: [CheckedContinuation<Bool, Never>] = []
     var isBusy: Bool { activeOperation != nil }
@@ -1870,7 +1870,9 @@ final class EditorSession: ObservableObject {
         }
         transcriptionTask = task
         transcriptionToken = token
-        await task.value
+        // The initiating caller owns cancellation. Callers joining an existing
+        // transcription above must not cancel someone else's operation.
+        await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
         if transcriptionToken == token {
             transcriptionTask = nil
             transcriptionToken = nil
@@ -3385,7 +3387,7 @@ final class EditorSession: ObservableObject {
     func closeAssistant() -> Bool {
         guard isAssistantOpen else { return false }
         isAssistantOpen = false
-        if assistantRunInFlight { assistantTask?.cancel(); cancelCurrentOperation() }
+        if assistantRunInFlight { assistantTask?.cancel() }
         return true
     }
 }

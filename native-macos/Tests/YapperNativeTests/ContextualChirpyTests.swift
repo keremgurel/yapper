@@ -133,9 +133,25 @@ struct ContextualChirpyTests {
         }
         session.toggleAssistant()
         let task = Task { await session.runAssistant(instruction: "hide captions") }
-        while !planning { await Task.yield() }
+        defer { task.cancel() }
+        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
+        while !planning, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(1)) }
+        try #require(planning, "The injected planner did not start before the deadline.")
+        var releaseManual = false, manualWasCanceled = false
+        let manual = Task { @MainActor in
+            await session.runTrackedLongOperation(.importingMedia) { _ in
+                while !releaseManual && !Task.isCancelled { try? await Task.sleep(for: .milliseconds(1)) }
+                manualWasCanceled = Task.isCancelled
+            }
+        }
+        defer { manual.cancel() }
+        while session.activeOperation == nil, ContinuousClock.now < deadline { try await Task.sleep(for: .milliseconds(1)) }
+        try #require(session.activeOperation != nil)
         #expect(session.closeAssistant())
         await task.value
+        releaseManual = true
+        _ = await manual.value
+        #expect(!manualWasCanceled, "Closing Chirpy must not cancel a manual operation started while the model was planning.")
         #expect(session.project.captionsEnabled == true)
         #expect(session.conversation.messages.last?.text == "Request canceled.")
         #expect(!session.conversation.isThinking)
