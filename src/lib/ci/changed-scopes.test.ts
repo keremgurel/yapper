@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { changedScopes } from "./changed-scopes.mjs";
 
 describe("changedScopes", () => {
+  it("checks both runtimes when the shared action contract changes", () => {
+    for (const file of [
+      "protocol/app-actions.schema.json",
+      "scripts/app-actions/generate.py",
+    ]) {
+      expect(changedScopes([file])).toEqual({
+        web: true,
+        native: true,
+        postgres: false,
+      });
+    }
+  });
   it("does not spend native or PostgreSQL minutes on a browser-only change", () => {
     expect(
       changedScopes(["src/lib/voice/voice-capture-controller.ts"]),

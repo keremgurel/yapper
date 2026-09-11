@@ -11,7 +11,13 @@ export function changedScopes(files) {
       file === "src/lib/ci/changed-scopes.test.ts",
   );
   const native =
-    changesCI || normalized.some((file) => file.startsWith("native-macos/"));
+    changesCI ||
+    normalized.some(
+      (file) =>
+        file.startsWith("native-macos/") ||
+        file.startsWith("protocol/") ||
+        file.startsWith("scripts/app-actions/"),
+    );
   const web =
     changesCI ||
     normalized.some(
@@ -20,6 +26,7 @@ export function changedScopes(files) {
         file.startsWith("public/") ||
         file.startsWith("drizzle/") ||
         file.startsWith("scripts/") ||
+        file.startsWith("protocol/") ||
         /^(package(-lock)?\.json|next\.config\.[^.]+|tsconfig\.json|vitest\.config\.[^.]+|eslint\.config\.[^.]+|postcss\.config\.[^.]+|drizzle\.config\.[^.]+|components\.json)$/.test(
           file,
         ),

@@ -1,6 +1,6 @@
 # Chirpy and the shared app action system
 
-Status: proposed architecture, grounded in the current native and web implementations. This document does not mean the migration has shipped.
+Status: checkpoint 1a implemented on `codex/chirpy-action-registry`: the Swift action registry, generated protocol, and three migrated editor actions. The model loop, persistent context, overlay event actions, and web migration remain planned; the installed app is not updated by this source change.
 
 ## Product contract
 
@@ -16,7 +16,7 @@ No custom model training is needed to establish this architecture. Model selecti
 - `AssistantConversation` stores ten messages as display receipts; the native command dispatcher does not send that history to a model.
 - `ImageNumberReveal.requested` recognizes three groups of keywords. Its executor locates one explicitly mentioned imported image, performs OCR, matches values to nearby transcript words, and builds rectangles with opacity animations. It does not interpret exclusions in the request.
 - The existing scene revision planner interprets an instruction, but it applies only to generated overlay editing, not the whole app.
-- Web `StudioChirpy` has separate regular expressions for ideas, knowledge, essentials, and brand commands. `ChirpyBrainTools` already provides a small example of registered capabilities, but command discovery is still manually routed.
+- Web `StudioChirpy` has separate regular expressions for ideas, knowledge, essentials, and brand commands. `ChirpyBrainTools` is three page-bound closures used for UI synchronization, with REST fallbacks. It is not a model-visible capability registry.
 - Editor methods already provide persistence, Undo, locks, cancellation, composition rebuilding, and rollback. Those implementations should be retained.
 
 ## One feature-owned action contract
@@ -35,9 +35,18 @@ Define a versioned action protocol that native and web feature modules implement
 
 The same definition supplies model tool schemas, UI availability, and command discovery. Registration is the normal feature boundary. There must not be a parallel handwritten assistant catalog or an assistant-only switch over action IDs.
 
-Native and web have distinct executors but use the same wire protocol. Each runtime advertises its installed capabilities and protocol version. The server reasons over those capabilities; it does not pretend that every client version supports every action. Server-side operations independently enforce the signed-in user's access; a client-advertised catalog never grants authority.
+Native and web will have distinct executors using a common wire protocol. The source of truth is `protocol/app-actions.schema.json`; `scripts/app-actions/generate.py` generates Swift request/input/result types and TypeScript declarations. CI rejects stale generated files. Swift validates inputs against the embedded generated schema before Codable decoding. The web executor is not implemented yet. Each runtime advertises its installed capabilities and protocol version. The server reasons over those capabilities; it does not pretend that every client version supports every action. Server-side operations independently enforce the signed-in user's access; a client-advertised catalog never grants authority.
 
 For property inspectors, reusable property descriptors should carry type, range, label, getter, setter, and selection applicability. This lets a slider and a model update the same property without duplicating validation. Complex actions such as transcription and export remain explicit operations rather than generic field writes.
+
+## Decisions settled before implementation
+
+- **Topology:** the Swift/web client drives the loop. It posts context and discovered capabilities to a new authenticated planning endpoint, executes the proposed action locally, and posts the actual result for the next step. Provider keys stay on the server. Planning does not use the existing Brain answer endpoint, whose system prompt forbids claiming edits. That prompt remains valid for read-only Brain Q&A; action execution uses a separate prompt that grounds every success claim in committed results.
+- **Scope:** the Swift macOS app is the first executor. Web Studio follows through the existing WebView bridge and browser runtime. Tauri is excluded from this migration until explicitly adopted; it must not advertise Swift-only capabilities. Each client advertises protocol version and available executors.
+- **Accounting:** each planning call is one separately reserved credit event; a user turn can contain several such calls. Failed provider calls release their reservation; deterministic local actions incur no provider charge. Paid transcription/design actions retain their own existing charges. Before activating the loop, define the planning price in the existing paid-action catalog using measured cost. The server owns a turn record keyed by authenticated user, workspace, execution ID, and step ID. Enforce at most six planning calls and a 90-second deadline per turn atomically, including retries. Duplicate step requests reuse a stored response and debit; restarting a request must not reset the budget. These gates are planned, not implemented in checkpoint 1a.
+- **Persistence:** native recent dialogue, summaries, and action receipts will be saved in a versioned sidecar inside the project package, separate from Undo snapshots. Web history will use the existing persisted canvas-chat pattern with explicit workspace/thread ownership. Checkpoint 1a retains only 64 in-memory action receipts and the current conversation UI; it does not yet provide conversation memory or durable replay protection. Runtime revision numbers reset on launch, so the future loop must pair them with a session identifier before accepting persisted requests.
+- **Web propagation:** web action results will include affected `STUDIO_RESOURCE_KEYS`; executors invalidate or update those cached resources after successful persistence. Registered capabilities must live outside page-mounted React refs.
+- **Operation ownership:** the coordinator has one slot, not nested leases. The first checkpoint runs each action under the existing operation rules. The multi-step loop will release and reacquire ownership between operations and check revision/scope each time. It will record one request-level before snapshot and suppress intermediate history entries when grouping a local reversible sequence, restoring that snapshot if a later step fails. External publication cannot participate in a local rollback. This grouping must be implemented explicitly; a snapshot alone does not suppress existing child history entries.
 
 ## Context and execution loop
 
@@ -73,9 +82,15 @@ The existing correction that leaves all unmatched values visible is a good defau
 
 ## Migration sequence
 
-### 1. Establish a complete vertical slice
+### 1a. Register existing editor actions (implemented)
 
-Implement the action contract, registry, execution results, and context protocol. Move clip speed, clip/caption locks, and caption visibility into registered actions used by both UI controls and Chirpy. Add a model loop and history so ordinary paraphrases and contextual follow-ups work without new matcher rules.
+The feature registry owns clip speed, clip/caption locks, and caption visibility. UI entry points and existing Chirpy command translations reach the same registry and persistence transaction. Typed arguments resolve selection to explicit IDs before execution. Unknown actions, extra arguments, invalid values, missing targets, wrong projects, and stale revisions are rejected. The registry rechecks state after waiting for the edit slot, reports committed before/after property changes and skipped targets, and preserves rollback and Undo. Caption toggles preserve their existing queue behavior; structured actions set an explicit visibility state.
+
+The current keyword router remains an input adapter. No model call was introduced for these deterministic edits. Tests compare UI and assistant saved state and exercise registration/discovery, no-op results, rejection, persistence failure, cancellation, and Undo/Redo. The full model/context migration remains separate.
+
+### 1b. Add contextual model execution (next)
+
+Implement the client-driven loop, server turn/credit ledger, persistent conversation and execution receipts, catalog discovery, and result-based replanning. Replace keyword routing only after this boundary is verified. Test paraphrases and contextual follow-ups against a real provider without conflating executor failures with model interpretation errors.
 
 This slice proves the mechanism. It must be described as a partial migration until the inventory below is complete.
 
@@ -93,7 +108,7 @@ Move Brain, brand, ideas, scripts, media, and publishing actions out of command 
 
 ### 5. Enforce the contract for future features
 
-Require domain-changing controls to invoke registered actions or registered property descriptors. Keep an explicit audited list of UI-only interactions, such as hover and drag previews; the committed result of a drag still goes through an action. Add a CI check and review requirement preventing new direct domain mutations in views from silently bypassing the registry.
+Require domain-changing controls to invoke registered actions or registered property descriptors. Keep an explicit audited list of UI-only interactions, such as hover and drag previews; the committed result of a drag still goes through an action. Add a native lint that rejects new calls to `updateProject`, `commitTimelineEdit`, and prepared-commit seams from views, with an audited baseline for unmigrated controls. On web, use ESLint restricted imports to prevent migrated components from importing domain REST mutation clients directly. Keep these checks scoped until the existing UI mutation inventory is migrated; the initial CI check verifies generated contract freshness only.
 
 ## Completion evidence
 
@@ -102,9 +117,11 @@ Require domain-changing controls to invoke registered actions or registered prop
 - "Those two should stay visible" works after a reveal, including after replaying saved project context; unrelated nodes and timings remain equal.
 - Unknown IDs, stale project revisions, invalid parameters, locked targets, and wrong-workspace actions cause no mutation.
 - Failed persistence and canceled edits do not produce success receipts. Multi-step failures report what was completed and what was rolled back.
-- Undo/Redo restores the same state for UI and assistant edits. Compound operations use explicit transaction grouping; existing nested operation leases must be adapted before claiming one Undo step per entire assistant request.
+- Undo/Redo restores the same state for UI and assistant edits. Compound operations use explicit transaction grouping; the single-slot operation coordinator and intermediate history recording must be handled explicitly before claiming one Undo step per entire assistant request.
 - Paid generation retains reservation/refund rules; model planning has its own measured and bounded cost. Deterministic button actions do not require a provider connection.
 - Native/web version mismatch reports unsupported capabilities rather than falling back to an unrelated edit.
 - Representative rendered output is checked for visual operations, and provider-backed evaluations cover paraphrases, exceptions, follow-ups, and mixed requests in addition to deterministic executor tests.
+
+The sound-effects acceptance case must also be included: after the Google Ads reveal, "add click sound effects when we reveal the clicks and cost" should bind two sound instances to the saved reveal events at 6.524 seconds and 8.249 seconds in the current ep12 fixture. It must not add or move visual overlays. The live legacy path failed this test and was undone; checkpoint 1a does not claim to fix it.
 
 The migration is complete only when the app action inventory is covered, the old command-routing dependency is removed from those paths, and the behavior has been verified in the running native app and web Studio.

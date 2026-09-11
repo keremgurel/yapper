@@ -69,10 +69,10 @@ extension EditorSession {
         switch intent {
         case .clipControls:
             guard let command = ClipControlCommand.parse(text) else { return }
-            let changed: Bool
+            let result: AppActionResult
             switch command {
             case let .speed(rate, all):
-                changed = await setClipSpeed(rate, applyToAll: all)
+                result = await performAppAction(ClipSpeedInput(clipIDs: speedTargetIDs(applyToAll: all), rate: rate))
             case let .lock(locked, captions, all):
                 let items: Set<TimelineSelectionItem>
                 if captions {
@@ -84,10 +84,15 @@ extension EditorSession {
                     let ids = all ? project.clips.map(\.id) : (selected.isEmpty ? [speedClip?.id].compactMap { $0 } : selected)
                     items = Set(ids.map { .clip($0) })
                 }
-                changed = await setTimelineItemsLocked(locked, items: items)
+                let clipIDs = items.compactMap { item -> UUID? in
+                    if case let .clip(id) = item { return id }; return nil
+                }.sorted { $0.uuidString < $1.uuidString }
+                let captionIDs = items.compactMap { item -> UUID? in
+                    if case let .caption(id) = item { return id }; return nil
+                }.sorted { $0.uuidString < $1.uuidString }
+                result = await performAppAction(TimelineLockInput(clipIDs: clipIDs, captionIDs: captionIDs, locked: locked))
             }
-            conversation.answer(.chirpy(changed ? statusMessage : (errorMessage ?? "No settings changed. Check the selection and locks."),
-                                        tone: changed ? .done : .trouble))
+            conversation.answer(.toAction(result))
             return
         case .transcribe:
             await transcribeProject()
@@ -99,9 +104,11 @@ extension EditorSession {
         case .generateCaptions:
             canceled = await generateCaptions()
         case .hideCaptions:
-            if captionsVisible { canceled = await toggleCaptions() }
+            conversation.answer(.toAction(await performAppAction(CaptionVisibilityInput(visible: false))))
+            return
         case .showCaptions:
-            if !captionsVisible { canceled = await toggleCaptions() }
+            conversation.answer(.toAction(await performAppAction(CaptionVisibilityInput(visible: true))))
+            return
         case .addHook:
             addTextLayer(asHook: true)
         case .placeOverlays, .addSounds, .placeText, .setLevels:

@@ -33,5 +33,6 @@ struct PropertiesMenuItems: View {
         } label: {
             Label(session.isLocked(item) ? "Unlock" : "Lock", systemImage: session.isLocked(item) ? "lock.open" : "lock.fill")
         }
+        .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
     }
 }

@@ -61,6 +61,7 @@ struct TransformInspector: View {
                     }
                 }
                 .help("Playback speed from 0.25× to 4×; the number field accepts a custom speed.")
+                .disabled(!session.appActions.availability(.clipSpeed, in: session).isAvailable)
                 InspectorRow("Voice") {
                     Text("Pitch preserved").font(.studioCaption).foregroundStyle(.secondary)
                 }
@@ -71,6 +72,7 @@ struct TransformInspector: View {
                         Label(clip.locked ? "Unlock clip" : "Lock clip", systemImage: clip.locked ? "lock.fill" : "lock.open")
                     }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
                 }
             }
         }

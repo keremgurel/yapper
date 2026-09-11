@@ -45,6 +45,10 @@ struct AssistantMessage: Identifiable, Equatable, Sendable {
         AssistantMessage(author: .you, text: text, tone: .asked)
     }
 
+    static func toAction(_ result: AppActionResult) -> AssistantMessage {
+        .chirpy(result.message, tone: result.status == .applied || result.status == .unchanged ? .done : .trouble)
+    }
+
     static func chirpy(
         _ text: String,
         notes: [String] = [],

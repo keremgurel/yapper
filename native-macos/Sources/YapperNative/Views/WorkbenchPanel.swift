@@ -684,7 +684,8 @@ private struct QuickEditWorkbench: View {
                         ? "Keeps every card for later"
                         : (session.hasCaptions ? "Bring back your cards" : "Generate from transcript"),
                     icon: "captions.bubble",
-                    busy: session.isBusy
+                    busy: session.isBusy,
+                    disabled: !session.appActions.availability(.captionVisibility, in: session).isAvailable
                 ) {
                     Task { await session.toggleCaptions() }
                 }

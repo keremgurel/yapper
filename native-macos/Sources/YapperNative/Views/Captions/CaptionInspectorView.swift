@@ -68,6 +68,7 @@ struct CaptionInspectorView: View {
                         Label(locked ? "Unlock selected captions" : "Lock selected captions", systemImage: locked ? "lock.open" : "lock.fill")
                     }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
                 }
             }
             InspectorCheckbox(

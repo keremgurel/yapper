@@ -40,8 +40,13 @@ typealias NativeExportRunner = @Sendable (EditorProject, URL) async throws -> Vo
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject() {
-        didSet { refreshPlaybackCursor() }
+        didSet {
+            if project != oldValue { actionRevision += 1 }
+            refreshPlaybackCursor()
+        }
     }
+    private(set) var actionRevision = 0
+    let appActions = AppActionRegistry.editor()
     @Published var selectedClipID: UUID?
     /// What is picked in the media bin. Its own selection, not the timeline's:
     /// a file in the bin may be on the timeline several times or not at all.
@@ -2119,64 +2124,44 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func performCaptionToggle(owner _: LongOperationLease) async {
-        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
-        defer { endPreparedTimelineEdit() }
-        do {
-            try Task.checkCancellation()
-            let successStatus: String
-            if project.captionsEnabled == true {
-                project.setCaptionsVisible(false)
-                let count = project.storedCaptions.count
-                successStatus = "Captions hidden · \(count) card\(count == 1 ? "" : "s") kept"
-            } else if !project.storedCaptions.isEmpty {
-                project.setCaptionsVisible(true)
-                let count = project.captionEntries.count
-                successStatus = "Captions shown · \(count) card\(count == 1 ? "" : "s")"
-            } else {
-                errorMessage = nil
-                let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
-                for mediaID in mediaIDs {
-                    try Task.checkCancellation()
-                    guard
-                        !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
-                        let media = project.media.first(where: { $0.id == mediaID })
-                    else { continue }
-                    statusMessage = "Transcribing before adding captions…"
-                    let words = try await aiEditService.transcribe(
-                        media: media,
-                        dictionary: dictionaryEntries
-                    )
-                    var transcript = project.transcript ?? []
-                    transcript.removeAll { $0.mediaID == mediaID }
-                    transcript.append(contentsOf: words)
-                    project.transcript = transcript
-                    project.markTranscriptionCurrent(for: mediaID)
-                }
-                guard !project.timelineTranscript.isEmpty else {
-                    throw NativeEditorError.aiFailed("No spoken words were found to caption.")
-                }
-                project.regenerateCaptions()
-                setSelectedCaptionIDs([])
-                let count = project.captionEntries.count
-                successStatus = "Captions ready · \(count) card\(count == 1 ? "" : "s")"
-            }
-            try Task.checkCancellation()
-            _ = await commitPreparedTimelineEdit(
-                rollbackState: rollbackState,
-                requiresRebuild: false,
-                successStatus: successStatus
-            )
-        } catch is CancellationError {
-            markCurrentLongOperationCanceled()
-            await restoreCanceledEditState(
-                rollbackState,
-                rebuildPlayer: false,
-                status: "Caption update canceled"
-            )
-        } catch {
-            await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
+    private func performCaptionToggle(owner: LongOperationLease) async {
+        // Resolve a toggle when its queued turn starts, not when the click was
+        // made. Explicit model calls use setVisible and never invert state.
+        // The registry acquires the edit slot and flushes pending gestures.
+        await performAppAction(CaptionVisibilityInput(visible: project.captionsEnabled != true), owner: owner)
+    }
+
+    /// Called only inside the action registry's prepared transaction.
+    func mutateCaptionVisibility(_ visible: Bool) async throws -> String {
+        try Task.checkCancellation()
+        if !visible {
+            project.setCaptionsVisible(false)
+            let count = project.storedCaptions.count
+            return "Captions hidden · \(count) card\(count == 1 ? "" : "s") kept"
         }
+        if !project.storedCaptions.isEmpty {
+            project.setCaptionsVisible(true)
+            let count = project.captionEntries.count
+            return "Captions shown · \(count) card\(count == 1 ? "" : "s")"
+        }
+        let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
+        for mediaID in mediaIDs {
+            try Task.checkCancellation()
+            guard !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
+                  let media = project.media.first(where: { $0.id == mediaID }) else { continue }
+            statusMessage = "Transcribing before adding captions…"
+            let words = try await transcribedWords(of: media, progress: nil)
+            var transcript = project.transcript ?? []
+            transcript.removeAll { $0.mediaID == mediaID }
+            transcript.append(contentsOf: words)
+            project.transcript = transcript
+            project.markTranscriptionCurrent(for: mediaID)
+        }
+        guard !project.timelineTranscript.isEmpty else { throw NativeEditorError.aiFailed("No spoken words were found to caption.") }
+        project.regenerateCaptions()
+        setSelectedCaptionIDs([])
+        let count = project.captionEntries.count
+        return "Captions ready · \(count) card\(count == 1 ? "" : "s")"
     }
 
     /// Rebuilds every card from the current transcript and cut, transcribing
