@@ -19,6 +19,8 @@ struct TransformInspector: View {
     /// clip readable: park on each key and the panel says what it holds.
     @ObservedObject var clock: PlaybackClock
 
+    @State private var showsFramingAnimation = false
+
     private var framing: VideoFraming { session.displayedFraming }
 
     var body: some View {
@@ -61,6 +63,7 @@ struct TransformInspector: View {
                     }
                 }
                 .help("Playback speed from 0.25× to 4×; the number field accepts a custom speed.")
+                .disabled(!session.appActions.availability(.clipSpeed, in: session).isAvailable)
                 InspectorRow("Voice") {
                     Text("Pitch preserved").font(.studioCaption).foregroundStyle(.secondary)
                 }
@@ -71,6 +74,7 @@ struct TransformInspector: View {
                         Label(clip.locked ? "Unlock clip" : "Lock clip", systemImage: clip.locked ? "lock.fill" : "lock.open")
                     }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                    .disabled(!session.appActions.availability(.timelineLock, in: session).isAvailable)
                 }
             }
         }
@@ -130,6 +134,12 @@ struct TransformInspector: View {
                     session.setFramingScale(percent / 100)
                 }
             }
+
+            Button("Animate framing…") { session.pausePlayback(); showsFramingAnimation = true }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .sheet(isPresented: $showsFramingAnimation) {
+                    VideoAnimationSheet(session: session, playhead: session.currentTime)
+                }
 
             InspectorRow("Keyframe") {
                 KeyframeControls(session: session, clock: clock)

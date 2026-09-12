@@ -34,21 +34,12 @@ extension EditorSession {
             return
         }
         let time = overlayTime(of: overlay)
-        let updated: ProjectOverlay
-        if OverlayKeyTrack.key(of: overlay, at: time) != nil {
-            updated = OverlayKeyTrack.removingKey(at: time, in: overlay)
-            setStatus("Keyframe removed")
-        } else {
-            updated = OverlayKeyTrack.capturing(at: time, in: overlay)
-            setStatus("Keyframe added at \(formatTime(currentTime))")
-        }
-        writeOverlay(updated)
+        runOverlayKeyAction(overlay, at: time,
+            operation: OverlayKeyTrack.key(of: overlay, at: time) == nil ? .set : .remove)
     }
 
     func clearOverlayKeys(_ overlay: ProjectOverlay) {
-        guard OverlayKeyTrack.isKeyed(overlay) else { return }
-        writeOverlay(OverlayKeyTrack.clearingKeys(at: overlayTime(of: overlay), in: overlay))
-        setStatus("Keyframes cleared")
+        runOverlayKeyAction(overlay, at: overlayTime(of: overlay), operation: .clear)
     }
 
     // MARK: - The arrows
@@ -80,30 +71,18 @@ extension EditorSession {
     /// `OverlayKeyTrack`, so a drag can neither reorder the move nor stack two
     /// keys on one moment.
     func moveOverlayKey(_ overlay: ProjectOverlay, from: Double, to destination: Double) {
-        let moved = OverlayKeyTrack.movingKey(at: from, to: destination, in: overlay)
-        guard moved != overlay else { return }
-        writeOverlay(moved)
+        runOverlayKeyAction(overlay, at: from, operation: .move, destination: destination)
     }
 
     func removeOverlayKey(_ overlay: ProjectOverlay, at time: Double) {
-        let updated = OverlayKeyTrack.removingKey(at: time, in: overlay)
-        guard updated != overlay else { return }
-        writeOverlay(updated, successStatus: "Keyframe removed")
+        runOverlayKeyAction(overlay, at: time, operation: .remove)
     }
 
-    private func writeOverlay(_ updated: ProjectOverlay, successStatus: String = "Ready") {
-        scheduleCompositionCommit(
-            settleFor: .milliseconds(50),
-            successStatus: successStatus
-        ) { [self] in
-            updateProject { project in
-                guard let index = project.overlays?.firstIndex(where: { $0.id == updated.id })
-                else { return }
-                project.overlays?[index] = updated
-                project.updatedAt = Date()
-            }
-            selectedOverlayID = updated.id
-            return true
+    private func runOverlayKeyAction(_ overlay: ProjectOverlay, at time: Double,
+                                     operation: OverlayKeyOperation, destination: Double? = nil) {
+        Task {
+            await performAppAction(OverlayKeyframeInput(overlayID: overlay.id, time: time,
+                operation: operation, destination: destination, box: nil, crop: nil))
         }
     }
 }

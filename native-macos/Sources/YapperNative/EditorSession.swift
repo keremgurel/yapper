@@ -40,8 +40,13 @@ typealias NativeExportRunner = @Sendable (EditorProject, URL) async throws -> Vo
 @MainActor
 final class EditorSession: ObservableObject {
     @Published private(set) var project = EditorProject() {
-        didSet { refreshPlaybackCursor() }
+        didSet {
+            if project != oldValue { actionRevision += 1 }
+            refreshPlaybackCursor()
+        }
     }
+    private(set) var actionRevision = 0
+    let appActions = AppActionRegistry.editor()
     @Published var selectedClipID: UUID?
     /// What is picked in the media bin. Its own selection, not the timeline's:
     /// a file in the bin may be on the timeline several times or not at all.
@@ -90,7 +95,7 @@ final class EditorSession: ObservableObject {
     private var pendingMediaRecovery: PendingMediaRecovery?
     var assistantRunInFlight = false
     /// Brain-backed Studio pages answer through the persistent web session;
-    /// the Editor keeps using the native command router below.
+    /// the Editor uses the native action catalog and project context.
     var assistantUsesStudioBrain = false
     private var captionOperationWaiters: [CheckedContinuation<Bool, Never>] = []
     var isBusy: Bool { activeOperation != nil }
@@ -167,6 +172,9 @@ final class EditorSession: ObservableObject {
     /// What you and Chirpy have said to each other lately. Published on its own
     /// so a reply arriving redraws the panel and nothing else.
     let conversation = AssistantConversation()
+    let actionSessionID = UUID()
+    var assistantTask: Task<Void, Never>?
+    var chirpyPlanner: (([String: ActionJSON]) async throws -> ChirpyPlanReply)?
     /// The transcript's reading order, rebuilt only when the words or cuts move.
     let transcriptFlowCache = TranscriptFlowCache()
     /// The shape of every sound on the audio track, so an effect can be lined
@@ -1202,7 +1210,7 @@ final class EditorSession: ObservableObject {
                 let left = OverlayKeyTrack.portion(of: overlay, from: 0, duration: elapsed)
                 var right = OverlayKeyTrack.portion(of: overlay, from: elapsed, duration: overlay.duration - elapsed)
                 right.id = UUID()
-                if media(for: overlay)?.isImage != true { right.sourceStart += elapsed * overlay.resolvedPlaybackRate }
+                if media(for: overlay)?.isPicture != true { right.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                 project.overlays?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.overlay(right.id))
                 didSplit = true
@@ -1340,7 +1348,7 @@ final class EditorSession: ObservableObject {
                 if edge == .leading {
                     let elapsed = currentTime - overlay.timelineStart
                     overlay.timelineStart = currentTime
-                    if media(for: overlay)?.isImage != true { overlay.sourceStart += elapsed * overlay.resolvedPlaybackRate }
+                    if media(for: overlay)?.isPicture != true { overlay.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                     overlay.duration = end - currentTime
                     overlay = OverlayKeyTrack.rebased(overlay, by: elapsed)
                 } else {
@@ -1724,27 +1732,13 @@ final class EditorSession: ObservableObject {
 
     func addSoundEffect(_ effect: SoundEffectDescriptor) async {
         guard duration > 0 else { return }
-        do {
-            let url = try await soundEffectService.fileURL(for: effect)
-            await commitTimelineEdit {
-                let start = min(currentTime, max(0, duration - 0.02))
-                let layer = ProjectAudioLayer(
-                    url: url,
-                    name: effect.name,
-                    timelineStart: start,
-                    duration: min(effect.duration, max(0.02, duration - start)),
-                    sourceDuration: effect.duration,
-                    builtInID: effect.id,
-                    sourceKind: .builtIn
-                )
-                project.audioLayers = (project.audioLayers ?? []) + [layer]
-                selectedAudioLayerID = layer.id
-                timelineSelection = [.audio(layer.id)]
-                inspectorRequest = EditorInspectorRequest(tool: "Audio")
-                return true
-            }
-        } catch {
-            show(error)
+        let time = min(currentTime, max(0, duration - 0.02))
+        let result = await performAppAction(SoundAtInput(effectID: effect.id,
+            at: [.init(kind: .time, time: time, phrase: nil, occurrence: nil, eventID: nil, offset: nil)]))
+        if result.status == .applied, let id = result.changes.first?.targetID {
+            selectedAudioLayerID = id
+            timelineSelection = [.audio(id)]
+            inspectorRequest = EditorInspectorRequest(tool: "Audio")
         }
     }
 
@@ -1862,7 +1856,9 @@ final class EditorSession: ObservableObject {
         }
         transcriptionTask = task
         transcriptionToken = token
-        await task.value
+        // The initiating caller owns cancellation. Callers joining an existing
+        // transcription above must not cancel someone else's operation.
+        await withTaskCancellationHandler { await task.value } onCancel: { task.cancel() }
         if transcriptionToken == token {
             transcriptionTask = nil
             transcriptionToken = nil
@@ -2119,64 +2115,44 @@ final class EditorSession: ObservableObject {
         }
     }
 
-    private func performCaptionToggle(owner _: LongOperationLease) async {
-        guard let rollbackState = await beginPreparedTimelineEdit() else { return }
-        defer { endPreparedTimelineEdit() }
-        do {
-            try Task.checkCancellation()
-            let successStatus: String
-            if project.captionsEnabled == true {
-                project.setCaptionsVisible(false)
-                let count = project.storedCaptions.count
-                successStatus = "Captions hidden · \(count) card\(count == 1 ? "" : "s") kept"
-            } else if !project.storedCaptions.isEmpty {
-                project.setCaptionsVisible(true)
-                let count = project.captionEntries.count
-                successStatus = "Captions shown · \(count) card\(count == 1 ? "" : "s")"
-            } else {
-                errorMessage = nil
-                let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
-                for mediaID in mediaIDs {
-                    try Task.checkCancellation()
-                    guard
-                        !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
-                        let media = project.media.first(where: { $0.id == mediaID })
-                    else { continue }
-                    statusMessage = "Transcribing before adding captions…"
-                    let words = try await aiEditService.transcribe(
-                        media: media,
-                        dictionary: dictionaryEntries
-                    )
-                    var transcript = project.transcript ?? []
-                    transcript.removeAll { $0.mediaID == mediaID }
-                    transcript.append(contentsOf: words)
-                    project.transcript = transcript
-                    project.markTranscriptionCurrent(for: mediaID)
-                }
-                guard !project.timelineTranscript.isEmpty else {
-                    throw NativeEditorError.aiFailed("No spoken words were found to caption.")
-                }
-                project.regenerateCaptions()
-                setSelectedCaptionIDs([])
-                let count = project.captionEntries.count
-                successStatus = "Captions ready · \(count) card\(count == 1 ? "" : "s")"
-            }
-            try Task.checkCancellation()
-            _ = await commitPreparedTimelineEdit(
-                rollbackState: rollbackState,
-                requiresRebuild: false,
-                successStatus: successStatus
-            )
-        } catch is CancellationError {
-            markCurrentLongOperationCanceled()
-            await restoreCanceledEditState(
-                rollbackState,
-                rebuildPlayer: false,
-                status: "Caption update canceled"
-            )
-        } catch {
-            await restoreEditState(rollbackState, rebuildPlayer: false, preserving: error)
+    private func performCaptionToggle(owner: LongOperationLease) async {
+        // Resolve a toggle when its queued turn starts, not when the click was
+        // made. Explicit model calls use setVisible and never invert state.
+        // The registry acquires the edit slot and flushes pending gestures.
+        await performAppAction(CaptionVisibilityInput(visible: project.captionsEnabled != true), owner: owner)
+    }
+
+    /// Called only inside the action registry's prepared transaction.
+    func mutateCaptionVisibility(_ visible: Bool) async throws -> String {
+        try Task.checkCancellation()
+        if !visible {
+            project.setCaptionsVisible(false)
+            let count = project.storedCaptions.count
+            return "Captions hidden · \(count) card\(count == 1 ? "" : "s") kept"
         }
+        if !project.storedCaptions.isEmpty {
+            project.setCaptionsVisible(true)
+            let count = project.captionEntries.count
+            return "Captions shown · \(count) card\(count == 1 ? "" : "s")"
+        }
+        let mediaIDs = Array(Set(project.clips.map(\.mediaID)))
+        for mediaID in mediaIDs {
+            try Task.checkCancellation()
+            guard !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
+                  let media = project.media.first(where: { $0.id == mediaID }) else { continue }
+            statusMessage = "Transcribing before adding captions…"
+            let words = try await transcribedWords(of: media, progress: nil)
+            var transcript = project.transcript ?? []
+            transcript.removeAll { $0.mediaID == mediaID }
+            transcript.append(contentsOf: words)
+            project.transcript = transcript
+            project.markTranscriptionCurrent(for: mediaID)
+        }
+        guard !project.timelineTranscript.isEmpty else { throw NativeEditorError.aiFailed("No spoken words were found to caption.") }
+        project.regenerateCaptions()
+        setSelectedCaptionIDs([])
+        let count = project.captionEntries.count
+        return "Captions ready · \(count) card\(count == 1 ? "" : "s")"
     }
 
     /// Rebuilds every card from the current transcript and cut, transcribing
@@ -3212,6 +3188,7 @@ final class EditorSession: ObservableObject {
             // made against it is still exactly right. See MediaAvailability.
             project = saved
             persistedLockBaseline = saved
+            conversation.attach(projectID: saved.id, root: projectNavigation.currentPackage?.url)
             repairBuiltInAudioURLs()
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
@@ -3258,6 +3235,7 @@ final class EditorSession: ObservableObject {
         }
         project = next
         persistedLockBaseline = next
+        conversation.attach(projectID: next.id, root: projectNavigation.currentPackage?.url)
         if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
         if !keepingHistory {
             selectedClipID = project.clips.first?.id
@@ -3395,7 +3373,7 @@ final class EditorSession: ObservableObject {
     func closeAssistant() -> Bool {
         guard isAssistantOpen else { return false }
         isAssistantOpen = false
-        if assistantRunInFlight { cancelCurrentOperation() }
+        if assistantRunInFlight { assistantTask?.cancel() }
         return true
     }
 }

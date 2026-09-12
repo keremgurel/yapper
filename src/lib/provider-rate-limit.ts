@@ -20,6 +20,7 @@ export type ProviderSpendEndpoint =
   | "generate-script"
   | "generate-canvas"
   | "brain-ask"
+  | "chirpy-plan"
   | "brain-spin"
   | "brain-ingest"
   | "brain-voice-sample"
@@ -61,6 +62,7 @@ const ENDPOINT_POLICIES: Record<
   // A canvas ask is one short model call and creators fire several in a row
   // while shaping a piece, so it gets more room than a full script.
   "generate-canvas": { capacity: 6, refillPerSecond: 40 / HOUR },
+  "chirpy-plan": { capacity: 6, refillPerSecond: 60 / HOUR },
   "brain-ask": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-spin": { capacity: 3, refillPerSecond: 12 / HOUR },
   "brain-ingest": { capacity: 4, refillPerSecond: 20 / HOUR },

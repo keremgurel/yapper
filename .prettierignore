@@ -18,6 +18,7 @@ package-lock.json
 
 # generated
 next-env.d.ts
+protocol/app-actions.generated.ts
 
 # misc
 .vercel

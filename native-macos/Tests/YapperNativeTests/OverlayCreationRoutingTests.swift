@@ -65,7 +65,7 @@ struct OverlayCreationRoutingTests {
                 TranscriptWord(mediaID: base.id, text: text, start: 2 + Double(index) * 0.5, end: 2.4 + Double(index) * 0.5)
             }
         }
-        await session.runAssistant(instruction: instruction)
+        await session.runLegacyAssistant(instruction: instruction)
         #expect(session.errorMessage == nil)
         #expect(requests == ["direct-overlays", "design-overlays", "review-overlay"])
         #expect(session.project.media.filter(\.isScene).count == 2)

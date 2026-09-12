@@ -64,8 +64,8 @@ private struct MainSegment {
 
     /// The moments this clip's framing changes direction, in timeline seconds.
     var keyframeTimes: [Double] {
-        VideoFramingTrack.keys(of: clip).map {
-            range.start.seconds + clip.timelineOffset(forSource: $0.at)
+        VideoFramingTrack.sampleTimes(of: clip).map {
+            range.start.seconds + clip.timelineOffset(forSource: $0)
         }
     }
 }

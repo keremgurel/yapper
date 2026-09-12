@@ -18,6 +18,12 @@ cp "$project_dir/Resources/AppIcon.icns" "$contents_dir/Resources/AppIcon.icns"
 rm -rf "$contents_dir/Resources/YapperNative_YapperNative.bundle"
 cp -R "$project_dir/.build/release/YapperNative_YapperNative.bundle" \
   "$contents_dir/Resources/YapperNative_YapperNative.bundle"
+# Identify exactly which source the installed app runs, even before a release tag.
+build_revision=$(git -C "$project_dir" rev-parse HEAD)
+if [[ -n $(git -C "$project_dir" status --porcelain) ]]; then
+  build_revision="$build_revision-dirty"
+fi
+/usr/libexec/PlistBuddy -c "Add :YapperBuildCommit string $build_revision" "$contents_dir/Info.plist"
 codesign --force --deep --sign - "$app_dir"
 codesign --verify --deep --strict --verbose=2 "$app_dir"
 print -r -- "$app_dir"

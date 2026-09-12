@@ -145,7 +145,7 @@ extension EditorSession {
         applyCrop(crop, to: CropRequest(
             mediaID: overlay.mediaID, name: media(for: overlay)?.name ?? "Image",
             overlayIDs: [overlay.id], crop: overlay.resolvedCrop,
-            keyTime: media(for: overlay)?.isPicture == true ? overlayTime(of: overlay) : nil
+            keyTime: overlayTime(of: overlay)
         ))
     }
 
