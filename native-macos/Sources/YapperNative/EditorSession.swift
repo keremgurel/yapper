@@ -1732,27 +1732,13 @@ final class EditorSession: ObservableObject {
 
     func addSoundEffect(_ effect: SoundEffectDescriptor) async {
         guard duration > 0 else { return }
-        do {
-            let url = try await soundEffectService.fileURL(for: effect)
-            await commitTimelineEdit {
-                let start = min(currentTime, max(0, duration - 0.02))
-                let layer = ProjectAudioLayer(
-                    url: url,
-                    name: effect.name,
-                    timelineStart: start,
-                    duration: min(effect.duration, max(0.02, duration - start)),
-                    sourceDuration: effect.duration,
-                    builtInID: effect.id,
-                    sourceKind: .builtIn
-                )
-                project.audioLayers = (project.audioLayers ?? []) + [layer]
-                selectedAudioLayerID = layer.id
-                timelineSelection = [.audio(layer.id)]
-                inspectorRequest = EditorInspectorRequest(tool: "Audio")
-                return true
-            }
-        } catch {
-            show(error)
+        let time = min(currentTime, max(0, duration - 0.02))
+        let result = await performAppAction(SoundAtInput(effectID: effect.id,
+            at: [.init(kind: .time, time: time, phrase: nil, occurrence: nil, eventID: nil, offset: nil)]))
+        if result.status == .applied, let id = result.changes.first?.targetID {
+            selectedAudioLayerID = id
+            timelineSelection = [.audio(id)]
+            inspectorRequest = EditorInspectorRequest(tool: "Audio")
         }
     }
 

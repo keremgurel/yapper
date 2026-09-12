@@ -58,14 +58,15 @@ struct ContextualChirpyTests {
             let messages = payload["messages"]!.list!
             let text = messages.last!["content"]!.text!
             if text.contains("CPC") {
-                return ChirpyPlanReply(message: "Planned only, must never appear as success.", actions: [.init(action: AppActionID.revealPolicy.rawValue,
-                    arguments: try { guard case .object(let fields) = try ActionJSON.encoding(RevealPolicyInput(overlayID: overlay.id, regions: [.init(regionID: "number-1", policy: .alwaysVisible), .init(regionID: "number-2", policy: .alwaysVisible)])) else { fatalError() }; return fields }())])
+                return ChirpyPlanReply(message: "Planned only, must never appear as success.", actions: ["number-1", "number-2"].map {
+                    .init(action: AppActionID.maskRemove.rawValue, arguments: ["overlayID": .string(overlay.id.uuidString), "regionID": .string($0)])
+                })
             }
             sawHistory = messages.contains { $0["content"]?.text?.contains("CPC") == true }
-            let events = payload["context"]!["revealEvents"]!.list!
-            #expect(events.compactMap { $0["timelineTime"]?.numeric } == [6.524, 8.249])
-            return .init(message: "I added unrelated overlays", actions: [.init(action: AppActionID.revealSounds.rawValue,
-                arguments: ["effectID": .string("mouse-click"), "eventIDs": .array(events.map { $0["id"]! })])])
+            let events = try #require(payload["context"]?["animationEvents"]?.list)
+            #expect(zip(events.compactMap { $0["timelineTime"]?.numeric }, [6.684, 8.409]).allSatisfy { abs($0 - $1) < 1e-8 })
+            return .init(message: "I added unrelated overlays", actions: [.init(action: AppActionID.soundAt.rawValue,
+                arguments: ["effectID": .string("mouse-click"), "at": .array(events.map { .object(["kind": .string("event"), "eventID": $0["id"]!]) })])])
         }
         await session.runAssistant(instruction: "Keep impressions and CPC visible all the time.")
         #expect(session.conversation.messages.last?.tone == .done)
@@ -77,14 +78,14 @@ struct ContextualChirpyTests {
         let beforeSounds = session.project
         await session.runAssistant(instruction: "add click sound effects when we reveal the clicks and cost")
         #expect(sawHistory)
-        #expect(session.project.audioLayers?.map(\.timelineStart) == [6.524, 8.249])
+        #expect(zip(session.project.audioLayers?.map(\.timelineStart) ?? [], [6.684, 8.409]).allSatisfy { abs($0 - $1) < 1e-8 })
         #expect(session.project.overlays == beforeSounds.overlays)
         #expect(session.project.media == beforeSounds.media)
         #expect(session.conversation.messages.last?.text.contains("unrelated") == false)
         let reopened = AssistantConversation()
         reopened.attach(projectID: session.project.id, root: root)
         #expect(reopened.messages == session.conversation.messages)
-        #expect(reopened.results.count == 2)
+        #expect(reopened.results.count == 3)
         let saves = await store.saves
         await session.runAssistant(instruction: "add click sound effects when we reveal the clicks and cost")
         #expect(await store.saves == saves)

@@ -64,7 +64,7 @@ struct OverlayZoomMaskTests {
         let original = session.project
         let mask = await session.performAppAction(MaskRegionInput(overlayID: overlay.id, regionID: nil, label: "Result",
             rect: .init(x: 0.7, y: 0.4, width: 0.1, height: 0.2), red: 1, green: 1, blue: 1,
-            policy: .untilCue, revealTime: 2))
+            policy: .untilCue, revealTime: 2, opacityKeys: nil))
         #expect(mask.status == .applied)
         #expect(session.overlays[1] == sibling)
         #expect(try Data(contentsOf: sourceURL) == png)

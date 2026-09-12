@@ -5,13 +5,18 @@ extension EditorSession {
     /// Snapshot the app's state and discover actions from the same registry
     /// used by controls. File paths and credentials never enter model context.
     func chirpyContext() async throws -> [String: ActionJSON] {
-        var revealOverlays: [ActionJSON] = []
+        var maskOverlays: [ActionJSON] = []
         for overlay in overlays where media(for: overlay)?.generated?.revealSourceMediaID != nil {
             guard let media = media(for: overlay) else { continue }
             let regions = try await revealRegions(for: media)
-            revealOverlays.append(.object([
+            maskOverlays.append(.object([
                 "overlayID": .string(overlay.id.uuidString), "name": .string(media.name),
-                "regions": try .encoding(regions)
+                "regions": .array(try regions.filter(\.hasMask).map { region in
+                    .object(["id": .string(region.id), "label": .string(region.label),
+                        "rect": try .encoding(ActionRect(x: region.box.minX, y: region.box.minY, width: region.box.width, height: region.box.height)),
+                        "red": .number(region.background.red), "green": .number(region.background.green), "blue": .number(region.background.blue),
+                        "opacityKeys": try .encoding(region.opacityKeys), "sourceCueTime": try .encoding(region.cueTime)])
+                })
             ]))
         }
         let selectedClips = timelineSelection.compactMap { item -> UUID? in
@@ -25,11 +30,12 @@ extension EditorSession {
             "selectedOverlayID": selectedOverlayID.map { .string($0.uuidString) } ?? .null,
             "clips": try .encoding(project.clips), "captions": try .encoding(project.storedCaptions),
             "captionsVisible": .bool(project.captionsEnabled == true),
+            "speechAvailable": .bool(!TimelineCue.words(in: project).isEmpty),
             "media": .array(project.media.map { .object(["id": .string($0.id.uuidString), "name": .string($0.name),
                 "kind": .string($0.isScene ? "scene" : $0.isImage ? "image" : "video")]) }),
-            "selectedOverlayImage": overlayVisualReference(),
-            "overlays": try .encoding(overlays), "reveals": .array(revealOverlays),
-            "revealEvents": try .encoding(try await revealEvents()),
+            "selectedOverlayImage": await overlayVisualReference(),
+            "overlays": try .encoding(overlays), "masks": .array(maskOverlays),
+            "animationEvents": try .encoding(try await animationEvents()),
             "sounds": .array((project.audioLayers ?? []).map { .object(["id": .string($0.id.uuidString),
                 "name": .string($0.name), "time": .number($0.timelineStart), "effectID": $0.builtInID.map(ActionJSON.string) ?? .null]) }),
             "soundLibrary": .array(SoundEffectDescriptor.library.map { .object(["id": .string($0.id), "name": .string($0.name)]) }),
@@ -56,7 +62,7 @@ extension EditorSession {
                 "protocolVersion": .number(1), "executionID": .string(executionID.uuidString),
                 "projectID": .string(projectID.uuidString), "sessionID": .string(actionSessionID.uuidString),
                 "revision": .number(Double(revision)), "context": .object(context),
-                "catalog": try .encoding(appActions.descriptors),
+                "catalog": try .encoding(appActions.planningDescriptors),
                 "messages": .array(conversation.messages.map { .object([
                     "role": .string($0.author == .you ? "user" : "assistant"),
                     "content": .string(($0.text + ($0.notes.isEmpty ? "" : "\n" + $0.notes.joined(separator: "\n"))).prefixString(6000))

@@ -16,7 +16,7 @@ extension EditorSession {
 
 @MainActor
 extension EditorSession {
-    func overlayVisualReference() -> ActionJSON {
+    func overlayVisualReference() async -> ActionJSON {
         guard let id = selectedOverlayID,
               let overlay = overlays.first(where: { $0.id == id }),
               let media = media(for: overlay), let image = overlaySourceImage(media) else { return .null }
@@ -29,7 +29,9 @@ extension EditorSession {
         guard let resized = context.makeImage(),
               let jpeg = NSBitmapImageRep(cgImage: resized).representation(using: .jpeg,
                 properties: [.compressionFactor: 0.6]), jpeg.count <= 150_000 else { return .null }
-        return .object(["overlayID": .string(id.uuidString), "jpeg": .string(jpeg.base64EncodedString()),
+        let regions = await OverlayImageAnalysis.shared.regions(in: resized)
+        return .object(["detectedRegions": (try? .encoding(regions)) ?? .array([]), "overlayID": .string(id.uuidString), "jpeg": .string(jpeg.base64EncodedString()),
+            "width": .number(Double(width)), "height": .number(Double(height)),
             "description": .string("Original source image or thumbnail of the selected overlay. Normalized coordinates start at the top left.")])
     }
 }

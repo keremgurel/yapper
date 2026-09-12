@@ -9,6 +9,8 @@ extension AppActionRegistry {
         registry.registerRevealActions()
         registry.registerOverlayActions()
         registry.registerMaskActions()
+        registry.registerSoundAt()
+        registry.registerFramingAnimation()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }

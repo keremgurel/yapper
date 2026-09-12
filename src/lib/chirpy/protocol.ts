@@ -165,4 +165,21 @@ export function parsePlanReply(
   }
   return reply;
 }
-export const schemaDefinitions = definitions;
+/** Send only definitions referenced by the available catalog; retired capabilities
+ * and unrelated wire envelopes are not part of the model's editing vocabulary. */
+export function schemaDefinitions(input: PlanInput): Record<string, Schema> {
+  const result: Record<string, Schema> = {};
+  function visit(schema: Schema) {
+    if (schema.$ref) {
+      const name = schema.$ref.split("/").at(-1)!;
+      if (!result[name]) {
+        result[name] = definitions[name];
+        visit(definitions[name]);
+      }
+    }
+    for (const child of Object.values(schema.properties ?? {})) visit(child);
+    if (schema.items) visit(schema.items);
+  }
+  for (const action of discoveredCatalog(input)) visit(action.parameters);
+  return result;
+}

@@ -41,7 +41,7 @@ struct OverlayInspectorView: View {
 
             if let media, media.generated?.revealSourceMediaID != nil {
                 Divider()
-                RevealInspector(session: session, overlay: overlay, media: media)
+                MaskInspector(session: session, overlay: overlay, media: media)
             }
 
             Divider()

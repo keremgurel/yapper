@@ -3,6 +3,7 @@ import {
   parsePlanInput,
   parsePlanReply,
   discoveredCatalog,
+  schemaDefinitions,
   type PlanInput,
 } from "./protocol";
 
@@ -139,4 +140,21 @@ it("accepts only a bounded JPEG for the selected overlay", () => {
         context: { ...context, selectedOverlayImage: image },
       }),
     ).toBeNull();
+});
+
+it("discovers only the definitions used by available feature actions", () => {
+  const request = {
+    ...input,
+    catalog: [
+      { id: "editor.video.animateFraming" },
+      { id: "editor.audio.addAt" },
+    ],
+  };
+  const definitions = schemaDefinitions(request);
+  expect(definitions.TimelineAnchorInput).toBeDefined();
+  expect(definitions.TimelineAnchorKind).toBeDefined();
+  expect(definitions.FramingAnimationKey).toBeDefined();
+  expect(definitions.RevealPolicyInput).toBeUndefined();
+  expect(definitions.MaskRegionInput).toBeUndefined();
+  expect(definitions.ChirpyPlanReply).toBeUndefined();
 });

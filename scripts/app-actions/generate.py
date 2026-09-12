@@ -14,7 +14,7 @@ schema = json.loads((ROOT / "protocol/app-actions.schema.json").read_text())
 def check_supported(definition):
     allowed = {"type", "$ref", "enum", "const", "properties", "required", "additionalProperties",
                "items", "minItems", "maxItems", "uniqueItems", "format", "minLength", "maxLength",
-               "minimum", "maximum"}
+               "minimum", "maximum", "description"}  # description is annotation-only in both validators
     unknown = set(definition) - allowed
     if unknown:
         sys.exit(f"Add runtime validation before using schema keywords: {sorted(unknown)}")

@@ -11,6 +11,9 @@ struct SavedRevealRegion: Codable, Equatable, Identifiable, Sendable {
     var policy: RevealPolicy
     /// Time in the saved scene, independent of placement or playback speed.
     var cueTime: Double?
+    var opacityKeys: [SavedMaskOpacityKey]? = nil
+
+    var hasMask: Bool { opacityKeys != nil || policy != .alwaysVisible }
 }
 
 struct SavedRevealEvent: Codable, Sendable {
@@ -87,6 +90,7 @@ extension AppActionRegistry {
                 }
                 changes.append(.init(targetID: overlay.id, property: "\(region.id).policy", before: region.policy.rawValue, after: change.policy.rawValue))
                 region.policy = change.policy
+                region.opacityKeys = nil
                 scene.setMask(region)
                 regions[index] = region
             }

@@ -42,6 +42,11 @@ final class AppActionRegistry {
 
     var descriptors: [AppActionDescriptor] { entries.values.map(\.descriptor).sorted { $0.id < $1.id } }
 
+    var planningDescriptors: [AppActionDescriptor] {
+        let legacy = Set((ActionSchema.document["x-actions"]?.list ?? []).filter { $0["legacy"] == .bool(true) }.compactMap { $0["id"]?.text })
+        return descriptors.filter { !legacy.contains($0.id) }
+    }
+
     func register<Input: AppActionInput>(
         _ input: Input.Type,
         operation: LongOperation? = nil,

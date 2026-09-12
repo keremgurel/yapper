@@ -32,27 +32,28 @@ actor FaceDetectionService {
     private struct Key: Hashable {
         let media: UUID
         let tick: Int
+        let faceOnly: Bool
     }
 
     private var cache: [Key: [CGRect]] = [:]
 
     /// Where the speaker is at each of these moments in one video, keyed by the
     /// moment that was asked for. Moments with nothing found are left out.
-    func faces(in media: ProjectMedia, at sourceTimes: [Double]) async -> [Double: [CGRect]] {
+    func faces(in media: ProjectMedia, at sourceTimes: [Double], faceOnly: Bool = false) async -> [Double: [CGRect]] {
         guard !media.isImage, !sourceTimes.isEmpty else { return [:] }
         var found: [Double: [CGRect]] = [:]
         var generator: AVAssetImageGenerator?
 
         for time in sourceTimes {
             guard !Task.isCancelled else { return found }
-            let key = Key(media: media.id, tick: Int((time / Self.cacheStep).rounded()))
+            let key = Key(media: media.id, tick: Int((time / Self.cacheStep).rounded()), faceOnly: faceOnly)
             if let cached = cache[key] {
                 if !cached.isEmpty { found[time] = cached }
                 continue
             }
             if generator == nil { generator = Self.makeGenerator(for: media) }
             guard let generator else { break }
-            let rects = await Self.faces(from: generator, at: time)
+            let rects = await Self.faces(from: generator, at: time, faceOnly: faceOnly)
             guard !Task.isCancelled else { return found }
             cache[key] = rects
             if !rects.isEmpty { found[time] = rects }
@@ -84,14 +85,15 @@ actor FaceDetectionService {
 
     private static func faces(
         from generator: AVAssetImageGenerator,
-        at seconds: Double
+        at seconds: Double,
+        faceOnly: Bool
     ) async -> [CGRect] {
         let time = CMTime(
             seconds: max(0, seconds),
             preferredTimescale: CompositionBuilder.timeScale
         )
         guard let frame = try? await generator.image(at: time).image else { return [] }
-        return detect(in: frame)
+        return detect(in: frame, faceOnly: faceOnly)
     }
 
     /// The faces on one frame, or, when there are none, whatever the frame is
@@ -101,7 +103,7 @@ actor FaceDetectionService {
     /// a screen recording, a shot where the speaker has stepped aside. Covering
     /// the subject of the shot is the same mistake as covering a face, and
     /// saliency is the only thing that knows what the subject is.
-    private static func detect(in frame: CGImage) -> [CGRect] {
+    private static func detect(in frame: CGImage, faceOnly: Bool) -> [CGRect] {
         let handler = VNImageRequestHandler(cgImage: frame, options: [:])
 
         let faces = VNDetectFaceRectanglesRequest()
@@ -110,6 +112,7 @@ actor FaceDetectionService {
             if !boxes.isEmpty { return boxes }
         }
 
+        guard !faceOnly else { return [] }
         let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
         guard
             (try? handler.perform([saliency])) != nil,

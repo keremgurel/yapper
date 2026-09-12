@@ -16,9 +16,26 @@ extension AppActionRegistry {
             let existing = input.regionID.flatMap { id in regions.first { $0.id == id } }
             if input.regionID != nil && existing == nil { throw AppActionError("That mask no longer exists.") }
             guard existing != nil || regions.count < 32 else { throw AppActionError("This overlay already has 32 masks.") }
+            let policy = input.policy ?? existing?.policy ?? .alwaysHidden
+            var opacityKeys = input.policy == nil ? existing?.opacityKeys : nil
+            if let authored = input.opacityKeys {
+                var resolved: [SavedMaskOpacityKey] = []
+                for key in authored {
+                    let time = try await session.resolveTimelineAnchor(key.at)
+                    guard time >= overlay.timelineStart, time <= overlay.timelineStart + overlay.duration else {
+                        throw AppActionError("Place mask keyframes inside this overlay.")
+                    }
+                    resolved.append(.init(time: overlay.sourceStart + (time - overlay.timelineStart) * overlay.resolvedPlaybackRate,
+                        opacity: key.opacity, easing: key.easing ?? .linear))
+                }
+                guard zip(resolved, resolved.dropFirst()).allSatisfy({ $1.time - $0.time >= 0.02 * overlay.resolvedPlaybackRate - 1e-9 }) else {
+                    throw AppActionError("Place mask keyframes in order, at least 0.02 seconds apart.")
+                }
+                opacityKeys = resolved
+            }
             let cue = input.revealTime.map { overlay.sourceStart + $0 * overlay.resolvedPlaybackRate }
                 ?? existing?.cueTime
-            if input.policy == .untilCue {
+            if opacityKeys == nil && policy == .untilCue {
                 guard let cue, cue >= overlay.sourceStart,
                       (cue - overlay.sourceStart) / overlay.resolvedPlaybackRate < overlay.duration else {
                     throw AppActionError("Choose a reveal time inside this overlay.")
@@ -27,7 +44,7 @@ extension AppActionRegistry {
             let region = SavedRevealRegion(id: existing?.id ?? "mask-\(UUID().uuidString.lowercased().replacingOccurrences(of: "-", with: "").prefix(16))",
                 text: existing?.text ?? "", label: input.label, confidence: existing?.confidence ?? 1,
                 box: CGRect(x: input.rect.x, y: input.rect.y, width: input.rect.width, height: input.rect.height),
-                background: .init(red: input.red, green: input.green, blue: input.blue), policy: input.policy, cueTime: cue)
+                background: .init(red: input.red, green: input.green, blue: input.blue), policy: policy, cueTime: cue, opacityKeys: opacityKeys)
             guard region != existing else { return .init(message: "That mask already has those settings.") }
             var scene: OverlayScene
             var images: [[String: String]] = []
@@ -42,18 +59,23 @@ extension AppActionRegistry {
                       let data = bitmap.representation(using: .png, properties: [:]) else {
                     throw AppActionError("The original image could not be read.")
                 }
-                scene = ImageNumberReveal.scene(regions: [], cues: [], start: 0, duration: length)
+                var original = SceneNode(id: "original", kind: .image, x: 0, y: 0, width: 1, height: 1)
+                original.asset = "image:original"; original.fit = .contain
+                scene = OverlayScene(duration: length, nodes: [original])
                 images = [["key": "original", "data": data.base64EncodedString()]]
             }
-            if input.policy == .untilCue, let cue, cue >= scene.duration {
+            if opacityKeys == nil && policy == .untilCue, let cue, cue >= scene.duration {
                 throw AppActionError("The reveal time extends beyond the saved scene.")
+            }
+            guard opacityKeys?.allSatisfy({ $0.time >= 0 && $0.time <= scene.duration }) ?? true else {
+                throw AppActionError("Mask keyframes extend beyond the saved scene.")
             }
             if let index = regions.firstIndex(where: { $0.id == region.id }) { regions[index] = region }
             else { regions.append(region) }
             scene.setMask(region)
             try await session.saveMaskScene(scene, regions: regions, media: media, overlay: overlay, images: images)
-            return .init(message: "Mask saved · adjust its region or reveal time in the overlay inspector.",
-                         changes: [.init(targetID: overlay.id, property: "\(region.id).mask", before: existing == nil ? "None" : "Previous mask", after: region.policy.rawValue)])
+            return .init(message: "Mask saved · its region, color and opacity keyframes remain editable.",
+                         changes: [.init(targetID: overlay.id, property: "\(region.id).mask", before: existing == nil ? "None" : "Previous mask", after: region.opacityKeys == nil ? region.policy.rawValue : "Opacity keyframes")])
         }
         register(MaskRemoveInput.self, availability: { _ in .available }) { session, input in
             let overlay = try session.actionOverlay(input.overlayID)
@@ -74,12 +96,18 @@ extension OverlayScene {
     mutating func setMask(_ region: SavedRevealRegion) {
         nodes.removeAll { $0.id == region.id }
         animations.removeAll { $0.node == region.id }
-        guard region.policy != .alwaysVisible else { return }
+        guard region.hasMask else { return }
         var cover = SceneNode(id: region.id, kind: .rect, x: region.box.minX, y: region.box.minY,
                               width: region.box.width, height: region.box.height)
         cover.fill = .hex(region.background)
+        cover.opacity = region.opacityKeys?.first?.opacity ?? 1
         nodes.append(cover)
-        if region.policy == .untilCue, let at = region.cueTime {
+        if let keys = region.opacityKeys {
+            for (a, b) in zip(keys, keys.dropFirst()) {
+                animations.append(.init(node: region.id, property: .opacity, from: a.opacity, to: b.opacity,
+                    start: a.time, end: b.time, easing: a.easing == .smooth ? .inOutCubic : .linear))
+            }
+        } else if region.policy == .untilCue, let at = region.cueTime {
             animations.append(.init(node: region.id, property: .opacity, from: 1, to: 0,
                                     start: at, end: min(duration, at + 0.16), easing: .outCubic))
         }
@@ -101,11 +129,13 @@ extension EditorSession {
             size: CGSize(width: media.width, height: media.height), instruction: "Edit image masks",
             root: root, existing: media.isScene ? source : nil)
         let saved = try SceneExportLayer.loadScene(for: revised)
-        for region in regions where region.policy != .alwaysVisible {
+        for region in regions where region.hasMask {
+            let expected = scene.animations.filter { $0.node == region.id && $0.property == .opacity }
             guard saved.nodes.contains(where: { $0.id == region.id }),
-                  region.policy != .untilCue || saved.animations.contains(where: {
-                      $0.node == region.id && $0.property == .opacity && $0.to == 0
-                  }) else { throw AppActionError("The mask could not be saved with its reveal timing. Nothing was changed.") }
+                  expected.allSatisfy({ wanted in saved.animations.contains(where: {
+                      $0.node == wanted.node && $0.property == .opacity && $0.to == wanted.to
+                          && abs($0.start - wanted.start) < 0.000001 && abs($0.end - wanted.end) < 0.000001
+                  }) }) else { throw AppActionError("The mask could not be saved with its animation. Nothing was changed.") }
         }
         revised.generated?.revealSourceMediaID = media.generated?.revealSourceMediaID ?? media.id
         revised.generated?.revealRegions = regions

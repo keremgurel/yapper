@@ -65,7 +65,15 @@ function input(messages: PlanInput["messages"]): PlanInput {
     executionID: randomUUID(),
     revision: 1,
     context,
-    catalog: contract["x-actions"],
+    catalog: contract["x-actions"].filter(
+      (action) =>
+        ![
+          "editor.video.animateFraming",
+          "editor.audio.addAt",
+          "editor.masks.setRegion",
+          "editor.masks.remove",
+        ].includes(action.id),
+    ),
     messages,
   };
 }
@@ -218,4 +226,250 @@ it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
     expect(target.x + target.width / 2).toBeGreaterThan(0.7);
   },
   50_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "composes framing keys with local speech anchors",
+  async () => {
+    for (const [content, anchor, phrase] of [
+      [
+        "Quickly zoom in and out of me as I enter my speech",
+        "speechStart",
+        undefined,
+      ],
+      [
+        'Quickly zoom in and out of me as I say "here is the result"',
+        "phrase",
+        "here is the result",
+      ],
+    ] as const) {
+      const request = input([{ role: "user", content }]);
+      request.catalog = contract["x-actions"].filter(
+        (action) => !("legacy" in action && action.legacy),
+      );
+      request.context = {
+        ...context,
+        speechAvailable: true,
+        clips: [
+          {
+            id: "clip-speaker",
+            mediaID: "media-speaker",
+            sourceStart: 0,
+            sourceEnd: 90,
+          },
+        ],
+        media: [{ id: "media-speaker", name: "Speech.mp4", kind: "video" }],
+      };
+      const reply = await planChirpy(request);
+      expect(reply.actions, reply.message).toHaveLength(1);
+      expect(reply.actions[0].action).toBe("editor.video.animateFraming");
+      const keys = reply.actions[0].arguments.keys as {
+        at: { kind: string; phrase?: string; time?: number; offset?: number };
+        scaleMultiplier: number;
+        easing?: string;
+      }[];
+      expect(keys.length).toBeGreaterThanOrEqual(3);
+      expect(keys[0].scaleMultiplier).toBe(1);
+      expect(keys.at(-1)!.scaleMultiplier).toBe(1);
+      expect(keys.some((key) => key.scaleMultiplier > 1)).toBe(true);
+      for (const key of keys) {
+        expect(key.at.kind, JSON.stringify(keys)).toBe(anchor);
+        if (phrase) expect(key.at.phrase).toBe(phrase);
+        expect(key.at.time).toBeUndefined();
+      }
+    }
+  },
+  100_000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "masks a nonnumeric region and uses exact speech cues without redesigning it",
+  async () => {
+    const request = input([
+      {
+        role: "user",
+        content:
+          'Keep the Logo area covered in white, fade the cover away as I say "our new identity", then cover it again two seconds later. Leave all other areas unchanged.',
+      },
+    ]);
+    request.catalog = contract["x-actions"].filter(
+      (action) => !("legacy" in action && action.legacy),
+    );
+    request.context = {
+      duration: 12,
+      speechAvailable: true,
+      selectedOverlayID: overlayID,
+      overlays: [{ id: overlayID, timelineStart: 0, duration: 12 }],
+      masks: [
+        {
+          overlayID,
+          regions: [
+            {
+              id: "mask-logo",
+              label: "Logo",
+              rect: { x: 0.2, y: 0.3, width: 0.2, height: 0.2 },
+              red: 1,
+              green: 1,
+              blue: 1,
+            },
+          ],
+        },
+      ],
+    };
+    const reply = await planChirpy(request);
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.masks.setRegion");
+    expect(reply.actions[0].arguments.regionID).toBe("mask-logo");
+    const keys = reply.actions[0].arguments.opacityKeys as {
+      at: { kind: string; phrase?: string; time?: number };
+      opacity: number;
+    }[];
+    expect(keys[0].opacity).toBe(1);
+    expect(keys.some((key) => key.opacity === 0)).toBe(true);
+    expect(keys.at(-1)!.opacity).toBe(1);
+    expect(
+      keys.every(
+        (key, index) =>
+          (key.at.kind === "phrase" && key.at.phrase === "our new identity") ||
+          (index === 0 &&
+            key.at.kind === "time" &&
+            key.at.time === 0 &&
+            key.opacity === 1),
+      ),
+    ).toBe(true);
+  },
+  50000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "declines unavailable tracked blur instead of applying a rectangular cover",
+  async () => {
+    const request = input([
+      {
+        role: "user",
+        content:
+          "Track the moving person throughout my footage and blur only their face. Do it now.",
+      },
+    ]);
+    request.catalog = contract["x-actions"].filter(
+      (action) => !("legacy" in action && action.legacy),
+    );
+    const reply = await planChirpy(request);
+    expect(reply.actions).toEqual([]);
+    expect(reply.message).toMatch(
+      /unavailable|not (?:currently )?(?:available|supported)|can.t|cannot|doesn.t support|don.t (?:currently )?have/i,
+    );
+  },
+  50000,
+);
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "places audio using general animation events and preserves visuals",
+  async () => {
+    const request = input([
+      {
+        role: "user",
+        content: "Add click sounds when Clicks and Cost become visible.",
+      },
+    ]);
+    request.catalog = contract["x-actions"].filter(
+      (action) => !("legacy" in action && action.legacy),
+    );
+    request.context = {
+      duration: 12,
+      soundLibrary: context.soundLibrary,
+      animationEvents: context.revealEvents.map((event) => ({
+        ...event,
+        id: event.id + "/opacity/1",
+        property: "opacity",
+        value: 0,
+      })),
+      sounds: [],
+    };
+    const reply = await planChirpy(request);
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.audio.addAt");
+    expect(reply.actions[0].arguments.effectID).toBe("mouse-click");
+    const anchors = reply.actions[0].arguments.at as {
+      kind: string;
+      eventID: string;
+    }[];
+    expect(anchors.map((anchor) => anchor.eventID).sort()).toEqual(
+      context.revealEvents.map((event) => event.id + "/opacity/1").sort(),
+    );
+    expect(anchors.every((anchor) => anchor.kind === "event")).toBe(true);
+  },
+  50000,
+);
+
+it.skipIf(!process.env.CHIRPY_MASK_VISION_IMAGE)(
+  "locates a non-text area from source pixels without OCR regions",
+  async () => {
+    const { readFile } = await import("node:fs/promises");
+    const request = input([
+      {
+        role: "user",
+        content:
+          "Put a black rectangular mask over the white block in this image. Keep it covered throughout.",
+      },
+    ]);
+    request.catalog = contract["x-actions"].filter(
+      (action) => !("legacy" in action && action.legacy),
+    );
+    request.context = {
+      duration: 2,
+      selectedOverlayID: overlayID,
+      overlays: [
+        {
+          id: overlayID,
+          mediaID: "source-image",
+          timelineStart: 0,
+          duration: 2,
+        },
+      ],
+      media: [{ id: "source-image", kind: "image", name: "Shapes.jpg" }],
+      selectedOverlayImage: {
+        overlayID,
+        width: 600,
+        height: 400,
+        detectedRegions: process.env.CHIRPY_MASK_VISION_REGIONS
+          ? JSON.parse(
+              await readFile(process.env.CHIRPY_MASK_VISION_REGIONS, "utf8"),
+            )
+          : undefined,
+        jpeg: (await readFile(process.env.CHIRPY_MASK_VISION_IMAGE!)).toString(
+          "base64",
+        ),
+      },
+      masks: [],
+    };
+    const reply = await planChirpy(request);
+    expect(reply.actions, reply.message).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.masks.setRegion");
+    const args = reply.actions[0].arguments;
+    expect(args.regionID).toBeUndefined();
+    expect(args.red).toBe(0);
+    expect(args.green).toBe(0);
+    expect(args.blue).toBe(0);
+    const rect = args.rect as {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+    const overlapWidth = Math.max(
+      0,
+      Math.min(0.8, rect.x + rect.width) - Math.max(0.2, rect.x),
+    );
+    const overlapHeight = Math.max(
+      0,
+      Math.min(0.8, rect.y + rect.height) - Math.max(0.2, rect.y),
+    );
+    const intersection = overlapWidth * overlapHeight;
+    expect(intersection / 0.36, JSON.stringify(rect)).toBeGreaterThan(0.9);
+    expect(
+      intersection / (0.36 + rect.width * rect.height - intersection),
+    ).toBeGreaterThan(0.6);
+  },
+  50000,
 );

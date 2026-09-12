@@ -19,6 +19,8 @@ struct TransformInspector: View {
     /// clip readable: park on each key and the panel says what it holds.
     @ObservedObject var clock: PlaybackClock
 
+    @State private var showsFramingAnimation = false
+
     private var framing: VideoFraming { session.displayedFraming }
 
     var body: some View {
@@ -132,6 +134,12 @@ struct TransformInspector: View {
                     session.setFramingScale(percent / 100)
                 }
             }
+
+            Button("Animate framing…") { session.pausePlayback(); showsFramingAnimation = true }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                .sheet(isPresented: $showsFramingAnimation) {
+                    VideoAnimationSheet(session: session, playhead: session.currentTime)
+                }
 
             InspectorRow("Keyframe") {
                 KeyframeControls(session: session, clock: clock)
