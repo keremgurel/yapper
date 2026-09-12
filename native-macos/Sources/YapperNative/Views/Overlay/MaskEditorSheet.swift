@@ -64,6 +64,10 @@ struct MaskEditorSheet: View {
             }
             Toggle("Animate mask opacity", isOn: $animated)
             if animated {
+                if region?.opacityKeys == nil && region?.policy == .untilCue && !timingEdited {
+                    Text("The saved animation is preserved. Editing these keys replaces its timing and easing.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 AnimationAnchorEditor(kind: $anchor, time: $anchorTime, phrase: $phrase, occurrence: $occurrence)
                 Text("Keyframe times are offsets from this cue. 100% covers the area; 0% exposes it.")
                     .font(.caption).foregroundStyle(.secondary)

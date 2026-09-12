@@ -39,7 +39,7 @@ struct GeneralMaskAnimationTests {
         if keepEvidence { print("MASK_EVIDENCE: \(root.path)") }
         let canvas = try #require(CGContext(data: nil, width: 120, height: 80, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
-        canvas.setFillColor(NSColor.red.cgColor); canvas.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
+        canvas.setFillColor(CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1)); canvas.fill(CGRect(x: 0, y: 0, width: 120, height: 80))
         let sourceImage = try #require(canvas.makeImage())
         let bitmap = NSBitmapImageRep(cgImage: sourceImage)
         let bytes = try #require(bitmap.representation(using: .png, properties: [:]))
@@ -104,7 +104,10 @@ struct GeneralMaskAnimationTests {
             let image = try #require(NSBitmapImageRep(data: data))
             let color = try #require(image.colorAt(x: image.pixelsWide / 2, y: image.pixelsHigh / 2)?.usingColorSpace(.sRGB))
             #expect(color.redComponent > 0.7, "Frame \(index)")
-            #expect(index == 1 ? color.greenComponent < 0.2 : color.greenComponent > 0.7)
+            // ColorSync profiles differ on the local and CI Macs. Test saturated
+            // source versus neutral cover, rather than assuming a zero green channel.
+            if index == 1 { #expect(color.redComponent - color.greenComponent > 0.5, "Exposed source at frame \(index)") }
+            else { #expect(color.greenComponent > 0.7, "Opaque cover at frame \(index)") }
         }
         await session.undo()
         #expect(session.project == before)

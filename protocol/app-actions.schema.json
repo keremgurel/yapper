@@ -792,7 +792,8 @@
           "maximum": 1
         },
         "easing": {
-          "$ref": "#/$defs/AnimationEase"
+          "$ref": "#/$defs/AnimationEase",
+          "description": "Controls the transition from this key to the following key. The final key has no outgoing transition."
         }
       },
       "required": ["at", "opacity"],
