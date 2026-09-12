@@ -10,6 +10,8 @@ struct OverlayInspectorView: View {
     @ObservedObject var session: EditorSession
     let overlay: ProjectOverlay
     @ObservedObject private var clock: PlaybackClock
+    @State private var showsZoom = false
+    @State private var showsMask = false
 
     init(session: EditorSession, overlay: ProjectOverlay) {
         self.session = session
@@ -23,6 +25,20 @@ struct OverlayInspectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             essentials
+            HStack {
+                Button("Zoom into area…") { session.pausePlayback(); showsZoom = true }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                if media?.isImage == true {
+                    Button("Mask area…") { session.pausePlayback(); showsMask = true }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                }
+            }
+            .padding(.bottom, 10)
+            .sheet(isPresented: $showsZoom) { OverlayZoomSheet(session: session, overlay: overlay) }
+            .sheet(isPresented: $showsMask) {
+                if let media { MaskEditorSheet(session: session, overlay: overlay, media: media) }
+            }
+
             if let media, media.generated?.revealSourceMediaID != nil {
                 Divider()
                 RevealInspector(session: session, overlay: overlay, media: media)

@@ -1,6 +1,6 @@
 # Chirpy and the shared app action system
 
-Status: the native contextual action path is implemented on `codex/chirpy-action-registry`, including persistent project history, atomic deterministic action batches, and the Google Ads reveal-policy/sound workflow. This is the first native vertical slice; the full native action inventory and web Studio action migration below remain follow-on work.
+Status: the native contextual action path is implemented on `codex/chirpy-action-registry`, including persistent project history, atomic deterministic action batches, the Google Ads reveal-policy/sound workflow, manual region masks, and animated overlay zoom. This is the first native vertical slice; the full native action inventory and web Studio action migration below remain follow-on work.
 
 ## Product contract
 
@@ -42,7 +42,7 @@ For property inspectors, reusable property descriptors should carry type, range,
 ## Decisions settled before implementation
 
 - **Topology:** the native client posts current context and its discovered catalog to authenticated `POST /api/chirpy/plan`. The backend returns a validated plan; the native registry executes it and shows actual receipts. The next user turn includes those receipts and fresh state. This release deliberately uses one planning call per user turn, with at most eight deterministic actions, instead of an autonomous six-call loop. Generation/transcription workflows run alone because they own their transaction and operation lease. No new sentence router or assistant-only action switch is needed when a feature registers an action.
-- **Scope:** Swift macOS first. Existing Studio requests retain their web bridge. Web action registration, cache invalidation, and persisted web history are still a separate migration; Tauri is excluded. The native catalog currently includes clip speed, clip/caption locks, caption visibility, region visibility, reveal sounds, transcription, silence trimming, one-click cleanup, and overlay design.
+- **Scope:** Swift macOS first. Existing Studio requests retain their web bridge. Web action registration, cache invalidation, and persisted web history are still a separate migration; Tauri is excluded. The native catalog currently includes clip speed, clip/caption locks, caption visibility, region visibility, reveal sounds, manual mask creation/editing/removal, overlay crop/keyframes/animated zoom, transcription, silence trimming, one-click cleanup, and overlay design (14 actions).
 - **Accounting:** `PAID_ACTIONS.chirpy_plan` costs one credit, matching the existing lightweight retiming/planning price. Live evaluation uses `gpt-5.4-mini` unless `AI_CHIRPY_MODEL` overrides it. Provider work has a 40-second budget, 2,200 output-token cap, and bounded request/reply sizes. A PostgreSQL transaction serializes each authenticated user/execution pair, reserves the credit, and commits the validated plan with its debit. Provider failure rolls the reservation back. Duplicate requests return the saved response; changed payloads under an existing execution ID return conflict. Local button actions are free. Existing paid workflows retain their own charges. The composer discloses the planning charge.
 - **Persistence:** `chirpy-history.json` lives inside the project package, outside Undo. It keeps the last twenty messages and sixty-four action receipts, plus pending invocation IDs. Reopening loads it; switching projects isolates it. A journal entry is saved before execution. Interrupted invocations are not replayed automatically. Planning context includes a launch session ID and monotonic revision; a project change during reading, planning, or edit-slot acquisition rejects the plan. Closing Chirpy cancels planning and tracked editing work.
 - **Web propagation:** planned web executors will update affected `STUDIO_RESOURCE_KEYS` and live outside page-mounted React refs. This release does not claim web action parity.
@@ -53,6 +53,16 @@ For property inspectors, reusable property descriptors should carry type, range,
 `GeneratedOverlayRecord.revealRegions` saves stable region IDs, OCR text and labels, confidence, boxes, background colors, policies, and scene-relative cues. Legacy reveals are inspected from their original saved pixels and current animations without rewriting them. `editor.reveals.setPolicy` changes only explicitly targeted masks; existing animations for other regions and the overlay's placement stay intact. When a media asset is shared, the selected instance receives its own version. `editor.sounds.addAtReveals` resolves event IDs against saved animation times, adjusted for source trim and playback rate. Repeating the same sound at the same event is a no-op. The overlay inspector exposes the same actions manually.
 
 Acceptance is covered at three levels: contract/model tests, native persistence/Undo tests, and an installed-app check. Live model tests cover the reported impressions/CPC correction, the exact click-sound request, and the follow-up “those two reveals.” PostgreSQL tests cover duplicate requests, failed provider calls, and exhausted credits. `scripts/package-app.sh` embeds `YapperBuildCommit` to identify the installed source.
+
+## Manual masks and animated overlay zoom
+
+The overlay inspector offers **Mask area…**, **Edit…** on each saved region, and **Zoom into area…**. A mask is a matching-color rectangle above the original image. Its policy is always visible, always hidden, or revealed at a local overlay time. The original pixels remain intact. Shared image instances receive separate scene versions when one instance changes. Saved mask IDs and opacity animations are checked after scene validation so a renamed node cannot silently lose its reveal.
+
+Zoom animates the source crop inside the existing overlay frame. The region picker supplies the target; start/arrival times and optional return times create editable keyframe diamonds. Existing placement keys remain intact. Smooth crop easing survives inserted keys and clip splits. Image, scene, and video overlay crops are evaluated consistently in preview and export, including source trims, playback-rate changes, and the two-pass scene export path. Manual image masks use the existing scene duration limit of 0.5–30 seconds.
+
+These controls and Chirpy use the same five new registered actions. The planner receives a bounded JPEG of the selected overlay's original source, alongside stable overlay IDs, saved mask regions, and local-time metadata. The JPEG is a separate vision input, never a remote URL or text instruction. This lets a request such as “zoom into Cost, hold, then return” identify a visible region without replacing the original screenshot.
+
+Verification includes smooth interpolation/split tests, persistence and Undo, preservation of shared media, rendered mask/reveal/zoom/return frames at two playback rates, and a provider-backed zoom plan. An opt-in acceptance harness can render a real project or create an isolated demo from a screenshot and saved scene. The September 12 demo uses the original Google Ads image and saved reveal scene on a synthetic background because the former ep12 project and camera volume are unavailable; it is not a claim of re-exporting that missing project.
 
 ## Target context and execution loop (beyond the bounded first release)
 
@@ -100,7 +110,7 @@ Native requests now use the discovered action catalog, project context, persiste
 
 This slice proves the mechanism. It must be described as a partial migration until the inventory below is complete.
 
-### 2. Make overlay edits addressable (region policies and reveal sounds implemented)
+### 2. Make overlay edits addressable (masks, crop, keyframes, zoom, policies, and reveal sounds implemented)
 
 Expose overlay inspection, placement, transforms, timing, and scene changes through the registry. Add region visibility metadata and an inspector control. Wrap OCR, cue binding, and rendered review as reusable feature services. Replace the spoken-number keyword branch with structured action arguments.
 

@@ -16,6 +16,7 @@ struct OverlayKey: Codable, Equatable, Sendable {
     var box: OverlayBox
     /// Source window at this key. Older box-only keys inherit the static crop.
     var crop: OverlayCrop?
+    var cropEasing: OverlayCropEasing? = nil
 
     init(at: Double, box: OverlayBox, crop: OverlayCrop? = nil) {
         self.at = at
@@ -48,7 +49,8 @@ enum OverlayKeyTrack {
         if time >= last.at { return resolved(last) }
         for index in 1..<keys.count where time <= keys[index].at {
             let a = keys[index - 1], b = keys[index]
-            let t = max(0, min(1, (time - a.at) / max(0.000001, b.at - a.at)))
+            let linear = max(0, min(1, (time - a.at) / max(0.000001, b.at - a.at)))
+            let t = a.cropEasing?.progress(linear) ?? linear
             let from = resolved(a), to = resolved(b)
             return OverlayCrop(
                 x: from.x + (to.x - from.x) * t,
@@ -134,7 +136,15 @@ enum OverlayKeyTrack {
             keys[index].box = box
             keys[index].crop = capturedCrop
         } else {
-            keys.append(OverlayKey(at: time, box: box, crop: capturedCrop))
+            var inserted = OverlayKey(at: time, box: box, crop: capturedCrop)
+            if let previous = keys.lastIndex(where: { $0.at < time }), previous + 1 < keys.count,
+               let curve = keys[previous].cropEasing {
+                let fraction = (time - keys[previous].at) / (keys[previous + 1].at - keys[previous].at)
+                let split = curve.lower + (curve.upper - curve.lower) * fraction
+                keys[previous].cropEasing = .init(lower: curve.lower, upper: split)
+                inserted.cropEasing = .init(lower: split, upper: curve.upper)
+            }
+            keys.append(inserted)
             keys.sort { $0.at < $1.at }
         }
         updated.keys = keys
@@ -199,9 +209,11 @@ enum OverlayKeyTrack {
         result.timelineStart += start
         result.duration = duration
         guard isKeyed(overlay) else { return result }
-        let times = [start] + keys(of: overlay).map(\.at).filter { $0 > start && $0 < start + duration } + [start + duration]
-        result.keys = times.map {
-            OverlayKey(at: $0 - start, box: box(of: overlay, at: $0), crop: crop(of: overlay, at: $0))
+        let bounded = capturing(at: start + duration, in: capturing(at: start, in: overlay))
+        result.keys = keys(of: bounded).filter { $0.at >= start && $0.at <= start + duration }.map {
+            var key = $0
+            key.at -= start
+            return key
         }
         let first = result.keys![0]
         result.x = first.box.x; result.y = first.box.y
@@ -243,5 +255,36 @@ enum OverlayKeyTrack {
         var updated = overlay
         updated.keys = keys.sorted { $0.at < $1.at }
         return updated
+    }
+}
+
+/// A subrange of the smooth curve preserves the exact animation when a key
+/// is inserted or an overlay is split in the middle of its zoom.
+struct OverlayCropEasing: Codable, Equatable, Sendable {
+    var lower: Double = 0
+    var upper: Double = 1
+
+    func progress(_ value: Double) -> Double {
+        let from = SceneEasing.inOutCubic.apply(lower)
+        let to = SceneEasing.inOutCubic.apply(upper)
+        guard to - from > 0.000000001 else { return value }
+        return (SceneEasing.inOutCubic.apply(lower + (upper - lower) * value) - from) / (to - from)
+    }
+}
+
+extension OverlayKeyTrack {
+    /// Export samples the same crop function as the preview. Sampling avoids
+    /// treating a zoom's reciprocal scale as a straight transform ramp.
+    static func sampleTimes(of overlay: ProjectOverlay) -> [Double] {
+        var times = Set([0.0, overlay.duration])
+        let keys = keys(of: overlay)
+        for key in keys where key.at > 0 && key.at < overlay.duration { times.insert(key.at) }
+        for index in keys.indices.dropLast() {
+            let start = max(0, keys[index].at), end = min(overlay.duration, keys[index + 1].at)
+            guard end > start else { continue }
+            let count = max(1, min(3600, Int(ceil((end - start) * 30))))
+            for frame in 0...count { times.insert(start + (end - start) * Double(frame) / Double(count)) }
+        }
+        return times.sorted()
     }
 }

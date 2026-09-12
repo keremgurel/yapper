@@ -98,6 +98,19 @@ export function parsePlanInput(raw: unknown): PlanInput | null {
     !record(raw.context)
   )
     return null;
+  const image = raw.context.selectedOverlayImage;
+  if (
+    image !== undefined &&
+    image !== null &&
+    (!record(image) ||
+      typeof image.overlayID !== "string" ||
+      !UUID.test(image.overlayID) ||
+      image.overlayID !== raw.context.selectedOverlayID ||
+      typeof image.jpeg !== "string" ||
+      image.jpeg.length > 200_000 ||
+      !/^\/9j\/[A-Za-z0-9+/]*={0,2}$/.test(image.jpeg))
+  )
+    return null;
   if (
     raw.context.projectID !== raw.projectID ||
     raw.context.sessionID !== raw.sessionID ||

@@ -11,7 +11,7 @@ struct SceneCanvasPreview: View {
 
     var body: some View {
         SceneLayerHost(media: media, crop: overlay.resolvedCrop, size: size,
-                       time: max(0, clock.currentTime - overlay.timelineStart + overlay.sourceStart))
+                       time: max(0, (clock.currentTime - overlay.timelineStart) * overlay.resolvedPlaybackRate + overlay.sourceStart))
     }
 }
 
@@ -40,23 +40,27 @@ private struct SceneLayerHost: NSViewRepresentable {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         defer { CATransaction.commit() }
-        if view.media != media || view.sceneSize != size || view.crop != crop {
+        if view.media != media || view.sceneLayer == nil {
             view.layer?.sublayers = nil
             view.media = media
-            view.sceneSize = size
+            view.sceneSize = CGSize(width: max(1, size.width),
+                                    height: max(1, size.width / CompositionBuilder.aspect(of: media)))
             view.crop = crop
             guard let scene = SceneFileCache.shared.scene(at: media.url), size.height > 0 else { return }
-            let placement = crop.mediaPlacement(mediaAspect: CompositionBuilder.aspect(of: media), boxAspect: size.width / size.height)
-            let full = CGSize(width: size.width * placement.width, height: size.height * placement.height)
-            let layer = SceneLayerBuilder.makeLayer(scene: scene, size: full,
+            let layer = SceneLayerBuilder.makeLayer(scene: scene, size: view.sceneSize,
                 palette: media.generated?.palette ?? .house,
                 assets: FileSceneAssetResolver(sceneFile: media.url), mode: .animated(beginTime: 1e-9))
-            layer.frame.origin = CGPoint(x: placement.x * size.width,
-                y: size.height - placement.y * size.height - full.height)
             layer.speed = 0
             view.duration = scene.duration
             view.sceneLayer = layer
             view.layer?.addSublayer(layer)
+        }
+        if let layer = view.sceneLayer, size.width > 0, size.height > 0 {
+            let placement = crop.mediaPlacement(mediaAspect: CompositionBuilder.aspect(of: media), boxAspect: size.width / size.height)
+            let full = CGSize(width: size.width * placement.width, height: size.height * placement.height)
+            layer.transform = CATransform3DMakeScale(full.width / view.sceneSize.width, full.height / view.sceneSize.height, 1)
+            layer.position = CGPoint(x: placement.x * size.width + full.width / 2,
+                                    y: size.height - placement.y * size.height - full.height / 2)
         }
         view.sceneLayer?.timeOffset = min(view.duration, max(0, time))
     }

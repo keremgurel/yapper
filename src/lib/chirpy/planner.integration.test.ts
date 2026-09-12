@@ -169,3 +169,53 @@ it.skipIf(!process.env.CHIRPY_QA_CONTEXT)(
   },
   50_000,
 );
+
+it.skipIf(process.env.RUN_CHIRPY_EVAL !== "1")(
+  "zooms into a named metric using the registered crop action and saved region",
+  async () => {
+    const request = input([
+      {
+        role: "user",
+        content:
+          "Zoom into Cost on the Google Ads overlay from 1 to 2 seconds into the overlay, hold it, then zoom back out from 4 to 5 seconds. Keep all masks unchanged.",
+      },
+    ]);
+    request.context = {
+      ...context,
+      overlays: [{ id: overlayID, timelineStart: 3.668, duration: 6 }],
+      reveals: [
+        {
+          overlayID,
+          name: "Google Ads",
+          regions: [
+            {
+              id: "number-3",
+              label: "Cost",
+              text: "CA$37.47",
+              box: [
+                [0.75, 0.4],
+                [0.2, 0.25],
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const reply = await planChirpy(request);
+    expect(reply.actions).toHaveLength(1);
+    expect(reply.actions[0].action).toBe("editor.overlays.zoom");
+    expect(reply.actions[0].arguments).toMatchObject({
+      overlayID,
+      startTime: 1,
+      endTime: 2,
+      returnStart: 4,
+      returnEnd: 5,
+    });
+    const target = reply.actions[0].arguments.target as {
+      x: number;
+      width: number;
+    };
+    expect(target.x + target.width / 2).toBeGreaterThan(0.7);
+  },
+  50_000,
+);

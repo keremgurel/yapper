@@ -183,7 +183,7 @@ struct CropSheet: View {
     private var portions: [ProjectOverlay] { session.overlays(ofMedia: request.mediaID) }
     private var target: ProjectOverlay? { portions.first { $0.id == targetID } }
     private var supportsCropKeys: Bool {
-        session.project.media.first { $0.id == request.mediaID }?.isPicture == true
+        session.project.media.contains { $0.id == request.mediaID }
     }
 
     private var activeRequest: CropRequest {

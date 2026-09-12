@@ -120,3 +120,23 @@ describe("Chirpy contract", () => {
     ).toBeNull();
   });
 });
+
+it("accepts only a bounded JPEG for the selected overlay", () => {
+  const context = {
+    ...input.context,
+    selectedOverlayID: projectID,
+    selectedOverlayImage: { overlayID: projectID, jpeg: "/9j/AA==" },
+  };
+  expect(parsePlanInput({ ...input, context })).not.toBeNull();
+  for (const image of [
+    { overlayID: sessionID, jpeg: "/9j/AA==" },
+    { overlayID: projectID, jpeg: "https://example.com/image.jpg" },
+    { overlayID: projectID, jpeg: "/9j/" + "A".repeat(200_000) },
+  ])
+    expect(
+      parsePlanInput({
+        ...input,
+        context: { ...context, selectedOverlayImage: image },
+      }),
+    ).toBeNull();
+});

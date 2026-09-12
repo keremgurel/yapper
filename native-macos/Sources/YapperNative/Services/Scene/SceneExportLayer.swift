@@ -28,9 +28,10 @@ enum SceneExportLayer {
         renderSize: CGSize,
         compositionDuration: Double
     ) -> CALayer {
+        let initialCrop = OverlayKeyTrack.crop(of: overlay, at: 0)
         let shownAspect = OverlayFrame.shownAspect(
             mediaAspect: CompositionBuilder.aspect(of: media),
-            crop: overlay.resolvedCrop
+            crop: initialCrop
         )
         // The canvas measures from the top of the frame and Core Animation
         // from the bottom, so the fitted box is flipped on its way in.
@@ -43,23 +44,31 @@ enum SceneExportLayer {
             height: box.height
         )
 
-        let placement = overlay.resolvedCrop.mediaPlacement(
+        let placement = initialCrop.mediaPlacement(
             mediaAspect: CompositionBuilder.aspect(of: media), boxAspect: box.width / box.height)
         let fullSize = CGSize(width: box.width * placement.width, height: box.height * placement.height)
         let cropLayer = CALayer()
         cropLayer.frame = CGRect(origin: .zero, size: box.size)
         cropLayer.masksToBounds = true
         container.addSublayer(cropLayer)
+        let contentLayer = CALayer()
+        contentLayer.frame = CGRect(x: placement.x * box.width,
+            y: box.height - placement.y * box.height - fullSize.height,
+            width: fullSize.width, height: fullSize.height)
+        cropLayer.addSublayer(contentLayer)
+        var playbackScene = scene
+        let rate = overlay.resolvedPlaybackRate
+        playbackScene.duration /= rate
+        playbackScene.animations = scene.animations.map { animation in
+            var timed = animation
+            timed.start /= rate; timed.end /= rate; timed.stagger /= rate
+            return timed
+        }
         let sceneLayer = SceneLayerBuilder.makeLayer(
-            scene: scene,
-            size: fullSize,
-            palette: media.generated?.palette ?? .house,
+            scene: playbackScene, size: fullSize, palette: media.generated?.palette ?? .house,
             assets: FileSceneAssetResolver(sceneFile: media.url),
-            mode: .animated(beginTime: AVCoreAnimationBeginTimeAtZero + overlay.timelineStart - overlay.sourceStart)
-        )
-        sceneLayer.frame.origin = CGPoint(x: placement.x * box.width,
-            y: box.height - placement.y * box.height - fullSize.height)
-        cropLayer.addSublayer(sceneLayer)
+            mode: .animated(beginTime: AVCoreAnimationBeginTimeAtZero + overlay.timelineStart - overlay.sourceStart / rate))
+        contentLayer.addSublayer(sceneLayer)
 
         // A card with its own background casts the same shadow an image card
         // does. A scene drawn straight over the video, or cut to the whole
@@ -88,7 +97,9 @@ enum SceneExportLayer {
         applyMotion(
             to: container,
             overlay: overlay,
-            shownAspect: shownAspect,
+            content: contentLayer,
+            baseContentSize: fullSize,
+            mediaAspect: CompositionBuilder.aspect(of: media),
             baseBox: box,
             renderSize: renderSize,
             compositionDuration: compositionDuration
@@ -131,36 +142,43 @@ enum SceneExportLayer {
     private static func applyMotion(
         to layer: CALayer,
         overlay: ProjectOverlay,
-        shownAspect: Double,
+        content: CALayer,
+        baseContentSize: CGSize,
+        mediaAspect: Double,
         baseBox: CGRect,
         renderSize: CGSize,
         compositionDuration: Double
     ) {
-        let keys = OverlayKeyTrack.keys(of: overlay)
-        guard keys.count > 1, compositionDuration > 0, baseBox.width > 0, baseBox.height > 0 else { return }
+        guard OverlayKeyTrack.isKeyed(overlay), compositionDuration > 0,
+              baseBox.width > 0, baseBox.height > 0 else { return }
         let rotation = CATransform3DMakeRotation(-overlay.rotationRadians, 0, 0, 1)
-
-        var positions: [NSValue] = []
-        var transforms: [NSValue] = []
+        var positions: [NSValue] = [], transforms: [NSValue] = []
+        var contentPositions: [NSValue] = [], contentTransforms: [NSValue] = []
         var times: [NSNumber] = []
-        for key in keys {
+        let localStart = max(0, -overlay.timelineStart)
+        let localEnd = min(overlay.duration, compositionDuration - overlay.timelineStart)
+        guard localEnd > localStart else { return }
+        let samples = Set(OverlayKeyTrack.sampleTimes(of: overlay).filter { $0 > localStart && $0 < localEnd } + [localStart, localEnd]).sorted()
+        for time in samples {
+            let key = OverlayKeyTrack.box(of: overlay, at: time)
+            let crop = OverlayKeyTrack.crop(of: overlay, at: time)
             let box = OverlayFrame.fitted(
-                CGRect(
-                    x: key.box.x * renderSize.width,
-                    y: key.box.y * renderSize.height,
-                    width: key.box.width * renderSize.width,
-                    height: key.box.height * renderSize.height
-                ),
-                mediaAspect: shownAspect
-            )
+                CGRect(x: key.x * renderSize.width, y: key.y * renderSize.height,
+                       width: key.width * renderSize.width, height: key.height * renderSize.height),
+                mediaAspect: OverlayFrame.shownAspect(mediaAspect: mediaAspect, crop: crop))
             positions.append(NSValue(point: CGPoint(x: box.midX, y: renderSize.height - box.midY)))
             let scale = CATransform3DMakeScale(box.width / baseBox.width, box.height / baseBox.height, 1)
             transforms.append(NSValue(caTransform3D: CATransform3DConcat(scale, rotation)))
-            let at = (overlay.timelineStart + key.at) / compositionDuration
-            times.append(NSNumber(value: min(1, max(0, at))))
+            let placement = crop.mediaPlacement(mediaAspect: mediaAspect, boxAspect: box.width / box.height)
+            let full = CGSize(width: baseBox.width * placement.width, height: baseBox.height * placement.height)
+            contentPositions.append(NSValue(point: CGPoint(x: placement.x * baseBox.width + full.width / 2,
+                y: baseBox.height - placement.y * baseBox.height - full.height / 2)))
+            contentTransforms.append(NSValue(caTransform3D: CATransform3DMakeScale(
+                full.width / baseContentSize.width, full.height / baseContentSize.height, 1)))
+            times.append(NSNumber(value: (overlay.timelineStart + time) / compositionDuration))
         }
-
-        for (keyPath, values) in [("position", positions), ("transform", transforms)] {
+        for (target, keyPath, values) in [(layer, "position", positions), (layer, "transform", transforms),
+                                        (content, "position", contentPositions), (content, "transform", contentTransforms)] {
             let animation = CAKeyframeAnimation(keyPath: keyPath)
             animation.values = values
             animation.keyTimes = times
@@ -169,7 +187,7 @@ enum SceneExportLayer {
             animation.beginTime = AVCoreAnimationBeginTimeAtZero
             animation.isRemovedOnCompletion = false
             animation.fillMode = .both
-            layer.add(animation, forKey: "overlayMotion.\(keyPath)")
+            target.add(animation, forKey: "overlayMotion.\(keyPath)")
         }
     }
 }

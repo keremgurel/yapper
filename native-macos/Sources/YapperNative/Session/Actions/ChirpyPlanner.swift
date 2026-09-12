@@ -27,6 +27,7 @@ extension EditorSession {
             "captionsVisible": .bool(project.captionsEnabled == true),
             "media": .array(project.media.map { .object(["id": .string($0.id.uuidString), "name": .string($0.name),
                 "kind": .string($0.isScene ? "scene" : $0.isImage ? "image" : "video")]) }),
+            "selectedOverlayImage": overlayVisualReference(),
             "overlays": try .encoding(overlays), "reveals": .array(revealOverlays),
             "revealEvents": try .encoding(try await revealEvents()),
             "sounds": .array((project.audioLayers ?? []).map { .object(["id": .string($0.id.uuidString),

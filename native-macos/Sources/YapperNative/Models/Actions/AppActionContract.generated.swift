@@ -11,6 +11,11 @@ enum AppActionID: String, CaseIterable, Sendable {
     case cleanupWorkflow = "editor.cleanup"
     case silenceWorkflow = "editor.trimSilences"
     case overlayWorkflow = "editor.designOverlays"
+    case overlayZoom = "editor.overlays.zoom"
+    case overlayKeyframe = "editor.overlays.keyframe"
+    case overlayCrop = "editor.overlays.setCrop"
+    case maskRegion = "editor.masks.setRegion"
+    case maskRemove = "editor.masks.remove"
 }
 
 struct ClipSpeedInput: Codable, Equatable, Sendable {
@@ -112,6 +117,68 @@ struct OverlayWorkflowInput: Codable, Equatable, Sendable {
     let instruction: String
 }
 
+struct ActionRect: Codable, Equatable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+}
+
+struct OverlayBoxInput: Codable, Equatable, Sendable {
+    let x: Double
+    let y: Double
+    let width: Double
+    let height: Double
+}
+
+enum OverlayKeyOperation: String, Codable, Equatable, Sendable {
+    case set
+    case remove
+    case clear
+    case move
+}
+
+struct OverlayZoomInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let target: ActionRect
+    let startTime: Double
+    let endTime: Double
+    let returnStart: Double?
+    let returnEnd: Double?
+}
+
+struct OverlayKeyframeInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let time: Double
+    let operation: OverlayKeyOperation
+    let destination: Double?
+    let box: OverlayBoxInput?
+    let crop: ActionRect?
+}
+
+struct OverlayCropInput: Codable, Equatable, Sendable {
+    let overlayIDs: [UUID]
+    let crop: ActionRect
+    let time: Double?
+}
+
+struct MaskRegionInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regionID: String?
+    let label: String
+    let rect: ActionRect
+    let red: Double
+    let green: Double
+    let blue: Double
+    let policy: RevealPolicy
+    let revealTime: Double?
+}
+
+struct MaskRemoveInput: Codable, Equatable, Sendable {
+    let overlayID: UUID
+    let regionID: String
+}
+
 extension ClipSpeedInput: AppActionInput {
     static var actionID: AppActionID { .clipSpeed }
 }
@@ -148,9 +215,29 @@ extension OverlayWorkflowInput: AppActionInput {
     static var actionID: AppActionID { .overlayWorkflow }
 }
 
+extension OverlayZoomInput: AppActionInput {
+    static var actionID: AppActionID { .overlayZoom }
+}
+
+extension OverlayKeyframeInput: AppActionInput {
+    static var actionID: AppActionID { .overlayKeyframe }
+}
+
+extension OverlayCropInput: AppActionInput {
+    static var actionID: AppActionID { .overlayCrop }
+}
+
+extension MaskRegionInput: AppActionInput {
+    static var actionID: AppActionID { .maskRegion }
+}
+
+extension MaskRemoveInput: AppActionInput {
+    static var actionID: AppActionID { .maskRemove }
+}
+
 enum AppActionContract {
     static let version = 1
     static let schemaJSON = #"""
-{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.reveals.setPolicy","symbol":"revealPolicy","input":"RevealPolicyInput","description":"Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.sounds.addAtReveals","symbol":"revealSounds","input":"RevealSoundsInput","description":"Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.transcribe","symbol":"transcribeWorkflow","input":"TranscribeWorkflowInput","description":"Transcribe the project speech using the app transcription workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.cleanup","symbol":"cleanupWorkflow","input":"CleanupWorkflowInput","description":"Run the app one-click AI cleanup workflow on the project.","effect":"workflow","requiresRebuild":true},{"id":"editor.trimSilences","symbol":"silenceWorkflow","input":"SilenceWorkflowInput","description":"Trim silences using the app silence trimming workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.designOverlays","symbol":"overlayWorkflow","input":"OverlayWorkflowInput","description":"Create or revise visual overlays using the app visual design workflow. Use only when the user requests visual creation or redesign. Never use this to add sounds or to change existing number visibility policies.","effect":"workflow","requiresRebuild":true}],"$defs":{"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}},"RevealPolicy":{"type":"string","enum":["alwaysVisible","untilCue","alwaysHidden"]},"RevealRegionPolicy":{"type":"object","additionalProperties":false,"required":["regionID","policy"],"properties":{"regionID":{"type":"string","minLength":1,"maxLength":120},"policy":{"$ref":"#/$defs/RevealPolicy"}}},"RevealPolicyInput":{"type":"object","additionalProperties":false,"required":["overlayID","regions"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regions":{"type":"array","items":{"$ref":"#/$defs/RevealRegionPolicy"},"minItems":1,"maxItems":32,"uniqueItems":true}}},"RevealSoundsInput":{"type":"object","additionalProperties":false,"required":["effectID","eventIDs"],"properties":{"effectID":{"type":"string","minLength":1,"maxLength":120},"eventIDs":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"minItems":1,"maxItems":64,"uniqueItems":true}}},"ChirpyActionCall":{"type":"object","additionalProperties":false,"required":["action","arguments"],"properties":{"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"ChirpyPlanReply":{"type":"object","additionalProperties":false,"required":["message","actions"],"properties":{"message":{"type":"string","maxLength":2000},"actions":{"type":"array","items":{"$ref":"#/$defs/ChirpyActionCall"},"maxItems":8}}},"TranscribeWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"CleanupWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"SilenceWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"OverlayWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}}}}
+{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://ypr.app/schemas/app-actions/v1","title":"Yapper shared app actions","x-protocolVersion":1,"x-actions":[{"id":"editor.clips.setSpeed","symbol":"clipSpeed","input":"ClipSpeedInput","description":"Set playback speed for explicit clip IDs, preserving voice pitch. Locked clips are skipped.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.timeline.setLocked","symbol":"timelineLock","input":"TimelineLockInput","description":"Lock or unlock explicit clips and captions to protect their edits.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.captions.setVisible","symbol":"captionVisibility","input":"CaptionVisibilityInput","description":"Show or hide existing captions, preserving their text and styling. If showing captions for the first time, generate them from speech using the caption workflow.","effect":"reversibleEdit","requiresRebuild":false},{"id":"editor.reveals.setPolicy","symbol":"revealPolicy","input":"RevealPolicyInput","description":"Set visibility policies for explicit regions of an image overlay. alwaysVisible removes only those masks; untilCue uses the saved spoken cue; alwaysHidden requires an explicit request to keep a value hidden.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.sounds.addAtReveals","symbol":"revealSounds","input":"RevealSoundsInput","description":"Add a library sound at explicit saved reveal events, using the animation times already in the scene. Does not add or move overlays. Repeating the same sound at the same reveal is a no-op.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.transcribe","symbol":"transcribeWorkflow","input":"TranscribeWorkflowInput","description":"Transcribe the project speech using the app transcription workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.cleanup","symbol":"cleanupWorkflow","input":"CleanupWorkflowInput","description":"Run the app one-click AI cleanup workflow on the project.","effect":"workflow","requiresRebuild":true},{"id":"editor.trimSilences","symbol":"silenceWorkflow","input":"SilenceWorkflowInput","description":"Trim silences using the app silence trimming workflow.","effect":"workflow","requiresRebuild":true},{"id":"editor.designOverlays","symbol":"overlayWorkflow","input":"OverlayWorkflowInput","description":"Create or revise visual overlays using the app visual design workflow. Use only when the user requests visual creation or redesign. Never use this to add sounds or to change existing number visibility policies.","effect":"workflow","requiresRebuild":true},{"id":"editor.overlays.zoom","symbol":"overlayZoom","input":"OverlayZoomInput","description":"Animate a zoom into a specific source region of an existing overlay, preserving its placement and masks. target is normalized source coordinates with a top-left origin. Times are seconds from the overlay start. Smooth zoom holds after endTime; optional returnStart and returnEnd zoom back. Use known reveal region boxes or the supplied selected-overlay image to locate the requested section; ask if the target region is ambiguous.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.keyframe","symbol":"overlayKeyframe","input":"OverlayKeyframeInput","description":"Set, remove, move or clear a keyframe on an overlay. time and destination are seconds from the overlay start. A set with no box or crop captures the current frame. box uses fractions of the video frame; crop uses normalized source coordinates. clear freezes the frame at time.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.overlays.setCrop","symbol":"overlayCrop","input":"OverlayCropInput","description":"Crop explicit overlays to a source rectangle. Coordinates are normalized with top-left origin. Optional time sets the crop at that local overlay time when a single image or scene already has keyframes. Omitting time explicitly replaces crop animation with a static crop while preserving placement keyframes.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.masks.setRegion","symbol":"maskRegion","input":"MaskRegionInput","description":"Create or update a rectangular cover on an image or generated overlay without changing original pixels. Coordinates are normalized source fractions. RGB values are 0 to 1. regionID updates an existing region; omit it to create. untilCue reveals at revealTime seconds from overlay start. Use explicit user-requested regions and colors, or ask for missing details; never guess a private value location.","effect":"reversibleEdit","requiresRebuild":true},{"id":"editor.masks.remove","symbol":"maskRemove","input":"MaskRemoveInput","description":"Remove one explicitly requested mask region and its reveal animation, leaving all other masks and original pixels intact.","effect":"reversibleEdit","requiresRebuild":true}],"$defs":{"ClipSpeedInput":{"type":"object","additionalProperties":false,"required":["clipIDs","rate"],"properties":{"clipIDs":{"type":"array","minItems":1,"maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"rate":{"type":"number","minimum":0.25,"maximum":4}}},"TimelineLockInput":{"type":"object","additionalProperties":false,"required":["clipIDs","captionIDs","locked"],"properties":{"clipIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"captionIDs":{"type":"array","maxItems":5000,"uniqueItems":true,"items":{"type":"string","format":"uuid"}},"locked":{"type":"boolean"}}},"CaptionVisibilityInput":{"type":"object","additionalProperties":false,"required":["visible"],"properties":{"visible":{"type":"boolean"}}},"AppActionStatus":{"type":"string","enum":["applied","unchanged","rejected","failed","canceled"]},"AppActionRequest":{"type":"object","additionalProperties":false,"required":["protocolVersion","id","projectID","revision","action","arguments"],"properties":{"protocolVersion":{"type":"integer","const":1},"id":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"AppActionChange":{"type":"object","additionalProperties":false,"required":["targetID","property","before","after"],"properties":{"targetID":{"type":"string","format":"uuid"},"property":{"type":"string"},"before":{"type":"string"},"after":{"type":"string"}}},"AppActionResult":{"type":"object","additionalProperties":false,"required":["protocolVersion","invocationID","projectID","revision","action","status","message","changes","skippedIDs","persisted"],"properties":{"protocolVersion":{"type":"integer","const":1},"invocationID":{"type":"string","format":"uuid"},"projectID":{"type":"string","format":"uuid"},"revision":{"type":"integer","minimum":0},"action":{"type":"string"},"status":{"$ref":"#/$defs/AppActionStatus"},"message":{"type":"string"},"changes":{"type":"array","items":{"$ref":"#/$defs/AppActionChange"}},"skippedIDs":{"type":"array","items":{"type":"string","format":"uuid"}},"persisted":{"type":"boolean"}}},"RevealPolicy":{"type":"string","enum":["alwaysVisible","untilCue","alwaysHidden"]},"RevealRegionPolicy":{"type":"object","additionalProperties":false,"required":["regionID","policy"],"properties":{"regionID":{"type":"string","minLength":1,"maxLength":120},"policy":{"$ref":"#/$defs/RevealPolicy"}}},"RevealPolicyInput":{"type":"object","additionalProperties":false,"required":["overlayID","regions"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regions":{"type":"array","items":{"$ref":"#/$defs/RevealRegionPolicy"},"minItems":1,"maxItems":32,"uniqueItems":true}}},"RevealSoundsInput":{"type":"object","additionalProperties":false,"required":["effectID","eventIDs"],"properties":{"effectID":{"type":"string","minLength":1,"maxLength":120},"eventIDs":{"type":"array","items":{"type":"string","minLength":1,"maxLength":200},"minItems":1,"maxItems":64,"uniqueItems":true}}},"ChirpyActionCall":{"type":"object","additionalProperties":false,"required":["action","arguments"],"properties":{"action":{"type":"string","minLength":1,"maxLength":120},"arguments":{"type":"object","additionalProperties":{}}}},"ChirpyPlanReply":{"type":"object","additionalProperties":false,"required":["message","actions"],"properties":{"message":{"type":"string","maxLength":2000},"actions":{"type":"array","items":{"$ref":"#/$defs/ChirpyActionCall"},"maxItems":8}}},"TranscribeWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"CleanupWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"SilenceWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"OverlayWorkflowInput":{"type":"object","additionalProperties":false,"required":["instruction"],"properties":{"instruction":{"type":"string","minLength":1,"maxLength":4000}}},"ActionRect":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":0,"maximum":1},"y":{"type":"number","minimum":0,"maximum":1},"width":{"type":"number","minimum":0.005,"maximum":1},"height":{"type":"number","minimum":0.005,"maximum":1}}},"OverlayBoxInput":{"type":"object","additionalProperties":false,"required":["x","y","width","height"],"properties":{"x":{"type":"number","minimum":-2,"maximum":2},"y":{"type":"number","minimum":-2,"maximum":2},"width":{"type":"number","minimum":0.01,"maximum":4},"height":{"type":"number","minimum":0.01,"maximum":4}}},"OverlayKeyOperation":{"type":"string","enum":["set","remove","clear","move"]},"OverlayZoomInput":{"type":"object","additionalProperties":false,"required":["overlayID","target","startTime","endTime"],"properties":{"overlayID":{"type":"string","format":"uuid"},"target":{"$ref":"#/$defs/ActionRect"},"startTime":{"type":"number","minimum":0,"maximum":86400},"endTime":{"type":"number","minimum":0,"maximum":86400},"returnStart":{"type":"number","minimum":0,"maximum":86400},"returnEnd":{"type":"number","minimum":0,"maximum":86400}}},"OverlayKeyframeInput":{"type":"object","additionalProperties":false,"required":["overlayID","time","operation"],"properties":{"overlayID":{"type":"string","format":"uuid"},"time":{"type":"number","minimum":0,"maximum":86400},"operation":{"$ref":"#/$defs/OverlayKeyOperation"},"destination":{"type":"number","minimum":0,"maximum":86400},"box":{"$ref":"#/$defs/OverlayBoxInput"},"crop":{"$ref":"#/$defs/ActionRect"}}},"OverlayCropInput":{"type":"object","additionalProperties":false,"required":["overlayIDs","crop"],"properties":{"overlayIDs":{"type":"array","items":{"type":"string","format":"uuid"},"minItems":1,"maxItems":5000,"uniqueItems":true},"crop":{"$ref":"#/$defs/ActionRect"},"time":{"type":"number","minimum":0,"maximum":86400}}},"MaskRegionInput":{"type":"object","additionalProperties":false,"required":["overlayID","label","rect","red","green","blue","policy"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120},"label":{"type":"string","minLength":1,"maxLength":120},"rect":{"$ref":"#/$defs/ActionRect"},"red":{"type":"number","minimum":0,"maximum":1},"green":{"type":"number","minimum":0,"maximum":1},"blue":{"type":"number","minimum":0,"maximum":1},"policy":{"$ref":"#/$defs/RevealPolicy"},"revealTime":{"type":"number","minimum":0,"maximum":86400}}},"MaskRemoveInput":{"type":"object","additionalProperties":false,"required":["overlayID","regionID"],"properties":{"overlayID":{"type":"string","format":"uuid"},"regionID":{"type":"string","minLength":1,"maxLength":120}}}}}
 """#
 }

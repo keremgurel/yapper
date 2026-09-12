@@ -86,37 +86,12 @@ extension AppActionRegistry {
                     throw AppActionError("\(region.label.isEmpty ? region.text : region.label) has no saved spoken cue. Choose a reveal time first.")
                 }
                 changes.append(.init(targetID: overlay.id, property: "\(region.id).policy", before: region.policy.rawValue, after: change.policy.rawValue))
-                scene.nodes.removeAll { $0.id == region.id }
-                scene.animations.removeAll { $0.node == region.id }
-                if change.policy != .alwaysVisible {
-                    var cover = SceneNode(id: region.id, kind: .rect, x: region.box.minX, y: region.box.minY,
-                        width: region.box.width, height: region.box.height)
-                    cover.fill = .hex(region.background)
-                    scene.nodes.append(cover)
-                    if change.policy == .untilCue, let at = region.cueTime {
-                        scene.animations.append(.init(node: region.id, property: .opacity, from: 1, to: 0,
-                            start: at, end: min(scene.duration, at + 0.16), easing: .outCubic))
-                    }
-                }
                 region.policy = change.policy
+                scene.setMask(region)
                 regions[index] = region
             }
             guard !changes.isEmpty else { return .init(message: "Those numbers already have the requested visibility.") }
-            let root = session.generatedAssetRoot ?? session.projectNavigation.currentPackage?.url ?? ProjectStore.directory
-            var versionSource = media
-            let shared = session.overlays.filter { $0.mediaID == media.id }.count > 1
-            if shared { versionSource.id = UUID(); versionSource.generated?.versions = [] }
-            var revised = try await GeneratedOverlayService.save(reply: ["scene": try JSONSerialization.jsonObject(with: scene.encoded())],
-                brand: nil, moment: [:], size: CGSize(width: media.width, height: media.height),
-                instruction: "Update number visibility", root: root, existing: versionSource)
-            revised.generated?.revealRegions = regions
-            session.updateProject { project in
-                if let index = project.media.firstIndex(where: { $0.id == revised.id }) { project.media[index] = revised }
-                else { project.media.append(revised) }
-                if shared, let index = project.overlays?.firstIndex(where: { $0.id == overlay.id }) {
-                    project.overlays?[index].mediaID = revised.id
-                }
-            }
+            try await session.saveMaskScene(scene, regions: regions, media: media, overlay: overlay)
             return .init(message: "Updated \(changes.count) number visibility setting\(changes.count == 1 ? "" : "s").", changes: changes)
         }
         register(RevealSoundsInput.self, availability: { session in

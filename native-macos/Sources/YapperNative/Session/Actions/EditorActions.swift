@@ -7,6 +7,8 @@ extension AppActionRegistry {
         registry.registerTimelineLock()
         registry.registerCaptionVisibility()
         registry.registerRevealActions()
+        registry.registerOverlayActions()
+        registry.registerMaskActions()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }
