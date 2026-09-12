@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-struct SavedRevealRegion: Codable, Equatable, Sendable {
+struct SavedRevealRegion: Codable, Equatable, Identifiable, Sendable {
     var id: String
     var text: String
     var label: String

@@ -8,7 +8,6 @@ struct RevealInspector: View {
     @State private var regions: [SavedRevealRegion] = []
     @State private var error: String?
     @State private var editing: SavedRevealRegion?
-    @State private var showsEditor = false
 
     var body: some View {
         InspectorSection("Number reveals", id: "overlay.reveals") {
@@ -34,7 +33,7 @@ struct RevealInspector: View {
                             }
                             .labelsHidden()
                             .disabled(!session.appActions.availability(.revealPolicy, in: session).isAvailable)
-                        Button("Edit…") { editing = region; session.pausePlayback(); showsEditor = true }
+                        Button("Edit…") { session.pausePlayback(); editing = region }
                             .help("Change this mask’s area, color or reveal time")
                         if region.policy == .untilCue {
                             Button("Add click") {
@@ -50,8 +49,8 @@ struct RevealInspector: View {
                 }
             }
         }
-        .sheet(isPresented: $showsEditor) {
-            MaskEditorSheet(session: session, overlay: overlay, media: media, region: editing)
+        .sheet(item: $editing) { region in
+            MaskEditorSheet(session: session, overlay: overlay, media: media, region: region)
         }
         .task(id: media.url) {
             do { regions = try await session.revealRegions(for: media); error = nil }
