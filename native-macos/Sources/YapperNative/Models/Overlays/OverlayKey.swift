@@ -71,7 +71,7 @@ enum OverlayKeyTrack {
     /// Inserting a key must preserve the visible frame, not jump to the base box.
     static func capturing(at time: Double, in overlay: ProjectOverlay) -> ProjectOverlay {
         setting(box(of: overlay, at: time), at: time, in: overlay,
-                crop: crop(of: overlay, at: time))
+                crop: crop(of: overlay, at: time), matchingWithin: 0.000000001)
     }
 
     /// The box the overlay has `time` seconds into itself.
@@ -127,12 +127,13 @@ enum OverlayKeyTrack {
         _ box: OverlayBox,
         at time: Double,
         in overlay: ProjectOverlay,
-        crop: OverlayCrop? = nil
+        crop: OverlayCrop? = nil,
+        matchingWithin tolerance: Double = minimumGap
     ) -> ProjectOverlay {
         var updated = overlay
         var keys = keys(of: overlay)
         let capturedCrop = crop ?? self.crop(of: overlay, at: time)
-        if let index = keys.firstIndex(where: { abs($0.at - time) < minimumGap }) {
+        if let index = keys.firstIndex(where: { abs($0.at - time) < tolerance }) {
             keys[index].box = box
             keys[index].crop = capturedCrop
         } else {

@@ -1210,7 +1210,7 @@ final class EditorSession: ObservableObject {
                 let left = OverlayKeyTrack.portion(of: overlay, from: 0, duration: elapsed)
                 var right = OverlayKeyTrack.portion(of: overlay, from: elapsed, duration: overlay.duration - elapsed)
                 right.id = UUID()
-                if media(for: overlay)?.isImage != true { right.sourceStart += elapsed * overlay.resolvedPlaybackRate }
+                if media(for: overlay)?.isPicture != true { right.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                 project.overlays?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.overlay(right.id))
                 didSplit = true
@@ -1348,7 +1348,7 @@ final class EditorSession: ObservableObject {
                 if edge == .leading {
                     let elapsed = currentTime - overlay.timelineStart
                     overlay.timelineStart = currentTime
-                    if media(for: overlay)?.isImage != true { overlay.sourceStart += elapsed * overlay.resolvedPlaybackRate }
+                    if media(for: overlay)?.isPicture != true { overlay.sourceStart += elapsed * overlay.resolvedPlaybackRate }
                     overlay.duration = end - currentTime
                     overlay = OverlayKeyTrack.rebased(overlay, by: elapsed)
                 } else {
