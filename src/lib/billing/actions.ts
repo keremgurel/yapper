@@ -8,6 +8,7 @@ import {
 import { ensureUser } from "@/lib/db/users";
 
 export const PAID_ACTIONS = {
+  chirpy_plan: { credits: 1, label: "Chirpy action planning" },
   transcribe: { credits: 1, label: "Transcription" },
   /** Per three minutes of one of the creator's own videos. */
   voice_sample: { credits: 1, label: "Voice sample transcription" },

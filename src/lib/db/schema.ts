@@ -1247,3 +1247,22 @@ export const voiceSamples = pgTable(
     check("voice_samples_status_check", sql`${t.status} in ('ready','failed')`),
   ],
 );
+
+/** Completed native planning calls, atomically coupled to their credit debit.
+ * No local project contents or conversation are stored on the server. */
+export const chirpyPlans = pgTable(
+  "chirpy_plans",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    executionId: uuid("execution_id").notNull(),
+    projectId: uuid("project_id").notNull(),
+    fingerprint: text("fingerprint").notNull(),
+    response: jsonb("response").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.executionId] })],
+);

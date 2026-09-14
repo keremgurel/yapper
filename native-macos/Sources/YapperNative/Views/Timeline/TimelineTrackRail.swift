@@ -102,7 +102,7 @@ struct TimelineTrackRail: View {
             ) {
                 Task { await session.toggleCaptions() }
             }
-            .disabled(session.isBusy)
+            .disabled(!session.appActions.availability(.captionVisibility, in: session).isAvailable)
         }
     }
 

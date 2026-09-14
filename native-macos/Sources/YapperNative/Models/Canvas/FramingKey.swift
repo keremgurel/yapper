@@ -14,6 +14,7 @@ import Foundation
 struct FramingKey: Codable, Equatable, Sendable {
     var at: Double
     var framing: VideoFraming
+    var easing: OverlayCropEasing? = nil
 
     init(at: Double, framing: VideoFraming) {
         self.at = at
@@ -47,8 +48,8 @@ enum VideoFramingTrack {
     ///
     /// Held flat before the first key and after the last, so a punch-in that
     /// ends at 140% stays at 140% rather than drifting back on its own. Between
-    /// two keys it is a straight line, which is what a push-in looks like and
-    /// what `setTransformRamp` can render without a custom compositor.
+    /// two keys, older moves stay linear and authored punch-ins follow their
+    /// easing curve. Export samples that same curve into transform ramps.
     static func framing(of clip: TimelineClip, atSource time: Double) -> VideoFraming {
         let keys = keys(of: clip)
         guard let first = keys.first else { return clip.resolvedFraming }
@@ -64,7 +65,7 @@ enum VideoFramingTrack {
             return interpolated(
                 from: previous.framing,
                 to: key.framing,
-                progress: (time - previous.at) / span
+                progress: previous.easing?.progress((time - previous.at) / span) ?? (time - previous.at) / span
             )
         }
         return last.framing
@@ -100,14 +101,23 @@ enum VideoFramingTrack {
     static func setting(
         _ framing: VideoFraming,
         atSource time: Double,
-        in clip: TimelineClip
+        in clip: TimelineClip,
+        matchingWithin tolerance: Double = minimumGap
     ) -> TimelineClip {
         var updated = clip
         var keys = keys(of: clip)
-        if let index = keys.firstIndex(where: { abs($0.at - time) < minimumGap }) {
+        if let index = keys.firstIndex(where: { abs($0.at - time) < tolerance }) {
             keys[index].framing = framing
         } else {
-            keys.append(FramingKey(at: time, framing: framing))
+            var inserted = FramingKey(at: time, framing: framing)
+            if let previous = keys.lastIndex(where: { $0.at < time }), previous + 1 < keys.count,
+               let curve = keys[previous].easing {
+                let fraction = (time - keys[previous].at) / (keys[previous + 1].at - keys[previous].at)
+                let split = curve.lower + (curve.upper - curve.lower) * fraction
+                keys[previous].easing = .init(lower: curve.lower, upper: split)
+                inserted.easing = .init(lower: split, upper: curve.upper)
+            }
+            keys.append(inserted)
             keys.sort { $0.at < $1.at }
         }
         updated.framingKeys = keys
@@ -161,5 +171,20 @@ enum VideoFramingTrack {
     /// clip that has been trimmed.
     static func keys(of clip: TimelineClip, inSource range: ClosedRange<Double>) -> [FramingKey] {
         keys(of: clip).filter { range.contains($0.at) }
+    }
+}
+
+extension VideoFramingTrack {
+    /// AVFoundation's linear ramps sample the same ease used by the canvas and custom compositor.
+    static func sampleTimes(of clip: TimelineClip) -> [Double] {
+        let keys = keys(of: clip)
+        var times = Set(keys.map(\.at))
+        for index in keys.indices.dropLast() where keys[index].easing != nil {
+            let start = max(clip.sourceStart, keys[index].at), end = min(clip.sourceEnd, keys[index + 1].at)
+            guard end > start else { continue }
+            let count = max(1, min(3600, Int(ceil((end - start) / clip.resolvedPlaybackRate * 30))))
+            for frame in 0...count { times.insert(start + (end - start) * Double(frame) / Double(count)) }
+        }
+        return times.sorted()
     }
 }

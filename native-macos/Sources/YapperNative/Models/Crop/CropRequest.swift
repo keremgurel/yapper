@@ -46,6 +46,7 @@ struct CropRequest: Equatable, Identifiable, Sendable {
             result.keys = result.keys?.map { key in
                 var key = key
                 key.crop = crop
+                key.cropEasing = nil
                 return key
             }
             return result

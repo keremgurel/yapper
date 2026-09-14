@@ -137,7 +137,12 @@ struct OverlayInspectionTests {
         let middle = try #require(Data(base64Encoded: encoded))
         let bitmap = try #require(NSBitmapImageRep(data: middle))
         let color = try #require(bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
-        #expect(color.blueComponent > 0.8)
+        // Color conversion differs between the local and virtualized macOS
+        // exporters. Test the blue overlay against the black source, rather
+        // than requiring one encoded channel value.
+        #expect(color.blueComponent > 0.6)
+        #expect(color.blueComponent > color.redComponent + 0.4)
+        #expect(color.blueComponent > color.greenComponent + 0.4)
         #expect(color.redComponent < 0.2)
         #expect((evidence["waveform"] as? [[String: Any]])?.isEmpty == true)
         // Starting an inspection partway through a video must not reset scene
@@ -154,7 +159,13 @@ struct OverlayInspectionTests {
                 let data = try #require(Data(base64Encoded: encoded))
                 let bitmap = try #require(NSBitmapImageRep(data: data))
                 let pixel = try #require(bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)?.usingColorSpace(.deviceRGB))
-                #expect(index == 0 ? pixel.blueComponent > 0.8 : pixel.blueComponent < 0.2)
+                if index == 0 {
+                    #expect(pixel.blueComponent > 0.6)
+                    #expect(pixel.blueComponent > pixel.redComponent + 0.4)
+                    #expect(pixel.blueComponent > pixel.greenComponent + 0.4)
+                } else {
+                    #expect(pixel.blueComponent < 0.2)
+                }
             }
             #expect(abs((frames[0]["at"] as? Double ?? 0) - 0.8) < 0.04)
         }

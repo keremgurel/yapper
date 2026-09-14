@@ -14,6 +14,8 @@ actor ImageNumberRevealService {
         let currency: Bool
         let box: CGRect // Fractions, measured from the top left of the image.
         let background: StudioColor
+        var label: String = ""
+        var confidence: Double = 1
     }
 
     func prepare(_ url: URL) throws -> Prepared {
@@ -56,9 +58,14 @@ actor ImageNumberRevealService {
             guard let color = Self.background(around: pixels, bitmap: bitmap) else {
                 throw NativeEditorError.aiFailed("The numbers sit on a detailed background. I couldn’t hide them cleanly without changing the image.")
             }
+            let label = (request.results ?? []).filter { candidate in
+                guard let value = candidate.topCandidates(1).first?.string else { return false }
+                return !value.contains(where: \.isNumber) && candidate.boundingBox.midY > r.midY &&
+                    abs(candidate.boundingBox.midX - r.midX) < max(0.12, r.width)
+            }.min { abs($0.boundingBox.midY - r.midY) < abs($1.boundingBox.midY - r.midY) }?.topCandidates(1).first?.string ?? ""
             regions.append(.init(text: text, value: value, currency: text.contains(where: { "$€£".contains($0) }),
                 box: CGRect(x: pixels.minX / Double(image.width), y: pixels.minY / Double(image.height),
-                            width: pixels.width / Double(image.width), height: pixels.height / Double(image.height)), background: color))
+                            width: pixels.width / Double(image.width), height: pixels.height / Double(image.height)), background: color, label: label, confidence: Double(observation.confidence)))
         }
         guard !regions.isEmpty, regions.count <= 32 else {
             throw NativeEditorError.aiFailed("I couldn’t identify a small set of readable numbers in this image. Nothing was changed.")

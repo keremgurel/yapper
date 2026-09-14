@@ -82,7 +82,7 @@ struct AssistantComposer: View {
         HStack(spacing: 8) {
             Text(
                 isEmpty
-                    ? (session.assistantUsesStudioBrain ? "Ask across Studio" : "@ to name a file")
+                    ? (session.assistantUsesStudioBrain ? "Ask across Studio" : "1 credit to plan · @ names a file")
                     : "⏎ send · ⇧⏎ new line"
             )
                 .font(.system(size: 10.5))
@@ -119,7 +119,7 @@ struct AssistantComposer: View {
         .help(
             !session.assistantUsesStudioBrain && session.project.clips.isEmpty
                 ? "Import a video first"
-                : "Send · ⏎"
+                : "Send · ⏎ · 1 credit to plan. Generation workflows have their usual additional charges."
         )
         .animation(.easeOut(duration: 0.14), value: canSend)
     }

@@ -743,6 +743,10 @@ struct EditorProject: Codable, Equatable, Sendable {
             || hasBackdrop
             || retouchesAnyClip
             || hasImageClip
+            || (overlays ?? []).contains { overlay in
+                media.first(where: { $0.id == overlay.mediaID })?.isImage == false
+                    && OverlayKeyTrack.hasAnimatedCrop(overlay)
+            }
             || !keyframedPictureIDs.isEmpty
     }
 

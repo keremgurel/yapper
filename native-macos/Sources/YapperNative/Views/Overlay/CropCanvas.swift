@@ -13,6 +13,7 @@ struct CropCanvas: View {
     let crop: OverlayCrop
     /// Width/height in source fractions when an aspect preset is active.
     var aspectRatio: Double? = nil
+    var minimumSide: Double = OverlayCrop.minimumSide
     /// Every step of a drag, for anything drawing along with it.
     var onChange: (OverlayCrop) -> Void = { _ in }
     /// Once, when the drag lets go. The only one that has to be saved.
@@ -136,7 +137,7 @@ struct CropCanvas: View {
                             dx: Double(value.translation.width) / Double(size.width),
                             dy: Double(value.translation.height) / Double(size.height),
                             ratio: aspectRatio,
-                            minimumSide: OverlayCrop.minimumSide
+                            minimumSide: minimumSide
                         )
                     )
                 case .edge(let edge):
@@ -149,7 +150,7 @@ struct CropCanvas: View {
                             edge: edge,
                             delta: delta,
                             ratio: aspectRatio,
-                            minimumSide: OverlayCrop.minimumSide
+                            minimumSide: minimumSide
                         )
                     )
                 case .move:
@@ -158,7 +159,7 @@ struct CropCanvas: View {
                             dragOrigin,
                             dx: Double(value.translation.width) / Double(size.width),
                             dy: Double(value.translation.height) / Double(size.height),
-                            minimumSide: OverlayCrop.minimumSide
+                            minimumSide: minimumSide
                         )
                     )
                 }

@@ -93,7 +93,7 @@ struct CaptionWorkbenchView: View {
                     )
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
-                .disabled(session.isBusy)
+                .disabled(!session.appActions.availability(.captionVisibility, in: session).isAvailable)
                 .help(
                     isOn
                         ? "Hide captions in the preview and the export. Every card is kept."

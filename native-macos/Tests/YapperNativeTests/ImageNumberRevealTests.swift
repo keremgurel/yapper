@@ -119,7 +119,7 @@ struct ImageNumberRevealTests {
         you did this perfectly but also hid impressions and avg cpc. please leave them visible (don't hide them) at all times since i don't mention them
         """
         for version in 2...3 {
-            await session.runAssistant(instruction: correction)
+            await session.runLegacyAssistant(instruction: correction)
             #expect(session.errorMessage == nil)
             #expect(session.project.overlays?.count == 1)
             #expect(session.project.overlays?.first?.id == overlay.id)

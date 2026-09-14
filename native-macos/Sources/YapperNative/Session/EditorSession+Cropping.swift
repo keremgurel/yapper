@@ -27,7 +27,7 @@ extension EditorSession {
             name: media.name,
             overlayIDs: [overlay.id],
             crop: OverlayKeyTrack.crop(of: overlay, at: overlayTime(of: overlay)),
-            keyTime: media.isPicture ? overlayTime(of: overlay) : nil
+            keyTime: overlayTime(of: overlay)
         )
     }
 
@@ -56,16 +56,9 @@ extension EditorSession {
 
     /// Writes a crop to every cutaway the request covers, as one edit.
     func applyCrop(_ crop: OverlayCrop, to request: CropRequest) {
-        let clamped = crop.clamped
-        scheduleCompositionCommit { [self] in
-            let previous = project.overlays ?? []
-            let updated = request.applying(clamped, to: previous)
-            guard updated != previous else { return false }
-            updateProject { project in
-                project.overlays = updated
-                project.updatedAt = Date()
-            }
-            return true
+        Task {
+            await performAppAction(OverlayCropInput(overlayIDs: request.overlayIDs,
+                crop: crop.clamped.actionRect, time: request.isMultiple ? nil : request.keyTime))
         }
     }
 }

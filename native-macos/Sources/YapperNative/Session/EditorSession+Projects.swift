@@ -29,6 +29,7 @@ extension EditorSession {
     }
 
     func openProject(_ package: ProjectPackage) async {
+        assistantTask?.cancel()
         if projectNavigation.currentPackage == package {
             projectNavigation.showsProjectsHome = false
             return

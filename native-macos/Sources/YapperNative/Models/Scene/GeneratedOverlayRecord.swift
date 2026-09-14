@@ -60,6 +60,7 @@ struct GeneratedOverlayRecord: Codable, Equatable, Sendable {
     /// Separate from the footage anchor above; repeated requests revise the
     /// same placed instance while leaving the source image in the media bin.
     var revealSourceMediaID: UUID?
+    var revealRegions: [SavedRevealRegion]?
     /// What the brand tokens meant when it was designed.
     var palette: ScenePalette
     var model: String?

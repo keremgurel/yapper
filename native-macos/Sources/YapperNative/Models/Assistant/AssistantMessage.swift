@@ -2,18 +2,16 @@ import Foundation
 
 /// One line of the conversation with Chirpy.
 ///
-/// A message is the whole of a turn: what was asked, or what came back. Nothing
-/// carries between them — each sentence is answered on its own — so these are a
-/// record of what happened rather than context for what happens next.
-struct AssistantMessage: Identifiable, Equatable, Sendable {
-    enum Author: Equatable, Sendable {
+/// Saved with the project, independently of the editable timeline and Undo.
+struct AssistantMessage: Identifiable, Codable, Equatable, Sendable {
+    enum Author: String, Codable, Equatable, Sendable {
         case you
         case chirpy
     }
 
     /// How the reply landed, which is the difference between a tick and a
     /// warning and, more usefully, between reading it and skimming past it.
-    enum Tone: Equatable, Sendable {
+    enum Tone: String, Codable, Equatable, Sendable {
         case asked
         case done
         case trouble
@@ -43,6 +41,10 @@ struct AssistantMessage: Identifiable, Equatable, Sendable {
 
     static func you(_ text: String) -> AssistantMessage {
         AssistantMessage(author: .you, text: text, tone: .asked)
+    }
+
+    static func toAction(_ result: AppActionResult) -> AssistantMessage {
+        .chirpy(result.message, tone: result.status == .applied || result.status == .unchanged ? .done : .trouble)
     }
 
     static func chirpy(
