@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { LayoutGrid, RefreshCw } from "lucide-react";
@@ -27,6 +27,7 @@ import {
 import { downloadCover } from "@/components/publish/poster/render-cover";
 import SourceTabs from "@/components/publish/poster/sources/source-tabs";
 import { useOpenVideo } from "@/components/publish/poster/sources/use-open-video";
+import { useRequestedVideo } from "@/components/publish/poster/sources/use-requested-video";
 import {
   useSourceVideos,
   type PosterSource,
@@ -134,11 +135,7 @@ export default function PosterWorkspace() {
   // The editor hands a finished cut over by linking to /studio/poster?item=<id>.
   const params = useSearchParams();
   const requested = params.get("item");
-  useEffect(() => {
-    if (!requested) return;
-    const video = library.find((candidate) => candidate.id === requested);
-    if (video) bench.setActive(fromPostable(video));
-  }, [requested, library, bench]);
+  useRequestedVideo(requested, library, bench.setActive);
 
   const cover = active ? (covers[active.id] ?? sourceCover(active)) : null;
   // Default destinations: every connected channel except the one the video is
