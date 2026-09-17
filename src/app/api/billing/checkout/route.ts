@@ -65,6 +65,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   const common = {
     customer: customerId,
     client_reference_id: userId,
+    automatic_tax: { enabled: true },
+    // Checkout always receives an existing Customer, including on a first
+    // purchase. Save the collected address so tax uses it for renewals too.
+    customer_update: { address: "auto" },
+    billing_address_collection: "required",
     // Land on the training dashboard, not Studio. Studio sits behind a shared
     // password while it is unfinished, so sending a customer there at the exact
     // moment their card clears would greet them with a password prompt for a
