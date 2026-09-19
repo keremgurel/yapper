@@ -78,6 +78,7 @@ struct EditorHistory: Sendable {
             result.audioLayers?[index].sourceFingerprint = replacement.sourceFingerprint
             result.audioLayers?[index].savedAudioID = replacement.savedAudioID
             result.audioLayers?[index].savedAudioHash = replacement.savedAudioHash
+            result.audioLayers?[index].packagedMediaID = replacement.packagedMediaID
             return result
         }
         undoStack = undoStack.map(rewritten)
@@ -86,7 +87,7 @@ struct EditorHistory: Sendable {
 
     func requiredAudioSourceEnd(for id: UUID) -> Double {
         (undoStack + redoStack).compactMap { snapshot in
-            snapshot.audioLayers?.first(where: { $0.id == id }).map { $0.sourceStart + $0.duration }
+            snapshot.audioLayers?.first(where: { $0.id == id }).map { $0.sourceEnd }
         }.max() ?? 0
     }
 

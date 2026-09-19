@@ -84,6 +84,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
     /// Source seconds consumed per timeline second. Missing in older projects.
     var playbackRate: Double?
     var isLocked: Bool?
+    /// Audio lives in an independent timeline layer after extraction.
+    var audioDetached: Bool?
 
     var sourceDuration: Double { max(0, sourceEnd - sourceStart) }
     var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
@@ -104,7 +106,8 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         backgroundRemoved: Bool? = nil,
         retouch: ClipRetouch? = nil,
         playbackRate: Double? = nil,
-        isLocked: Bool? = nil
+        isLocked: Bool? = nil,
+        audioDetached: Bool? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -116,6 +119,7 @@ struct TimelineClip: Codable, Equatable, Identifiable, Sendable {
         self.retouch = retouch
         self.playbackRate = playbackRate
         self.isLocked = isLocked
+        self.audioDetached = audioDetached
     }
 }
 
@@ -268,6 +272,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
     var timelineStart: Double
     var duration: Double
     var sourceStart: Double
+    var audioDetached: Bool?
     /// Retained when a speed-adjusted clip is moved onto an overlay lane.
     var playbackRate: Double?
     var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
@@ -317,7 +322,8 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         isHidden: Bool? = nil,
         behindSpeaker: Bool? = nil,
         keys: [OverlayKey]? = nil,
-        playbackRate: Double? = nil
+        playbackRate: Double? = nil,
+        audioDetached: Bool? = nil
     ) {
         self.id = id
         self.mediaID = mediaID
@@ -334,6 +340,7 @@ struct ProjectOverlay: Codable, Equatable, Identifiable, Sendable {
         self.isHidden = isHidden
         self.behindSpeaker = behindSpeaker
         self.keys = keys
+        self.audioDetached = audioDetached
         self.playbackRate = playbackRate
     }
 
@@ -493,6 +500,12 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
     var sourceFingerprint: String?
     var savedAudioID: UUID?
     var savedAudioHash: String?
+    /// Keeps an extracted Studio recording portable even after its video is removed.
+    var packagedMediaID: UUID?
+    var playbackRate: Double?
+
+    var resolvedPlaybackRate: Double { ClipSpeed.normalized(playbackRate) }
+    var sourceEnd: Double { sourceStart + duration * resolvedPlaybackRate }
 
     init(
         id: UUID = UUID(),
@@ -507,7 +520,9 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         sourceKind: SourceKind? = nil,
         sourceFingerprint: String? = nil,
         savedAudioID: UUID? = nil,
-        savedAudioHash: String? = nil
+        savedAudioHash: String? = nil,
+        packagedMediaID: UUID? = nil,
+        playbackRate: Double? = nil
     ) {
         self.id = id
         self.url = url
@@ -522,6 +537,8 @@ struct ProjectAudioLayer: Codable, Equatable, Identifiable, Sendable {
         self.sourceFingerprint = sourceFingerprint
         self.savedAudioID = savedAudioID
         self.savedAudioHash = savedAudioHash
+        self.packagedMediaID = packagedMediaID
+        self.playbackRate = playbackRate
     }
 }
 
@@ -917,7 +934,8 @@ struct EditorProject: Codable, Equatable, Sendable {
                 for: (id: UUID(), start: start, duration: placed),
                 in: overlays ?? []
             ),
-            playbackRate: clip.playbackRate
+            playbackRate: clip.playbackRate,
+            audioDetached: clip.audioDetached
         )
         var updatedOverlays = overlays ?? []
         updatedOverlays.append(overlay)
@@ -944,7 +962,8 @@ struct EditorProject: Codable, Equatable, Sendable {
             mediaID: overlay.mediaID,
             sourceStart: overlay.sourceStart,
             sourceEnd: overlay.sourceStart + overlay.sourceDuration,
-            playbackRate: overlay.playbackRate
+            playbackRate: overlay.playbackRate,
+            audioDetached: overlay.audioDetached
         )
         overlays?.remove(at: overlayIndex)
         clips.insert(clip, at: min(max(0, insertionIndex), clips.count))

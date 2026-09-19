@@ -16,15 +16,22 @@ enum PackagedMediaLayout {
             // silently reads a different copy of the original package's file.
             result.media[index].url = file(for: media.id, extension: media.url.pathExtension, in: root)
         }
+        for index in result.audioLayers?.indices ?? 0..<0 {
+            guard let layer = result.audioLayers?[index], let id = layer.packagedMediaID else { continue }
+            result.audioLayers?[index].url = file(for: id, extension: layer.url.pathExtension, in: root)
+        }
         return result
     }
 
     static func copyAssets(in project: EditorProject, to root: URL) throws {
-        for media in project.media where media.packagedSource == true {
-            let target = file(for: media.id, extension: media.url.pathExtension, in: root)
-            guard target.standardizedFileURL != media.url.standardizedFileURL else { continue }
+        let sources = project.media.filter { $0.packagedSource == true }.map { ($0.id, $0.url) }
+            + (project.audioLayers ?? []).compactMap { layer in layer.packagedMediaID.map { ($0, layer.url) } }
+        var copied: Set<URL> = []
+        for (id, source) in sources {
+            let target = file(for: id, extension: source.pathExtension, in: root)
+            guard copied.insert(target).inserted, target.standardizedFileURL != source.standardizedFileURL else { continue }
             try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: media.url, to: target)
+            try FileManager.default.copyItem(at: source, to: target)
         }
     }
 }
