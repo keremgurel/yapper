@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ExtractAudioMenuItem: View {
-    let session: EditorSession
+    @ObservedObject var session: EditorSession
     let item: TimelineSelectionItem
 
     var body: some View {
