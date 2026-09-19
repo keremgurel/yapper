@@ -25,7 +25,7 @@ extension WaveformSource {
         self.init(
             key: Self.fileKey(for: layer.url),
             url: layer.url,
-            duration: max(layer.sourceStart + layer.duration, layer.sourceDuration ?? 0)
+            duration: max(layer.sourceEnd, layer.sourceDuration ?? 0)
         )
     }
 

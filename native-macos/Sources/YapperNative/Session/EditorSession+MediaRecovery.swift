@@ -51,7 +51,7 @@ extension EditorSession {
                 throw NativeEditorError.noAudioTrack(url.lastPathComponent)
             }
             let duration = try await soundEffectService.duration(of: url)
-            let requiredEnd = max(current.sourceStart + current.duration, requiredHistoryAudioSourceEnd(current.id))
+            let requiredEnd = max(current.sourceEnd, requiredHistoryAudioSourceEnd(current.id))
             guard duration + 0.05 >= requiredEnd else {
                 throw NativeEditorError.incompatibleMedia(url.lastPathComponent)
             }
@@ -77,6 +77,7 @@ extension EditorSession {
             layers[index].sourceKind = .external
             layers[index].savedAudioID = nil
             layers[index].savedAudioHash = nil
+            layers[index].packagedMediaID = nil
             updateProject { $0.audioLayers = layers; $0.updatedAt = Date() }
             didMutate = true
             mediaAvailability.clearAudioIdentityMismatch(current.id)

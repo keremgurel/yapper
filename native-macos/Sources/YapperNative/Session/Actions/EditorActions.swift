@@ -4,6 +4,7 @@ extension AppActionRegistry {
     static func editor() -> AppActionRegistry {
         let registry = AppActionRegistry()
         registry.registerClipSpeed()
+        registry.registerExtractAudio()
         registry.registerTimelineLock()
         registry.registerCaptionVisibility()
         registry.registerRevealActions()

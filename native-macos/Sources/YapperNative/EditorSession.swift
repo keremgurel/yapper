@@ -1227,14 +1227,16 @@ final class EditorSession: ObservableObject {
                     name: layer.name,
                     timelineStart: currentTime,
                     duration: layer.duration - elapsed,
-                    sourceStart: layer.sourceStart + elapsed,
+                    sourceStart: layer.sourceStart + elapsed * layer.resolvedPlaybackRate,
                     sourceDuration: layer.sourceDuration,
                     volume: layer.volume,
                     builtInID: layer.builtInID,
                     sourceKind: layer.sourceKind,
                     sourceFingerprint: layer.sourceFingerprint,
                     savedAudioID: layer.savedAudioID,
-                    savedAudioHash: layer.savedAudioHash
+                    savedAudioHash: layer.savedAudioHash,
+                    packagedMediaID: layer.packagedMediaID,
+                    playbackRate: layer.playbackRate
                 )
                 project.audioLayers?.replaceSubrange(index ... index, with: [left, right])
                 resultingSelection.insert(.audio(right.id))
@@ -1365,7 +1367,7 @@ final class EditorSession: ObservableObject {
                 if edge == .leading {
                     let elapsed = currentTime - layer.timelineStart
                     layer.timelineStart = currentTime
-                    layer.sourceStart += elapsed
+                    layer.sourceStart += elapsed * layer.resolvedPlaybackRate
                     layer.duration = end - currentTime
                 } else {
                     layer.duration = currentTime - layer.timelineStart

@@ -274,7 +274,7 @@ enum CompositionBuilder {
 
             if let compositionAudio {
                 if
-                    !project.isVideoTrackMuted,
+                    !project.isVideoTrackMuted, clip.audioDetached != true,
                     let sourceAudio = source.audio,
                     let availableRange = source.audioTimeRange
                 {
@@ -855,28 +855,37 @@ enum CompositionBuilder {
                 seconds: max(0, layer.sourceStart),
                 preferredTimescale: timeScale
             )
-            let sourceStart = max(available.start, requestedStart)
-            let remainingSource = max(.zero, available.end - sourceStart)
-            let remainingTimeline = max(.zero, compositionDuration - destinationStart)
-            let requestedDuration = CMTime(
-                seconds: max(0, layer.duration),
-                preferredTimescale: timeScale
+            let rate = layer.resolvedPlaybackRate
+            let requestedSourceDuration = CMTime(seconds: max(0, layer.duration) * rate, preferredTimescale: timeScale)
+            let intersection = CMTimeRangeGetIntersection(
+                CMTimeRange(start: requestedStart, duration: requestedSourceDuration), otherRange: available
             )
-            let duration = min(requestedDuration, min(remainingSource, remainingTimeline))
-            guard duration > .zero else { continue }
+            guard intersection.duration > .zero else { continue }
+            let offset = CMTimeMultiplyByFloat64(intersection.start - requestedStart, multiplier: 1 / rate)
+            let start = destinationStart + offset
+            let timelineDuration = min(
+                CMTimeMultiplyByFloat64(intersection.duration, multiplier: 1 / rate),
+                max(.zero, compositionDuration - start)
+            )
+            guard timelineDuration > .zero else { continue }
             guard let track = composition.addMutableTrack(
                 withMediaType: .audio,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else {
-                throw NativeEditorError.cannotCreateTrack("sound effect")
+                throw NativeEditorError.cannotCreateTrack("audio")
             }
+            let sourceDuration = CMTimeMultiplyByFloat64(timelineDuration, multiplier: rate)
             try track.insertTimeRange(
-                CMTimeRange(start: sourceStart, duration: duration),
+                CMTimeRange(start: intersection.start, duration: sourceDuration),
                 of: sourceTrack,
-                at: destinationStart
+                at: start
             )
+            if rate != 1 {
+                track.scaleTimeRange(CMTimeRange(start: start, duration: sourceDuration), toDuration: timelineDuration)
+            }
             let input = AVMutableAudioMixInputParameters(track: track)
-            input.setVolume(Float(AudioLevel.clamped(layer.volume)), at: destinationStart)
+            input.audioTimePitchAlgorithm = .spectral
+            input.setVolume(Float(AudioLevel.clamped(layer.volume)), at: start)
             parameters.append(input)
         }
 

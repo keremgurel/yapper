@@ -913,7 +913,7 @@ private struct TimelineVideoClipItem: View {
                 height: 88,
                 selected: selected,
                 // The speaker's own fader, live while it is being dragged.
-                volume: levels.mainTrack ?? trackVolume,
+                volume: displayed.audioDetached == true ? 0 : (levels.mainTrack ?? trackVolume),
                 visibleFraction: visibleFraction
             )
             // Inset the drawing, never the layout: the frame still maps exactly
@@ -967,6 +967,7 @@ private struct TimelineVideoClipItem: View {
             transaction.disablesAnimations = true
         }
         .contextMenu {
+            ExtractAudioMenuItem(session: session, item: .clip(clip.id))
             PropertiesMenuItems(session: session, item: .clip(clip.id))
             Divider()
             Button {
@@ -1345,6 +1346,7 @@ private struct TimelineOverlayItem: View {
         // A cutaway is the thing people want to crop, and the cell on the
         // timeline is where they are looking at it.
         .contextMenu {
+            ExtractAudioMenuItem(session: session, item: .overlay(overlay.id))
             PropertiesMenuItems(session: session, item: .overlay(overlay.id))
             Divider()
             Button {
@@ -1817,9 +1819,9 @@ struct TimelineAudioItem: View {
             name: layer.name,
             peaks: waveforms.peaks(for: layer),
             sourceStart: displayed.sourceStart,
-            sourceEnd: displayed.sourceStart + displayed.duration,
+            sourceEnd: displayed.sourceEnd,
             fileDuration: max(
-                displayed.sourceStart + displayed.duration,
+                displayed.sourceEnd,
                 layer.sourceDuration ?? displayed.duration
             ),
             height: Self.cellHeight,
@@ -2208,28 +2210,28 @@ enum TimelineAudioGeometry {
         )
         let minimumDuration = min(0.05, max(0.01, projectDuration))
         let sourceDuration = max(
-            layer.sourceStart + layer.duration,
+            layer.sourceEnd,
             layer.sourceDuration ?? 0
         )
         switch edge {
         case .leading:
-            let sourceEnd = layer.sourceStart + layer.duration
-            let earliestSourceStart = max(0, layer.sourceStart - layer.timelineStart)
+            let sourceEnd = layer.sourceEnd
+            let earliestSourceStart = max(0, layer.sourceStart - layer.timelineStart * layer.resolvedPlaybackRate)
             let newSourceStart = min(
-                sourceEnd - minimumDuration,
-                max(earliestSourceStart, layer.sourceStart + delta)
+                sourceEnd - minimumDuration * layer.resolvedPlaybackRate,
+                max(earliestSourceStart, layer.sourceStart + delta * layer.resolvedPlaybackRate)
             )
-            let actualDelta = newSourceStart - layer.sourceStart
+            let actualDelta = (newSourceStart - layer.sourceStart) / layer.resolvedPlaybackRate
             updated.sourceStart = newSourceStart
             updated.timelineStart = max(0, layer.timelineStart + actualDelta)
-            updated.duration = sourceEnd - newSourceStart
+            updated.duration = (sourceEnd - newSourceStart) / layer.resolvedPlaybackRate
         case .trailing:
             let sourceEnd = min(
                 sourceDuration,
-                max(layer.sourceStart + minimumDuration, layer.sourceStart + layer.duration + delta)
+                max(layer.sourceStart + minimumDuration * layer.resolvedPlaybackRate, layer.sourceEnd + delta * layer.resolvedPlaybackRate)
             )
             updated.duration = min(
-                sourceEnd - layer.sourceStart,
+                (sourceEnd - layer.sourceStart) / layer.resolvedPlaybackRate,
                 max(minimumDuration, projectDuration - layer.timelineStart)
             )
         }

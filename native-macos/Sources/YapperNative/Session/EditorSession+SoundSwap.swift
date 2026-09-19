@@ -32,12 +32,14 @@ extension EditorSession {
                     project.audioLayers?[index].sourceFingerprint = nil
                     project.audioLayers?[index].savedAudioID = nil
                     project.audioLayers?[index].savedAudioHash = nil
+                    project.audioLayers?[index].packagedMediaID = nil
                     project.audioLayers?[index].sourceDuration = effect.duration
                 // Back to the whole of the new sound, and no further than the
                 // end of the video. A trim measured against the old file means
                 // nothing to this one: a head cut off a three-second riser
                 // would take most of a quarter-second pop with it.
                     project.audioLayers?[index].sourceStart = 0
+                    project.audioLayers?[index].playbackRate = nil
                     project.audioLayers?[index].duration = min(
                         effect.duration,
                         max(0.02, duration - existing.timelineStart)

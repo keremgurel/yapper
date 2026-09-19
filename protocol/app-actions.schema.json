@@ -5,6 +5,14 @@
   "x-protocolVersion": 1,
   "x-actions": [
     {
+      "id": "editor.clips.extractAudio",
+      "symbol": "extractAudio",
+      "input": "ExtractAudioInput",
+      "description": "Extract audio from explicit video clip or overlay IDs into independent audio layers, preserving trim and speed and silencing the original clips. Locked, silent and already extracted clips are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
       "id": "editor.clips.setSpeed",
       "symbol": "clipSpeed",
       "input": "ClipSpeedInput",
@@ -136,6 +144,25 @@
     }
   ],
   "$defs": {
+    "ExtractAudioInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clipIDs", "overlayIDs"],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uuid" }
+        },
+        "overlayIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uuid" }
+        }
+      }
+    },
     "ClipSpeedInput": {
       "type": "object",
       "additionalProperties": false,
