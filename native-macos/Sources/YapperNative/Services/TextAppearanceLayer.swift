@@ -132,18 +132,33 @@ enum TextAppearanceLayer {
             context.beginTransparencyLayer(auxiliaryInfo: nil)
         }
 
-        let framesetter = CTFramesetterCreateWithAttributedString(attributed)
         let path = CGPath(
             rect: CGRect(x: bleed, y: bleed, width: textSize.width, height: textSize.height),
             transform: nil
         )
-        let frame = CTFramesetterCreateFrame(
-            framesetter,
-            CFRangeMake(0, attributed.length),
-            path,
-            nil
-        )
-        CTFrameDraw(frame, context)
+        func draw(_ string: NSAttributedString) {
+            context.saveGState()
+            let framesetter = CTFramesetterCreateWithAttributedString(string)
+            let frame = CTFramesetterCreateFrame(
+                framesetter, CFRangeMake(0, string.length), path, nil
+            )
+            CTFrameDraw(frame, context)
+            context.restoreGState()
+        }
+
+        if appearance.strokeEnabled, appearance.strokeWidth > 0 {
+            let outline = NSMutableAttributedString(attributedString: attributed)
+            outline.addAttributes([
+                .init(kCTStrokeWidthAttributeName as String): appearance.strokeWidth * 100,
+                .init(kCTStrokeColorAttributeName as String): appearance.strokeColor.cgColor,
+            ], range: NSRange(location: 0, length: outline.length))
+            draw(outline)
+        }
+        // Stroke first, then fill the entire run. A combined fill-and-stroke
+        // draws dark seams through overlapping font contours (notably "e")
+        // and eats into the letter weight. The canvas puts its outline behind
+        // intact glyphs, so export must do the same.
+        draw(attributed)
 
         if castsShadow { context.endTransparencyLayer() }
         return context.makeImage()
@@ -175,20 +190,11 @@ enum TextAppearanceLayer {
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byWordWrapping
 
-        var attributes: [NSAttributedString.Key: Any] = [
+        let attributes: [NSAttributedString.Key: Any] = [
             .font: font(for: appearance.font, size: fontSize),
             .foregroundColor: appearance.color.nsColor,
             .paragraphStyle: paragraph,
         ]
-        if appearance.strokeEnabled, appearance.strokeWidth > 0 {
-            // Negative means "fill *and* stroke"; the magnitude is a percentage
-            // of the font size, which is exactly how the model stores it. Core
-            // Text reads its own keys and ignores AppKit's, so both are set.
-            attributes[.strokeWidth] = -appearance.strokeWidth * 100
-            attributes[.strokeColor] = appearance.strokeColor.nsColor
-            attributes[.init(kCTStrokeWidthAttributeName as String)] = -appearance.strokeWidth * 100
-            attributes[.init(kCTStrokeColorAttributeName as String)] = appearance.strokeColor.cgColor
-        }
         return NSAttributedString(string: appearance.displayText(text), attributes: attributes)
     }
 
@@ -207,21 +213,15 @@ enum TextAppearanceLayer {
     }
 
     static func font(for family: TextLayerFont, size: CGFloat) -> NSFont {
-        switch family {
-        case .modern:
-            return NSFont.systemFont(ofSize: size, weight: .bold)
-        case .rounded:
-            let base = NSFont.systemFont(ofSize: size, weight: .heavy)
-            if let descriptor = base.fontDescriptor.withDesign(.rounded),
-               let rounded = NSFont(descriptor: descriptor, size: size)
-            {
-                return rounded
-            }
-            return base
-        case .editorial:
-            return NSFont(name: "New York", size: size)
-                ?? NSFont.systemFont(ofSize: size, weight: .semibold)
+        let base = NSFont.systemFont(ofSize: size, weight: .heavy)
+        let design: NSFontDescriptor.SystemDesign = switch family {
+        case .modern: .default
+        case .rounded: .rounded
+        case .editorial: .serif
         }
+        guard let descriptor = base.fontDescriptor.withDesign(design),
+              let font = NSFont(descriptor: descriptor, size: size) else { return base }
+        return font
     }
 }
 

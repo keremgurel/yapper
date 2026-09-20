@@ -944,10 +944,10 @@ private struct TimelineVideoClipItem: View {
             .onTapGesture { selectTimelineItemFromPointer(.clip(clip.id), session: session) }
             .gesture(selectionMoveGesture)
             .overlay(alignment: .leading) {
-                if selected { trimHandle(edge: .leading) }
+                if selected { trimHandle(edge: .leading, cellWidth: displayedWidth) }
             }
             .overlay(alignment: .trailing) {
-                if selected { trimHandle(edge: .trailing) }
+                if selected { trimHandle(edge: .trailing, cellWidth: displayedWidth) }
             }
             .offset(x: leadingPreviewOffset)
         }
@@ -1100,18 +1100,19 @@ private struct TimelineVideoClipItem: View {
             }
     }
 
-    private func trimHandle(edge: HorizontalEdge) -> some View {
+    private func trimHandle(edge: HorizontalEdge, cellWidth: CGFloat) -> some View {
         let displayed = trimDraft ?? clip
         let edgeTime = edge == .leading ? displayed.sourceStart : displayed.sourceEnd
         return TimelineTrimHandle(
             edge: edge,
+            cellWidth: cellWidth,
             height: 82,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
             .highPriorityGesture(
                 DragGesture(
-                    minimumDistance: 0,
+                    minimumDistance: TimelineTrimHitArea.minimumDragDistance,
                     coordinateSpace: .named(TimelineContent.coordinateSpaceName)
                 )
                     .onChanged { value in
@@ -1210,27 +1211,28 @@ enum TimelineClipGeometry {
 
 struct TimelineTrimHandle: View {
     let edge: HorizontalEdge
+    let cellWidth: CGFloat
     let height: CGFloat
     let isActive: Bool
     let readout: String?
     @State private var isHovering = false
 
     var body: some View {
+        let targetWidth = TimelineTrimHitArea.width(for: cellWidth)
         ZStack(alignment: edge == .leading ? .leading : .trailing) {
             Color.clear
             Capsule(style: .continuous)
-                .fill(Color.white.opacity(isActive ? 1 : 0.94))
-                .frame(width: isActive ? 3 : 2.5, height: min(30, height * 0.58))
+                .fill(Color.white.opacity(isActive || isHovering ? 1 : 0.94))
+                .frame(width: min(targetWidth, isActive || isHovering ? 3 : 2.5), height: min(30, height * 0.58))
                 .overlay {
                     Capsule(style: .continuous)
                         .stroke(Color.black.opacity(0.38), lineWidth: 0.55)
                 }
         }
-        // A wide target, and a wider one still for the pointer: the arrows have
-        // to appear before the handle is reached, or a trim feels like it needs
-        // aiming for.
-        .frame(width: 22, height: height)
-        .contentShape(Rectangle().inset(by: -6))
+        // Keep the cursor and gesture on the same narrow edge. Expanding this
+        // shape steals the move gesture, especially when short clips are selected.
+        .frame(width: targetWidth, height: height)
+        .contentShape(Rectangle())
         .cursor(.resizeLeftRight)
         .overlay(alignment: .top) {
             if let readout {
@@ -1640,10 +1642,10 @@ private struct TimelineOverlayItem: View {
                 }
         )
         .overlay(alignment: .leading) {
-            if selected { trimHandle(.leading) }
+            if selected { trimHandle(.leading, cellWidth: width) }
         }
         .overlay(alignment: .trailing) {
-            if selected { trimHandle(.trailing) }
+            if selected { trimHandle(.trailing, cellWidth: width) }
         }
         .offset(
             x: startX + (selected
@@ -1683,20 +1685,21 @@ private struct TimelineOverlayItem: View {
         media.isImage ? nil : media.duration
     }
 
-    private func trimHandle(_ edge: HorizontalEdge) -> some View {
+    private func trimHandle(_ edge: HorizontalEdge, cellWidth: CGFloat) -> some View {
         let displayed = trimDraft ?? overlay
         let edgeTime = edge == .leading
             ? displayed.timelineStart
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
+            cellWidth: cellWidth,
             height: TimelineContent.overlayRowHeight - 4,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
             .highPriorityGesture(
                 DragGesture(
-                    minimumDistance: 0,
+                    minimumDistance: TimelineTrimHitArea.minimumDragDistance,
                     coordinateSpace: .named(TimelineContent.coordinateSpaceName)
                 )
                     .onChanged { value in
@@ -1982,10 +1985,10 @@ struct TimelineAudioItem: View {
                 }
         )
         .overlay(alignment: .leading) {
-            if selected { trimHandle(.leading) }
+            if selected { trimHandle(.leading, cellWidth: width) }
         }
         .overlay(alignment: .trailing) {
-            if selected { trimHandle(.trailing) }
+            if selected { trimHandle(.trailing, cellWidth: width) }
         }
         .offset(
             x: startX + (selected
@@ -1999,20 +2002,21 @@ struct TimelineAudioItem: View {
         )
     }
 
-    private func trimHandle(_ edge: HorizontalEdge) -> some View {
+    private func trimHandle(_ edge: HorizontalEdge, cellWidth: CGFloat) -> some View {
         let displayed = trimDraft ?? layer
         let edgeTime = edge == .leading
             ? displayed.timelineStart
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
+            cellWidth: cellWidth,
             height: 42,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
             .highPriorityGesture(
                 DragGesture(
-                    minimumDistance: 0,
+                    minimumDistance: TimelineTrimHitArea.minimumDragDistance,
                     coordinateSpace: .named(TimelineContent.coordinateSpaceName)
                 )
                     .onChanged { value in
@@ -2361,10 +2365,10 @@ private struct TimelineTextLayerCell: View {
                     }
             )
             .overlay(alignment: .leading) {
-                if selected { trimHandle(edge: .leading) }
+                if selected { trimHandle(edge: .leading, cellWidth: width) }
             }
             .overlay(alignment: .trailing) {
-                if selected { trimHandle(edge: .trailing) }
+                if selected { trimHandle(edge: .trailing, cellWidth: width) }
             }
             .offset(
                 x: startX + (selected
@@ -2378,20 +2382,21 @@ private struct TimelineTextLayerCell: View {
             )
     }
 
-    private func trimHandle(edge: HorizontalEdge) -> some View {
+    private func trimHandle(edge: HorizontalEdge, cellWidth: CGFloat) -> some View {
         let displayed = trimDraft ?? layer
         let edgeTime = edge == .leading
             ? displayed.timelineStart
             : displayed.timelineStart + displayed.duration
         return TimelineTrimHandle(
             edge: edge,
+            cellWidth: cellWidth,
             height: 38,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
             .highPriorityGesture(
                 DragGesture(
-                    minimumDistance: 0,
+                    minimumDistance: TimelineTrimHitArea.minimumDragDistance,
                     coordinateSpace: .named(TimelineContent.coordinateSpaceName)
                 )
                     .onChanged { value in

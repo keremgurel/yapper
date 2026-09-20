@@ -919,8 +919,7 @@ enum CompositionBuilder {
                 continue
             }
             guard MediaAvailability.isRegularReadableFile(media.url),
-                  let image = NSImage(contentsOf: media.url),
-                  let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
+                  let cgImage = SDRStillImage.load(media.url)
             else { throw NativeEditorError.incompatibleMedia(media.name) }
             imageOverlays.append((overlay, media, cgImage))
         }
