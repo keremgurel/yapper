@@ -1,5 +1,7 @@
 # Storage economics
 
+Historical snapshot. See [Storage decisions for public usage](storage-public-scale-review.md), reviewed 2026-09-12, for the current source audit, GiB-corrected cost scenarios, retention gaps, and public-launch design. The earlier conclusion below about sufficient storage headroom does not account for cleanup backlogs or retained lapsed accounts.
+
 Last verified: 2026-08-27.
 
 ## What actually costs money
