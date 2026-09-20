@@ -39,12 +39,15 @@ struct ReferenceMediaIntegrationTests {
     func latestOneClickEditKeepsCompleteOutro() async throws {
         let media = try await MediaProbe.inspect(url: latestOneClickReferenceURL)
         let service = AIEditService()
-        let words = try await service.transcribe(media: media)
+        let transcription = try await service.transcribe(media: media)
+        let words = transcription.words
         let cuts = try await service.cleanCuts(words: words)
         let ranges = try await service.autoEditRanges(
             words: words,
             duration: media.duration,
-            aiCuts: cuts
+            aiCuts: cuts,
+            url: media.url,
+            unresolvedSpeech: transcription.unresolvedSpeech
         )
         var project = EditorProject(
             media: [media],
@@ -74,7 +77,8 @@ struct ReferenceMediaIntegrationTests {
     func transcribesCompleteReferenceSpeech() async throws {
         let media = try await MediaProbe.inspect(url: djiReferenceURL)
         let service = AIEditService()
-        let words = try await service.transcribe(media: media)
+        let transcription = try await service.transcribe(media: media)
+        let words = transcription.words
         let tokens = words.map {
             $0.text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" }
         }

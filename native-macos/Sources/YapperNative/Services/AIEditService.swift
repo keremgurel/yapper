@@ -104,6 +104,10 @@ private actor TranscriptionCompletionCounter {
 }
 
 actor AIEditService {
+    struct TranscriptionResult: Sendable {
+        let words: [TranscriptWord]
+        let unresolvedSpeech: [[Double]]
+    }
     private static func purgeStaleTranscriptionFiles() {
         let directory = FileManager.default.temporaryDirectory
         guard let files = try? FileManager.default.contentsOfDirectory(
@@ -124,6 +128,7 @@ actor AIEditService {
     private struct TranscriptionResponse: Codable {
         let words: [RemoteWord]?
         let coverageChecked: Bool?
+        let unresolvedSpeech: [[Double]]?
     }
 
     private struct UploadTicketBatchRequest: Codable { let sizes: [Int] }
@@ -140,10 +145,11 @@ actor AIEditService {
         let duration: Double
     }
 
-    private struct StoredTranscriptionRequest: Codable {
+    private struct StoredTranscriptionRequest: Encodable {
         let chunks: [StoredTranscriptionChunk]
         let recoveryChunks: [StoredTranscriptionChunk]
         let speech: [[Double]]
+        let preserveUnresolvedSpeech = true
     }
 
     private struct CleanRequest: Codable {
@@ -215,7 +221,7 @@ actor AIEditService {
         media: ProjectMedia,
         dictionary: [DictionaryEntry] = [],
         progress: (@MainActor @Sendable (Double) -> Void)? = nil
-    ) async throws -> [TranscriptWord] {
+    ) async throws -> TranscriptionResult {
         // Before the decode, not after the upload: a signed-out account should
         // cost a sentence, not a minute of chunking and sending.
         try await Self.requireSession()
@@ -292,12 +298,15 @@ actor AIEditService {
             await progress?(1)
 
             let heard = HeardWords.withoutDoubledEmissions(
-                spoken.map {
+                (spoken.words ?? []).map {
                     TranscriptWord(mediaID: media.id, text: $0.text, start: $0.start, end: $0.end)
                 }
             )
             // The creator's own spellings win over what the transcriber heard.
-            return TranscriptionDictionary.applied(to: heard, entries: dictionary)
+            return TranscriptionResult(
+                words: TranscriptionDictionary.applied(to: heard, entries: dictionary),
+                unresolvedSpeech: spoken.unresolvedSpeech ?? []
+            )
         }
     }
 
@@ -324,9 +333,9 @@ actor AIEditService {
         speech: [[Double]],
         keyterms: [String],
         baseURL: URL
-    ) async throws -> [RemoteWord] {
+    ) async throws -> TranscriptionResponse {
         var lastError: Error?
-        for attempt in 0 ..< UploadRetrySchedule.attempts {
+        for _ in 0 ..< UploadRetrySchedule.attempts {
             try Task.checkCancellation()
             do {
                 var request = await YapperAPI.authenticatedRequest(
@@ -351,10 +360,17 @@ actor AIEditService {
                     )
                 }
                 let result = try JSONDecoder().decode(TranscriptionResponse.self, from: data)
-                guard result.coverageChecked == true, let words = result.words else {
+                guard result.coverageChecked == true, result.words != nil else {
                     throw NativeEditorError.aiFailed("The transcription service did not verify speech coverage. Please update the service before editing this take.")
                 }
-                return words
+                let duration = chunks.map { $0.offset + $0.duration }.max() ?? 0
+                guard (result.unresolvedSpeech ?? []).allSatisfy({
+                    $0.count == 2 && $0.allSatisfy(\.isFinite) &&
+                        $0[0] >= 0 && $0[1] > $0[0] && $0[1] <= duration + 0.1
+                }) else {
+                    throw NativeEditorError.aiFailed("The transcription service returned invalid speech timings.")
+                }
+                return result
             } catch let error as CancellationError {
                 throw error
             } catch {
@@ -448,7 +464,8 @@ actor AIEditService {
         words: [TranscriptWord],
         duration: Double,
         aiCuts: [(Int, Int)],
-        url: URL? = nil
+        url: URL? = nil,
+        unresolvedSpeech: [[Double]] = []
     ) throws -> [(Double, Double)] {
         try Task.checkCancellation()
         var ranges = aiCuts.map { (words[$0.0].start, words[$0.1].end) }
@@ -461,7 +478,9 @@ actor AIEditService {
         let kept = words.filter { word in
             !retakeRanges.contains { word.midpoint >= $0.0 && word.midpoint <= $0.1 }
         }
-        guard !kept.isEmpty else { return retakeRanges }
+        guard !kept.isEmpty else {
+            return UnresolvedSpeech.protecting(unresolvedSpeech, from: retakeRanges, words: words)
+        }
 
         // Measured silence, which finds the dead air a transcript hides: a
         // word's end is where it stops being a word, not where the room goes
@@ -480,7 +499,9 @@ actor AIEditService {
         for word in kept where fillers.contains(normalize(word.text)) {
             ranges.append((word.start, word.end))
         }
-        return merge(ranges, sparing: kept.map(\.midpoint))
+        return UnresolvedSpeech.protecting(
+            unresolvedSpeech, from: merge(ranges, sparing: kept.map(\.midpoint)), words: words
+        )
     }
 
     /// The silence-only pass, for the Auto-trim button.
@@ -488,7 +509,8 @@ actor AIEditService {
         words: [TranscriptWord],
         duration: Double,
         minimumPause: Double = 0.20,
-        url: URL? = nil
+        url: URL? = nil,
+        unresolvedSpeech: [[Double]] = []
     ) throws -> [(Double, Double)] {
         try Task.checkCancellation()
         let envelope = envelope(for: url)
@@ -500,7 +522,9 @@ actor AIEditService {
             // A take that is silent from end to end is a take with no speech in
             // it, and removing all of it is never what was meant.
             let total = ranges.reduce(0.0) { $0 + ($1.1 - $1.0) }
-            if duration > 0, total < duration * 0.98 { return merge(ranges) }
+            if duration > 0, total < duration * 0.98 {
+                return UnresolvedSpeech.protecting(unresolvedSpeech, from: merge(ranges), words: words)
+            }
             ranges.removeAll()
         }
         return []
