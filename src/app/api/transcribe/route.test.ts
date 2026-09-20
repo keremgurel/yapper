@@ -719,6 +719,178 @@ describe("acoustic coverage and short-context recovery", () => {
     expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
   });
 
+  it("returns the reported half-second gap for a client that preserves uncertain audio", async () => {
+    mocks.fetchBoundedJson.mockImplementation(async (_url, init) => {
+      const recovery = JSON.parse(init.body).url.includes("recovery");
+      return provider(
+        recovery ? [] : [{ word: "original", start: 520, end: 521 }],
+        recovery ? 10 : 540,
+      );
+    });
+    const response = await POST(
+      request({
+        chunks: [{ key: key("primary"), offset: 0, duration: 540 }],
+        recoveryChunks: [{ key: key("recovery"), offset: 520, duration: 10 }],
+        speech: [[525.625, 526.125]],
+        preserveUnresolvedSpeech: true,
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      words: [{ text: "original", start: 520, end: 521 }],
+      coverageChecked: true,
+      unresolvedSpeech: [[525.625, 526.125]],
+    });
+    expect(mocks.fetchBoundedJson).toHaveBeenCalledTimes(3);
+    expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledOnce();
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it("uses Whisper on a short excerpt after both Deepgram models miss speech", async () => {
+    vi.stubEnv("GROQ_API_KEY", "groq_test");
+    r2.getObjectBytes.mockResolvedValue(new ArrayBuffer(3));
+    mocks.fetchBoundedJson.mockImplementation(async (url) =>
+      String(url).includes("groq.com")
+        ? {
+            response: { ok: true },
+            data: {
+              duration: 10,
+              words: [{ word: "recovered", start: 2, end: 2.75 }],
+            },
+          }
+        : provider([{ word: "original", start: 1, end: 1.5 }]),
+    );
+    const response = await POST(
+      request({ ...plan, preserveUnresolvedSpeech: true }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      unresolvedSpeech: [],
+      words: [
+        { text: "original", start: 1, end: 1.5 },
+        { text: "recovered", start: 2, end: 2.75 },
+      ],
+    });
+    expect(r2.getObjectBytes).toHaveBeenCalledExactlyOnceWith(key("recovery"));
+    expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledOnce();
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+  });
+
+  it("preserves usable words and uncertain audio when optional recovery times out", async () => {
+    const { OutboundHttpError } = await import("@/lib/http/outbound");
+    mocks.fetchBoundedJson
+      .mockResolvedValueOnce(
+        provider([{ word: "original", start: 1, end: 1.5 }]),
+      )
+      .mockRejectedValue(new OutboundHttpError("timeout"));
+    const response = await POST(
+      request({ ...plan, preserveUnresolvedSpeech: true }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      unresolvedSpeech: [[2, 2.75]],
+    });
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+  });
+
+  it("does not downgrade a recovery cancellation to a charged success", async () => {
+    const { OutboundHttpError } = await import("@/lib/http/outbound");
+    mocks.fetchBoundedJson
+      .mockResolvedValueOnce(
+        provider([{ word: "original", start: 1, end: 1.5 }]),
+      )
+      .mockRejectedValue(new OutboundHttpError("aborted"));
+    const response = await POST(
+      request({ ...plan, preserveUnresolvedSpeech: true }),
+    );
+    expect(response.status).toBe(499);
+    expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+    expect(mocks.fetchBoundedJson).toHaveBeenCalledTimes(2);
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps successful recovery excerpts when another excerpt times out", async () => {
+    const { OutboundHttpError } = await import("@/lib/http/outbound");
+    mocks.fetchBoundedJson.mockImplementation(async (_url, init) => {
+      const url = JSON.parse(init.body).url as string;
+      if (url.includes("failed")) throw new OutboundHttpError("timeout");
+      if (url.includes("recovery"))
+        return provider([{ word: "recovered", start: 2, end: 2.75 }], 5);
+      return provider([{ word: "original", start: 1, end: 1.5 }]);
+    });
+    const response = await POST(
+      request({
+        chunks: plan.chunks,
+        recoveryChunks: [
+          { key: key("recovery"), offset: 0, duration: 5 },
+          { key: key("failed"), offset: 5, duration: 5 },
+        ],
+        speech: [
+          [2, 2.75],
+          [7, 7.75],
+        ],
+        preserveUnresolvedSpeech: true,
+      }),
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      words: [
+        { text: "original", start: 1, end: 1.5 },
+        { text: "recovered", start: 2, end: 2.75 },
+      ],
+      unresolvedSpeech: [[7, 7.75]],
+    });
+    expect(mocks.refundCreditReservation).not.toHaveBeenCalled();
+  });
+
+  it("does not hide a truncated excerpt behind another excerpt's timeout", async () => {
+    const { OutboundHttpError } = await import("@/lib/http/outbound");
+    mocks.fetchBoundedJson.mockImplementation(async (_url, init) => {
+      const url = JSON.parse(init.body).url as string;
+      if (url.includes("failed")) throw new OutboundHttpError("timeout");
+      if (url.includes("truncated")) return provider([], 1);
+      return provider([{ word: "original", start: 1, end: 1.5 }]);
+    });
+    const response = await POST(
+      request({
+        chunks: plan.chunks,
+        recoveryChunks: [
+          { key: key("failed"), offset: 0, duration: 5 },
+          { key: key("truncated"), offset: 5, duration: 5 },
+        ],
+        speech: [
+          [2, 2.75],
+          [7, 7.75],
+        ],
+        preserveUnresolvedSpeech: true,
+      }),
+    );
+    expect(response.status).toBe(502);
+    expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+    expect(r2.discardTranscriptionAudio).toHaveBeenCalledTimes(3);
+  });
+
+  it("still refuses and refunds a completely empty transcript", async () => {
+    mocks.fetchBoundedJson.mockResolvedValue(provider([]));
+    expect(
+      (await POST(request({ ...plan, preserveUnresolvedSpeech: true }))).status,
+    ).toBe(422);
+    expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+  });
+
+  it("does not accept truncated recovery audio as acoustic uncertainty", async () => {
+    mocks.fetchBoundedJson
+      .mockResolvedValueOnce(
+        provider([{ word: "original", start: 1, end: 1.5 }]),
+      )
+      .mockResolvedValue(provider([], 1));
+    expect(
+      (await POST(request({ ...plan, preserveUnresolvedSpeech: true }))).status,
+    ).toBe(502);
+    expect(mocks.refundCreditReservation).toHaveBeenCalledOnce();
+  });
+
   it.each([
     {
       ...plan,

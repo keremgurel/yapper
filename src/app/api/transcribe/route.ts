@@ -72,8 +72,9 @@ const AUDIO_MEDIA_TYPES = [
 /**
  * Backend transcription, returning word-level timings. Runs an ordered failover
  * chain: Deepgram (nova-3) is the transcriber of record; Groq (whisper-large-v3)
- * is the backup, invoked only if Deepgram actually errors at runtime. Both
- * return per-word timings, so either result drives the editor unchanged.
+ * is the full-take backup when Deepgram errors. Short excerpts may also use
+ * Groq to recover speech missing from a successful primary response. Both
+ * return per-word timings.
  * Responds 501 when no provider key is configured.
  */
 export async function POST(req: Request): Promise<Response> {
@@ -123,6 +124,7 @@ export async function POST(req: Request): Promise<Response> {
   let durableVideoMaster = false;
   let recoveryChunks: { key: string; offset: number; duration: number }[] = [];
   let speech: SpeechRange[] | undefined;
+  let preserveUnresolvedSpeech = false;
 
   if (stored) {
     if (!r2Configured())
@@ -143,6 +145,7 @@ export async function POST(req: Request): Promise<Response> {
       mediaKey?: unknown;
       recoveryChunks?: unknown;
       speech?: unknown;
+      preserveUnresolvedSpeech?: unknown;
     } | null;
     const key = value?.key;
     const chunks = value?.chunks;
@@ -277,6 +280,9 @@ export async function POST(req: Request): Promise<Response> {
       }
       recoveryChunks = recovery;
       speech = ranges;
+      // Only clients that persist and protect these source ranges may accept
+      // uncertainty. Older clients must never silently cut across it.
+      preserveUnresolvedSpeech = value.preserveUnresolvedSpeech === true;
     }
   } else {
     try {
@@ -450,17 +456,31 @@ export async function POST(req: Request): Promise<Response> {
       const result = await provider.run(remainingMs);
       const heardSec = result.heardSec;
       let words = result.words;
+      let unresolvedSpeech: SpeechRange[] = [];
       if (speech !== undefined) {
         // A successful HTTP response is not proof that all speech was heard.
         // Retry only windows containing independently detected missing speech.
         let missing = uncoveredSpeech(words, speech);
         const pending = new Set(recoveryChunks);
-        for (let round = 0; round < 2 && missing.length > 0; round++) {
+        const rounds = deepgram && groq ? 3 : deepgram ? 2 : 1;
+        for (let round = 0; round < rounds && missing.length > 0; round++) {
+          if (preserveUnresolvedSpeech && providerDeadline - Date.now() < 3_000)
+            break;
           const selected = [
             ...new Set(
               missing.flatMap(([start, end]) => {
                 const center = (start + end) / 2;
-                const candidates = [...pending]
+                // Another model can retry the same excerpt when there is no
+                // unused overlap. Whisper is independent of the Deepgram passes.
+                const available =
+                  [...pending].some(
+                    (chunk) =>
+                      chunk.offset < end &&
+                      chunk.offset + chunk.duration > start,
+                  ) && round < 2
+                    ? [...pending]
+                    : recoveryChunks;
+                const candidates = available
                   .filter(
                     (chunk) =>
                       chunk.offset < end &&
@@ -478,50 +498,77 @@ export async function POST(req: Request): Promise<Response> {
           if (selected.length === 0) break;
           const recovered = await mapTranscriptionWork(
             selected,
-            async (chunk): Promise<TimedAsrChunk> => {
-              pending.delete(chunk);
-              const remaining = providerDeadline - Date.now();
-              if (remaining <= 0 || req.signal.aborted)
-                throw new OutboundHttpError(
-                  req.signal.aborted ? "aborted" : "timeout",
+            async (chunk): Promise<TimedAsrChunk | null> => {
+              try {
+                pending.delete(chunk);
+                const remaining = Math.min(
+                  20_000,
+                  providerDeadline - Date.now() - 2_000,
                 );
-              const result = deepgram
-                ? await viaDeepgramURL(
-                    await presignView(chunk.key, 900),
-                    deepgram,
-                    keyterms,
-                    req.signal,
-                    remaining,
-                    round === 0 ? "nova-2" : "nova-3",
-                  )
-                : await viaOpenAiCompatible(
-                    await bytes(chunk.key),
-                    groq!,
-                    "https://api.groq.com/openai/v1",
-                    "whisper-large-v3",
-                    "audio/mp4",
-                    keyterms,
-                    req.signal,
-                    remaining,
+                if (remaining <= 0 || req.signal.aborted)
+                  throw new OutboundHttpError(
+                    req.signal.aborted ? "aborted" : "timeout",
                   );
-              if (
-                !Number.isFinite(result.heardSec) ||
-                result.heardSec <= 0 ||
-                isAudioTruncated(chunk.duration, result.heardSec)
-              )
-                throw new Error("audio_truncated");
-              return {
-                ...result,
-                offset: chunk.offset,
-                duration: chunk.duration,
-              };
+                const result =
+                  deepgram && round < 2
+                    ? await viaDeepgramURL(
+                        await presignView(chunk.key, 900),
+                        deepgram,
+                        keyterms,
+                        req.signal,
+                        remaining,
+                        round === 0 ? "nova-2" : "nova-3",
+                      )
+                    : await viaOpenAiCompatible(
+                        await bytes(chunk.key),
+                        groq!,
+                        "https://api.groq.com/openai/v1",
+                        "whisper-large-v3",
+                        "audio/mp4",
+                        keyterms,
+                        req.signal,
+                        remaining,
+                      );
+                if (
+                  !Number.isFinite(result.heardSec) ||
+                  result.heardSec <= 0 ||
+                  isAudioTruncated(chunk.duration, result.heardSec)
+                )
+                  throw new Error("audio_truncated");
+                return {
+                  ...result,
+                  offset: chunk.offset,
+                  duration: chunk.duration,
+                };
+              } catch (error) {
+                // Optional recovery may fail independently. Keep other recovered
+                // excerpts, but never turn cancellation or damaged audio into
+                // a successful, charged response.
+                if (
+                  !preserveUnresolvedSpeech ||
+                  req.signal.aborted ||
+                  (error instanceof OutboundHttpError &&
+                    error.code === "aborted") ||
+                  (error instanceof Error &&
+                    error.message === "audio_truncated")
+                )
+                  throw error;
+                console.warn("[transcribe] recovery unavailable", error);
+                return null;
+              }
             },
           );
-          for (const chunk of recovered.sort((a, b) => a.offset - b.offset))
+          for (const chunk of recovered
+            .filter((chunk): chunk is TimedAsrChunk => chunk !== null)
+            .sort((a, b) => a.offset - b.offset))
             words = recoverWords(words, chunk);
           missing = uncoveredSpeech(words, speech);
         }
-        if (missing.length > 0) {
+        unresolvedSpeech = missing;
+        if (
+          missing.length > 0 &&
+          (!preserveUnresolvedSpeech || words.length === 0)
+        ) {
           // Do not run cleanup against an incomplete transcript or charge for
           // a transcript we refused. A different long-context provider may
           // still suppress the same speech, so this is terminal.
@@ -561,6 +608,7 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({
         words,
         coverageChecked: speech !== undefined,
+        ...(preserveUnresolvedSpeech ? { unresolvedSpeech } : {}),
         balance: reservation.balance,
       });
     } catch (e) {

@@ -1939,7 +1939,7 @@ final class EditorSession: ObservableObject {
                 !(project.transcript ?? []).contains(where: { $0.mediaID == mediaID }),
                 let media = project.media.first(where: { $0.id == mediaID })
             else { continue }
-            let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+            let words = try await transcribedWords(of: media)
             updateProject { project in
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
@@ -2025,7 +2025,8 @@ final class EditorSession: ObservableObject {
                     words: words,
                     duration: media.duration,
                     aiCuts: cuts,
-                    url: media.url
+                    url: media.url,
+                    unresolvedSpeech: project.unresolvedTranscriptionSpeech?[mediaID.uuidString] ?? []
                 )
                 try Task.checkCancellation()
                 project.removeSourceRanges(ranges, for: mediaID)
@@ -2050,7 +2051,13 @@ final class EditorSession: ObservableObject {
             try Task.checkCancellation()
             try await persist()
             recordHistory(before: original)
+            let uncertainCount = (project.unresolvedTranscriptionSpeech ?? [:])
+                .filter { key, _ in project.clips.contains { $0.mediaID.uuidString == key } }
+                .values.reduce(0) { $0 + $1.count }
             statusMessage = "1-Click Edit + captions complete · \(project.clips.count) clips"
+            if uncertainCount > 0 {
+                statusMessage += " · \(uncertainCount) unclear audio section\(uncertainCount == 1 ? "" : "s") kept"
+            }
         } catch is CancellationError {
             markCurrentLongOperationCanceled()
             await restoreCanceledEditState(
@@ -2059,8 +2066,9 @@ final class EditorSession: ObservableObject {
                 status: "1-Click Edit canceled"
             )
         } catch {
+            let unresolved = project.unresolvedTranscriptionSpeech
             await restoreEditState(rollbackState, rebuildPlayer: true, preserving: error)
-            await keepTranscript(heard)
+            await keepTranscript(heard, unresolved: unresolved)
         }
     }
 
@@ -2083,21 +2091,28 @@ final class EditorSession: ObservableObject {
         progress: (@MainActor @Sendable (Double) -> Void)? = nil
     ) async throws -> [TranscriptWord] {
         if let transcriptionRunner {
-            return try await transcriptionRunner(media, dictionaryEntries, progress)
+            let words = try await transcriptionRunner(media, dictionaryEntries, progress)
+            project.unresolvedTranscriptionSpeech?[media.id.uuidString] = nil
+            return words
         }
-        return try await aiEditService.transcribe(
+        let result = try await aiEditService.transcribe(
             media: media,
             dictionary: dictionaryEntries,
             progress: progress
         )
+        var unresolved = project.unresolvedTranscriptionSpeech ?? [:]
+        unresolved[media.id.uuidString] = result.unresolvedSpeech
+        project.unresolvedTranscriptionSpeech = unresolved
+        return result.words
     }
 
     /// Puts back what the transcriber heard after a failed edit rolled the
     /// project away from it. Only the words: the timeline the creator had is
     /// the one they get back.
-    private func keepTranscript(_ heard: [TranscriptWord]?) async {
+    private func keepTranscript(_ heard: [TranscriptWord]?, unresolved: [String: [[Double]]]?) async {
         guard let heard, !heard.isEmpty, (project.transcript ?? []).isEmpty else { return }
         project.transcript = heard
+        project.unresolvedTranscriptionSpeech = unresolved
         for mediaID in Set(heard.map(\.mediaID)) {
             project.markTranscriptionCurrent(for: mediaID)
         }
@@ -2188,7 +2203,7 @@ final class EditorSession: ObservableObject {
                     let media = project.media.first(where: { $0.id == mediaID })
                 else { continue }
                 statusMessage = "Transcribing before adding captions…"
-                let words = try await aiEditService.transcribe(media: media, dictionary: dictionaryEntries)
+                let words = try await transcribedWords(of: media)
                 var transcript = project.transcript ?? []
                 transcript.removeAll { $0.mediaID == mediaID }
                 transcript.append(contentsOf: words)
@@ -2258,7 +2273,8 @@ final class EditorSession: ObservableObject {
                 let ranges = try await aiEditService.silenceRanges(
                     words: words,
                     duration: media.duration,
-                    url: media.url
+                    url: media.url,
+                    unresolvedSpeech: project.unresolvedTranscriptionSpeech?[mediaID.uuidString] ?? []
                 )
                 try Task.checkCancellation()
                 project.removeSourceRanges(ranges, for: mediaID)

@@ -595,6 +595,9 @@ struct EditorProject: Codable, Equatable, Sendable {
     /// attenuated/low-bitrate upload path, and reusing one lets an ASR omission
     /// become a confident retake edit forever.
     var transcriptionRevisions: [String: Int]?
+    /// Acoustic detections still unmatched by ASR. Persist with the transcript
+    /// so retries, reopening and Auto-trim cannot treat them as disposable gaps.
+    var unresolvedTranscriptionSpeech: [String: [[Double]]]?
     var captionsEnabled: Bool?
     /// Editable caption cards. `nil` marks a project saved before captions were
     /// editable, whose cards are derived from the transcript on demand.
