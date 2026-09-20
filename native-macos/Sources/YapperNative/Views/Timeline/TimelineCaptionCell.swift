@@ -66,10 +66,10 @@ struct TimelineCaptionCell: View {
             .clipped()
             .gesture(moveGesture)
             .overlay(alignment: .leading) {
-                if selected { trimHandle(edge: .leading) }
+                if selected { trimHandle(edge: .leading, cellWidth: width) }
             }
             .overlay(alignment: .trailing) {
-                if selected { trimHandle(edge: .trailing) }
+                if selected { trimHandle(edge: .trailing, cellWidth: width) }
             }
             .offset(
                 x: startX + (selected
@@ -153,18 +153,19 @@ struct TimelineCaptionCell: View {
             }
     }
 
-    private func trimHandle(edge: HorizontalEdge) -> some View {
+    private func trimHandle(edge: HorizontalEdge, cellWidth: CGFloat) -> some View {
         let current = span
         let edgeTime = edge == .leading ? current.start : current.end
         return TimelineTrimHandle(
             edge: edge,
+            cellWidth: cellWidth,
             height: Self.height - 4,
             isActive: activeTrimEdge == edge,
             readout: activeTrimEdge == edge ? formatTimelineTrimTime(edgeTime) : nil
         )
             .highPriorityGesture(
                 DragGesture(
-                    minimumDistance: 0,
+                    minimumDistance: TimelineTrimHitArea.minimumDragDistance,
                     coordinateSpace: .named(TimelineContent.coordinateSpaceName)
                 )
                     .onChanged { value in

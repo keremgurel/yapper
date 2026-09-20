@@ -43,12 +43,10 @@ struct TextLayerInspectorView: View {
 
     private var essentials: some View {
         VStack(alignment: .leading, spacing: 9) {
-            TextEditor(
-                text: Binding(
-                    get: { layer.text },
-                    set: { session.setTextLayerText($0, for: layer.id) }
-                )
-            )
+            TextLayerContentEditor(text: layer.text) {
+                session.setTextLayerText($0, for: layer.id)
+            }
+            .id(layer.id)
             .font(.system(size: 14, weight: .semibold))
             .scrollContentBackground(.hidden)
             .padding(7)
