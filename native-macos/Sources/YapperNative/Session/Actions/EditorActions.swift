@@ -12,6 +12,9 @@ extension AppActionRegistry {
         registry.registerMaskActions()
         registry.registerSoundAt()
         registry.registerFramingAnimation()
+        registry.registerStyleActions()
+        registry.registerClipPropertyActions()
+        registry.registerAudioVolume()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }

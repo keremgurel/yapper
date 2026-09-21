@@ -121,13 +121,16 @@ export function parsePlanInput(raw: unknown): PlanInput | null {
     !Array.isArray(raw.catalog) ||
     !raw.catalog.length ||
     raw.catalog.length > 128 ||
-    !raw.catalog.every(
-      (item) =>
-        record(item) &&
-        contract["x-actions"].some((action) => action.id === item.id),
-    )
+    !raw.catalog.every((item) => record(item) && typeof item.id === "string")
   )
     return null;
+  // A newer client may advertise actions this server has not learned yet. Plan
+  // over the ones both sides know rather than refusing the whole request; the
+  // client reports anything the plan cannot reach as unsupported.
+  const catalog = raw.catalog.filter((item) =>
+    contract["x-actions"].some((action) => action.id === item.id),
+  );
+  if (!catalog.length) return null;
   if (
     !Array.isArray(raw.messages) ||
     !raw.messages.length ||
@@ -142,7 +145,7 @@ export function parsePlanInput(raw: unknown): PlanInput | null {
     raw.messages.at(-1).role !== "user"
   )
     return null;
-  return raw as unknown as PlanInput;
+  return { ...raw, catalog } as unknown as PlanInput;
 }
 
 export function discoveredCatalog(input: PlanInput) {

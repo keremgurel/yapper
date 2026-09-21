@@ -91,8 +91,15 @@ extension EditorSession {
     /// The one way styling reaches the project. `live` is for controls that fire
     /// continuously — sliders, colour drags — so a whole gesture becomes one
     /// undo step rather than one per pixel.
-    func setCaptionStyle(_ patch: TextStylePatch, live: Bool = false) {
-        applyCaptionStyle(patch, coalescing: live)
+    /// Returns the committed action so a caller that reads the result back
+    /// (tests, paste-after-set) can await it; controls ignore it.
+    @discardableResult
+    func setCaptionStyle(_ patch: TextStylePatch, live: Bool = false) -> Task<AppActionResult?, Never> {
+        guard !live else { applyCaptionStyle(patch, coalescing: true); return Task { nil } }
+        guard !captionStylingHasNoTarget else { return Task { nil } }
+        let input = CaptionStyleInput(captionIDs: captionApplyToAll ? [] : Array(selectedCaptionIDs),
+                                      applyToAll: captionApplyToAll, style: TextStyleInput(patch))
+        return Task { await performAppAction(input) }
     }
 
     /// A template writes the whole look at once, leaving size, casing and

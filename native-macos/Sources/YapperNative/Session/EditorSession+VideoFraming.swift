@@ -181,7 +181,7 @@ extension EditorSession {
 
     /// The clips a framing change lands on: the one being framed, and anything
     /// selected alongside it on the timeline.
-    private func framingTargets(for clipID: UUID) -> Set<UUID> {
+    func framingTargets(for clipID: UUID) -> Set<UUID> {
         let selected = selectedClipIDs
         guard selected.count > 1, selected.contains(clipID) else { return [clipID] }
         return selected
@@ -190,13 +190,26 @@ extension EditorSession {
     /// Slides the picture from the inspector, keeping the zoom and the angle.
     func setFramingOffset(x: Double, y: Double) {
         guard let clip = framingClip else { return }
-        commitFraming(displayedFraming.with(x: x, y: y), clipID: clip.id)
+        setStaticFraming(displayedFraming.with(x: x, y: y), clipID: clip.id)
+    }
+
+    /// Inspector controls land here. A keyed clip writes a key at the playhead
+    /// through `commitFraming`; anything else is a property set and goes
+    /// through the registered action, the same one Chirpy calls.
+    private func setStaticFraming(_ framing: VideoFraming, clipID: UUID) {
+        guard let clip = project.clips.first(where: { $0.id == clipID }) else { return }
+        guard !VideoFramingTrack.isKeyed(clip) else { return commitFraming(framing, clipID: clipID) }
+        previewFraming(framing, clipID: clipID)
+        let targets = framingTargets(for: clipID).sorted { $0.uuidString < $1.uuidString }
+        Task {
+            await performAppAction(VideoFramingInput(clipIDs: targets, scale: framing.scale, x: framing.x, y: framing.y, rotation: framing.rotation))
+        }
     }
 
     /// Turns the picture from the inspector, in degrees clockwise.
     func setFramingRotation(_ degrees: Double) {
         guard let clip = framingClip else { return }
-        commitFraming(displayedFraming.with(rotation: degrees), clipID: clip.id)
+        setStaticFraming(displayedFraming.with(rotation: degrees), clipID: clip.id)
     }
 
     /// A quarter turn, which is what footage shot the wrong way up needs and
@@ -204,7 +217,7 @@ extension EditorSession {
     func turnFraming(by degrees: Double) {
         guard let clip = framingClip else { return }
         let current = displayedFraming
-        commitFraming(current.with(rotation: current.rotation + degrees), clipID: clip.id)
+        setStaticFraming(current.with(rotation: current.rotation + degrees), clipID: clip.id)
     }
 
     /// Sets the zoom from the inspector, keeping wherever the picture has been
@@ -213,19 +226,19 @@ extension EditorSession {
         guard let clip = framingClip else { return }
         // From what is on screen now, so a stepper press on a keyed clip nudges
         // the moment you are looking at rather than the clip's first key.
-        commitFraming(displayedFraming.with(scale: scale), clipID: clip.id)
+        setStaticFraming(displayedFraming.with(scale: scale), clipID: clip.id)
     }
 
     func resetFraming() {
         guard let clip = framingClip else { return }
-        commitFraming(.identity, clipID: clip.id)
+        setStaticFraming(.identity, clipID: clip.id)
     }
 
     /// Zooms until the footage covers the frame with nothing left over, which
     /// is what landscape footage in a portrait frame almost always wants.
     func fillFrameWithVideo() {
         guard let clip = framingClip, let scale = framingFillScale else { return }
-        commitFraming(
+        setStaticFraming(
             displayedFraming.with(scale: scale, x: 0, y: 0),
             clipID: clip.id
         )

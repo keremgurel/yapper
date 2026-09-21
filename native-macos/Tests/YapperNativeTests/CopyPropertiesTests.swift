@@ -64,7 +64,7 @@ import Testing
         let session = await session(url: url)
         let cards = session.captions
         session.setSelectedCaptionIDs([cards[0].id])
-        session.setCaptionStyle(TextStylePatch(x: 0.2, y: 0.3, width: 0.4))
+        _ = await session.setCaptionStyle(TextStylePatch(x: 0.2, y: 0.3, width: 0.4)).value
 
         session.copyProperties(of: .caption(cards[0].id))
         session.setSelectedCaptionIDs([cards[1].id, cards[2].id])
@@ -85,7 +85,7 @@ import Testing
         let session = await session(url: url)
         let cards = session.captions
         session.setSelectedCaptionIDs([cards[0].id])
-        session.setCaptionStyle(TextStylePatch(x: 0.2))
+        _ = await session.setCaptionStyle(TextStylePatch(x: 0.2)).value
         session.copyProperties(of: .caption(cards[0].id))
         session.setSelectedCaptionIDs([cards[1].id])
 

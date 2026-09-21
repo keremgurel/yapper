@@ -109,8 +109,8 @@ struct TransformInspector: View {
     /// sit behind them, which is a control that already exists.
     private var backdropRow: some View {
         InspectorRow("Behind") {
-            InspectorColorWell(color: session.backdrop) { color, _ in
-                session.setBackdrop(color)
+            InspectorColorWell(color: session.backdrop) { color, live in
+                session.setBackdrop(color, live: live)
             }
 
             Text("Or put a full-frame overlay behind you")

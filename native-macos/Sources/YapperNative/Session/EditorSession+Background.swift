@@ -17,17 +17,7 @@ extension EditorSession {
     /// that wants it and a cutaway or a screen recording that does not.
     func setBackgroundRemoved(_ removed: Bool) {
         guard let clip = backgroundClip else { return }
-        scheduleCompositionCommit(
-            successStatus: removed ? "Background removed" : "Background kept"
-        ) { [self] in
-            guard let index = project.clips.firstIndex(where: { $0.id == clip.id })
-            else { return false }
-            updateProject { project in
-                project.clips[index].backgroundRemoved = removed ? true : nil
-                project.updatedAt = Date()
-            }
-            return true
-        }
+        Task { await performAppAction(ClipBackgroundInput(clipIDs: [clip.id], removed: removed)) }
     }
 
     /// What fills the frame where there is no picture.
@@ -36,8 +26,12 @@ extension EditorSession {
     /// gestures, because the backdrop is only visible in the composition: a
     /// visual-only commit would move the swatch and leave the frame behind.
     /// The commit's own settling time folds the drag into one rebuild.
-    func setBackdrop(_ color: StudioColor) {
+    func setBackdrop(_ color: StudioColor, live: Bool = false) {
         guard color != project.resolvedBackdrop else { return }
+        guard live else {
+            Task { await performAppAction(ProjectBackdropInput(color: color.hex)) }
+            return
+        }
         scheduleCompositionCommit { [self] in
             updateProject { project in
                 // Black is what the frame was filled with before there was a
