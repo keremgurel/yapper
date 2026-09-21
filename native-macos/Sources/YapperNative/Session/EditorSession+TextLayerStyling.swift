@@ -15,17 +15,24 @@ extension EditorSession {
     /// Layer edits always coalesce — the canvas draws them directly and the
     /// commit lands once the gesture goes quiet — so `live` is accepted for
     /// symmetry with captions and needs nothing extra here.
-    func applyTextLayerStyle(_ patch: TextStylePatch, to id: UUID, live: Bool = false) {
-        guard var layer = project.textLayers?.first(where: { $0.id == id }) else { return }
-        layer.apply(patch)
-        updateTextLayer(layer)
+    @discardableResult
+    func applyTextLayerStyle(_ patch: TextStylePatch, to id: UUID, live: Bool = false) -> Task<AppActionResult?, Never> {
+        guard var layer = project.textLayers?.first(where: { $0.id == id }) else { return Task { nil } }
+        guard !live else {
+            layer.apply(patch)
+            updateTextLayer(layer)
+            return Task { nil }
+        }
+        return Task { await performAppAction(TextLayerStyleInput(textLayerIDs: [id], style: TextStyleInput(patch))) }
     }
 
     func applyTextLayerTemplate(_ template: TextTemplate, to id: UUID) {
-        guard var layer = project.textLayers?.first(where: { $0.id == id }) else { return }
-        layer.appearance = template.applied(to: layer.appearance)
-        updateTextLayer(layer)
-        setStatus("Text look: \(template.name)")
+        guard let layer = project.textLayers?.first(where: { $0.id == id }) else { return }
+        let look = template.applied(to: layer.appearance)
+        Task {
+            let result = await performAppAction(TextLayerStyleInput(textLayerIDs: [id], style: TextStyleInput(.everything(in: look))))
+            if result.status == .applied || result.status == .unchanged { setStatus("Text look: \(template.name)") }
+        }
     }
 }
 

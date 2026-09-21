@@ -27,23 +27,10 @@ extension EditorSession {
     func applyFramingToAllClips() {
         guard let clip = framingClip else { return }
         let framing = clip.resolvedFraming
-        let updated = ApplyToAll.framing(framing, to: project.clips)
-        let changed = ApplyToAll.changeCount(from: project.clips, to: updated)
-        let keyed = project.clips.filter { VideoFramingTrack.isKeyed($0) }.count
-        guard changed > 0 else { return }
-
-        scheduleCompositionCommitResolvingStatus { [self] in
-            updateProject { project in
-                project.clips = ApplyToAll.framing(framing, to: project.clips)
-                project.updatedAt = Date()
-            }
-            return Self.status(
-                "Scale and position",
-                changed: changed,
-                noun: "clip",
-                skipped: keyed,
-                because: "keyframed"
-            )
+        let targets = project.clips.filter { !VideoFramingTrack.isKeyed($0) && !$0.locked }.map(\.id)
+        guard !targets.isEmpty else { return }
+        Task {
+            await performAppAction(VideoFramingInput(clipIDs: targets, scale: framing.scale, x: framing.x, y: framing.y, rotation: framing.rotation))
         }
     }
 
@@ -51,37 +38,17 @@ extension EditorSession {
     func applyRetouchToAllClips() {
         guard let clip = backgroundClip else { return }
         let settings = clip.resolvedRetouch
-        let updated = ApplyToAll.retouch(settings, to: project.clips)
-        let changed = ApplyToAll.changeCount(from: project.clips, to: updated)
-        guard changed > 0 else { return }
-
-        scheduleCompositionCommitResolvingStatus { [self] in
-            updateProject { project in
-                project.clips = ApplyToAll.retouch(settings, to: project.clips)
-                project.updatedAt = Date()
-            }
-            return Self.status("Retouch", changed: changed, noun: "clip")
+        Task {
+            await performAppAction(ClipRetouchInput(clipIDs: project.clips.map(\.id),
+                                                    clearBlemishes: settings.clearBlemishes, whitenTeeth: settings.whitenTeeth))
         }
     }
 
     /// Gives every clip the background setting of the one under the playhead.
     func applyBackgroundToAllClips() {
         guard let clip = backgroundClip else { return }
-        let removed = clip.removesBackground
-        let updated = ApplyToAll.background(removed: removed, to: project.clips)
-        let changed = ApplyToAll.changeCount(from: project.clips, to: updated)
-        guard changed > 0 else { return }
-
-        scheduleCompositionCommitResolvingStatus { [self] in
-            updateProject { project in
-                project.clips = ApplyToAll.background(removed: removed, to: project.clips)
-                project.updatedAt = Date()
-            }
-            return Self.status(
-                removed ? "Background removal" : "Background kept",
-                changed: changed,
-                noun: "clip"
-            )
+        Task {
+            await performAppAction(ClipBackgroundInput(clipIDs: project.clips.map(\.id), removed: clip.removesBackground))
         }
     }
 

@@ -39,6 +39,14 @@ describe("Chirpy contract", () => {
     ])
       expect(parsePlanInput(value)).toBeNull();
   });
+  it("plans over the actions both sides know when a newer client advertises more", () => {
+    const parsed = parsePlanInput({
+      ...input,
+      catalog: [...input.catalog, { id: "editor.future.unknown" }],
+    });
+    expect(parsed?.catalog).toEqual(input.catalog);
+    expect(parsePlanInput({ ...input, catalog: [{ id: 7 }] })).toBeNull();
+  });
   it("validates exact action argument types and rejects unadvertised actions", () => {
     const reply = {
       message: "I'll add the clicks.",

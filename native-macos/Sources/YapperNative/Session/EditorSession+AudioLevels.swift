@@ -35,17 +35,7 @@ extension EditorSession {
             let finished = audioLevels.endLayer(),
             project.audioLayers?.first(where: { $0.id == finished.id })?.volume != finished.volume
         else { return }
-        scheduleCompositionCommit(
-            settleFor: .milliseconds(50),
-            successStatus: "Volume \(AudioLevel.percent(finished.volume))%"
-        ) { [self] in
-            guard let index = project.audioLayers?.firstIndex(where: { $0.id == finished.id }) else { return false }
-            updateProject { project in
-                project.audioLayers?[index].volume = finished.volume
-                project.updatedAt = Date()
-            }
-            return true
-        }
+        Task { await performAppAction(AudioVolumeInput(layerIDs: [finished.id], videoTrack: false, volume: finished.volume)) }
     }
 
     func commitVideoTrackVolume() {
@@ -53,20 +43,7 @@ extension EditorSession {
             let volume = audioLevels.endMainTrack(),
             project.resolvedVideoTrackVolume != volume
         else { return }
-        scheduleCompositionCommit(
-            settleFor: .milliseconds(50),
-            successStatus: "Video volume \(AudioLevel.percent(volume))%"
-        ) { [self] in
-            updateProject { project in
-                project.videoTrackVolume = volume
-                // Pulling a fader off zero is asking to hear it, so the mute that
-                // was silencing it stands down. Leaving both on means a fader that
-                // visibly moves and changes nothing.
-                if volume > 0, project.videoTrackMuted == true { project.videoTrackMuted = nil }
-                project.updatedAt = Date()
-            }
-            return true
-        }
+        Task { await performAppAction(AudioVolumeInput(layerIDs: [], videoTrack: true, volume: volume)) }
     }
 
     /// Runs "make all the pops 80%": the layers it names, in one edit.
