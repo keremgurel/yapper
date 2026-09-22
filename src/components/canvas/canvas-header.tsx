@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize2, Minimize2, Video } from "lucide-react";
+import { Maximize2, Minimize2, Sparkles, Video } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import SaveIndicator from "@/components/workbench/save-indicator";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ export default function CanvasHeader({
   menu,
   maximized,
   onToggleMaximized,
+  onAskChirpy,
 }: {
   title: string;
   onTitle: (title: string) => void;
@@ -35,6 +36,8 @@ export default function CanvasHeader({
   menu: React.ReactNode;
   maximized: boolean;
   onToggleMaximized: () => void;
+  /** Opens Chirpy on this piece. */
+  onAskChirpy: () => void;
 }) {
   return (
     <header className="border-border flex h-14 shrink-0 items-center gap-2 border-b px-4 lg:px-5">
@@ -46,6 +49,19 @@ export default function CanvasHeader({
         className="text-foreground placeholder:text-muted-foreground/50 min-w-0 flex-1 bg-transparent text-[15px] font-semibold tracking-[-0.01em] outline-none"
       />
       <SaveIndicator state={saveState} />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onAskChirpy}
+        title="Ask Chirpy to change this piece (⌘K)"
+      >
+        <Sparkles className="h-4 w-4" />
+        Ask Chirpy
+        <kbd className="text-muted-foreground ml-0.5 hidden text-[11px] font-medium sm:inline">
+          ⌘K
+        </kbd>
+      </Button>
       <StatusSelect value={status} onChange={onStatus} />
       <Button type="button" size="sm" disabled={busy} onClick={onRecord}>
         <Video className="h-4 w-4" />
@@ -58,9 +74,11 @@ export default function CanvasHeader({
         size="icon-sm"
         onClick={onToggleMaximized}
         aria-pressed={maximized}
-        aria-label={maximized ? "Show the chat" : "Give the canvas the window"}
-        title={maximized ? "Show the chat (Esc)" : "Give the canvas the window"}
-        className="text-muted-foreground hidden lg:inline-flex"
+        aria-label={maximized ? "Back to Studio" : "Give the canvas the window"}
+        title={
+          maximized ? "Back to Studio (Esc)" : "Give the canvas the window"
+        }
+        className="text-muted-foreground"
       >
         {maximized ? <Minimize2 /> : <Maximize2 />}
       </Button>
