@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useEffect, useRef } from "react";
 import CanvasMessage from "@/components/canvas/canvas-message";
 import { Button } from "@/components/ui/button";
 import type { CanvasMessage as Message } from "@/hooks/use-canvas-thread";
@@ -32,32 +31,21 @@ export default function CanvasThread({
   onAddToPage: (message: Message, asked: string) => void;
   onUndo: () => void;
 }) {
-  const [open, setOpen] = useState(true);
   const end = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (open) end.current?.scrollIntoView({ block: "nearest" });
-  }, [messages.length, open]);
+    end.current?.scrollIntoView({ block: "nearest" });
+  }, [messages.length]);
 
   if (messages.length === 0 && !failed) return null;
-  const Chevron = open ? ChevronDown : ChevronRight;
 
   return (
-    <section className="mt-10">
+    <section>
       <div className="mb-2 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 text-[11px] font-bold tracking-[0.1em] uppercase"
-        >
-          <Chevron className="h-3.5 w-3.5" />
+        <span className="text-muted-foreground text-[13px] font-medium">
           Conversation
-          <span className="font-normal tracking-normal normal-case">
-            · {messages.length}
-          </span>
-        </button>
-        {open && messages.length > 0 && (
+        </span>
+        {messages.length > 0 && (
           <Button
             type="button"
             variant="ghost"
@@ -74,8 +62,8 @@ export default function CanvasThread({
           The earlier conversation couldn’t be loaded. New asks still work.
         </p>
       )}
-      {open && (
-        <div className="max-h-[45vh] space-y-3 overflow-y-auto pr-1">
+      {
+        <div className="space-y-3">
           {messages.map((message, index) => {
             const asked =
               [...messages.slice(0, index)]
@@ -98,7 +86,7 @@ export default function CanvasThread({
           })}
           <div ref={end} />
         </div>
-      )}
+      }
     </section>
   );
 }

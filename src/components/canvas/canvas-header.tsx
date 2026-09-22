@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, Video } from "lucide-react";
+import { Maximize2, Minimize2, Video } from "lucide-react";
 import StatusSelect from "@/components/library/status-select";
 import SaveIndicator from "@/components/workbench/save-indicator";
 import { Button } from "@/components/ui/button";
@@ -9,8 +8,8 @@ import type { SaveState } from "@/hooks/use-autosave";
 import type { ContentStatus } from "@/lib/db/schema";
 
 /**
- * The top of the canvas: where you came from, the title, and the two things
- * you do to a piece besides writing it: set its status and record it.
+ * The document's title bar: its name, then what you do to it besides
+ * writing: set its status, record it, and give it the whole window.
  */
 export default function CanvasHeader({
   title,
@@ -22,6 +21,8 @@ export default function CanvasHeader({
   hasRecording,
   onRecord,
   menu,
+  maximized,
+  onToggleMaximized,
 }: {
   title: string;
   onTitle: (title: string) => void;
@@ -32,38 +33,37 @@ export default function CanvasHeader({
   hasRecording: boolean;
   onRecord: () => void;
   menu: React.ReactNode;
+  maximized: boolean;
+  onToggleMaximized: () => void;
 }) {
   return (
-    <header className="mb-6">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <Button
-          asChild
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground -ml-2"
-        >
-          <Link href="/studio/ideas">
-            <ArrowLeft className="h-4 w-4" />
-            Ideas
-          </Link>
-        </Button>
-        <div className="flex items-center gap-2">
-          <SaveIndicator state={saveState} />
-          <StatusSelect value={status} onChange={onStatus} />
-          <Button type="button" size="sm" disabled={busy} onClick={onRecord}>
-            <Video className="h-4 w-4" />
-            {hasRecording ? "Record again" : "Record"}
-          </Button>
-          {menu}
-        </div>
-      </div>
+    <header className="border-border flex h-14 shrink-0 items-center gap-2 border-b px-4 lg:px-5">
       <input
         value={title}
         onChange={(event) => onTitle(event.target.value)}
         placeholder="Untitled"
         aria-label="Title"
-        className="text-foreground placeholder:text-muted-foreground/50 w-full bg-transparent text-[28px] leading-tight font-bold tracking-[-0.02em] outline-none"
+        className="text-foreground placeholder:text-muted-foreground/50 min-w-0 flex-1 bg-transparent text-[15px] font-semibold tracking-[-0.01em] outline-none"
       />
+      <SaveIndicator state={saveState} />
+      <StatusSelect value={status} onChange={onStatus} />
+      <Button type="button" size="sm" disabled={busy} onClick={onRecord}>
+        <Video className="h-4 w-4" />
+        {hasRecording ? "Record again" : "Record"}
+      </Button>
+      {menu}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        onClick={onToggleMaximized}
+        aria-pressed={maximized}
+        aria-label={maximized ? "Show the chat" : "Give the canvas the window"}
+        title={maximized ? "Show the chat (Esc)" : "Give the canvas the window"}
+        className="text-muted-foreground hidden lg:inline-flex"
+      >
+        {maximized ? <Minimize2 /> : <Maximize2 />}
+      </Button>
     </header>
   );
 }
