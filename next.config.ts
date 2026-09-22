@@ -100,6 +100,11 @@ const nextConfig: NextConfig = {
     // native WAV through /api/feedback, which can exceed Next's proxy default
     // for a long recording, so retain the larger self-host/local proxy ceiling.
     proxyClientMaxBodySize: "64mb",
+    // Keep a visited page in the client router cache for five minutes.
+    // Studio pages are dynamic, and Next's default of 0s made every return
+    // to a tab wait on a fresh server render even though its data is held
+    // client-side. Data freshness is handled by the client resource cache.
+    staleTimes: { dynamic: 300, static: 300 },
   },
 };
 
