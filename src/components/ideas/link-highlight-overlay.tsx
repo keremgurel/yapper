@@ -55,7 +55,7 @@ export default function LinkHighlightOverlay({
     <div
       aria-hidden
       ref={overlay}
-      className={`${composerTextClasses(expanded)} text-foreground pointer-events-none absolute inset-0 overflow-hidden font-normal whitespace-pre-wrap`}
+      className={`${composerTextClasses(expanded)} text-foreground pointer-events-none absolute inset-0 overflow-hidden font-normal break-words whitespace-pre-wrap`}
     >
       {linkSpans(text).map((span, index) =>
         span.isLink ? (

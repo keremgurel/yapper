@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { ArrowUp, Loader2, Mic, Square } from "lucide-react";
 import LinkHighlightOverlay, {
   composerTextClasses,
@@ -22,6 +23,9 @@ import VoiceWaveform from "@/components/common/voice-waveform";
  * clicks. Focused on mount, submits on Cmd+Enter, dictates on Cmd+D, and links
  * become a visual attachment instead of polluting the writing surface.
  */
+/** The composer grows into the window and back as one object, not two. */
+const MORPH = { type: "spring", stiffness: 380, damping: 40 } as const;
+
 export default function IdeaCapture({
   onCapture,
 }: {
@@ -188,7 +192,10 @@ export default function IdeaCapture({
   }, [phase]);
 
   return (
-    <div
+    <motion.div
+      layout
+      layoutDependency={expanded}
+      transition={MORPH}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes("text/uri-list"))
           event.preventDefault();
@@ -213,7 +220,10 @@ export default function IdeaCapture({
           : "sg-glass focus-within:border-foreground/25 p-2.5 transition-[border-color,box-shadow] duration-200 focus-within:shadow-md"
       }
     >
-      <div
+      <motion.div
+        layout
+        layoutDependency={expanded}
+        transition={MORPH}
         className={
           expanded
             ? "mx-auto flex min-h-0 w-full max-w-[72ch] flex-1 flex-col"
@@ -262,7 +272,7 @@ export default function IdeaCapture({
             placeholder="Capture a thought, paste a reference, or ask Chirpy for ideas…"
             rows={1}
             aria-label="Capture an idea"
-            className={`${composerTextClasses(expanded)} caret-foreground placeholder:text-muted-foreground/75 relative resize-none bg-transparent text-transparent outline-none`}
+            className={`${composerTextClasses(expanded)} caret-foreground placeholder:text-muted-foreground/75 relative resize-none bg-transparent text-transparent outline-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}
           />
         </div>
 
@@ -370,7 +380,7 @@ export default function IdeaCapture({
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
