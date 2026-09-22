@@ -42,16 +42,25 @@ export default function CanvasReference({
       )}
       {(transcript || summary || hasReference) && (
         <Section
-          title="Reference"
+          title="Inspiration"
           rank="lead"
           meta={
-            item.transcriptStatus === "pending"
-              ? "transcribing"
-              : transcript
-                ? "transcript"
-                : summary
-                  ? "page summary"
-                  : undefined
+            [
+              item.ideaType === "semi-original"
+                ? "semi-original"
+                : item.ideaType === "inspiration"
+                  ? "inspired by"
+                  : null,
+              item.transcriptStatus === "pending"
+                ? "transcribing"
+                : transcript
+                  ? "transcript"
+                  : summary
+                    ? "page summary"
+                    : null,
+            ]
+              .filter(Boolean)
+              .join(" · ") || undefined
           }
           action={
             item.sourceUrl ? (
@@ -124,7 +133,7 @@ export default function CanvasReference({
             Your original note
           </button>
           {noteOpen && (
-            <blockquote className="text-foreground/75 max-w-[68ch] border-l border-[color:var(--sg-accent)]/40 pl-4 text-[15px] leading-relaxed whitespace-pre-wrap italic">
+            <blockquote className="text-foreground/75 bg-muted max-w-[68ch] rounded-xl px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap">
               {note}
             </blockquote>
           )}

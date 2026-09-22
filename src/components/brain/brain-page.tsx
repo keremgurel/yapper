@@ -1,19 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Loader2,
-  MessageCircle,
-  Plus,
-  Search,
-  Sparkles,
-  Wand2,
-} from "lucide-react";
+import { Loader2, Plus, Search, Wand2 } from "lucide-react";
 import AddContextSheet from "@/components/brain/add/add-context-sheet";
 import SetupSheet from "@/components/brain/setup/setup-sheet";
 import { useBrainSetup } from "@/hooks/use-brain-setup";
 import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import EssentialsView from "@/components/brain/essentials/essentials-view";
+import FillInMenu from "@/components/brain/fill-in-menu";
+import WhatYapperReads from "@/components/brain/essentials/what-yapper-reads";
+import VoiceSheet from "@/components/brain/voice/voice-sheet";
+import { PageHeader, Section } from "@/components/studio-ui";
+import { useVoiceSamples } from "@/hooks/use-voice-samples";
 import BlockList from "@/components/brain/blocks/block-list";
 import CatalogSheet from "@/components/brain/skills/catalog-sheet";
 import SkillCard from "@/components/brain/skills/skill-card";
@@ -29,13 +27,11 @@ import { useProject } from "@/hooks/use-project";
 import { findKnowledge } from "@/lib/brain/find-knowledge";
 import type { ProjectPatch } from "@/lib/project/client";
 
-type BrainView = "essentials" | "knowledge" | "skills";
-
 /** Essentials say who the creator is, Knowledge says what they know, and
  * Skills say how Yapper should work. Creation and prompt internals stay out of
  * the default path; Chirpy connects this operating system to the rest of Studio. */
 export default function BrainPage() {
-  const [view, setView] = useState<BrainView>("essentials");
+  const [pickingVideos, setPickingVideos] = useState(false);
   const [adding, setAdding] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
   const [browsingSkills, setBrowsingSkills] = useState(false);
@@ -159,44 +155,24 @@ export default function BrainPage() {
   }, [brainTools, chirpy]);
 
   const activeSkills = skills.filter((skill) => skill.enabled);
+  const { samples } = useVoiceSamples(true);
   const editingSkill =
     skills.find((skill) => skill.id === editingSkillID) ?? null;
-  const tabs: { value: BrainView; label: string; count?: number }[] = [
-    { value: "essentials", label: "Essentials" },
-    { value: "knowledge", label: "Knowledge", count: blocks.length },
-    { value: "skills", label: "Skills", count: skills.length },
-  ];
 
   return (
     <div className="w-full pb-24">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="font-display text-foreground mt-1 text-3xl font-bold tracking-tight">
-            Brain
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm text-pretty">
-            What Yapper knows about you, and the skills it uses to create with
-            you.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" onClick={() => chirpy.open()}>
-            <MessageCircle className="size-4" aria-hidden="true" />
-            Ask Chirpy
-            <kbd className="bg-muted text-muted-foreground ml-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold">
-              ⌘K
-            </kbd>
-          </Button>
-          <Button
-            type="button"
-            disabled={!blocksAvailable}
-            onClick={() => setAdding(true)}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-            Teach Your Brain
-          </Button>
-        </div>
-      </header>
+      <PageHeader
+        title="Brain"
+        description="What Yapper knows about you. Fill it in yourself, or let it read your videos or a document. Everything here is yours to edit."
+        actions={
+          <FillInMenu
+            videoCount={samples.length}
+            onVideos={() => setPickingVideos(true)}
+            onDocument={() => setSettingUp(true)}
+            onChirpy={() => chirpy.open("Help me fill in my Brain: ")}
+          />
+        }
+      />
 
       {[
         {
@@ -249,35 +225,7 @@ export default function BrainPage() {
           </div>
         ))}
 
-      <div
-        role="tablist"
-        aria-label="Brain sections"
-        className="border-border mb-6 flex overflow-x-auto border-b"
-      >
-        {tabs.map((tab) => (
-          <button
-            key={tab.value}
-            type="button"
-            role="tab"
-            aria-selected={view === tab.value}
-            onClick={() => setView(tab.value)}
-            className={`relative px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-              view === tab.value
-                ? "text-foreground after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-[color:var(--sg-accent)]"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.label}
-            {tab.count !== undefined ? (
-              <span className="bg-muted text-muted-foreground ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]">
-                {tab.count}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-
-      {view === "essentials" ? (
+      <div className="space-y-10">
         <EssentialsView
           project={project}
           pillars={pillars}
@@ -285,93 +233,84 @@ export default function BrainPage() {
           saveState={projectSaveState}
           onUpdate={updateEssentials}
           onRetry={retryProject}
-          onRefresh={() => refreshProject(true)}
-          onSetUp={() => setSettingUp(true)}
-          version={version}
         />
-      ) : null}
 
-      {view === "knowledge" ? (
-        <section>
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">
-                Knowledge
-              </h2>
-              <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-                Research, stories, examples, and beliefs Yapper retrieves when
-                they matter.
-              </p>
-            </div>
+        <Section
+          title="Knowledge"
+          meta={blocksAvailable ? `${blocks.length}` : undefined}
+          action={
             <Button
               type="button"
+              variant="ghost"
+              size="sm"
               disabled={!blocksAvailable}
               onClick={() => setAdding(true)}
             >
-              <Plus className="size-4" aria-hidden="true" /> Add Knowledge
+              <Plus className="size-4" aria-hidden="true" /> Add
             </Button>
-          </div>
-          <div className="border-border bg-card rounded-2xl border p-4 shadow-sm sm:p-5">
-            {blockSaveState === "error" ? (
-              <p className="text-destructive mb-3 text-xs" role="alert">
-                A memory could not be saved. Your next edit retries it.
-              </p>
-            ) : null}
-            {blocksLoading ? (
-              <p className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                Loading Knowledge…
-              </p>
-            ) : !blocksAvailable ? (
-              <p className="text-muted-foreground py-6 text-sm">
-                Your Knowledge will appear after it loads successfully.
-              </p>
-            ) : (
-              <BlockList
-                blocks={blocks}
-                onEdit={(id, patch) => {
-                  editBlock(id, patch);
-                  changed();
-                }}
-                onRemove={(id) => {
-                  if (window.confirm("Remove this from your Brain?"))
-                    void removeBlock(id)
-                      .then(changed)
-                      .catch(() => {});
-                }}
-                onReorder={(ids) =>
-                  void reorderBlocks(ids)
+          }
+        >
+          <p className="text-muted-foreground mb-4 max-w-[60ch] text-sm">
+            Research, stories, examples, and rules Yapper pulls in when they
+            matter.
+          </p>
+          {blockSaveState === "error" ? (
+            <p className="text-destructive mb-3 text-xs" role="alert">
+              A memory could not be saved. Your next edit retries it.
+            </p>
+          ) : null}
+          {blocksLoading ? (
+            <p className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Loading Knowledge…
+            </p>
+          ) : !blocksAvailable ? (
+            <p className="text-muted-foreground py-6 text-sm">
+              Your Knowledge will appear after it loads successfully.
+            </p>
+          ) : (
+            <BlockList
+              blocks={blocks}
+              onEdit={(id, patch) => {
+                editBlock(id, patch);
+                changed();
+              }}
+              onRemove={(id) => {
+                if (window.confirm("Remove this from your Brain?"))
+                  void removeBlock(id)
                     .then(changed)
-                    .catch(() => {})
-                }
-              />
-            )}
-          </div>
-        </section>
-      ) : null}
+                    .catch(() => {});
+              }}
+              onReorder={(ids) =>
+                void reorderBlocks(ids)
+                  .then(changed)
+                  .catch(() => {})
+              }
+            />
+          )}
+        </Section>
 
-      {view === "skills" ? (
-        <section>
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <h2 className="font-display text-2xl font-bold tracking-tight">
-                Skills
-              </h2>
-              <p className="text-muted-foreground mt-1 max-w-xl text-sm">
-                Reusable creative methods. Install proven skills or teach Yapper
-                a process that works for you.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
+        <Section
+          title="Skills"
+          meta={
+            skillsAvailable
+              ? `${activeSkills.length} of ${skills.length} active`
+              : undefined
+          }
+          action={
+            <div className="flex items-center gap-1">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setBrowsingSkills(true)}
               >
                 <Search className="size-4" aria-hidden="true" /> Discover
               </Button>
               <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 disabled={!skillsAvailable}
                 onClick={async () => {
                   try {
@@ -383,34 +322,22 @@ export default function BrainPage() {
                   }
                 }}
               >
-                <Plus className="size-4" aria-hidden="true" /> Create a Skill
+                <Plus className="size-4" aria-hidden="true" /> New
               </Button>
             </div>
-          </div>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-orange-200 bg-[linear-gradient(135deg,var(--sg-surface),var(--sg-surface-sunken))] p-5 dark:border-orange-900/40">
-            <div>
-              <strong className="block text-sm">
-                {activeSkills.length} active{" "}
-                {activeSkills.length === 1 ? "skill shapes" : "skills shape"}{" "}
-                your work across Yapper.
-              </strong>
-              <span className="text-muted-foreground mt-1 block text-xs">
-                Skills are invoked when relevant, or selected directly while
-                creating.
-              </span>
-            </div>
-            <Sparkles
-              className="size-6 text-[color:var(--sg-accent)]"
-              aria-hidden="true"
-            />
-          </div>
+          }
+        >
+          <p className="text-muted-foreground mb-4 max-w-[60ch] text-sm">
+            Reusable methods Yapper follows when it writes with you. Used when
+            relevant, or picked by name while creating.
+          </p>
           {skillSaveState === "error" ? (
             <p className="text-destructive mb-3 text-xs" role="alert">
               A skill could not be saved. Your next edit retries it.
             </p>
           ) : null}
           {skillsLoading ? (
-            <p className="text-muted-foreground flex items-center gap-2 py-10 text-sm">
+            <p className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Loading Skills…
             </p>
@@ -442,22 +369,21 @@ export default function BrainPage() {
             <button
               type="button"
               onClick={() => setBrowsingSkills(true)}
-              className="border-border text-muted-foreground hover:text-foreground flex w-full flex-col items-center rounded-2xl border border-dashed px-6 py-14 text-center transition-colors"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
             >
-              <Wand2
-                className="mb-3 size-7 text-[color:var(--sg-accent)]"
-                aria-hidden="true"
-              />
-              <strong className="text-foreground text-sm">
-                Give Yapper its first creative method
-              </strong>
-              <span className="mt-1 text-xs">
-                Browse official skills or create your own.
-              </span>
+              <Wand2 className="size-4" aria-hidden="true" />
+              Give Yapper its first creative method
             </button>
           )}
-        </section>
-      ) : null}
+        </Section>
+
+        <WhatYapperReads version={version} />
+      </div>
+      <VoiceSheet
+        open={pickingVideos}
+        onOpenChange={setPickingVideos}
+        onProfileChanged={() => refreshProject(true)}
+      />
       <AddContextSheet
         open={adding}
         onOpenChange={setAdding}

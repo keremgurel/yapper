@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
 import CanvasBlock from "@/components/canvas/canvas-block";
 import CanvasDetails from "@/components/canvas/canvas-details";
 import CanvasHeader from "@/components/canvas/canvas-header";
@@ -160,6 +160,27 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const targetBlock = blocks.find((block) => block.id === target) ?? null;
   const targetIndex = targetBlock ? blocks.indexOf(targetBlock) : null;
 
+  // The page has a fixed shape: hooks, the script, key points, and anything
+  // else the creator or Chirpy added, in that order.
+  const scriptBlock = blocks.find((block) => block.kind === "script") ?? null;
+  const pointsBlock =
+    blocks.find(
+      (block) =>
+        block !== scriptBlock &&
+        (block.kind === "bullets" || block.kind === "steps"),
+    ) ?? null;
+  const otherBlocks = blocks.filter(
+    (block) => block !== scriptBlock && block !== pointsBlock,
+  );
+  const hasInspiration = Boolean(
+    item.sourceTitle ||
+    item.sourceUrl ||
+    item.sourceTranscript ||
+    item.sourceSummary ||
+    item.recordedTranscript ||
+    item.originalNote.trim(),
+  );
+
   const ask = async (instruction: string) => {
     setNote(null);
     const pendingId = thread.pendingAsk(instruction);
@@ -285,50 +306,131 @@ export default function CanvasWorkbench({ id }: { id: string }) {
 
       <CanvasDetails item={item} update={update} />
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)] lg:gap-12">
+      <div
+        className={
+          hasInspiration
+            ? "mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)] lg:gap-12"
+            : "mt-8"
+        }
+      >
         <div className="min-w-0">
           <div className="space-y-9">
-            <CanvasHooks hooks={hooks} onChange={setHooks} />
+            <CanvasHooks
+              hooks={hooks}
+              onChange={setHooks}
+              onAskForHooks={() => void ask("Give me five hooks")}
+            />
 
-            {blocks.map((block, index) => (
+            {scriptBlock ? (
               <CanvasBlock
-                key={block.id}
-                block={block}
-                index={index}
-                isFirst={index === 0}
-                isLast={index === blocks.length - 1}
+                key={scriptBlock.id}
+                block={scriptBlock}
+                index={blocks.indexOf(scriptBlock)}
+                isFirst
+                isLast
+                fixedTitle="Script"
                 onChange={(patch) =>
-                  setBlocks((current) => updateBlock(current, block.id, patch))
+                  setBlocks((current) =>
+                    updateBlock(current, scriptBlock.id, patch),
+                  )
                 }
                 onKind={(kind) =>
-                  setBlocks((current) => changeKind(current, block.id, kind))
+                  setBlocks((current) =>
+                    changeKind(current, scriptBlock.id, kind),
+                  )
                 }
                 onMove={(direction) =>
                   setBlocks((current) =>
-                    moveBlock(current, block.id, direction),
+                    moveBlock(current, scriptBlock.id, direction),
                   )
                 }
                 onRemove={() =>
-                  setBlocks((current) => removeBlock(current, block.id))
+                  setBlocks((current) => removeBlock(current, scriptBlock.id))
                 }
                 onAsk={() => {
-                  setTarget(block.id);
+                  setTarget(scriptBlock.id);
                   setFocusToken((token) => token + 1);
                 }}
               />
-            ))}
+            ) : (
+              <EmptySlot
+                title="Script"
+                label="Write the script"
+                onAsk={() => void ask("Write the script")}
+              />
+            )}
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() =>
-                setBlocks((current) => [...current, blockFrom({})])
-              }
-              className="text-muted-foreground -ml-2"
-            >
-              <Plus className="h-4 w-4" /> Add a block
-            </Button>
+            {pointsBlock ? (
+              <CanvasBlock
+                key={pointsBlock.id}
+                block={pointsBlock}
+                index={blocks.indexOf(pointsBlock)}
+                isFirst
+                isLast
+                fixedTitle="Key points"
+                onChange={(patch) =>
+                  setBlocks((current) =>
+                    updateBlock(current, pointsBlock.id, patch),
+                  )
+                }
+                onKind={(kind) =>
+                  setBlocks((current) =>
+                    changeKind(current, pointsBlock.id, kind),
+                  )
+                }
+                onMove={(direction) =>
+                  setBlocks((current) =>
+                    moveBlock(current, pointsBlock.id, direction),
+                  )
+                }
+                onRemove={() =>
+                  setBlocks((current) => removeBlock(current, pointsBlock.id))
+                }
+                onAsk={() => {
+                  setTarget(pointsBlock.id);
+                  setFocusToken((token) => token + 1);
+                }}
+              />
+            ) : (
+              <EmptySlot
+                title="Key points"
+                label="Give me the key points"
+                onAsk={() => void ask("Give me the key points as bullets")}
+              />
+            )}
+
+            {otherBlocks.map((block) => {
+              const index = blocks.indexOf(block);
+              return (
+                <CanvasBlock
+                  key={block.id}
+                  block={block}
+                  index={index}
+                  isFirst={index === 0}
+                  isLast={index === blocks.length - 1}
+                  onChange={(patch) =>
+                    setBlocks((current) =>
+                      updateBlock(current, block.id, patch),
+                    )
+                  }
+                  onKind={(kind) =>
+                    setBlocks((current) => changeKind(current, block.id, kind))
+                  }
+                  onMove={(direction) =>
+                    setBlocks((current) =>
+                      moveBlock(current, block.id, direction),
+                    )
+                  }
+                  onRemove={() =>
+                    setBlocks((current) => removeBlock(current, block.id))
+                  }
+                  onAsk={() => {
+                    setTarget(block.id);
+                    setFocusToken((token) => token + 1);
+                  }}
+                />
+              );
+            })}
           </div>
 
           <CanvasThread
@@ -353,11 +455,13 @@ export default function CanvasWorkbench({ id }: { id: string }) {
           {used && <ReadLine used={used} />}
         </div>
 
-        {/* The reference stays in view while you write: adapting a transcript
-            means reading it and the draft at the same time. */}
-        <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
-          <CanvasReference item={item} update={update} />
-        </aside>
+        {/* What the piece came from stays in view while you write: adapting
+            a transcript means reading it and the draft at the same time. */}
+        {hasInspiration && (
+          <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
+            <CanvasReference item={item} update={update} />
+          </aside>
+        )}
       </div>
 
       <CanvasPhoneSheet
@@ -366,6 +470,34 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         itemId={item.id}
         beforeOpen={flush}
       />
+    </div>
+  );
+}
+
+/** A slot with nothing in it yet: its name, and the one ask that fills it. */
+function EmptySlot({
+  title,
+  label,
+  onAsk,
+}: {
+  title: string;
+  label: string;
+  onAsk: () => void;
+}) {
+  return (
+    <div>
+      <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
+        {title}
+      </p>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onAsk}
+        className="text-muted-foreground -ml-2"
+      >
+        <Sparkles className="h-4 w-4" /> {label}
+      </Button>
     </div>
   );
 }

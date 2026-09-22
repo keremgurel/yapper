@@ -20,9 +20,12 @@ import type { PublishPlatform } from "@/lib/db/schema";
  */
 export default function VoiceSection({
   onProfileChanged,
+  embedded = false,
 }: {
   /** The project fields were rewritten on the server; reload them. */
   onProfileChanged: () => Promise<unknown>;
+  /** Inside a sheet the section is the whole content, so no card chrome. */
+  embedded?: boolean;
 }) {
   const { connections } = useConnections(true);
   const { samples, loading, failed, remove, add, refresh } =
@@ -67,15 +70,25 @@ export default function VoiceSection({
   };
 
   return (
-    <section className="border-border bg-card rounded-2xl border p-5 shadow-sm">
+    <section
+      className={
+        embedded
+          ? "space-y-1"
+          : "border-border bg-card rounded-2xl border p-5 shadow-sm"
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-bold">Your voice, from your videos</h2>
-          <p className="text-muted-foreground mt-1 max-w-[60ch] text-sm text-pretty">
-            Yapper listens to videos you pick and writes how you sound and how
-            your scripts are built. Edit the result below whenever you like.
-          </p>
-        </div>
+        {!embedded && (
+          <div className="min-w-0">
+            <h2 className="text-base font-bold">
+              Your voice, from your videos
+            </h2>
+            <p className="text-muted-foreground mt-1 max-w-[60ch] text-sm text-pretty">
+              Yapper listens to videos you pick and writes how you sound and how
+              your scripts are built. Edit the result below whenever you like.
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-2">
           {samples.length > 0 ? (
             <Button
