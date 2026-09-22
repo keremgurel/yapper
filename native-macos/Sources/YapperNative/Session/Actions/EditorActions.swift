@@ -16,6 +16,8 @@ extension AppActionRegistry {
         registry.registerClipPropertyActions()
         registry.registerAudioVolume()
         registry.registerTimelineActions()
+        registry.registerCaptionActions()
+        registry.registerTextLayerActions()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }

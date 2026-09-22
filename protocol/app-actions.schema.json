@@ -253,6 +253,62 @@
       "description": "Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
+    },
+    {
+      "id": "editor.captions.add",
+      "symbol": "captionAdd",
+      "input": "CaptionAddInput",
+      "description": "Add a caption card. Either at a timeline anchor over spoken footage, or right after an existing caption (afterCaptionID). Optional text sets what the card says; otherwise it takes the spoken words there.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.captions.remove",
+      "symbol": "captionRemove",
+      "input": "CaptionRemoveInput",
+      "description": "Remove explicit caption cards by ID. Locked captions are skipped. To hide all captions without deleting them use editor.captions.setVisible.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.captions.merge",
+      "symbol": "captionMerge",
+      "input": "CaptionMergeInput",
+      "description": "Merge two or more caption cards into one card spanning them, keeping their words in order.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.captions.setText",
+      "symbol": "captionText",
+      "input": "CaptionTextInput",
+      "description": "Replace the text of one caption card. The card stops following the transcript for that text.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.captions.retime",
+      "symbol": "captionRetime",
+      "input": "CaptionRetimeInput",
+      "description": "Move a caption card to a new timeline start and end in seconds. A card can only sit over the footage it was spoken over.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.text.add",
+      "symbol": "textLayerAdd",
+      "input": "TextLayerAddInput",
+      "description": "Add an on-screen text layer with the given text at a timeline anchor (default the playhead) for duration seconds (default 5). asHook places it at the very start with the hook look.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
+    },
+    {
+      "id": "editor.text.update",
+      "symbol": "textLayerUpdate",
+      "input": "TextLayerUpdateInput",
+      "description": "Change a text layer's words, timeline start, or duration. Send only the fields to change. Remove a layer with editor.timeline.delete.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": false
     }
   ],
   "$defs": {
@@ -1382,6 +1438,145 @@
         },
         "kept": {
           "type": "boolean"
+        }
+      }
+    },
+    "CaptionAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [],
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "afterCaptionID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "CaptionRemoveInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captionIDs"],
+      "properties": {
+        "captionIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "CaptionMergeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captionIDs"],
+      "properties": {
+        "captionIDs": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "CaptionTextInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captionID", "text"],
+      "properties": {
+        "captionID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        }
+      }
+    },
+    "CaptionRetimeInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["captionID", "timelineStart", "timelineEnd"],
+      "properties": {
+        "captionID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "timelineEnd": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "TextLayerAddInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.3,
+          "maximum": 600
+        },
+        "asHook": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TextLayerUpdateInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["textLayerID"],
+      "properties": {
+        "textLayerID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "timelineStart": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "duration": {
+          "type": "number",
+          "minimum": 0.3,
+          "maximum": 600
         }
       }
     }

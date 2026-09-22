@@ -163,8 +163,10 @@ final class AppActionRegistry {
                 replies = receipts(.applied, "Saved.", mutations: mutations)
             } catch {
                 await session.restoreEditState(rollback, rebuildPlayer: false, preserving: error)
-                replies = receipts(error is CancellationError ? .canceled : .failed,
-                    error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription)
+                // A validation error is a rejection: nothing was mutated. Only
+                // a save that went wrong is a failure.
+                let status: AppActionStatus = error is CancellationError ? .canceled : error is AppActionError ? .rejected : .failed
+                replies = receipts(status, error is CancellationError ? "Request canceled. No changes were saved." : error.localizedDescription)
             }
         }
         return replies.isEmpty ? receipts(.canceled, "Request canceled.") : replies
