@@ -257,12 +257,11 @@ export default function BrainPage() {
             editBlock(id, patch);
             changed();
           }}
-          onRemove={(id) => {
-            if (window.confirm("Remove this from your Brain?"))
-              void removeBlock(id)
-                .then(changed)
-                .catch(() => {});
-          }}
+          onRemove={(id) =>
+            void removeBlock(id)
+              .then(changed)
+              .catch(() => {})
+          }
           onReorder={(ids) =>
             void reorderBlocks(ids)
               .then(changed)
@@ -292,12 +291,11 @@ export default function BrainPage() {
             changed();
           }}
           onOpen={setEditingSkillID}
-          onRemove={(id, name) => {
-            if (window.confirm(`Remove “${name}”?`))
-              void removeSkill(id)
-                .then(changed)
-                .catch(() => {});
-          }}
+          onRemove={(id) =>
+            void removeSkill(id)
+              .then(changed)
+              .catch(() => {})
+          }
         />
       ) : null}
       <VoiceSheet

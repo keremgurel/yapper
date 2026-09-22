@@ -27,7 +27,7 @@ export default function SkillsTab({
   onCreate: () => void;
   onToggle: (id: string, enabled: boolean) => void;
   onOpen: (id: string) => void;
-  onRemove: (id: string, name: string) => void;
+  onRemove: (id: string) => void;
 }) {
   const active = skills.filter((skill) => skill.enabled).length;
   return (
@@ -75,7 +75,7 @@ export default function SkillsTab({
               skill={skill}
               onToggle={(enabled) => onToggle(skill.id, enabled)}
               onOpen={() => onOpen(skill.id)}
-              onRemove={() => onRemove(skill.id, skill.name)}
+              onRemove={() => onRemove(skill.id)}
             />
           ))}
         </div>
