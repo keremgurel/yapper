@@ -252,7 +252,7 @@ export default function FeatureDeck() {
               </Button>
               <Button
                 type="button"
-                variant="contrast"
+                variant="outline"
                 size="icon"
                 onClick={() => move(1)}
                 disabled={activeIndex === marketingFeatures.length - 1}
@@ -325,7 +325,7 @@ export default function FeatureDeck() {
               </p>
               <Button
                 type="button"
-                variant="contrast"
+                variant="outline"
                 size="icon"
                 onClick={() => move(1)}
                 disabled={activeIndex === marketingFeatures.length - 1}

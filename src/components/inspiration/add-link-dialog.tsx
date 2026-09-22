@@ -15,6 +15,7 @@ import {
 import { guessCreatorForVideo } from "@/lib/inspiration/relations";
 import { findDuplicateInspoItem } from "@/lib/inspiration/dedupe";
 import type { InspirationKind, ResolvedLink } from "@/lib/inspiration/types";
+import { Button } from "@/components/ui/button";
 
 const COPY: Record<InspirationKind, { help: string; placeholder: string }> = {
   video: {
@@ -187,17 +188,17 @@ export default function AddLinkDialog({
             autoFocus
             className="border-border bg-background text-foreground focus:border-foreground/40 min-w-0 flex-1 rounded-xl border px-3 py-2.5 text-sm outline-none"
           />
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={resolve}
             disabled={status === "loading"}
-            className="bg-foreground text-background inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {status === "loading" && (
               <Loader2 className="h-4 w-4 animate-spin" />
             )}
             Fetch
-          </button>
+          </Button>
         </div>
         {status === "error" && (
           <p className="mt-2 text-xs font-bold text-red-500">{error}</p>
@@ -303,14 +304,9 @@ export default function AddLinkDialog({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={save}
-            disabled={!preview}
-            className="bg-foreground text-background rounded-xl px-5 py-2.5 text-sm font-black transition-opacity hover:opacity-90 disabled:opacity-40"
-          >
+          <Button type="button" onClick={save} disabled={!preview}>
             Save
-          </button>
+          </Button>
         </div>
       </div>
     </div>

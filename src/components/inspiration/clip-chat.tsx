@@ -228,7 +228,7 @@ export default function ClipChat({
           <div className="mt-2 flex justify-end">
             <Button
               type="button"
-              variant="contrast"
+              variant="outline"
               size="sm"
               onClick={() => void saveAsIdea()}
               disabled={saving || messages.length === 0}

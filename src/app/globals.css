@@ -23,9 +23,8 @@
     system-ui, "Segoe UI", Roboto, sans-serif;
   --font-body-sans: var(--sg-font-system);
   --font-display-sans: var(--sg-font-system);
-  /* Outfit carries the headlines; Hanken keeps every reading surface, so the
-     app's body copy is untouched by the brand change. */
-  --sg-font-display: var(--font-outfit), Outfit, var(--sg-font-system);
+  /* One family everywhere: headlines and body both set in the system font. */
+  --sg-font-display: var(--sg-font-system);
   --sg-font-body: var(--sg-font-system);
   --sg-font-mono:
     ui-monospace, "SF Mono", Menlo, var(--font-geist-mono), monospace;
@@ -88,7 +87,6 @@
      being a field of identical rounded rectangles. */
   --sg-radius-notch: 24px 0 24px 24px;
   --sg-radius-notch-lg: 32px 0 32px 32px;
-  --sg-radius-btn: 8px;
 
   /* fluid type scale */
   --sg-text-xs: 0.75rem;
@@ -277,10 +275,9 @@
 .type-h3 {
   color: var(--sg-text);
   font-family: var(--sg-font-display);
-  /* Outfit is a geometric face and holds up at 600 where Hanken needed 800.
-     The very tight tracking is what makes the headlines read as one mass. */
+  /* SF Pro at display sizes wants tight but not crushed tracking. */
   font-weight: 600;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.03em;
 }
 
 .type-display,
@@ -1151,64 +1148,6 @@ select {
   .btn-accent-metal:active:not(:disabled) {
     transform: none;
   }
-}
-
-.sg-btn-accent {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sg-space-2);
-  padding: var(--sg-space-3) var(--sg-space-5);
-  border-radius: var(--sg-radius-btn);
-  font-family: var(--sg-font-display);
-  font-weight: 600;
-  font-size: var(--sg-text-base);
-  cursor: pointer;
-  border: 2px solid transparent;
-  background:
-    var(--sg-accent-face) padding-box,
-    var(--sg-accent-bezel) border-box;
-  color: var(--sg-accent-fg);
-  text-shadow: var(--sg-accent-text-shadow);
-  box-shadow: var(--sg-accent-shadow), var(--sg-accent-inner-shadow);
-  transition:
-    transform 0.4s var(--sg-ease-spring),
-    box-shadow 0.3s ease,
-    filter 0.3s ease;
-}
-.sg-btn-accent:hover {
-  box-shadow: var(--sg-accent-shadow-hover), var(--sg-accent-inner-shadow);
-  filter: brightness(1.03);
-}
-.sg-btn-accent:active {
-  transform: scale(0.97);
-  box-shadow:
-    var(--sg-accent-shadow-pressed), var(--sg-accent-inner-shadow-pressed);
-  filter: brightness(0.98);
-}
-
-.sg-btn-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sg-space-2);
-  padding: var(--sg-space-3) var(--sg-space-5);
-  border-radius: var(--sg-radius-btn);
-  border: 1px solid var(--sg-border-strong);
-  background: transparent;
-  color: var(--sg-text);
-  font-family: var(--sg-font-display);
-  font-weight: 600;
-  font-size: var(--sg-text-base);
-  cursor: pointer;
-  transition: background var(--sg-dur-fast) var(--sg-ease-out);
-}
-.sg-btn-ghost:hover {
-  background: var(--sg-surface-sunken);
-}
-
-/* Smaller button size for toolbars / inline actions. */
-.sg-btn-sm {
-  padding: var(--sg-space-2) var(--sg-space-4);
-  font-size: var(--sg-text-sm);
 }
 
 /* Form fields. Sit on a raised surface (not the page bg) so they read as

@@ -5,6 +5,7 @@ import { BookType, Check, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { DeleteButton } from "@/components/ui/delete-button";
 import { useTranscriptionDictionary } from "@/hooks/use-transcription-dictionary";
 import type { TranscriptionDictionaryEntry } from "@/lib/studio/transcription-dictionary";
+import { Button } from "@/components/ui/button";
 
 function DictionaryRow({
   entry,
@@ -90,7 +91,7 @@ function DictionaryRow({
                 void save(term, entry.aliases);
               }
             }}
-            className="text-foreground w-full bg-transparent text-[15px] font-black outline-none"
+            className="text-foreground w-full bg-transparent text-[15px] font-semibold outline-none"
           />
           <p className="text-muted-foreground mt-0.5 text-xs">
             Preferred spelling sent to the transcriber
@@ -144,14 +145,15 @@ function DictionaryRow({
               }
               className="border-border bg-background text-foreground placeholder:text-muted-foreground/60 h-8 min-w-0 flex-1 rounded-lg border px-2.5 text-xs outline-none focus:border-[color:var(--sg-accent)]"
             />
-            <button
+            <Button
               type="submit"
+              variant="ghost"
+              size="sm"
               disabled={!alias.trim() || saving}
-              className="text-foreground hover:bg-muted inline-flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-black disabled:opacity-40"
             >
               <Plus className="h-3.5 w-3.5" />
               Add
-            </button>
+            </Button>
           </form>
         </div>
         {error ? (
@@ -219,7 +221,7 @@ export default function DictionaryPanel() {
           <BookType className="text-foreground h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-foreground text-2xl font-black tracking-tight">
+          <h1 className="font-display text-foreground text-2xl font-semibold tracking-tight">
             Transcription dictionary
           </h1>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-6">
@@ -231,11 +233,10 @@ export default function DictionaryPanel() {
       </div>
 
       <section className="border-border bg-card relative mb-8 overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6">
-        <div className="pointer-events-none absolute -top-20 -right-16 h-52 w-52 rounded-full bg-[color:var(--sg-accent)]/10 blur-3xl" />
         <div className="relative">
           <div className="mb-5 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[color:var(--sg-accent)]" />
-            <h2 className="text-foreground text-sm font-black">
+            <h2 className="text-foreground text-sm font-semibold">
               Add a spelling
             </h2>
           </div>
@@ -268,18 +269,14 @@ export default function DictionaryPanel() {
                 className="border-border bg-background text-foreground h-11 rounded-xl border px-3 text-sm outline-none focus:border-[color:var(--sg-accent)]"
               />
             </label>
-            <button
-              type="submit"
-              disabled={!term.trim() || adding || loading}
-              className="bg-foreground text-background inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-black disabled:opacity-50"
-            >
+            <Button type="submit" disabled={!term.trim() || adding || loading}>
               {adding ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Check className="h-4 w-4" />
               )}
               Add word
-            </button>
+            </Button>
           </form>
           {error ? (
             <div role="alert" className="mt-3 text-xs font-bold text-amber-600">
@@ -297,7 +294,7 @@ export default function DictionaryPanel() {
       </section>
 
       <div className="mb-3 flex items-center justify-between px-1">
-        <h2 className="text-foreground text-sm font-black">Your words</h2>
+        <h2 className="text-foreground text-sm font-semibold">Your words</h2>
         <span className="text-muted-foreground text-xs tabular-nums">
           {entries.length} / 100
         </span>
@@ -324,7 +321,7 @@ export default function DictionaryPanel() {
       ) : entries.length === 0 ? (
         <div className="border-border bg-muted rounded-2xl px-6 py-10 text-center">
           <BookType className="text-muted-foreground mx-auto mb-3 h-5 w-5" />
-          <p className="text-foreground text-sm font-black">
+          <p className="text-foreground text-sm font-semibold">
             No saved spellings yet
           </p>
           <p className="text-muted-foreground mt-1 text-xs">

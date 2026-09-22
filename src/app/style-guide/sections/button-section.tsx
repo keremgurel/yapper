@@ -2,6 +2,7 @@
 
 import { Section } from "./section";
 import { GlassyButton } from "@/components/ui/glassy-button";
+import { Button } from "@/components/ui/button";
 
 /**
  * The button family. The aluminum button is the REAL <GlassyButton/> (with its
@@ -13,7 +14,7 @@ export function ButtonSection() {
       id="buttons"
       eyebrow="Components"
       title="Buttons"
-      blurb="Aluminum (your real GlassyButton, primary tactile), accent (the orange CTA), ghost (secondary), plus chips. One aluminum button exists in the whole app."
+      blurb="Aluminum (your real GlassyButton, marketing heroes only), the orange metal primary, the outline secondary, plus chips. One aluminum button exists in the whole app; every product surface uses the two Button variants."
     >
       <div
         style={{
@@ -24,8 +25,8 @@ export function ButtonSection() {
         }}
       >
         <GlassyButton height={46}>Jump to practice</GlassyButton>
-        <button className="sg-btn-accent">Join waitlist</button>
-        <button className="sg-btn-ghost">Skip for now</button>
+        <Button>Join waitlist</Button>
+        <Button variant="outline">Skip for now</Button>
         <span className="sg-chip">
           <span className="sg-chip-dot" />
           New

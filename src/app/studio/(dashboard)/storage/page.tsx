@@ -19,6 +19,8 @@ import { getStorageBytes } from "@/lib/db/users";
 import { storageQuotaFor } from "@/lib/billing/storage";
 import { planByKey, SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
 import { formatStorageBytes, storageUsagePercent } from "@/lib/storage/format";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Storage",
@@ -97,7 +99,10 @@ export default async function StoragePage() {
             use cloud storage.
           </p>
         </div>
-        <Link href="/pricing" className="sg-btn-ghost no-underline">
+        <Link
+          href="/pricing"
+          className={cn(buttonVariants({ variant: "outline" }), "no-underline")}
+        >
           Compare plans <ArrowUpRight className="h-4 w-4" />
         </Link>
       </header>

@@ -118,12 +118,7 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
               className="border-border bg-card text-foreground w-40 rounded-md border py-2 pr-3 pl-9 text-sm outline-none focus:border-[color:var(--sg-accent)] sm:w-52"
             />
           </div>
-          <Button
-            type="button"
-            variant="contrast"
-            onClick={onAdd}
-            className="shrink-0"
-          >
+          <Button type="button" onClick={onAdd} className="shrink-0">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Add inspiration</span>
             <span className="sm:hidden">Add</span>
@@ -177,7 +172,7 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
           {!query && (
             <Button
               type="button"
-              variant="contrast"
+              variant="outline"
               onClick={onAdd}
               className="mt-2"
             >
