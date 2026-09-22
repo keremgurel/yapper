@@ -34,7 +34,7 @@ export default function StudioFlowSection() {
                 <span className="border-border bg-muted text-foreground flex h-10 w-10 items-center justify-center rounded-xl border">
                   <StudioNavIcon icon={item.icon} className="h-4 w-4" />
                 </span>
-                <span className="text-foreground/35 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+                <span className="text-foreground/35 font-mono text-[11px] font-black tracking-[0.16em] uppercase">
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>

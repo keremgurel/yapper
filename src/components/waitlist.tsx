@@ -409,7 +409,7 @@ function CinematicWaitlist({ className = "" }: { className?: string }) {
               className="font-display flex flex-row items-center justify-start gap-2 text-2xl font-extrabold no-underline"
               style={{ color: "#f0f0f0" }}
             >
-              <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-black text-white">
+              <div className="flex h-[28px] w-[28px] items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-red-500 text-sm font-semibold text-white">
                 Y
               </div>
               yapper

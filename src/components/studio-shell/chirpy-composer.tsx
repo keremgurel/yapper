@@ -132,7 +132,7 @@ export default function ChirpyComposer({
           aria-label="Message Chirpy"
           className="text-foreground placeholder:text-muted-foreground max-h-[220px] min-h-10 resize-none bg-transparent px-2.5 pt-2.5 text-xs leading-relaxed outline-none"
         />
-        <div className="text-muted-foreground flex items-center gap-2 px-2 pb-1 text-[10px]">
+        <div className="text-muted-foreground flex items-center gap-2 px-2 pb-1 text-[11px]">
           {recording ? (
             <>
               <VoiceWaveform

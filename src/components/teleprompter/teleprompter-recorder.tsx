@@ -265,7 +265,7 @@ export default function TeleprompterRecorder({
               {formatElapsed(elapsed)}
             </span>
             {isPaused && (
-              <span className="text-[10px] font-bold text-white/70">
+              <span className="text-[11px] font-bold text-white/70">
                 Paused
               </span>
             )}

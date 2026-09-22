@@ -38,7 +38,7 @@ function BreakdownCard({
   value: string;
 }) {
   return (
-    <div className="border-border/70 bg-background/60 rounded-2xl border p-4">
+    <div className="border-border bg-card rounded-2xl border p-4">
       <div className="flex items-start justify-between gap-3">
         <span className="bg-muted text-foreground grid h-9 w-9 place-items-center rounded-xl">
           <Icon className="h-4 w-4" />
@@ -299,7 +299,7 @@ export default async function StoragePage() {
                     {candidate.name}
                   </p>
                   {current ? (
-                    <span className="text-[10px] font-black tracking-wide text-orange-600 uppercase dark:text-orange-300">
+                    <span className="text-[11px] font-black tracking-wide text-orange-600 uppercase dark:text-orange-300">
                       Current
                     </span>
                   ) : null}

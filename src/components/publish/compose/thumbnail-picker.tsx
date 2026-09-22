@@ -49,7 +49,7 @@ export default function ThumbnailPicker({
           type="button"
           onClick={() => ref.current?.click()}
           disabled={uploading}
-          className="border-border text-foreground hover:bg-muted inline-flex w-fit items-center gap-1.5 rounded-lg border border-dashed px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50"
+          className="border-border text-foreground hover:bg-muted bg-muted inline-flex w-fit items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50"
         >
           {uploading ? (
             <Loader2 className="h-4 w-4 animate-spin" />

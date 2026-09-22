@@ -96,7 +96,7 @@ export default function PostableTakes() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading your videos…
         </div>
       ) : videos.length === 0 ? (
-        <p className="text-muted-foreground border-border mt-3 rounded-xl border border-dashed py-8 text-center text-sm">
+        <p className="text-muted-foreground border-border bg-muted mt-3 rounded-xl py-8 text-center text-sm">
           Record a video, or upload one edited elsewhere, to cross-post it here.
         </p>
       ) : (

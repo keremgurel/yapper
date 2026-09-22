@@ -75,7 +75,7 @@ export default function CalendarDayCell({
           />
         ))}
         {extra > 0 && (
-          <span className="text-muted-foreground px-1 text-[10px] font-bold">
+          <span className="text-muted-foreground px-1 text-[11px] font-bold">
             +{extra} more
           </span>
         )}

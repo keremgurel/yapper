@@ -76,13 +76,13 @@ export default function DesktopEditorGate({
           }}
         />
         <div className="relative z-10 max-w-xl">
-          <div className="bg-background/80 mb-5 flex h-11 w-11 items-center justify-center rounded-xl border text-[color:var(--sg-accent)] shadow-sm backdrop-blur">
+          <div className="bg-muted mb-5 flex h-11 w-11 items-center justify-center rounded-xl text-[color:var(--sg-accent)]">
             <Film className="h-5 w-5" />
           </div>
           <p className="text-sm font-bold text-[color:var(--sg-accent)]">
             Native editor
           </p>
-          <h1 className="font-display mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+          <h1 className="font-display mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             Edit locally. Keep the rest of Studio on the web.
           </h1>
           <p className="text-muted-foreground mt-4 max-w-lg text-base leading-relaxed">
@@ -167,7 +167,7 @@ export default function DesktopEditorGate({
         {BENEFITS.map(({ icon: Icon, title, body }) => (
           <Card key={title} className="gap-0 p-5">
             <Icon className="h-5 w-5 text-[color:var(--sg-accent)]" />
-            <h2 className="mt-4 text-base font-black">{title}</h2>
+            <h2 className="mt-4 text-base font-semibold">{title}</h2>
             <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
               {body}
             </p>

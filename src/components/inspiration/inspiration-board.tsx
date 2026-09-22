@@ -166,7 +166,7 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="border-border text-foreground/55 flex flex-col items-center justify-center gap-3 rounded-3xl border border-dashed px-6 py-20 text-center">
+        <div className="border-border text-foreground/55 bg-muted flex flex-col items-center justify-center gap-3 rounded-2xl px-6 py-20 text-center">
           <Chirpy expression={query ? "oops" : "curious"} size={92} />
           <p className="text-foreground text-base font-bold">
             {query ? "No matches" : copy.empty}

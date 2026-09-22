@@ -7,10 +7,10 @@ import type { DeliveryMetrics } from "@/lib/feedback/metrics";
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-border bg-muted/40 rounded-xl border p-2.5">
-      <div className="text-foreground text-sm font-black tabular-nums">
+      <div className="text-foreground text-sm font-semibold tabular-nums">
         {value}
       </div>
-      <div className="text-foreground/50 text-[10px] font-bold tracking-wide uppercase">
+      <div className="text-foreground/50 text-[11px] font-bold tracking-wide uppercase">
         {label}
       </div>
     </div>
@@ -30,7 +30,7 @@ export default function FeedbackResult({
       {/* Score + summary */}
       <div className="border-border bg-card rounded-2xl border p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:var(--sg-accent)]/15 text-lg font-black text-[color:var(--sg-accent)] tabular-nums">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[color:var(--sg-accent)]/15 text-lg font-semibold text-[color:var(--sg-accent)] tabular-nums">
             {c.score}
           </div>
           <p className="text-foreground/80 text-[13px] leading-5">

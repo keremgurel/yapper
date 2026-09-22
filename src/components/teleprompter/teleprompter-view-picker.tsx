@@ -27,7 +27,7 @@ export default function TeleprompterViewPicker({
 }) {
   return (
     <div className="mx-auto w-full max-w-md px-6 py-12">
-      <p className="text-foreground/45 mb-1 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+      <p className="text-foreground/45 mb-1 font-mono text-[11px] font-black tracking-[0.16em] uppercase">
         Teleprompter
       </p>
       <h1 className="text-foreground mb-1 text-2xl font-black tracking-tight">
