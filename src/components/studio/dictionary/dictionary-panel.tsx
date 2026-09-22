@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader } from "@/components/studio-ui";
+
 import { useRef, useState } from "react";
 import { BookType, Check, Loader2, Plus, Sparkles, X } from "lucide-react";
 import { DeleteButton } from "@/components/ui/delete-button";
@@ -75,7 +77,7 @@ function DictionaryRow({
   };
 
   return (
-    <article className="border-border bg-card overflow-hidden rounded-2xl border shadow-sm">
+    <article className="border-border bg-card overflow-hidden rounded-2xl border">
       <div className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
         <div className="min-w-0 flex-1">
           <label className="sr-only" htmlFor={`term-${entry.id}`}>
@@ -216,23 +218,12 @@ export default function DictionaryPanel() {
 
   return (
     <div className="w-full pb-16">
-      <div className="mb-7 flex items-start gap-4">
-        <div className="border-border bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm">
-          <BookType className="text-foreground h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-foreground text-2xl font-semibold tracking-tight">
-            Transcription dictionary
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-6">
-            Teach Yapper the names, brands, and jargon you use. Preferred
-            spellings guide the transcriber; saved mishearings are corrected
-            exactly.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Transcription dictionary"
+        description="Teach Yapper the names, brands, and jargon you use. Preferred spellings guide the transcriber, and saved mishearings are corrected exactly."
+      />
 
-      <section className="border-border bg-card relative mb-8 overflow-hidden rounded-3xl border p-5 shadow-sm sm:p-6">
+      <section className="border-border bg-card relative mb-8 rounded-2xl border p-5 sm:p-6">
         <div className="relative">
           <div className="mb-5 flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-[color:var(--sg-accent)]" />

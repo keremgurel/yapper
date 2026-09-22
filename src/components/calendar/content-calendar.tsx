@@ -136,21 +136,21 @@ export default function ContentCalendar() {
           onDropDay={reschedule}
         />
       )}
-      {byDay.size === 0 && (
+      {byDay.size === 0 ? (
         <div className="text-muted-foreground mt-6 flex flex-col items-center gap-2 py-10 text-center text-sm">
           <CalendarDays className="h-6 w-6" />
-          <p className="text-foreground font-bold">Nothing scheduled yet</p>
+          <p className="text-foreground font-semibold">Nothing scheduled yet</p>
           <p className="max-w-sm">
-            Set a schedule date on a Content Library item and it shows up here.
-            Drag posts between days to reschedule.
+            Mark an idea Ready and give it a date, and it shows up here. These
+            are planning dates; nothing publishes on its own.
           </p>
         </div>
+      ) : (
+        <p className="text-muted-foreground mt-3 text-xs">
+          Drag a post to another day to reschedule it. These are planning dates;
+          they do not publish your video on their own.
+        </p>
       )}
-      <p className="text-muted-foreground mt-3 text-xs">
-        Drag a post to another day to reschedule it. Only items with a schedule
-        date appear here. These are planning dates; they do not automatically
-        publish your video.
-      </p>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PageHeader } from "@/components/studio-ui";
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -85,39 +86,30 @@ export default async function StoragePage() {
 
   return (
     <div className="w-full space-y-6 pb-12">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground text-xs font-black tracking-[0.18em] uppercase">
-            Workspace capacity
-          </p>
-          <h1 className="font-display text-foreground mt-1 text-3xl font-semibold tracking-tight">
-            Storage
-          </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6">
-            Finished videos use your plan allowance. Your Brain, ideas and
-            library are measured separately because text is tiny compared with
-            video and should not unexpectedly lock you out of your own work.
-            Native editor projects and source files stay on your Mac and do not
-            use cloud storage.
-          </p>
-        </div>
-        <Link
-          href="/pricing"
-          className={cn(buttonVariants({ variant: "outline" }), "no-underline")}
-        >
-          Compare plans <ArrowUpRight className="h-4 w-4" />
-        </Link>
-      </header>
+      <PageHeader
+        title="Storage"
+        description="Finished videos use your plan allowance. Your Brain, ideas and library are text and never count against it. Editor projects stay on your Mac."
+        actions={
+          <Link
+            href="/pricing"
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "no-underline",
+            )}
+          >
+            Compare plans <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        }
+      />
 
-      <section className="border-border bg-card relative overflow-hidden rounded-[28px] border p-6 shadow-sm sm:p-8">
-        <div className="pointer-events-none absolute -top-28 -right-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(249,115,22,0.18),transparent_68%)]" />
+      <section className="border-border bg-card relative rounded-2xl border p-6">
         <div className="relative">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-muted-foreground text-xs font-bold">
                 {plan ? `${plan.name} membership` : "Included storage"}
               </p>
-              <p className="font-display text-foreground mt-1 text-3xl font-semibold tabular-nums sm:text-4xl">
+              <p className="font-display text-foreground mt-1 text-3xl font-semibold tabular-nums">
                 {formatStorageBytes(usedBytes)}
                 <span className="text-muted-foreground text-lg font-bold">
                   {" "}
@@ -225,7 +217,7 @@ export default async function StoragePage() {
         </div>
       </section>
 
-      <section className="border-border bg-card rounded-[24px] border p-5 sm:p-6">
+      <section className="border-border bg-card rounded-2xl border p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="font-display text-foreground text-lg font-semibold">
@@ -244,7 +236,7 @@ export default async function StoragePage() {
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <Link
             href="/studio/brain"
-            className="border-border hover:bg-muted/60 flex items-center gap-3 rounded-2xl border p-4 no-underline transition-colors"
+            className="bg-muted/60 hover:bg-muted flex items-center gap-3 rounded-xl p-4 no-underline transition-colors"
           >
             <Brain className="text-muted-foreground h-5 w-5" />
             <span>
@@ -258,7 +250,7 @@ export default async function StoragePage() {
           </Link>
           <Link
             href="/studio/ideas"
-            className="border-border hover:bg-muted/60 flex items-center gap-3 rounded-2xl border p-4 no-underline transition-colors"
+            className="bg-muted/60 hover:bg-muted flex items-center gap-3 rounded-xl p-4 no-underline transition-colors"
           >
             <Lightbulb className="text-muted-foreground h-5 w-5" />
             <span>
@@ -270,7 +262,7 @@ export default async function StoragePage() {
           </Link>
           <Link
             href="/studio/library"
-            className="border-border hover:bg-muted/60 flex items-center gap-3 rounded-2xl border p-4 no-underline transition-colors"
+            className="bg-muted/60 hover:bg-muted flex items-center gap-3 rounded-xl p-4 no-underline transition-colors"
           >
             <Library className="text-muted-foreground h-5 w-5" />
             <span>
@@ -297,7 +289,7 @@ export default async function StoragePage() {
                 key={candidate.key}
                 className={`rounded-2xl border p-4 ${
                   current
-                    ? "border-orange-500/60 bg-orange-500/8"
+                    ? "border-foreground/30 bg-card"
                     : "border-border bg-card"
                 }`}
               >
@@ -306,8 +298,8 @@ export default async function StoragePage() {
                     {candidate.name}
                   </p>
                   {current ? (
-                    <span className="text-[11px] font-black tracking-wide text-orange-600 uppercase dark:text-orange-300">
-                      Current
+                    <span className="bg-muted text-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold">
+                      Your plan
                     </span>
                   ) : null}
                 </div>
