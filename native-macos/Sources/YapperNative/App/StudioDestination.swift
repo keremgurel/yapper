@@ -25,7 +25,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     /// visible Studio navigation loads the same route the browser shows.
     /// Audio remains an internal editor destination, not a second product tab.
     var isNative: Bool {
-        self == .editor || self == .audio
+        self == .editor || self == .audio || NativeSurfaces.enabled.contains(self)
     }
 
     var title: String {

@@ -80,6 +80,18 @@ final class StudioWebCommands: ObservableObject {
         posterGeneration += 1
     }
 
+    /// Opens a platform's sign-in window from a native page. The flow runs in
+    /// the web session so the connection lands on the signed-in account.
+    func openOAuth(path: String) {
+        guard let webView, let literal = try? String(
+            data: JSONSerialization.data(withJSONObject: ["url": "https://ypr.app\(path)"]),
+            encoding: .utf8
+        ) else { return }
+        webView.evaluateJavaScript(
+            "window.webkit?.messageHandlers?.yapperNative?.postMessage({command:'open_oauth_flow', args:\(literal)})"
+        )
+    }
+
     func register(webView: WKWebView) {
         self.webView = webView
     }
