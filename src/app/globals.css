@@ -25,8 +25,7 @@
   --font-display-sans: var(--sg-font-system);
   /* Outfit carries the headlines; Hanken keeps every reading surface, so the
      app's body copy is untouched by the brand change. */
-  --sg-font-display:
-    var(--font-outfit), Outfit, var(--font-hanken), system-ui, sans-serif;
+  --sg-font-display: var(--font-outfit), Outfit, var(--sg-font-system);
   --sg-font-body: var(--sg-font-system);
   --sg-font-mono:
     ui-monospace, "SF Mono", Menlo, var(--font-geist-mono), monospace;

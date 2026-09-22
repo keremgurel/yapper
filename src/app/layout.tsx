@@ -5,23 +5,12 @@ import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
 import AppChrome from "@/components/studio-shell/app-chrome";
 import AppRouteGuard from "@/components/studio-shell/app-route-guard";
-import { Geist_Mono, Hanken_Grotesk, Outfit } from "next/font/google";
+import { Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { getSiteUrl } from "@/lib/json-ld";
 
-// One geo-grotesque family across display + body (Aave-style). Hanken Grotesk
-// is our free stand-in for Aave's paid FT Regola Neue. `--font-body-sans` and
-// `--font-display-sans` are aliased to it in globals.css so existing refs work.
-const hanken = Hanken_Grotesk({
-  variable: "--font-hanken",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
-
 // Display only. Headlines are the one place the brand voice lives; every
-// reading surface stays on Hanken so the app is untouched.
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
@@ -125,7 +114,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${hanken.variable} ${outfit.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${outfit.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

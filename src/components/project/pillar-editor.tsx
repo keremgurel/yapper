@@ -47,16 +47,8 @@ export default function PillarEditor({
 
   return (
     <div className="space-y-3">
-      <div>
-        <p className="sg-field-label">Content pillars</p>
-        <p className="text-muted-foreground mt-1 text-xs">
-          The angles you actually make. Every idea gets classified into one, and
-          the AI writes to the pillar&apos;s description.
-        </p>
-      </div>
-
       {pillars.length === 0 ? (
-        <p className="text-muted-foreground border-border rounded-lg border border-dashed px-3 py-6 text-center text-sm">
+        <p className="text-muted-foreground text-sm">
           No pillars yet. Add the handful of angles you post about.
         </p>
       ) : (
