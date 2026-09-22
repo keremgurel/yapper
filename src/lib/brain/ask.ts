@@ -116,9 +116,15 @@ export async function askBrain(
     process.env.SURPLUS_API_BASE ?? "https://api.surplusintelligence.ai/v1";
   const model = process.env.GENERATE_MODEL ?? "gpt-5.4-mini";
 
-  const history = input.messages.slice(-12).map((message) => ({
+  // The newest message is often a pasted transcript or a long note and is
+  // what the creator is asking about, so it keeps far more than the history.
+  const recent = input.messages.slice(-12);
+  const history = recent.map((message, index) => ({
     role: message.role,
-    content: message.content.slice(0, 4000),
+    content: message.content.slice(
+      0,
+      index === recent.length - 1 ? 24_000 : 4_000,
+    ),
   }));
 
   const { response, data } = await fetchBoundedJson<ChatCompletionResponse>(

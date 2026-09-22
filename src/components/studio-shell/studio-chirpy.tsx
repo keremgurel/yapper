@@ -9,11 +9,10 @@ import {
   useMemo,
   useRef,
   useState,
-  type FormEvent,
   type ReactNode,
 } from "react";
 import { useUser } from "@clerk/nextjs";
-import { ArrowUp, CheckCircle2, Loader2, X } from "lucide-react";
+import { CheckCircle2, Loader2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Chirpy, type ChirpyExpression } from "@/components/brand/chirpy";
@@ -27,6 +26,8 @@ import type {
 } from "@/lib/brain/client";
 import { createIdea } from "@/lib/ideas/client";
 import { parseBrandCommand } from "@/lib/brand/command";
+import ChirpyComposer from "@/components/studio-shell/chirpy-composer";
+import { looksLikeCommand } from "@/components/studio-shell/chirpy-command-gate";
 import { executeBrandCommand } from "@/lib/brand/command-client";
 import { patchProject, type ProjectPatch } from "@/lib/project/client";
 import {
@@ -79,7 +80,7 @@ const IDEA_COMMAND =
 const ADD_CONTEXT_COMMAND =
   /^(?:please\s+)?(?:add|remember|save|note)(?:\s+that)?\s+(.+)/i;
 const EDIT_ESSENTIAL_COMMAND =
-  /\b(?:change|update|edit|set)\b.*\b(voice|audience)\b.*?\bto\b\s+(.+)/i;
+  /^(?:please\s+)?(?:change|update|edit|set)\b.*\b(voice|audience)\b.*?\bto\b\s+(.+)/i;
 const EDIT_CONTEXT_COMMAND =
   /\b(?:change|update|edit)\b\s+(?:the\s+)?(?:knowledge|context|memory)\s+[“"]?(.+?)[”"]?\s+\bto\b\s+(.+)/i;
 
@@ -143,7 +144,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const brainTools = useRef<ChirpyBrainTools | null>(null);
   const nextID = useRef(1);
   const sending = useRef(false);
-  const composer = useRef<HTMLTextAreaElement>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
 
   const append = useCallback(
     (message: Omit<ChirpyMessage, "id">) =>
@@ -166,7 +167,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     }
     setIsOpen(true);
     if (prompt) setDraft(prompt);
-    window.setTimeout(() => composer.current?.focus(), 30);
+    setFocusRequest((count) => count + 1);
   }, []);
 
   const registerBrainTools = useCallback((tools: ChirpyBrainTools | null) => {
@@ -191,7 +192,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       ) {
         event.preventDefault();
         setIsOpen((current) => !current);
-        window.setTimeout(() => composer.current?.focus(), 30);
+        setFocusRequest((count) => count + 1);
         return;
       }
       if (event.key === "Escape" && isOpen) {
@@ -257,11 +258,16 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       setWorking(true);
 
       try {
-        const brandCommand = parseBrandCommand(
-          text,
-          pathname.startsWith("/studio/brand") ||
-            messages.at(-1)?.brandColors !== undefined,
-        );
+        // A long or multi-line message is a note or a transcript, never a typed
+        // command; it goes straight to conversation.
+        const command = looksLikeCommand(text);
+        const brandCommand = command
+          ? parseBrandCommand(
+              text,
+              pathname.startsWith("/studio/brand") ||
+                messages.at(-1)?.brandColors !== undefined,
+            )
+          : null;
         if (brandCommand) {
           const reply = answer(await executeBrandCommand(brandCommand));
           if (reply.brandColors !== undefined)
@@ -273,7 +279,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
             text: "Tell me your brand colors and I’ll set up your kit. For example, ‘My brand colors are #FF7A21, black, and white’. I can also add Knowledge, create ideas from your Brain, and help shape your content.",
           });
         }
-        if (IDEA_COMMAND.test(text)) {
+        if (command && IDEA_COMMAND.test(text)) {
           const ideaRequest = ideaTextFrom(text);
           const generated = await ask([
             {
@@ -299,7 +305,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           return reply;
         }
 
-        const essential = text.match(EDIT_ESSENTIAL_COMMAND);
+        const essential = command ? text.match(EDIT_ESSENTIAL_COMMAND) : null;
         if (essential) {
           const [, field, value] = essential;
           const patch =
@@ -320,7 +326,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           });
         }
 
-        const contextEdit = text.match(EDIT_CONTEXT_COMMAND);
+        const contextEdit = command ? text.match(EDIT_CONTEXT_COMMAND) : null;
         if (contextEdit) {
           const [, query, body] = contextEdit;
           const patch = {
@@ -351,7 +357,9 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           );
         }
 
-        const context = text.match(ADD_CONTEXT_COMMAND)?.[1]?.trim();
+        const context = command
+          ? text.match(ADD_CONTEXT_COMMAND)?.[1]?.trim()
+          : undefined;
         if (context) {
           const saved = await addKnowledge({
             title: titleFrom(context),
@@ -420,11 +428,6 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     };
   }, [send]);
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    void send(draft);
-  };
-
   const value = useMemo(
     () => ({ open, registerBrainTools }),
     [open, registerBrainTools],
@@ -448,7 +451,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           {isOpen ? (
             <section
               aria-label="Ask Yapper"
-              className="bg-background/95 border-border motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 pointer-events-auto grid h-[min(460px,calc(100svh-2rem))] w-[min(560px,calc(100vw-2rem))] origin-bottom-right grid-rows-[46px_1px_minmax(0,1fr)_116px] overflow-hidden rounded-2xl border shadow-[0_18px_60px_rgba(20,16,13,0.3)] backdrop-blur-xl motion-safe:duration-200"
+              className="bg-background/95 border-border motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 pointer-events-auto grid h-[min(600px,calc(100svh-2rem))] w-[min(560px,calc(100vw-2rem))] origin-bottom-right grid-rows-[46px_1px_minmax(0,1fr)_auto] overflow-hidden rounded-2xl border shadow-[0_18px_60px_rgba(20,16,13,0.3)] backdrop-blur-xl motion-safe:duration-200"
             >
               <header className="flex h-[46px] items-center gap-2.5 px-3">
                 <Chirpy expression={expression} talking={working} size={30} />
@@ -614,50 +617,18 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                 )}
               </div>
 
-              <form onSubmit={submit} className="p-2.5">
-                <div className="bg-card border-border grid h-24 grid-rows-[minmax(0,1fr)_30px] overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[color:var(--sg-accent)]/30">
-                  <textarea
-                    ref={composer}
-                    name="chirpy-message"
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                        void send(draft);
-                      }
-                    }}
-                    placeholder={
-                      pathname.startsWith("/studio/brain")
-                        ? "Ask Yapper to change your Brain…"
-                        : "Ask Yapper anything…"
-                    }
-                    aria-label="Message Chirpy"
-                    className="text-foreground placeholder:text-muted-foreground min-h-0 resize-none bg-transparent px-2.5 pt-2 text-xs outline-none"
-                  />
-                  <div className="text-muted-foreground flex items-center gap-2 px-2.5 pb-1 text-[10px]">
-                    <span>Your Brain and brand, in one place</span>
-                    <span className="hidden sm:inline">
-                      ⏎ send · ⇧⏎ new line
-                    </span>
-                    <button
-                      type="submit"
-                      aria-label="Send"
-                      disabled={working || !draft.trim()}
-                      className="ml-auto grid size-6 place-items-center rounded-full bg-[color:var(--sg-accent)] text-black transition-opacity focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-30"
-                    >
-                      {working ? (
-                        <Loader2
-                          className="size-3 animate-spin"
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <ArrowUp className="size-3.5" aria-hidden="true" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </form>
+              <ChirpyComposer
+                focusRequest={focusRequest}
+                draft={draft}
+                onDraft={setDraft}
+                working={working}
+                placeholder={
+                  pathname.startsWith("/studio/brain")
+                    ? "Ask Yapper to change your Brain…"
+                    : "Ask Yapper anything…"
+                }
+                onSend={(text) => void send(text)}
+              />
             </section>
           ) : (
             <button
