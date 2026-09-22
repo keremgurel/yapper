@@ -490,7 +490,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                 <Chirpy expression={expression} talking={working} size={30} />
                 <div className="min-w-0">
                   <h2 className="text-xs font-bold">Ask Yapper</h2>
-                  <p className="text-muted-foreground truncate text-[10px]">
+                  <p className="text-muted-foreground truncate text-[11px]">
                     {working
                       ? "Working on it…"
                       : `Yapper · ${routeLabel(pathname)}`}
@@ -525,7 +525,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                           key={opener}
                           type="button"
                           onClick={() => void send(opener)}
-                          className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/25 rounded-md border px-2 py-1 text-[10px] transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                          className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/25 rounded-md border px-2 py-1 text-[11px] transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
                         >
                           {opener}
                         </button>
@@ -562,7 +562,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                                 {message.text}
                               </p>
                               {message.notes?.length ? (
-                                <ul className="text-muted-foreground mt-1.5 space-y-1 text-[10px]">
+                                <ul className="text-muted-foreground mt-1.5 space-y-1 text-[11px]">
                                   {message.notes.map((note) => (
                                     <li
                                       key={note}
@@ -586,7 +586,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                                     {message.brandColors.map((color, index) => (
                                       <span
                                         key={color}
-                                        className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[10px]"
+                                        className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[11px]"
                                       >
                                         <span
                                           className="size-3.5 rounded-sm border border-black/15"
@@ -620,7 +620,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                                         type="button"
                                         size="sm"
                                         variant="outline"
-                                        className="mt-1.5 h-7 text-[10px]"
+                                        className="mt-1.5 h-7 text-[11px]"
                                         onClick={() =>
                                           void saveSuggestion(suggestion)
                                         }

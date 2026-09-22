@@ -290,7 +290,7 @@ export default function RotaryKnob({
       <div className="font-mono text-[22px] font-bold tracking-[2px] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
         {formatSeconds(value)}
       </div>
-      <div className="text-[10px] tracking-[1.5px] text-white/78 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+      <div className="text-[11px] tracking-[1.5px] text-white/78 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
         {disabled ? "LOCKED" : "DRAG TO SET"}
       </div>
     </div>

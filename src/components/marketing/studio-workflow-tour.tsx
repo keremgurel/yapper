@@ -154,7 +154,7 @@ function IdeasVisual() {
             <span className="grid h-5 w-5 place-items-center rounded-md bg-gradient-to-br from-amber-400 via-pink-500 to-violet-600">
               <Camera className="h-3 w-3 text-white" />
             </span>
-            <span className="truncate text-[10px] text-[#8ec7ff]">
+            <span className="truncate text-[11px] text-[#8ec7ff]">
               instagram.com/reel/saved-inspiration
             </span>
           </div>
@@ -184,7 +184,7 @@ function ChirpyVisual() {
           <span className="mt-1 text-[9px] font-bold">Chirpy</span>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[.06] p-3">
-          <p className="text-[10px] font-bold text-white">
+          <p className="text-[11px] font-bold text-white">
             What should I post this week?
           </p>
           <p className="mt-2 text-[9px] leading-4 text-white/50">
@@ -351,7 +351,7 @@ function PolishVisual() {
                 <span>{label}</span>
                 <span>{score}</span>
               </div>
-              <p className="mt-1 text-[10px] font-bold text-white/85">
+              <p className="mt-1 text-[11px] font-bold text-white/85">
                 {value}
               </p>
             </div>
@@ -384,7 +384,7 @@ function PublishVisual() {
         <div className="flex flex-col gap-2">
           <div className="rounded-xl border border-white/10 bg-white/[.05] p-3">
             <p className="text-[8px] text-white/35">Ready to publish</p>
-            <p className="mt-1 text-[10px] font-bold text-white">
+            <p className="mt-1 text-[11px] font-bold text-white">
               The capture habit
             </p>
             <div className="mt-3 flex gap-1.5">
@@ -454,7 +454,7 @@ export default function StudioWorkflowTour() {
               style={{ containIntrinsicSize: "0 640px" }}
             >
               <div className="flex w-8 shrink-0 flex-col items-center">
-                <span className="bg-foreground text-background relative z-10 grid h-8 w-8 place-items-center rounded-full text-[10px] font-black shadow-[0_0_0_6px_var(--background)]">
+                <span className="bg-foreground text-background relative z-10 grid h-8 w-8 place-items-center rounded-full text-[11px] font-black shadow-[0_0_0_6px_var(--background)]">
                   {index + 1}
                 </span>
                 {index < workflowSteps.length - 1 ? (

@@ -91,7 +91,7 @@ function ColorSwatch({
         />
         <span className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/20 to-transparent" />
         {primary ? (
-          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[10px] font-black tracking-wide text-white uppercase backdrop-blur">
+          <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-black/65 px-2 py-1 text-[11px] font-black tracking-wide text-white uppercase backdrop-blur">
             <Star className="h-3 w-3 fill-current" /> Primary
           </span>
         ) : null}
@@ -153,14 +153,14 @@ function LogoCard({
           className="max-h-full max-w-full object-contain drop-shadow-sm"
         />
         {logo.isPrimary ? (
-          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-[color:var(--sg-accent)] px-2.5 py-1 text-[10px] font-black tracking-wide text-white uppercase shadow-sm">
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-[color:var(--sg-accent)] px-2.5 py-1 text-[11px] font-black tracking-wide text-white uppercase shadow-sm">
             <Star className="h-3 w-3 fill-current" /> Primary
           </span>
         ) : null}
       </div>
       <div className="flex items-center gap-2 border-t border-[color:var(--sg-border)] px-3 py-3">
         <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate text-sm font-black">
+          <p className="text-foreground truncate text-sm font-semibold">
             {logo.name}
           </p>
           <p className="text-muted-foreground mt-0.5 text-[11px]">
@@ -266,7 +266,7 @@ export default function BrandPanel() {
           <Palette className="text-foreground h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-foreground text-2xl font-black tracking-tight">
+          <h1 className="font-display text-foreground text-2xl font-semibold tracking-tight">
             Brand kit
           </h1>
           <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-6">
@@ -295,7 +295,7 @@ export default function BrandPanel() {
             <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] font-black tracking-[0.12em] text-white/75 uppercase backdrop-blur">
               <Sparkles className="h-3.5 w-3.5" /> Chirpy-ready
             </span>
-            <h2 className="font-display text-2xl font-black tracking-tight text-white sm:text-3xl">
+            <h2 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               One visual identity across every overlay.
             </h2>
             <p className="mt-2 max-w-md text-sm leading-6 text-white/60">
@@ -313,7 +313,7 @@ export default function BrandPanel() {
               />
             </div>
           ) : (
-            <div className="hidden h-24 w-44 items-center justify-center rounded-2xl border border-dashed border-white/20 text-xs font-bold text-white/40 sm:flex">
+            <div className="bg-muted hidden h-24 w-44 items-center justify-center rounded-2xl border-white/20 text-xs font-bold text-white/40 sm:flex">
               Your logo here
             </div>
           )}
@@ -341,7 +341,7 @@ export default function BrandPanel() {
       <section className="border-border bg-card mb-8 rounded-3xl border p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-foreground text-lg font-black">Logos</h2>
+            <h2 className="text-foreground text-lg font-semibold">Logos</h2>
             <p className="text-muted-foreground mt-1 text-sm">
               Add light, dark, icon, or wordmark versions. Mark the one Chirpy
               should reach for first.
@@ -351,7 +351,7 @@ export default function BrandPanel() {
             type="button"
             onClick={() => picker.current?.click()}
             disabled={busy || !kit || (kit?.logos.length ?? 0) >= MAX_LOGOS}
-            className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-black disabled:opacity-50"
+            className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -372,7 +372,7 @@ export default function BrandPanel() {
         </div>
 
         {kit === null ? (
-          <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-12 text-sm">
+          <div className="border-border text-muted-foreground bg-muted flex items-center gap-2 rounded-2xl px-4 py-12 text-sm">
             {loadError || error ? (
               "Your logos will appear when the brand kit loads."
             ) : (
@@ -439,12 +439,12 @@ export default function BrandPanel() {
               setDragging(false);
               void upload(event.dataTransfer.files);
             }}
-            className={`flex w-full flex-col items-center justify-center rounded-2xl border border-dashed px-6 py-12 text-center transition-colors ${dragging ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/8" : "border-border bg-muted/20 hover:bg-muted/35"}`}
+            className={`bg-muted flex w-full flex-col items-center justify-center rounded-2xl px-6 py-12 text-center transition-colors ${dragging ? "border-[color:var(--sg-accent)] bg-[color:var(--sg-accent)]/8" : "border-border bg-muted/20 hover:bg-muted/35"}`}
           >
             <span className="bg-background border-border mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border shadow-sm">
               <ImagePlus className="text-foreground h-5 w-5" />
             </span>
-            <span className="text-foreground text-sm font-black">
+            <span className="text-foreground text-sm font-semibold">
               Drop a logo here
             </span>
             <span className="text-muted-foreground mt-1 text-xs">
@@ -457,7 +457,7 @@ export default function BrandPanel() {
       <section className="border-border bg-card rounded-3xl border p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-foreground text-lg font-black">Colors</h2>
+            <h2 className="text-foreground text-lg font-semibold">Colors</h2>
             <p className="text-muted-foreground mt-1 text-sm">
               The first swatch is primary. Chirpy will check contrast and choose
               readable combinations automatically.
@@ -471,14 +471,14 @@ export default function BrandPanel() {
               const next = nextBrandColor(kit.colors);
               if (next) void persistColors([...kit.colors, next]);
             }}
-            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-black disabled:opacity-50"
+            className="border-border bg-background text-foreground hover:bg-muted inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Add color
           </button>
         </div>
 
         {kit === null ? (
-          <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-12 text-sm">
+          <div className="border-border text-muted-foreground bg-muted flex items-center gap-2 rounded-2xl px-4 py-12 text-sm">
             {loadError || error ? (
               "Your colors will appear when the brand kit loads."
             ) : (
@@ -515,9 +515,9 @@ export default function BrandPanel() {
             ))}
           </div>
         ) : (
-          <div className="border-border flex flex-col items-start gap-4 rounded-2xl border border-dashed bg-[linear-gradient(120deg,color-mix(in_srgb,var(--sg-accent)_8%,transparent),transparent)] p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="border-border bg-muted flex flex-col items-start gap-4 rounded-2xl bg-[linear-gradient(120deg,color-mix(in_srgb,var(--sg-accent)_8%,transparent),transparent)] p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-foreground text-sm font-black">
+              <p className="text-foreground text-sm font-semibold">
                 Start with safe defaults
               </p>
               <p className="text-muted-foreground mt-1 text-xs leading-5">
@@ -529,7 +529,7 @@ export default function BrandPanel() {
               type="button"
               disabled={busy}
               onClick={() => void persistColors(STARTER_COLORS)}
-              className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-black"
+              className="bg-foreground text-background inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold"
             >
               <Check className="h-4 w-4" /> Use defaults
             </button>

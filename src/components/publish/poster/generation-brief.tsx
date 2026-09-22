@@ -61,7 +61,7 @@ export default function GenerationBrief({
           className="border-border bg-background text-foreground placeholder:text-muted-foreground min-h-32 w-full resize-y rounded-lg border px-3 py-2.5 text-[13px] leading-relaxed focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-60"
           placeholder="Add context: audience, offer, CTA, keywords, tone, hashtags, or anything to avoid…"
         />
-        <span className="text-muted-foreground mt-1.5 block text-right font-mono text-[10px] tabular-nums">
+        <span className="text-muted-foreground mt-1.5 block text-right font-mono text-[11px] tabular-nums">
           {value.length}/2000
         </span>
       </label>

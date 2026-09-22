@@ -11,7 +11,7 @@ const styles: Record<Platform, string> = {
 export default function PlatformBadge({ platform }: { platform: Platform }) {
   return (
     <span
-      className={`rounded-full px-2 py-0.5 text-[10px] font-black tracking-wide uppercase ${styles[platform]}`}
+      className={`rounded-full px-2 py-0.5 text-[11px] font-black tracking-wide uppercase ${styles[platform]}`}
     >
       {PLATFORM_LABEL[platform]}
     </span>

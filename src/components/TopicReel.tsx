@@ -164,10 +164,10 @@ export default function TopicReel() {
           <div className="animate-fade-slide-in mb-3 flex justify-center gap-2 [animation-delay:50ms]">
             {isCustom ? (
               <>
-                <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
+                <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
                   Custom
                 </span>
-                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
+                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
                   Your prompt
                 </span>
               </>
@@ -177,11 +177,11 @@ export default function TopicReel() {
                     category badge is redundant. Show it only on the general
                     generator; keep difficulty everywhere (real per-prompt signal). */}
                 {!hasPool && (
-                  <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
+                  <span className="rounded-full border border-white/14 bg-white/16 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/92 uppercase backdrop-blur-xl">
                     {topic.category}
                   </span>
                 )}
-                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
+                <span className="rounded-full border border-white/12 bg-black/12 px-2.5 py-0.5 text-[11px] font-semibold tracking-wide text-white/72 uppercase backdrop-blur-xl">
                   {topic.difficulty}
                 </span>
               </>

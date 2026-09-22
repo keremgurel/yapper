@@ -63,7 +63,7 @@ export default function PillarSidebar() {
         <span className="text-xs opacity-60">{countFor(null)}</span>
       </button>
 
-      <p className="text-foreground/40 px-3 pt-4 pb-1 font-mono text-[10px] font-black tracking-[0.16em] uppercase">
+      <p className="text-foreground/40 px-3 pt-4 pb-1 font-mono text-[11px] font-black tracking-[0.16em] uppercase">
         Content pillars
       </p>
 

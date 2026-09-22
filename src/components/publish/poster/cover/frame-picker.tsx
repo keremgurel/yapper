@@ -133,7 +133,7 @@ export default function FramePicker({
         </div>
         <div
           aria-hidden
-          className="text-muted-foreground mt-2 flex justify-between font-mono text-[10px] tabular-nums"
+          className="text-muted-foreground mt-2 flex justify-between font-mono text-[11px] tabular-nums"
         >
           {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
             <span key={fraction}>{formatFrameTime(duration * fraction)}</span>

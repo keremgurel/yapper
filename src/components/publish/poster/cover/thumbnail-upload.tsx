@@ -99,7 +99,7 @@ export default function ThumbnailUpload({
             ? "Replace thumbnail"
             : "Upload thumbnail"}
       </Button>
-      <p className="text-muted-foreground text-center text-[10px]">
+      <p className="text-muted-foreground text-center text-[11px]">
         JPG, PNG, WebP · Up to 20 MB · 9:16 works best
       </p>
       {error ? (

@@ -25,7 +25,7 @@ export default function WeekView({
         return (
           <div key={dayKey(day)} className="flex flex-col">
             <div className="bg-muted/40 border-b px-2 py-2 text-center">
-              <div className="text-muted-foreground text-[10px] font-black uppercase">
+              <div className="text-muted-foreground text-[11px] font-black uppercase">
                 {day.toLocaleDateString(undefined, { weekday: "short" })}
               </div>
               <div

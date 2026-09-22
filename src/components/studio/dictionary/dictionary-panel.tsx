@@ -304,7 +304,7 @@ export default function DictionaryPanel() {
       </div>
 
       {loading ? (
-        <div className="border-border text-muted-foreground flex items-center gap-2 rounded-2xl border border-dashed px-4 py-8 text-sm">
+        <div className="border-border text-muted-foreground bg-muted flex items-center gap-2 rounded-2xl px-4 py-8 text-sm">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading your dictionary…
         </div>
       ) : error && entries.length === 0 ? (
@@ -322,7 +322,7 @@ export default function DictionaryPanel() {
           </button>
         </div>
       ) : entries.length === 0 ? (
-        <div className="border-border bg-muted/20 rounded-2xl border border-dashed px-6 py-10 text-center">
+        <div className="border-border bg-muted rounded-2xl px-6 py-10 text-center">
           <BookType className="text-muted-foreground mx-auto mb-3 h-5 w-5" />
           <p className="text-foreground text-sm font-black">
             No saved spellings yet

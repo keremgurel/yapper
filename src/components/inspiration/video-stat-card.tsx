@@ -47,7 +47,7 @@ export default function VideoStatCard({
           )}
 
           {video.isOutlier && (
-            <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[color:var(--sg-accent)] px-2 py-0.5 text-[10px] font-black text-white shadow-sm">
+            <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-[color:var(--sg-accent)] px-2 py-0.5 text-[11px] font-black text-white shadow-sm">
               <TrendingUp className="h-3 w-3" />
               {video.outlierScore
                 ? `${video.outlierScore.toFixed(1)}×`
@@ -70,7 +70,7 @@ export default function VideoStatCard({
         <button
           type="button"
           onClick={onRemix}
-          className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] font-black text-black opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-white"
+          className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[11px] font-black text-black opacity-0 shadow-sm transition-opacity group-hover:opacity-100 hover:bg-white"
         >
           <Sparkles className="h-3 w-3" />
           Make your own

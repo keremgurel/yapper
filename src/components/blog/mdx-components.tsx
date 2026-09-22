@@ -60,7 +60,7 @@ export const blogMdxComponents: MDXComponents = {
   blockquote: (props) => (
     <blockquote
       {...props}
-      className="text-foreground my-10 rounded-r-2xl border-l-4 border-amber-400 bg-gradient-to-r from-amber-50 to-transparent px-6 py-5 text-lg leading-8 italic dark:from-amber-950/30"
+      className="text-foreground bg-muted my-10 rounded-2xl px-6 py-5"
     />
   ),
   hr: (props) => <hr {...props} className="border-border my-12" />,
