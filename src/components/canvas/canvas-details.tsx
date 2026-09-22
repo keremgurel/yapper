@@ -18,7 +18,7 @@ export default function CanvasDetails({
   update: (patch: ContentPatch) => void;
 }) {
   return (
-    <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+    <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-2 text-xs">
       <ItemPillarField
         pillarId={item.pillarId}
         legacyName={item.pillar}

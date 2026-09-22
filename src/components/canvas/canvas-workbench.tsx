@@ -13,6 +13,7 @@ import { DeleteButton } from "@/components/ui/delete-button";
 import CanvasPhoneSheet from "@/components/canvas/canvas-phone-sheet";
 import CanvasPromptBar from "@/components/canvas/canvas-prompt-bar";
 import CanvasReference from "@/components/canvas/canvas-reference";
+import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
 import CanvasThread from "@/components/canvas/canvas-thread";
 import ReadLine from "@/components/brain/recall/read-line";
 import { Button } from "@/components/ui/button";
@@ -246,7 +247,13 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   };
 
   return (
-    <div className="w-full pb-16">
+    <div
+      className={
+        hasInspiration
+          ? "mx-auto w-full max-w-[1180px] pb-16"
+          : "mx-auto w-full max-w-[76ch] pb-16"
+      }
+    >
       {actionError && (
         <p role="alert" className="text-destructive mb-4 text-sm">
           {actionError}
@@ -309,7 +316,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       <div
         className={
           hasInspiration
-            ? "mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)] lg:gap-12"
+            ? "mt-8 grid gap-10 lg:grid-cols-[minmax(0,76ch)_minmax(300px,1fr)] lg:gap-14"
             : "mt-8"
         }
       >
@@ -486,9 +493,7 @@ function EmptySlot({
 }) {
   return (
     <div>
-      <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
-        {title}
-      </p>
+      <CanvasSectionTitle title={title} />
       <Button
         type="button"
         variant="ghost"
