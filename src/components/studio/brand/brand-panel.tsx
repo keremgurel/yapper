@@ -1,12 +1,15 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
+import { PageHeader } from "@/components/studio-ui";
+
 import { DeleteButton } from "@/components/ui/delete-button";
 import { useCallback, useRef, useState } from "react";
 import {
   Check,
   ImagePlus,
   Loader2,
-  Palette,
   Plus,
   Sparkles,
   Star,
@@ -254,71 +257,21 @@ export default function BrandPanel() {
     }
   };
 
-  const primaryLogo =
-    kit?.logos.find((logo) => logo.isPrimary) ?? kit?.logos[0];
-  const primaryColor = kit?.colors[0] ?? STARTER_COLORS[0];
-  const supportingColor = kit?.colors[1] ?? STARTER_COLORS[1];
-
   return (
     <div className="w-full pb-16">
-      <header className="mb-7 flex items-start gap-4">
-        <div className="border-border bg-card flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm">
-          <Palette className="text-foreground h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="font-display text-foreground text-2xl font-semibold tracking-tight">
-            Brand kit
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-6">
-            Set it once. Chirpy will use these colors and logos whenever it
-            creates graphics for your videos.
-          </p>
-          <button
+      <PageHeader
+        title="Brand kit"
+        description="Set it once. Chirpy uses these colors and logos whenever it makes graphics for your videos: numbers, charts, lower thirds and logo moments."
+        actions={
+          <Button
             type="button"
+            variant="outline"
             onClick={() => chirpy.open("My brand colors are ")}
-            className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-[color:var(--sg-accent-strong)] hover:underline"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Tell Chirpy your colors
-          </button>
-        </div>
-      </header>
-
-      <section className="border-border relative mb-8 overflow-hidden rounded-3xl border bg-[#111214] shadow-sm">
-        <div
-          className="absolute inset-0 opacity-45"
-          style={{
-            background: `radial-gradient(circle at 85% 15%, ${primaryColor}66, transparent 38%), linear-gradient(120deg, ${supportingColor}, #111214 58%)`,
-          }}
-        />
-        <div className="relative flex min-h-52 items-end justify-between gap-8 p-6 sm:p-8">
-          <div className="max-w-lg">
-            <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3 py-1.5 text-[11px] font-black tracking-[0.12em] text-white/75 uppercase backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5" /> Chirpy-ready
-            </span>
-            <h2 className="font-display text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-              One visual identity across every overlay.
-            </h2>
-            <p className="mt-2 max-w-md text-sm leading-6 text-white/60">
-              Numbers, charts, lower thirds, and logo moments can inherit this
-              kit automatically.
-            </p>
-          </div>
-          {primaryLogo ? (
-            <div className="hidden h-24 w-44 items-center justify-center rounded-2xl border border-white/15 bg-white/90 p-5 shadow-2xl sm:flex">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={primaryLogo.url}
-                alt="Primary brand logo preview"
-                className="max-h-full max-w-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="bg-muted hidden h-24 w-44 items-center justify-center rounded-2xl border-white/20 text-xs font-bold text-white/40 sm:flex">
-              Your logo here
-            </div>
-          )}
-        </div>
-      </section>
+            <Sparkles className="h-4 w-4" /> Tell Chirpy your colors
+          </Button>
+        }
+      />
 
       {error || (!kit && loadError) ? (
         <div
