@@ -3,19 +3,14 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Sparkles } from "lucide-react";
-import CanvasBlock from "@/components/canvas/canvas-block";
-import CanvasDetails from "@/components/canvas/canvas-details";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import CanvasChatPane from "@/components/canvas/canvas-chat-pane";
+import CanvasDocument from "@/components/canvas/canvas-document";
 import CanvasHeader from "@/components/canvas/canvas-header";
-import CanvasHooks from "@/components/canvas/canvas-hooks";
 import CanvasMenu from "@/components/canvas/canvas-menu";
+import { useCanvasMaximized } from "@/components/canvas/use-canvas-maximized";
 import { DeleteButton } from "@/components/ui/delete-button";
 import CanvasPhoneSheet from "@/components/canvas/canvas-phone-sheet";
-import CanvasPromptBar from "@/components/canvas/canvas-prompt-bar";
-import CanvasReference from "@/components/canvas/canvas-reference";
-import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
-import CanvasThread from "@/components/canvas/canvas-thread";
-import ReadLine from "@/components/brain/recall/read-line";
 import { Button } from "@/components/ui/button";
 import { useCanvasAsk } from "@/hooks/use-canvas-ask";
 import { useCanvasDoc } from "@/hooks/use-canvas-doc";
@@ -25,10 +20,6 @@ import type { BrainUsed } from "@/lib/brain/context/types";
 import { applyCanvasActions } from "@/lib/content/canvas-actions";
 import {
   blockFrom,
-  changeKind,
-  moveBlock,
-  removeBlock,
-  updateBlock,
   type CanvasBlock as CanvasBlockDoc,
 } from "@/lib/content/canvas-doc";
 import { noteToBlock } from "@/lib/content/note-to-block";
@@ -84,6 +75,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const [used, setUsed] = useState<BrainUsed | null>(null);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const { maximized, toggle: toggleMaximized } = useCanvasMaximized();
   const [actionError, setActionError] = useState<string | null>(null);
   const operation = useRef(false);
 
@@ -161,27 +153,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const targetBlock = blocks.find((block) => block.id === target) ?? null;
   const targetIndex = targetBlock ? blocks.indexOf(targetBlock) : null;
 
-  // The page has a fixed shape: hooks, the script, key points, and anything
-  // else the creator or Chirpy added, in that order.
-  const scriptBlock = blocks.find((block) => block.kind === "script") ?? null;
-  const pointsBlock =
-    blocks.find(
-      (block) =>
-        block !== scriptBlock &&
-        (block.kind === "bullets" || block.kind === "steps"),
-    ) ?? null;
-  const otherBlocks = blocks.filter(
-    (block) => block !== scriptBlock && block !== pointsBlock,
-  );
-  const hasInspiration = Boolean(
-    item.sourceTitle ||
-    item.sourceUrl ||
-    item.sourceTranscript ||
-    item.sourceSummary ||
-    item.recordedTranscript ||
-    item.originalNote.trim(),
-  );
-
   const ask = async (instruction: string) => {
     setNote(null);
     const pendingId = thread.pendingAsk(instruction);
@@ -246,230 +217,121 @@ export default function CanvasWorkbench({ id }: { id: string }) {
     setUndoable(null);
   };
 
+  const threadPane = {
+    messages: thread.messages,
+    failed: thread.failed,
+    onClear: () => void thread.clear(),
+    addedIds,
+    undoableId: undoable?.messageId ?? null,
+    onAddToPage: addToPage,
+    onUndo: undoLast,
+  };
+  const prompt = {
+    busy: chirpy.busy,
+    error: chirpy.error,
+    note,
+    target: targetBlock ? { label: targetBlock.label } : null,
+    onClearTarget: () => setTarget(null),
+    onAsk: ask,
+    focusToken,
+  };
+
   return (
     <div
-      className={
-        hasInspiration
-          ? "mx-auto w-full max-w-[1180px] pb-16"
-          : "mx-auto w-full max-w-[76ch] pb-16"
-      }
+      data-fluid-page
+      className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 lg:-my-8 lg:flex lg:h-[calc(100svh-var(--site-header,3.5rem)-3rem)] lg:overflow-hidden"
     >
-      {actionError && (
-        <p role="alert" className="text-destructive mb-4 text-sm">
-          {actionError}
-        </p>
-      )}
-      {saveState === "error" && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="mb-4"
-          onClick={() =>
-            void flush().catch(() =>
-              setActionError("Your edits still couldn’t be saved. Try again."),
-            )
-          }
-        >
-          Retry saving
-        </Button>
-      )}
-
-      <CanvasHeader
-        title={item.title}
-        onTitle={(title) => update({ title })}
-        status={item.status}
-        onStatus={(status) => update({ status })}
-        saveState={saveState}
-        busy={busy}
-        hasRecording={Boolean(item.submissionId)}
-        onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
-        menu={
-          <>
-            <DeleteButton
-              size="sm"
-              label={`Delete ${item.title || "this piece"}`}
-              disabled={busy}
-              onConfirm={() => void remove()}
-            />
-            <CanvasMenu
-              hasRecording={Boolean(item.submissionId)}
-              busy={busy}
-              onCopyScript={() => {
-                void navigator.clipboard
-                  .writeText(
-                    ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
-                  )
-                  .catch(() => {});
-              }}
-              onSendToPhone={() => setPhoneOpen(true)}
-              onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
-              onCrossPost={() =>
-                void navigate(`/studio/poster?item=${item.id}`)
-              }
-            />
-          </>
-        }
-      />
-
-      <CanvasDetails item={item} update={update} />
-
-      <div
-        className={
-          hasInspiration
-            ? "mt-8 grid gap-10 lg:grid-cols-[minmax(0,76ch)_minmax(300px,1fr)] lg:gap-14"
-            : "mt-8"
-        }
-      >
-        <div className="min-w-0">
-          <div className="space-y-9">
-            <CanvasHooks
-              hooks={hooks}
-              onChange={setHooks}
-              onAskForHooks={() => void ask("Give me five hooks")}
-            />
-
-            {scriptBlock ? (
-              <CanvasBlock
-                key={scriptBlock.id}
-                block={scriptBlock}
-                index={blocks.indexOf(scriptBlock)}
-                isFirst
-                isLast
-                fixedTitle="Script"
-                onChange={(patch) =>
-                  setBlocks((current) =>
-                    updateBlock(current, scriptBlock.id, patch),
-                  )
-                }
-                onKind={(kind) =>
-                  setBlocks((current) =>
-                    changeKind(current, scriptBlock.id, kind),
-                  )
-                }
-                onMove={(direction) =>
-                  setBlocks((current) =>
-                    moveBlock(current, scriptBlock.id, direction),
-                  )
-                }
-                onRemove={() =>
-                  setBlocks((current) => removeBlock(current, scriptBlock.id))
-                }
-                onAsk={() => {
-                  setTarget(scriptBlock.id);
-                  setFocusToken((token) => token + 1);
-                }}
-              />
-            ) : (
-              <EmptySlot
-                title="Script"
-                label="Write the script"
-                onAsk={() => void ask("Write the script")}
-              />
+      <section className="flex min-w-0 flex-1 flex-col lg:h-full">
+        {(actionError || saveState === "error") && (
+          <div className="border-border flex items-center gap-3 border-b px-4 py-2 text-sm">
+            {actionError && (
+              <p role="alert" className="text-destructive">
+                {actionError}
+              </p>
             )}
-
-            {pointsBlock ? (
-              <CanvasBlock
-                key={pointsBlock.id}
-                block={pointsBlock}
-                index={blocks.indexOf(pointsBlock)}
-                isFirst
-                isLast
-                fixedTitle="Key points"
-                onChange={(patch) =>
-                  setBlocks((current) =>
-                    updateBlock(current, pointsBlock.id, patch),
+            {saveState === "error" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void flush().catch(() =>
+                    setActionError(
+                      "Your edits still couldn’t be saved. Try again.",
+                    ),
                   )
                 }
-                onKind={(kind) =>
-                  setBlocks((current) =>
-                    changeKind(current, pointsBlock.id, kind),
-                  )
-                }
-                onMove={(direction) =>
-                  setBlocks((current) =>
-                    moveBlock(current, pointsBlock.id, direction),
-                  )
-                }
-                onRemove={() =>
-                  setBlocks((current) => removeBlock(current, pointsBlock.id))
-                }
-                onAsk={() => {
-                  setTarget(pointsBlock.id);
-                  setFocusToken((token) => token + 1);
-                }}
-              />
-            ) : (
-              <EmptySlot
-                title="Key points"
-                label="Give me the key points"
-                onAsk={() => void ask("Give me the key points as bullets")}
-              />
+              >
+                Retry saving
+              </Button>
             )}
-
-            {otherBlocks.map((block) => {
-              const index = blocks.indexOf(block);
-              return (
-                <CanvasBlock
-                  key={block.id}
-                  block={block}
-                  index={index}
-                  isFirst={index === 0}
-                  isLast={index === blocks.length - 1}
-                  onChange={(patch) =>
-                    setBlocks((current) =>
-                      updateBlock(current, block.id, patch),
-                    )
-                  }
-                  onKind={(kind) =>
-                    setBlocks((current) => changeKind(current, block.id, kind))
-                  }
-                  onMove={(direction) =>
-                    setBlocks((current) =>
-                      moveBlock(current, block.id, direction),
-                    )
-                  }
-                  onRemove={() =>
-                    setBlocks((current) => removeBlock(current, block.id))
-                  }
-                  onAsk={() => {
-                    setTarget(block.id);
-                    setFocusToken((token) => token + 1);
-                  }}
-                />
-              );
-            })}
           </div>
-
-          <CanvasThread
-            messages={thread.messages}
-            failed={thread.failed}
-            onClear={() => void thread.clear()}
-            addedIds={addedIds}
-            undoableId={undoable?.messageId ?? null}
-            onAddToPage={addToPage}
-            onUndo={undoLast}
-          />
-
-          <CanvasPromptBar
-            busy={chirpy.busy}
-            error={chirpy.error}
-            note={note}
-            target={targetBlock ? { label: targetBlock.label } : null}
-            onClearTarget={() => setTarget(null)}
-            onAsk={ask}
-            focusToken={focusToken}
-          />
-          {used && <ReadLine used={used} />}
-        </div>
-
-        {/* What the piece came from stays in view while you write: adapting
-            a transcript means reading it and the draft at the same time. */}
-        {hasInspiration && (
-          <aside className="min-w-0 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
-            <CanvasReference item={item} update={update} />
-          </aside>
         )}
-      </div>
+        <CanvasHeader
+          title={item.title}
+          onTitle={(title) => update({ title })}
+          status={item.status}
+          onStatus={(status) => update({ status })}
+          saveState={saveState}
+          busy={busy}
+          hasRecording={Boolean(item.submissionId)}
+          onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
+          maximized={maximized}
+          onToggleMaximized={toggleMaximized}
+          menu={
+            <>
+              <DeleteButton
+                size="sm"
+                label={`Delete ${item.title || "this piece"}`}
+                disabled={busy}
+                onConfirm={() => void remove()}
+              />
+              <CanvasMenu
+                hasRecording={Boolean(item.submissionId)}
+                busy={busy}
+                onCopyScript={() => {
+                  void navigator.clipboard
+                    .writeText(
+                      ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
+                    )
+                    .catch(() => {});
+                }}
+                onSendToPhone={() => setPhoneOpen(true)}
+                onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
+                onCrossPost={() =>
+                  void navigate(`/studio/poster?item=${item.id}`)
+                }
+              />
+            </>
+          }
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <CanvasDocument
+            item={item}
+            update={update}
+            blocks={blocks}
+            setBlocks={setBlocks}
+            hooks={hooks}
+            setHooks={setHooks}
+            onAsk={(instruction) => void ask(instruction)}
+            onAskBlock={(id) => {
+              setTarget(id);
+              setFocusToken((token) => token + 1);
+            }}
+          />
+        </div>
+      </section>
+
+      {!maximized && (
+        <aside className="border-border bg-background lg:order-first lg:h-full lg:w-[380px] lg:shrink-0 lg:border-r">
+          <CanvasChatPane
+            item={item}
+            update={update}
+            thread={threadPane}
+            prompt={prompt}
+            used={used}
+          />
+        </aside>
+      )}
 
       <CanvasPhoneSheet
         open={phoneOpen}
@@ -477,32 +339,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         itemId={item.id}
         beforeOpen={flush}
       />
-    </div>
-  );
-}
-
-/** A slot with nothing in it yet: its name, and the one ask that fills it. */
-function EmptySlot({
-  title,
-  label,
-  onAsk,
-}: {
-  title: string;
-  label: string;
-  onAsk: () => void;
-}) {
-  return (
-    <div>
-      <CanvasSectionTitle title={title} />
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onAsk}
-        className="text-muted-foreground -ml-2"
-      >
-        <Sparkles className="h-4 w-4" /> {label}
-      </Button>
     </div>
   );
 }

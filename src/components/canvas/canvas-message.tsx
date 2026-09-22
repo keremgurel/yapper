@@ -27,14 +27,14 @@ export default function CanvasMessage({
   return (
     <div className={`flex ${creator ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[68ch] rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed ${
+        className={`max-w-[92%] rounded-2xl px-3.5 py-2 text-[14px] leading-relaxed ${
           creator
             ? "bg-muted text-foreground rounded-br-md"
             : "text-foreground rounded-bl-md"
         } ${message.pending ? "opacity-60" : ""}`}
       >
         {!creator && (
-          <span className="text-muted-foreground mb-0.5 block text-[11px] font-bold tracking-[0.1em] uppercase">
+          <span className="text-muted-foreground mb-0.5 block text-[12px] font-medium">
             Chirpy
           </span>
         )}

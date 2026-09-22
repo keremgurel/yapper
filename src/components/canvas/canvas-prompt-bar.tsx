@@ -53,7 +53,7 @@ export default function CanvasPromptBar({
   };
 
   return (
-    <div className="sticky bottom-4 mt-10">
+    <div>
       <div className="sg-glass focus-within:border-foreground/25 p-2 transition-[border-color,box-shadow] focus-within:shadow-md">
         {target && (
           <div className="flex items-center gap-2 px-2 pt-1">

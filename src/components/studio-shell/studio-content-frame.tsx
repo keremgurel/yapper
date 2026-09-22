@@ -14,6 +14,7 @@ export default function StudioContentFrame({
 }: ComponentPropsWithoutRef<"div"> & { fluid?: boolean }) {
   return (
     <div
+      data-slot="studio-content-frame"
       className={cn(
         "w-full",
         fluid

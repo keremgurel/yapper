@@ -1409,3 +1409,10 @@ select {
 [data-app] [data-site-nav] {
   display: none !important;
 }
+
+/* A page that owns the whole workspace (the idea canvas) steps out of the
+ * shared content width; the shell's frame is a server component and cannot
+ * know the route. */
+[data-slot="studio-content-frame"]:has(> [data-fluid-page]) {
+  max-width: none;
+}
