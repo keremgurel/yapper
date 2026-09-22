@@ -15,16 +15,21 @@
 :root {
   color-scheme: light;
 
-  /* fonts — one geo-grotesque family; legacy names aliased to Hanken */
-  --font-body-sans: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
-  --font-display-sans:
-    var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  /* fonts: the platform's own face. SF Pro on Apple devices, which is where
+     the native app runs; the system font elsewhere. It ships optical sizing
+     and tracking tables no web font matches. */
+  --sg-font-system:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-body-sans: var(--sg-font-system);
+  --font-display-sans: var(--sg-font-system);
   /* Outfit carries the headlines; Hanken keeps every reading surface, so the
      app's body copy is untouched by the brand change. */
   --sg-font-display:
     var(--font-outfit), Outfit, var(--font-hanken), system-ui, sans-serif;
-  --sg-font-body: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
-  --sg-font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --sg-font-body: var(--sg-font-system);
+  --sg-font-mono:
+    ui-monospace, "SF Mono", Menlo, var(--font-geist-mono), monospace;
 
   /* ink ramp */
   --sg-ink-950: #141314;

@@ -30,12 +30,14 @@ size and gets out of the way.
 
 ## 2. Type
 
-**One family. Hanken Grotesk for everything, Geist Mono for numerals.**
-A second display family is explicitly ruled out: the app already reads as one
-voice, the workbench was rebuilt on Hanken alone, and a new font would force a
-re-audit of every surface. Contrast comes from size, weight, case and tracking.
-`--sg-font-mono` (Geist Mono) is reserved for tabular numerals: stat values,
-durations, counts, timecodes. Never for prose or labels.
+**One family: the platform's system font.** `--sg-font-system` resolves to
+SF Pro on Apple devices (where the native app runs) and to the platform face
+elsewhere. Apple's own guidance applies: the system font ships optical sizing
+and size-specific tracking, so we do not fight it with letter-spacing except
+on large titles (negative) and small uppercase labels (positive). A second
+display family is ruled out; contrast comes from size, weight, case and
+tracking. `--sg-font-mono` (SF Mono, then Menlo) is reserved for tabular
+numerals: stat values, durations, counts, timecodes. Never for prose or labels.
 
 The scale (exact classes, use these strings):
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
+
 import { linkSpans } from "@/lib/inspiration/link-spans";
 
 /**
@@ -24,14 +26,25 @@ export const COMPOSER_TEXT_CLASSES =
 export default function LinkHighlightOverlay({
   text,
   armedLink,
+  scrollTop = 0,
 }: {
+  /** The textarea's scroll offset, so the painted text stays under the typed text. */
+  scrollTop?: number;
   text: string;
   /** The link Backspace has taken hold of, shown as selected before it goes. */
   armedLink?: string | null;
 }) {
+  const overlay = useRef<HTMLDivElement>(null);
+  // The textarea scrolls; this layer is overflow-hidden, so it is scrolled by
+  // hand to the same offset or the painted words drift from the typed ones.
+  useLayoutEffect(() => {
+    if (overlay.current) overlay.current.scrollTop = scrollTop;
+  }, [scrollTop, text]);
+
   return (
     <div
       aria-hidden
+      ref={overlay}
       className={`${COMPOSER_TEXT_CLASSES} text-foreground pointer-events-none absolute inset-0 overflow-hidden font-normal whitespace-pre-wrap`}
     >
       {linkSpans(text).map((span, index) =>
