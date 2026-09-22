@@ -163,6 +163,10 @@ struct AppShellView: View {
                     // editor: the library holds no work in progress, and one
                     // that stayed mounted would rebuild on every edit made in
                     // the tab next door.
+                    if NativeSurfaces.enabled.contains(destination) {
+                        NativeSurfaceHost(destination: destination, session: session, navigate: navigate)
+                    }
+
                     if destination == .audio {
                         AudioLibraryPage(
                             session: session,
