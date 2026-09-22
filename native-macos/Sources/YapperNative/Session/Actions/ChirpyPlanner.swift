@@ -44,9 +44,49 @@ extension EditorSession {
                 "name": .string($0.name), "time": .number($0.timelineStart), "volume": .number($0.volume),
                 "effectID": $0.builtInID.map(ActionJSON.string) ?? .null]) }),
             "soundLibrary": .array(SoundEffectDescriptor.library.map { .object(["id": .string($0.id), "name": .string($0.name)]) }),
+            "timelineItems": .array(timelineItemsForContext()),
+            "transcript": .array(transcriptForContext()),
             "recentResults": try .encoding(conversation.results.suffix(16)),
             "activeOperation": .bool(activeOperation != nil)
         ]
+    }
+
+    /// Every item on the timeline with its kind and timeline span, in play
+    /// order, so a request like "delete the third clip" resolves to an ID.
+    private func timelineItemsForContext() -> [ActionJSON] {
+        var items: [(start: Double, json: ActionJSON)] = []
+        for clip in project.clips {
+            let start = project.timelineStart(for: clip.id) ?? 0
+            items.append((start, .object(["id": .string(clip.id.uuidString), "kind": .string("clip"),
+                "start": .number(start), "end": .number(start + clip.duration), "locked": .bool(clip.locked),
+                "media": .string(project.media(for: clip)?.name ?? "")])))
+        }
+        for cue in project.captionCues {
+            items.append((cue.timelineStart, .object(["id": .string(cue.id.uuidString), "kind": .string("caption"),
+                "start": .number(cue.timelineStart), "end": .number(cue.timelineEnd), "text": .string(String(cue.text.prefix(80)))])))
+        }
+        for layer in project.textLayers ?? [] {
+            items.append((layer.timelineStart, .object(["id": .string(layer.id.uuidString), "kind": .string("text"),
+                "start": .number(layer.timelineStart), "end": .number(layer.timelineStart + layer.duration), "text": .string(String(layer.text.prefix(80)))])))
+        }
+        for overlay in overlays {
+            items.append((overlay.timelineStart, .object(["id": .string(overlay.id.uuidString), "kind": .string("overlay"),
+                "start": .number(overlay.timelineStart), "end": .number(overlay.timelineStart + overlay.duration), "media": .string(media(for: overlay)?.name ?? "")])))
+        }
+        for layer in project.audioLayers ?? [] {
+            items.append((layer.timelineStart, .object(["id": .string(layer.id.uuidString), "kind": .string("sound"),
+                "start": .number(layer.timelineStart), "end": .number(layer.timelineStart + layer.duration), "name": .string(layer.name)])))
+        }
+        return items.sorted { $0.start < $1.start }.prefix(2000).map(\.json)
+    }
+
+    /// The transcript with word IDs and whether each word is still in the
+    /// edit, so word-level cuts and restores can name exactly what to change.
+    private func transcriptForContext() -> [ActionJSON] {
+        (project.transcript ?? []).prefix(4000).map { word in
+            .object(["id": .string(word.id.uuidString), "text": .string(word.text), "mediaID": .string(word.mediaID.uuidString),
+                     "start": .number(word.start), "end": .number(word.end), "kept": .bool(project.isWordKept(word))])
+        }
     }
 
     func runContextualAssistant(_ text: String) async {

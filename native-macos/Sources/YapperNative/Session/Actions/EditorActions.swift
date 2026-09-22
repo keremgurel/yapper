@@ -15,11 +15,14 @@ extension AppActionRegistry {
         registry.registerStyleActions()
         registry.registerClipPropertyActions()
         registry.registerAudioVolume()
+        registry.registerTimelineActions()
         registry.registerWorkflow(TranscribeWorkflowInput.self) { session, _ in
             await session.transcribeProject(); return session.lastTranscriptionWasCanceled
         }
         registry.registerWorkflow(CleanupWorkflowInput.self) { session, _ in await session.runOneClickEdit() }
-        registry.registerWorkflow(SilenceWorkflowInput.self) { session, _ in await session.autoTrimSilences() }
+        registry.registerWorkflow(SilenceWorkflowInput.self) { session, input in
+            await session.autoTrimSilences(clipIDs: input.clipIDs.map(Set.init))
+        }
         registry.registerWorkflow(OverlayWorkflowInput.self) { session, input in
             let canceled = await session.placeOverlaysWithAI(instruction: input.instruction)
             if case let .failed(message) = session.overlayPlacement { throw AppActionError(message) }

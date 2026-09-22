@@ -41,9 +41,12 @@ struct CaptionOutlineExportTests {
         var solid = 0, damaged = 0
         for y in 0..<plain.pixelsHigh {
             for x in 0..<plain.pixelsWide {
+                // Magenta fill after H.264 chroma subsampling. The hosted CI
+                // runner decodes the green channel near 0.23 where a local
+                // machine gives near 0, so the gate is on red and blue only.
                 guard let before = plain.colorAt(x: x, y: y),
-                      before.redComponent > 0.95, before.blueComponent > 0.95,
-                      before.greenComponent < 0.05 else { continue }
+                      before.redComponent > 0.9, before.blueComponent > 0.9,
+                      before.greenComponent < 0.35 else { continue }
                 solid += 1
                 let after = try #require(outlined.colorAt(x: x, y: y))
                 if after.redComponent < 0.85 || after.blueComponent < 0.85 { damaged += 1 }

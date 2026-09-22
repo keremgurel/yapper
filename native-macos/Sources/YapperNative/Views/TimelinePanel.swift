@@ -97,9 +97,9 @@ struct TimelinePanel: View {
                     title: "Auto-trim",
                     systemImage: "waveform",
                     shortcut: "⇧⌘T",
-                    help: "Remove silent gaps across the timeline"
+                    help: "Remove silent gaps in the selected clips, or everywhere when nothing is selected"
                 ) {
-                    Task { await session.autoTrimSilences() }
+                    Task { await session.autoTrimSilences(clipIDs: session.selectedClipIDs.isEmpty ? nil : session.selectedClipIDs) }
                 }
                 .disabled(session.project.clips.isEmpty || session.isBusy)
                 Spacer()

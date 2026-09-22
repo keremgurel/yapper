@@ -8,7 +8,7 @@ The numbers come from `scripts/app-actions/inventory.py`, which lists every `Edi
 | ---------------------------------------------------- | ----- |
 | Session methods called from views and menus          | 204   |
 | Methods that change the project, account, or history | 118   |
-| Of those, already routed through the action registry | 30    |
+| Of those, already routed through the action registry | 39    |
 | Registered workflows the UI still calls directly     | 5     |
 | Methods that are selection, playback, preview, reads | 86    |
 
@@ -20,18 +20,18 @@ Proposed IDs follow the existing `editor.<feature>.<verb>` convention. "Property
 
 ### Timeline and clips
 
-| Session method                                                          | Commits via        | Proposed action                  | Notes                                                          |
-| ----------------------------------------------------------------------- | ------------------ | -------------------------------- | -------------------------------------------------------------- |
-| `trimTimelineSelection`, `commitClipTrim`                               | commitTimelineEdit | `editor.clips.trim`              | Explicit clip IDs plus new in/out. Drag preview stays UI-only. |
-| `splitAtPlayhead`                                                       | commitTimelineEdit | `editor.clips.split`             | Takes a timeline anchor, not only the playhead.                |
-| `deleteTimelineSelection`, `deleteSelected`                             | commitTimelineEdit | `editor.timeline.delete`         | Mixed item kinds: clips, captions, overlays, text, audio.      |
-| `commitTimelineSelectionMove`                                           | commitTimelineEdit | `editor.clips.reorder`           | Insertion index; the reorder plan helper is reusable.          |
-| `deleteTranscriptWords`, `restoreTranscriptWords`                       | commitTimelineEdit | `editor.transcript.setWordsKept` | One action with a `kept` flag covers both.                     |
-| `deleteTranscriptPause`, `restoreTranscriptPause`                       | commitTimelineEdit | `editor.transcript.setPauseKept` | Same shape as words.                                           |
-| `promoteClipToOverlay`                                                  | commitTimelineEdit | `editor.clips.promoteToOverlay`  |                                                                |
-| `demoteOverlayToClip`                                                   | commitTimelineEdit | `editor.overlays.demoteToClip`   |                                                                |
-| `appendMediaToTimeline`, `appendSelectedMediaToTimeline`, `importAudio` | commitTimelineEdit | `editor.timeline.appendMedia`    | Media already in the bin; import itself is below.              |
-| `setAspectRatio`                                                        | commitTimelineEdit | `editor.project.setAspectRatio`  | Property.                                                      |
+| Session method                                                          | Commits via        | Proposed action                             | Notes                                                                                                    |
+| ----------------------------------------------------------------------- | ------------------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `trimTimelineSelection`                                                 | performAppAction   | registered `editor.timeline.trim`           | Any item kind, one edge, one timeline anchor. `commitClipTrim` (the drag handle) still commits directly. |
+| `splitAtPlayhead`                                                       | performAppAction   | registered `editor.timeline.split`          | Any item kind at a timeline anchor.                                                                      |
+| `deleteTimelineSelection`, `deleteSelected`                             | performAppAction   | registered `editor.timeline.delete`         | Mixed item kinds; locked items are skipped and named.                                                    |
+| `commitTimelineSelectionMove`                                           | commitTimelineEdit | UI drag commit over the registered cores    | The drop runs the same cores as `editor.clips.reorder` and `editor.timeline.shift`, as one Undo step.    |
+| `deleteTranscriptWords`, `restoreTranscriptWords`                       | performAppAction   | registered `editor.transcript.setWordsKept` |                                                                                                          |
+| `deleteTranscriptPause`, `restoreTranscriptPause`                       | performAppAction   | registered `editor.transcript.setPauseKept` |                                                                                                          |
+| `promoteClipToOverlay`                                                  | commitTimelineEdit | `editor.clips.promoteToOverlay`             |                                                                                                          |
+| `demoteOverlayToClip`                                                   | commitTimelineEdit | `editor.overlays.demoteToClip`              |                                                                                                          |
+| `appendMediaToTimeline`, `appendSelectedMediaToTimeline`, `importAudio` | commitTimelineEdit | `editor.timeline.appendMedia`               | Media already in the bin; import itself is below.                                                        |
+| `setAspectRatio`                                                        | commitTimelineEdit | `editor.project.setAspectRatio`             | Property.                                                                                                |
 
 ### Captions
 
@@ -73,7 +73,7 @@ Crop, keyframes, zoom, and masks are registered. Placement and visibility are no
 | Session method                                                                   | Commits via        | Proposed action                                         | Notes                                                   |
 | -------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------- | ------------------------------------------------------- |
 | `addOverlay`                                                                     | commitTimelineEdit | `editor.overlays.add`                                   | Media ID plus timeline anchor.                          |
-| `deleteOverlay`                                                                  | commitTimelineEdit | covered by `editor.timeline.delete`                     |                                                         |
+| `deleteOverlay`                                                                  | commitTimelineEdit | covered by registered `editor.timeline.delete`          | The overlay panel's own button still commits directly.  |
 | `commitOverlayEdit`, `scaleOverlay`, `fillFrameWithOverlay`, `resetOverlayFrame` | commitOverlayEdit  | `editor.overlays.setFrame`                              | Box in frame fractions; writes a key on keyed overlays. |
 | `setOverlayHidden`, `setOverlayBehindSpeaker`                                    | updateProject      | `editor.overlays.setVisibility`                         | Property.                                               |
 | `applyOverlayFrame`                                                              | updateProject      | `editor.overlays.applyFrameToAll`                       |                                                         |
@@ -152,7 +152,7 @@ Roughly a third of the rows above are property sets rather than operations: capt
 ## Suggested order
 
 1. Property sets for caption style, text style, framing, retouch, background, and volume. Done, with the live-slider gap noted above.
-2. Timeline editing: trim, split, delete, reorder, transcript words and pauses. These are what a creator means by "edit".
+2. Timeline editing: trim, split, delete, reorder, shift, transcript words and pauses. Done. Auto-trim now takes a clip scope (the selection, or explicit IDs from Chirpy).
 3. Captions and text layer operations.
 4. Overlay placement and track state.
 5. Audio, media bin, project, export, and undo. Add the new effects and the account scope here.

@@ -60,18 +60,20 @@ extension EditorSession {
 
     /// How many of a card's words are already behind the playhead, which is
     /// where a split at the playhead has to cut.
-    func captionWordsBeforePlayhead(_ id: UUID) -> Int {
+    func captionWordsBeforePlayhead(_ id: UUID) -> Int { captionWordsBefore(id, time: currentTime) }
+
+    func captionWordsBefore(_ id: UUID, time: Double) -> Int {
         guard let caption = project.caption(withID: id) else { return 0 }
         guard caption.isTextEdited else {
             let index = project.captionWordIndex(for: project.captionEntries)
             return index.words(for: id).filter { word in
-                project.nearestTimelineTime(for: word) < currentTime
+                project.nearestTimelineTime(for: word) < time
             }.count
         }
         // A card placed by hand has no words of its own to count, so where the
         // playhead sits inside it decides where its text is cut.
         guard let cue = captionCue(id), cue.duration > 0 else { return 0 }
-        let fraction = min(1, max(0, (currentTime - cue.timelineStart) / cue.duration))
+        let fraction = min(1, max(0, (time - cue.timelineStart) / cue.duration))
         let words = cue.text.split(whereSeparator: \.isWhitespace).count
         return Int((Double(words) * fraction).rounded())
     }
