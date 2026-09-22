@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioNav } from "@/data/studio-nav";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** Header dropdown for the Studio (the main app): the workflow surfaces
  * followed by the supporting ones (Connections). */
@@ -53,7 +55,10 @@ export default function StudioNavDropdown() {
 
         <Link
           href="/studio/ideas"
-          className="bg-foreground text-background mt-1 flex items-center justify-between gap-2 rounded-2xl px-4 py-3 text-[13px] font-black no-underline transition-opacity hover:opacity-90"
+          className={cn(
+            buttonVariants(),
+            "mt-1 w-full justify-between no-underline",
+          )}
         >
           Open your Studio
           <ArrowRight className="h-4 w-4" />

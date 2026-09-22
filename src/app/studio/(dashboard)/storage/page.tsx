@@ -45,11 +45,11 @@ function BreakdownCard({
         <span className="bg-muted text-foreground grid h-9 w-9 place-items-center rounded-xl">
           <Icon className="h-4 w-4" />
         </span>
-        <span className="font-display text-foreground text-lg font-black">
+        <span className="font-display text-foreground text-lg font-semibold">
           {value}
         </span>
       </div>
-      <p className="text-foreground mt-4 text-sm font-black">{label}</p>
+      <p className="text-foreground mt-4 text-sm font-semibold">{label}</p>
       <p className="text-muted-foreground mt-1 text-xs leading-5">{detail}</p>
     </div>
   );
@@ -61,7 +61,9 @@ export default async function StoragePage() {
     return (
       <div className="mx-auto max-w-xl py-20 text-center">
         <HardDrive className="text-muted-foreground mx-auto h-8 w-8" />
-        <h1 className="font-display mt-4 text-2xl font-black">Your storage</h1>
+        <h1 className="font-display mt-4 text-2xl font-semibold">
+          Your storage
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm">
           Sign in to see what your workspace is using.
         </p>
@@ -88,7 +90,7 @@ export default async function StoragePage() {
           <p className="text-muted-foreground text-xs font-black tracking-[0.18em] uppercase">
             Workspace capacity
           </p>
-          <h1 className="font-display text-foreground mt-1 text-3xl font-black tracking-tight">
+          <h1 className="font-display text-foreground mt-1 text-3xl font-semibold tracking-tight">
             Storage
           </h1>
           <p className="text-muted-foreground mt-2 max-w-2xl text-sm leading-6">
@@ -115,7 +117,7 @@ export default async function StoragePage() {
               <p className="text-muted-foreground text-xs font-bold">
                 {plan ? `${plan.name} membership` : "Included storage"}
               </p>
-              <p className="font-display text-foreground mt-1 text-3xl font-black tabular-nums sm:text-4xl">
+              <p className="font-display text-foreground mt-1 text-3xl font-semibold tabular-nums sm:text-4xl">
                 {formatStorageBytes(usedBytes)}
                 <span className="text-muted-foreground text-lg font-bold">
                   {" "}
@@ -124,7 +126,7 @@ export default async function StoragePage() {
               </p>
             </div>
             <span
-              className={`rounded-full px-3 py-1.5 text-xs font-black ${
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                 pressure === "critical"
                   ? "bg-red-500/12 text-red-600 dark:text-red-400"
                   : pressure === "near"
@@ -181,7 +183,7 @@ export default async function StoragePage() {
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-foreground text-lg font-black">
+            <h2 className="font-display text-foreground text-lg font-semibold">
               Video storage
             </h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
@@ -190,7 +192,7 @@ export default async function StoragePage() {
           </div>
           <Link
             href="/history"
-            className="text-foreground inline-flex items-center gap-1.5 text-xs font-black no-underline hover:underline"
+            className="text-foreground inline-flex items-center gap-1.5 text-xs font-semibold no-underline hover:underline"
           >
             <Trash2 className="h-3.5 w-3.5" /> Manage videos
           </Link>
@@ -226,7 +228,7 @@ export default async function StoragePage() {
       <section className="border-border bg-card rounded-[24px] border p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-display text-foreground text-lg font-black">
+            <h2 className="font-display text-foreground text-lg font-semibold">
               Written workspace
             </h2>
             <p className="text-muted-foreground mt-1 max-w-2xl text-xs leading-5">
@@ -235,7 +237,7 @@ export default async function StoragePage() {
               transparency but does not consume your video allowance.
             </p>
           </div>
-          <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-black">
+          <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-semibold">
             Included
           </span>
         </div>
@@ -246,7 +248,7 @@ export default async function StoragePage() {
           >
             <Brain className="text-muted-foreground h-5 w-5" />
             <span>
-              <span className="text-foreground block text-sm font-black">
+              <span className="text-foreground block text-sm font-semibold">
                 {details.workspace.brainBlocks} Brain blocks
               </span>
               <span className="text-muted-foreground text-xs">
@@ -260,7 +262,7 @@ export default async function StoragePage() {
           >
             <Lightbulb className="text-muted-foreground h-5 w-5" />
             <span>
-              <span className="text-foreground block text-sm font-black">
+              <span className="text-foreground block text-sm font-semibold">
                 {details.workspace.contentIdeas} ideas
               </span>
               <span className="text-muted-foreground text-xs">Idea bank</span>
@@ -272,7 +274,7 @@ export default async function StoragePage() {
           >
             <Library className="text-muted-foreground h-5 w-5" />
             <span>
-              <span className="text-foreground block text-sm font-black">
+              <span className="text-foreground block text-sm font-semibold">
                 {details.workspace.contentLibrary} library items
               </span>
               <span className="text-muted-foreground text-xs">
@@ -284,7 +286,7 @@ export default async function StoragePage() {
       </section>
 
       <section>
-        <h2 className="font-display text-foreground text-lg font-black">
+        <h2 className="font-display text-foreground text-lg font-semibold">
           Plan headroom
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
@@ -300,7 +302,7 @@ export default async function StoragePage() {
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-foreground text-sm font-black">
+                  <p className="text-foreground text-sm font-semibold">
                     {candidate.name}
                   </p>
                   {current ? (
@@ -309,7 +311,7 @@ export default async function StoragePage() {
                     </span>
                   ) : null}
                 </div>
-                <p className="font-display text-foreground mt-3 text-2xl font-black">
+                <p className="font-display text-foreground mt-3 text-2xl font-semibold">
                   {candidate.storageLabel}
                 </p>
                 <p className="text-muted-foreground mt-1 text-xs">

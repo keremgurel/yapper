@@ -3,6 +3,8 @@ import { ArrowRight } from "lucide-react";
 
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioFlowNav } from "@/data/studio-nav";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** Homepage section marketing the Studio workflow (the main app). */
 export default function StudioFlowSection() {
@@ -13,7 +15,7 @@ export default function StudioFlowSection() {
           <p className="text-xs font-black tracking-[0.18em] text-cyan-700 uppercase dark:text-cyan-300">
             The Studio workflow
           </p>
-          <h2 className="font-display text-foreground mt-3 text-[32px] leading-[1.1] font-black tracking-tight md:text-[44px]">
+          <h2 className="font-display text-foreground mt-3 text-[32px] leading-[1.1] font-semibold tracking-tight md:text-[44px]">
             From a saved clip to a posted video.
           </h2>
           <p className="text-foreground/60 mx-auto mt-4 max-w-xl text-[15px] leading-relaxed">
@@ -38,7 +40,7 @@ export default function StudioFlowSection() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
               </div>
-              <p className="text-foreground mt-4 text-lg font-black tracking-tight">
+              <p className="text-foreground mt-4 text-lg font-semibold tracking-tight">
                 {item.title}
               </p>
               <p className="text-foreground/55 mt-1 text-[13px] leading-5">
@@ -51,7 +53,7 @@ export default function StudioFlowSection() {
         <div className="mt-10 flex justify-center">
           <Link
             href="/studio/ideas"
-            className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-black no-underline transition-opacity hover:opacity-90"
+            className={cn(buttonVariants({ size: "lg" }), "no-underline")}
           >
             Open your Studio
             <ArrowRight className="h-4 w-4" />

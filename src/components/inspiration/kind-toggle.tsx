@@ -43,7 +43,7 @@ export default function KindToggle({
             {t.label}
             {counts && (
               <span
-                className={`text-xs font-black ${active ? "text-white/80" : "text-foreground/40"}`}
+                className={`text-xs font-semibold ${active ? "text-white/80" : "text-foreground/40"}`}
               >
                 {counts[t.id]}
               </span>

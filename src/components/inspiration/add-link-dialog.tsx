@@ -158,7 +158,7 @@ export default function AddLinkDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-foreground text-lg font-black">
+          <h2 className="text-foreground text-lg font-semibold">
             Add inspiration
           </h2>
           <button
@@ -221,7 +221,7 @@ export default function AddLinkDialog({
                   className="h-full w-full object-cover"
                 />
               ) : isCreator ? (
-                <span className="flex h-full w-full items-center justify-center bg-[color:var(--sg-accent)]/15 text-lg font-black text-[color:var(--sg-accent)]">
+                <span className="flex h-full w-full items-center justify-center bg-[color:var(--sg-accent)]/15 text-lg font-semibold text-[color:var(--sg-accent)]">
                   {(preview.handle || preview.title || "?")
                     .replace(/[^a-z0-9]/gi, "")
                     .charAt(0)

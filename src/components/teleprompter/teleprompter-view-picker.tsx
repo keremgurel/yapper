@@ -30,7 +30,7 @@ export default function TeleprompterViewPicker({
       <p className="text-foreground/45 mb-1 font-mono text-[11px] font-black tracking-[0.16em] uppercase">
         Teleprompter
       </p>
-      <h1 className="text-foreground mb-1 text-2xl font-black tracking-tight">
+      <h1 className="text-foreground mb-1 text-2xl font-semibold tracking-tight">
         {title || "Your take"}
       </h1>
       <p className="text-foreground/55 mb-6 text-sm">

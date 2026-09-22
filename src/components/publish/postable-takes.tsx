@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 import { useRef, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Loader2, Send, Upload } from "lucide-react";
@@ -56,14 +58,15 @@ export default function PostableTakes() {
   return (
     <section>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-foreground text-lg font-black tracking-tight">
+        <h2 className="font-display text-foreground text-lg font-semibold tracking-tight">
           Ready to post
         </h2>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => fileRef.current?.click()}
           disabled={uploading || !isSignedIn}
-          className="border-border text-foreground hover:bg-muted inline-flex items-center gap-1.5 rounded-md border px-3.5 py-1.5 text-xs font-black transition-colors disabled:opacity-50"
         >
           {uploading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -71,7 +74,7 @@ export default function PostableTakes() {
             <Upload className="h-3.5 w-3.5" />
           )}
           {uploading ? "Uploading…" : "Upload video"}
-        </button>
+        </Button>
         <input
           ref={fileRef}
           type="file"
@@ -114,7 +117,9 @@ export default function PostableTakes() {
                   Edited {when(v.updatedAt)}
                 </p>
               </div>
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 type="button"
                 onClick={() =>
                   setTarget({
@@ -124,11 +129,11 @@ export default function PostableTakes() {
                     contentItemId: v.id,
                   })
                 }
-                className="bg-foreground text-background inline-flex shrink-0 items-center gap-1.5 rounded-md px-3.5 py-1.5 text-xs font-black transition-opacity hover:opacity-90"
+                className="shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />
                 Post
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
