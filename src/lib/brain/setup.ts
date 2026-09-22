@@ -78,7 +78,8 @@ const SYSTEM =
   "others out entirely. Write each as the creator describing themselves, " +
   "concrete and specific, under 700 characters, using the document's own " +
   "wording where it is good. name is what they call the channel or brand. " +
-  "whatIMake is what the content is. audience is who it is for, with the " +
+  "whatIMake is what the content is; when the document lays out pillars or " +
+  "formats, summarise them here rather than leaving it empty. audience is who it is for, with the " +
   "behavioural trait that defines them. voice is how they sound and the " +
   "phrases they use. scriptingPatterns is how a script opens, moves and " +
   "closes. offers is what is being promoted. doNots is what must never be " +
