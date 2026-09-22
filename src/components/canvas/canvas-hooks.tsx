@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, Sparkles, X } from "lucide-react";
+import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -23,9 +24,7 @@ export default function CanvasHooks({
   if (hooks.length === 0) {
     return (
       <div>
-        <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
-          Hooks
-        </p>
+        <CanvasSectionTitle title="Hooks" />
         <Button
           type="button"
           variant="ghost"
@@ -47,22 +46,18 @@ export default function CanvasHooks({
 
   return (
     <div>
-      <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
-        Hooks
-        {hooks.length > 1 && (
-          <span className="ml-2 font-medium tracking-normal normal-case">
-            {hooks.length} to choose from
-          </span>
-        )}
-      </p>
-      <div className="space-y-1">
+      <CanvasSectionTitle
+        title="Hooks"
+        meta={hooks.length > 1 ? `${hooks.length} to choose from` : undefined}
+      />
+      <div className="-mx-2 space-y-0.5">
         {hooks.map((hook, index) => {
           const chosen = index === 0;
           return (
             <div
               key={index}
-              className={`group flex items-start gap-2.5 rounded-lg px-2 py-1.5 ${
-                chosen ? "bg-muted" : "hover:bg-muted/60"
+              className={`group flex items-start gap-3 rounded-xl px-2 py-2 transition-colors ${
+                chosen ? "bg-muted" : "hover:bg-muted/50"
               }`}
             >
               <button

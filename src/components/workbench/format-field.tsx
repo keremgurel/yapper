@@ -45,9 +45,15 @@ export default function FormatField({
             type="button"
             onClick={() => toggle(id)}
             title={`Remove ${format.label}`}
-            className="rounded-md transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+            className="rounded-full transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
           >
-            <Chip tone={formatTone(id)}>{format.label}</Chip>
+            <Chip
+              tone={formatTone(id)}
+              pill
+              className="h-7 px-3 text-[12px] font-medium"
+            >
+              {format.label}
+            </Chip>
           </button>
         );
       })}
@@ -57,9 +63,10 @@ export default function FormatField({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label="Add a format"
-        className="text-muted-foreground hover:text-foreground hover:bg-muted rounded p-0.5 transition-colors"
+        className="bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70 inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[12px] font-medium transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
       >
         <Plus className="h-3.5 w-3.5" />
+        {formats.length === 0 ? "Format" : null}
       </button>
 
       {open && (

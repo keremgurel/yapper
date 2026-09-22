@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Sparkles, X } from "lucide-react";
+import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
 import { Button } from "@/components/ui/button";
 import { isListKind } from "@/lib/content/block-edits";
 import type {
@@ -65,84 +66,84 @@ export default function CanvasBlock({
 
   return (
     <div className="group relative" data-block-index={index}>
-      <div className="mb-1 flex items-center gap-2">
-        {fixedTitle ? (
-          <h2 className="text-muted-foreground min-w-0 flex-1 text-[11px] font-bold tracking-[0.1em] uppercase">
-            {fixedTitle}
-          </h2>
-        ) : (
-          <input
-            value={block.label}
-            onChange={(event) => onChange({ label: event.target.value })}
-            placeholder="Name this block"
-            aria-label={`Block ${index + 1} label`}
-            className="text-muted-foreground placeholder:text-muted-foreground/50 focus:text-foreground min-w-0 flex-1 bg-transparent text-[11px] font-bold tracking-[0.1em] uppercase outline-none"
-          />
-        )}
-        <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={onAsk}
-            className="text-muted-foreground"
-            aria-label={`Ask Chirpy about block ${index + 1}`}
-            title="Ask Chirpy about this block"
-          >
-            <Sparkles className="h-3 w-3" /> Ask
-          </Button>
-          {!fixedTitle && (
-            <select
-              value={block.kind}
-              onChange={(event) => onKind(event.target.value as CanvasKind)}
-              aria-label={`Block ${index + 1} kind`}
-              className="text-muted-foreground h-6 cursor-pointer rounded border-0 bg-transparent text-[11px] font-bold outline-none"
+      <CanvasSectionTitle
+        title={
+          fixedTitle ?? (
+            <input
+              value={block.label}
+              onChange={(event) => onChange({ label: event.target.value })}
+              placeholder="Name this part"
+              aria-label={`Block ${index + 1} label`}
+              className="text-foreground placeholder:text-muted-foreground/50 w-full min-w-0 bg-transparent text-[15px] font-semibold tracking-[-0.01em] outline-none"
+            />
+          )
+        }
+        actions={
+          <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onClick={onAsk}
+              className="text-muted-foreground"
+              aria-label={`Ask Chirpy about block ${index + 1}`}
+              title="Ask Chirpy about this block"
             >
-              {KINDS.map((kind) => (
-                <option key={kind.value} value={kind.value}>
-                  {kind.label}
-                </option>
-              ))}
-            </select>
-          )}
-          {!fixedTitle && (
+              <Sparkles className="h-3 w-3" /> Ask
+            </Button>
+            {!fixedTitle && (
+              <select
+                value={block.kind}
+                onChange={(event) => onKind(event.target.value as CanvasKind)}
+                aria-label={`Block ${index + 1} kind`}
+                className="text-muted-foreground h-6 cursor-pointer rounded border-0 bg-transparent text-[12px] font-medium outline-none"
+              >
+                {KINDS.map((kind) => (
+                  <option key={kind.value} value={kind.value}>
+                    {kind.label}
+                  </option>
+                ))}
+              </select>
+            )}
+            {!fixedTitle && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => onMove(-1)}
+                disabled={isFirst}
+                aria-label={`Move block ${index + 1} up`}
+                className="text-muted-foreground"
+              >
+                <ChevronUp />
+              </Button>
+            )}
+            {!fixedTitle && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => onMove(1)}
+                disabled={isLast}
+                aria-label={`Move block ${index + 1} down`}
+                className="text-muted-foreground"
+              >
+                <ChevronDown />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              onClick={() => onMove(-1)}
-              disabled={isFirst}
-              aria-label={`Move block ${index + 1} up`}
-              className="text-muted-foreground"
+              onClick={onRemove}
+              aria-label={`Remove block ${index + 1}`}
+              className="text-muted-foreground hover:text-destructive"
             >
-              <ChevronUp />
+              <X />
             </Button>
-          )}
-          {!fixedTitle && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => onMove(1)}
-              disabled={isLast}
-              aria-label={`Move block ${index + 1} down`}
-              className="text-muted-foreground"
-            >
-              <ChevronDown />
-            </Button>
-          )}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            onClick={onRemove}
-            aria-label={`Remove block ${index + 1}`}
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <X />
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {rendered ? (
         <button
@@ -152,7 +153,7 @@ export default function CanvasBlock({
           aria-label={`Edit block ${index + 1}`}
         >
           <ul
-            className={`text-foreground/90 max-w-[68ch] space-y-1 text-[15px] leading-relaxed ${
+            className={`text-foreground/90 space-y-1.5 text-[15px] leading-relaxed ${
               block.kind === "steps" ? "list-decimal" : "list-disc"
             } pl-5`}
           >
@@ -188,7 +189,7 @@ export default function CanvasBlock({
                 : "Write here, or ask Chirpy below."
           }
           aria-label={`Block ${index + 1} content`}
-          className={`placeholder:text-muted-foreground/50 w-full max-w-[68ch] resize-none bg-transparent outline-none ${
+          className={`placeholder:text-muted-foreground/50 w-full resize-none bg-transparent outline-none ${
             script
               ? "text-foreground text-[17px] leading-[1.75]"
               : "text-foreground/90 text-[15px] leading-relaxed"
