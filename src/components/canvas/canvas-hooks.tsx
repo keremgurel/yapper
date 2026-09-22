@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Check, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -13,11 +13,31 @@ import { Button } from "@/components/ui/button";
 export default function CanvasHooks({
   hooks,
   onChange,
+  onAskForHooks,
 }: {
   hooks: string[];
   onChange: (hooks: string[]) => void;
+  /** Sends "Give me five hooks" to Chirpy; shown when there are none yet. */
+  onAskForHooks: () => void;
 }) {
-  if (hooks.length === 0) return null;
+  if (hooks.length === 0) {
+    return (
+      <div>
+        <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
+          Hooks
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onAskForHooks}
+          className="text-muted-foreground -ml-2"
+        >
+          <Sparkles className="h-4 w-4" /> Give me five hooks
+        </Button>
+      </div>
+    );
+  }
   const choose = (index: number) =>
     onChange([hooks[index], ...hooks.filter((_, i) => i !== index)]);
   const edit = (index: number, text: string) =>
@@ -28,7 +48,12 @@ export default function CanvasHooks({
   return (
     <div>
       <p className="text-muted-foreground mb-1 text-[11px] font-bold tracking-[0.1em] uppercase">
-        Hook{hooks.length > 1 ? ` · ${hooks.length} options` : ""}
+        Hooks
+        {hooks.length > 1 && (
+          <span className="ml-2 font-medium tracking-normal normal-case">
+            {hooks.length} to choose from
+          </span>
+        )}
       </p>
       <div className="space-y-1">
         {hooks.map((hook, index) => {

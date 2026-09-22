@@ -8,8 +8,8 @@ import type { CanvasAskError } from "@/hooks/use-canvas-ask";
 const SUGGESTIONS = [
   "Write the script",
   "Give me five hooks",
+  "Give me the key points as bullets",
   "Tighten this into 30 seconds",
-  "Add a section on objections",
 ];
 
 /**
