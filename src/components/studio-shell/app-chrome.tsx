@@ -3,8 +3,10 @@
 import { startTransition, useEffect } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
 import { clearClientResources } from "@/lib/client-resource-cache";
+import { warmStudioData } from "@/lib/studio/warm-studio";
 
 const NATIVE_ROUTES = [
   "/studio/home",
@@ -15,9 +17,18 @@ const NATIVE_ROUTES = [
   "/studio/poster",
   "/studio/calendar",
   "/studio/automations",
+  "/studio/brand",
+  "/studio/storage",
   "/studio/dictionary",
   "/studio/connections",
 ] as const;
+
+/** A full prefetch: the whole route payload, not just the part above the
+ * first loading boundary. Studio routes are dynamic and have no loading
+ * boundary, so the default prefetch fetched nothing and every tab switch
+ * waited on the server. The enum value is written as its string so this
+ * client module does not import from Next's internals. */
+const FULL_PREFETCH = "full" as PrefetchOptions["kind"];
 
 type NativeNavigationWindow = Window & {
   __yapperNativeNavigate?: (path: string) => boolean;
@@ -101,11 +112,18 @@ export default function AppChrome() {
         return true;
       };
 
-      // Warm every lightweight dashboard route after the first page becomes
-      // interactive. Next deduplicates these and keeps the route payloads in
-      // its client cache, so the native sidebar can switch immediately.
+      // Warm every dashboard route, and the data the busiest ones read,
+      // after the first page becomes interactive. Next keeps full prefetches
+      // for its static period and re-fetches one when it goes stale, so the
+      // native sidebar switches from memory for the whole session.
+      const warmRoute = (route: string): void =>
+        router.prefetch(route, {
+          kind: FULL_PREFETCH,
+          onInvalidate: () => warmRoute(route),
+        });
       const warmRoutes = () => {
-        for (const route of NATIVE_ROUTES) router.prefetch(route);
+        for (const route of NATIVE_ROUTES) warmRoute(route);
+        warmStudioData();
       };
       const idleWindow = window as Window & {
         requestIdleCallback?: (callback: () => void) => number;
