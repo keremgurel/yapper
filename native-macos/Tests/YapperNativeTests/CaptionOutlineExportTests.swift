@@ -49,6 +49,22 @@ struct CaptionOutlineExportTests {
                 if after.redComponent < 0.85 || after.blueComponent < 0.85 { damaged += 1 }
             }
         }
+        if solid <= 1_000 {
+            // Diagnostic for a runner that decodes no magenta: what does the
+            // frame actually hold where the caption should be?
+            var loose = 0, bright = 0, maxRed = 0.0, maxBlue = 0.0, minGreen = 1.0
+            for y in 0..<plain.pixelsHigh {
+                for x in 0..<plain.pixelsWide {
+                    guard let c = plain.colorAt(x: x, y: y) else { continue }
+                    if c.redComponent > 0.8, c.blueComponent > 0.8, c.greenComponent < 0.3 { loose += 1 }
+                    if c.redComponent > 0.5 || c.blueComponent > 0.5 { bright += 1 }
+                    maxRed = max(maxRed, c.redComponent); maxBlue = max(maxBlue, c.blueComponent)
+                    if c.redComponent > 0.5 { minGreen = min(minGreen, c.greenComponent) }
+                }
+            }
+            let centre = plain.colorAt(x: plain.pixelsWide / 2, y: plain.pixelsHigh / 2)
+            print("CAPTION-EXPORT-DIAG size=\(plain.pixelsWide)x\(plain.pixelsHigh) loose=\(loose) bright=\(bright) maxRed=\(maxRed) maxBlue=\(maxBlue) minGreenWhereRed=\(minGreen) centre=\(String(describing: centre)) colorSpace=\(String(describing: plain.colorSpace))")
+        }
         #expect(solid > 1_000, "The caption must be visible and retain its color through the filter")
         #expect(damaged < solid / 100, "Outline cut through \(damaged) of \(solid) fill pixels")
     }
