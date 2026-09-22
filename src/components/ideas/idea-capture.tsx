@@ -32,6 +32,7 @@ export default function IdeaCapture({
   const [captureError, setCaptureError] = useState<string | null>(null);
   /// The link Backspace has taken hold of, waiting for the second press.
   const [armedLink, setArmedLink] = useState<string | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
 
   /**
    * Backspace against a link takes the whole thing, in two presses.
@@ -199,7 +200,11 @@ export default function IdeaCapture({
           look like links while this stays an ordinary textarea. See
           LinkHighlightOverlay. */}
       <div className="relative">
-        <LinkHighlightOverlay text={draft.text} armedLink={armedLink} />
+        <LinkHighlightOverlay
+          text={draft.text}
+          armedLink={armedLink}
+          scrollTop={scrollTop}
+        />
         <textarea
           ref={ref}
           value={draft.text}
@@ -212,6 +217,7 @@ export default function IdeaCapture({
           }}
           onSelect={dictation.remember}
           onKeyUp={dictation.remember}
+          onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
           onClick={() => {
             setArmedLink(null);
             dictation.remember();
