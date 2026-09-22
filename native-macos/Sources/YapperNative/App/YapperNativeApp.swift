@@ -155,7 +155,7 @@ struct YapperNativeApp: App {
                 .disabled(session.isBusy)
                 Divider()
                 Button("Auto-trim Silent Gaps") {
-                    Task { await session.autoTrimSilences() }
+                    Task { await session.autoTrimSilences(clipIDs: session.selectedClipIDs.isEmpty ? nil : session.selectedClipIDs) }
                 }
                 .keyboardShortcut("t", modifiers: [.command, .shift])
                 .disabled(session.isBusy)

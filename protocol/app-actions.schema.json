@@ -74,7 +74,7 @@
       "id": "editor.trimSilences",
       "symbol": "silenceWorkflow",
       "input": "SilenceWorkflowInput",
-      "description": "Trim silences using the app silence trimming workflow.",
+      "description": "Trim silences using the app silence trimming workflow. With clipIDs, only silences inside those main-track clips are cut; without, the whole timeline is trimmed.",
       "effect": "workflow",
       "requiresRebuild": true
     },
@@ -195,6 +195,62 @@
       "symbol": "audioVolume",
       "input": "AudioVolumeInput",
       "description": "Set playback volume (0 silent, 1 unity, up to 2) on explicit audio layer IDs and, when videoTrack is true, on the speaker's own video track. Raising the video track above 0 also unmutes it.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.timeline.split",
+      "symbol": "timelineSplit",
+      "input": "TimelineSplitInput",
+      "description": "Split explicit timeline items (clips, captions, text layers, overlays, sounds) at one timeline anchor. Items the anchor does not fall inside are left alone. Locked clips and captions are skipped. The receipt names each new tail ID.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.timeline.delete",
+      "symbol": "timelineDelete",
+      "input": "TimelineDeleteInput",
+      "description": "Remove explicit timeline items by ID: clips, captions, text layers, overlays, or sounds. Removing a clip closes the gap. Locked clips and captions are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.timeline.trim",
+      "symbol": "timelineTrim",
+      "input": "TimelineTrimInput",
+      "description": "Move the leading or trailing edge of explicit timeline items to one timeline anchor. leading keeps everything after the anchor; trailing keeps everything before it. The anchor must fall inside each item. Locked items are skipped.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.clips.reorder",
+      "symbol": "clipReorder",
+      "input": "ClipReorderInput",
+      "description": "Move explicit main-track clips as one block so it starts at insertionIndex among the remaining clips (0 is first). Cannot reorder across a locked clip.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.timeline.shift",
+      "symbol": "timelineShift",
+      "input": "TimelineShiftInput",
+      "description": "Slide explicit captions, text layers, overlays, or sounds along the timeline by deltaSeconds (negative is earlier), clamped to the project. Clips are in a running order; use editor.clips.reorder for them.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.transcript.setWordsKept",
+      "symbol": "transcriptWords",
+      "input": "TranscriptWordsInput",
+      "description": "Cut spoken words out of the edit (kept false) or put cut words back (kept true) by transcript word ID. Cutting removes that stretch of recording from the timeline; restoring brings it and its caption back.",
+      "effect": "reversibleEdit",
+      "requiresRebuild": true
+    },
+    {
+      "id": "editor.transcript.setPauseKept",
+      "symbol": "transcriptPause",
+      "input": "TranscriptPauseInput",
+      "description": "Cut a pause (a stretch of a recording with no words, given in recording seconds for that media) out of the edit, or restore it.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     }
@@ -536,6 +592,15 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000
+        },
+        "clipIDs": {
+          "type": "array",
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
         }
       }
     },
@@ -1165,6 +1230,158 @@
           "type": "number",
           "minimum": 0,
           "maximum": 2
+        }
+      }
+    },
+    "TimelineEdge": {
+      "type": "string",
+      "enum": ["leading", "trailing"]
+    },
+    "TimelineSplitInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIDs", "at"],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "at": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "TimelineDeleteInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIDs"],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
+    },
+    "TimelineTrimInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIDs", "edge", "to"],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "edge": {
+          "$ref": "#/$defs/TimelineEdge"
+        },
+        "to": {
+          "$ref": "#/$defs/TimelineAnchorInput"
+        }
+      }
+    },
+    "ClipReorderInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clipIDs", "insertionIndex"],
+      "properties": {
+        "clipIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "insertionIndex": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        }
+      }
+    },
+    "TimelineShiftInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemIDs", "deltaSeconds"],
+      "properties": {
+        "itemIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "deltaSeconds": {
+          "type": "number",
+          "minimum": -86400,
+          "maximum": 86400
+        }
+      }
+    },
+    "TranscriptWordsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["wordIDs", "kept"],
+      "properties": {
+        "wordIDs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5000,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "kept": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TranscriptPauseInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaID", "start", "end", "kept"],
+      "properties": {
+        "mediaID": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "start": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "end": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "kept": {
+          "type": "boolean"
         }
       }
     }

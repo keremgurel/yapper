@@ -178,7 +178,9 @@ final class AppActionRegistry {
                 skippedIDs: mutation?.skippedIDs ?? [], persisted: status == .applied)
             recentResults.append(result)
             if recentResults.count > 64 { recentResults.removeFirst(recentResults.count - 64) }
-            session.setStatus(message)
+            // A failed save already left the error on screen with the status
+            // line reading "Needs attention"; the receipt carries the detail.
+            if status != .failed { session.setStatus(message) }
             return result
         }
         do { try ActionSchema.validate(try .encoding(request), against: ActionSchema.definition("AppActionRequest")) }
