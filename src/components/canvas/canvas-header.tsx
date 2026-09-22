@@ -58,9 +58,6 @@ export default function CanvasHeader({
       >
         <Sparkles className="h-4 w-4" />
         Ask Chirpy
-        <kbd className="text-muted-foreground ml-0.5 hidden text-[11px] font-medium sm:inline">
-          ⌘K
-        </kbd>
       </Button>
       <StatusSelect value={status} onChange={onStatus} />
       <Button type="button" size="sm" disabled={busy} onClick={onRecord}>
@@ -70,7 +67,7 @@ export default function CanvasHeader({
       {menu}
       <Button
         type="button"
-        variant="ghost"
+        variant="outline"
         size="icon-sm"
         onClick={onToggleMaximized}
         aria-pressed={maximized}
@@ -78,9 +75,12 @@ export default function CanvasHeader({
         title={
           maximized ? "Back to Studio (Esc)" : "Give the canvas the window"
         }
-        className="text-muted-foreground"
       >
-        {maximized ? <Minimize2 /> : <Maximize2 />}
+        {maximized ? (
+          <Minimize2 className="h-4 w-4" />
+        ) : (
+          <Maximize2 className="h-4 w-4" />
+        )}
       </Button>
     </header>
   );

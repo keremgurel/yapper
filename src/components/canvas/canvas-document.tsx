@@ -131,9 +131,6 @@ export default function CanvasDocument({
               const index = offset + 1;
               setHooks([hooks[index], ...hooks.filter((_, i) => i !== index)]);
             }}
-            onEdit={(offset, text) =>
-              setHooks(hooks.map((h, i) => (i === offset + 1 ? text : h)))
-            }
             onRemove={(offset) =>
               setHooks(hooks.filter((_, i) => i !== offset + 1))
             }
