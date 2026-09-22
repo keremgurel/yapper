@@ -10,6 +10,9 @@ import {
   Wand2,
 } from "lucide-react";
 import AddContextSheet from "@/components/brain/add/add-context-sheet";
+import SetupSheet from "@/components/brain/setup/setup-sheet";
+import { useBrainSetup } from "@/hooks/use-brain-setup";
+import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import EssentialsView from "@/components/brain/essentials/essentials-view";
 import BlockList from "@/components/brain/blocks/block-list";
 import CatalogSheet from "@/components/brain/skills/catalog-sheet";
@@ -34,6 +37,7 @@ type BrainView = "essentials" | "knowledge" | "skills";
 export default function BrainPage() {
   const [view, setView] = useState<BrainView>("essentials");
   const [adding, setAdding] = useState(false);
+  const [settingUp, setSettingUp] = useState(false);
   const [browsingSkills, setBrowsingSkills] = useState(false);
   const [editingSkillID, setEditingSkillID] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -111,9 +115,42 @@ export default function BrainPage() {
     },
     [saveProject, changed],
   );
+  const setup = useBrainSetup({
+    existingPillars: pillars,
+    saveEssentials,
+    addBlock: addKnowledge,
+  });
+  const { setDocument: setSetupDocument } = setup;
+  const setUpFromDocument = useCallback(
+    (document: string) => {
+      setSetupDocument(document);
+      setSettingUp(true);
+    },
+    [setSetupDocument],
+  );
+  // A document handed to Chirpy from another page waits in session storage
+  // until this page is on screen.
+  useEffect(() => {
+    let handed: string | null = null;
+    try {
+      handed = window.sessionStorage.getItem(SETUP_HANDOFF_KEY);
+      if (handed) window.sessionStorage.removeItem(SETUP_HANDOFF_KEY);
+    } catch {
+      handed = null;
+    }
+    if (!handed) return;
+    const document = handed;
+    const timer = window.setTimeout(() => setUpFromDocument(document), 0);
+    return () => window.clearTimeout(timer);
+  }, [setUpFromDocument]);
   const brainTools = useMemo<ChirpyBrainTools>(
-    () => ({ addKnowledge, editKnowledge, updateEssentials: saveEssentials }),
-    [addKnowledge, editKnowledge, saveEssentials],
+    () => ({
+      addKnowledge,
+      editKnowledge,
+      updateEssentials: saveEssentials,
+      setUpFromDocument,
+    }),
+    [addKnowledge, editKnowledge, saveEssentials, setUpFromDocument],
   );
 
   useEffect(() => {
@@ -249,6 +286,7 @@ export default function BrainPage() {
           onUpdate={updateEssentials}
           onRetry={retryProject}
           onRefresh={() => refreshProject(true)}
+          onSetUp={() => setSettingUp(true)}
           version={version}
         />
       ) : null}
@@ -425,6 +463,13 @@ export default function BrainPage() {
         onOpenChange={setAdding}
         existingTitles={blocks.map((block) => block.title)}
         onAdd={addKnowledge}
+      />
+      <SetupSheet
+        open={settingUp}
+        onOpenChange={setSettingUp}
+        setup={setup}
+        project={project ?? null}
+        existingPillars={pillars.length}
       />
       <CatalogSheet
         open={browsingSkills}

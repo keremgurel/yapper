@@ -28,6 +28,7 @@ import { createIdea } from "@/lib/ideas/client";
 import { parseBrandCommand } from "@/lib/brand/command";
 import ChirpyComposer from "@/components/studio-shell/chirpy-composer";
 import { looksLikeCommand } from "@/components/studio-shell/chirpy-command-gate";
+import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import { executeBrandCommand } from "@/lib/brand/command-client";
 import { patchProject, type ProjectPatch } from "@/lib/project/client";
 import {
@@ -66,6 +67,8 @@ export interface ChirpyBrainTools {
     patch: { body: string; digest: string },
   ) => Promise<BrainBlock | null>;
   updateEssentials: (patch: ProjectPatch) => Promise<void>;
+  /** Opens "Set up from a document" with this text already in it. */
+  setUpFromDocument: (document: string) => void;
 }
 
 interface StudioChirpyValue {
@@ -261,6 +264,36 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         // A long or multi-line message is a note or a transcript, never a typed
         // command; it goes straight to conversation.
         const command = looksLikeCommand(text);
+        // A whole document about the creator is a Brain setup, not a chat.
+        if (
+          !command &&
+          text.length >= 800 &&
+          (pathname.startsWith("/studio/brain") ||
+            /\b(brain|pillars?|audience|voice|content system|essentials)\b/i.test(
+              text,
+            ))
+        ) {
+          if (isNativeShell) {
+            return answer({
+              text: "That reads like your content system. Open Brain in Studio and use “Set up from a document” to fill your Essentials, pillars, and Knowledge from it.",
+            });
+          }
+          if (brainTools.current) {
+            brainTools.current.setUpFromDocument(text);
+          } else {
+            try {
+              window.sessionStorage.setItem(SETUP_HANDOFF_KEY, text);
+            } catch {
+              // Session storage can be unavailable; the creator can paste
+              // again on the Brain page.
+            }
+            startTransition(() => router.push("/studio/brain"));
+          }
+          return answer({
+            text: "That reads like your content system, so I opened “Set up from a document” with it. Read it, tick what should land, and apply.",
+            tone: "done",
+          });
+        }
         const brandCommand = command
           ? parseBrandCommand(
               text,
@@ -411,7 +444,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         setWorking(false);
       }
     },
-    [addKnowledge, append, messages, pathname, router],
+    [addKnowledge, append, isNativeShell, messages, pathname, router],
   );
 
   useEffect(() => {
