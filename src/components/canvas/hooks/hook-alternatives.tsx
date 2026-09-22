@@ -1,23 +1,21 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, Sparkles, X } from "lucide-react";
+import { Sparkles, X } from "lucide-react";
 import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
-import GrowingTextarea from "@/components/canvas/growing-textarea";
-import { Button } from "@/components/ui/button";
 
 const SPRING = { type: "spring", stiffness: 420, damping: 38 } as const;
 
 /**
- * The openers still on the table. "Use" lifts one into the Hook slot and the
- * old opener slides down here, each line keeping its element on the way. More
- * come from Chirpy, in one ask.
+ * The openers still on the table, each a card. Click one and it lifts into
+ * the Hook slot while the old opener slides down here, every line keeping
+ * its element on the way. Editing happens in the Hook slot; here you choose.
+ * The last card asks Chirpy for more.
  */
 export default function HookAlternatives({
   hooks,
   keys,
   onUse,
-  onEdit,
   onRemove,
   onMore,
 }: {
@@ -25,7 +23,6 @@ export default function HookAlternatives({
   hooks: string[];
   keys: string[];
   onUse: (offset: number) => void;
-  onEdit: (offset: number, text: string) => void;
   onRemove: (offset: number) => void;
   onMore: () => void;
 }) {
@@ -34,67 +31,51 @@ export default function HookAlternatives({
       <CanvasSectionTitle
         title="Hook alternatives"
         meta={hooks.length ? `${hooks.length}` : undefined}
-        actions={
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={onMore}
-            className="text-muted-foreground"
-            title="Ask Chirpy for more openers"
-          >
-            <Sparkles className="h-3 w-3" /> More
-          </Button>
-        }
       />
-      {hooks.length === 0 ? (
-        <p className="text-muted-foreground text-sm">
-          No other openers yet. Ask for more and pick the strongest.
-        </p>
-      ) : (
-        <div className="-mx-2">
-          <AnimatePresence initial={false}>
-            {hooks.map((hook, offset) => (
-              <motion.div
-                key={keys[offset]}
-                layout
-                layoutId={keys[offset]}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={SPRING}
-                className="group hover:bg-muted/50 flex items-start gap-2 rounded-xl px-2 py-2 transition-colors"
+      <div className="space-y-2">
+        <AnimatePresence initial={false}>
+          {hooks.map((hook, offset) => (
+            <motion.div
+              key={keys[offset]}
+              layout
+              layoutId={keys[offset]}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={SPRING}
+              className="group relative"
+            >
+              <button
+                type="button"
+                onClick={() => onUse(offset)}
+                title="Use this hook"
+                className="bg-card border-border hover:border-foreground/25 hover:bg-muted/60 text-foreground/85 hover:text-foreground w-full cursor-pointer rounded-xl border px-4 py-3 pr-9 text-left text-[14px] leading-relaxed transition-[background-color,border-color,transform] duration-150 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none active:scale-[0.99]"
               >
-                <button
-                  type="button"
-                  onClick={() => onUse(offset)}
-                  aria-label={`Use this hook`}
-                  title="Use this hook"
-                  className="border-border text-muted-foreground group-hover:border-foreground/40 mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-colors hover:border-[color:var(--sg-accent)] hover:bg-[color:var(--sg-accent)] hover:text-white"
-                >
-                  <ArrowUp className="h-3 w-3" />
-                </button>
-                <GrowingTextarea
-                  value={hook}
-                  onChange={(event) => onEdit(offset, event.target.value)}
-                  aria-label={`Alternative hook ${offset + 1}`}
-                  className="text-foreground/85 min-w-0 flex-1 text-[14px] leading-relaxed"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={() => onRemove(offset)}
-                  aria-label="Remove this hook"
-                  className="text-muted-foreground hover:text-destructive opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
-                >
-                  <X />
-                </Button>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
+                {hook}
+              </button>
+              <button
+                type="button"
+                onClick={() => onRemove(offset)}
+                aria-label="Remove this hook"
+                title="Remove"
+                className="text-muted-foreground hover:bg-muted hover:text-destructive absolute top-2 right-2 grid h-6 w-6 place-items-center rounded-md opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        <button
+          type="button"
+          onClick={onMore}
+          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground flex w-full cursor-pointer items-center gap-2 rounded-xl px-4 py-3 text-left text-[14px] transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+        >
+          <Sparkles className="h-4 w-4 shrink-0" />
+          {hooks.length
+            ? "Ask Chirpy for more openers"
+            : "Ask Chirpy for openers"}
+        </button>
+      </div>
     </section>
   );
 }
