@@ -2,6 +2,7 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import posthog from "posthog-js";
+import { Button } from "@/components/ui/button";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -81,12 +82,9 @@ export function PracticeErrorFallback({ reset }: { reset?: () => void }) {
       </p>
       <div className="flex gap-3">
         {reset && (
-          <button
-            onClick={reset}
-            className="rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
+          <Button type="button" onClick={reset}>
             Try Again
-          </button>
+          </Button>
         )}
         <button
           onClick={() => window.location.reload()}

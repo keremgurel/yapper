@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import TrainingLayout from "@/app/training-layout";
 import { publicTools } from "@/data/tools";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const muted = { color: "var(--sg-text-muted)" };
 
@@ -41,7 +43,10 @@ export default function ToolsHub() {
               </p>
               <Link
                 href={tool.href}
-                className="sg-btn-ghost mt-auto self-start no-underline"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "mt-auto self-start no-underline",
+                )}
               >
                 {tool.cta}
                 <ArrowRight className="h-4 w-4" />

@@ -4,6 +4,7 @@ import { BirdMascot } from "../mascot/bird-mascot";
 import { Aurora } from "../aurora/aurora-bg";
 import { GlassyButton } from "@/components/ui/glassy-button";
 import { BRAND } from "../directions";
+import { Button } from "@/components/ui/button";
 
 /**
  * Hero — the Aurora surface (teal, from the practice stage) with a glass card
@@ -77,7 +78,7 @@ export function BrandHeroSection() {
               }}
             >
               <GlassyButton height={46}>Jump to practice</GlassyButton>
-              <button className="sg-btn-accent">Join waitlist</button>
+              <Button>Join waitlist</Button>
             </div>
           </div>
         </div>

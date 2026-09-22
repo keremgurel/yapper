@@ -6,6 +6,7 @@ import { planByKey } from "@/lib/billing/plans";
 import { useBillingPortal } from "@/hooks/use-billing-portal";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { formatStorageBytes } from "@/lib/storage/format";
+import { Button } from "@/components/ui/button";
 
 /** Shown to subscribers/trialers: current plan, credit balance, and a button to
  * the Stripe billing portal to manage or cancel. Renders nothing otherwise. */
@@ -39,18 +40,18 @@ export default function CurrentPlanBanner() {
           </p>
         )}
       </div>
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={() => void openPortal()}
         disabled={opening}
-        className="sg-btn-ghost disabled:opacity-50"
       >
         {opening ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           "Manage billing"
         )}
-      </button>
+      </Button>
     </div>
   );
 }

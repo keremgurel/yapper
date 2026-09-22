@@ -20,7 +20,7 @@ export default function PosterActions({
   return (
     <Button
       type="button"
-      variant="contrast"
+      variant="outline"
       disabled={uploading || preparing}
       onClick={onAdd}
     >

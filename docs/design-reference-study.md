@@ -103,9 +103,9 @@ COLOUR
 Ink ramp (warm): 950 #141314, 900 #201D1D, 700 #3D3A3A, 500 #837E7E, 400 #A9A4A4, 300 #CBC7C7, 200 #E2E0E0, 100 #EFEEED, 50 #F6F5F3.
 Light: page #FBFAF8, card #FFFFFF, sunken #F3F1EE, hairline #E2E0E0, text #201D1D, secondary #5B5656, tertiary #837E7E.
 Dark: page #141314, card #1C1A1A, sunken #232020, hairline #2B2828, text #F3F1EE, secondary #A9A4A4, tertiary #837E7E.
-Accent: #F96F4B. Used for exactly: the one primary button per view, selected state, active tab underline, focus ring. Never for labels, icons, categories, or decoration.
+Accent: orange, face #F97316 with the metal treatment described under CONTROLS. Used for exactly: the one primary button per view, selected state, active tab underline, focus ring. Never for labels, icons, categories, or decoration.
 Status hues (chips only): cyan = in progress, yellow = waiting, green = done, violet = AI-written. Neutral = default.
-No gradients, no glows, no translucent washes on page surfaces. Translucency only on floating chrome (toolbars, sheets) with backdrop blur.
+No gradients outside the primary button, no glows, no translucent washes on page surfaces. Translucency only on floating chrome (toolbars, sheets) with backdrop blur.
 
 SPACING
 Base 4px. Allowed gaps: 4, 8, 12, 16, 24, 32, 48, 64.
@@ -113,12 +113,12 @@ Page gutter 24px (16px on phones). Container 1200px. Section spacing 48px in pro
 Card padding 16px, hero surfaces 20px. Table rows 40px tall. Form field to label 6px, field to field 24px.
 
 SHAPE
-Radius: controls 8px, cards 12px, sheets and hero surfaces 16px, chips full pill. Buttons: 36px (compact) or 40px (default) tall, 12 to 16px horizontal padding.
+Radius: controls 10px, cards 12px, sheets and hero surfaces 16px, chips full pill. Buttons: 44px default, 36px compact, 52px hero, 14 to 20px horizontal padding.
 Depth: three levels only. Page, card (1px hairline, no shadow), sunken well (tone shift, no border). A bordered thing never sits inside another bordered thing. Shadows only on floating overlays.
 Empty states: sunken 40px icon circle, one sentence, one action. No dashed boxes.
 
 CONTROLS
-One filled accent button per view. Every other action is outlined or ghost. Destructive actions are ghost with a confirm only when irreversible.
+Exactly two button styles in product surfaces. Primary: the orange metal button (gradient face, gradient bezel ring, inner specular edge, layered cast shadow that collapses on press). It is the only gradient in the system and appears once per view. Secondary: hairline outline on the card surface. Ghost is for icon buttons and inline toolbar actions only. No black filled buttons, no pills, no hand-rolled button classes.
 Inputs: hairline border, 8px radius, 15px text, grow with content. Labels above in sentence case at 13px/500.
 Icons: 16px inside controls, 20px standalone, never decorative in headings.
 

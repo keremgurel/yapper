@@ -3,6 +3,8 @@ import { ArrowRight, BookOpen } from "lucide-react";
 import TrainingLayout from "@/app/training-layout";
 import WpmCalculator from "@/components/tools/wpm-calculator";
 import { WPM_FAQ } from "@/data/wpm-faq";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const muted = { color: "var(--sg-text-muted)" };
 
@@ -42,7 +44,10 @@ export default function WpmToolPage() {
             </p>
             <Link
               href="/studio/recorder"
-              className="sg-btn-accent mt-auto self-start no-underline"
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "mt-auto self-start no-underline",
+              )}
             >
               Record with the teleprompter
               <ArrowRight className="h-4 w-4" />
@@ -56,7 +61,10 @@ export default function WpmToolPage() {
             </p>
             <Link
               href="/blog/words-per-minute-speaking"
-              className="sg-btn-ghost mt-auto self-start no-underline"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "mt-auto self-start no-underline",
+              )}
             >
               <BookOpen className="h-4 w-4" />
               Read the speaking-pace guide

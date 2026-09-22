@@ -71,7 +71,6 @@
   --sg-radius-full: 9999px;
 
   /* every button shares ONE radius (aluminum sets the standard: 8px) */
-  --sg-radius-btn: 8px;
 
   /* --- Fluid type scale --------------------------------------------------- */
   --sg-text-xs: 0.75rem; /* 12 */

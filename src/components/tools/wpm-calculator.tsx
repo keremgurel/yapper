@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   countWords,
   formatDuration,
@@ -53,15 +54,16 @@ export default function WpmCalculator() {
           </p>
           <div className="flex flex-wrap gap-2">
             {WPM_PACES.map((p) => (
-              <button
+              <Button
                 key={p.wpm}
                 type="button"
+                size="sm"
+                variant={wpm === p.wpm ? "default" : "outline"}
                 onClick={() => setWpm(p.wpm)}
-                className={wpm === p.wpm ? "sg-btn-accent" : "sg-btn-ghost"}
                 title={p.hint}
               >
                 {p.label} · {p.wpm} wpm
-              </button>
+              </Button>
             ))}
           </div>
         </div>

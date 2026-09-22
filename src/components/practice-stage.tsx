@@ -22,6 +22,7 @@ import {
 } from "@/components/animated-icons";
 import { MeshGradient } from "@paper-design/shaders-react";
 import { usePracticeSession } from "@/contexts/practice-session";
+import { Button } from "@/components/ui/button";
 
 export default function PracticeStage() {
   const {
@@ -390,12 +391,9 @@ export default function PracticeStage() {
 
             <div className="flex flex-wrap items-center justify-center gap-2">
               {!isRunning && !timerDone && canStart && (
-                <button
-                  onClick={startTimer}
-                  className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
-                >
+                <Button type="button" size="lg" onClick={startTimer}>
                   Start
-                </button>
+                </Button>
               )}
 
               {isRunning && (
@@ -432,12 +430,9 @@ export default function PracticeStage() {
               )}
 
               {timerDone && (
-                <button
-                  onClick={handleNewSession}
-                  className="cursor-pointer rounded-full bg-linear-to-br from-blue-500 to-blue-600 px-8 py-3 text-[14px] font-semibold text-white shadow-[0_2px_12px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
-                >
+                <Button type="button" size="lg" onClick={handleNewSession}>
                   Try Another
-                </button>
+                </Button>
               )}
             </div>
           </div>

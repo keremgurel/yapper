@@ -200,9 +200,16 @@ CSS-first, restrained, always behind `prefers-reduced-motion`.
 
 ## 9. Controls
 
-- **One accent-filled primary action per view.** Everything else is
-  `variant="outline"` or `ghost`. (The workbench already did this: Record is
-  primary, Generate is outline.)
+- **Two button styles, from one component.** The primary is the orange metal
+  `Button` default (`.btn-accent-metal`): gradient face, gradient bezel ring,
+  inner specular edge, cast shadow that collapses on press. It is the only
+  gradient in the system and appears once per view. The secondary is
+  `variant="outline"`. `ghost` is for icon buttons and inline toolbar actions.
+  There is no black filled button, no pill button, no legacy `.sg-btn-*`
+  class, and no hand-rolled `<button className="bg-...">`. (The workbench
+  already did this: Record is primary, Generate is outline.)
+- Sizes come from the component only: `default` 44px, `sm` 36px, `lg` 52px,
+  `icon` 44px square. Radius is the component's `rounded-lg` everywhere.
 - Secondary controls appear on hover/focus-within of their group when they
   would otherwise be a field of 20+ always-visible buttons (see
   `block-editor.tsx`).

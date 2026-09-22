@@ -5,6 +5,8 @@ import { studioEditorUrl } from "@/lib/studio/editor-handoff";
 import { Check, Download, Library, Loader2, RotateCcw } from "lucide-react";
 import { recordingFileName } from "@/lib/studio/recording-file";
 import { useSaveTake } from "@/hooks/use-save-take";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** After a take: play it back, then retake, save, or download.
  * When the take was recorded for a Content Library item, "Save to library"
@@ -43,11 +45,12 @@ export default function RecorderReview({
         className="mb-5 w-full rounded-2xl bg-black"
       />
       <div className="space-y-2">
-        <button
+        <Button
           type="button"
+          size="lg"
+          className="w-full"
           onClick={() => void save(blob, title)}
           disabled={state === "saving" || state === "saved"}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-cyan-500 px-5 py-3 text-sm font-black text-white transition-colors hover:bg-cyan-600 disabled:opacity-60"
         >
           {state === "saving" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -61,11 +64,14 @@ export default function RecorderReview({
             : state === "saved"
               ? "Saved to library"
               : "Save to library"}
-        </button>
+        </Button>
         {state === "saved" && savedItemId && (
           <Link
             href={studioEditorUrl(savedItemId)}
-            className="border-border hover:bg-muted/40 flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-bold"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "w-full no-underline",
+            )}
           >
             Edit this recording on Mac
           </Link>
@@ -96,23 +102,27 @@ export default function RecorderReview({
         )}
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="lg"
+            className="flex-1"
             onClick={onRetake}
             disabled={state === "saving"}
-            className="border-border hover:bg-muted/40 flex flex-1 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-bold transition-colors"
           >
             <RotateCcw className="h-4 w-4" />
             Retake
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="outline"
+            size="lg"
+            className="flex-1"
             onClick={download}
-            className="border-border hover:bg-muted/40 flex flex-1 items-center justify-center gap-2 rounded-full border px-5 py-3 text-sm font-bold transition-colors"
           >
             <Download className="h-4 w-4" />
             Download
-          </button>
+          </Button>
         </div>
       </div>
     </div>

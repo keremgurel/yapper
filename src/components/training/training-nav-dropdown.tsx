@@ -85,7 +85,7 @@ export default function TrainingNavDropdown() {
         </div>
         <Button
           asChild
-          variant="contrast"
+          variant="outline"
           className="mt-2 w-full justify-between"
         >
           <Link href="/training" className="no-underline">

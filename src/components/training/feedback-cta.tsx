@@ -132,7 +132,7 @@ export default function TrainingFeedbackCta({
 
       <Show when="signed-out">
         <SignInButton mode="modal">
-          <Button type="button" size="lg" variant="contrast">
+          <Button type="button" size="lg">
             <Sparkles className="h-4 w-4" />
             Sign in for AI feedback
           </Button>
@@ -140,13 +140,7 @@ export default function TrainingFeedbackCta({
       </Show>
 
       <Show when="signed-in">
-        <Button
-          type="button"
-          size="lg"
-          variant="contrast"
-          onClick={submit}
-          disabled={busy}
-        >
+        <Button type="button" size="lg" onClick={submit} disabled={busy}>
           {busy ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />

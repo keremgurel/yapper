@@ -3,6 +3,7 @@
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
 import { CREDIT_PACKS } from "@/lib/billing/plans";
+import { Button } from "@/components/ui/button";
 
 const muted = { color: "var(--sg-text-muted)" };
 
@@ -32,24 +33,24 @@ export default function CreditPacks({
               <p className="sg-label mt-0.5">{pack.priceLabel}</p>
             </div>
             <Show when="signed-in">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => onStart(pack.key)}
                 disabled={pending !== null}
-                className="sg-btn-ghost disabled:opacity-50"
               >
                 {pending === pack.key ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   "Buy"
                 )}
-              </button>
+              </Button>
             </Show>
             <Show when="signed-out">
               <SignInButton mode="modal" withSignUp>
-                <button type="button" className="sg-btn-ghost">
+                <Button type="button" variant="outline">
                   Sign in
-                </button>
+                </Button>
               </SignInButton>
             </Show>
           </article>

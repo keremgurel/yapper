@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Clock3 } from "lucide-react";
 
 import TrainingLayout from "@/app/training-layout";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   fluencyProtocol,
   programFamilies,
@@ -82,7 +84,10 @@ function ProgramCard({
       </p>
       <Link
         href={program.href}
-        className="sg-btn-ghost mt-auto self-start no-underline"
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "mt-auto self-start no-underline",
+        )}
       >
         Start
         <ArrowRight className="h-4 w-4" />
@@ -219,7 +224,10 @@ export default function TrainingHub() {
               </div>
               <Link
                 href="/training/fluency-on-steroids"
-                className="sg-btn-accent mt-6 no-underline"
+                className={cn(
+                  buttonVariants({ variant: "default" }),
+                  "mt-6 no-underline",
+                )}
               >
                 Open the warmup
                 <ArrowRight className="h-4 w-4" />

@@ -5,19 +5,12 @@ import AnalyticsProvider from "@/components/analytics-provider";
 import ClerkThemeProvider from "@/components/clerk-theme-provider";
 import AppChrome from "@/components/studio-shell/app-chrome";
 import AppRouteGuard from "@/components/studio-shell/app-route-guard";
-import { Geist_Mono, Outfit } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "next-themes";
 import { getSiteUrl } from "@/lib/json-ld";
 
 // Display only. Headlines are the one place the brand voice lives; every
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  display: "swap",
-});
-
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -114,7 +107,7 @@ export default function RootLayout({
     <html
       lang="en"
       data-scroll-behavior="smooth"
-      className={`${outfit.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
