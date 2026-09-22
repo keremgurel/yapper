@@ -31,7 +31,7 @@ export default function ProjectField({
         rows={rows}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="max-w-[68ch] text-[15px] leading-relaxed"
+        className="text-[15px] leading-relaxed"
       />
     </div>
   );
