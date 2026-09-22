@@ -1,20 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, Search, Wand2 } from "lucide-react";
 import AddContextSheet from "@/components/brain/add/add-context-sheet";
 import SetupSheet from "@/components/brain/setup/setup-sheet";
 import { useBrainSetup } from "@/hooks/use-brain-setup";
 import { SETUP_HANDOFF_KEY } from "@/lib/brain/setup-client";
 import EssentialsView from "@/components/brain/essentials/essentials-view";
 import FillInMenu from "@/components/brain/fill-in-menu";
-import WhatYapperReads from "@/components/brain/essentials/what-yapper-reads";
+import BrainTabs, { type BrainView } from "@/components/brain/brain-tabs";
+import KnowledgeTab from "@/components/brain/knowledge/knowledge-tab";
+import SkillsTab from "@/components/brain/skills/skills-tab";
 import VoiceSheet from "@/components/brain/voice/voice-sheet";
-import { PageHeader, Section } from "@/components/studio-ui";
+import { PageHeader } from "@/components/studio-ui";
 import { useVoiceSamples } from "@/hooks/use-voice-samples";
-import BlockList from "@/components/brain/blocks/block-list";
 import CatalogSheet from "@/components/brain/skills/catalog-sheet";
-import SkillCard from "@/components/brain/skills/skill-card";
 import SkillEditorSheet from "@/components/brain/skills/skill-editor-sheet";
 import {
   useStudioChirpy,
@@ -31,6 +30,7 @@ import type { ProjectPatch } from "@/lib/project/client";
  * Skills say how Yapper should work. Creation and prompt internals stay out of
  * the default path; Chirpy connects this operating system to the rest of Studio. */
 export default function BrainPage() {
+  const [view, setView] = useState<BrainView>("essentials");
   const [pickingVideos, setPickingVideos] = useState(false);
   const [adding, setAdding] = useState(false);
   const [settingUp, setSettingUp] = useState(false);
@@ -154,7 +154,6 @@ export default function BrainPage() {
     return () => chirpy.registerBrainTools(null);
   }, [brainTools, chirpy]);
 
-  const activeSkills = skills.filter((skill) => skill.enabled);
   const { samples } = useVoiceSamples(true);
   const editingSkill =
     skills.find((skill) => skill.id === editingSkillID) ?? null;
@@ -225,7 +224,17 @@ export default function BrainPage() {
           </div>
         ))}
 
-      <div className="space-y-10">
+      <BrainTabs
+        view={view}
+        onChange={setView}
+        tabs={[
+          { value: "essentials", label: "Essentials" },
+          { value: "knowledge", label: "Knowledge", count: blocks.length },
+          { value: "skills", label: "Skills", count: skills.length },
+        ]}
+      />
+
+      {view === "essentials" ? (
         <EssentialsView
           project={project}
           pillars={pillars}
@@ -233,152 +242,64 @@ export default function BrainPage() {
           saveState={projectSaveState}
           onUpdate={updateEssentials}
           onRetry={retryProject}
+          version={version}
         />
+      ) : null}
 
-        <Section
-          title="Knowledge"
-          meta={blocksAvailable ? `${blocks.length}` : undefined}
-          action={
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={!blocksAvailable}
-              onClick={() => setAdding(true)}
-            >
-              <Plus className="size-4" aria-hidden="true" /> Add
-            </Button>
+      {view === "knowledge" ? (
+        <KnowledgeTab
+          blocks={blocks}
+          loading={blocksLoading}
+          available={blocksAvailable}
+          saveState={blockSaveState}
+          onAdd={() => setAdding(true)}
+          onEdit={(id, patch) => {
+            editBlock(id, patch);
+            changed();
+          }}
+          onRemove={(id) => {
+            if (window.confirm("Remove this from your Brain?"))
+              void removeBlock(id)
+                .then(changed)
+                .catch(() => {});
+          }}
+          onReorder={(ids) =>
+            void reorderBlocks(ids)
+              .then(changed)
+              .catch(() => {})
           }
-        >
-          <p className="text-muted-foreground mb-4 max-w-[60ch] text-sm">
-            Research, stories, examples, and rules Yapper pulls in when they
-            matter.
-          </p>
-          {blockSaveState === "error" ? (
-            <p className="text-destructive mb-3 text-xs" role="alert">
-              A memory could not be saved. Your next edit retries it.
-            </p>
-          ) : null}
-          {blocksLoading ? (
-            <p className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Loading Knowledge…
-            </p>
-          ) : !blocksAvailable ? (
-            <p className="text-muted-foreground py-6 text-sm">
-              Your Knowledge will appear after it loads successfully.
-            </p>
-          ) : (
-            <BlockList
-              blocks={blocks}
-              onEdit={(id, patch) => {
-                editBlock(id, patch);
-                changed();
-              }}
-              onRemove={(id) => {
-                if (window.confirm("Remove this from your Brain?"))
-                  void removeBlock(id)
-                    .then(changed)
-                    .catch(() => {});
-              }}
-              onReorder={(ids) =>
-                void reorderBlocks(ids)
-                  .then(changed)
-                  .catch(() => {})
-              }
-            />
-          )}
-        </Section>
+        />
+      ) : null}
 
-        <Section
-          title="Skills"
-          meta={
-            skillsAvailable
-              ? `${activeSkills.length} of ${skills.length} active`
-              : undefined
-          }
-          action={
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setBrowsingSkills(true)}
-              >
-                <Search className="size-4" aria-hidden="true" /> Discover
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={!skillsAvailable}
-                onClick={async () => {
-                  try {
-                    const created = await addSkill({ name: "New skill" });
-                    setEditingSkillID(created.id);
-                    changed();
-                  } catch {
-                    /* The persistent error banner provides retry. */
-                  }
-                }}
-              >
-                <Plus className="size-4" aria-hidden="true" /> New
-              </Button>
-            </div>
-          }
-        >
-          <p className="text-muted-foreground mb-4 max-w-[60ch] text-sm">
-            Reusable methods Yapper follows when it writes with you. Used when
-            relevant, or picked by name while creating.
-          </p>
-          {skillSaveState === "error" ? (
-            <p className="text-destructive mb-3 text-xs" role="alert">
-              A skill could not be saved. Your next edit retries it.
-            </p>
-          ) : null}
-          {skillsLoading ? (
-            <p className="text-muted-foreground flex items-center gap-2 py-6 text-sm">
-              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              Loading Skills…
-            </p>
-          ) : !skillsAvailable ? (
-            <p className="text-muted-foreground py-6 text-sm">
-              Your Skills will appear after they load successfully.
-            </p>
-          ) : skills.length ? (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {skills.map((skill) => (
-                <SkillCard
-                  key={skill.id}
-                  skill={skill}
-                  onToggle={(enabled) => {
-                    editSkill(skill.id, { enabled });
-                    changed();
-                  }}
-                  onOpen={() => setEditingSkillID(skill.id)}
-                  onRemove={() => {
-                    if (window.confirm(`Remove “${skill.name}”?`))
-                      void removeSkill(skill.id)
-                        .then(changed)
-                        .catch(() => {});
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setBrowsingSkills(true)}
-              className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-sm transition-colors"
-            >
-              <Wand2 className="size-4" aria-hidden="true" />
-              Give Yapper its first creative method
-            </button>
-          )}
-        </Section>
-
-        <WhatYapperReads version={version} />
-      </div>
+      {view === "skills" ? (
+        <SkillsTab
+          skills={skills}
+          loading={skillsLoading}
+          available={skillsAvailable}
+          saveState={skillSaveState}
+          onDiscover={() => setBrowsingSkills(true)}
+          onCreate={async () => {
+            try {
+              const created = await addSkill({ name: "New skill" });
+              setEditingSkillID(created.id);
+              changed();
+            } catch {
+              /* The persistent error banner provides retry. */
+            }
+          }}
+          onToggle={(id, enabled) => {
+            editSkill(id, { enabled });
+            changed();
+          }}
+          onOpen={setEditingSkillID}
+          onRemove={(id, name) => {
+            if (window.confirm(`Remove “${name}”?`))
+              void removeSkill(id)
+                .then(changed)
+                .catch(() => {});
+          }}
+        />
+      ) : null}
       <VoiceSheet
         open={pickingVideos}
         onOpenChange={setPickingVideos}
