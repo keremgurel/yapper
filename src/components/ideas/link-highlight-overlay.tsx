@@ -22,12 +22,22 @@ import { linkSpans } from "@/lib/inspiration/link-spans";
  */
 export const COMPOSER_TEXT_CLASSES =
   "max-h-[320px] min-h-7 w-full px-3 py-1 text-[16px] leading-7";
+/** Full screen: no cap, a reading-size type, and the field fills its column. */
+export const COMPOSER_TEXT_CLASSES_EXPANDED =
+  "h-full w-full px-3 py-1 text-[17px] leading-[1.65]";
+
+export function composerTextClasses(expanded: boolean): string {
+  return expanded ? COMPOSER_TEXT_CLASSES_EXPANDED : COMPOSER_TEXT_CLASSES;
+}
 
 export default function LinkHighlightOverlay({
   text,
   armedLink,
   scrollTop = 0,
+  expanded = false,
 }: {
+  /** Matches the composer's full-screen metrics when it is maximized. */
+  expanded?: boolean;
   /** The textarea's scroll offset, so the painted text stays under the typed text. */
   scrollTop?: number;
   text: string;
@@ -45,7 +55,7 @@ export default function LinkHighlightOverlay({
     <div
       aria-hidden
       ref={overlay}
-      className={`${COMPOSER_TEXT_CLASSES} text-foreground pointer-events-none absolute inset-0 overflow-hidden font-normal whitespace-pre-wrap`}
+      className={`${composerTextClasses(expanded)} text-foreground pointer-events-none absolute inset-0 overflow-hidden font-normal whitespace-pre-wrap`}
     >
       {linkSpans(text).map((span, index) =>
         span.isLink ? (
