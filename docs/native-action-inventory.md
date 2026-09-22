@@ -8,7 +8,7 @@ The numbers come from `scripts/app-actions/inventory.py`, which lists every `Edi
 | ---------------------------------------------------- | ----- |
 | Session methods called from views and menus          | 204   |
 | Methods that change the project, account, or history | 118   |
-| Of those, already routed through the action registry | 39    |
+| Of those, already routed through the action registry | 47    |
 | Registered workflows the UI still calls directly     | 5     |
 | Methods that are selection, playback, preview, reads | 86    |
 
@@ -35,26 +35,26 @@ Proposed IDs follow the existing `editor.<feature>.<verb>` convention. "Property
 
 ### Captions
 
-| Session method                                      | Commits via             | Proposed action                       | Notes                                                                                                             |
-| --------------------------------------------------- | ----------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `addCaption`, `addCaptionAtPlayhead`                | commitTimelineEdit      | `editor.captions.add`                 | Timeline anchor plus optional text.                                                                               |
-| `removeCaption`, `clearAllCaptions`                 | commitTimelineEdit      | `editor.captions.remove`              | Explicit IDs; "all" is the caller resolving IDs, not a flag.                                                      |
-| `splitCaption`                                      | commitTimelineEdit      | `editor.captions.split`               |                                                                                                                   |
-| `mergeSelectedCaptions`, `mergeCaptionIntoPrevious` | commitTimelineEdit      | `editor.captions.merge`               | Ordered ID list.                                                                                                  |
-| `setCaptionText`                                    | updateProject           | `editor.captions.setText`             | Also triggers the dictionary suggestion; keep that in the executor.                                               |
-| `retimeCaption`                                     | updateProject           | `editor.captions.retime`              |                                                                                                                   |
-| `setCaptionStyle`, `applyCaptionTemplate`           | performAppAction        | registered `editor.captions.setStyle` | Pickers, fields, and templates go through the action. Slider drags (live) still use the coalesced preview commit. |
-| `moveCaption`, `resizeCaption`, `rotateCaption`     | applyCaptionStyle       | UI-only live drag                     | The canvas drag streams; its final value is not yet routed through the action.                                    |
-| `toggleCaptions`, `generateCaptions`                | runTrackedLongOperation | already `editor.captions.setVisible`  | Route the buttons through the registry.                                                                           |
+| Session method                                      | Commits via             | Proposed action                                                       | Notes                                                                                                             |
+| --------------------------------------------------- | ----------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `addCaption`, `addCaptionAtPlayhead`                | performAppAction        | registered `editor.captions.add`                                      | Timeline anchor or the caption it follows, optional text.                                                         |
+| `removeCaption`                                     | performAppAction        | registered `editor.captions.remove`                                   | `clearAllCaptions` also switches captions off, so the button still commits directly.                              |
+| `splitCaption`                                      | commitTimelineEdit      | covered by registered `editor.timeline.split`                         | The Return-key split in the list still commits directly.                                                          |
+| `mergeSelectedCaptions`, `mergeCaptionIntoPrevious` | performAppAction        | registered `editor.captions.merge`                                    |                                                                                                                   |
+| `setCaptionText`                                    | scheduleVisualCommit    | UI-only live typing; Chirpy uses registered `editor.captions.setText` | Each keystroke commits through the coalesced path; routing typing through the action would persist per key.       |
+| `retimeCaption`                                     | performAppAction        | registered `editor.captions.retime`                                   | The end of a caption drag on the timeline.                                                                        |
+| `setCaptionStyle`, `applyCaptionTemplate`           | performAppAction        | registered `editor.captions.setStyle`                                 | Pickers, fields, and templates go through the action. Slider drags (live) still use the coalesced preview commit. |
+| `moveCaption`, `resizeCaption`, `rotateCaption`     | applyCaptionStyle       | UI-only live drag                                                     | The canvas drag streams; its final value is not yet routed through the action.                                    |
+| `toggleCaptions`, `generateCaptions`                | runTrackedLongOperation | already `editor.captions.setVisible`                                  | Route the buttons through the registry.                                                                           |
 
 ### Text layers
 
-| Session method                                  | Commits via          | Proposed action                   | Notes                                                     |
-| ----------------------------------------------- | -------------------- | --------------------------------- | --------------------------------------------------------- |
-| `addTextLayer`                                  | scheduleVisualCommit | `editor.text.add`                 | Hook placement is a preset of the same action.            |
-| `setTextLayerText`, `updateTextLayer`           | scheduleVisualCommit | `editor.text.update`              | Text, timing, and position in one patch.                  |
-| `applyTextLayerStyle`, `applyTextLayerTemplate` | performAppAction     | registered `editor.text.setStyle` | Live slider drags still use the coalesced preview commit. |
-| `deleteSelectedTextLayer`                       | scheduleVisualCommit | `editor.text.remove`              | Explicit ID.                                              |
+| Session method                                  | Commits via          | Proposed action                                                 | Notes                                                                                              |
+| ----------------------------------------------- | -------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `addTextLayer`                                  | performAppAction     | registered `editor.text.add`                                    | Hook is the same action with asHook.                                                               |
+| `setTextLayerText`, `updateTextLayer`           | scheduleVisualCommit | UI-only live edits; Chirpy uses registered `editor.text.update` | The canvas drag and content editor stream; their final value is not yet routed through the action. |
+| `applyTextLayerStyle`, `applyTextLayerTemplate` | performAppAction     | registered `editor.text.setStyle`                               | Live slider drags still use the coalesced preview commit.                                          |
+| `deleteSelectedTextLayer`                       | performAppAction     | registered `editor.timeline.delete`                             |                                                                                                    |
 
 ### Video framing
 
@@ -153,7 +153,7 @@ Roughly a third of the rows above are property sets rather than operations: capt
 
 1. Property sets for caption style, text style, framing, retouch, background, and volume. Done, with the live-slider gap noted above.
 2. Timeline editing: trim, split, delete, reorder, shift, transcript words and pauses. Done. Auto-trim now takes a clip scope (the selection, or explicit IDs from Chirpy).
-3. Captions and text layer operations.
+3. Captions and text layer operations. Done, except live typing and drags which stay on the coalesced path.
 4. Overlay placement and track state.
 5. Audio, media bin, project, export, and undo. Add the new effects and the account scope here.
 6. Route the five workflow buttons through the registry, then regenerate this inventory and turn the "not actions" list into the lint allowlist.

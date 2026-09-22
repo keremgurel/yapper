@@ -1036,6 +1036,11 @@ final class EditorSession: ObservableObject {
         currentTime = time
     }
 
+    /// Asks the workbench to show a tool's inspector, as adding a layer does.
+    func requestInspector(_ tool: String) {
+        inspectorRequest = EditorInspectorRequest(tool: tool)
+    }
+
     func seekToTimelineTime(_ time: Double) {
         pausePlayback()
         seek(to: min(max(0, time), duration), exact: true, playAfter: false)
@@ -1405,28 +1410,8 @@ final class EditorSession: ObservableObject {
 
     func addTextLayer(asHook: Bool = false) {
         guard duration > 0 else { return }
-        let span = TextLayerPlacement.span(
-            asHook: asHook,
-            currentTime: currentTime,
-            projectDuration: duration
-        )
-        let layer = ProjectTextLayer(
-            text: asHook ? "Your hook" : "Text",
-            timelineStart: span.start,
-            duration: span.duration,
-            y: asHook ? 0.14 : 0.5,
-            width: asHook ? 0.74 : 0.7,
-            appearance: asHook ? .hookDefault : .textLayerDefault
-        )
-        scheduleVisualCommit { [self] in
-            var layers = project.textLayers ?? []
-            layers.append(layer)
-            project.textLayers = layers
-            selectedTextLayerID = layer.id
-            timelineSelection = [.text(layer.id)]
-            inspectorRequest = EditorInspectorRequest(tool: "Text")
-            project.updatedAt = Date()
-            return true
+        Task {
+            await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook))
         }
     }
 
@@ -1570,11 +1555,9 @@ final class EditorSession: ObservableObject {
 
     func deleteSelectedTextLayer() {
         guard let selectedTextLayerID else { return }
-        scheduleVisualCommit { [self] in
-            project.textLayers?.removeAll { $0.id == selectedTextLayerID }
-            self.selectedTextLayerID = project.textLayers?.last?.id
-            project.updatedAt = Date()
-            return true
+        Task {
+            let result = await performAppAction(TimelineDeleteInput(itemIDs: [selectedTextLayerID]))
+            if result.status == .applied { self.selectedTextLayerID = project.textLayers?.last?.id }
         }
     }
 

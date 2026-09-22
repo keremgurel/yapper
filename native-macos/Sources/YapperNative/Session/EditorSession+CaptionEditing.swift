@@ -13,55 +13,27 @@ extension EditorSession {
 
     func addCaptionAtPlayhead() async {
         guard !project.clips.isEmpty else { return }
-        let insertionTime = currentTime
-        var created: ProjectCaption?
-        await commitTimelineEdit(requiresRebuild: false, successStatus: "Caption added") { [self] in
-            updateProject { created = $0.addCaption(atTimelineTime: insertionTime) }
-            guard let created else { return false }
-            setSelectedCaptionIDs([created.id])
-            return true
-        }
+        await performAppAction(CaptionAddInput(at: .playhead, afterCaptionID: nil, text: nil))
     }
 
     /// Return at the end of a card: a new one after it, selected, ready to type
     /// into. What Return does everywhere else a list of lines is edited.
     @discardableResult
     func addCaption(after id: UUID) async -> UUID? {
-        var created: ProjectCaption?
-        let success = await commitTimelineEdit(requiresRebuild: false) { [self] in
-            updateProject { created = $0.addCaption(after: id) }
-            guard let created else { return false }
-            setSelectedCaptionIDs([created.id])
-            return true
-        }
-        return success ? created?.id : nil
+        let result = await performAppAction(CaptionAddInput(at: nil, afterCaptionID: id, text: nil))
+        return result.status == .applied ? result.changes.first?.targetID : nil
     }
 
     func removeCaption(_ id: UUID) async {
         guard project.caption(withID: id) != nil else { return }
-        await commitTimelineEdit(requiresRebuild: false, successStatus: "Caption deleted") { [self] in
-            guard project.caption(withID: id) != nil else { return false }
-            updateProject { $0.removeCaption(id) }
-            var ids = selectedCaptionIDs
-            ids.remove(id)
-            setSelectedCaptionIDs(ids)
-            return true
-        }
+        await performAppAction(CaptionRemoveInput(captionIDs: [id]))
     }
 
     var canMergeSelectedCaptions: Bool { selectedCaptionIDs.count >= 2 }
 
     func mergeSelectedCaptions() async {
         guard canMergeSelectedCaptions else { return }
-        let merging = selectedCaptionIDs
-        await commitTimelineEdit(
-            requiresRebuild: false,
-            successStatus: "Merged \(merging.count) captions"
-        ) { [self] in
-            updateProject { $0.mergeCaptions(merging) }
-            setSelectedCaptionIDs([])
-            return true
-        }
+        await performAppAction(CaptionMergeInput(captionIDs: selectedCaptionIDs.sorted { $0.uuidString < $1.uuidString }))
     }
 
     /// Backspace at the very start of a caption row folds it into the row
@@ -69,20 +41,12 @@ extension EditorSession {
     /// caption so the caller can keep editing where the text landed.
     @discardableResult
     func mergeCaptionIntoPrevious(_ id: UUID) async -> UUID? {
-        var survivor: UUID?
-        let success = await commitTimelineEdit(
-            requiresRebuild: false,
-            successStatus: "Captions merged"
-        ) { [self] in
-            let ordered = captions
-            guard let index = ordered.firstIndex(where: { $0.id == id }), index > 0 else { return false }
-            let previous = ordered[index - 1]
-            updateProject { $0.mergeCaptions([previous.id, id]) }
-            survivor = captions.first { $0.sourceStart == previous.sourceStart }?.id ?? previous.id
-            setSelectedCaptionIDs(Set([survivor].compactMap { $0 }))
-            return true
-        }
-        return success ? survivor : nil
+        let ordered = captions
+        guard let index = ordered.firstIndex(where: { $0.id == id }), index > 0 else { return nil }
+        let previous = ordered[index - 1]
+        let result = await performAppAction(CaptionMergeInput(captionIDs: [previous.id, id]))
+        guard result.status == .applied else { return nil }
+        return result.changes.first.flatMap { UUID(uuidString: $0.after) } ?? previous.id
     }
 
     /// Enter in a caption row cuts it at the cursor's word boundary.
