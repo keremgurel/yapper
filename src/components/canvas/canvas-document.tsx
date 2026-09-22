@@ -4,14 +4,19 @@ import type { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import CanvasBlock from "@/components/canvas/canvas-block";
 import CanvasDetails from "@/components/canvas/canvas-details";
-import CanvasHooks from "@/components/canvas/canvas-hooks";
 import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
+import HookAlternatives from "@/components/canvas/hooks/hook-alternatives";
+import HookChosen from "@/components/canvas/hooks/hook-chosen";
+import { hookKeys } from "@/components/canvas/hooks/hook-keys";
+import ScriptEditor from "@/components/canvas/script-editor";
 import { Button } from "@/components/ui/button";
 import type { ContentDetail, ContentPatch } from "@/lib/content/client";
 import {
+  blockFrom,
   changeKind,
   moveBlock,
   removeBlock,
+  SCRIPT_LABEL,
   updateBlock,
   type CanvasBlock as Block,
 } from "@/lib/content/canvas-doc";
@@ -19,9 +24,10 @@ import {
 type SetBlocks = (next: Block[] | ((current: Block[]) => Block[])) => void;
 
 /**
- * The document itself, in a fixed order: the hook, the alternatives, the key
- * points, the full script, then anything else the creator or Chirpy added.
- * One reading column; no cards, the titles are the structure.
+ * The document, using the width it has. The script is the main column, with
+ * the hook in use above it; beside it, what feeds the script: the facts, the
+ * other openers, the key points, and anything else added. One column on a
+ * narrow window.
  */
 export default function CanvasDocument({
   item,
@@ -57,6 +63,17 @@ export default function CanvasDocument({
   const otherBlocks = blocks.filter(
     (block) => block !== scriptBlock && block !== pointsBlock,
   );
+  const keys = hookKeys(hooks);
+
+  const setScript = (text: string) =>
+    setBlocks((current) => {
+      const existing = current.find((block) => block.kind === "script");
+      if (existing) return updateBlock(current, existing.id, { text });
+      return [
+        blockFrom({ label: SCRIPT_LABEL, kind: "script", text }),
+        ...current,
+      ];
+    });
 
   const renderBlock = (block: Block, fixedTitle?: string) => {
     const index = blocks.indexOf(block);
@@ -84,38 +101,62 @@ export default function CanvasDocument({
   };
 
   return (
-    <div className="mx-auto w-full max-w-[78ch] px-6 pt-8 pb-24 lg:px-10">
-      <CanvasDetails item={item} update={update} />
-      <div className="mt-10 space-y-12">
-        <CanvasHooks
-          hooks={hooks}
-          onChange={setHooks}
-          onAskForHooks={() => onAsk("Give me five hooks")}
-        />
-
-        {pointsBlock ? (
-          renderBlock(pointsBlock, "Key points")
-        ) : (
-          <EmptySlot
-            title="Key points"
-            label="Give me the key points"
-            onAsk={() => onAsk("Give me the key points as bullets")}
+    <div className="mx-auto w-full max-w-[1440px] px-6 pt-8 pb-24 lg:px-10">
+      <div className="grid gap-x-16 gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)]">
+        <div className="min-w-0 space-y-12">
+          <HookChosen
+            hook={hooks[0] ?? null}
+            hookKey={keys[0] ?? null}
+            onChange={(text) => setHooks([text, ...hooks.slice(1)])}
+            onAskForHooks={() => onAsk("Give me five hooks")}
           />
-        )}
-
-        {scriptBlock ? (
-          renderBlock(scriptBlock, "Script")
-        ) : (
-          <EmptySlot
-            title="Script"
-            label="Write the script"
-            onAsk={() => onAsk("Write the script")}
+          <ScriptEditor
+            text={scriptBlock?.text ?? ""}
+            onChange={setScript}
+            onWrite={() => onAsk("Write the script")}
+            onAsk={() => {
+              if (scriptBlock) onAskBlock(scriptBlock.id);
+              else onAsk("Write the script");
+            }}
           />
-        )}
+          {children ? <div className="space-y-6 pt-4">{children}</div> : null}
+        </div>
 
-        {otherBlocks.map((block) => renderBlock(block))}
+        <aside className="min-w-0 space-y-10 lg:sticky lg:top-8 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-1">
+          <CanvasDetails item={item} update={update} />
+          <HookAlternatives
+            hooks={hooks.slice(1)}
+            keys={keys.slice(1)}
+            onUse={(offset) => {
+              const index = offset + 1;
+              setHooks([hooks[index], ...hooks.filter((_, i) => i !== index)]);
+            }}
+            onEdit={(offset, text) =>
+              setHooks(hooks.map((h, i) => (i === offset + 1 ? text : h)))
+            }
+            onRemove={(offset) =>
+              setHooks(hooks.filter((_, i) => i !== offset + 1))
+            }
+            onMore={() =>
+              onAsk(
+                hooks.length
+                  ? "Give me three more hook alternatives with different angles"
+                  : "Give me five hooks",
+              )
+            }
+          />
+          {pointsBlock ? (
+            renderBlock(pointsBlock, "Key points")
+          ) : (
+            <EmptySlot
+              title="Key points"
+              label="Give me the key points"
+              onAsk={() => onAsk("Give me the key points as bullets")}
+            />
+          )}
+          {otherBlocks.map((block) => renderBlock(block))}
+        </aside>
       </div>
-      {children ? <div className="mt-16 space-y-6">{children}</div> : null}
     </div>
   );
 }

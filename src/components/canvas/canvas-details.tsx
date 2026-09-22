@@ -1,15 +1,13 @@
 "use client";
 
+import CanvasSectionTitle from "@/components/canvas/canvas-section-title";
 import ItemPillarField from "@/components/library/item-pillar-field";
 import FormatField from "@/components/workbench/format-field";
 import { Input } from "@/components/ui/input";
 import type { ContentDetail, ContentPatch } from "@/lib/content/client";
 
-/**
- * The few facts about the piece that are not its words, on one quiet line
- * under the title: pillar, what it publishes as, and the plan date when it
- * has one. No labels stacked above controls; each control names itself.
- */
+/** The facts about the piece that are not its words: pillar, what it ships
+ * as, and the plan date once it is ready. */
 export default function CanvasDetails({
   item,
   update,
@@ -18,28 +16,54 @@ export default function CanvasDetails({
   update: (patch: ContentPatch) => void;
 }) {
   return (
-    <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-2 text-xs">
-      <ItemPillarField
-        pillarId={item.pillarId}
-        legacyName={item.pillar}
-        onChange={(pillarId) => update({ pillarId })}
-      />
-      <FormatField
-        formats={item.formats}
-        onChange={(formats) => update({ formats })}
-      />
-      {item.status === "ready" && (
-        <Input
-          type="datetime-local"
-          value={toLocalInput(item.scheduledFor)}
-          onChange={(event) => {
-            const iso = fromLocalInput(event.target.value);
-            if (iso) update({ scheduledFor: iso });
-          }}
-          className="h-8 w-auto text-xs"
-          aria-label="Scheduled for"
-        />
-      )}
+    <section>
+      <CanvasSectionTitle title="Details" />
+      <dl className="space-y-4">
+        <Row label="Pillar">
+          <ItemPillarField
+            pillarId={item.pillarId}
+            legacyName={item.pillar}
+            onChange={(pillarId) => update({ pillarId })}
+          />
+        </Row>
+        <Row label="Ships as">
+          <FormatField
+            formats={item.formats}
+            onChange={(formats) => update({ formats })}
+          />
+        </Row>
+        {item.status === "ready" && (
+          <Row label="Scheduled">
+            <Input
+              type="datetime-local"
+              value={toLocalInput(item.scheduledFor)}
+              onChange={(event) => {
+                const iso = fromLocalInput(event.target.value);
+                if (iso) update({ scheduledFor: iso });
+              }}
+              className="h-8 w-auto text-xs"
+              aria-label="Scheduled for"
+            />
+          </Row>
+        )}
+      </dl>
+    </section>
+  );
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <dt className="text-muted-foreground mb-1.5 text-[12px] font-medium">
+        {label}
+      </dt>
+      <dd className="m-0">{children}</dd>
     </div>
   );
 }
