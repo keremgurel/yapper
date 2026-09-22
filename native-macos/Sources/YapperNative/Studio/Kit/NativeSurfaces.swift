@@ -14,6 +14,12 @@ struct NativeSurfaceHost: View {
     let navigate: (StudioDestination) -> Void
 
     var body: some View {
+        content
+            .onAppear { StudioNavigation.shared.goTo = navigate }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         switch destination {
         case .connections:
             ConnectionsPage()
