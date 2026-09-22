@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Sparkles } from "lucide-react";
 import CanvasBlock from "@/components/canvas/canvas-block";
 import CanvasDetails from "@/components/canvas/canvas-details";
@@ -31,6 +32,7 @@ export default function CanvasDocument({
   setHooks,
   onAsk,
   onAskBlock,
+  children,
 }: {
   item: ContentDetail;
   update: (patch: ContentPatch) => void;
@@ -40,8 +42,10 @@ export default function CanvasDocument({
   setHooks: (hooks: string[]) => void;
   /** Sends one instruction to Chirpy. */
   onAsk: (instruction: string) => void;
-  /** Aims the chat at one block. */
+  /** Aims Chirpy at one block. */
   onAskBlock: (id: string) => void;
+  /** What sits under the writing: where the piece came from, the talk so far. */
+  children?: ReactNode;
 }) {
   const scriptBlock = blocks.find((block) => block.kind === "script") ?? null;
   const pointsBlock =
@@ -111,6 +115,7 @@ export default function CanvasDocument({
 
         {otherBlocks.map((block) => renderBlock(block))}
       </div>
+      {children ? <div className="mt-16 space-y-6">{children}</div> : null}
     </div>
   );
 }

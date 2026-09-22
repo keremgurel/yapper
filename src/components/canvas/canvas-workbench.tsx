@@ -1,14 +1,19 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import CanvasChatPane from "@/components/canvas/canvas-chat-pane";
 import CanvasDocument from "@/components/canvas/canvas-document";
 import CanvasHeader from "@/components/canvas/canvas-header";
 import CanvasMenu from "@/components/canvas/canvas-menu";
+import CanvasReference from "@/components/canvas/canvas-reference";
+import CanvasThread from "@/components/canvas/canvas-thread";
 import { useCanvasMaximized } from "@/components/canvas/use-canvas-maximized";
+import {
+  useStudioChirpy,
+  type ChirpyCanvasTools,
+} from "@/components/studio-shell/studio-chirpy";
 import { DeleteButton } from "@/components/ui/delete-button";
 import CanvasPhoneSheet from "@/components/canvas/canvas-phone-sheet";
 import { Button } from "@/components/ui/button";
@@ -16,8 +21,10 @@ import { useCanvasAsk } from "@/hooks/use-canvas-ask";
 import { useCanvasDoc } from "@/hooks/use-canvas-doc";
 import { useCanvasThread, type CanvasMessage } from "@/hooks/use-canvas-thread";
 import { useContentItem } from "@/hooks/use-content-item";
-import type { BrainUsed } from "@/lib/brain/context/types";
-import { applyCanvasActions } from "@/lib/content/canvas-actions";
+import {
+  applyCanvasActions,
+  describeCanvasActions,
+} from "@/lib/content/canvas-actions";
 import {
   blockFrom,
   type CanvasBlock as CanvasBlockDoc,
@@ -59,6 +66,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   } = useContentItem(id);
   const { blocks, setBlocks, hooks, setHooks } = useCanvasDoc(item, update);
   const chirpy = useCanvasAsk();
+  const studioChirpy = useStudioChirpy();
   const thread = useCanvasThread(item?.id ?? null);
   const [target, setTarget] = useState<string | null>(null);
   // Replies already placed on the page, and the one change that can still be
@@ -70,9 +78,6 @@ export default function CanvasWorkbench({ id }: { id: string }) {
     hooks: string[];
     title: string;
   } | null>(null);
-  const [focusToken, setFocusToken] = useState(0);
-  const [note, setNote] = useState<string | null>(null);
-  const [used, setUsed] = useState<BrainUsed | null>(null);
   const [phoneOpen, setPhoneOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const { maximized, toggle: toggleMaximized } = useCanvasMaximized();
@@ -118,6 +123,97 @@ export default function CanvasWorkbench({ id }: { id: string }) {
       router.push("/studio/ideas");
     }, "The delete couldn’t be confirmed. Your item is kept; try again.");
 
+  /** One ask about this piece, from the Chirpy panel. Applies what came back
+   * and tells Chirpy what changed, so the panel can say it. */
+  const askFromChirpy = useCallback(
+    async (instruction: string) => {
+      if (!item) return null;
+      const targetIndex = target
+        ? blocks.findIndex((block) => block.id === target)
+        : -1;
+      const pendingId = thread.pendingAsk(instruction);
+      const reply = await chirpy.ask(
+        instruction,
+        {
+          title: item.title,
+          blocks,
+          hooks,
+          originalNote: item.originalNote,
+          source: {
+            title: item.sourceTitle,
+            url: item.sourceUrl,
+            excerpt: (item.sourceTranscript ?? item.sourceSummary ?? "").slice(
+              0,
+              3000,
+            ),
+          },
+        },
+        targetIndex >= 0 ? targetIndex : null,
+        item.id,
+      );
+      setTarget(null);
+      if (!reply) {
+        thread.settle(pendingId, null);
+        return null;
+      }
+      const before = { blocks, hooks, title: item.title };
+      const next = applyCanvasActions(
+        { title: item.title, blocks, hooks },
+        reply.actions,
+      );
+      if (next.blocks !== blocks) setBlocks(next.blocks);
+      if (next.hooks !== hooks) setHooks(next.hooks);
+      if (next.title !== item.title) update({ title: next.title });
+      thread.settle(pendingId, reply.messages);
+      const said = (reply.messages ?? [])
+        .map((m) => m as { id?: unknown; role?: unknown; text?: unknown })
+        .find((m) => m.role === "chirpy");
+      setUndoable(
+        reply.actions.length > 0 && typeof said?.id === "string"
+          ? { messageId: said.id, ...before }
+          : null,
+      );
+      const changed = reply.actions.length
+        ? describeCanvasActions(reply.actions)
+        : null;
+      return {
+        text:
+          (typeof said?.text === "string" && said.text) ||
+          changed ||
+          reply.note ||
+          "Done.",
+        notes: changed ? [changed] : undefined,
+        tone: reply.actions.length ? ("done" as const) : undefined,
+      };
+    },
+    [blocks, chirpy, hooks, item, setBlocks, setHooks, target, thread, update],
+  );
+
+  const addToPage = (message: CanvasMessage, asked: string) => {
+    setBlocks((current) => [
+      ...current,
+      blockFrom(noteToBlock(message.text, asked)),
+    ]);
+    setAddedIds((current) => new Set(current).add(message.id));
+  };
+
+  const undoLast = () => {
+    if (!undoable || !item) return;
+    setBlocks(undoable.blocks);
+    setHooks(undoable.hooks);
+    if (undoable.title !== item.title) update({ title: undoable.title });
+    setUndoable(null);
+  };
+
+  const canvasTools = useMemo<ChirpyCanvasTools>(
+    () => ({ ask: askFromChirpy }),
+    [askFromChirpy],
+  );
+  useEffect(() => {
+    studioChirpy.registerCanvasTools(canvasTools);
+    return () => studioChirpy.registerCanvasTools(null);
+  }, [canvasTools, studioChirpy]);
+
   if (loading) {
     return (
       <div className="text-muted-foreground flex items-center gap-2 py-12 text-sm">
@@ -150,188 +246,123 @@ export default function CanvasWorkbench({ id }: { id: string }) {
     );
   }
 
-  const targetBlock = blocks.find((block) => block.id === target) ?? null;
-  const targetIndex = targetBlock ? blocks.indexOf(targetBlock) : null;
-
-  const ask = async (instruction: string) => {
-    setNote(null);
-    const pendingId = thread.pendingAsk(instruction);
-    const reply = await chirpy.ask(
-      instruction,
-      {
-        title: item.title,
-        blocks,
-        hooks,
-        originalNote: item.originalNote,
-        source: {
-          title: item.sourceTitle,
-          url: item.sourceUrl,
-          excerpt: (item.sourceTranscript ?? item.sourceSummary ?? "").slice(
-            0,
-            3000,
-          ),
-        },
-      },
-      targetIndex,
-      item.id,
-    );
-    if (!reply) {
-      thread.settle(pendingId, null);
-      return;
-    }
-    const before = { blocks, hooks, title: item.title };
-    const next = applyCanvasActions(
-      { title: item.title, blocks, hooks },
-      reply.actions,
-    );
-    if (next.blocks !== blocks) setBlocks(next.blocks);
-    if (next.hooks !== hooks) setHooks(next.hooks);
-    if (next.title !== item.title) update({ title: next.title });
-    thread.settle(pendingId, reply.messages);
-    const replyId = (reply.messages ?? [])
-      .map((m) => m as { id?: unknown; role?: unknown })
-      .find((m) => m.role === "chirpy")?.id;
-    setUndoable(
-      reply.actions.length > 0 && typeof replyId === "string"
-        ? { messageId: replyId, ...before }
-        : null,
-    );
-    setNote(reply.messages ? null : reply.note);
-    setUsed(reply.used);
-    setTarget(null);
-  };
-
-  const addToPage = (message: CanvasMessage, asked: string) => {
-    setBlocks((current) => [
-      ...current,
-      blockFrom(noteToBlock(message.text, asked)),
-    ]);
-    setAddedIds((current) => new Set(current).add(message.id));
-  };
-
-  const undoLast = () => {
-    if (!undoable) return;
-    setBlocks(undoable.blocks);
-    setHooks(undoable.hooks);
-    if (undoable.title !== item.title) update({ title: undoable.title });
-    setUndoable(null);
-  };
-
-  const threadPane = {
-    messages: thread.messages,
-    failed: thread.failed,
-    onClear: () => void thread.clear(),
-    addedIds,
-    undoableId: undoable?.messageId ?? null,
-    onAddToPage: addToPage,
-    onUndo: undoLast,
-  };
-  const prompt = {
-    busy: chirpy.busy,
-    error: chirpy.error,
-    note,
-    target: targetBlock ? { label: targetBlock.label } : null,
-    onClearTarget: () => setTarget(null),
-    onAsk: ask,
-    focusToken,
-  };
+  const hasOrigin = Boolean(
+    item.sourceTitle ||
+    item.sourceUrl ||
+    item.sourceTranscript ||
+    item.sourceSummary ||
+    item.recordedTranscript ||
+    item.originalNote.trim(),
+  );
 
   return (
     <div
       data-fluid-page
-      className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 lg:-my-8 lg:flex lg:h-[calc(100svh-var(--site-header,3.5rem)-3rem)] lg:overflow-hidden"
+      className={
+        maximized
+          ? "bg-background fixed inset-0 z-[60] flex flex-col"
+          : "-mx-4 -my-6 flex flex-col sm:-mx-6 lg:-mx-8 lg:-my-8 lg:h-[calc(100svh-var(--site-header,3.5rem)-3rem)]"
+      }
     >
-      <section className="flex min-w-0 flex-1 flex-col lg:h-full">
-        {(actionError || saveState === "error") && (
-          <div className="border-border flex items-center gap-3 border-b px-4 py-2 text-sm">
-            {actionError && (
-              <p role="alert" className="text-destructive">
-                {actionError}
-              </p>
-            )}
-            {saveState === "error" && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  void flush().catch(() =>
-                    setActionError(
-                      "Your edits still couldn’t be saved. Try again.",
-                    ),
-                  )
-                }
-              >
-                Retry saving
-              </Button>
-            )}
-          </div>
-        )}
-        <CanvasHeader
-          title={item.title}
-          onTitle={(title) => update({ title })}
-          status={item.status}
-          onStatus={(status) => update({ status })}
-          saveState={saveState}
-          busy={busy}
-          hasRecording={Boolean(item.submissionId)}
-          onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
-          maximized={maximized}
-          onToggleMaximized={toggleMaximized}
-          menu={
-            <>
-              <DeleteButton
-                size="sm"
-                label={`Delete ${item.title || "this piece"}`}
-                disabled={busy}
-                onConfirm={() => void remove()}
-              />
-              <CanvasMenu
-                hasRecording={Boolean(item.submissionId)}
-                busy={busy}
-                onCopyScript={() => {
-                  void navigator.clipboard
-                    .writeText(
-                      ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
-                    )
-                    .catch(() => {});
-                }}
-                onSendToPhone={() => setPhoneOpen(true)}
-                onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
-                onCrossPost={() =>
-                  void navigate(`/studio/poster?item=${item.id}`)
-                }
-              />
-            </>
-          }
-        />
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <CanvasDocument
-            item={item}
-            update={update}
-            blocks={blocks}
-            setBlocks={setBlocks}
-            hooks={hooks}
-            setHooks={setHooks}
-            onAsk={(instruction) => void ask(instruction)}
-            onAskBlock={(id) => {
-              setTarget(id);
-              setFocusToken((token) => token + 1);
-            }}
-          />
+      {(actionError || saveState === "error") && (
+        <div className="border-border flex items-center gap-3 border-b px-4 py-2 text-sm">
+          {actionError && (
+            <p role="alert" className="text-destructive">
+              {actionError}
+            </p>
+          )}
+          {saveState === "error" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void flush().catch(() =>
+                  setActionError(
+                    "Your edits still couldn’t be saved. Try again.",
+                  ),
+                )
+              }
+            >
+              Retry saving
+            </Button>
+          )}
         </div>
-      </section>
-
-      {!maximized && (
-        <aside className="border-border bg-background lg:order-first lg:h-full lg:w-[380px] lg:shrink-0 lg:border-r">
-          <CanvasChatPane
-            item={item}
-            update={update}
-            thread={threadPane}
-            prompt={prompt}
-            used={used}
-          />
-        </aside>
       )}
+      <CanvasHeader
+        title={item.title}
+        onTitle={(title) => update({ title })}
+        status={item.status}
+        onStatus={(status) => update({ status })}
+        saveState={saveState}
+        busy={busy}
+        hasRecording={Boolean(item.submissionId)}
+        onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
+        onAskChirpy={() => studioChirpy.open()}
+        maximized={maximized}
+        onToggleMaximized={toggleMaximized}
+        menu={
+          <>
+            <DeleteButton
+              size="sm"
+              label={`Delete ${item.title || "this piece"}`}
+              disabled={busy}
+              onConfirm={() => void remove()}
+            />
+            <CanvasMenu
+              hasRecording={Boolean(item.submissionId)}
+              busy={busy}
+              onCopyScript={() => {
+                void navigator.clipboard
+                  .writeText(
+                    ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
+                  )
+                  .catch(() => {});
+              }}
+              onSendToPhone={() => setPhoneOpen(true)}
+              onEditOnMac={() => void navigate(studioEditorUrl(item.id))}
+              onCrossPost={() =>
+                void navigate(`/studio/poster?item=${item.id}`)
+              }
+            />
+          </>
+        }
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <CanvasDocument
+          item={item}
+          update={update}
+          blocks={blocks}
+          setBlocks={setBlocks}
+          hooks={hooks}
+          setHooks={setHooks}
+          onAsk={(instruction) => studioChirpy.run(instruction)}
+          onAskBlock={(id) => {
+            const block = blocks.find((entry) => entry.id === id);
+            setTarget(id);
+            studioChirpy.open(`Change the ${block?.label?.trim() || "part"}: `);
+          }}
+        >
+          <CanvasThread
+            messages={thread.messages}
+            failed={thread.failed}
+            onClear={() => void thread.clear()}
+            addedIds={addedIds}
+            undoableId={undoable?.messageId ?? null}
+            onAddToPage={addToPage}
+            onUndo={undoLast}
+          />
+          {hasOrigin && (
+            <details className="group">
+              <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-[13px] font-medium select-none">
+                Where this came from
+              </summary>
+              <div className="mt-4">
+                <CanvasReference item={item} update={update} />
+              </div>
+            </details>
+          )}
+        </CanvasDocument>
+      </div>
 
       <CanvasPhoneSheet
         open={phoneOpen}

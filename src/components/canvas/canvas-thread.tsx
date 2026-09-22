@@ -40,11 +40,9 @@ export default function CanvasThread({
   if (messages.length === 0 && !failed) return null;
 
   return (
-    <section>
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-muted-foreground text-[13px] font-medium">
-          Conversation
-        </span>
+    <details className="group">
+      <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer list-none items-center justify-between text-[13px] font-medium select-none">
+        <span>Conversation with Chirpy · {messages.length}</span>
         {messages.length > 0 && (
           <Button
             type="button"
@@ -56,14 +54,14 @@ export default function CanvasThread({
             Clear
           </Button>
         )}
-      </div>
+      </summary>
       {failed && (
         <p className="text-muted-foreground mb-2 text-xs">
           The earlier conversation couldn’t be loaded. New asks still work.
         </p>
       )}
       {
-        <div className="space-y-3">
+        <div className="mt-3 space-y-3">
           {messages.map((message, index) => {
             const asked =
               [...messages.slice(0, index)]
@@ -87,6 +85,6 @@ export default function CanvasThread({
           <div ref={end} />
         </div>
       }
-    </section>
+    </details>
   );
 }

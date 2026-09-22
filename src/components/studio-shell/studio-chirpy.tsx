@@ -71,9 +71,18 @@ export interface ChirpyBrainTools {
   setUpFromDocument: (document: string) => void;
 }
 
+/** What the open idea canvas lets Chirpy do: take one instruction and change
+ * the document, answering with what it did. */
+export interface ChirpyCanvasTools {
+  ask: (instruction: string) => Promise<NativeChirpyReply | null>;
+}
+
 interface StudioChirpyValue {
   open: (prompt?: string) => void;
+  /** Opens the panel and sends this straight away. */
+  run: (prompt: string) => void;
   registerBrainTools: (tools: ChirpyBrainTools | null) => void;
+  registerCanvasTools: (tools: ChirpyCanvasTools | null) => void;
 }
 
 const StudioChirpyContext = createContext<StudioChirpyValue | null>(null);
@@ -101,13 +110,21 @@ function ideaTextFrom(command: string): string {
 function routeLabel(pathname: string): string {
   if (pathname.startsWith("/studio/ideas")) return "Ideas";
   if (pathname.startsWith("/studio/brain")) return "Brain";
-  if (pathname.startsWith("/studio/library")) return "Ideas";
+  if (pathname.startsWith("/studio/library")) return "Canvas";
   if (pathname.startsWith("/studio/inspiration")) return "Inspiration";
   if (pathname.startsWith("/studio/brand")) return "Brand kit";
   return "Studio";
 }
 
 function openers(pathname: string): string[] {
+  if (pathname.startsWith("/studio/library")) {
+    return [
+      "Write the script",
+      "Give me five hooks",
+      "Give me the key points as bullets",
+      "Tighten this into 30 seconds",
+    ];
+  }
   if (pathname.startsWith("/studio/brand")) {
     return ["Show my brand kit", "What can you help me do here?"];
   }
@@ -145,6 +162,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const [working, setWorking] = useState(false);
   const [isNativeShell, setIsNativeShell] = useState(false);
   const brainTools = useRef<ChirpyBrainTools | null>(null);
+  const canvasTools = useRef<ChirpyCanvasTools | null>(null);
   const nextID = useRef(1);
   const sending = useRef(false);
   const [focusRequest, setFocusRequest] = useState(0);
@@ -175,6 +193,9 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
 
   const registerBrainTools = useCallback((tools: ChirpyBrainTools | null) => {
     brainTools.current = tools;
+  }, []);
+  const registerCanvasTools = useCallback((tools: ChirpyCanvasTools | null) => {
+    canvasTools.current = tools;
   }, []);
 
   useEffect(() => {
@@ -261,6 +282,17 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       setWorking(true);
 
       try {
+        // On an idea's canvas, every ask is about the piece on screen: the
+        // canvas writes it into the document and says what changed.
+        if (canvasTools.current) {
+          const reply = await canvasTools.current.ask(text);
+          return answer(
+            reply ?? {
+              text: "I couldn’t change the canvas just now. Nothing was charged. Try again.",
+              tone: "trouble",
+            },
+          );
+        }
         // A long or multi-line message is a note or a transcript, never a typed
         // command; it goes straight to conversation.
         const command = looksLikeCommand(text);
@@ -461,9 +493,17 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     };
   }, [send]);
 
+  const run = useCallback(
+    (prompt: string) => {
+      open();
+      void send(prompt);
+    },
+    [open, send],
+  );
+
   const value = useMemo(
-    () => ({ open, registerBrainTools }),
-    [open, registerBrainTools],
+    () => ({ open, run, registerBrainTools, registerCanvasTools }),
+    [open, run, registerBrainTools, registerCanvasTools],
   );
 
   const lastTone = messages.at(-1)?.tone;
