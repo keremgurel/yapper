@@ -33,7 +33,7 @@ export default function MonthView({
         {WEEKDAYS.map((d) => (
           <div
             key={d}
-            className="text-muted-foreground px-2 py-2 text-[11px] font-black"
+            className="text-muted-foreground px-2 py-2 text-[11px] font-semibold"
           >
             {d}
           </div>

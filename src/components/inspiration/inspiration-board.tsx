@@ -100,7 +100,7 @@ export default function InspirationBoard({ onAdd }: { onAdd: () => void }) {
     <div className="min-w-0 flex-1">
       <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-foreground text-3xl font-black tracking-tight">
+          <h1 className="text-foreground text-3xl font-semibold tracking-tight">
             {title}
           </h1>
           <p className="text-foreground/55 mt-1 text-sm">

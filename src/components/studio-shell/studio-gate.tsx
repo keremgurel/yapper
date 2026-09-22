@@ -82,7 +82,7 @@ export default function StudioGate() {
         <p className="mb-3 text-sm font-semibold tracking-wide text-[color:var(--sg-accent)]">
           {eyebrow}
         </p>
-        <h1 className="font-display text-foreground text-3xl font-black tracking-tight sm:text-4xl">
+        <h1 className="font-display text-foreground text-3xl font-semibold tracking-tight sm:text-4xl">
           {headline}
         </h1>
         <p className="text-foreground/70 mx-auto mt-4 max-w-sm text-base leading-relaxed">

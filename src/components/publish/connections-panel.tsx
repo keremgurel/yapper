@@ -152,14 +152,14 @@ export default function ConnectionsPanel() {
                   Unavailable
                 </span>
               ) : canConnect ? (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => beginConnect(p)}
-                  style={{ background: "var(--sg-accent-gradient)" }}
-                  className="rounded-lg px-4 py-1.5 text-sm font-black text-white transition-opacity hover:opacity-90"
                 >
                   Connect
-                </button>
+                </Button>
               ) : (
                 <span className="text-muted-foreground text-xs font-bold">
                   Coming soon

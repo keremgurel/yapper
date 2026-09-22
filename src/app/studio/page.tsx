@@ -87,7 +87,7 @@ export default function StudioMarketingPage() {
         <p className="sg-field-label text-center text-[color:var(--sg-accent)]">
           Everything you need
         </p>
-        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-black sm:text-3xl">
+        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-semibold sm:text-3xl">
           One workflow, start to finish
         </h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -102,7 +102,7 @@ export default function StudioMarketingPage() {
                     <StudioNavIcon icon={item.icon} className="h-5 w-5" />
                   </span>
                   <div>
-                    <h3 className="text-foreground text-lg font-black">
+                    <h3 className="text-foreground text-lg font-semibold">
                       {item.title}
                     </h3>
                     <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
@@ -121,16 +121,16 @@ export default function StudioMarketingPage() {
         <p className="sg-field-label text-center text-[color:var(--sg-accent)]">
           How it works
         </p>
-        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-black sm:text-3xl">
+        <h2 className="sg-display text-foreground mt-2 text-center text-2xl font-semibold sm:text-3xl">
           The create-to-post loop
         </h2>
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step) => (
             <Card key={step.n} className="gap-0 p-6">
-              <span className="sg-mono text-sm font-black text-[color:var(--sg-accent)]">
+              <span className="sg-mono text-sm font-semibold text-[color:var(--sg-accent)]">
                 {step.n}
               </span>
-              <h3 className="text-foreground mt-3 text-base font-black">
+              <h3 className="text-foreground mt-3 text-base font-semibold">
                 {step.title}
               </h3>
               <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
@@ -149,7 +149,7 @@ export default function StudioMarketingPage() {
       <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
         <div className="sg-panel flex flex-col items-center gap-5 p-10 text-center">
           <ChirpyMark size={40} />
-          <h2 className="sg-display text-foreground max-w-lg text-2xl font-black sm:text-3xl">
+          <h2 className="sg-display text-foreground max-w-lg text-2xl font-semibold sm:text-3xl">
             Already an early user?
           </h2>
           <p className="text-muted-foreground max-w-md text-sm sm:text-base">

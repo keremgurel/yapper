@@ -130,7 +130,7 @@ export default function ClipChat({
             <Sparkles className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <h2 className="text-foreground truncate text-sm font-black">
+            <h2 className="text-foreground truncate text-sm font-semibold">
               Make your own from this
             </h2>
             <p className="text-foreground/55 truncate text-xs">{clip.title}</p>

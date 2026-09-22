@@ -24,7 +24,7 @@ export default function Page() {
       <div className="flex flex-col items-center gap-3">
         <ChirpyMark size={44} />
         <div className="text-center">
-          <p className="font-display text-2xl font-black">Yapper Studio</p>
+          <p className="font-display text-2xl font-semibold">Yapper Studio</p>
           <p className="text-muted-foreground text-sm">
             Sign in to reach your projects, ideas and connected accounts.
           </p>

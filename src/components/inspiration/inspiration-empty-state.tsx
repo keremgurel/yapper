@@ -36,7 +36,7 @@ export default function InspirationEmptyState({
       <p className="sg-field-label mt-6 text-[color:var(--sg-accent)]">
         Inspiration
       </p>
-      <h1 className="font-display text-foreground mt-2 max-w-lg text-3xl font-black tracking-tight sm:text-4xl">
+      <h1 className="font-display text-foreground mt-2 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">
         Your swipe file of what great looks like.
       </h1>
       <p className="text-muted-foreground mt-3 max-w-md text-base leading-relaxed">

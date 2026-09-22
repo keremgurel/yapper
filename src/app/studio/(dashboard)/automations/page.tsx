@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <div className="w-full">
-      <h1 className="font-display text-foreground text-2xl font-black tracking-tight">
+      <h1 className="font-display text-foreground text-2xl font-semibold tracking-tight">
         Automations
       </h1>
       <p className="text-muted-foreground mt-1 mb-6 text-sm">

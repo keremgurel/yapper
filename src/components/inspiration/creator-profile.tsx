@@ -32,7 +32,7 @@ function Carousel({
         {accent && (
           <TrendingUp className="h-4 w-4 text-[color:var(--sg-accent)]" />
         )}
-        <h3 className="text-foreground text-sm font-black">{title}</h3>
+        <h3 className="text-foreground text-sm font-semibold">{title}</h3>
         <span className="text-foreground/40 text-xs font-bold">
           {videos.length}
         </span>
@@ -141,7 +141,7 @@ export default function CreatorProfile({
                 className="h-full w-full object-cover"
               />
             ) : (
-              <span className="flex h-full w-full items-center justify-center bg-[color:var(--sg-accent)]/15 text-2xl font-black text-[color:var(--sg-accent)]">
+              <span className="flex h-full w-full items-center justify-center bg-[color:var(--sg-accent)]/15 text-2xl font-semibold text-[color:var(--sg-accent)]">
                 {initial}
               </span>
             )}
@@ -153,7 +153,7 @@ export default function CreatorProfile({
           </span>
 
           <div className="min-w-0 flex-1">
-            <h2 className="text-foreground truncate text-lg font-black">
+            <h2 className="text-foreground truncate text-lg font-semibold">
               {item.title}
             </h2>
             <p className="text-foreground/55 truncate text-sm">
@@ -234,7 +234,7 @@ export default function CreatorProfile({
           {savedClips.length > 0 && (
             <section>
               <div className="mb-2 flex items-center gap-1.5">
-                <h3 className="text-foreground text-sm font-black">
+                <h3 className="text-foreground text-sm font-semibold">
                   Your saved clips
                 </h3>
                 <span className="text-foreground/40 text-xs font-bold">

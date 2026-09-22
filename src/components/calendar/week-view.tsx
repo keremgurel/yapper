@@ -29,7 +29,7 @@ export default function WeekView({
                 {day.toLocaleDateString(undefined, { weekday: "short" })}
               </div>
               <div
-                className={`text-sm font-black ${
+                className={`text-sm font-semibold ${
                   isToday ? "text-[color:var(--sg-accent)]" : "text-foreground"
                 }`}
               >

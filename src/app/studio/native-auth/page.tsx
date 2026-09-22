@@ -40,7 +40,7 @@ function NativeAuthContent() {
         <div className="flex items-center gap-3">
           <ChirpyMark size={38} />
           <div>
-            <p className="font-display text-xl font-black">Yapper Studio</p>
+            <p className="font-display text-xl font-semibold">Yapper Studio</p>
             <p className="text-muted-foreground text-sm">
               Secure browser sign-in
             </p>
