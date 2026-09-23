@@ -24,6 +24,15 @@ enum StudioDestination: String, CaseIterable, Identifiable {
     /// The editor is the one deliberate platform difference. The rest of the
     /// visible Studio navigation loads the same route the browser shows.
     /// Audio remains an internal editor destination, not a second product tab.
+    /// Whether the hidden web view can sit on this tab's route. It always
+    /// can, except for the editor tabs that never had one: now that every
+    /// Studio tab is native, the web view parks on a route only to keep the
+    /// Clerk session alive for native requests, so "native" must not stop it
+    /// loading.
+    var hasWebPage: Bool {
+        self != .editor && self != .audio && cloudPath != nil
+    }
+
     var isNative: Bool {
         self == .editor || self == .audio || NativeSurfaces.enabled.contains(self)
     }

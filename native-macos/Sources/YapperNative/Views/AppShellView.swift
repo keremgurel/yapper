@@ -97,7 +97,7 @@ struct AppShellView: View {
             }
             .onAppear {
                 // A launch straight into a web tab parks on that tab, not on Home.
-                if !destination.isNative { parkedWebDestination = destination }
+                if destination.hasWebPage { parkedWebDestination = destination }
                 updateAssistantSurface()
                 guard editorLayoutDefaultsVersion < 1 else { return }
                 editorLayoutModeRaw = EditorLayoutMode.tallPreview.rawValue
@@ -215,7 +215,7 @@ struct AppShellView: View {
     private func navigate(_ next: StudioDestination) {
         guard next != destination else { return }
         if destination == .editor { session.pausePlayback() }
-        if !next.isNative { parkedWebDestination = next }
+        if next.hasWebPage { parkedWebDestination = next }
         var transaction = Transaction()
         transaction.disablesAnimations = true
         withTransaction(transaction) {
