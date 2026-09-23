@@ -31,6 +31,14 @@ struct PosterCoverDraft {
     }
 }
 
+/// The starting prompt names what is attached, so it reads true until the
+/// creator writes their own. The route's system prompt carries the rest.
 enum PosterThumbnailPrompt {
-    static let standard = "Create a high-impact vertical social-video thumbnail. Keep the person recognizable and identity-faithful. Make the main subject large, expressive, and immediately readable on a phone. Improve lighting, separation, color, and contrast while keeping the result believable. Simplify distracting background details and leave useful negative space for an optional headline. Do not add text, logos, borders, or watermarks."
+    static func standard(frame: Bool, reference: Bool) -> String {
+        let base = frame
+            ? "Generate a 9:16 short-form video thumbnail from the attached frame."
+            : "Generate a 9:16 short-form video thumbnail."
+        guard reference else { return base }
+        return base + " Make it look exactly like the reference thumbnail: same layout, text style, colors, and framing."
+    }
 }

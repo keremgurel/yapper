@@ -15,7 +15,7 @@ struct RecorderReviewView: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 28) {
-            VideoPlayer(player: player)
+            NativeVideoPlayer(player: player)
                 .aspectRatio(9.0 / 16.0, contentMode: .fit)
                 .frame(height: 620)
                 .background(Color.black)

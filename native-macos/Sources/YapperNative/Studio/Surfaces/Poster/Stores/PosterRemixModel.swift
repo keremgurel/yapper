@@ -5,7 +5,8 @@ import Foundation
 /// an optional reference thumbnail. Two credits per generation.
 @MainActor
 final class PosterRemixModel: ObservableObject {
-    @Published var prompt = PosterThumbnailPrompt.standard
+    /// The creator's own words; nil means the standard prompt for what is attached.
+    @Published var customPrompt: String?
     @Published var useFrame = true
     @Published private(set) var reference: CGImage?
     @Published private(set) var referenceName = ""
@@ -13,8 +14,16 @@ final class PosterRemixModel: ObservableObject {
     @Published private(set) var generating = false
     @Published private(set) var error: String?
 
+    func prompt(usingFrame: Bool) -> String {
+        customPrompt ?? PosterThumbnailPrompt.standard(frame: usingFrame, reference: reference != nil)
+    }
+
     func chooseReference() {
         guard let url = PosterImageData.chooseImage(title: "Choose a reference thumbnail") else { return }
+        acceptReference(at: url)
+    }
+
+    func acceptReference(at url: URL) {
         switch PosterImageData.coverImage(at: url) {
         case let .success(image):
             reference = image
@@ -30,8 +39,13 @@ final class PosterRemixModel: ObservableObject {
             referenceError = "There is no image on the clipboard."
             return
         }
+        acceptReference(image, name: "Pasted image")
+    }
+
+    /// Images dragged out of a browser arrive as bytes, not files.
+    func acceptReference(_ image: CGImage, name: String) {
         reference = image
-        referenceName = "Pasted image"
+        referenceName = name
         referenceError = nil
     }
 
@@ -45,10 +59,11 @@ final class PosterRemixModel: ObservableObject {
         generating = true
         error = nil
         defer { generating = false }
+        let frame = useFrame ? frame : nil
         do {
             let result: PosterGeneratedThumbnail = try await PosterHTTP.post("api/publish/thumbnail", body: .compact([
-                "prompt": prompt.trimmingCharacters(in: .whitespacesAndNewlines),
-                "frame": useFrame ? frame.flatMap { PosterImageData.jpegDataURL($0) } : nil,
+                "prompt": prompt(usingFrame: frame != nil).trimmingCharacters(in: .whitespacesAndNewlines),
+                "frame": frame.flatMap { PosterImageData.jpegDataURL($0) },
                 "reference": reference.flatMap { PosterImageData.jpegDataURL($0) },
             ]))
             guard let image = PosterImageData.image(fromDataURL: result.image) else { throw PosterMessage("") }

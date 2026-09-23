@@ -38,7 +38,7 @@ struct PosterCoverStudio: View {
             PosterFramePickerView(picker: picker)
 
             PosterDisclosure(title: "Remix with AI", meta: draft.source == .generated ? "In use" : "2 credits") {
-                PosterRemixPanel(remix: remix, hasFrame: draft.frameImage != nil) {
+                PosterRemixPanel(remix: remix, frame: draft.frameImage) {
                     Task {
                         if let image = await remix.generate(frame: draft.frameImage) {
                             var next = draft

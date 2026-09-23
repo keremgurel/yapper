@@ -28,7 +28,7 @@ export function withCoverFrame(
 }
 
 export const DEFAULT_THUMBNAIL_PROMPT =
-  "Create a high-impact vertical social-video thumbnail. Keep the person recognizable and identity-faithful. Make the main subject large, expressive, and immediately readable on a phone. Improve lighting, separation, color, and contrast while keeping the result believable. Simplify distracting background details and leave useful negative space for an optional headline. Do not add text, logos, borders, or watermarks.";
+  "Generate a 9:16 short-form video thumbnail from the attached frame.";
 
 export function defaultCover(title: string): CoverDraft {
   // Kept in the signature because the caller's title is still the fallback
