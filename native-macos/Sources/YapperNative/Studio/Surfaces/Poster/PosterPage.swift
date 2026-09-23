@@ -62,7 +62,7 @@ struct PosterPage: View {
                 await refreshSource(force: true)
             }
         }
-        .sheet(item: $prep.sheet) { request in
+        .nativeDrawer(item: $prep.sheet) { request in
             PosterPublishSheet(request: request, connections: connections, drafts: drafts) { prep.sheet = nil }
         }
     }
