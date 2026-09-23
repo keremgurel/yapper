@@ -5,7 +5,7 @@ struct StoragePage: View {
     @ObservedObject var store: StorageStore = .shared
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Storage",
                 description: "Finished videos use your plan allowance. Your Brain, ideas and library are text and never count against it. Editor projects stay on your Mac."

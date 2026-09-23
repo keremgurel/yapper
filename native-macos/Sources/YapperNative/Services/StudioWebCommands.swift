@@ -123,6 +123,29 @@ final class StudioWebCommands: ObservableObject {
         return token
     }
 
+    /// Who is signed in, asked of Clerk directly. The web shell used to report
+    /// this when a Studio page mounted, but every tab is native now and the
+    /// parked page may never report.
+    func accountIdentity() async -> (id: String, name: String?, email: String?)? {
+        guard let webView else { return nil }
+        let result = try? await webView.callAsyncJavaScript(
+            """
+            let clerk = window.Clerk;
+            if (!clerk) return null;
+            await clerk.load();
+            const user = clerk.user;
+            if (!user) return null;
+            const name = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || null;
+            return { id: user.id, name, email: user.primaryEmailAddress?.emailAddress ?? null };
+            """,
+            arguments: [:],
+            in: nil,
+            contentWorld: .page
+        )
+        guard let payload = result as? [String: Any], let id = payload["id"] as? String else { return nil }
+        return (id, payload["name"] as? String, payload["email"] as? String)
+    }
+
     /// Runs the same Brain-aware Chirpy action as the browser UI, but returns
     /// the settled reply to the native transcript.
     func askChirpy(_ instruction: String) async throws -> StudioChirpyReply {

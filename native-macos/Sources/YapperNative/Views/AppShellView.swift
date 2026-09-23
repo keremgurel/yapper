@@ -86,6 +86,9 @@ struct AppShellView: View {
             .task {
                 await auth.refresh()
                 if auth.isSignedIn == false { auth.startWatching() }
+                // No tab shows the web page any more, so it may never report
+                // who is signed in; ask Clerk for the name directly.
+                await auth.loadIdentityFromClerk()
             }
             .onChange(of: auth.isSignedIn) { _, signedIn in
                 // Someone signing out mid-session lands on the door, and the watcher

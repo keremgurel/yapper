@@ -7,7 +7,7 @@ struct ConnectionsPage: View {
     @ObservedObject var store: ConnectionsStore = .shared
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Connections",
                 description: "Connect your accounts, prepare posts in Poster, and manage scheduled sending in Calendar."

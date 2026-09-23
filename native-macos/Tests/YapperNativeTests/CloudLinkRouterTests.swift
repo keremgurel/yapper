@@ -14,7 +14,8 @@ struct CloudLinkRouterTests {
             .brand, .storage, .dictionary, .connections,
         ])
         #expect(!visible.contains(.audio))
-        #expect(visible.filter(\.isNative) == [.editor])
+        // Every Studio tab is drawn by the app; none loads a web page.
+        #expect(visible.filter { !$0.isNative }.isEmpty)
     }
 
     @Test func brandAndStorageLeadTheSettingsSidebarGroup() {

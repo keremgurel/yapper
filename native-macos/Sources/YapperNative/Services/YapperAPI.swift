@@ -45,7 +45,7 @@ enum YapperAPI {
         // A freshly minted bearer token is authoritative when the short-lived
         // cookie has not refreshed yet. Keep cookies too: they are the cheap,
         // established path and cover older Clerk clients.
-        if let token = await StudioWebCommands.shared.sessionToken() {
+        if let token = await freshSessionToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         // The same name the web session uses. An unnamed URLSession posting
@@ -53,6 +53,23 @@ enum YapperAPI {
         // to stop, and the server already knows this client by this token.
         request.setValue(NativeUserAgent.token, forHTTPHeaderField: "User-Agent")
         return request
+    }
+
+    /// A Clerk token, waiting briefly for one when the app has just launched.
+    ///
+    /// Every Studio tab is native, so the first requests go out while the
+    /// hidden page is still loading Clerk and its session cookie may already
+    /// have lapsed. Sent then, they came back as "no session" and a page
+    /// showed an error for an account that was signed in. Waiting up to a few
+    /// seconds for the page to mint a token closes that gap; once Clerk is up
+    /// the first attempt answers at once.
+    private static func freshSessionToken() async -> String? {
+        let deadline = Date().addingTimeInterval(8)
+        while true {
+            if let token = await StudioWebCommands.shared.sessionToken() { return token }
+            if Date() >= deadline { return nil }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
     }
 
     @MainActor
