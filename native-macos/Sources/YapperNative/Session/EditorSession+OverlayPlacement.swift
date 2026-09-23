@@ -17,6 +17,9 @@ enum OverlayPlacementStatus: Equatable, Sendable {
 /// the media in the bin. It answers with quotes, those quotes are matched back
 /// against the transcript here, and only what the transcript backs is turned
 /// into an overlay. Nothing it invents can reach the timeline.
+/// Which overlay job a request is, when the planner has decided it.
+enum OverlayWorkflowMode: Sendable { case placeImported, create }
+
 @MainActor
 extension EditorSession {
     /// The words that survive the current edit, in the order they are heard.
@@ -40,15 +43,16 @@ extension EditorSession {
     }
 
     @discardableResult
-    func placeOverlaysWithAI(instruction: String) async -> Bool {
+    func placeOverlaysWithAI(instruction: String, mode: OverlayWorkflowMode? = nil) async -> Bool {
         guard !project.clips.isEmpty else { return false }
         return await runTrackedLongOperation(.overlayAI) { [weak self] operation in
-            await self?.performOverlayPlacement(instruction: instruction, owner: operation)
+            await self?.performOverlayPlacement(instruction: instruction, mode: mode, owner: operation)
         }
     }
 
     private func performOverlayPlacement(
         instruction: String,
+        mode: OverlayWorkflowMode? = nil,
         owner operation: LongOperationLease
     ) async {
         guard !Task.isCancelled else {
@@ -88,7 +92,14 @@ extension EditorSession {
         // nothing in it. Anything else asking for overlays with no overlays to
         // place is answered here rather than paid for and answered by the model.
         let intent = AssistantRouter.route(instruction)
-        let creates = GeneratedOverlayCommand.creates(instruction, hasImportedMedia: !placeableMedia.isEmpty)
+        // The planner says which it is when it knows: placing what the creator
+        // imported and designing something new are different requests, and a
+        // sentence that names both is decided there, or asked about.
+        let creates = switch mode {
+        case .placeImported: false
+        case .create: true
+        case nil: GeneratedOverlayCommand.creates(instruction, hasImportedMedia: !placeableMedia.isEmpty)
+        }
         // A file can be a reference for a new design. Its mention must not
         // override an explicit creation request and place or revise it instead.
         let revisions = creates ? [] : generatedMediaMentioned(in: instruction)

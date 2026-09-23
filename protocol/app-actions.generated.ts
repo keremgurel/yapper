@@ -94,6 +94,7 @@ export interface SilenceWorkflowInput {
 
 export interface OverlayWorkflowInput {
   instruction: string;
+  mode?: string;
 }
 
 export interface ActionRect {
