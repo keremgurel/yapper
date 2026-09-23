@@ -41,7 +41,7 @@ export function inlineImage(value: unknown): InlineImage | undefined {
   return { mimeType: match[1].toLowerCase() as InlineImage["mimeType"], data };
 }
 
-/** Generate a vertical thumbnail from text, a video frame, or frame + reference. */
+/** Generate a 9:16 thumbnail from text, a video frame, or frame + reference. */
 export async function generateThumbnail(
   input: ThumbnailInput,
   signal?: AbortSignal,
@@ -57,13 +57,19 @@ export async function generateThumbnail(
   )[] = [
     {
       text:
-        "Create one finished 9:16 social-video thumbnail. Follow the creator's " +
-        "request precisely. If a SELECTED VIDEO FRAME is supplied, preserve the " +
-        "person's identity and use that frame as the composition/subject source. " +
-        "If an EXAMPLE THUMBNAIL is supplied, borrow its visual language (layout, " +
-        "lighting, color, energy, and hierarchy) but do not copy its people, text, " +
-        "logos, or copyrighted characters. Unless explicitly requested, do not " +
-        "render any words, logos, borders, or watermarks. Output only the image.\n\n" +
+        "Create one finished 9:16 vertical short-form video thumbnail. Follow " +
+        "the creator's request precisely. If a SELECTED VIDEO FRAME is " +
+        "supplied, it is the source for the person and scene: keep the person " +
+        "identical and recognizable. If a REFERENCE THUMBNAIL is supplied, make " +
+        "the result look as close to it as possible: same layout, crop, " +
+        "framing, background treatment, lighting, color grade, typography, " +
+        "text placement, and graphic elements. The person from the frame " +
+        "takes the place of the person in the reference. Reproduce the " +
+        "reference's text in the same style and position, using any new " +
+        "wording from the creator's request. Never copy third-party logos or " +
+        "copyrighted characters. Without a reference, do not render words, " +
+        "logos, borders, or watermarks unless the creator asks. Output only " +
+        "the image.\n\n" +
         `CREATOR REQUEST:\n${input.prompt.trim()}`,
     },
   ];
@@ -72,7 +78,7 @@ export async function generateThumbnail(
     parts.push({ inlineData: frame });
   }
   if (reference) {
-    parts.push({ text: "EXAMPLE THUMBNAIL (style reference only):" });
+    parts.push({ text: "REFERENCE THUMBNAIL (match this look):" });
     parts.push({ inlineData: reference });
   }
 

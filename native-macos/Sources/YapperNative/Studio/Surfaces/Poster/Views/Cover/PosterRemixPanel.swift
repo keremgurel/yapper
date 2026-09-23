@@ -1,65 +1,87 @@
 import SwiftUI
 
-/// The AI step, after the frame is chosen. It starts from the selected
-/// frame unless unticked; a reference thumbnail is an optional second input.
+/// The AI step, laid out like a message composer: what goes in sits on top as
+/// image tiles (the selected frame, the reference thumbnail), the prompt
+/// below, and the action in the footer. A reference can be dropped anywhere
+/// on the composer.
 struct PosterRemixPanel: View {
     @ObservedObject var remix: PosterRemixModel
-    let hasFrame: Bool
+    let frame: CGImage?
     let onGenerate: () -> Void
+    @State private var dropping = false
+
+    private var usingFrame: Bool { remix.useFrame && frame != nil }
+    private var prompt: Binding<String> {
+        Binding(get: { remix.prompt(usingFrame: usingFrame) }, set: { remix.customPrompt = $0 })
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            NativeField(label: "What should change") {
-                NativeTextArea(text: $remix.prompt, font: .system(size: 13), minHeight: 88)
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 0) {
+                attachments.padding(12)
+                NativeTextArea(text: prompt, placeholder: "Describe the thumbnail", font: .system(size: 13), minHeight: 44, chrome: false)
                     .disabled(remix.generating)
+                    .padding(.horizontal, 12)
+                footer.padding(12)
             }
-            HStack(spacing: 10) {
-                Toggle("Use selected frame", isOn: Binding(get: { remix.useFrame && hasFrame }, set: { remix.useFrame = $0 }))
-                    .toggleStyle(.checkbox)
-                    .font(.system(size: 13))
-                    .disabled(!hasFrame || remix.generating)
-                    .clickableCursor(enabled: hasFrame)
-                Spacer()
-                reference
+            .background {
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.studioInputBackground)
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(dropping ? Color.yapperOrange : Color.studioLine, lineWidth: dropping ? 1.5 : 1))
             }
-            Text("2 credits per generation.").font(.system(size: 11)).foregroundStyle(.secondary)
-            HStack(spacing: 8) {
-                Button(action: onGenerate) {
-                    HStack(spacing: 6) {
-                        if remix.generating { ProgressView().controlSize(.mini) } else { Image(systemName: "photo.badge.plus") }
-                        Text(remix.generating ? "Generating" : "Generate thumbnail")
-                    }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
-                .disabled(remix.generating || remix.prompt.trimmingCharacters(in: .whitespaces).isEmpty)
-                Button("Reset prompt", systemImage: "arrow.counterclockwise") { remix.prompt = PosterThumbnailPrompt.standard }
-                    .buttonStyle(EditorGhostButtonStyle(size: .small))
-                    .disabled(remix.generating || remix.prompt == PosterThumbnailPrompt.standard)
-            }
+            .posterReferenceDrop(isTargeted: $dropping, enabled: !remix.generating, remix: remix)
+
             if let error = remix.referenceError ?? remix.error {
                 Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
             }
         }
     }
 
-    @ViewBuilder
-    private var reference: some View {
-        if let image = remix.reference {
-            HStack(spacing: 8) {
-                Image(decorative: image, scale: 1).resizable().scaledToFill()
-                    .frame(width: 28, height: 28).clipShape(RoundedRectangle(cornerRadius: 4))
-                Text(remix.referenceName).font(.system(size: 12)).lineLimit(1)
-                Button { remix.clearReference() } label: { Image(systemName: "xmark") }
-                    .buttonStyle(EditorGhostButtonStyle(size: .mini))
-                    .help("Remove reference thumbnail")
+    private var attachments: some View {
+        HStack(alignment: .bottom, spacing: 10) {
+            if let frame {
+                PosterRemixAttachment(
+                    image: frame,
+                    label: remix.useFrame ? "Frame" : "Frame off",
+                    included: remix.useFrame,
+                    toggleHelp: remix.useFrame ? "Leave the frame out" : "Use the selected frame",
+                    onToggle: { remix.useFrame.toggle() }
+                )
+                .disabled(remix.generating)
             }
-        } else {
-            Button("Reference thumbnail", systemImage: "square.and.arrow.up") { remix.chooseReference() }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
+            if let reference = remix.reference {
+                PosterRemixAttachment(
+                    image: reference,
+                    label: "Reference",
+                    included: true,
+                    toggleHelp: "Remove reference thumbnail",
+                    onToggle: remix.clearReference
+                )
                 .disabled(remix.generating)
-            Button("Paste", systemImage: "doc.on.clipboard") { remix.pasteReference() }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
-                .disabled(remix.generating)
+            } else {
+                PosterReferenceSlot(onChoose: remix.chooseReference, onPaste: remix.pasteReference)
+                    .disabled(remix.generating)
+            }
+        }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 8) {
+            if remix.customPrompt != nil {
+                Button("Reset prompt", systemImage: "arrow.counterclockwise") { remix.customPrompt = nil }
+                    .buttonStyle(EditorGhostButtonStyle(size: .mini))
+                    .disabled(remix.generating)
+            }
+            Spacer()
+            Text("2 credits").font(.system(size: 11)).foregroundStyle(.secondary)
+            Button(action: onGenerate) {
+                HStack(spacing: 6) {
+                    if remix.generating { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }
+                    Text(remix.generating ? "Generating" : "Generate")
+                }
+            }
+            .buttonStyle(EditorPrimaryButtonStyle(size: .small))
+            .disabled(remix.generating || prompt.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 }

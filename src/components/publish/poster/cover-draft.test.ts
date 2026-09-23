@@ -17,8 +17,8 @@ describe("Poster thumbnail defaults", () => {
   });
 
   it("gives image generation a useful editable starting point", () => {
-    expect(DEFAULT_THUMBNAIL_PROMPT).toContain("identity-faithful");
-    expect(DEFAULT_THUMBNAIL_PROMPT).toContain("Do not add text");
+    expect(DEFAULT_THUMBNAIL_PROMPT).toContain("9:16");
+    expect(DEFAULT_THUMBNAIL_PROMPT).toContain("attached frame");
   });
 });
 

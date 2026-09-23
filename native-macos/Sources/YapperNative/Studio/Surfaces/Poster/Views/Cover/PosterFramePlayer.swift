@@ -12,7 +12,7 @@ struct PosterFramePlayer: View {
         ZStack {
             Rectangle().fill(Color.black)
             if let player {
-                VideoPlayer(player: player)
+                NativeVideoPlayer(player: player)
             } else {
                 ProgressView().controlSize(.small)
             }
@@ -44,7 +44,7 @@ struct PosterPreviewPlayer: View {
     var body: some View {
         ZStack {
             Rectangle().fill(Color.black)
-            if let player { VideoPlayer(player: player) } else { ProgressView().controlSize(.small) }
+            if let player { NativeVideoPlayer(player: player) } else { ProgressView().controlSize(.small) }
         }
         .task(id: url) { player = AVPlayer(url: url) }
         .onDisappear { player?.pause() }

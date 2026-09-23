@@ -70,7 +70,7 @@ describe("Gemini thumbnail generation", () => {
       expect.arrayContaining([
         expect.stringContaining("Bright editorial portrait"),
         "SELECTED VIDEO FRAME:",
-        "EXAMPLE THUMBNAIL (style reference only):",
+        "REFERENCE THUMBNAIL (match this look):",
       ]),
     );
     expect(request.generationConfig).toEqual({
