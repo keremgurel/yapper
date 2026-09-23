@@ -33,6 +33,12 @@ struct SoundSweep: Equatable, Sendable {
     static func parse(_ instruction: String) -> SoundSweep? {
         let text = instruction.lowercased()
         guard mentionsSound(text) else { return nil }
+        // A sentence that also asks for overlays to be placed is not a sweep:
+        // the overlays it wants sounds on are not on the timeline yet. "Place
+        // my media where it makes sense ... and add nice sound effects for all
+        // the other overlays" was read as a sweep over an empty timeline and
+        // failed before anything was placed.
+        guard !asksToPlace(text) else { return nil }
         guard quantifiers.contains(where: text.contains) else { return nil }
 
         let target: Target
@@ -56,6 +62,15 @@ struct SoundSweep: Equatable, Sendable {
     /// effect named is that effect every time, which is the same rule.
     func effect(at index: Int) -> SoundEffectDescriptor {
         effects[index % effects.count]
+    }
+
+    /// Whether the sentence asks for something to be put on the timeline, or
+    /// is long enough to be several requests at once. Either goes to the model.
+    private static func asksToPlace(_ text: String) -> Bool {
+        if text.count > 220 { return true }
+        if text.contains("@") { return true }
+        let placing = ["place them", "place my", "place these", "place the ", "position ", "crop", "added some", "imported", "media"]
+        return placing.contains(where: text.contains)
     }
 
     /// Whether the sentence is about sound at all. Without this, "put every
