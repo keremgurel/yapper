@@ -107,28 +107,64 @@ final class StudioWebCommands: ObservableObject {
     /// between refreshes, especially just after launch. Asking Clerk itself
     /// avoids turning that timing window into a spurious sign-out.
     func sessionToken() async -> String? {
-        guard let webView else { return nil }
-        let result = try? await webView.callAsyncJavaScript(
+        // Clerk's tokens live for a minute; reusing one for 30 seconds keeps
+        // a page that fires a dozen reads from making a dozen trips into the
+        // web process.
+        if let cached = cachedToken, Date().timeIntervalSince(cached.at) < 30 {
+            return cached.token
+        }
+        let result = await runJavaScript(
             """
             let clerk = window.Clerk;
             if (!clerk) return null;
             await clerk.load();
             return await clerk.session?.getToken() ?? null;
             """,
-            arguments: [:],
-            in: nil,
-            contentWorld: .page
+            timeout: 3
         )
         guard let token = result as? String, !token.isEmpty else { return nil }
+        cachedToken = (token, Date())
         return token
+    }
+
+    private var cachedToken: (token: String, at: Date)?
+
+    /// Runs page JavaScript with a deadline. The hidden page can be asleep,
+    /// mid-reload or gone after the Mac sleeps, and a call into it then never
+    /// answers; without a deadline every native request waited on it forever.
+    private func runJavaScript(_ script: String, timeout: TimeInterval) async -> Any? {
+        guard let webView else { return nil }
+        final class Once: @unchecked Sendable {
+            var done = false
+        }
+        /// JavaScript results are plists (strings, numbers, dictionaries),
+        /// read once on the main actor.
+        struct Result: @unchecked Sendable { let value: Any? }
+        let once = Once()
+        let result = await withCheckedContinuation { (continuation: CheckedContinuation<Result, Never>) in
+            webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { outcome in
+                let value = Result(value: try? outcome.get())
+                Task { @MainActor in
+                    guard !once.done else { return }
+                    once.done = true
+                    continuation.resume(returning: value)
+                }
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(timeout))
+                guard !once.done else { return }
+                once.done = true
+                continuation.resume(returning: Result(value: nil))
+            }
+        }
+        return result.value
     }
 
     /// Who is signed in, asked of Clerk directly. The web shell used to report
     /// this when a Studio page mounted, but every tab is native now and the
     /// parked page may never report.
     func accountIdentity() async -> (id: String, name: String?, email: String?)? {
-        guard let webView else { return nil }
-        let result = try? await webView.callAsyncJavaScript(
+        let result = await runJavaScript(
             """
             let clerk = window.Clerk;
             if (!clerk) return null;
@@ -138,9 +174,7 @@ final class StudioWebCommands: ObservableObject {
             const name = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || null;
             return { id: user.id, name, email: user.primaryEmailAddress?.emailAddress ?? null };
             """,
-            arguments: [:],
-            in: nil,
-            contentWorld: .page
+            timeout: 3
         )
         guard let payload = result as? [String: Any], let id = payload["id"] as? String else { return nil }
         return (id, payload["name"] as? String, payload["email"] as? String)

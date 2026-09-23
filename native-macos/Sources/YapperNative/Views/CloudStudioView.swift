@@ -230,7 +230,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
         // A tab the app draws itself has no page to keep in step with. The web
         // view stays on whatever it was showing, signed in and ready.
-        guard !destination.isNative else { return }
+        guard destination.hasWebPage else { return }
         let currentURL = webView.url
         let isYapperPage = currentURL?.host == "ypr.app" || currentURL?.host == "www.ypr.app"
         if isYapperPage, !destination.contains(cloudPath: currentURL?.path),
@@ -253,7 +253,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
         in webView: WKWebView,
         coordinator: Coordinator
     ) {
-        guard !destination.isNative, let url = destination.cloudURL else { return }
+        guard destination.hasWebPage, let url = destination.cloudURL else { return }
         coordinator.requestedPath = destination.cloudPath
         coordinator.armCover(for: destination.cloudPath)
         isLoading = true
@@ -879,6 +879,13 @@ private struct CloudStudioWebView: NSViewRepresentable {
             alert.addButton(withTitle: "OK")
             alert.addButton(withTitle: "Cancel")
             completionHandler(alert.runModal() == .alertFirstButtonReturn)
+        }
+
+        /// WebKit kills a background page's process under memory pressure or
+        /// across sleep. The page holds the Clerk session every native tab
+        /// signs its requests with, so it comes straight back.
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            webView.reload()
         }
 
         func webView(
