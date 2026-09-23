@@ -109,6 +109,13 @@ actor DictionaryStore {
         return local
     }
 
+    /// Keeps this machine's copy in step with the account after the Studio
+    /// Dictionary page has read or changed it, so the editor has the latest
+    /// words even when it next opens offline.
+    func cache(_ entries: [DictionaryEntry]) {
+        saveLocal(entries)
+    }
+
     // MARK: - The account's copy
 
     @discardableResult
