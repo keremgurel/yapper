@@ -129,6 +129,9 @@ final class StudioWebCommands: ObservableObject {
 
     private var cachedToken: (token: String, at: Date)?
 
+    /// Drops the reused token so the next request asks Clerk for a new one.
+    func forgetToken() { cachedToken = nil }
+
     /// Runs page JavaScript with a deadline. The hidden page can be asleep,
     /// mid-reload or gone after the Mac sleeps, and a call into it then never
     /// answers; without a deadline every native request waited on it forever.

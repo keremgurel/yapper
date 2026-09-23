@@ -22,114 +22,122 @@ struct PosterPublishSheet: View {
         let publishable = connections.publishable
         let chosen = session.chosen(from: publishable)
         let busy = session.posting || session.scheduling || session.scheduled
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(session.targets.count > 1 ? "Cross-post \(session.targets.count) videos" : "Cross-post video")
-                        .font(.nativeSectionTitle)
-                    Text("Choose every destination you want. One action publishes the full selection.")
-                        .font(.system(size: 12)).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button("Close", action: onClose).buttonStyle(EditorGhostButtonStyle(size: .small)).keyboardShortcut(.cancelAction)
+        NativeDrawer(onClose: onClose) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(session.targets.count > 1 ? "Publish \(session.targets.count) videos" : "Publish video")
+                    .font(.system(size: 17, weight: .semibold))
+                Text("Pick where it goes. One press sends it everywhere you chose.")
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
             }
-            .padding(20)
-            Rectangle().fill(Color.studioLine).frame(height: 1)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    PosterPreparedCaptions(targets: session.targets)
-                    if connections.response == nil && connections.failed {
-                        NativeErrorState(message: "Your connections couldn't be loaded.") { Task { await connections.refresh() } }
-                    } else if connections.response == nil {
-                        NativeLoadingState(label: "Loading your connections")
-                    } else if publishable.isEmpty {
-                        NativeEmptyState(systemImage: "link", title: "No channels connected",
-                                         message: "Connect a channel in Connections, then publish from here.")
-                    } else {
-                        destinations(publishable, chosen: chosen, disabled: busy)
-                        if chosen.contains(.tiktok) {
-                            ForEach(session.targets) { target in
-                                PosterTikTokReviewView(target: target, disabled: session.posting || !session.outcomes.isEmpty) { id, review in
-                                    session.tiktokReviews[id] = review
-                                }
+        } content: {
+            NativeSection(title: "Captions") {
+                PosterPreparedCaptions(targets: session.targets)
+            }
+            if connections.response == nil && connections.failed {
+                NativeErrorState(message: "Your connections couldn't be loaded.") { Task { await connections.refresh() } }
+            } else if connections.response == nil {
+                NativeLoadingState(label: "Loading your connections")
+            } else if publishable.isEmpty {
+                NativeEmptyState(systemImage: "link", title: "No channels connected",
+                                 message: "Connect a channel in Connections, then publish from here.")
+            } else {
+                destinations(publishable, chosen: chosen, disabled: busy)
+                if chosen.contains(.tiktok) {
+                    NativeSection(title: "TikTok review") {
+                        ForEach(session.targets) { target in
+                            PosterTikTokReviewView(target: target, disabled: session.posting || !session.outcomes.isEmpty) { id, review in
+                                session.tiktokReviews[id] = review
                             }
                         }
-                        if chosen.contains(.facebook) {
-                            note("Facebook Reels are public on your selected Page. Use vertical videos, 3 to 90 seconds, at least 540 by 960 pixels.")
-                        }
-                        PosterOutcomeList(outcomes: session.outcomes)
-                        if session.failures > 0 && session.done(chosen) {
-                            Text("\(session.failures) destination\(session.failures == 1 ? "" : "s") failed. Successful posts were not rolled back.")
-                                .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.studioDanger)
-                        }
-                        actions(chosen: chosen)
                     }
                 }
-                .padding(20)
+                if chosen.contains(.facebook) {
+                    note("Facebook Reels are public on your selected Page. Use vertical videos, 3 to 90 seconds, at least 540 by 960 pixels.")
+                }
+                if session.outcomes.isEmpty && !chosen.contains(.tiktok) {
+                    PosterSchedulePanel(
+                        model: schedule, count: session.targets.count * chosen.count, includesTikTok: false,
+                        disabled: session.posting || session.scheduling || chosen.isEmpty,
+                        onSchedule: { scheduleNow(chosen) },
+                        onCalendar: {
+                            onClose()
+                            StudioNavigation.shared.goTo(.calendar)
+                        }
+                    )
+                }
+                PosterOutcomeList(outcomes: session.outcomes)
             }
+        } footer: {
+            if session.failures > 0 && session.done(chosen) {
+                Text("\(session.failures) destination\(session.failures == 1 ? "" : "s") failed. Successful posts were not rolled back.")
+                    .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.studioDanger)
+            }
+            publishButton(chosen: chosen)
+            note("YouTube posts go out as public. TikTok follows the review above.")
         }
-        .frame(width: 560, height: 680)
-        .background(Color.editorBackground)
         .task { if connections.response == nil { await connections.refresh() } }
     }
 
     private func destinations(_ publishable: [PublishPlatform], chosen: [PublishPlatform], disabled: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Destinations").font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Button(chosen.count == publishable.count ? "Clear all" : "Select all") {
-                    session.selected = chosen.count == publishable.count ? [] : Set(publishable)
-                }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
-                .disabled(disabled)
+        NativeSection(title: "Destinations", meta: "\(chosen.count) of \(publishable.count)") {
+            Button(chosen.count == publishable.count ? "Clear all" : "Select all") {
+                session.selected = chosen.count == publishable.count ? [] : Set(publishable)
             }
-            ForEach(publishable) { platform in
-                Toggle(isOn: Binding(get: { session.selected.contains(platform) }, set: { _ in session.toggle(platform) })) {
-                    HStack(spacing: 8) {
-                        Image(systemName: platform.symbol).foregroundStyle(.secondary)
-                        Text(platform.label).font(.system(size: 13, weight: .medium))
-                        Text(connections.accountLabel(for: platform)).font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
+            .buttonStyle(EditorGhostButtonStyle(size: .small))
+            .disabled(disabled)
+        } content: {
+            VStack(spacing: 0) {
+                ForEach(Array(publishable.enumerated()), id: \.element) { index, platform in
+                    if index > 0 { Rectangle().fill(Color.studioLine).frame(height: 1).padding(.leading, 48) }
+                    destinationRow(platform, on: session.selected.contains(platform), disabled: disabled)
                 }
-                .toggleStyle(.checkbox)
-                .disabled(disabled)
-                .clickableCursor(enabled: !disabled)
             }
+            .background(NativeCardBackground(radius: 12))
         }
-        .nativeWell(padding: 12, radius: 10)
     }
 
-    @ViewBuilder
-    private func actions(chosen: [PublishPlatform]) -> some View {
+    private func destinationRow(_ platform: PublishPlatform, on: Bool, disabled: Bool) -> some View {
+        Button { session.toggle(platform) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: platform.symbol)
+                    .font(.system(size: 14))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(platform.label).font(.system(size: 13, weight: .semibold))
+                    Text(connections.accountLabel(for: platform)).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(on ? Color.yapperOrange : Color.secondary.opacity(0.5))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.studioPlain)
+        .disabled(disabled)
+        .animation(.snappy(duration: 0.18), value: on)
+    }
+
+    private func publishButton(chosen: [PublishPlatform]) -> some View {
         let videos = session.targets.count
         let done = session.done(chosen)
-        let blocked = session.posting || !session.tiktokReady(chosen) || session.scheduling || chosen.isEmpty
-        if !session.scheduled {
-            Button { Task { await session.publish(to: chosen, connections: connections, drafts: drafts) } } label: {
-                HStack(spacing: 6) {
-                    if session.posting { ProgressView().controlSize(.mini) }
-                    Text(session.posting ? "Publishing \(min(session.outcomes.count + 1, videos * chosen.count)) of \(videos * chosen.count)"
-                         : done ? "Check publish status"
-                         : "Publish \(plural(videos, "video")) to \(plural(chosen.count, "platform"))")
-                }
-                .frame(maxWidth: .infinity)
+        let blocked = session.posting || !session.tiktokReady(chosen) || session.scheduling || chosen.isEmpty || session.scheduled
+        return Button { Task { await session.publish(to: chosen, connections: connections, drafts: drafts) } } label: {
+            HStack(spacing: 6) {
+                if session.posting { ProgressView().controlSize(.mini) }
+                Text(session.scheduled ? "Scheduled"
+                     : session.posting ? "Publishing \(min(session.outcomes.count + 1, videos * chosen.count)) of \(videos * chosen.count)"
+                     : done ? "Check publish status"
+                     : "Publish \(plural(videos, "video")) to \(plural(chosen.count, "platform"))")
             }
-            .buttonStyle(EditorPrimaryButtonStyle())
-            .disabled(blocked)
-        }
-        if session.outcomes.isEmpty && !chosen.contains(.tiktok) {
-            PosterSchedulePanel(
-                model: schedule, count: videos * chosen.count, includesTikTok: false, disabled: blocked,
-                onSchedule: { scheduleNow(chosen) },
-                onCalendar: {
-                    onClose()
-                    StudioNavigation.shared.goTo(.calendar)
-                }
-            )
-        }
-        note("YouTube posts are requested as public. For TikTok, review the audience and posting method above.")
             .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(EditorPrimaryButtonStyle())
+        .disabled(blocked)
     }
 
     private func scheduleNow(_ chosen: [PublishPlatform]) {

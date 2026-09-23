@@ -92,12 +92,27 @@ final class StudioAuth: ObservableObject {
     /// to find another tab themselves, even though the app already owns a
     /// complete sign-in flow.
     func requireSignIn() {
-        reportedByWeb = false
-        account = nil
-        firstLook = nil
-        isSignedIn = false
-        startWatching()
+        // One refused request is not proof the account is gone: a token that
+        // lapsed a second ago reads the same. Flipping the window to the
+        // sign-in door and back rebuilt every page, which is the "jump and
+        // reset" after generating captions or clicking Post. Ask Clerk first.
+        guard !confirmingSignOut else { return }
+        confirmingSignOut = true
+        Task { [weak self] in
+            StudioWebCommands.shared.forgetToken()
+            let stillSignedIn = await StudioWebCommands.shared.accountIdentity() != nil
+            guard let self else { return }
+            self.confirmingSignOut = false
+            guard !stillSignedIn else { return }
+            self.reportedByWeb = false
+            self.account = nil
+            self.firstLook = nil
+            self.isSignedIn = false
+            self.startWatching()
+        }
     }
+
+    private var confirmingSignOut = false
 
     /// Watches while signed out, and stops as soon as somebody is in.
     ///

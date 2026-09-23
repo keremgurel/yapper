@@ -206,6 +206,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
 
         if context.coordinator.lastPosterGeneration != posterGeneration,
            destination == .poster,
+           !destination.isNative,
            let posterItemID {
             context.coordinator.lastPosterGeneration = posterGeneration
             navigateToPosterItem(posterItemID, in: webView, coordinator: context.coordinator)
