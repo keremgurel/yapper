@@ -4,7 +4,7 @@ import SwiftUI
 /// page is finished; until then it keeps loading the web route, so every tab
 /// works at every step of the move.
 enum NativeSurfaces {
-    static let enabled: Set<StudioDestination> = [.connections, .dictionary, .storage]
+    static let enabled: Set<StudioDestination> = [.connections, .dictionary, .storage, .calendar, .automations, .home, .brand]
 }
 
 /// Shows the native page for a destination that has one.
@@ -27,6 +27,14 @@ struct NativeSurfaceHost: View {
             DictionaryPage()
         case .storage:
             StoragePage()
+        case .calendar:
+            CalendarPage()
+        case .automations:
+            AutomationsPage()
+        case .home:
+            HomePage()
+        case .brand:
+            BrandPage()
         default:
             EmptyView()
         }
