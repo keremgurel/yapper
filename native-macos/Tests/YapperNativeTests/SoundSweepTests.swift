@@ -5,6 +5,17 @@ import Testing
 /// "A mixture of pop, swoosh and camera shutter on every overlay." Nothing in
 /// that needs a model, and asking one got it wrong in a way worth pinning down.
 struct SoundSweepTests {
+    @Test func aRequestToPlaceMediaWithSoundsIsNotASweep() {
+        // Read as a sweep over an empty timeline, this failed with "no
+        // overlays to put sounds on" before placing anything.
+        let sweep = SoundSweep.parse(
+            "I added some media to be added as overlays. place them where they make sense in the video. "
+                + "Align it with exactly when i say 1000 dollars and add the chaching sound effect. "
+                + "also add nice sound effects for all the other overlays"
+        )
+        #expect(sweep == nil)
+    }
+
     @Test func theSentenceThatStartedThisIsAnsweredHere() {
         let sweep = SoundSweep.parse(
             "add a mixture of pop, swoosh and camera shutter sound effects aligned with every overlay we have."

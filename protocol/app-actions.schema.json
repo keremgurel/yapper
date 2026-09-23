@@ -82,7 +82,7 @@
       "id": "editor.designOverlays",
       "symbol": "overlayWorkflow",
       "input": "OverlayWorkflowInput",
-      "description": "Create or revise visual overlays using the app visual design workflow. Use only when the user requests visual creation or redesign. Never use this to add sounds or to edit existing masks.",
+      "description": "Place the creator's imported media files as overlays at the moments they fit the speech, with any sound effects asked for on them (for example a cha-ching exactly when a number is said), or create and revise generated visual overlays. Pass the creator's whole request as the instruction, including which file goes where and which sounds to add; the workflow reads the transcript and the media bin itself. Never use this to edit existing masks.",
       "effect": "workflow",
       "requiresRebuild": true
     },

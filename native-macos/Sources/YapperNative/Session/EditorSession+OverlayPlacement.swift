@@ -63,7 +63,11 @@ extension EditorSession {
         // sounds, and on every one of what. The model is never told what is
         // already on the timeline, so it reads "on every overlay we have" as a
         // request to place those overlays, and places them all over again.
-        if let sweep = SoundSweep.parse(instruction) {
+        // Only when there is something to sweep. With no overlays on the
+        // timeline yet, "a sound on every overlay" belongs to the placement
+        // below, which places the overlays and their sounds together.
+        if let sweep = SoundSweep.parse(instruction),
+           sweep.target == .cuts || (project.overlays ?? []).contains(where: \.isVisible) {
             await applySweep(sweep, instruction: instruction, owner: operation)
             return
         }
