@@ -82,7 +82,7 @@
       "id": "editor.designOverlays",
       "symbol": "overlayWorkflow",
       "input": "OverlayWorkflowInput",
-      "description": "Place the creator's imported media files as overlays at the moments they fit the speech, with any sound effects asked for on them (for example a cha-ching exactly when a number is said), or create and revise generated visual overlays. Pass the creator's whole request as the instruction, including which file goes where and which sounds to add; the workflow reads the transcript and the media bin itself. Never use this to edit existing masks.",
+      "description": "Overlays from the creator's own files or newly created visuals. mode placeImported puts media files the creator imported (media with onMainTrack and usedAsOverlay both false) on the timeline at the moments they fit the speech, with any sounds asked for on them, for example a cha-ching exactly when a number is said. mode create designs new visuals (charts, counters, animated graphics) that do not exist yet. Pass the creator's whole request as the instruction; the workflow reads the transcript and media itself. Never use this to edit existing masks.",
       "effect": "workflow",
       "requiresRebuild": true
     },
@@ -114,7 +114,7 @@
       "id": "editor.masks.setRegion",
       "symbol": "maskRegion",
       "input": "MaskRegionInput",
-      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0\u20131. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5\u201330 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
+      "description": "Create or edit a rectangular solid-color mask on an image or generated overlay. Coordinates are source-image fractions from its top left; RGB values are 0–1. Use the attached source image to locate any requested area (text, face, logo, chart, or other content); OCR is optional evidence, not a requirement. Omit regionID to create a mask; use a saved ID to edit one. opacityKeys animate the cover: 1 conceals the area, 0 exposes it. The first opacity is held before the first key and the last after the last key: include the initial covered state explicitly before a fade. Each key accepts a shared timing anchor, including exact speech phrases. New masks default to a solid cover. Geometry-only edits omit opacityKeys and policy to preserve existing timing. policy/revealTime are compatibility shortcuts; use opacityKeys for new animations. Image conversion supports scene source durations of 0.5–30 seconds. Preserve unmentioned masks and source pixels. Unsupported mask styles, shapes, or moving-object tracking must be reported as unavailable.",
       "effect": "reversibleEdit",
       "requiresRebuild": true
     },
@@ -669,6 +669,10 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 4000
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["placeImported", "create"]
         }
       }
     },

@@ -26,7 +26,12 @@ extension AppActionRegistry {
             await session.autoTrimSilences(clipIDs: input.clipIDs.map(Set.init))
         }
         registry.registerWorkflow(OverlayWorkflowInput.self) { session, input in
-            let canceled = await session.placeOverlaysWithAI(instruction: input.instruction)
+            let mode: OverlayWorkflowMode? = switch input.mode {
+            case "placeImported": .placeImported
+            case "create": .create
+            default: nil
+            }
+            let canceled = await session.placeOverlaysWithAI(instruction: input.instruction, mode: mode)
             if case let .failed(message) = session.overlayPlacement { throw AppActionError(message) }
             return canceled
         }
