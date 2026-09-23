@@ -43,7 +43,7 @@ struct RecorderPage: View {
     @ViewBuilder
     private var content: some View {
         if let take = flow.take {
-            NativePage(maxWidth: 1080) {
+            NativePage() {
                 NativePageHeader(title: "Review your take", description: "Play it back, then keep it or record it again.")
                 RecorderReviewView(
                     take: take, itemID: script.itemID, title: script.itemTitle,
@@ -51,14 +51,14 @@ struct RecorderPage: View {
                 )
             }
         } else if permissions.blocked {
-            NativePage(maxWidth: 1080) {
+            NativePage() {
                 NativePageHeader(title: "Recorder")
                 RecorderPermissionView(permissions: permissions)
             }
         } else if focused {
             layout
         } else {
-            NativePage(maxWidth: 1080) {
+            NativePage() {
                 NativePageHeader(
                     title: "Recorder",
                     description: "Record your take with a scrolling teleprompter, then save it to your library or download it."

@@ -9,22 +9,26 @@ struct PosterVideoStill: View {
     @State private var frame: CGImage?
 
     var body: some View {
-        ZStack {
-            Rectangle().fill(Color.studioInputBackground)
-            if let frame {
-                Image(decorative: frame, scale: 1).resizable().scaledToFill()
-            } else if case let .platform(_, _, _, thumbnail?, _, _, _, _, _) = video.origin {
-                AsyncImage(url: thumbnail) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        placeholder
+        // The image hangs off a fixed rectangle as an overlay: inside a
+        // ZStack a fill-scaled image grows the stack itself, and a wide still
+        // spilled over the cards beside it.
+        Rectangle()
+            .fill(Color.studioInputBackground)
+            .overlay {
+                if let frame {
+                    Image(decorative: frame, scale: 1).resizable().scaledToFill()
+                } else if case let .platform(_, _, _, thumbnail?, _, _, _, _, _) = video.origin {
+                    AsyncImage(url: thumbnail) { phase in
+                        if let image = phase.image {
+                            image.resizable().scaledToFill()
+                        } else {
+                            placeholder
+                        }
                     }
+                } else {
+                    placeholder
                 }
-            } else {
-                placeholder
             }
-        }
         .clipped()
         .task(id: video.id) {
             guard video.submissionID != nil else { return }

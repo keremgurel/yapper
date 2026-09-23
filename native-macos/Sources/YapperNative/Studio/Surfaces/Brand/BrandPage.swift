@@ -6,7 +6,7 @@ struct BrandPage: View {
     @ObservedObject private var store: BrandKitStore = .shared
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Brand kit",
                 description: "Set it once. Chirpy uses these colors and logos whenever it makes graphics for your videos: numbers, charts, lower thirds and logo moments."

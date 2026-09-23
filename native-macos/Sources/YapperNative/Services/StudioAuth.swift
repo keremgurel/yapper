@@ -51,6 +51,7 @@ final class StudioAuth: ObservableObject {
         guard !reportedByWeb else { return }
         if await YapperAPI.hasSession() {
             isSignedIn = true
+            await loadIdentityFromClerk()
             return
         }
         // Never says "signed out" on the cookie's word alone. The guess was
@@ -62,6 +63,22 @@ final class StudioAuth: ObservableObject {
         let started = firstLook ?? now
         firstLook = started
         if isSignedIn == nil, now.timeIntervalSince(started) > 6 { isSignedIn = false }
+    }
+
+    /// Fills in the account name when the web page has not reported it,
+    /// retrying briefly while Clerk finishes loading in the parked page.
+    func loadIdentityFromClerk() async {
+        guard account == nil else { return }
+        for _ in 0..<30 {
+            if reportedByWeb || account != nil { return }
+            if let identity = await StudioWebCommands.shared.accountIdentity() {
+                if !reportedByWeb {
+                    account = StudioAccountIdentity(userID: identity.id, displayName: identity.name, email: identity.email)
+                }
+                return
+            }
+            try? await Task.sleep(for: .seconds(1))
+        }
     }
 
     /// After a sign-out, the web view's own report is stale by definition.

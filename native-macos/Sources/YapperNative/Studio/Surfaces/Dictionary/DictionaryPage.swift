@@ -6,7 +6,7 @@ struct DictionaryPage: View {
     @ObservedObject var store: DictionaryPageStore = .shared
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Transcription dictionary",
                 description: "Teach Yapper the names, brands, and jargon you use. Preferred spellings guide the transcriber, and saved mishearings are corrected exactly."

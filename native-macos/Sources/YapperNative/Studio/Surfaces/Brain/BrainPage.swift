@@ -12,7 +12,7 @@ struct BrainPage: View {
     @State private var sheet: BrainSheet?
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Brain",
                 description: "What Yapper knows about you. Fill it in yourself, or let it read your videos or a document. Everything here is yours to edit."

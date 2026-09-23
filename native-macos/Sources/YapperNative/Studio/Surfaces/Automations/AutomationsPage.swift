@@ -8,7 +8,7 @@ struct AutomationsPage: View {
     @ObservedObject var accounts: AutomationAccountsStore = .shared
 
     var body: some View {
-        NativePage(maxWidth: 1080) {
+        NativePage() {
             NativePageHeader(
                 title: "Automations",
                 description: "Choose how new Instagram videos are reused on your connected channels."
