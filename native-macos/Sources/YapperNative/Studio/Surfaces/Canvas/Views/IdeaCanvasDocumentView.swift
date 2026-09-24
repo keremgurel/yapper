@@ -14,19 +14,21 @@ struct IdeaCanvasDocumentView<Footer: View>: View {
     @ViewBuilder var footer: () -> Footer
 
     @Namespace private var hookSpace
+    /// The details panel's width, kept between visits.
+    @AppStorage("ideaCanvasSideWidth") private var sideWidth = IdeaCanvasSplitHandle.standard
     private let swap = Animation.spring(response: 0.38, dampingFraction: 0.82)
 
     var body: some View {
         GeometryReader { proxy in
             if proxy.size.width >= 920 {
-                HStack(alignment: .top, spacing: 64) {
-                    ScrollView { main.padding(.bottom, 120) }
+                HStack(alignment: .top, spacing: 0) {
+                    ScrollView { main.padding(.top, 32).padding(.bottom, 120).padding(.trailing, 32) }
                         .scrollIndicators(.automatic)
-                    ScrollView { side.padding(.bottom, 120) }
+                    IdeaCanvasSplitHandle(sideWidth: $sideWidth)
+                    ScrollView { side.padding(.top, 32).padding(.bottom, 120).padding(.leading, 28) }
                         .scrollIndicators(.never)
-                        .frame(width: 340)
+                        .frame(width: sideWidth)
                 }
-                .padding(.top, 32)
                 .frame(maxWidth: maxWidth)
                 .padding(.horizontal, 32)
                 .frame(maxWidth: .infinity)
