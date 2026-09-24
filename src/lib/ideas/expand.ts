@@ -5,6 +5,7 @@ import {
   parseExpansion,
   type PromptContext,
 } from "@/lib/ideas/expand-prompt";
+import { guardExpansion } from "@/lib/ideas/expansion-guards";
 import type { IdeaExpansion, IdeaInput } from "@/lib/ideas/types";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -67,5 +68,5 @@ export async function expandIdea(
   const content = data.choices?.[0]?.message?.content ?? "";
   const parsed = parseExpansion(content);
   if (!parsed) throw new Error("expand_unparseable");
-  return parsed;
+  return guardExpansion(parsed, context.pillarNames);
 }

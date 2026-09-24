@@ -9,7 +9,10 @@ import {
 } from "@/lib/db/content";
 import { submissions } from "@/lib/db/schema";
 import { parseContentInput } from "@/lib/content/input";
-import { resolveOwnPillar } from "@/lib/content/pillar-ownership";
+import {
+  ownPillarIdByName,
+  resolveOwnPillar,
+} from "@/lib/content/pillar-ownership";
 import { parseIdeaFields } from "@/lib/ideas/input";
 import { normalizeBody } from "@/lib/content/normalize";
 
@@ -77,6 +80,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
     input.pillarId = owned.pillarId;
     input.pillar = null;
+  }
+  // A pillar sent by name (a drafted idea's classification) is linked to the
+  // creator's pillar of that name, so it groups with the rest of that pillar.
+  // The name stays too: reads prefer the linked pillar, and the response
+  // still says what the item was filed under.
+  else if (typeof input.pillar === "string" && input.pillar) {
+    input.pillarId = await ownPillarIdByName(userId, input.pillar);
   }
 
   const item = await updateContentItem(userId, id, input);

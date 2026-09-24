@@ -45,8 +45,8 @@ export function buildExpandMessages(
     '"pillar":"best-fit pillar or null",' +
     '"format":"specific creative format, e.g. audio-led reaction sketch",' +
     '"summary":"the content direction: 2-4 sentences on what this piece is, what carries it, and the angle for THIS creator",' +
-    '"hooks":["3 to 5 opening lines, each one spoken sentence, different mechanisms"],' +
-    '"script":"a complete first draft in the creator\'s voice: the words said aloud, or the dialogue and cues if the format is a sketch; newlines allowed",' +
+    '"hooks":["3 to 5 opening lines, each one spoken sentence, different mechanisms; the first is the one the creator will use"],' +
+    '"script":"everything said AFTER the hook, in the creator\'s voice: the words said aloud, or the dialogue and cues if the format is a sketch; newlines allowed",' +
     '"sections":[{"label":"only when this reference genuinely needs one more block, e.g. Beat-by-beat for a sketch",' +
     '"kind":"paragraph|bullets|steps",' +
     '"text":"for paragraph",' +
@@ -66,6 +66,22 @@ export function buildExpandMessages(
     "their voice, 130 to 200 spoken words unless the format is shorter by " +
     "nature. No headers, no bullet formatting, no stage directions unless the " +
     "format is a sketch. Never use em dashes or en dashes.\n" +
+    "- The hook is spoken first and the script continues from it. The script's " +
+    "first line is the second beat: never restate, paraphrase, or answer back " +
+    "to any hook, and never open with a second audience call-out such as " +
+    "'if you are...' or 'this is for you'. Every hook must lead straight into " +
+    "the script's first line.\n" +
+    "- Whoever or whatever the source introduces with credentials (a person, " +
+    "brand, study, tool, or number) keeps that setup on its first mention in " +
+    "the script: who they are and why the viewer should care, using the " +
+    "source's own specifics. Never drop a bare name the viewer has to look up.\n" +
+    "- Keep the source's strongest specifics and its structure (the named " +
+    "examples, results, and the order that makes it land). Do not flatten " +
+    "them into generic lines; a weaker paraphrase of the source is a failure.\n" +
+    "- Never claim the creator did, built, tried, or felt something that only " +
+    "the source's creator did. Use first person only for what the creator's " +
+    "own words or the context block below support; otherwise attribute it " +
+    "('he built a prompt that...') or turn it into an instruction.\n" +
     "- For a recreation, separate the source's reusable mechanism from the new " +
     "topic. Preserve reactions, pauses, escalation, and audio cues when those " +
     "are the point.\n" +
@@ -82,9 +98,11 @@ export function buildExpandMessages(
     // The pillar names are already in the context block below; naming them
     // again here would spend tokens restating what the model can already read.
     (context.pillarNames.length
-      ? "- Set pillar to the best fit from the creator's PILLARS list below, " +
-        "copied verbatim. Only invent a new pillar if none fit.\n"
-      : "") +
+      ? "- Set pillar to one name from the creator's PILLARS list below: the " +
+        "name before the colon, copied exactly, never its description. Pick " +
+        "the closest one even if the fit is loose; invent a new pillar only " +
+        "when the idea fits none of them, and then as a 1 to 3 word label.\n"
+      : "- Set pillar to a 1 to 3 word label, or null.\n") +
     "- Say plainly why this could land with THIS creator's audience.\n" +
     "- Output JSON and nothing else." +
     context.section;

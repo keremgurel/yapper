@@ -150,6 +150,32 @@ describe("buildExpandMessages", () => {
     expect(system).not.toContain("PILLARS list below");
   });
 
+  it("tells the model to copy a pillar name, never its description", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "original", {
+      section: "\n\nPILLARS:\n- Educational: Educational videos showing how",
+      pillarNames: ["Educational"],
+    });
+    expect(system).toContain("the name before the colon");
+    expect(system).toContain("1 to 3 word label");
+  });
+
+  it("makes the script continue from the hook instead of restating it", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "inspiration");
+    expect(system).toContain("everything said AFTER the hook");
+    expect(system).toContain("never restate, paraphrase");
+  });
+
+  it("keeps the source's setup for people it introduces", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "inspiration");
+    expect(system).toContain("keeps that setup on its first mention");
+    expect(system).toContain("Never drop a bare name");
+  });
+
+  it("forbids borrowing the source creator's first-person experience", () => {
+    const { system } = buildExpandMessages({ transcript: "x" }, "inspiration");
+    expect(system).toContain("only the source's creator did");
+  });
+
   it("appends the standing context after the fixed instructions", () => {
     const { system } = buildExpandMessages({ transcript: "x" }, "original", {
       section: "\n\nSTANDING CONTEXT\n\nPROJECT: CELPIP Speaking",

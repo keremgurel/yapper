@@ -1,4 +1,4 @@
-import { pillarsByIds } from "@/lib/db/project-pillars";
+import { listPillars, pillarsByIds } from "@/lib/db/project-pillars";
 import { getActiveProject } from "@/lib/db/projects";
 
 /** `ok: false` means the id was not one of the caller's own pillars. */
@@ -27,4 +27,23 @@ export async function resolveOwnPillar(
   const project = await getActiveProject(userId);
   const [own] = await pillarsByIds(project.id, [value]);
   return own ? { ok: true, pillarId: own.id } : { ok: false };
+}
+
+/**
+ * The caller's pillar whose name matches a free-text pillar, if any. A drafted
+ * idea arrives with a pillar name; linking it here keeps it in the same group
+ * as the items already filed under that pillar instead of beside them.
+ */
+export async function ownPillarIdByName(
+  userId: string,
+  name: string,
+): Promise<string | null> {
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  const project = await getActiveProject(userId);
+  const pillars = await listPillars(project.id);
+  return (
+    pillars.find((pillar) => pillar.name.trim().toLowerCase() === wanted)?.id ??
+    null
+  );
 }
