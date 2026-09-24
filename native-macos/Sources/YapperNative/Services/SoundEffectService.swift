@@ -102,7 +102,7 @@ actor SoundEffectService {
     /// The file that ships with the app. Nothing is generated or cached: these
     /// are real recordings now, levelled once when they were brought in.
     nonisolated func bundledURL(for effect: SoundEffectDescriptor) -> URL? {
-        Bundle.module.url(
+        AppResources.url(
             forResource: effect.resourceName,
             withExtension: "m4a",
             subdirectory: "SoundEffects"
