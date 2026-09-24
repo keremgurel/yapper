@@ -1,5 +1,7 @@
 import { fetchBoundedJson } from "@/lib/http/outbound";
 import type { ProjectTextFieldKey } from "@/lib/project/client";
+import { ESSENTIAL_FIELD_CAPS } from "./context/field-caps";
+import { fitSentences } from "./context/text";
 
 /**
  * Setting the Brain up from one document.
@@ -44,7 +46,10 @@ export interface SetupBlock {
   digest: string;
   body: string;
   tags: string[];
-  usage: "core" | "auto";
+  /** Always "auto": a section setup writes is read when a task needs it. The
+   * creator can promote one to Always by hand; setup never does, because an
+   * always-on section spends the same budget the Essentials need. */
+  usage: "auto";
 }
 
 export interface BrainSetupProposal {
@@ -63,6 +68,10 @@ export interface BrainSetupInput {
   };
 }
 
+const ESSENTIAL_LIMITS = SETUP_ESSENTIAL_KEYS.map(
+  (key) => `${key} ${ESSENTIAL_FIELD_CAPS[key]}`,
+).join(", ");
+
 const SYSTEM =
   "A content creator pasted a document that describes their content system: " +
   "who they are, who they make things for, how they sound, what they promote, " +
@@ -72,18 +81,23 @@ const SYSTEM =
   '{"essentials":{"name":"","whatIMake":"","audience":"","voice":"",' +
   '"scriptingPatterns":"","offers":"","doNots":""},' +
   '"pillars":[{"name":"","description":"","examples":[""]}],' +
-  '"blocks":[{"title":"","digest":"","body":"","tags":[""],"usage":"auto"}],' +
+  '"blocks":[{"title":"","digest":"","body":"","tags":[""]}],' +
   '"notes":""}\n\n' +
   "Essentials: fill only the fields the document actually covers and leave the " +
-  "others out entirely. Write each as the creator describing themselves, " +
-  "concrete and specific, under 700 characters, using the document's own " +
-  "wording where it is good. name is what they call the channel or brand. " +
-  "whatIMake is what the content is; when the document lays out pillars or " +
-  "formats, summarise them here rather than leaving it empty. audience is who it is for, with the " +
+  "others out entirely. These are read on every single AI call, so they are a " +
+  "short card, not the full system: one or two plain sentences each, written " +
+  "as the creator describing themselves, using the document's own wording " +
+  "where it is good. Hard character limits, because anything past them is cut " +
+  "before the AI reads it: " +
+  ESSENTIAL_LIMITS +
+  ". name is what they call the channel or brand. " +
+  "whatIMake is what the content is, naming the pillars in a few words rather " +
+  "than describing each one. audience is who it is for, with the " +
   "behavioural trait that defines them. voice is how they sound and the " +
   "phrases they use. scriptingPatterns is how a script opens, moves and " +
   "closes. offers is what is being promoted. doNots is what must never be " +
-  "said or done. Never invent facts the document does not state.\n\n" +
+  "said or done. Never invent facts the document does not state. Detail that " +
+  "does not fit the limit belongs in a block, not squeezed into the field.\n\n" +
   "Pillars: one entry per content pillar in the document, in the document's " +
   "order. name is the short label. description is one paragraph, under 600 " +
   "characters, covering purpose, format, what belongs and the litmus test, so " +
@@ -95,9 +109,11 @@ const SYSTEM =
   "danger zones or litmus tests. Each block is one section: title 2 to 6 " +
   "words, digest ONE line under 110 characters saying what it is and when it " +
   "matters, body the section's substance in the document's words (up to 3000 " +
-  "characters), tags 2 to 4 lowercase words, usage 'core' only if it applies " +
-  "to every piece the creator makes, otherwise 'auto'. Do not repeat the " +
-  "essentials as blocks. Up to eight blocks.\n\n" +
+  "characters), tags 2 to 4 lowercase words. Never write a block that " +
+  "restates an essentials field: a section about why the content exists, " +
+  "what it sells or who watches is only a block if it adds detail the field " +
+  "does not have, and then its body holds only that detail. Up to eight " +
+  "blocks.\n\n" +
   "notes: one or two sentences on what the document did not cover, or empty.\n\n" +
   "The current Brain is supplied for reference only; the document is the " +
   "source of truth for everything it covers.";
@@ -133,7 +149,12 @@ export function parseSetupProposal(content: string): BrainSetupProposal {
       ? (raw.essentials as Record<string, unknown>)
       : {};
   for (const key of SETUP_ESSENTIAL_KEYS) {
-    const value = text(rawEssentials[key], key === "name" ? 80 : 1_200);
+    // A model that overshoots loses whole sentences from the end, never half
+    // of one, so the card still reads as written.
+    const value = fitSentences(
+      text(rawEssentials[key], 2_000),
+      ESSENTIAL_FIELD_CAPS[key],
+    );
     if (value) essentials[key] = value;
   }
 
@@ -169,7 +190,7 @@ export function parseSetupProposal(content: string): BrainSetupProposal {
         digest: text(block.digest, 200),
         body,
         tags: tagList(block.tags),
-        usage: block.usage === "core" ? "core" : "auto",
+        usage: "auto",
       };
     })
     .filter((block): block is SetupBlock => block !== null)

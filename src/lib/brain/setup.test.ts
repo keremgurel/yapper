@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ESSENTIAL_FIELD_CAPS } from "./context/field-caps";
 import { parseSetupProposal } from "./setup";
 
 describe("Brain setup proposal parsing", () => {
@@ -54,6 +55,21 @@ describe("Brain setup proposal parsing", () => {
       },
     ]);
     expect(proposal.notes).toBe("Nothing on offers.");
+  });
+
+  it("fits every essential under what the AI reads, whole sentences only", () => {
+    const sentence = "I build tools for people who close their own gaps. ";
+    const proposal = parseSetupProposal(
+      JSON.stringify({
+        essentials: { offers: sentence.repeat(8) },
+        blocks: [{ title: "Why", body: "Because.", usage: "core" }],
+      }),
+    );
+    const offers = proposal.essentials.offers ?? "";
+    expect(offers.length).toBeLessThanOrEqual(ESSENTIAL_FIELD_CAPS.offers);
+    expect(offers.endsWith(".")).toBe(true);
+    // Setup never promotes a section to always-on.
+    expect(proposal.blocks[0].usage).toBe("auto");
   });
 
   it("treats an empty or unparseable reply as a failure", () => {

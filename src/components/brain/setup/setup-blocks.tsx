@@ -36,11 +36,6 @@ export default function SetupBlocks({
               <span className="min-w-0">
                 <span className="text-foreground block text-[13px] font-medium">
                   {block.title}
-                  {block.usage === "core" && (
-                    <span className="text-muted-foreground ml-2 text-[11px] font-normal">
-                      read on every call
-                    </span>
-                  )}
                 </span>
                 <span className="text-muted-foreground block text-[12px]">
                   {block.digest}

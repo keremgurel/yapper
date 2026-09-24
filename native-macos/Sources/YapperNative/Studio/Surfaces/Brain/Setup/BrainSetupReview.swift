@@ -83,12 +83,7 @@ struct BrainSetupReview: View {
             ForEach(proposal.blocks, id: \.title) { block in
                 BrainCheckRow(isOn: member(\.blocks, block.title)) {
                     VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 8) {
-                            Text(block.title).font(.system(size: 13, weight: .medium))
-                            if block.usage == "core" {
-                                Text("read on every call").font(.system(size: 11)).foregroundStyle(.secondary)
-                            }
-                        }
+                        Text(block.title).font(.system(size: 13, weight: .medium))
                         Text(block.digest).font(.system(size: 12)).foregroundStyle(.secondary)
                     }
                 }

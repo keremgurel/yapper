@@ -1,4 +1,5 @@
 import { excerptBlock } from "./excerpt";
+import { ESSENTIAL_FIELD_CAPS } from "./field-caps";
 import { clamp } from "./text";
 import type {
   BrainBlockSource,
@@ -26,13 +27,7 @@ import type {
 /** Per-field caps, applied before the global ceiling. Pillars get the most
  * headroom because they are the part the model classifies against. */
 const FIELD_CAPS = {
-  name: 80,
-  whatIMake: 320,
-  audience: 320,
-  voice: 240,
-  scriptingPatterns: 400,
-  offers: 200,
-  doNots: 200,
+  ...ESSENTIAL_FIELD_CAPS,
   pillarName: 60,
   pillarDescription: 160,
   pillarExample: 90,

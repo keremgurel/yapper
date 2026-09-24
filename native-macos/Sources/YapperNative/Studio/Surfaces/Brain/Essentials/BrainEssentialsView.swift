@@ -36,6 +36,7 @@ struct BrainEssentialsCard: View {
                     Text("About you").font(.nativeSectionTitle)
                     Text("Read before anything is written for you. Plain sentences are fine.")
                         .font(.system(size: 13)).foregroundStyle(.secondary)
+                    BrainEssentialsFitNote(project: project)
                 }
                 Spacer(minLength: 0)
                 BrainSaveNote(state: store.saveState)
@@ -48,11 +49,14 @@ struct BrainEssentialsCard: View {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                 ForEach(BrainProjectField.allCases) { field in
                     NativeField(label: field.label) {
-                        NativeTextArea(
-                            text: Binding(get: { project[field] }, set: { store.update(.text(field, $0)) }),
-                            placeholder: field.placeholder,
-                            minHeight: CGFloat(field.rows) * 22
-                        )
+                        VStack(alignment: .leading, spacing: 5) {
+                            NativeTextArea(
+                                text: Binding(get: { project[field] }, set: { store.update(.text(field, $0)) }),
+                                placeholder: field.placeholder,
+                                minHeight: CGFloat(field.rows) * 22
+                            )
+                            BrainFieldFit(text: project[field], limit: field.readLimit)
+                        }
                     }
                 }
             }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildCore, MAX_CORE_BLOCKS } from "./core";
+import { fitSentences } from "./text";
 import type {
   BrainBlockSource,
   BrainPillarSource,
@@ -109,5 +110,23 @@ describe("buildCore", () => {
     expect(core).toContain("Audience:");
     expect(core).toContain("PILLARS:");
     expect(core.length).toBeLessThanOrEqual(1400);
+  });
+});
+
+describe("fitSentences", () => {
+  it("drops whole sentences from the end to fit", () => {
+    expect(fitSentences("One two. Three four. Five six.", 20)).toBe(
+      "One two. Three four.",
+    );
+  });
+
+  it("falls back to a word cut when one sentence is too long", () => {
+    expect(fitSentences("A very long first sentence here", 12)).toBe(
+      "A very long…",
+    );
+  });
+
+  it("leaves short text alone", () => {
+    expect(fitSentences("  Short.  ", 20)).toBe("Short.");
   });
 });

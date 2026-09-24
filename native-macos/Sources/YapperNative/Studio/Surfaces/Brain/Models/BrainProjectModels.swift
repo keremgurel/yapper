@@ -116,6 +116,18 @@ enum BrainProjectField: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    /// How many characters of this field the AI reads; the rest is cut before
+    /// any prompt. Mirrors `ESSENTIAL_FIELD_CAPS` in
+    /// src/lib/brain/context/field-caps.ts; change both together.
+    var readLimit: Int {
+        switch self {
+        case .whatIMake, .audience: 320
+        case .voice: 240
+        case .scriptingPatterns: 400
+        case .offers, .doNots: 200
+        }
+    }
+
     /// Rough height in lines, from the web form.
     var rows: Int { self == .offers || self == .doNots ? 2 : 3 }
 }
