@@ -21,6 +21,16 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+const posterSlot = vi.hoisted(() => ({
+  findWaitingPosterVideo: vi.fn(async () => null as unknown),
+  countScheduledVideos: vi.fn(async () => 0),
+}));
+vi.mock("@/lib/db/poster-slot", () => ({
+  ...posterSlot,
+  MAX_SCHEDULED_VIDEOS: 10,
+  posterSlotBusyResponse: (waiting: unknown) =>
+    Response.json({ error: "poster_slot_busy", waiting }, { status: 409 }),
+}));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/billing/gate", () => ({
   canUsePremium: mocks.canUsePremium,
@@ -306,5 +316,28 @@ describe("POST /api/media/upload-url lifecycle allocation", () => {
     expect(response.status).toBe(status);
     await expect(response.json()).resolves.toEqual({ error: code });
     expect(mocks.presignUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("one video waiting to be posted", () => {
+  it("refuses a second recording upload and names the waiting one", async () => {
+    posterSlot.findWaitingPosterVideo.mockResolvedValueOnce({
+      kind: "upload",
+      id: "sub_1",
+      title: "day25",
+    });
+    const response = await POST(
+      request({
+        sizeBytes: 1000,
+        mimeType: "video/mp4",
+        ext: "mp4",
+        purpose: "recording",
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      error: "poster_slot_busy",
+      waiting: { id: "sub_1", title: "day25" },
+    });
   });
 });

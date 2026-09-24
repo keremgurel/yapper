@@ -11,6 +11,9 @@ struct PosterBanners: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if let waiting = upload.waiting {
+                PosterWaitingNotice(upload: upload, waiting: waiting)
+            }
             if let code = upload.errorCode, upload.phase == .failed {
                 warning(PosterErrorCopy.upload(code))
             } else if upload.busy {

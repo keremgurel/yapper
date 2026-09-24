@@ -31,7 +31,6 @@ struct RecorderPage: View {
                 startCaptureIfNeeded()
             }
             .onChange(of: flow.take) { _, take in
-                workspace.saving.reset()
                 if take != nil { focused = false; workspace.capture.stop() } else { startCaptureIfNeeded() }
             }
             .onDisappear {
@@ -44,10 +43,9 @@ struct RecorderPage: View {
     private var content: some View {
         if let take = flow.take {
             NativePage() {
-                NativePageHeader(title: "Review your take", description: "Play it back, then keep it or record it again.")
+                NativePageHeader(title: "Review your take", description: "Play it back, then edit it or keep the file.")
                 RecorderReviewView(
-                    take: take, itemID: script.itemID, title: script.itemTitle,
-                    saving: workspace.saving, onRetake: { flow.retake() }
+                    take: take, title: script.itemTitle, onRetake: { flow.retake() }
                 )
             }
         } else if permissions.blocked {

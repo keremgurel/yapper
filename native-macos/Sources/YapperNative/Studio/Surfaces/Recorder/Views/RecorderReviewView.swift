@@ -1,17 +1,16 @@
 import AVKit
 import SwiftUI
 
-/// After a take: play it back, then save it to the library, retake it, or
-/// download it. A saved take opens straight into the Mac editor.
+/// After a take: play it back, then open it in the editor or keep it in
+/// Downloads. The take never leaves this Mac; there is no upload.
 struct RecorderReviewView: View {
     let take: RecorderTake
-    let itemID: String?
     let title: String?
-    @ObservedObject var saving: RecorderSaveState
     let onRetake: () -> Void
 
     @State private var player: AVPlayer?
-    @State private var downloadError: String?
+    @State private var message: String?
+    @State private var opening = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 28) {
@@ -32,64 +31,45 @@ struct RecorderReviewView: View {
     private var actions: some View {
         NativeSection(title: "Your take", meta: title, card: true) {
             VStack(alignment: .leading, spacing: 12) {
-                Text(itemID == nil
-                     ? "Save it to your library to edit and post it. It becomes a new library item."
-                     : "Save it to your library to link it to this idea, then edit and post it.")
+                Text("Edit it now, or keep the file. It stays on this Mac.")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                saveButton
-                if let saved = saving.savedItemID { savedActions(saved) }
-                if case let .failed(error) = saving.phase {
-                    Text(error.message).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
-                        .fixedSize(horizontal: false, vertical: true)
+                Button(action: openInEditor) {
+                    HStack(spacing: 8) {
+                        if opening { ProgressView().controlSize(.small) } else { Image(systemName: "scissors") }
+                        Text(opening ? "Opening the editor…" : "Open in editor")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
-                if let downloadError {
-                    Text(downloadError).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
-                }
+                .buttonStyle(EditorPrimaryButtonStyle())
+                .disabled(opening)
                 HStack(spacing: 8) {
                     Button { player?.pause(); onRetake() } label: {
                         Label("Retake", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(EditorSecondaryButtonStyle())
-                    .disabled(saving.isSaving)
-                    Button { downloadError = RecorderDownload.save(take) } label: {
+                    .disabled(opening)
+                    Button { message = RecorderDownload.toDownloads(take) } label: {
                         Label("Download", systemImage: "arrow.down.to.line").frame(maxWidth: .infinity)
                     }
                     .buttonStyle(EditorSecondaryButtonStyle())
                 }
-            }
-        }
-    }
-
-    private var saveButton: some View {
-        Button {
-            Task { await saving.save(take, itemID: itemID, title: title) }
-        } label: {
-            HStack(spacing: 8) {
-                if saving.isSaving {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: saving.savedItemID == nil ? "tray.and.arrow.up" : "checkmark")
+                if let message {
+                    Text(message).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                Text(saving.isSaving ? "Saving to library…" : saving.savedItemID == nil ? "Save to library" : "Saved to library")
             }
-            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(EditorPrimaryButtonStyle())
-        .disabled(saving.isSaving || saving.savedItemID != nil)
     }
 
-    private func savedActions(_ id: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Button {
-                player?.pause()
-                StudioWebCommands.shared.openEditor(StudioEditorRequest(itemID: UUID(uuidString: id)))
-            } label: {
-                Label("Edit on Mac", systemImage: "scissors").frame(maxWidth: .infinity)
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-            Button("Open the idea") { StudioNavigation.shared.openIdea(id) }
-                .buttonStyle(EditorGhostButtonStyle(size: .small))
+    private func openInEditor() {
+        player?.pause()
+        do {
+            let kept = try RecorderDownload.keepForEditor(take)
+            opening = true
+            StudioNavigation.shared.openInEditor(kept)
+        } catch {
+            message = "The take couldn't be kept for the editor. Check there is space, then try again."
         }
     }
 }

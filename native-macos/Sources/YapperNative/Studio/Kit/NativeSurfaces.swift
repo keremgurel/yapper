@@ -15,7 +15,15 @@ struct NativeSurfaceHost: View {
 
     var body: some View {
         content
-            .onAppear { StudioNavigation.shared.goTo = navigate }
+            .onAppear {
+                StudioNavigation.shared.goTo = navigate
+                StudioNavigation.shared.openInEditor = { [session, navigate] url in
+                    Task { @MainActor in
+                        await session.createProject(fromVideos: [url])
+                        navigate(.editor)
+                    }
+                }
+            }
     }
 
     @ViewBuilder

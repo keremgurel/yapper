@@ -40,6 +40,16 @@ const mocks = vi.hoisted(() => {
   };
 });
 
+const posterSlot = vi.hoisted(() => ({
+  findWaitingPosterVideo: vi.fn(async () => null as unknown),
+  countScheduledVideos: vi.fn(async () => 0),
+}));
+vi.mock("@/lib/db/poster-slot", () => ({
+  ...posterSlot,
+  MAX_SCHEDULED_VIDEOS: 10,
+  posterSlotBusyResponse: (waiting: unknown) =>
+    Response.json({ error: "poster_slot_busy", waiting }, { status: 409 }),
+}));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/billing/gate", () => ({
   canUsePremium: mocks.canUsePremium,

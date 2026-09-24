@@ -126,6 +126,7 @@ struct PosterPage: View {
     }
 
     private func start() async {
+        upload.onDiscarded = { Task { await library.refresh() } }
         upload.onAdded = { item in
             library.upsert(item)
             source = .yapper

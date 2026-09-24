@@ -16,6 +16,7 @@ enum PosterFileUpload {
             case "not_entitled": throw PosterUploadFailure("locked")
             case "storage_full": throw PosterUploadFailure("storage_full")
             case "media_too_large": throw PosterUploadFailure("too_large")
+            case "poster_slot_busy": throw PosterUploadFailure("slot_busy", waiting: error.waiting)
             default: throw PosterUploadFailure("failed")
             }
         }
@@ -71,5 +72,9 @@ enum PosterFileUpload {
 /// An upload that stopped, by the code `PosterErrorCopy.upload` reads.
 struct PosterUploadFailure: Error {
     let code: String
-    init(_ code: String) { self.code = code }
+    var waiting: PosterWaitingVideo?
+    init(_ code: String, waiting: PosterWaitingVideo? = nil) {
+        self.code = code
+        self.waiting = waiting
+    }
 }
