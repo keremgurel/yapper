@@ -18,6 +18,22 @@ export function clamp(value: string, max: number): string {
   return `${(lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
+/** Fit a value under a cap by dropping whole sentences from the end, so what
+ * is kept still reads as finished writing. Falls back to `clamp` when even
+ * the first sentence is too long. */
+export function fitSentences(value: string, max: number): string {
+  const flat = (value ?? "").replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const sentences = flat.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) ?? [flat];
+  let kept = "";
+  for (const sentence of sentences) {
+    const next = kept + sentence;
+    if (next.trimEnd().length > max) break;
+    kept = next;
+  }
+  return kept.trim() || clamp(flat, max);
+}
+
 /** Same cap, but newlines survive. For a doc chunk or a note, where the shape
  * of the text is part of what it says. */
 export function clampBlock(value: string, max: number): string {
