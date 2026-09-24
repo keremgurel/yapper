@@ -121,10 +121,9 @@ enum BrainProjectField: String, CaseIterable, Identifiable, Sendable {
     /// src/lib/brain/context/field-caps.ts; change both together.
     var readLimit: Int {
         switch self {
-        case .whatIMake, .audience: 320
-        case .voice: 240
-        case .scriptingPatterns: 400
-        case .offers, .doNots: 200
+        case .whatIMake, .audience, .voice, .doNots: 480
+        case .scriptingPatterns: 720
+        case .offers: 400
         }
     }
 
