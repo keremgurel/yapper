@@ -56,7 +56,7 @@ describe("R2 lifecycle cron route", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(processR2LifecycleBatch).toHaveBeenCalledWith({
-      limit: 25,
+      limit: 999,
       deadlineAt: expect.any(Number),
     });
     const [{ deadlineAt }] = processR2LifecycleBatch.mock.calls[0];

@@ -63,11 +63,22 @@ export function ownsKey(userId: string, key: string): boolean {
  * to them as media.
  */
 export function transcriptionKey(userId: string, id: string): string {
-  return `u/${userId}/asr/${id}.m4a`;
+  // A top-level prefix so a bucket lifecycle rule can expire anything a
+  // request left behind; R2 rules match on key prefixes only.
+  return `${TRANSCRIPTION_PREFIX}${userId}/${id}.m4a`;
 }
 
+/** Scratch audio for the transcriber. The bucket expires everything under it
+ * after a day (scripts/r2-lifecycle.mjs), whatever the app did or did not do. */
+export const TRANSCRIPTION_PREFIX = "asr/";
+
 export function isTranscriptionKey(userId: string, key: string): boolean {
-  return key.startsWith(`u/${userId}/asr/`) && key.endsWith(".m4a");
+  if (!key.endsWith(".m4a")) return false;
+  // Keys issued before the move to the top-level prefix, still in flight.
+  return (
+    key.startsWith(`${TRANSCRIPTION_PREFIX}${userId}/`) ||
+    key.startsWith(`u/${userId}/asr/`)
+  );
 }
 
 /** Presigned PUT for the client to upload a recording straight to R2. */
@@ -209,7 +220,10 @@ export async function putObjectFile(
  * so it cannot become a back door to deleting media.
  */
 export async function discardTranscriptionAudio(key: string): Promise<void> {
-  if (!/^u\/[^/]+\/asr\/[^/]+\.m4a$/.test(key)) {
+  if (
+    !/^asr\/[^/]+\/[^/]+\.m4a$/.test(key) &&
+    !/^u\/[^/]+\/asr\/[^/]+\.m4a$/.test(key)
+  ) {
     throw new Error("not_transcription_audio");
   }
   await deleteObject(key);

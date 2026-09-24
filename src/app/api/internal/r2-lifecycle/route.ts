@@ -6,8 +6,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const ROUTE_BUDGET_MS = 45_000;
-const DEFAULT_BATCH_SIZE = 10;
-const MAX_BATCH_SIZE = 25;
+// A daily run on the Hobby plan has to clear a day of deletions: it works
+// until the time budget, not a fixed count.
+const DEFAULT_BATCH_SIZE = 2_000;
+const MAX_BATCH_SIZE = 5_000;
 const RATE_LIMIT_CLEANUP_BATCH_SIZE = 500;
 
 function authorized(request: Request): boolean {

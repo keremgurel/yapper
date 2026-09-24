@@ -7,7 +7,9 @@
 export const WELCOME_CREDITS = 3;
 
 /** Free-tier media storage quota (bytes). */
-export const FREE_STORAGE_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
+/** A free account stores nothing: every upload route also requires a
+ * subscription, and this makes the quota say the same thing. */
+export const FREE_STORAGE_BYTES = 0;
 
 /**
  * Largest video accepted by the direct browser-to-R2 upload path.

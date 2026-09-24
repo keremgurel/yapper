@@ -8,6 +8,7 @@ import {
   readBoundedJson,
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
+import { preflightPaidActionOrResponse } from "@/lib/billing/actions";
 import { presignUpload, r2Configured, transcriptionKey } from "@/lib/r2";
 import { captureMediaType } from "@/lib/voice/capture-media";
 
@@ -78,6 +79,12 @@ export async function POST(req: Request): Promise<Response> {
   // Handing out write tickets is cheap but not free: it is the one place a
   // signed-in account can put bytes in the bucket, so it answers to the same
   // limiter as the work it leads to.
+  // A ticket is only worth issuing to an account that could transcribe with
+  // it. Without this a free account could fill the bucket with audio the
+  // transcriber then refused to read, and nothing would ever count or clear it.
+  const billing = await preflightPaidActionOrResponse(userId, "transcribe");
+  if (billing) return billing;
+
   const spendLimited = await guardProviderSpend(req, userId, "transcribe");
   if (spendLimited) return spendLimited;
 

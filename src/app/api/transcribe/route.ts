@@ -416,16 +416,6 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
 
-  const billing = await preflightPaidActionOrResponse(userId, "transcribe");
-  if (billing) return billing;
-
-  const spendLimited = await guardProviderSpend(req, userId, "transcribe");
-  if (spendLimited) return spendLimited;
-
-  const access = await reservePaidActionOrResponse(userId, "transcribe");
-  if (access.response) return access.response;
-  const { reservation } = access;
-
   // The take's audio exists for this request and no longer. Deepgram has
   // already fetched it by the time any of these paths return, so nothing is
   // waiting on the bytes, and a creator is not paying to store a copy of a
@@ -442,6 +432,27 @@ export async function POST(req: Request): Promise<Response> {
       }),
     );
   };
+
+  // A refused request still deletes what it was handed: the audio is useless
+  // to anyone once the transcriber will not read it.
+  const billing = await preflightPaidActionOrResponse(userId, "transcribe");
+  if (billing) {
+    await discard();
+    return billing;
+  }
+
+  const spendLimited = await guardProviderSpend(req, userId, "transcribe");
+  if (spendLimited) {
+    await discard();
+    return spendLimited;
+  }
+
+  const access = await reservePaidActionOrResponse(userId, "transcribe");
+  if (access.response) {
+    await discard();
+    return access.response;
+  }
+  const { reservation } = access;
 
   let lastError: unknown;
   for (const provider of providers) {
