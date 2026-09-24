@@ -34,7 +34,10 @@ export async function executeBrandCommand(
         ? "Here’s your brand kit."
         : "Your brand kit has no colors yet. Tell me your colors and I’ll save them here.",
     notes: [
-      ...(kit.colors.length ? [`Primary: ${kit.colors[0]}`] : []),
+      ...(["Primary", "Secondary", "Background"] as const).flatMap(
+        (role, index) =>
+          kit.colors[index] ? [`${role}: ${kit.colors[index]}`] : [],
+      ),
       `${kit.logos.length} saved logo${kit.logos.length === 1 ? "" : "s"}`,
     ],
     brandColors: kit.colors,

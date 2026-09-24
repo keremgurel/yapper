@@ -1,14 +1,15 @@
 import SwiftUI
 
-/// Colors: the palette as swatches (first is primary, drag to reorder), a
-/// row to add one, and starter defaults when the palette is empty.
+/// Colors: the palette as role-labelled swatches (primary, secondary,
+/// background, then accents), a card for the next empty role, and starter
+/// defaults when the palette is empty.
 struct BrandColorsSection: View {
     @ObservedObject var store: BrandKitStore
 
     var body: some View {
         NativeSection(title: "Colors", meta: store.kit.map { "\($0.colors.count) of \(BrandLimits.maxColors)" }, card: true) {
             VStack(alignment: .leading, spacing: 16) {
-                Text("The first swatch is primary; drag a swatch to reorder. Chirpy checks contrast and chooses readable combinations automatically.")
+                Text("Click a color to change it. Drag one onto another to swap their roles. Chirpy checks contrast and picks readable combinations on its own.")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 content
@@ -19,18 +20,15 @@ struct BrandColorsSection: View {
     @ViewBuilder
     private var content: some View {
         if let kit = store.kit {
-            if kit.colors.isEmpty {
-                starter
-            } else {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
-                    ForEach(Array(kit.colors.enumerated()), id: \.element) { index, color in
-                        swatch(color, primary: index == 0)
-                    }
+            if kit.colors.isEmpty { starter }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 12)], spacing: 12) {
+                ForEach(Array(kit.colors.enumerated()), id: \.element) { index, color in
+                    swatch(color, index: index, count: kit.colors.count)
                 }
-            }
-            if kit.colors.count < BrandLimits.maxColors {
-                BrandAddColorRow(existing: kit.colors, disabled: store.busy) { color in
-                    Task { await store.addColor(color) }
+                if kit.colors.count < BrandLimits.maxColors {
+                    BrandAddColorCard(role: BrandColorRole(index: kit.colors.count), existing: kit.colors, busy: store.busy) { color in
+                        Task { await store.addColor(color) }
+                    }
                 }
             }
         } else if store.loadFailed {
@@ -43,13 +41,14 @@ struct BrandColorsSection: View {
         }
     }
 
-    private func swatch(_ color: String, primary: Bool) -> some View {
-        BrandColorSwatch(
+    private func swatch(_ color: String, index: Int, count: Int) -> some View {
+        let role = BrandColorRole(index: index)
+        return BrandColorSwatch(
             color: color,
-            primary: primary,
+            role: role,
             busy: store.busy,
+            removable: role == .accent || index == count - 1,
             onChange: { next in Task { await store.replaceColor(color, with: next) } },
-            onPrimary: { Task { await store.makePrimary(color: color) } },
             onDelete: { Task { await store.removeColor(color) } }
         )
         .draggable(color)
@@ -64,7 +63,7 @@ struct BrandColorsSection: View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Start with safe defaults").font(.system(size: 13, weight: .semibold))
-                Text("Yapper orange, ink, white, and highlight yellow make a readable starter palette.")
+                Text("Orange primary, ink secondary, white background, and a yellow accent. Change any of them after.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
             }
             HStack(spacing: 4) {

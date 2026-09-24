@@ -67,8 +67,8 @@ export function luminance(hex: string): number {
 /**
  * The palette for a brand kit, or the neutral house palette for none.
  *
- * The first colour is primary, by the brand kit's own convention. Surface and
- * ink are chosen so text on a card reads, whichever way round the brand is.
+ * The kit is ordered by role: primary, secondary, background, then accents.
+ * Ink follows the background so text on a card reads either way round.
  */
 export function paletteFor(colors: readonly string[]): ScenePalette {
   const valid = colors
@@ -78,9 +78,9 @@ export function paletteFor(colors: readonly string[]): ScenePalette {
   const primary = valid[0] ?? "#F96F4B";
   const secondary =
     valid[1] ?? (luminance(primary) > 0.4 ? "#1B181C" : "#FFFFFF");
-  const accent = valid[2] ?? primary;
-  const surface = "#FFFFFF";
-  const ink = "#1B181C";
+  const surface = valid[2] ?? "#FFFFFF";
+  const accent = valid[3] ?? primary;
+  const ink = luminance(surface) > 0.4 ? "#1B181C" : "#FFFFFF";
   const muted = "#8A858B";
   return { primary, secondary, accent, ink, surface, muted };
 }
