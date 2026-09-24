@@ -49,6 +49,8 @@ struct StorageUsage: Codable, Equatable {
         }
     }
 
+    /// When a lapsed account's stored videos are deleted, as an ISO date.
+    let videosDeleteOn: String?
     let plan: Plan?
     let usedBytes: Double
     let reservedBytes: Double

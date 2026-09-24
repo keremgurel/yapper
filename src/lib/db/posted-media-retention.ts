@@ -72,6 +72,7 @@ export async function findPostedMedia(
  */
 export async function releasePostedMedia(
   candidate: PostedMediaCandidate,
+  reason = "posted",
 ): Promise<"released" | "skipped"> {
   const { userId, mediaKey } = candidate;
   return getDb().transaction(async (tx) => {
@@ -137,7 +138,7 @@ export async function releasePostedMedia(
         })
         .where(eq(users.id, userId));
     }
-    await enqueueObjectDeletionWithinTx(tx, userId, mediaKey, "posted");
+    await enqueueObjectDeletionWithinTx(tx, userId, mediaKey, reason);
     return "released";
   });
 }

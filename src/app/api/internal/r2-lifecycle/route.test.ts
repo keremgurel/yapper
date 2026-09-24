@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const processR2LifecycleBatch = vi.hoisted(() => vi.fn());
 const cleanupExpiredRateLimitBuckets = vi.hoisted(() => vi.fn());
 const releasePostedMediaBatch = vi.hoisted(() => vi.fn());
+const releaseLapsedMediaBatch = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/db/lapsed-media-retention", () => ({
+  releaseLapsedMediaBatch,
+}));
 vi.mock("@/lib/db/r2-lifecycle", () => ({ processR2LifecycleBatch }));
 vi.mock("@/lib/db/posted-media-retention", () => ({
   releasePostedMediaBatch,
@@ -16,6 +20,11 @@ beforeEach(() => {
   processR2LifecycleBatch.mockResolvedValue({ claimed: 0, deleted: 0 });
   cleanupExpiredRateLimitBuckets.mockResolvedValue(3);
   releasePostedMediaBatch.mockResolvedValue({ released: 2, failed: 0 });
+  releaseLapsedMediaBatch.mockResolvedValue({
+    accounts: 0,
+    released: 0,
+    failed: 0,
+  });
 });
 
 afterEach(() => {

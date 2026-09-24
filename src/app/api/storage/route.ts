@@ -3,6 +3,7 @@ import { getBillingState } from "@/lib/db/billing";
 import { getStorageUsageDetails } from "@/lib/db/storage-usage";
 import { getStorageBytes } from "@/lib/db/users";
 import { storageQuotaFor } from "@/lib/billing/storage";
+import { lapsedMediaDeleteAt } from "@/lib/billing/entitlement";
 import { planByKey, SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
 import { storageUsagePercent } from "@/lib/storage/format";
 
@@ -29,7 +30,11 @@ export async function GET(): Promise<Response> {
     percent >= 90 ? "critical" : percent >= 70 ? "near" : "roomy";
   const { media, workspace } = details;
 
+  // A lapsed account keeps its videos for 30 days; say when they go, and
+  // only when there is something stored to lose.
+  const deleteAt = usedBytes > 0 ? lapsedMediaDeleteAt(state) : null;
   return Response.json({
+    videosDeleteOn: deleteAt ? deleteAt.toISOString() : null,
     plan: plan ? { key: plan.key, name: plan.name } : null,
     usedBytes,
     reservedBytes: details.reservedBytes,

@@ -29,6 +29,9 @@ struct StoragePage: View {
     private var content: some View {
         if let usage = store.usage {
             VStack(alignment: .leading, spacing: 28) {
+                if let deleteOn = usage.videosDeleteOn.flatMap({ try? Date($0, strategy: .iso8601) }) {
+                    StorageLapseNotice(deleteOn: deleteOn)
+                }
                 StorageUsageCard(usage: usage)
                 StorageMediaSection(media: usage.media)
                 StorageWorkspaceCard(workspace: usage.workspace)

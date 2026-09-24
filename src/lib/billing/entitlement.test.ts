@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isEntitled, isTrialing } from "@/lib/billing/entitlement";
+import {
+  isEntitled,
+  isTrialing,
+  lapsedMediaDeleteAt,
+} from "@/lib/billing/entitlement";
 
 const NOW = new Date("2026-07-16T00:00:00.000Z");
 const days = (n: number): Date =>
@@ -53,5 +57,39 @@ describe("isTrialing", () => {
     expect(isTrialing(state("trialing", days(7)))).toBe(true);
     expect(isTrialing(state("active", days(7)))).toBe(false);
     expect(isTrialing(null)).toBe(false);
+  });
+});
+
+describe("lapsedMediaDeleteAt", () => {
+  const now = new Date("2026-09-24T00:00:00Z");
+  it("has no date while the account is entitled", () => {
+    expect(
+      lapsedMediaDeleteAt(
+        {
+          subscriptionStatus: "active",
+          currentPeriodEnd: new Date("2026-10-01T00:00:00Z"),
+        },
+        now,
+      ),
+    ).toBeNull();
+  });
+  it("deletes 30 days after access ended (period end plus grace)", () => {
+    expect(
+      lapsedMediaDeleteAt(
+        {
+          subscriptionStatus: "canceled",
+          currentPeriodEnd: new Date("2026-08-01T00:00:00Z"),
+        },
+        now,
+      )?.toISOString(),
+    ).toBe("2026-09-03T00:00:00.000Z");
+  });
+  it("never guesses a date for an account with no recorded period", () => {
+    expect(
+      lapsedMediaDeleteAt(
+        { subscriptionStatus: null, currentPeriodEnd: null },
+        now,
+      ),
+    ).toBeNull();
   });
 });
