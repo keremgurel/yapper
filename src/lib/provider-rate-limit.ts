@@ -29,6 +29,7 @@ export type ProviderSpendEndpoint =
   | "content-capture"
   | "content-brainstorm"
   | "ideas-expand"
+  | "ideas-version"
   | "inspiration-creator"
   | "inspiration-resolve"
   | "publish-caption"
@@ -76,6 +77,7 @@ const ENDPOINT_POLICIES: Record<
   "content-capture": { capacity: 3, refillPerSecond: 12 / HOUR },
   "content-brainstorm": { capacity: 3, refillPerSecond: 12 / HOUR },
   "ideas-expand": { capacity: 3, refillPerSecond: 12 / HOUR },
+  "ideas-version": { capacity: 3, refillPerSecond: 12 / HOUR },
   "inspiration-creator": { capacity: 2, refillPerSecond: 10 / HOUR },
   "inspiration-resolve": { capacity: 3, refillPerSecond: 20 / HOUR },
   "publish-caption": { capacity: 3, refillPerSecond: 20 / HOUR },

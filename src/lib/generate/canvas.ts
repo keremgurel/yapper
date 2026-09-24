@@ -71,7 +71,7 @@ const SYSTEM =
   "Rules:\n" +
   "- A script is the words said aloud, in the creator's voice: contractions, " +
   "short sentences, no headers, no stage directions, no bullet formatting. " +
-  'Use kind "script" for it. Unless told a length, 130 to 200 words.\n' +
+  'Use kind "script" for it. Unless told a length, 80 to 130 words, up to 200 for a story.\n' +
   "- When the ask names or clearly means an existing block, replace that block. " +
   "When it asks for something new, insert it where it belongs or append it.\n" +
   "- Never rewrite blocks the creator did not ask about. Never return the whole " +

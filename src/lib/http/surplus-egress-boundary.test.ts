@@ -18,6 +18,7 @@ const CALLERS = [
   "lib/generate/canvas.ts",
   "lib/generate/script.ts",
   "lib/ideas/expand.ts",
+  "lib/ideas/versions/write.ts",
   "lib/inspiration/web-resource.ts",
   "lib/publish/caption.ts",
   "lib/studio/scene/scene-model-call.ts",

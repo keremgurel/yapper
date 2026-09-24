@@ -58,6 +58,8 @@ export interface BrainSkillSource {
   instructions: string;
   /** Empty means every surface. */
   surfaces: BrainSurface[];
+  /** Version formats it shapes; empty or absent means all of them. */
+  formats?: string[];
   enabled: boolean;
 }
 
