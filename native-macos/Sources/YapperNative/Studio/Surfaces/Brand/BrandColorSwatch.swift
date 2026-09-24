@@ -22,7 +22,14 @@ struct BrandColorSwatch: View {
                 BrandHex.color(BrandHex.normalize(draft) ?? color)
                     .frame(height: 96)
                     .overlay(alignment: .topLeading) {
-                        NativeChip(text: role.title, tone: role == .primary ? .orange : .neutral).padding(10)
+                        // A dark pill reads on any swatch; a tinted chip
+                        // vanishes on a color close to its own.
+                        Text(role.title)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Capsule().fill(.black.opacity(0.55)))
+                            .padding(10)
                     }
                     .contentShape(Rectangle())
             }
