@@ -6,7 +6,13 @@ import {
   reservePaidActionOrResponse,
 } from "@/lib/billing/actions";
 import { getBrainContextSafe } from "@/lib/brain/context/server";
+import { isVersionFormat } from "@/lib/content/formats";
 import { expandIdea } from "@/lib/ideas/expand";
+import {
+  expansionFromVersion,
+  materialFromInput,
+} from "@/lib/ideas/versions/first-draft";
+import { writeVersion } from "@/lib/ideas/versions/write";
 import { parseExpandIdeaInput } from "@/lib/ideas/expand-input";
 import {
   guardProviderIngress,
@@ -18,7 +24,7 @@ import {
 } from "@/lib/http/bounded-body";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 const MAX_JSON_BYTES = 256 * 1024;
 
 /**
@@ -48,6 +54,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!input) {
     return Response.json({ error: "no_input" }, { status: 400 });
   }
+  // The idea's lead format. Short-form keeps the drafting prompt it always
+  // had; a long-form or article lead is written in its own shape.
+  const format = isVersionFormat(body.format) ? body.format : "short";
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
@@ -65,6 +74,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // that will be refused never spends a provider call on routing.
   const brain = await getBrainContextSafe(userId, {
     surface: "expand",
+    format,
     task: [
       input.source?.title,
       input.transcript,
@@ -77,7 +87,18 @@ export async function POST(req: NextRequest): Promise<Response> {
   });
   const context = { section: brain.section, pillarNames: brain.pillarNames };
   try {
-    const expansion = await expandIdea(input, context, req.signal);
+    const expansion =
+      format === "short"
+        ? await expandIdea(input, context, req.signal)
+        : expansionFromVersion(
+            await writeVersion(
+              format,
+              materialFromInput(input),
+              null,
+              context,
+              req.signal,
+            ),
+          );
     return Response.json({
       expansion,
       balance: reservation.balance,

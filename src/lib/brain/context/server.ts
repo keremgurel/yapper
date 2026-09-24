@@ -1,3 +1,4 @@
+import type { VersionFormat } from "@/lib/content/formats";
 import { listBrainBlocks, listBrainChunks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
 import { listProjectSkillsWithDefaults } from "@/lib/db/project-skills";
@@ -117,6 +118,7 @@ async function loadSnapshot(
       whenToUse: row.whenToUse,
       instructions: row.instructions,
       surfaces: row.surfaces,
+      formats: row.formats,
       enabled: row.enabled,
     })),
   };
@@ -132,6 +134,23 @@ export interface BrainContextOptions {
   signal?: AbortSignal;
   /** False for the page's preview, which must not spend a router call. */
   useModel?: boolean;
+  /** The version being written. Skills limited to other formats are left
+   * out, the way a skill limited to other surfaces is. */
+  format?: VersionFormat;
+}
+
+/** The snapshot as one format sees it. A copy: the cached snapshot is shared. */
+export function forFormat(
+  snapshot: BrainSnapshot,
+  format: VersionFormat | undefined,
+): BrainSnapshot {
+  if (!format) return snapshot;
+  return {
+    ...snapshot,
+    skills: snapshot.skills.filter(
+      (skill) => !skill.formats?.length || skill.formats.includes(format),
+    ),
+  };
 }
 
 export interface BrainContext {
@@ -155,7 +174,10 @@ export async function getBrainContext(
   options: BrainContextOptions,
 ): Promise<BrainContext> {
   const project = await getActiveProject(userId);
-  const snapshot = await loadSnapshot(project.id, project.contextVersion);
+  const snapshot = forFormat(
+    await loadSnapshot(project.id, project.contextVersion),
+    options.format,
+  );
   const compiled = await compileBrain(
     { ...snapshot, project },
     {

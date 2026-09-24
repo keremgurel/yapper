@@ -28,6 +28,11 @@ const ROUTES = [
   ],
   ["ideas/expand/route.ts", "ideas-expand", "reservePaidActionOrResponse("],
   [
+    "content/[id]/versions/[format]/write/route.ts",
+    "ideas-version",
+    "reservePaidActionOrResponse(",
+  ],
+  [
     "inspiration/creator/route.ts",
     "inspiration-creator",
     "reservePaidActionOrResponse(",

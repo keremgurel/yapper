@@ -26,8 +26,8 @@ const SYSTEM =
   "idea's sections as natural spoken lines (contractions, short sentences, NO " +
   "bullet formatting or headers), following whatever order and emphasis those " +
   "sections imply rather than a fixed template. If the creator's own words are " +
-  "supplied, their angle and meaning win over any summary of them. 130-200 " +
-  "words (~45-75s spoken). Write ONLY the words to say aloud, no stage " +
+  "supplied, their angle and meaning win over any summary of them. 80-130 " +
+  "words (~35-55s spoken), up to 200 for a story or multi-step explainer. Write ONLY the words to say aloud, no stage " +
   "directions, scene labels, or notes. Never use em dashes or en dashes; use a " +
   "comma, a colon, or a new sentence. Return STRICT JSON only: " +
   '{"script": "<the full script as one string, newlines allowed>"}.';

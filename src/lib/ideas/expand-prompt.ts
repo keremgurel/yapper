@@ -63,9 +63,18 @@ export function buildExpandMessages(
     "a visual gag). Never add key points, research, or a breakdown of the " +
     "reference: the creator asks for those on the page when they want them.\n" +
     "- The script is a real first draft the creator could shoot: their angle, " +
-    "their voice, 130 to 200 spoken words unless the format is shorter by " +
-    "nature. No headers, no bullet formatting, no stage directions unless the " +
-    "format is a sketch. Never use em dashes or en dashes.\n" +
+    "their voice, 80 to 130 spoken words (about 35 to 55 seconds). Go up to " +
+    "200 only when the idea is a story or a multi-step explainer that needs " +
+    "the room, and shorter when the format is shorter by nature. No headers, " +
+    "no bullet formatting, no stage directions unless the format is a sketch. " +
+    "Never use em dashes or en dashes.\n" +
+    "- The script's first line tells the viewer where this is going in one " +
+    "short sentence, so they know the payoff is coming.\n" +
+    "- Beats connect with 'but' or 'therefore', never 'and then': each beat " +
+    "complicates or follows from the last one.\n" +
+    "- Plain words, one idea per video. Include one specific takeaway a " +
+    "viewer would send to a friend.\n" +
+    "- End on the payoff. No outro, no recap, no 'that's it'.\n" +
     "- The hook is spoken first and the script continues from it. The script's " +
     "first line is the second beat: never restate, paraphrase, or answer back " +
     "to any hook, and never open with a second audience call-out such as " +
