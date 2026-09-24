@@ -51,8 +51,22 @@ interface ChirpyMessage {
 
 type NativeChirpyReply = Pick<ChirpyMessage, "text" | "notes" | "tone">;
 
+/**
+ * What the Mac app sends with an ask: the Studio tab the creator is on, and
+ * that tab's own recent conversation. The hidden page sits on one route
+ * whatever the tab, so without this Chirpy would read one mixed history and
+ * guess the wrong page.
+ */
+interface NativeChirpyContext {
+  surface?: string;
+  history?: { author: "you" | "chirpy"; text: string }[];
+}
+
 interface NativeChirpyWindow extends Window {
-  __yapperNativeChirpy?: (instruction: string) => Promise<NativeChirpyReply>;
+  __yapperNativeChirpy?: (
+    instruction: string,
+    context?: NativeChirpyContext,
+  ) => Promise<NativeChirpyReply>;
   webkit?: {
     messageHandlers?: {
       yapperNative?: { postMessage: (body: unknown) => void };
@@ -269,7 +283,9 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   );
 
   const send = useCallback(
-    async (raw: string) => {
+    async (raw: string, native?: NativeChirpyContext) => {
+      // The tab the creator is on: the Mac app says so; on the web, the URL.
+      const route = native?.surface ?? pathname;
       const text = raw.trim();
       if (!text || sending.current) return;
       sending.current = true;
@@ -300,7 +316,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         if (
           !command &&
           text.length >= 800 &&
-          (pathname.startsWith("/studio/brain") ||
+          (route.startsWith("/studio/brain") ||
             /\b(brain|pillars?|audience|voice|content system|essentials)\b/i.test(
               text,
             ))
@@ -329,7 +345,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         const brandCommand = command
           ? parseBrandCommand(
               text,
-              pathname.startsWith("/studio/brand") ||
+              route.startsWith("/studio/brand") ||
                 messages.at(-1)?.brandColors !== undefined,
             )
           : null;
@@ -441,7 +457,10 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           });
         }
 
-        const conversation = messages
+        // The Mac app keeps one thread per tab and sends it; the web panel
+        // has its own.
+        const earlier = native?.history ?? messages;
+        const conversation = earlier
           .filter(
             (message) =>
               message.author === "you" || message.author === "chirpy",
@@ -481,8 +500,11 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const nativeWindow = window as NativeChirpyWindow;
-    const handler = async (instruction: string): Promise<NativeChirpyReply> => {
-      const reply = await send(instruction);
+    const handler = async (
+      instruction: string,
+      context?: NativeChirpyContext,
+    ): Promise<NativeChirpyReply> => {
+      const reply = await send(instruction, context);
       if (!reply) throw new Error("Chirpy is already working");
       return reply;
     };

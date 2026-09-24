@@ -91,7 +91,7 @@ struct FloatingAssistant: View {
         if isOpen {
             AssistantPanel(
                 session: session,
-                conversation: session.conversation,
+                conversation: conversation,
                 expression: expression,
                 isWorking: isWorking,
                 onClose: { toggle(open: false, in: bounds) },
