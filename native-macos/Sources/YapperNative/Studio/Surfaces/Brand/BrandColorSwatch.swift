@@ -1,72 +1,60 @@
 import SwiftUI
 
-/// One palette color: a block of the color, the system color well and a hex
-/// field to change it, make primary, delete. Drag a swatch onto another to
-/// reorder; the first swatch is primary.
+/// One palette color, labelled with its role. Clicking the color opens the
+/// picker right beside it; the change saves when the picker closes. Drag a
+/// swatch onto another to swap roles.
 struct BrandColorSwatch: View {
     let color: String
-    let primary: Bool
+    let role: BrandColorRole
     let busy: Bool
+    /// Taking out a middle role would shift every later color into a new
+    /// role, so only accents and the last color can go.
+    let removable: Bool
     let onChange: (String) -> Void
-    let onPrimary: () -> Void
     let onDelete: () -> Void
 
     @State private var draft = ""
-    @State private var pickerCommit: Task<Void, Never>?
+    @State private var picking = false
 
     var body: some View {
         VStack(spacing: 0) {
-            BrandHex.color(BrandHex.normalize(draft) ?? color)
-                .frame(height: 96)
-                .overlay(alignment: .topLeading) {
-                    if primary { NativeChip(text: "Primary").padding(10) }
-                }
+            Button { picking = true } label: {
+                BrandHex.color(BrandHex.normalize(draft) ?? color)
+                    .frame(height: 96)
+                    .overlay(alignment: .topLeading) {
+                        NativeChip(text: role.title, tone: role == .primary ? .orange : .neutral).padding(10)
+                    }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.studioPlain)
+            .clickableCursor(enabled: !busy)
+            .help("Change \(role.title.lowercased()) color")
+            .popover(isPresented: $picking, arrowEdge: .bottom) {
+                BrandColorPicker(role: role, hex: $draft)
+            }
             Rectangle().fill(Color.studioLine).frame(height: 1)
             HStack(spacing: 4) {
-                ColorPicker("Choose \(color)", selection: pickerBinding, supportsOpacity: false)
-                    .labelsHidden()
-                    .frame(width: 30)
                 TextField("#RRGGBB", text: $draft)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12, weight: .medium).monospaced())
                     .onSubmit(commitDraft)
-                    .accessibilityLabel("Hex value for \(color)")
+                    .accessibilityLabel("Hex value for \(role.title.lowercased()) color")
                 Spacer(minLength: 0)
-                if !primary {
-                    Button(action: onPrimary) { Image(systemName: "star").font(.system(size: 12)) }
-                        .buttonStyle(EditorGhostButtonStyle(size: .small))
-                        .help("Make primary")
-                        .accessibilityLabel("Make \(color) primary")
+                if removable {
+                    BrandConfirmDeleteButton(label: "Remove \(color)", onConfirm: onDelete)
                 }
-                BrandConfirmDeleteButton(label: "Remove \(color)", onConfirm: onDelete)
             }
-            .disabled(busy)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .frame(height: 30)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
         }
+        .disabled(busy)
         .background(Color.panelBackground)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
         .onAppear { draft = color }
         .onChange(of: color) { _, saved in draft = saved }
-        .onDisappear { pickerCommit?.cancel() }
-    }
-
-    /// The color well fires on every drag step, so the save waits until the
-    /// creator has stopped moving it for a moment.
-    private var pickerBinding: Binding<Color> {
-        Binding(
-            get: { BrandHex.color(BrandHex.normalize(draft) ?? color) },
-            set: { picked in
-                draft = BrandHex.hex(picked)
-                pickerCommit?.cancel()
-                pickerCommit = Task {
-                    try? await Task.sleep(for: .milliseconds(700))
-                    guard !Task.isCancelled else { return }
-                    commitDraft()
-                }
-            }
-        )
+        .onChange(of: picking) { _, open in if !open { commitDraft() } }
     }
 
     private func commitDraft() {

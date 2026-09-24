@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "node:crypto";
+import { releasePostedMediaBatch } from "@/lib/db/posted-media-retention";
 import { processR2LifecycleBatch } from "@/lib/db/r2-lifecycle";
 import { cleanupExpiredRateLimitBuckets } from "@/lib/db/rate-limit";
 
@@ -36,6 +37,14 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  // Posted videos are let go first, so this same run deletes their files.
+  let postedMedia = { released: 0, failed: 0 };
+  try {
+    postedMedia = await releasePostedMediaBatch();
+  } catch (error) {
+    console.error("[maintenance] posted media release failed", error);
+  }
+
   const result = await processR2LifecycleBatch({
     limit: batchSize(request),
     deadlineAt: Date.now() + ROUTE_BUDGET_MS,
@@ -51,7 +60,7 @@ export async function GET(request: Request): Promise<Response> {
     console.error("[maintenance] rate-limit cleanup failed", error);
   }
   return Response.json(
-    { ...result, rateLimitBucketsDeleted, rateLimitCleanupFailed },
+    { ...result, postedMedia, rateLimitBucketsDeleted, rateLimitCleanupFailed },
     {
       headers: { "Cache-Control": "no-store" },
     },

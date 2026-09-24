@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const processR2LifecycleBatch = vi.hoisted(() => vi.fn());
 const cleanupExpiredRateLimitBuckets = vi.hoisted(() => vi.fn());
+const releasePostedMediaBatch = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/db/r2-lifecycle", () => ({ processR2LifecycleBatch }));
+vi.mock("@/lib/db/posted-media-retention", () => ({
+  releasePostedMediaBatch,
+}));
 vi.mock("@/lib/db/rate-limit", () => ({ cleanupExpiredRateLimitBuckets }));
 
 import { GET } from "./route";
@@ -11,6 +15,7 @@ beforeEach(() => {
   process.env.CRON_SECRET = "test-secret";
   processR2LifecycleBatch.mockResolvedValue({ claimed: 0, deleted: 0 });
   cleanupExpiredRateLimitBuckets.mockResolvedValue(3);
+  releasePostedMediaBatch.mockResolvedValue({ released: 2, failed: 0 });
 });
 
 afterEach(() => {
@@ -94,5 +99,20 @@ describe("R2 lifecycle cron route", () => {
       "[maintenance] rate-limit cleanup failed",
       error,
     );
+  });
+
+  it("lets go of posted videos before deleting, and reports it", async () => {
+    const response = await GET(
+      new Request("https://example.test/api/internal/r2-lifecycle", {
+        headers: { authorization: "Bearer test-secret" },
+      }),
+    );
+    expect(releasePostedMediaBatch).toHaveBeenCalledOnce();
+    expect(releasePostedMediaBatch.mock.invocationCallOrder[0]).toBeLessThan(
+      processR2LifecycleBatch.mock.invocationCallOrder[0],
+    );
+    expect(await response.json()).toMatchObject({
+      postedMedia: { released: 2, failed: 0 },
+    });
   });
 });
