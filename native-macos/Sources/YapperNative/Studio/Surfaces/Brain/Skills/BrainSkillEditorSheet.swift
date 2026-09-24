@@ -13,8 +13,8 @@ struct BrainSkillEditorSheet: View {
 
     var body: some View {
         if let skill = store.skill(skillID) {
-            BrainSheetFrame(
-                title: "Edit skill",
+            BrainEditorPanel(
+                title: skill.name.isEmpty ? "Edit skill" : skill.name,
                 description: skill.catalogSlug == nil
                     ? "Yours, written from scratch."
                     : "Your editable copy. You can always restore Yapper's original.",
@@ -23,6 +23,13 @@ struct BrainSkillEditorSheet: View {
                 if let resetError { BrainInlineError(message: resetError) }
                 fields(skill).disabled(resetting)
                 if skill.catalogSlug != nil { origin(skill) }
+            } main: {
+                Text("Instructions").font(.nativeLabel).foregroundStyle(.secondary)
+                BrainLongTextEditor(
+                    text: Binding(get: { skill.instructions }, set: { store.edit(skill.id, .instructions($0)) }),
+                    placeholder: "Write it as instructions to whoever is doing the writing."
+                )
+                .disabled(resetting)
             }
             .confirmationDialog(
                 "Reset \u{201C}\(skill.name)\u{201D} to Yapper's current default?",
@@ -34,9 +41,9 @@ struct BrainSkillEditorSheet: View {
                 Text("Your edits to this skill will be replaced.")
             }
         } else {
-            BrainSheetFrame(title: "Edit skill", onClose: onClose) {
+            BrainEditorPanel(title: "Edit skill", onClose: onClose) {
                 Text("This skill isn't here anymore.").font(.system(size: 13)).foregroundStyle(.secondary)
-            }
+            } main: { EmptyView() }
         }
     }
 
@@ -66,14 +73,6 @@ struct BrainSkillEditorSheet: View {
                 Text(skill.surfaces.isEmpty ? "Nothing picked, so it is considered everywhere." : "Only considered on these.")
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
-        }
-        NativeField(label: "Instructions") {
-            NativeTextArea(
-                text: Binding(get: { skill.instructions }, set: { store.edit(skill.id, .instructions($0)) }),
-                placeholder: "Write it as instructions to whoever is doing the writing.",
-                font: .system(size: 13, design: .monospaced),
-                minHeight: 300
-            )
         }
     }
 
