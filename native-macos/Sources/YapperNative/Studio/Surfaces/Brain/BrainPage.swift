@@ -43,7 +43,7 @@ struct BrainPage: View {
             case .catalog: BrainCatalogSheet { self.sheet = nil }
             }
         }
-        .nativeDrawer(item: $editor.editing) { editing in
+        .nativeModal(item: $editor.editing) { editing in
             switch editing {
             case .skill(let id): BrainSkillEditorSheet(skillID: id) { editor.editing = nil }
             case .block(let id): BrainBlockEditorPanel(blockID: id) { editor.editing = nil }

@@ -77,15 +77,15 @@ struct BrainSkillEditorSheet: View {
     }
 
     private func origin(_ skill: BrainSkill) -> some View {
-        HStack(alignment: .top, spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(skill.isStarter ? "Included by Yapper" : "Installed from Skills").font(.system(size: 13, weight: .semibold))
                 Text(skill.customized
                      ? "You've customized this copy. Reset restores the latest official version."
                      : "This matches the official version. You can edit it freely.")
                     .font(.system(size: 12)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
             Button { confirmingReset = true } label: {
                 HStack(spacing: 5) {
                     if resetting { ProgressView().controlSize(.mini) } else { Image(systemName: "arrow.counterclockwise") }
@@ -95,6 +95,7 @@ struct BrainSkillEditorSheet: View {
             .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             .disabled(resetting)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .nativeWell()
     }
 
