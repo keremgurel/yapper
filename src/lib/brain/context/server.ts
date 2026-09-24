@@ -114,6 +114,7 @@ async function loadSnapshot(
     })),
     skills: skillRows.map((row) => ({
       id: row.id,
+      slug: row.catalogSlug,
       name: row.name,
       whenToUse: row.whenToUse,
       instructions: row.instructions,

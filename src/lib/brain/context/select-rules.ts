@@ -22,10 +22,11 @@ import type {
  * by how many distinct words it shares with what is being written.
  */
 
-/** How many surface-declared skills load when nothing matched the task text. A
- * skill that says "use me on scripts" means it, but three of them all claiming
- * the script with no relevance signal is a prompt arguing with itself. */
-const DEFAULT_DECLARED_SKILLS = 2;
+/** How many surface-declared skills load when nothing matched the task text:
+ * the first in the creator's order. A second one with no relevance signal was
+ * usually a structure the piece did not need, like a story arc on an
+ * explainer, and two structures in one prompt argue with each other. */
+const DEFAULT_DECLARED_SKILLS = 1;
 /** With no task text at all, read the top of the brain rather than nothing. */
 const DEFAULT_BLOCKS = 2;
 

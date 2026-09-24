@@ -1,4 +1,5 @@
 import type { VersionFormat } from "@/lib/content/formats";
+import { undash } from "@/lib/text/undash";
 import type { PromptContext } from "@/lib/ideas/expand-prompt";
 
 /**
@@ -227,8 +228,9 @@ export function buildVersionMessages(
   return { system, user: parts.join("\n\n") };
 }
 
+// Every string the model returns lands on screen, so dashes go here.
 const text = (v: unknown, max: number): string =>
-  typeof v === "string" ? v.trim().slice(0, max) : "";
+  typeof v === "string" ? undash(v.trim()).slice(0, max) : "";
 
 const list = (v: unknown, max: number): string[] =>
   Array.isArray(v)

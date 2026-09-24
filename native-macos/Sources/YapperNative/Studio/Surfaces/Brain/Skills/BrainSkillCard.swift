@@ -133,6 +133,7 @@ struct BrainSkillScope: View {
     }
 
     private var surfaces: String {
+        if skill.isAlwaysOn { return "Every piece of writing" }
         let labels = skill.surfaces.compactMap { BrainSurface(rawValue: $0)?.label }
         return labels.isEmpty ? "Everywhere" : labels.joined(separator: " · ")
     }

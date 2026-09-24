@@ -41,8 +41,15 @@ const SYSTEM =
   "without the brackets. Never invent a ref.\n" +
   `- At most ${MAX_LOADED_SKILLS} skills and ${MAX_LOADED_BLOCKS} sections. ` +
   "Fewer is better; an empty list is a valid answer.\n" +
-  "- A skill is worth loading when its procedure would change how this " +
-  "specific piece is written, not merely because it matches the surface.\n" +
+  "- Read each skill's condition and decide what kind it is. A condition " +
+  "about the job (writing a hook, the first line, a caption) holds whenever " +
+  "the surface does that job: a script always opens on a hook, so a hook " +
+  "skill belongs on every script. A condition about the content (a personal " +
+  "story, a before and after, a claim that can be shown) holds only when the " +
+  "task text actually has that content. An explainer or a tool recommendation " +
+  "is not a story unless the creator tells one.\n" +
+  "- Never load two skills that would give the piece two different " +
+  "structures. Pick the one that fits the content best.\n" +
   "- A section is worth loading when the task is about what is in it. Do not " +
   "load a reference list just because it is large.\n" +
   '- Return STRICT JSON only: {"skills":["s1"],"context":["c2"]}. No prose.';

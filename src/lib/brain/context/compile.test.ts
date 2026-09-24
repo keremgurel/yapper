@@ -222,3 +222,35 @@ describe("compileBrain", () => {
     expect(compiled.used.context).toContain("Pricing objections");
   });
 });
+
+describe("always-on writing rules", () => {
+  const rules = skill({
+    id: "r1",
+    slug: "write-like-a-person",
+    name: "Write like a person",
+    whenToUse: "Always on.",
+    instructions: "Never use em dashes.",
+    surfaces: [],
+  });
+
+  it("reads them on every writing surface without routing them", async () => {
+    const compiled = await compile(snapshot({ skills: [rules, skill({})] }), {
+      useModel: false,
+    });
+    expect(compiled.rules).toBe("Never use em dashes.");
+    expect(compiled.section).toContain("HOW EVERYTHING YOU WRITE MUST SOUND");
+    expect(compiled.entries.some((entry) => entry.id === "r1")).toBe(false);
+    expect(compiled.used.skills[0]).toBe("Write like a person");
+  });
+
+  it("skips them when switched off, and on capture", async () => {
+    const off = await compile(
+      snapshot({ skills: [{ ...rules, enabled: false }] }),
+    );
+    expect(off.rules).toBe("");
+    const capture = await compile(snapshot({ skills: [rules] }), {
+      surface: "capture",
+    });
+    expect(capture.rules).toBe("");
+  });
+});

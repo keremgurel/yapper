@@ -1,4 +1,5 @@
 import { hookPattern, hookPatternBlock } from "@/lib/content/hook-patterns";
+import { undash } from "@/lib/text/undash";
 import type { ContentBlock, ContentHook } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -99,7 +100,9 @@ export function parseHooks(
         if (!entry || typeof entry !== "object") return [];
         const value = entry as Record<string, unknown>;
         const text =
-          typeof value.text === "string" ? value.text.trim().slice(0, 300) : "";
+          typeof value.text === "string"
+            ? undash(value.text.trim()).slice(0, 300)
+            : "";
         if (!text) return [];
         const claimed =
           typeof value.pattern === "string" ? value.pattern.trim() : "";

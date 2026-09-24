@@ -1,4 +1,5 @@
 import { parseSections } from "@/lib/ideas/expand-prompt";
+import { undash } from "@/lib/text/undash";
 import type { IdeaExpansionSection } from "@/lib/ideas/types";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
@@ -56,7 +57,7 @@ export function parseIdea(content: string): GeneratedIdea {
     hooks: Array.isArray(raw.hooks)
       ? raw.hooks
           .filter((x): x is string => typeof x === "string")
-          .map((h) => h.trim())
+          .map((h) => undash(h.trim()))
           .filter(Boolean)
       : [],
     // Same validation the reference expansion uses, so a section means the same

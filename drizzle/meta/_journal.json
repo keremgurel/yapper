@@ -218,6 +218,13 @@
       "when": 1790265600000,
       "tag": "0030_format_skills",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790308800000,
+      "tag": "0031_write_like_a_person",
+      "breakpoints": true
     }
   ]
 }
