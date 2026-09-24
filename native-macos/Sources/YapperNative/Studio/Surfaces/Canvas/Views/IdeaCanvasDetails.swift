@@ -50,15 +50,19 @@ struct IdeaCanvasPillarMenu: View {
                 },
             width: 220
         ) {
-            HStack(spacing: 4) {
+            // The pillar's own hue, as on the Ideas list, so it is the same
+            // chip everywhere.
+            let tone = linked.map { IdeaPillarTone.tone(for: $0.name).color }
+            HStack(spacing: 6) {
+                if let tone { Circle().fill(tone).frame(width: 6, height: 6) }
                 Text(linked?.name ?? none).lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 11))
+                Image(systemName: "chevron.down").font(.system(size: 11)).foregroundStyle(.secondary)
             }
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 12)
             .frame(height: 28)
             .frame(maxWidth: 220)
-            .background(Capsule().fill(Color.studioFaintFill))
+            .background(Capsule().fill(tone?.opacity(0.16) ?? Color.studioFaintFill))
         }
         .fixedSize()
         .task { await pillars.loadIfNeeded() }

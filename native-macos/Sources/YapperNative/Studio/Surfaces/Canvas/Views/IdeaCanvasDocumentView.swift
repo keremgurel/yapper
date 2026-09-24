@@ -71,6 +71,9 @@ struct IdeaCanvasDocumentView<Footer: View>: View {
         VStack(alignment: .leading, spacing: 40) {
             if let item = store.item {
                 IdeaCanvasDetails(item: item, update: store.update)
+                if item.sourceUrl != nil || item.sourceTitle != nil {
+                    IdeaCanvasSourceCard(item: item)
+                }
             }
             IdeaCanvasHookAlternatives(
                 hooks: Array(zip(keys, hooks).dropFirst()).map { (key: $0.0, text: $0.1) },
@@ -129,7 +132,7 @@ struct IdeaCanvasEmptySlot: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             IdeaCanvasSectionTitle(title)
-            Button(action: action) { Label(label, systemImage: "sparkles") }
+            Button(action: action) { IdeaCanvasChirpyLabel(label) }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .foregroundStyle(.secondary)
         }

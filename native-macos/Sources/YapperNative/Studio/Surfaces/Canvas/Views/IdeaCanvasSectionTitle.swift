@@ -42,7 +42,7 @@ struct IdeaCanvasAskChip: View {
 
     var body: some View {
         Button(action: action) {
-            Label(label, systemImage: "sparkles").font(.system(size: 12, weight: .medium))
+            IdeaCanvasChirpyLabel(label).font(.system(size: 12, weight: .medium))
         }
         .buttonStyle(EditorGhostButtonStyle(size: .mini))
         .foregroundStyle(.secondary)

@@ -5,11 +5,18 @@ struct IdeaCell: View {
     let column: IdeaColumn
     let row: IdeaItem
     let onStatus: (IdeaStatus) -> Void
+    @ObservedObject var capture: IdeaCapture = .shared
+
+    private var drafting: Bool { capture.working.contains(row.id) }
 
     var body: some View {
         switch column {
         case .title:
             IdeaTitleCell(row: row)
+        case .pillar where drafting && row.pillar == nil:
+            IdeaPendingPill(width: 96)
+        case .formats where drafting && row.formats.isEmpty:
+            IdeaPendingPill(width: 72)
         case .pillar:
             if let pillar = row.pillar { NativeChip(text: pillar, tone: IdeaPillarTone.tone(for: pillar), dot: true) } else { empty }
         case .formats:
@@ -51,12 +58,15 @@ struct IdeaTitleCell: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(row.displayTitle).font(.system(size: 13, weight: .medium)).lineLimit(1)
-            if row.sourceUrl != nil {
-                Image(systemName: "link").font(.system(size: 11)).foregroundStyle(.secondary).accessibilityLabel("Has a reference")
+            if let url = row.sourceUrl {
+                if let platform = LinkPlatform(url: url) {
+                    PlatformGlyph(platform: platform, size: 13).accessibilityLabel("From \(platform.name)")
+                } else {
+                    Image(systemName: "link").font(.system(size: 11)).foregroundStyle(.secondary).accessibilityLabel("Has a reference")
+                }
             }
             if capture.working.contains(row.id) {
-                ProgressView().controlSize(.mini)
-                Text("Drafting…").font(.system(size: 11)).foregroundStyle(.secondary)
+                IdeaDraftingIndicator(fromLink: row.sourceUrl != nil)
             } else if capture.analysisFailed.contains(row.id) {
                 Text("First draft failed").font(.system(size: 11)).foregroundStyle(Color.studioDanger)
                 Button("Retry") { capture.retry(row.id) }.buttonStyle(EditorGhostButtonStyle(size: .mini))

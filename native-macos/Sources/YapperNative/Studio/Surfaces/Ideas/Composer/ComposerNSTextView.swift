@@ -29,6 +29,13 @@ final class ComposerNSTextView: NSTextView {
         super.deleteBackward(sender)
     }
 
+    /// Copying a chip copies its URL, not the attachment character.
+    override func writeSelection(to pboard: NSPasteboard, types: [NSPasteboard.PasteboardType]) -> Bool {
+        guard let storage = textStorage else { return false }
+        pboard.clearContents()
+        return pboard.setString(ComposerChips.plain(from: storage.attributedSubstring(from: selectedRange())), forType: .string)
+    }
+
     override func cancelOperation(_ sender: Any?) {
         onEscape?()
     }

@@ -2,7 +2,8 @@ import AppKit
 import SwiftUI
 
 /// The composer's writing surface: an AppKit text view, because links are
-/// painted as links where they were typed, which a SwiftUI field cannot do.
+/// painted as links where they were typed, and Instagram, TikTok and YouTube
+/// links turn into an inline mark and name, which a SwiftUI field cannot do.
 /// Reports its content height so the card can grow with what is written.
 struct ComposerTextView: NSViewRepresentable {
     @ObservedObject var draft: CaptureDraft
@@ -30,6 +31,9 @@ struct ComposerTextView: NSViewRepresentable {
         text.drawsBackground = false
         text.isAutomaticQuoteSubstitutionEnabled = false
         text.isAutomaticDashSubstitutionEnabled = false
+        // Inline predictions sit in the text as marked text; with links
+        // turning into chips under the caret they only get in the way.
+        text.inlinePredictionType = .no
         text.textContainerInset = Self.inset
         text.isVerticallyResizable = true
         text.isHorizontallyResizable = false
@@ -39,12 +43,11 @@ struct ComposerTextView: NSViewRepresentable {
         text.textContainer?.widthTracksTextView = true
         text.postsFrameChangedNotifications = true
         text.delegate = context.coordinator
-        text.string = draft.text
         scroll.documentView = text
 
         let coordinator = context.coordinator
         coordinator.textView = text
-        coordinator.restyle()
+        coordinator.applyExternalText()
         text.onSubmit = { coordinator.parent.onSubmit() }
         text.onBackspace = { coordinator.backspace() }
         text.onEscape = { coordinator.parent.onEscape() }
@@ -61,11 +64,8 @@ struct ComposerTextView: NSViewRepresentable {
         coordinator.parent = self
         guard let text = coordinator.textView else { return }
         text.isEditable = editable
-        if text.string != draft.text {
+        if let storage = text.textStorage, ComposerChips.plain(from: storage) != draft.text || fontChanged {
             coordinator.applyExternalText()
-        } else if fontChanged {
-            coordinator.restyle()
-            coordinator.measure()
         }
     }
 
@@ -81,35 +81,87 @@ struct ComposerTextView: NSViewRepresentable {
 
         init(_ parent: ComposerTextView) { self.parent = parent }
 
+        /// Set when the last edit put in more than one character at once,
+        /// so a pasted link turns into a chip straight away.
+        private var lastInsertLength = 0
+
         func focus() {
-            guard let text = textView else { return }
+            guard let text = textView, let storage = text.textStorage else { return }
             text.window?.makeFirstResponder(text)
             applying = true
-            text.setSelectedRange(clamped(parent.draft.selection, end: true))
+            text.setSelectedRange(displayRange(clamped(parent.draft.selection, end: true), in: storage))
             applying = false
             measure()
         }
 
+        /// Rebuilds the display from the draft: used on open, when something
+        /// else changes the draft (sending it, dictation), and on a font change.
         func applyExternalText() {
-            guard let text = textView else { return }
+            guard let text = textView, let storage = text.textStorage else { return }
             applying = true
-            text.string = parent.draft.text
+            let display = NSMutableAttributedString(string: parent.draft.text)
+            for (range, platform) in ComposerChips.pending(in: display.string, caret: nil, pasted: true).reversed() {
+                display.replaceCharacters(in: range, with: chip(for: (display.string as NSString).substring(with: range), platform: platform))
+            }
+            storage.setAttributedString(display)
             restyle()
-            text.setSelectedRange(clamped(parent.draft.selection, end: true))
+            text.setSelectedRange(displayRange(clamped(parent.draft.selection, end: true), in: storage))
             applying = false
             measure()
+        }
+
+        func textView(_ textView: NSTextView, shouldChangeTextIn range: NSRange, replacementString: String?) -> Bool {
+            lastInsertLength = (replacementString as NSString?)?.length ?? 0
+            return true
         }
 
         func textDidChange(_ notification: Notification) {
-            guard let text = textView, !applying else { return }
-            parent.draft.text = text.string
+            // Marked text (an input method mid-composition) is not the
+            // creator's text yet; it arrives as another change when committed.
+            guard let text = textView, let storage = text.textStorage, !applying, !text.hasMarkedText() else { return }
+            chipPendingLinks(pasted: lastInsertLength > 1)
+            lastInsertLength = 0
             restyle()
+            parent.draft.text = ComposerChips.plain(from: storage)
             measure()
         }
 
         func textViewDidChangeSelection(_ notification: Notification) {
-            guard let text = textView, !applying else { return }
-            parent.draft.selection = text.selectedRange()
+            guard let text = textView, let storage = text.textStorage, !applying else { return }
+            let range = text.selectedRange()
+            let start = ComposerChips.plainOffset(range.location, in: storage)
+            let end = ComposerChips.plainOffset(range.location + range.length, in: storage)
+            parent.draft.selection = NSRange(location: start, length: end - start)
+        }
+
+        /// Turns finished platform links into chips as an ordinary, undoable
+        /// edit, keeping the caret where it was relative to the text.
+        private func chipPendingLinks(pasted: Bool) {
+            guard let text = textView, let storage = text.textStorage else { return }
+            var caret = text.selectedRange().location
+            let pending = ComposerChips.pending(in: storage.string, caret: caret, pasted: pasted)
+            guard !pending.isEmpty else { return }
+            applying = true
+            for (range, platform) in pending.reversed() {
+                let url = (storage.string as NSString).substring(with: range)
+                guard text.shouldChangeText(in: range, replacementString: "\u{FFFC}") else { continue }
+                storage.replaceCharacters(in: range, with: chip(for: url, platform: platform))
+                text.didChangeText()
+                if caret >= range.location + range.length { caret -= range.length - 1 }
+            }
+            text.setSelectedRange(NSRange(location: min(caret, storage.length), length: 0))
+            applying = false
+        }
+
+        private func chip(for url: String, platform: LinkPlatform) -> NSAttributedString {
+            let dark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSAttributedString(attachment: ComposerLinkAttachment(url: url, platform: platform, fontSize: parent.fontSize, dark: dark))
+        }
+
+        private func displayRange(_ plain: NSRange, in storage: NSAttributedString) -> NSRange {
+            let start = ComposerChips.displayOffset(plain.location, in: storage)
+            let end = ComposerChips.displayOffset(plain.location + plain.length, in: storage)
+            return NSRange(location: start, length: max(end - start, 0))
         }
 
         /// First press against a link selects the whole link; the second
@@ -124,6 +176,8 @@ struct ComposerTextView: NSViewRepresentable {
 
         @objc func frameChanged() { measure() }
 
+        /// Base font and color everywhere, link color on links still shown
+        /// as text. Adds rather than sets attributes, so chips survive.
         func restyle() {
             guard let text = textView, let storage = text.textStorage else { return }
             let paragraph = NSMutableParagraphStyle()
@@ -133,9 +187,11 @@ struct ComposerTextView: NSViewRepresentable {
                 .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: paragraph,
             ]
+            let whole = NSRange(location: 0, length: storage.length)
             storage.beginEditing()
-            storage.setAttributes(base, range: NSRange(location: 0, length: storage.length))
-            for range in CaptureText.linkRanges(in: text.string) {
+            storage.addAttributes(base, range: whole)
+            storage.removeAttribute(.underlineStyle, range: whole)
+            for range in CaptureText.linkRanges(in: storage.string) {
                 storage.addAttributes([.foregroundColor: NSColor.linkColor, .underlineStyle: NSUnderlineStyle.single.rawValue], range: range)
             }
             storage.endEditing()
