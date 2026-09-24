@@ -22,7 +22,7 @@ final class AssistantConversation: ObservableObject {
     var isEmpty: Bool { messages.isEmpty && !isThinking }
 
     func attach(projectID: UUID, root: URL?) {
-        let url = root?.appending(path: "chirpy-history.json")
+        let url = root.map { $0.pathExtension == "json" ? $0 : $0.appending(path: "chirpy-history.json") }
         guard self.projectID != projectID || archiveURL != url else { return }
         self.projectID = projectID
         archiveURL = url
@@ -37,6 +37,17 @@ final class AssistantConversation: ObservableObject {
                 messages = Array(messages.suffix(Self.limit))
             }
         }
+    }
+
+    /// A saved thread that belongs to a Studio tab rather than a project. The
+    /// archive format is the same; its identity is derived from `key`.
+    func attachThread(key: String, url: URL) {
+        attach(projectID: UUID.named(key), root: url)
+    }
+
+    /// The recent exchange, oldest first, as context for the next ask.
+    func recentHistory(limit: Int = 12) -> [(author: AssistantMessage.Author, text: String)] {
+        messages.suffix(limit).map { ($0.author, $0.text) }
     }
 
     func ask(_ text: String) { append(.you(text)); isThinking = true }

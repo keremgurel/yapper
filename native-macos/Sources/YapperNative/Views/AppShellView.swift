@@ -23,6 +23,7 @@ struct AppShellView: View {
     @ObservedObject private var auth = StudioAuth.shared
     @ObservedObject private var handoff = NativeAuthHandoff.shared
     @ObservedObject private var webCommands = StudioWebCommands.shared
+    @ObservedObject private var chirpyThreads = StudioChirpyThreads.shared
     @ObservedObject private var projectNavigation: ProjectNavigationState
 
     init(session: EditorSession) {
@@ -70,7 +71,7 @@ struct AppShellView: View {
         ZStack {
             studioShell
             if isSignedIn {
-                FloatingAssistant(session: session, conversation: session.conversation)
+                FloatingAssistant(session: session, conversation: chirpyThreads.current ?? session.conversation)
             }
             StudioEditorHandoffView(session: session, signedIn: auth.isSignedIn == true) {
                 navigate(.editor)
@@ -105,6 +106,9 @@ struct AppShellView: View {
                 editorLayoutDefaultsVersion = 1
             }
             .onChange(of: destinationRaw) { _, _ in
+                updateAssistantSurface()
+            }
+            .onChange(of: auth.account?.userID) { _, _ in
                 updateAssistantSurface()
             }
             .onChange(of: webCommands.posterGeneration) { _, _ in
@@ -229,6 +233,7 @@ struct AppShellView: View {
         // Audio has no conversational command set of its own, so it benefits
         // from the same Brain-backed assistant as the cloud Studio tabs.
         session.assistantUsesStudioBrain = destination != .editor
+        chirpyThreads.activate(destination, userID: auth.account?.userID)
     }
 }
 

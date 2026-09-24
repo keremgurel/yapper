@@ -11,10 +11,18 @@ extension EditorSession {
         guard !text.isEmpty, text.count <= 4000 else { return }
 
         if assistantUsesStudioBrain || AssistantRouter.requestsBrandKit(text) {
-            conversation.ask(text)
+            // Each Studio tab has its own thread; the editor keeps the project's.
+            let threads = StudioChirpyThreads.shared
+            let thread = assistantUsesStudioBrain ? (threads.current ?? conversation) : conversation
+            let history = thread.recentHistory()
+            thread.ask(text)
             do {
-                let reply = try await StudioWebCommands.shared.askChirpy(text)
-                conversation.answer(
+                let reply = try await StudioWebCommands.shared.askChirpy(
+                    text,
+                    surface: assistantUsesStudioBrain ? threads.surface : "/studio/editor",
+                    history: history
+                )
+                thread.answer(
                     .chirpy(
                         reply.text,
                         notes: reply.notes,
@@ -22,7 +30,7 @@ extension EditorSession {
                     )
                 )
             } catch {
-                conversation.answer(
+                thread.answer(
                     .chirpy(
                         "I couldn’t confirm that Studio change. Check your saved work, then try again.",
                         tone: .trouble

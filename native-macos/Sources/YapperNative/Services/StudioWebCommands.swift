@@ -185,16 +185,24 @@ final class StudioWebCommands: ObservableObject {
 
     /// Runs the same Brain-aware Chirpy action as the browser UI, but returns
     /// the settled reply to the native transcript.
-    func askChirpy(_ instruction: String) async throws -> StudioChirpyReply {
+    func askChirpy(
+        _ instruction: String,
+        surface: String? = nil,
+        history: [(author: AssistantMessage.Author, text: String)] = []
+    ) async throws -> StudioChirpyReply {
         guard let webView else { throw StudioChirpyBridgeError.webViewUnavailable }
+        let context: [String: Any] = [
+            "surface": surface ?? NSNull(),
+            "history": history.map { ["author": $0.author.rawValue, "text": $0.text] },
+        ]
         let result = try await webView.callAsyncJavaScript(
             """
             if (typeof window.__yapperNativeChirpy !== 'function') {
               throw new Error('Chirpy is not ready');
             }
-            return await window.__yapperNativeChirpy(instruction);
+            return await window.__yapperNativeChirpy(instruction, context);
             """,
-            arguments: ["instruction": instruction],
+            arguments: ["instruction": instruction, "context": context],
             in: nil,
             contentWorld: .page
         )
