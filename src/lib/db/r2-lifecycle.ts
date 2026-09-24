@@ -31,7 +31,8 @@ import {
 const ACTIVE_PUBLISH_STATES = ["queued", "uploading", "processing"] as const;
 const DEFAULT_LEASE_MS = 60_000;
 const DELETE_TIMEOUT_MS = 20_000;
-const MAX_BATCH_SIZE = 50;
+// Bounded by the caller's deadline, not a count: a daily run must clear a day.
+const MAX_BATCH_SIZE = 5_000;
 const MAX_PENDING_OBJECTS_PER_USER = 100;
 const RETRY_BASE_MS = 60_000;
 const RETRY_MAX_MS = 24 * 60 * 60 * 1_000;

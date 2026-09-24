@@ -4,11 +4,15 @@ const mocks = vi.hoisted(() => ({
   ingress: vi.fn(),
   spend: vi.fn(),
   sign: vi.fn(),
+  preflight: vi.fn(),
 }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/provider-rate-limit", () => ({
   guardProviderIngress: mocks.ingress,
   guardProviderSpend: mocks.spend,
+}));
+vi.mock("@/lib/billing/actions", () => ({
+  preflightPaidActionOrResponse: mocks.preflight,
 }));
 vi.mock("@/lib/r2", () => ({
   r2Configured: () => true,
@@ -22,6 +26,7 @@ beforeEach(() => {
   mocks.ingress.mockResolvedValue(null);
   mocks.spend.mockResolvedValue(null);
   mocks.sign.mockResolvedValue("https://r2.test/put");
+  mocks.preflight.mockResolvedValue(null);
 });
 const request = (body: unknown) =>
   new Request("https://ypr.app/api/transcribe/upload-url", {
@@ -75,5 +80,14 @@ it.each([
   Array(5).fill(64 * 1024 * 1024),
 ])("rejects invalid or oversized batches before signing", async (...sizes) => {
   expect((await POST(request({ sizes }))).status).toBe(400);
+  expect(mocks.sign).not.toHaveBeenCalled();
+});
+
+it("gives a free account no upload ticket at all", async () => {
+  mocks.preflight.mockResolvedValue(
+    Response.json({ error: "not_entitled" }, { status: 402 }),
+  );
+  const response = await POST(request({ bytes: 100 }));
+  expect(response.status).toBe(402);
   expect(mocks.sign).not.toHaveBeenCalled();
 });
