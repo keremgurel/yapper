@@ -15,6 +15,10 @@ const CORE_HEADER =
   "are and who they are talking to. Write for this audience in this voice; " +
   "never restate it back to them.";
 
+const RULES_HEADER =
+  "HOW EVERYTHING YOU WRITE MUST SOUND. These hold for every line, whatever " +
+  "else is loaded. Reread your output against them before returning it.";
+
 const INDEX_HEADER =
   "ALSO IN THEIR BRAIN, listed but NOT loaded here. You have not read these. " +
   "Never quote or invent their contents. You may say that one of them looks " +
@@ -26,6 +30,9 @@ const LOADED_HEADER =
 
 export interface BrainSectionParts {
   core: string;
+  /** The always-on writing rules. Optional so a caller without them reads as
+   * it did before they existed. */
+  rules?: string;
   index: string;
   loaded: string;
 }
@@ -45,6 +52,7 @@ export interface BrainSectionParts {
 export function brainSection(parts: BrainSectionParts): string {
   const sections: string[] = [];
   if (parts.core.trim()) sections.push(`${CORE_HEADER}\n\n${parts.core}`);
+  if (parts.rules?.trim()) sections.push(`${RULES_HEADER}\n\n${parts.rules}`);
   if (parts.index.trim()) sections.push(`${INDEX_HEADER}\n\n${parts.index}`);
   if (parts.loaded.trim()) sections.push(`${LOADED_HEADER}\n\n${parts.loaded}`);
   if (!sections.length) return "";

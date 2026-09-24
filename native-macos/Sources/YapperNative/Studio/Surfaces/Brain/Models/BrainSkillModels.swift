@@ -52,11 +52,15 @@ struct BrainSkill: Codable, Equatable, Identifiable, Sendable {
     var sortOrder: Int
 
     static let starterSlugs: Set<String> = [
-        "hook-shapes", "storytime-three-acts", "show-dont-say", "caption-that-earns-the-save",
+        "write-like-a-person", "hook-shapes", "storytime-three-acts", "show-dont-say", "caption-that-earns-the-save",
         "chapters-that-hold", "skimmable-sections",
     ]
 
     var isStarter: Bool { catalogSlug.map(Self.starterSlugs.contains) ?? false }
+
+    /// Read on every piece of writing instead of being picked per piece.
+    /// Mirrors `ALWAYS_ON_SKILL_SLUGS` in src/lib/brain/context/always-on.ts.
+    var isAlwaysOn: Bool { catalogSlug == "write-like-a-person" }
 
     /// The formats it is limited to, in tab order; empty means all of them.
     var versionFormats: [IdeaCanvasVersionFormat] {

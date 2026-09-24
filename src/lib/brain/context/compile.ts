@@ -1,3 +1,4 @@
+import { alwaysOnFor, isAlwaysOn, renderAlwaysOn } from "./always-on";
 import { budgetFor } from "./budgets";
 import { buildCore } from "./core";
 import { buildIndex, type BrainIndex } from "./digest";
@@ -23,6 +24,8 @@ import type {
 
 export interface CompiledBrain {
   core: string;
+  /** The always-on writing rules, read on every call to this surface. */
+  rules: string;
   index: string;
   loaded: string;
   /** The three parts, wrapped and ready to append to a system prompt. */
@@ -51,7 +54,7 @@ export interface CompileOptions {
 export function compileStable(
   snapshot: BrainSnapshot,
   surface: BrainSurface,
-): { core: string; index: BrainIndex } {
+): { core: string; rules: string; always: string[]; index: BrainIndex } {
   const budget = budgetFor(surface);
   const core = buildCore(
     snapshot.project,
@@ -64,11 +67,20 @@ export function compileStable(
       voiceExample: snapshot.voiceExample,
     },
   );
+  // Always-on skills are read in full below, so they are never offered to the
+  // router: listing them would spend index room on a choice already made.
+  const always = alwaysOnFor(snapshot.skills, surface);
+  const routable = snapshot.skills.filter((skill) => !isAlwaysOn(skill));
   const index =
     budget.index > 0
-      ? buildIndex(snapshot.blocks, snapshot.skills, budget.index)
+      ? buildIndex(snapshot.blocks, routable, budget.index)
       : { entries: [], text: "" };
-  return { core, index };
+  return {
+    core,
+    rules: renderAlwaysOn(always),
+    always: always.map((skill) => skill.name),
+    index,
+  };
 }
 
 export async function compileBrain(
@@ -76,7 +88,10 @@ export async function compileBrain(
   options: CompileOptions,
 ): Promise<CompiledBrain> {
   const budget = budgetFor(options.surface);
-  const { core, index } = compileStable(snapshot, options.surface);
+  const { core, rules, always, index } = compileStable(
+    snapshot,
+    options.surface,
+  );
   const task = options.task ?? "";
 
   if (budget.loaded <= 0 || !index.entries.length) {
@@ -87,10 +102,11 @@ export async function compileBrain(
     };
     return {
       core,
+      rules,
       index: index.text,
       loaded: "",
-      section: brainSection({ core, index: index.text, loaded: "" }),
-      used: { skills: [], context: [] },
+      section: brainSection({ core, rules, index: index.text, loaded: "" }),
+      used: { skills: always, context: [] },
       selection,
       entries: index.entries,
     };
@@ -133,14 +149,16 @@ export async function compileBrain(
 
   return {
     core,
+    rules,
     index: indexText,
     loaded: rendered.text,
     section: brainSection({
       core,
+      rules,
       index: indexText,
       loaded: rendered.text,
     }),
-    used: rendered.used,
+    used: { ...rendered.used, skills: [...always, ...rendered.used.skills] },
     selection,
     entries: index.entries,
   };

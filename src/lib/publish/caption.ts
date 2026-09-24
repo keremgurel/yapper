@@ -7,6 +7,7 @@ import {
 import { captionSpec } from "@/lib/publish/caption-specs";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
+import { undash } from "@/lib/text/undash";
 
 const PROVIDER_TIMEOUT_MS = 35_000;
 const MAX_COMPLETION_TOKENS = 3_000;
@@ -65,7 +66,11 @@ export async function generateCaptions(
   const captions = parseCaptions(
     data.choices?.[0]?.message?.content ?? "{}",
     platforms,
-  );
+  ).map((caption) => ({
+    ...caption,
+    title: undash(caption.title),
+    body: undash(caption.body),
+  }));
   if (
     input.titleOnly &&
     !captions.find((caption) => caption.platform === "youtube")?.title.trim()

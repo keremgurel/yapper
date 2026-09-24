@@ -6,6 +6,7 @@
  * The database migration uses the same slugs when it seeds existing projects.
  */
 export const STARTER_SKILL_SLUGS = [
+  "write-like-a-person",
   "hook-shapes",
   "storytime-three-acts",
   "show-dont-say",

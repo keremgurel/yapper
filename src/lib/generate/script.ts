@@ -1,4 +1,5 @@
 import type { ContentBlock } from "@/lib/db/schema";
+import { undash } from "@/lib/text/undash";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 
 const PROVIDER_TIMEOUT_MS = 35_000;
@@ -37,7 +38,8 @@ function parseScript(content: string): string {
   const e = content.lastIndexOf("}");
   if (s < 0 || e <= s) throw new Error("script_unparseable");
   const raw = JSON.parse(content.slice(s, e + 1)) as { script?: unknown };
-  const script = typeof raw.script === "string" ? raw.script.trim() : "";
+  const script =
+    typeof raw.script === "string" ? undash(raw.script.trim()) : "";
   // Empty-but-valid JSON (content filter, wrong shape) must NOT count as success
   //, the route only charges when this returns, so throw to trigger no-charge.
   if (!script) throw new Error("script_empty");

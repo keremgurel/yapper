@@ -53,6 +53,9 @@ export interface BrainBlockSource {
 
 export interface BrainSkillSource {
   id: string;
+  /** The catalog skill this copy came from, or null for one written from
+   * scratch. How an always-on skill is recognised. */
+  slug?: string | null;
   name: string;
   whenToUse: string;
   instructions: string;
