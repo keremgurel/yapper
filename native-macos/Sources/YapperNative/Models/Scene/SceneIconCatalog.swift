@@ -34,7 +34,7 @@ struct SceneIconCatalog: Sendable {
 
     private static func load() -> SceneIconCatalog {
         guard
-            let url = Bundle.module.url(
+            let url = AppResources.url(
                 forResource: "lucide-icons",
                 withExtension: "json",
                 subdirectory: "SceneIcons"
