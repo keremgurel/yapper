@@ -17,7 +17,8 @@ const ARRAY_MAX = 20;
 const str = (v: unknown, max: number): string | undefined =>
   typeof v === "string" ? v.slice(0, max) : undefined;
 
-const hookArr = (v: unknown): ContentHook[] | undefined =>
+/** Hooks from a client payload, clamped; undefined when not an array. */
+export const hookArr = (v: unknown): ContentHook[] | undefined =>
   Array.isArray(v)
     ? normalizeHooks(v)
         .slice(0, ARRAY_MAX)

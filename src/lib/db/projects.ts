@@ -1,3 +1,4 @@
+import type { VersionFormat } from "@/lib/content/formats";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { projects } from "./schema";
@@ -13,6 +14,7 @@ export interface ProjectInput {
   doNots?: string;
   links?: string[];
   brandColors?: string[];
+  defaultFormat?: VersionFormat;
 }
 
 export type ProjectRow = typeof projects.$inferSelect;
@@ -54,11 +56,18 @@ export async function updateProject(
   userId: string,
   input: ProjectInput,
 ): Promise<ProjectRow | null> {
+  // The default format only decides where a new idea starts; no prompt reads
+  // it, so changing it alone leaves the compiled context cache warm.
+  const onlyPreferences = Object.keys(input).every(
+    (k) => k === "defaultFormat",
+  );
   const [row] = await getDb()
     .update(projects)
     .set({
       ...input,
-      contextVersion: sql`${projects.contextVersion} + 1`,
+      ...(onlyPreferences
+        ? {}
+        : { contextVersion: sql`${projects.contextVersion} + 1` }),
       updatedAt: new Date(),
     })
     .where(eq(projects.userId, userId))

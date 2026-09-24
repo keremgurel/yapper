@@ -1,3 +1,4 @@
+import { isVersionFormat } from "@/lib/content/formats";
 import type { PillarInput } from "@/lib/db/project-pillars";
 import type { ProjectInput } from "@/lib/db/projects";
 
@@ -49,6 +50,9 @@ export function parseProjectInput(body: Record<string, unknown>): ProjectInput {
       .filter(Boolean)
       .slice(0, LINKS_MAX);
   }
+
+  if (isVersionFormat(body.defaultFormat))
+    input.defaultFormat = body.defaultFormat;
 
   if (Array.isArray(body.brandColors)) {
     const seen = new Set<string>();

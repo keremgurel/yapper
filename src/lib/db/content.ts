@@ -1,3 +1,4 @@
+import type { VersionFormat } from "@/lib/content/formats";
 import {
   and,
   desc,
@@ -30,6 +31,7 @@ export interface ContentItemInput {
   format?: string | null;
   summary?: string | null;
   formats?: string[];
+  leadFormat?: VersionFormat;
   ideaType?: IdeaTypeValue | null;
   stage?: ContentStage;
   points?: string[];

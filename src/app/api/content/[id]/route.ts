@@ -14,7 +14,12 @@ import {
   resolveOwnPillar,
 } from "@/lib/content/pillar-ownership";
 import { parseIdeaFields } from "@/lib/ideas/input";
-import { normalizeBody } from "@/lib/content/normalize";
+import {
+  normalizeBlocks,
+  normalizeBody,
+  normalizeHooks,
+} from "@/lib/content/normalize";
+import { listContentVersions } from "@/lib/db/content-versions";
 
 export const runtime = "nodejs";
 
@@ -28,7 +33,18 @@ export async function GET(_req: Request, { params }: Params) {
   const item = await getContentItem(userId, id);
   if (!item) return Response.json({ error: "not_found" }, { status: 404 });
   // Legacy rows are widened here, so no client has to know the old shape.
-  return Response.json({ item: { ...item, ...normalizeBody(item) } });
+  const versions = await listContentVersions(userId, id);
+  return Response.json({
+    item: {
+      ...item,
+      ...normalizeBody(item),
+      versions: versions.map((v) => ({
+        ...v,
+        hooks: normalizeHooks(v.hooks),
+        blocks: normalizeBlocks(v.blocks),
+      })),
+    },
+  });
 }
 
 /**
