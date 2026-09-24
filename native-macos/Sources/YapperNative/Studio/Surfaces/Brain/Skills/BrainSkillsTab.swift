@@ -10,7 +10,7 @@ struct BrainSkillsTab: View {
     /// Show only the skills that shape one format; nil shows them all.
     @State private var format: IdeaCanvasVersionFormat?
 
-    private let columns = [GridItem(.adaptive(minimum: 280), spacing: 12, alignment: .top)]
+    private let columns = [GridItem(.adaptive(minimum: 300), spacing: 14, alignment: .top)]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -47,7 +47,7 @@ struct BrainSkillsTab: View {
                     }
                     .nativeCard()
                 } else {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                         ForEach(skills.filter { skill in format.map(skill.applies(to:)) ?? true }) { skill in
                             BrainSkillCard(
                                 skill: skill,
@@ -83,65 +83,5 @@ struct BrainSkillsTab: View {
             defer { creating = false }
             if let skill = await store.create() { onOpen(skill.id) }
         }
-    }
-}
-
-/// One skill the creator has. The switch is the main control: most of a
-/// skill's life is being turned on for a season and off again.
-struct BrainSkillCard: View {
-    let skill: BrainSkill
-    let removing: Bool
-    let onToggle: (Bool) -> Void
-    let onOpen: () -> Void
-    let onRemove: () -> Void
-
-    @State private var hovering = false
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                Toggle("", isOn: Binding(get: { skill.enabled }, set: { onToggle($0) }))
-                    .toggleStyle(.switch)
-                    .controlSize(.mini)
-                    .labelsHidden()
-                    .clickableCursor()
-                    .accessibilityLabel("\(skill.enabled ? "Turn off" : "Turn on") \(skill.name)")
-                Button(action: onOpen) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(skill.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                        if !skill.whenToUse.isEmpty {
-                            Text(skill.whenToUse).font(.system(size: 12)).foregroundStyle(.secondary)
-                                .lineLimit(3).multilineTextAlignment(.leading)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.studioPlain)
-                HStack(spacing: 2) {
-                    Button(action: onOpen) {
-                        Image(systemName: "pencil").font(.system(size: 12)).foregroundStyle(.secondary).frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.studioPlain)
-                    .accessibilityLabel("Edit \(skill.name)")
-                    if !skill.isStarter {
-                        BrainConfirmDeleteButton(label: "Remove \(skill.name)", busy: removing, onConfirm: onRemove)
-                    }
-                }
-                .opacity(hovering ? 1 : 0.35)
-            }
-            if skill.isStarter || skill.customized || !skill.surfaces.isEmpty || !skill.versionFormats.isEmpty {
-                BrainFlowLayout(spacing: 4) {
-                    ForEach(skill.versionFormats) { NativeChip(text: $0.label, tone: $0.tone, dot: true) }
-                    if skill.isStarter { NativeChip(text: "Yapper default", tone: .violet) }
-                    if skill.customized { NativeChip(text: "Customized", tone: .cyan) }
-                    ForEach(skill.surfaces, id: \.self) { NativeChip(text: $0) }
-                }
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(NativeCardBackground(radius: 12))
-        .opacity(skill.enabled ? 1 : 0.6)
-        .onHover { hovering = $0 }
     }
 }
