@@ -11,12 +11,24 @@ enum PosterHandoffError: LocalizedError {
     case invalidResponse
     case requestFailed(Int, Data)
 
+    /// The one-waiting-video rule, said in Poster's terms: the export is fine,
+    /// another video is holding the slot.
+    private static func slotBusyMessage(status: Int, body: Data) -> String? {
+        guard status == 409,
+              let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+              json["error"] as? String == "poster_slot_busy"
+        else { return nil }
+        let title = ((json["waiting"] as? [String: Any])?["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        return "\(title ?? "Another video") is still waiting in Poster. Post, schedule or discard it there, then cross-post this one."
+    }
+
     var errorDescription: String? {
         switch self {
         case .invalidExport: "The exported video could not be read."
         case .invalidResponse: "Poster returned an unreadable response."
         case let .requestFailed(status, data):
-            YapperAPI.failure(status: status, body: data, action: "Preparing the post").errorDescription
+            Self.slotBusyMessage(status: status, body: data)
+                ?? YapperAPI.failure(status: status, body: data, action: "Preparing the post").errorDescription
         }
     }
 }

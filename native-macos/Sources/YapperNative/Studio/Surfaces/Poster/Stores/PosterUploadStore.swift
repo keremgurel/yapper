@@ -14,6 +14,11 @@ final class PosterUploadStore: ObservableObject {
     @Published private(set) var progress: Double = 0
     @Published private(set) var errorCode: String?
     @Published private(set) var transcriptFailed = false
+    /// The video holding the one waiting slot, when an upload was refused
+    /// because of it, and the file that was refused, to add once it is gone.
+    @Published private(set) var waiting: PosterWaitingVideo?
+    private var refusedFile: URL?
+    @Published private(set) var discarding = false
 
     var busy: Bool { phase == .uploading || phase == .preparing }
 
@@ -72,6 +77,12 @@ final class PosterUploadStore: ObservableObject {
             await transcribe(item: created.item, submission: submission)
             phase = .idle
         } catch let failure as PosterUploadFailure {
+            if failure.code == "slot_busy", let waiting = failure.waiting {
+                self.waiting = waiting
+                refusedFile = file
+                phase = .idle
+                return
+            }
             errorCode = failure.code
             phase = .failed
         } catch {
@@ -79,6 +90,34 @@ final class PosterUploadStore: ObservableObject {
             phase = .failed
         }
     }
+
+    /// Discards the waiting upload so the refused one can go in its place.
+    func discardWaitingAndAdd() async {
+        guard let waiting, waiting.kind == "upload", !discarding else { return }
+        discarding = true
+        defer { discarding = false }
+        do {
+            try await StudioJSONClient.delete("api/submissions/\(waiting.id)")
+            self.waiting = nil
+            onDiscarded()
+            if let file = refusedFile {
+                refusedFile = nil
+                await upload(file)
+            }
+        } catch {
+            errorCode = "failed"
+            phase = .failed
+        }
+    }
+
+    /// Keeps the waiting video and drops the refused file.
+    func keepWaiting() {
+        waiting = nil
+        refusedFile = nil
+    }
+
+    /// Set by the page: refresh the library after a discard.
+    var onDiscarded: () -> Void = {}
 
     private func register(key: String, title: String) async throws -> String {
         do {

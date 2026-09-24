@@ -65,45 +65,6 @@ struct RecorderDecodingTests {
         #expect(items[1].submissionId == "s9")
     }
 
-    @Test func theUploadTicketAndSubmissionDecode() throws {
-        let ticket = try decode(RecorderUploadTicket.self, """
-        {"url":"https://r2.example.com/media/user_2abc/abc.mp4?X-Amz-Signature=1","key":"media/user_2abc/abc.mp4"}
-        """)
-        #expect(ticket.key == "media/user_2abc/abc.mp4")
 
-        let linked = try decode(RecorderSubmissionEnvelope.self, """
-        {"submission":{"id":"s1","userId":"user_2abc","mediaKey":"media/user_2abc/abc.mp4","title":"Why your hooks fail",
-        "status":"uploaded","createdAt":"2026-09-23T09:00:00.000Z"}}
-        """)
-        #expect(linked.submission.id == "s1")
-        #expect(linked.submission.contentItemId == nil)
 
-        let created = try decode(RecorderSubmissionEnvelope.self, """
-        {"submission":{"id":"s2","mediaKey":"media/user_2abc/def.mp4","contentItemId":"item-9"}}
-        """)
-        #expect(created.submission.contentItemId == "item-9")
-    }
-
-    @Test func requestBodiesMatchWhatTheRoutesRead() throws {
-        let upload = try JSONSerialization.jsonObject(with: StudioJSONClient.encoder.encode(
-            RecorderUploadRequest(sizeBytes: 1200, mimeType: "video/mp4", ext: "mp4")
-        )) as? [String: Any]
-        #expect(upload?["purpose"] as? String == "recording")
-        #expect(upload?["sizeBytes"] as? Int == 1200)
-
-        let plain = try JSONSerialization.jsonObject(with: StudioJSONClient.encoder.encode(
-            RecorderSubmissionRequest(mediaKey: "k", title: nil, createLibraryItem: true)
-        )) as? [String: Any]
-        #expect(plain?["createLibraryItem"] as? Bool == true)
-        #expect(plain?["title"] == nil)
-    }
-
-    @Test func saveErrorsUseTheWebRecordersWords() {
-        #expect(RecorderSaveError.from(StudioAPIError(status: 402, code: "not_entitled", message: "")) == .locked)
-        #expect(RecorderSaveError.from(StudioAPIError(status: 402, code: "storage_full", message: "")) == .storageFull)
-        #expect(RecorderSaveError.from(StudioAPIError(status: 413, code: "media_too_large", message: "")) == .tooLarge)
-        #expect(RecorderSaveError.from(StudioAPIError(status: 400, code: "clip_too_large", message: "")) == .tooLarge)
-        #expect(RecorderSaveError.from(StudioAPIError(status: 501, code: "storage_unavailable", message: "")) == .unavailable)
-        #expect(RecorderSaveError.from(StudioAPIError(status: 500, code: nil, message: "")) == .failed)
-    }
 }

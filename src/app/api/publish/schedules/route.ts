@@ -16,6 +16,10 @@ import { readScheduleInput, scheduleDate } from "@/lib/publish/schedule-input";
 import { schedulingEnabled } from "@/lib/publish/schedule-types";
 import { scheduleSummary } from "@/lib/publish/schedule-summary";
 import { ownsKey } from "@/lib/r2";
+import {
+  countScheduledVideos,
+  MAX_SCHEDULED_VIDEOS,
+} from "@/lib/db/poster-slot";
 
 export const runtime = "nodejs";
 
@@ -54,6 +58,12 @@ export async function POST(request: Request) {
     if (replay.length)
       return Response.json({ schedules: replay.map(scheduleSummary) });
     scheduleDate(plan.scheduledFor.toISOString());
+    // Scheduled videos stay stored until they go out, so they are capped.
+    if ((await countScheduledVideos(userId)) >= MAX_SCHEDULED_VIDEOS)
+      return Response.json(
+        { error: "too_many_scheduled", limit: MAX_SCHEDULED_VIDEOS },
+        { status: 409 },
+      );
     const entries: NewPublishingSchedule[] = [];
     for (const target of plan.targets) {
       const media = await resolveOwnedMediaKey(userId, target.input);

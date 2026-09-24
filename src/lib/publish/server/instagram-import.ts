@@ -1,5 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { canUsePremium } from "@/lib/billing/gate";
+import {
+  findWaitingPosterVideo,
+  posterSlotBusyResponse,
+} from "@/lib/db/poster-slot";
 import { getStorageQuota } from "@/lib/db/billing";
 import { MAX_SERVER_PROCESSED_VIDEO_BYTES } from "@/lib/db/constants";
 import {
@@ -91,6 +95,8 @@ export async function importInstagramVideo(
   if (!(await canUsePremium(userId))) {
     return Response.json({ error: "not_entitled" }, { status: 402 });
   }
+  const waiting = await findWaitingPosterVideo(userId);
+  if (waiting) return posterSlotBusyResponse(waiting);
   if (!r2Configured()) {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }

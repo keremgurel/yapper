@@ -5,6 +5,10 @@ import { getStorageQuota } from "@/lib/db/billing";
 import { MAX_DIRECT_VIDEO_UPLOAD_BYTES } from "@/lib/db/constants";
 import { getStorageBytes } from "@/lib/db/users";
 import {
+  findWaitingPosterVideo,
+  posterSlotBusyResponse,
+} from "@/lib/db/poster-slot";
+import {
   abandonPendingObject,
   allocatePendingObject,
   R2ObjectOwnerMissingError,
@@ -70,6 +74,13 @@ export async function POST(req: NextRequest): Promise<Response> {
         : MAX_DIRECT_VIDEO_UPLOAD_BYTES;
   if (sizeBytes > purposeLimit) {
     return Response.json({ error: "media_too_large" }, { status: 413 });
+  }
+
+  // One video waiting to be posted per account. The next one needs the
+  // waiting one posted, scheduled or discarded first.
+  if (purpose === "recording") {
+    const waiting = await findWaitingPosterVideo(userId);
+    if (waiting) return posterSlotBusyResponse(waiting);
   }
 
   const [used, quota] = await Promise.all([

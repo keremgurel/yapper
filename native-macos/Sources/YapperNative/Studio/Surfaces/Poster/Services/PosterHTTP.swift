@@ -10,8 +10,18 @@ struct PosterHTTPError: LocalizedError {
     let detail: String?
     let reconcilable: Bool
     let message: String
+    /// The video already waiting to be posted, when the refusal is the
+    /// one-waiting-video rule (`poster_slot_busy`).
+    var waiting: PosterWaitingVideo? = nil
 
     var errorDescription: String? { message }
+}
+
+/// The one video an account may keep stored while it prepares to post.
+struct PosterWaitingVideo: Codable, Equatable, Sendable {
+    let kind: String
+    let id: String
+    let title: String?
 }
 
 /// JSON calls with the extra headers publishing needs (an Idempotency-Key),
@@ -71,10 +81,13 @@ enum PosterHTTP {
             reason: json?["reason"] as? String,
             detail: json?["message"] as? String,
             reconcilable: json?["reconcilable"] as? Bool ?? false,
-            message: shared.message
+            message: shared.message,
+            waiting: (try? JSONDecoder().decode(WaitingEnvelope.self, from: body))?.waiting
         )
     }
 }
+
+private struct WaitingEnvelope: Decodable { let waiting: PosterWaitingVideo? }
 
 extension Dictionary where Key == String, Value == Any {
     /// Drops nil values so optional fields are left out, as `JSON.stringify` does.

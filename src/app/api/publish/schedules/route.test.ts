@@ -13,6 +13,16 @@ import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { GET, POST } from "./route";
 import { PATCH } from "./[id]/route";
 
+const posterSlot = vi.hoisted(() => ({
+  findWaitingPosterVideo: vi.fn(async () => null as unknown),
+  countScheduledVideos: vi.fn(async () => 0),
+}));
+vi.mock("@/lib/db/poster-slot", () => ({
+  ...posterSlot,
+  MAX_SCHEDULED_VIDEOS: 10,
+  posterSlotBusyResponse: (waiting: unknown) =>
+    Response.json({ error: "poster_slot_busy", waiting }, { status: 409 }),
+}));
 vi.mock("@clerk/nextjs/server", () => ({ auth: vi.fn() }));
 vi.mock("@/lib/db/publishing-schedules", () => ({
   createPublishingSchedules: vi.fn(),

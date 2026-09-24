@@ -13,6 +13,10 @@ final class StudioNavigation: ObservableObject {
     /// Set by the shell; moves to another tab.
     var goTo: (StudioDestination) -> Void = { _ in }
 
+    /// Set by the shell; makes a new editor project from a local video and
+    /// shows the editor.
+    var openInEditor: (URL) -> Void = { _ in }
+
     func openIdea(_ id: String) {
         openIdeaID = id
         goTo(.ideas)

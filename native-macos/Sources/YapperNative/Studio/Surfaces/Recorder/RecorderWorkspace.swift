@@ -11,7 +11,6 @@ final class RecorderWorkspace {
     let devices = RecorderDeviceCatalog()
     let capture = RecorderCaptureSession()
     let flow: RecorderTakeFlow
-    let saving = RecorderSaveState()
     let prompter = TeleprompterSettingsStore()
     let script = RecorderScriptStore.shared
 
