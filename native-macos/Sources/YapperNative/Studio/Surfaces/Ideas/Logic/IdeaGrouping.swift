@@ -19,7 +19,7 @@ enum IdeaGrouping {
             if !status.isEmpty && !status.contains(row.status) { return false }
             if !pillarIDs.isEmpty && !pillarIDs.contains(row.pillarId ?? "") { return false }
             // Any one wanted format is a hit.
-            if !formats.isEmpty && !row.formats.contains(where: formats.contains) { return false }
+            if !formats.isEmpty && row.versions.isDisjoint(with: formats) { return false }
             return true
         }
     }
@@ -52,12 +52,10 @@ enum IdeaGrouping {
                 IdeaGroup(id: status.rawValue, label: status.label, items: rows.filter { $0.status == status.rawValue })
             }
         case .format:
-            var groups = IdeaFormat.all.map { format in
-                IdeaGroup(id: format.id, label: format.label, items: rows.filter { $0.formats.contains(format.id) })
+            // By where each idea started, so every idea sits in exactly one group.
+            return IdeaFormat.versioned.map { format in
+                IdeaGroup(id: format.id, label: format.label, items: rows.filter { $0.leadFormat == format.id })
             }.filter { !$0.items.isEmpty }
-            let none = rows.filter(\.formats.isEmpty)
-            if !none.isEmpty { groups.append(IdeaGroup(id: "__none", label: "No format", items: none)) }
-            return groups
         case .pillar:
             var order: [String] = []
             var labels: [String: String] = [:]

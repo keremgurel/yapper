@@ -11,6 +11,7 @@ import {
 import { ensureUser } from "@/lib/db/users";
 import { askCanvas, type CanvasAskInput } from "@/lib/generate/canvas";
 import { parseCanvasBlocks } from "@/lib/content/canvas-request";
+import { isVersionFormat } from "@/lib/content/formats";
 import {
   appendContentMessages,
   listContentMessages,
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       url: str(source.url, 500) || null,
       excerpt: str(source.excerpt, 3000) || null,
     },
+    format: isVersionFormat(body.format) ? body.format : "short",
   };
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
@@ -102,6 +104,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // and sections of the brain should shape the answer.
   const brain = await getBrainContextSafe(userId, {
     surface: "script",
+    format: input.format,
     task: [instruction, input.title, input.originalNote]
       .filter(Boolean)
       .join("\n"),

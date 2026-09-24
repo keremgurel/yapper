@@ -5,6 +5,8 @@ import Foundation
 /// reads, so it is mirrored into the item's `script` on every save.
 enum IdeaCanvasDoc {
     static let scriptLabel = "Script"
+    /// An article's line under the headline, stored as its own block.
+    static let dekLabel = "Dek"
 
     /// The document for an item. A stored script becomes a script block when
     /// the body has none, so older scripts show up where they belong.
@@ -88,5 +90,14 @@ enum IdeaCanvasDoc {
             return update(blocks, id: existing.id) { $0.text = text }
         }
         return [IdeaCanvasBlock(label: scriptLabel, kind: .script, text: text)] + blocks
+    }
+
+    /// Sets the article's subhead, adding its block right after the script
+    /// when there isn't one yet.
+    static func settingDek(_ text: String, in blocks: [IdeaCanvasBlock]) -> [IdeaCanvasBlock] {
+        if let existing = blocks.first(where: { $0.label == dekLabel && !$0.kind.isList }) {
+            return update(blocks, id: existing.id) { $0.text = text }
+        }
+        return blocks + [IdeaCanvasBlock(label: dekLabel, kind: .paragraph, text: text)]
     }
 }

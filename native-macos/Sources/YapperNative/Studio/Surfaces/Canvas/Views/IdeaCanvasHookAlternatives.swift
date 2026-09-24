@@ -4,6 +4,7 @@ import SwiftUI
 /// the Hook slot while the old opener slides down here, each line keeping its
 /// geometry on the way. The last row asks Chirpy for more.
 struct IdeaCanvasHookAlternatives: View {
+    var label = "Hook alternatives"
     /// Every hook after the chosen one, with its identity key.
     let hooks: [(key: String, text: String)]
     let namespace: Namespace.ID
@@ -13,7 +14,7 @@ struct IdeaCanvasHookAlternatives: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            IdeaCanvasSectionTitle("Hook alternatives", meta: hooks.isEmpty ? nil : "\(hooks.count)")
+            IdeaCanvasSectionTitle(label, meta: hooks.isEmpty ? nil : "\(hooks.count)")
             VStack(spacing: 8) {
                 ForEach(Array(hooks.enumerated()), id: \.element.key) { offset, hook in
                     IdeaCanvasHookCard(
@@ -85,7 +86,7 @@ private struct IdeaCanvasMoreHooksRow: View {
 
     var body: some View {
         Button(action: action) {
-            IdeaCanvasChirpyLabel(hasHooks ? "Ask Chirpy for more openers" : "Ask Chirpy for openers")
+            IdeaCanvasChirpyLabel(hasHooks ? "Ask Chirpy for more options" : "Ask Chirpy for options")
                 .font(.system(size: 14))
                 .foregroundStyle(hovering ? .primary : .secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

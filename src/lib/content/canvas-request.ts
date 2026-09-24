@@ -8,7 +8,7 @@ const KINDS = new Set<ContentBlock["kind"]>([
   "script",
 ]);
 /** The whole canvas the model may be shown, in characters. */
-const MAX_MATERIAL = 24_000;
+const MAX_MATERIAL = 40_000;
 const MAX_BLOCKS = 20;
 
 /**

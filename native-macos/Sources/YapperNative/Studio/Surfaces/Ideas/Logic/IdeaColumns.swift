@@ -9,7 +9,7 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
         switch self {
         case .title: "Title"
         case .pillar: "Pillar"
-        case .formats: "Format"
+        case .formats: "Versions"
         case .type: "Type"
         case .transcript: "Reference"
         case .status: "Status"
@@ -28,7 +28,7 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
         switch self {
         case .title: nil
         case .pillar: 190
-        case .formats: 170
+        case .formats: 110
         case .type: 120
         case .transcript: 130
         case .status: 130

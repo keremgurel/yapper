@@ -23,6 +23,8 @@ struct IdeaCanvasAskContext {
     var sourceTitle: String?
     var sourceURL: String?
     var sourceExcerpt: String
+    /// The version being edited, so the route writes in that format.
+    var format: IdeaCanvasVersionFormat = .short
 }
 
 /// The body `use-canvas-ask` posts to `api/generate/canvas`.
@@ -41,6 +43,7 @@ struct IdeaCanvasAskBody: Encodable {
     let source: Source
     let target: Int?
     let contentId: String
+    let format: IdeaCanvasVersionFormat
 
     init(instruction: String, context: IdeaCanvasAskContext, target: Int?, contentID: String) {
         self.instruction = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -51,10 +54,11 @@ struct IdeaCanvasAskBody: Encodable {
         source = Source(title: context.sourceTitle, url: context.sourceURL, excerpt: String(context.sourceExcerpt.prefix(3000)))
         self.target = target
         contentId = contentID
+        format = context.format
     }
 
     private enum CodingKeys: String, CodingKey {
-        case instruction, title, blocks, hooks, originalNote, source, target, contentId
+        case instruction, title, blocks, hooks, originalNote, source, target, contentId, format
     }
 
     func encode(to encoder: Encoder) throws {
@@ -67,6 +71,7 @@ struct IdeaCanvasAskBody: Encodable {
         try c.encode(source, forKey: .source)
         if let target { try c.encode(target, forKey: .target) } else { try c.encodeNil(forKey: .target) }
         try c.encode(contentId, forKey: .contentId)
+        try c.encode(format.rawValue, forKey: .format)
     }
 }
 

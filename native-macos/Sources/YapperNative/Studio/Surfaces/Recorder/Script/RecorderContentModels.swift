@@ -25,6 +25,24 @@ struct RecorderContentHook: Codable, Equatable {
     }
 }
 
+/// Another version of an idea (long-form, article, short) than its lead.
+struct RecorderContentVersion: Codable, Equatable {
+    let format: String
+    let title: String?
+    let hooks: [RecorderContentHook]
+    let blocks: [RecorderContentBlock]
+    let script: String?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        format = try container.decode(String.self, forKey: .format)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+        hooks = try container.decodeIfPresent([RecorderContentHook].self, forKey: .hooks) ?? []
+        blocks = try container.decodeIfPresent([RecorderContentBlock].self, forKey: .blocks) ?? []
+        script = try container.decodeIfPresent(String.self, forKey: .script)
+    }
+}
+
 /// The fields of a content item the teleprompter reads.
 struct RecorderContentItem: Codable, Equatable, Identifiable {
     let id: String
@@ -32,13 +50,20 @@ struct RecorderContentItem: Codable, Equatable, Identifiable {
     let hooks: [RecorderContentHook]
     let blocks: [RecorderContentBlock]
     let script: String?
+    let leadFormat: String?
+    let versions: [RecorderContentVersion]
 
-    init(id: String, title: String, hooks: [RecorderContentHook] = [], blocks: [RecorderContentBlock] = [], script: String? = nil) {
+    init(
+        id: String, title: String, hooks: [RecorderContentHook] = [], blocks: [RecorderContentBlock] = [],
+        script: String? = nil, leadFormat: String? = nil, versions: [RecorderContentVersion] = []
+    ) {
         self.id = id
         self.title = title
         self.hooks = hooks
         self.blocks = blocks
         self.script = script
+        self.leadFormat = leadFormat
+        self.versions = versions
     }
 
     init(from decoder: Decoder) throws {
@@ -48,6 +73,21 @@ struct RecorderContentItem: Codable, Equatable, Identifiable {
         hooks = try container.decodeIfPresent([RecorderContentHook].self, forKey: .hooks) ?? []
         blocks = try container.decodeIfPresent([RecorderContentBlock].self, forKey: .blocks) ?? []
         script = try container.decodeIfPresent(String.self, forKey: .script)
+        leadFormat = try container.decodeIfPresent(String.self, forKey: .leadFormat)
+        versions = (try? container.decodeIfPresent([RecorderContentVersion].self, forKey: .versions)) ?? []
+    }
+
+    /// The item as one version reads: the lead is the item itself, any other
+    /// format swaps in that version's words. Unknown formats read the lead.
+    func showing(format: String?) -> RecorderContentItem {
+        guard let format, format != leadFormat, let version = versions.first(where: { $0.format == format }) else {
+            return self
+        }
+        let script = version.script ?? version.blocks.first { $0.kind == "script" }?.text
+        return RecorderContentItem(
+            id: id, title: version.title ?? title, hooks: version.hooks, blocks: version.blocks,
+            script: script, leadFormat: leadFormat, versions: versions
+        )
     }
 }
 

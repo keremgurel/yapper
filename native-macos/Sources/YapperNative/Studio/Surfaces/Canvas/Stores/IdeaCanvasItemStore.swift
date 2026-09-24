@@ -63,10 +63,6 @@ final class IdeaCanvasItemStore: ObservableObject {
         update(IdeaCanvasDoc.patch(from: next))
     }
 
-    func editBlocks(_ change: ([IdeaCanvasBlock]) -> [IdeaCanvasBlock]) {
-        setBlocks(change(blocks))
-    }
-
     func setHooks(_ hooks: [String]) {
         update(IdeaCanvasPatch(hooks: hooks))
     }

@@ -3,6 +3,8 @@ import SwiftUI
 /// The opening line in use, set large because it is the first thing said.
 /// Editable in place; choosing another happens in the alternatives.
 struct IdeaCanvasHookChosen: View {
+    var label = "Hook"
+    var askLabel = "Give me five hooks"
     let hook: String?
     let hookKey: String?
     let namespace: Namespace.ID
@@ -11,7 +13,7 @@ struct IdeaCanvasHookChosen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            IdeaCanvasSectionTitle("Hook")
+            IdeaCanvasSectionTitle(label)
             if let hook, let hookKey {
                 IdeaCanvasGrowingEditor(
                     text: Binding(get: { hook }, set: { onChange($0) }),
@@ -22,7 +24,7 @@ struct IdeaCanvasHookChosen: View {
                 .matchedGeometryEffect(id: hookKey, in: namespace)
             } else {
                 Button(action: onAskForHooks) {
-                    IdeaCanvasChirpyLabel("Give me five hooks")
+                    IdeaCanvasChirpyLabel(askLabel)
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .foregroundStyle(.secondary)

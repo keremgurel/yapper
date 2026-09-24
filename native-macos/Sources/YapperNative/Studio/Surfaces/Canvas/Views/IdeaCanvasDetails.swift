@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The facts about the piece that are not its words: pillar, what it ships
-/// as, and the plan date once it is ready.
+/// The facts about the piece that are not its words: its pillar and the plan
+/// date once it is ready. What it ships as is the version tabs above.
 struct IdeaCanvasDetails: View {
     let item: IdeaCanvasItem
     let update: (IdeaCanvasPatch) -> Void
@@ -14,9 +14,6 @@ struct IdeaCanvasDetails: View {
                     IdeaCanvasPillarMenu(pillarId: item.pillarId, legacyName: item.pillar) {
                         update(IdeaCanvasPatch(pillarId: IdeaCanvasNullable($0)))
                     }
-                }
-                NativeField(label: "Ships as") {
-                    IdeaCanvasFormatToggles(formats: item.formats) { update(IdeaCanvasPatch(formats: $0)) }
                 }
                 if item.status == .ready {
                     NativeField(label: "Scheduled") {
@@ -66,30 +63,6 @@ struct IdeaCanvasPillarMenu: View {
         }
         .fixedSize()
         .task { await pillars.loadIfNeeded() }
-    }
-}
-
-/// Every format as a toggle, so the whole set is visible and one click away.
-struct IdeaCanvasFormatToggles: View {
-    let formats: [String]
-    let onChange: ([String]) -> Void
-
-    var body: some View {
-        IdeaCanvasFlowLayout(spacing: 6) {
-            ForEach(IdeaCanvasFormat.all) { format in
-                let on = formats.contains(format.id)
-                Button { onChange(IdeaCanvasFormat.toggle(format.id, in: formats)) } label: {
-                    Text(format.label)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(on ? (format.tone == .neutral ? Color.primary : format.tone.color) : Color.secondary)
-                        .padding(.horizontal, 12)
-                        .frame(height: 28)
-                        .background(Capsule().fill(on ? format.tone.color.opacity(0.16) : Color.studioFaintFill))
-                }
-                .buttonStyle(.studioPlain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
     }
 }
 

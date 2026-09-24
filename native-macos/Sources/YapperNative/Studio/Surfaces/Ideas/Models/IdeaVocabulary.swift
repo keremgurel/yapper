@@ -72,6 +72,9 @@ struct IdeaFormat: Identifiable {
     ]
 
     static func find(_ id: String) -> IdeaFormat? { all.first { $0.id == id } }
+
+    /// The formats an idea can hold a written version of, in tab order.
+    static let versioned: [IdeaFormat] = all.filter { ["short", "long", "article"].contains($0.id) }
 }
 
 enum IdeaPillarTone {

@@ -16,7 +16,7 @@ final class IdeaCapture: ObservableObject {
     private let store = IdeasStore.shared
 
     /// Throws only when the words themselves could not be stored.
-    func capture(_ text: String) async throws {
+    func capture(_ text: String, format: IdeaCanvasVersionFormat = .short) async throws {
         let parsed = CaptureText.parse(text)
         guard parsed.note != nil || parsed.url != nil else { return }
         let note = parsed.note ?? ""
@@ -24,19 +24,20 @@ final class IdeaCapture: ObservableObject {
             originalNote: note,
             sourceUrl: parsed.url,
             ideaType: CaptureText.kind(note: parsed.note, url: parsed.url).rawValue,
-            transcriptStatus: parsed.url == nil ? nil : "pending"
+            transcriptStatus: parsed.url == nil ? nil : "pending",
+            leadFormat: format.rawValue
         )
         let created: IdeaItemResponse = try await StudioJSONClient.post("api/ideas", body: request)
         store.prepend(created.item)
-        Task { await enrich(created.item.id, url: parsed.url, note: note) }
+        Task { await enrich(created.item.id, url: parsed.url, note: note, format: format.rawValue) }
     }
 
     func retry(_ id: String) {
         guard let row = store.item(id) else { return }
-        Task { await enrich(id, url: row.sourceUrl, note: row.originalNote) }
+        Task { await enrich(id, url: row.sourceUrl, note: row.originalNote, format: row.leadFormat) }
     }
 
-    private func enrich(_ id: String, url: String?, note: String) async {
+    private func enrich(_ id: String, url: String?, note: String, format: String) async {
         guard !working.contains(id) else { return }
         working.insert(id)
         analysisFailed.remove(id)
@@ -57,7 +58,10 @@ final class IdeaCapture: ObservableObject {
                 }
             }
 
-            let request = ExpandRequest(input: .init(transcript: note.isEmpty ? nil : note, url: url, source: source))
+            let request = ExpandRequest(
+                input: .init(transcript: note.isEmpty ? nil : note, url: url, source: source),
+                format: format
+            )
             let reply: ExpandResponse = try await StudioJSONClient.post("api/ideas/expand", body: request)
             guard let expansion = reply.expansion else { throw StudioAPIError(status: 200, code: "expand_empty", message: "") }
             let patch = ExpansionPatch(expansion)

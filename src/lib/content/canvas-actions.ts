@@ -33,7 +33,9 @@ export type CanvasAction =
 export const CANVAS_LIMITS = {
   maxActions: 12,
   maxLabel: 60,
-  maxText: 6000,
+  // A long-form script runs 8,000 to 11,000 characters; anything lower would
+  // cut one short on its way to Chirpy and back.
+  maxText: 20_000,
   maxItems: 30,
   maxItem: 400,
   maxHooks: 8,

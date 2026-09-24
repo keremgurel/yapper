@@ -1,3 +1,4 @@
+import type { VersionFormat } from "@/lib/content/formats";
 import type { ContentBlock } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
 import { undash } from "@/lib/text/undash";
@@ -7,7 +8,13 @@ import {
 } from "@/lib/content/canvas-actions";
 
 const PROVIDER_TIMEOUT_MS = 40_000;
-const MAX_COMPLETION_TOKENS = 1_600;
+// A long-form script or an article is several thousand words; a short is a
+// few hundred.
+const MAX_COMPLETION_TOKENS: Record<VersionFormat, number> = {
+  short: 1_600,
+  long: 6_000,
+  article: 5_000,
+};
 const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
 
 interface ChatCompletionResponse {
@@ -33,6 +40,8 @@ export interface CanvasAskInput {
   };
   /** The conversation so far, oldest first, so a follow-up means something. */
   history?: { role: "creator" | "chirpy"; text: string }[];
+  /** The version of the idea on the canvas; short-form when absent. */
+  format?: VersionFormat;
 }
 
 export interface CanvasAskResult {
@@ -72,6 +81,9 @@ const SYSTEM =
   "- A script is the words said aloud, in the creator's voice: contractions, " +
   "short sentences, no headers, no stage directions, no bullet formatting. " +
   'Use kind "script" for it. Unless told a length, 80 to 130 words, up to 200 for a story.\n' +
+  "- When the canvas is a long-form or article version, the note at the top " +
+  "of the message says its shape and length; it overrides the script rule " +
+  "above.\n" +
   "- When the ask names or clearly means an existing block, replace that block. " +
   "When it asks for something new, insert it where it belongs or append it.\n" +
   "- Never rewrite blocks the creator did not ask about. Never return the whole " +
@@ -89,6 +101,24 @@ const SYSTEM =
   "- Never use em dashes or en dashes in anything you write. Use a comma, a " +
   "colon, or a new sentence.";
 
+/** What the canvas holds when it isn't a short, so length and shape follow. */
+const FORMAT_NOTES: Record<VersionFormat, string> = {
+  short: "",
+  long:
+    "This canvas is the LONG-FORM video version. The script is one " +
+    "word-for-word spoken script, 8 to 12 minutes (about 150 words a " +
+    "minute), with chapter lines that start with '## ' and a 2 to 6 word " +
+    "title, no timestamps, the first line a chapter. Visual notes go on " +
+    "their own line as [B-ROLL: ...] or [ON SCREEN: ...]. The hooks list " +
+    "holds video title options, the first in use. Keep every chapter line " +
+    "when you edit part of the script.",
+  article:
+    "This canvas is the ARTICLE version. The script block is the article " +
+    "body in Markdown with '## ' section headings, 800 to 1,400 words, " +
+    "written to be read, never mentioning video. The hooks list holds " +
+    "headline options, the first in use.",
+};
+
 function describe(input: CanvasAskInput): string {
   const blocks = input.blocks.length
     ? input.blocks
@@ -101,6 +131,7 @@ function describe(input: CanvasAskInput): string {
         .join("\n\n")
     : "(empty)";
   const parts = [
+    FORMAT_NOTES[input.format ?? "short"],
     `Title: ${input.title || "(untitled)"}`,
     input.hooks.length
       ? `Current hooks (first is chosen):\n${input.hooks.map((h) => `- ${h}`).join("\n")}`
@@ -174,7 +205,7 @@ export async function askCanvas(
       body: JSON.stringify({
         model,
         temperature: 0.6,
-        max_completion_tokens: MAX_COMPLETION_TOKENS,
+        max_completion_tokens: MAX_COMPLETION_TOKENS[input.format ?? "short"],
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM + (input.context ?? "") },

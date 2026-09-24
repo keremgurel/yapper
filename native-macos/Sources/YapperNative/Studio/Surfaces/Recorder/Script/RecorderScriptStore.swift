@@ -10,6 +10,8 @@ import Foundation
 final class RecorderScriptStore: ObservableObject {
     static let shared = RecorderScriptStore()
     static let handoffKey = "nativeRecorderItemID"
+    /// Which version of the idea to read: short, long or article.
+    static let handoffFormatKey = "nativeRecorderFormat"
 
     enum LoadState: Equatable {
         case idle
@@ -39,16 +41,17 @@ final class RecorderScriptStore: ObservableObject {
         let defaults = UserDefaults.standard
         guard let id = defaults.string(forKey: Self.handoffKey)?.trimmingCharacters(in: .whitespaces),
               !id.isEmpty else { return }
+        let format = defaults.string(forKey: Self.handoffFormatKey)
         defaults.removeObject(forKey: Self.handoffKey)
-        if itemID == id { return }
-        await load(itemID: id)
+        defaults.removeObject(forKey: Self.handoffFormatKey)
+        await load(itemID: id, format: format)
     }
 
-    func load(itemID id: String) async {
+    func load(itemID id: String, format: String? = nil) async {
         loadState = .loading(id)
         do {
             let envelope: RecorderContentEnvelope = try await StudioJSONClient.get("api/content/\(id)")
-            adopt(.item(envelope.item))
+            adopt(.item(envelope.item.showing(format: format)))
             loadState = .idle
         } catch let error as StudioAPIError {
             let missing = error.status == 404 && error.code != nil

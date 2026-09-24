@@ -11,6 +11,9 @@ struct IdeaItem: Codable, Equatable, Identifiable {
     var status: String
     var stage: String
     var formats: [String]
+    /// The format the idea started in, and the others it has a version of.
+    var leadFormat: String
+    var versionFormats: [String]
     var ideaType: String?
     var scheduledFor: String?
     var submissionId: String?
@@ -32,6 +35,8 @@ struct IdeaItem: Codable, Equatable, Identifiable {
         status = try c.decodeIfPresent(String.self, forKey: .status) ?? IdeaStatus.captured.rawValue
         stage = try c.decodeIfPresent(String.self, forKey: .stage) ?? "bank"
         formats = try c.decodeIfPresent([String].self, forKey: .formats) ?? []
+        leadFormat = try c.decodeIfPresent(String.self, forKey: .leadFormat) ?? "short"
+        versionFormats = (try? c.decodeIfPresent([String].self, forKey: .versionFormats)) ?? []
         ideaType = try c.decodeIfPresent(String.self, forKey: .ideaType)
         scheduledFor = try c.decodeIfPresent(String.self, forKey: .scheduledFor)
         submissionId = try c.decodeIfPresent(String.self, forKey: .submissionId)
@@ -46,6 +51,9 @@ struct IdeaItem: Codable, Equatable, Identifiable {
         updatedAt = try c.decodeIfPresent(String.self, forKey: .updatedAt) ?? ""
         createdAt = try c.decodeIfPresent(String.self, forKey: .createdAt) ?? ""
     }
+
+    /// Every format this idea has written, the lead included.
+    var versions: Set<String> { Set([leadFormat] + versionFormats) }
 
     /// The pipeline status, reading anything unknown as a fresh capture.
     var pipelineStatus: IdeaStatus { IdeaStatus(rawValue: status) ?? .captured }
