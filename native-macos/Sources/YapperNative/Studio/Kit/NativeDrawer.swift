@@ -6,9 +6,6 @@ import SwiftUI
 /// the close button or a click on the page behind closes it.
 struct NativeDrawer<Header: View, Content: View, Footer: View>: View {
     var width: CGFloat = 460
-    /// When true the body fills the height instead of scrolling, for an
-    /// editor whose main field should take all the room there is.
-    var fills = false
     let onClose: () -> Void
     @ViewBuilder var header: () -> Header
     @ViewBuilder var content: () -> Content
@@ -34,15 +31,10 @@ struct NativeDrawer<Header: View, Content: View, Footer: View>: View {
                 .padding(.top, 22)
                 .padding(.bottom, 18)
                 Rectangle().fill(Color.studioLine).frame(height: 1)
-                if fills {
-                    content()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                } else {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 24) { content() }
-                            .padding(24)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) { content() }
+                        .padding(24)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 if Footer.self != EmptyView.self {
                     Rectangle().fill(Color.studioLine).frame(height: 1)

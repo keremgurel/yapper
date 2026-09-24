@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// The editor for one skill or one knowledge section: a wide panel from the
-/// right, full height. Settings sit in a narrow column; the main text takes
-/// the rest of the room, so a long section is edited without scrolling a
-/// small box inside a small box.
+/// The editor for one skill or one knowledge section: a large centered
+/// window. Settings sit in a narrow column; the main text takes the rest of
+/// the room, so a long section is edited without scrolling a small box
+/// inside a small box.
 struct BrainEditorPanel<Side: View, Main: View>: View {
     let title: String
     var description: String?
@@ -12,29 +12,25 @@ struct BrainEditorPanel<Side: View, Main: View>: View {
     @ViewBuilder var main: () -> Main
 
     var body: some View {
-        GeometryReader { proxy in
-            NativeDrawer(width: min(max(proxy.size.width * 0.72, 760), 1120), fills: true, onClose: onClose) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title).font(.system(size: 17, weight: .semibold))
-                    if let description {
-                        Text(description).font(.system(size: 12)).foregroundStyle(.secondary)
-                    }
+        NativeModal(onClose: onClose) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.system(size: 18, weight: .semibold))
+                if let description {
+                    Text(description).font(.system(size: 12)).foregroundStyle(.secondary)
                 }
-            } content: {
-                HStack(spacing: 0) {
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: 20) { side() }
-                            .padding(24)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(width: 320)
-                    Rectangle().fill(Color.studioLine).frame(width: 1)
-                    VStack(alignment: .leading, spacing: 10) { main() }
-                        .padding(24)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+        } content: {
+            HStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 22) { side() }
+                        .padding(28)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-            } footer: {
-                EmptyView()
+                .frame(width: 340)
+                Rectangle().fill(Color.studioLine).frame(width: 1)
+                VStack(alignment: .leading, spacing: 10) { main() }
+                    .padding(28)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }
