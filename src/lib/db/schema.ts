@@ -230,6 +230,8 @@ export const projects = pgTable(
     links: jsonb("links").$type<string[]>().notNull().default([]),
     /** Ordered swatches for generated graphics. The first colour is primary. */
     brandColors: jsonb("brand_colors").$type<string[]>().notNull().default([]),
+    /** Where a new idea starts: short, long or article. */
+    defaultFormat: text("default_format").notNull().default("short"),
     contextVersion: integer("context_version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -244,6 +246,10 @@ export const projects = pgTable(
     // so two concurrent first requests cannot both insert. Adding the account
     // switcher later drops this one index; it is not a data migration.
     uniqueIndex("projects_user_unique").on(t.userId),
+    check(
+      "projects_default_format_check",
+      sql`${t.defaultFormat} in ('short','long','article')`,
+    ),
   ],
 );
 
@@ -449,6 +455,9 @@ export const projectSkills = pgTable(
     whenToUse: text("when_to_use").notNull().default(""),
     instructions: text("instructions").notNull().default(""),
     surfaces: jsonb("surfaces").$type<BrainSurface[]>().notNull().default([]),
+    /** The version formats this skill shapes (short, long, article). Empty
+     * means all of them, the same rule `surfaces` uses. */
+    formats: jsonb("formats").$type<string[]>().notNull().default([]),
     enabled: boolean("enabled").notNull().default(true),
     /** Set the first time the creator edits an installed skill. */
     customized: boolean("customized").notNull().default(false),
@@ -610,6 +619,9 @@ export const contentItems = pgTable(
      * this one is the creator's distribution decision.
      */
     formats: jsonb("formats").$type<string[]>().notNull().default([]),
+    /** The format this idea started in. Its body (hooks, blocks, script) is
+     * that version; the others live in `contentVersions`. */
+    leadFormat: text("lead_format").notNull().default("short"),
     ideaType: text("idea_type", { enum: ideaTypes }),
     // Legacy body columns. Read through the normalizer for old rows; never
     // written again, and dropped once nothing falls back to them.
@@ -664,6 +676,10 @@ export const contentItems = pgTable(
     ),
     check("content_items_stage_check", sql`${t.stage} in ('bank','library')`),
     check(
+      "content_items_lead_format_check",
+      sql`${t.leadFormat} in ('short','long','article')`,
+    ),
+    check(
       "content_items_idea_type_check",
       sql`${t.ideaType} is null or ${t.ideaType} in ('original','semi-original','inspiration')`,
     ),
@@ -674,6 +690,49 @@ export const contentItems = pgTable(
     // A scheduled item must have a date; enforced at the DB so no API path
     // (create, update, import, future writers) can produce the invalid pairing.
     uniqueIndex("content_items_import_unique").on(t.userId, t.sourceClientId),
+  ],
+);
+
+/**
+ * The versions of an idea other than its lead: the long-form or article
+ * written from a short, or the short cut from a long-form. One row per idea
+ * and format. The lead version stays on `contentItems`, so every existing
+ * reader of an idea's script keeps working unchanged.
+ */
+export const contentVersions = pgTable(
+  "content_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    contentItemId: uuid("content_item_id")
+      .notNull()
+      .references(() => contentItems.id, { onDelete: "cascade" }),
+    format: text("format").notNull(),
+    title: text("title"),
+    hooks: jsonb("hooks").$type<ContentHook[]>().notNull().default([]),
+    blocks: jsonb("blocks").$type<ContentBlock[]>().notNull().default([]),
+    script: text("script"),
+    /** The format this version was written from, for the "written from" note. */
+    writtenFrom: text("written_from"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("content_versions_item_format_unique").on(
+      t.contentItemId,
+      t.format,
+    ),
+    check(
+      "content_versions_format_check",
+      sql`${t.format} in ('short','long','article')`,
+    ),
+    check(
+      "content_versions_written_from_check",
+      sql`${t.writtenFrom} is null or ${t.writtenFrom} in ('short','long','article')`,
+    ),
   ],
 );
 

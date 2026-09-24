@@ -38,3 +38,18 @@ export function normalizeFormats(value: unknown): string[] {
   );
   return CONTENT_FORMATS.filter((f) => wanted.has(f.id)).map((f) => f.id);
 }
+
+/**
+ * The formats an idea can hold a written version of. A narrower set than the
+ * tags above: these are the ones with their own generator and editor, and the
+ * one an idea started in is its lead.
+ */
+export const VERSION_FORMATS = ["short", "long", "article"] as const;
+export type VersionFormat = (typeof VERSION_FORMATS)[number];
+
+export function isVersionFormat(value: unknown): value is VersionFormat {
+  return (
+    typeof value === "string" &&
+    (VERSION_FORMATS as readonly string[]).includes(value)
+  );
+}

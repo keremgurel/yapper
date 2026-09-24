@@ -204,6 +204,13 @@
       "when": 1789162472549,
       "tag": "0028_chirpy_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790222400000,
+      "tag": "0029_idea_versions",
+      "breakpoints": true
     }
   ]
 }

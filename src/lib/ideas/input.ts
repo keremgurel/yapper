@@ -1,4 +1,4 @@
-import { normalizeFormats } from "@/lib/content/formats";
+import { isVersionFormat, normalizeFormats } from "@/lib/content/formats";
 import { normalizeBlocks } from "@/lib/content/normalize";
 import type { ContentItemInput } from "@/lib/db/content";
 import {
@@ -60,6 +60,8 @@ export function parseIdeaFields(
   // never be looking for an id no row is allowed to hold.
   if (Array.isArray(body.formats))
     input.formats = normalizeFormats(body.formats);
+
+  if (isVersionFormat(body.leadFormat)) input.leadFormat = body.leadFormat;
 
   if (body.ideaType === null) input.ideaType = null;
   else if (isIdeaType(body.ideaType)) input.ideaType = body.ideaType;

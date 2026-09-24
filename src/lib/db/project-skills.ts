@@ -19,6 +19,7 @@ export interface ProjectSkillInput {
   whenToUse?: string;
   instructions?: string;
   surfaces?: BrainSurface[];
+  formats?: string[];
   enabled?: boolean;
 }
 
@@ -114,6 +115,7 @@ export async function createProjectSkill(
       whenToUse: input.whenToUse ?? "",
       instructions: input.instructions ?? "",
       surfaces: input.surfaces ?? [],
+      formats: input.formats ?? [],
       enabled: input.enabled ?? true,
       sortOrder: await nextSortOrder(projectId),
     })

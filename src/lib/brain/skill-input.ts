@@ -1,3 +1,4 @@
+import { VERSION_FORMATS, type VersionFormat } from "@/lib/content/formats";
 import type { ProjectSkillInput } from "@/lib/db/project-skills";
 import type { SkillCatalogInput } from "@/lib/db/skill-catalog";
 import {
@@ -35,6 +36,11 @@ function parseSurfaces(value: unknown): BrainSurface[] {
     .filter((surface, index, all) => all.indexOf(surface) === index);
 }
 
+/** Version formats a skill is limited to; empty means all of them. */
+export function parseSkillFormats(value: unknown[]): VersionFormat[] {
+  return VERSION_FORMATS.filter((format) => value.includes(format));
+}
+
 export function parseSkillInput(
   body: Record<string, unknown>,
 ): Partial<ProjectSkillInput> {
@@ -50,6 +56,8 @@ export function parseSkillInput(
   }
   if (Array.isArray(body.surfaces))
     input.surfaces = parseSurfaces(body.surfaces);
+  if (Array.isArray(body.formats))
+    input.formats = parseSkillFormats(body.formats);
   if (typeof body.enabled === "boolean") input.enabled = body.enabled;
   return input;
 }
