@@ -57,6 +57,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     whenToUse: entry.whenToUse,
     instructions: entry.instructions,
     surfaces: entry.surfaces,
+    formats: entry.formats,
   });
   invalidateBrainContext(project.id);
   return Response.json({ skill }, { status: 201 });

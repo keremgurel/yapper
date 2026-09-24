@@ -77,6 +77,7 @@ export async function listProjectSkillsWithDefaults(
             whenToUse: entry.whenToUse,
             instructions: entry.instructions,
             surfaces: entry.surfaces,
+            formats: entry.formats,
             enabled: true,
             customized: false,
             sortOrder: order.get(entry.slug) ?? STARTER_SKILL_SLUGS.length,
@@ -142,6 +143,7 @@ export async function installCatalogSkill(
     whenToUse: string;
     instructions: string;
     surfaces: BrainSurface[];
+    formats?: string[];
   },
 ): Promise<ProjectSkillRow> {
   const [row] = await getDb()
@@ -154,6 +156,7 @@ export async function installCatalogSkill(
       whenToUse: entry.whenToUse,
       instructions: entry.instructions,
       surfaces: entry.surfaces,
+      formats: entry.formats ?? [],
       enabled: true,
       customized: false,
       sortOrder: await nextSortOrder(projectId),
@@ -166,6 +169,7 @@ export async function installCatalogSkill(
         whenToUse: entry.whenToUse,
         instructions: entry.instructions,
         surfaces: entry.surfaces,
+        formats: entry.formats ?? [],
         enabled: true,
         customized: false,
         updatedAt: new Date(),
@@ -191,12 +195,14 @@ export async function updateProjectSkill(
     input.name !== undefined ||
     input.whenToUse !== undefined ||
     input.instructions !== undefined ||
-    input.surfaces !== undefined;
+    input.surfaces !== undefined ||
+    input.formats !== undefined;
 
   if (input.name !== undefined) patch.name = input.name;
   if (input.whenToUse !== undefined) patch.whenToUse = input.whenToUse;
   if (input.instructions !== undefined) patch.instructions = input.instructions;
   if (input.surfaces !== undefined) patch.surfaces = input.surfaces;
+  if (input.formats !== undefined) patch.formats = input.formats;
   if (input.enabled !== undefined) patch.enabled = input.enabled;
   if (textChanged) patch.customized = true;
 

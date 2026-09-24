@@ -10,6 +10,8 @@ export const STARTER_SKILL_SLUGS = [
   "storytime-three-acts",
   "show-dont-say",
   "caption-that-earns-the-save",
+  "chapters-that-hold",
+  "skimmable-sections",
 ] as const;
 
 const STARTER_SKILLS = new Set<string>(STARTER_SKILL_SLUGS);
