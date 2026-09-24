@@ -42,7 +42,7 @@ struct IdeaCanvasTitleBar: View {
                 IdeaCanvasSaveIndicator(autosave: store.autosave)
 
                 Button(action: actions.askChirpy) {
-                    Label("Ask Chirpy", systemImage: "sparkles")
+                    IdeaCanvasChirpyLabel("Ask Chirpy")
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .help("Ask Chirpy to change this piece")

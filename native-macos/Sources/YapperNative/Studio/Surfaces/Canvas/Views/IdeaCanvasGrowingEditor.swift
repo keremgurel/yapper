@@ -40,6 +40,9 @@ struct IdeaCanvasGrowingEditor: View {
                 .focused($focused)
         }
         .frame(minHeight: minHeight, alignment: .topLeading)
+        // The text view pads each line by 5pt; pulling the editor out by the
+        // same amount puts its words on the section titles' edge.
+        .padding(.horizontal, -5)
         .onChange(of: focused) { _, value in onFocusChange(value) }
         .onChange(of: focusRequest) { _, _ in focused = true }
         .onAppear { if focusRequest > 0 { focused = true } }

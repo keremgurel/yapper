@@ -85,7 +85,7 @@ private struct IdeaCanvasMoreHooksRow: View {
 
     var body: some View {
         Button(action: action) {
-            Label(hasHooks ? "Ask Chirpy for more openers" : "Ask Chirpy for openers", systemImage: "sparkles")
+            IdeaCanvasChirpyLabel(hasHooks ? "Ask Chirpy for more openers" : "Ask Chirpy for openers")
                 .font(.system(size: 14))
                 .foregroundStyle(hovering ? .primary : .secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)

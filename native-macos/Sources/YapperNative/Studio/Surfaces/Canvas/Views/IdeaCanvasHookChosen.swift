@@ -22,7 +22,7 @@ struct IdeaCanvasHookChosen: View {
                 .matchedGeometryEffect(id: hookKey, in: namespace)
             } else {
                 Button(action: onAskForHooks) {
-                    Label("Give me five hooks", systemImage: "sparkles")
+                    IdeaCanvasChirpyLabel("Give me five hooks")
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
                 .foregroundStyle(.secondary)
