@@ -18,7 +18,7 @@ struct IdeaCell: View {
         case .formats where drafting && row.formats.isEmpty:
             IdeaPendingPill(width: 72)
         case .pillar:
-            if let pillar = row.pillar { NativeChip(text: pillar, tone: IdeaPillarTone.tone(for: pillar), dot: true) } else { empty }
+            IdeaPillarMenu(row: row)
         case .formats:
             if row.formats.isEmpty { empty } else { IdeaFormatChips(formats: row.formats) }
         case .type:
@@ -34,6 +34,8 @@ struct IdeaCell: View {
             if row.hasScript {
                 Image(systemName: "doc.text").font(.system(size: 13)).foregroundStyle(.secondary).accessibilityLabel("Has a script")
             } else { empty }
+        case .added:
+            quiet(IdeaDates.stamp(row.createdAt)).monospacedDigit()
         case .updated:
             quiet(IdeaDates.stamp(row.updatedAt)).monospacedDigit()
         case .actions:
@@ -108,6 +110,10 @@ struct IdeaRowActions: View {
                 .buttonStyle(EditorGhostButtonStyle(size: .mini))
                 .help("Post to a platform")
             }
+        } else {
+            // Keeps the column's width: a cell that draws nothing drops its
+            // frame, and every column after it slid one column to the right.
+            Color.clear.frame(height: 1)
         }
     }
 }

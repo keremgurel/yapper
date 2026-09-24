@@ -6,6 +6,7 @@ export type ContentSortKey =
   | "title"
   | "status"
   | "updated"
+  | "added"
   | "pillar"
   | "type"
   | "script";
@@ -26,7 +27,7 @@ export const DEFAULT_CONTENT_SORT: ContentSort = {
  * pipeline read most naturally ascending (A to Z, captured to posted); time reads
  * newest-first, which is what "what did I touch last" wants. */
 export function defaultDirFor(key: ContentSortKey): SortDir {
-  return key === "updated" ? "desc" : "asc";
+  return key === "updated" || key === "added" ? "desc" : "asc";
 }
 
 /** Unclassified rows sort last whichever way the column is pointing: "no
@@ -59,6 +60,8 @@ function compareAsc(
       return statusRank(a.status) - statusRank(b.status);
     case "updated":
       return new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+    case "added":
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     case "pillar":
       return (a.pillar?.toLowerCase() || LAST).localeCompare(
         b.pillar?.toLowerCase() || LAST,
