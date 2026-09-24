@@ -7,9 +7,11 @@ import Foundation
 @MainActor
 final class IdeaCanvasAskRunner: ObservableObject {
     /// The canvas as it was before the newest reply that changed it.
-    struct Undo: Equatable {
+    struct Undo {
         let messageID: String?
         let state: IdeaCanvasState
+        /// The version the reply changed, which may no longer be on screen.
+        let body: IdeaCanvasBody
     }
 
     @Published private(set) var busy = false
@@ -22,10 +24,14 @@ final class IdeaCanvasAskRunner: ObservableObject {
 
     private let store: IdeaCanvasItemStore
     private let thread: IdeaCanvasThreadStore
+    /// The version on screen. Asks read and change it, and only it, so an
+    /// edit on the long-form tab never touches the short.
+    var body: IdeaCanvasBody
 
     init(store: IdeaCanvasItemStore, thread: IdeaCanvasThreadStore) {
         self.store = store
         self.thread = thread
+        body = store
     }
 
     func run(_ instruction: String, targetID: String? = nil) async {
@@ -36,13 +42,15 @@ final class IdeaCanvasAskRunner: ObservableObject {
         lastReply = nil
         defer { busy = false }
 
-        let blocks = store.blocks
-        let before = IdeaCanvasState(title: item.title, blocks: blocks, hooks: item.hooks)
+        let edited = self.body
+        let blocks = edited.blocks
+        let before = IdeaCanvasState(title: item.title, blocks: blocks, hooks: edited.hooks)
         let target = targetID.flatMap { id in blocks.firstIndex { $0.id == id } }
         let context = IdeaCanvasAskContext(
-            title: item.title, blocks: blocks, hooks: item.hooks, originalNote: item.originalNote,
+            title: item.title, blocks: blocks, hooks: edited.hooks, originalNote: item.originalNote,
             sourceTitle: item.sourceTitle, sourceURL: item.sourceUrl,
-            sourceExcerpt: item.sourceTranscript ?? item.sourceSummary ?? ""
+            sourceExcerpt: item.sourceTranscript ?? item.sourceSummary ?? "",
+            format: edited.format
         )
         let pendingID = thread.pendingAsk(trimmed)
         let body = IdeaCanvasAskBody(instruction: trimmed, context: context, target: target, contentID: item.id)
@@ -52,19 +60,19 @@ final class IdeaCanvasAskRunner: ObservableObject {
             thread.settle(pendingID, saved: nil)
             error = failure
         case .success(let reply):
-            apply(reply, before: before)
+            apply(reply, before: before, to: edited)
             thread.settle(pendingID, saved: reply.messages)
             let said = reply.chirpyMessage?.text
             let changed = reply.actions.isEmpty ? nil : IdeaCanvasActions.describe(reply.actions)
             lastReply = [said, changed, reply.note].compactMap { $0 }.first { !$0.isEmpty } ?? "Done."
-            undo = reply.actions.isEmpty ? nil : Undo(messageID: reply.chirpyMessage?.id, state: before)
+            undo = reply.actions.isEmpty ? nil : Undo(messageID: reply.chirpyMessage?.id, state: before, body: edited)
         }
     }
 
     func undoLast() {
         guard let undo, let item = store.item else { return }
-        store.setBlocks(undo.state.blocks)
-        store.setHooks(undo.state.hooks)
+        undo.body.setBlocks(undo.state.blocks)
+        undo.body.setHooks(undo.state.hooks)
         if undo.state.title != item.title { store.update(IdeaCanvasPatch(title: undo.state.title)) }
         self.undo = nil
         lastReply = "Undone."
@@ -73,16 +81,16 @@ final class IdeaCanvasAskRunner: ObservableObject {
     /// Puts an answer that changed nothing onto the page as its own block.
     func addToPage(_ message: IdeaCanvasMessage, asked: String) {
         let block = IdeaCanvasBlock(input: IdeaCanvasNoteToBlock.block(note: message.text, asked: asked))
-        store.editBlocks { $0 + [block] }
+        body.editBlocks { $0 + [block] }
         addedIDs.insert(message.id)
     }
 
     func dismissError() { error = nil }
 
-    private func apply(_ reply: IdeaCanvasAskReply, before: IdeaCanvasState) {
+    private func apply(_ reply: IdeaCanvasAskReply, before: IdeaCanvasState, to body: IdeaCanvasBody) {
         let next = IdeaCanvasActions.apply(before, reply.actions)
-        if next.blocks != before.blocks { store.setBlocks(next.blocks) }
-        if next.hooks != before.hooks { store.setHooks(next.hooks) }
+        if next.blocks != before.blocks { body.setBlocks(next.blocks) }
+        if next.hooks != before.hooks { body.setHooks(next.hooks) }
         if next.title != before.title { store.update(IdeaCanvasPatch(title: next.title)) }
     }
 }

@@ -40,6 +40,8 @@ struct ExpandRequest: Encodable {
         let source: IdeaSource?
     }
     let input: Input
+    /// The idea's lead format; a long-form or article is drafted in its shape.
+    let format: String
 }
 
 struct IdeaExpansionSection: Codable, Equatable {
@@ -73,6 +75,7 @@ struct CreateIdeaRequest: Encodable {
     let sourceUrl: String?
     let ideaType: String
     let transcriptStatus: String?
+    let leadFormat: String
 }
 
 /// The body of `POST /api/content` for a blank idea.

@@ -12,6 +12,7 @@ struct ComposerFooter: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 6) {
+            if !dictation.recording { ComposerFormatMenu() }
             status.frame(maxWidth: .infinity, alignment: dictation.recording ? .leading : .trailing)
             iconButton(expanded ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
                        help: expanded ? "Back to the page (Esc)" : "Write full screen", action: onToggleExpanded)

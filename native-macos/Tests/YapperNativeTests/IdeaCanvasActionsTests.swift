@@ -122,7 +122,5 @@ struct IdeaCanvasActionsTests {
         #expect(IdeaCanvasText.speakingTime(words: 150) == "1:00")
         #expect(IdeaCanvasText.speakingTime(words: 40) == "0:16")
         #expect(IdeaCanvasText.hookKeys(["a", "b", "a"]) == ["a#0", "b#0", "a#1"])
-        #expect(IdeaCanvasFormat.toggle("short", in: ["article"]) == ["short", "article"])
-        #expect(IdeaCanvasFormat.toggle("article", in: ["short", "article"]) == ["short"])
     }
 }

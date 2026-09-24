@@ -13,6 +13,7 @@ import {
 import { getDb } from "./client";
 import {
   contentItems,
+  contentVersions,
   projectPillars,
   type ContentBlock,
   type ContentHook,
@@ -85,6 +86,13 @@ export async function listContentItems(
        * rendering the stale free text, and the edit looks like it did nothing.
        */
       formats: contentItems.formats,
+      leadFormat: contentItems.leadFormat,
+      /** The formats with a version besides the lead, for the Versions column. */
+      versionFormats: sql<string[]>`coalesce((
+        select json_agg(${contentVersions.format})
+        from ${contentVersions}
+        where ${contentVersions.contentItemId} = ${contentItems.id}
+      ), '[]'::json)`,
       pillar: sql<
         string | null
       >`coalesce(${projectPillars.name}, ${contentItems.pillar})`,

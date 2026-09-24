@@ -60,11 +60,26 @@ enum TeleprompterText {
         case .off:
             return ""
         case .script:
-            let script = (item.script ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            let script = spoken(item.script ?? "")
             return script.isEmpty ? notes(item) : script
         case .notes:
             return notes(item)
         }
+    }
+
+    /// A script as it is read aloud: `[B-ROLL: ...]` and `[ON SCREEN: ...]`
+    /// notes are not said, so they go; a long-form's `## Chapter` line stays
+    /// as a quiet capitalised marker so the speaker knows where they are.
+    static func spoken(_ script: String) -> String {
+        script.components(separatedBy: "\n").compactMap { line -> String? in
+            let trimmed = line.trimmed
+            let upper = trimmed.uppercased()
+            if trimmed.hasSuffix("]"), upper.hasPrefix("[B-ROLL") || upper.hasPrefix("[ON SCREEN") { return nil }
+            if trimmed.hasPrefix("## ") { return String(trimmed.dropFirst(3)).trimmed.uppercased() }
+            return line
+        }
+        .joined(separator: "\n")
+        .trimmed
     }
 
     /// The opening line, then the beats. Section labels are left out on

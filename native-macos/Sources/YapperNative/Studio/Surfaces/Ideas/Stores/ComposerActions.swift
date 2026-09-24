@@ -29,8 +29,9 @@ final class ComposerActions: ObservableObject {
         let capture = words.ideasTrimmed
         guard !capture.isEmpty else { return }
         do {
-            try await IdeaCapture.shared.capture(capture)
+            try await IdeaCapture.shared.capture(capture, format: CaptureFormat.shared.current)
             draft.clear()
+            CaptureFormat.shared.reset()
         } catch {
             captureError = "Your idea couldn't be saved. Your draft is still here; try again."
         }

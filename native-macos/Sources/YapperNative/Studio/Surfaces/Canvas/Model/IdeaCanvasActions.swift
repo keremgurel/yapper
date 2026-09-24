@@ -29,7 +29,8 @@ struct IdeaCanvasState: Equatable {
 enum IdeaCanvasActions {
     static let maxActions = 12
     static let maxLabel = 60
-    static let maxText = 6000
+    /// Matches the server's CANVAS_LIMITS.maxText: room for a long-form script.
+    static let maxText = 20_000
     static let maxItems = 30
     static let maxItem = 400
     static let maxHooks = 8

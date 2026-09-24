@@ -49,11 +49,15 @@ struct IdeaCanvasItem: Decodable, Equatable {
     var points: [String]
     var example: String
     var cta: String
+    /// The format the idea started in; its body above is that version.
+    var leadFormat: IdeaCanvasVersionFormat
+    /// Every other version written so far.
+    var versions: [IdeaCanvasVersion]
 
     private enum CodingKeys: String, CodingKey {
         case id, title, status, formats, pillar, pillarId, submissionId, scheduledFor, hooks, blocks, script
         case originalNote, ideaType, sourceUrl, sourceTitle, sourceTranscript, sourceSummary
-        case recordedTranscript, transcriptStatus, points, example, cta
+        case recordedTranscript, transcriptStatus, points, example, cta, leadFormat, versions
     }
 
     init(from decoder: Decoder) throws {
@@ -83,6 +87,8 @@ struct IdeaCanvasItem: Decodable, Equatable {
         points = try c.decodeIfPresent([String].self, forKey: .points) ?? []
         example = try c.decodeIfPresent(String.self, forKey: .example) ?? ""
         cta = try c.decodeIfPresent(String.self, forKey: .cta) ?? ""
+        leadFormat = (try? c.decodeIfPresent(IdeaCanvasVersionFormat.self, forKey: .leadFormat)) ?? .short
+        versions = (try? c.decodeIfPresent([IdeaCanvasVersion].self, forKey: .versions)) ?? []
     }
 
     /// Whether anything shows under "Where this came from".
