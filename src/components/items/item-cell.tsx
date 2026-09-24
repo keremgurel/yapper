@@ -132,6 +132,13 @@ export default function ItemCell({
         </span>
       );
 
+    case "added":
+      return (
+        <span className="text-muted-foreground truncate text-[13px] tabular-nums">
+          {when(row.createdAt)}
+        </span>
+      );
+
     case "actions":
       // Only a row with a recording can be opened in the native editor or
       // posted; the rest of the pipeline has nothing to act on yet.

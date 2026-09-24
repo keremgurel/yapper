@@ -18,6 +18,7 @@ export type ColumnKey =
   | "status"
   | "script"
   | "updated"
+  | "added"
   | "actions";
 
 export interface ColumnDef {
@@ -96,6 +97,13 @@ const COLUMNS: Record<ColumnKey, ColumnDef> = {
     sortable: true,
     compact: false,
   },
+  added: {
+    key: "added",
+    label: "Added",
+    width: "150px",
+    sortable: true,
+    compact: false,
+  },
   actions: {
     key: "actions",
     label: "",
@@ -124,6 +132,7 @@ export const LIBRARY_COLUMNS: ColumnKey[] = [
   "formats",
   "status",
   "script",
+  "added",
   "updated",
   "actions",
 ];
@@ -137,6 +146,7 @@ export const ALL_COLUMN_KEYS: ColumnKey[] = [
   "transcript",
   "status",
   "script",
+  "added",
   "updated",
   "actions",
 ];

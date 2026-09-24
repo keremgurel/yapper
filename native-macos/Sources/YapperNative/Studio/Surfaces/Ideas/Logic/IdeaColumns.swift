@@ -2,7 +2,7 @@ import CoreGraphics
 
 /// The column vocabulary a view can switch on, and how wide each one is.
 enum IdeaColumn: String, CaseIterable, Identifiable {
-    case title, pillar, formats, type, transcript, status, script, updated, actions
+    case title, pillar, formats, type, transcript, status, script, added, updated, actions
     var id: String { rawValue }
 
     var label: String {
@@ -14,6 +14,7 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
         case .transcript: "Reference"
         case .status: "Status"
         case .script: "Script"
+        case .added: "Added"
         case .updated: "Updated"
         case .actions: ""
         }
@@ -26,13 +27,14 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
     var width: CGFloat? {
         switch self {
         case .title: nil
-        case .pillar: 150
+        case .pillar: 190
         case .formats: 170
         case .type: 120
         case .transcript: 130
         case .status: 130
         case .script: 90
-        case .updated: 150
+        case .added: 140
+        case .updated: 140
         case .actions: 72
         }
     }
@@ -45,12 +47,13 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
         case .status: .status
         case .script: .script
         case .updated: .updated
+        case .added: .added
         case .formats, .transcript, .actions: nil
         }
     }
 
     /// What the list shows before a view picks its own columns.
-    static let defaults: [IdeaColumn] = [.title, .pillar, .formats, .status, .script, .updated, .actions]
+    static let defaults: [IdeaColumn] = [.title, .pillar, .formats, .status, .script, .added, .updated, .actions]
 
     /// The columns a view renders. An empty saved list means the defaults, and
     /// the title is always in front: a row with no title is unusable.

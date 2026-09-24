@@ -1,7 +1,7 @@
 import Foundation
 
 enum IdeaSortKey: String {
-    case title, status, updated, pillar, type, script
+    case title, status, updated, added, pillar, type, script
 }
 
 /// The table's sort: a column and a direction. Newest edits first at rest.
@@ -16,7 +16,7 @@ struct IdeaSort: Equatable {
             ascending.toggle()
         } else {
             key = next
-            ascending = next != .updated
+            ascending = next != .updated && next != .added
         }
     }
 
@@ -40,6 +40,10 @@ struct IdeaSort: Equatable {
         case .updated:
             let left = a.updatedDate?.timeIntervalSince1970 ?? 0
             let right = b.updatedDate?.timeIntervalSince1970 ?? 0
+            return left == right ? 0 : (left < right ? -1 : 1)
+        case .added:
+            let left = IdeaDates.parse(a.createdAt)?.timeIntervalSince1970 ?? 0
+            let right = IdeaDates.parse(b.createdAt)?.timeIntervalSince1970 ?? 0
             return left == right ? 0 : (left < right ? -1 : 1)
         case .pillar:
             return Self.order(a.pillar?.lowercased().nonEmpty ?? Self.last, b.pillar?.lowercased().nonEmpty ?? Self.last)
