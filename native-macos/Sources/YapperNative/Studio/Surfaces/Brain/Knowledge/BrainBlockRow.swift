@@ -2,7 +2,7 @@ import SwiftUI
 
 /// A section as a row: what it is called, what it is for, how much of it the
 /// AI reads, and how big it is. Opens in place, so whatever it was being
-/// compared against stays on screen.
+/// compared against stays on screen. Clicking it opens the editor panel.
 struct BrainBlockRow: View {
     let block: BrainBlock
     let open: Bool
@@ -20,10 +20,6 @@ struct BrainBlockRow: View {
                 reorderControls
                 Button(action: onToggle) {
                     HStack(spacing: 10) {
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .semibold))
-                            .rotationEffect(.degrees(open ? 90 : 0))
-                            .foregroundStyle(.secondary)
                         Image(systemName: block.kind.symbol).font(.system(size: 13)).foregroundStyle(.secondary).frame(width: 16)
                         Text(block.title.isEmpty ? "Untitled" : block.title)
                             .font(.system(size: 14, weight: .medium)).lineLimit(1).layoutPriority(1)
@@ -52,11 +48,6 @@ struct BrainBlockRow: View {
                 Button("Move down") { Task { await store.move(block.id, by: 1) } }.disabled(!canReorder || position >= total - 1)
             }
 
-            if open {
-                BrainBlockEditor(block: block) { store.edit(block.id, $0) }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
-            }
         }
     }
 

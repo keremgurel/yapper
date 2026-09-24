@@ -62,12 +62,12 @@ struct BrainBlockList: View {
                         if index > 0 { Rectangle().fill(Color.studioLine).frame(height: 1) }
                         BrainBlockRow(
                             block: block,
-                            open: openID == block.id,
+                            open: false,
                             canReorder: !filtering,
                             position: blocks.firstIndex { $0.id == block.id } ?? 0,
                             total: blocks.count,
                             store: store,
-                            onToggle: { openID = openID == block.id ? nil : block.id }
+                            onToggle: { BrainEditorRouter.shared.editing = .block(block.id) }
                         )
                     }
                     if rows.isEmpty {

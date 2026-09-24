@@ -10,6 +10,7 @@ struct BrainPage: View {
 
     @State private var tab: BrainTab = .essentials
     @State private var sheet: BrainSheet?
+    @ObservedObject private var editor = BrainEditorRouter.shared
 
     var body: some View {
         NativePage() {
@@ -40,9 +41,15 @@ struct BrainPage: View {
             case .setup: BrainSetupSheet { self.sheet = nil }
             case .addContext: BrainAddContextSheet { self.sheet = nil }
             case .catalog: BrainCatalogSheet { self.sheet = nil }
-            case .skill(let id): BrainSkillEditorSheet(skillID: id) { self.sheet = nil }
             }
         }
+        .nativeDrawer(item: $editor.editing) { editing in
+            switch editing {
+            case .skill(let id): BrainSkillEditorSheet(skillID: id) { editor.editing = nil }
+            case .block(let id): BrainBlockEditorPanel(blockID: id) { editor.editing = nil }
+            }
+        }
+        .onDisappear { editor.editing = nil }
         .task {
             async let a: Void = project.refresh()
             async let b: Void = blocks.refresh()
@@ -69,7 +76,7 @@ struct BrainPage: View {
         case .skills:
             BrainSkillsTab(
                 onDiscover: { sheet = .catalog },
-                onOpen: { sheet = .skill($0) }
+                onOpen: { editor.editing = .skill($0) }
             )
         }
     }
@@ -80,7 +87,6 @@ enum BrainTab: Hashable { case essentials, knowledge, skills }
 /// The one sheet the page shows at a time.
 enum BrainSheet: Identifiable, Hashable {
     case voice, setup, addContext, catalog
-    case skill(String)
 
     var id: String {
         switch self {
@@ -88,7 +94,6 @@ enum BrainSheet: Identifiable, Hashable {
         case .setup: "setup"
         case .addContext: "addContext"
         case .catalog: "catalog"
-        case .skill(let id): "skill-\(id)"
         }
     }
 }
