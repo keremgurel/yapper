@@ -46,6 +46,16 @@ struct BrainEssentialsCard: View {
                     .textFieldStyle(NativeTextFieldStyle(size: 14))
                     .frame(maxWidth: 380)
             }
+            NativeField(label: "Default format") {
+                VStack(alignment: .leading, spacing: 6) {
+                    NativeSegmented.formats(selection: Binding(
+                        get: { project.defaultFormat ?? .short },
+                        set: { store.update(.defaultFormat($0)) }
+                    ))
+                    Text("New ideas start in this format. You can make the other formats from any idea later.")
+                        .font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+            }
             LazyVGrid(columns: columns, alignment: .leading, spacing: 20) {
                 ForEach(BrainProjectField.allCases) { field in
                     NativeField(label: field.label) {

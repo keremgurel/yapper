@@ -69,6 +69,10 @@ final class BrainProjectStore: ObservableObject {
         case .pillars(let value):
             pillars = value
             pillarRevision += 1
+        case .defaultFormat(let value):
+            project?.defaultFormat = value
+            // The composer shows the new default without waiting for a reload.
+            CaptureFormat.shared.setDefault(value)
         }
     }
 

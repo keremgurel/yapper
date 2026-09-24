@@ -503,6 +503,8 @@ export const skillCatalog = pgTable(
     whenToUse: text("when_to_use").notNull().default(""),
     instructions: text("instructions").notNull().default(""),
     surfaces: jsonb("surfaces").$type<BrainSurface[]>().notNull().default([]),
+    /** Version formats an installed copy is limited to; empty means all. */
+    formats: jsonb("formats").$type<string[]>().notNull().default([]),
     category: text("category").notNull().default(""),
     published: boolean("published").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(0),

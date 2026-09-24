@@ -10,6 +10,8 @@ struct BrainProject: Codable, Equatable, Sendable {
     var scriptingPatterns: String
     var offers: String
     var doNots: String
+    /// Where a new idea starts. Absent on an older reply, which reads as short.
+    var defaultFormat: IdeaCanvasVersionFormat?
 
     subscript(field: BrainProjectField) -> String {
         get {
@@ -136,9 +138,11 @@ enum BrainProjectEdit: Equatable, Sendable {
     case name(String)
     case text(BrainProjectField, String)
     case pillars([BrainPillarDraft])
+    case defaultFormat(IdeaCanvasVersionFormat)
 
     var patch: BrainPatch {
         switch self {
+        case .defaultFormat(let value): ["defaultFormat": .string(value.rawValue)]
         case .name(let value): ["name": .string(value)]
         case .text(let field, let value): [field.rawValue: .string(value)]
         case .pillars(let value): ["pillars": .array(value.map(\.json))]

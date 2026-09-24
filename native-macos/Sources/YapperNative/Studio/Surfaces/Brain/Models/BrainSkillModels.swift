@@ -45,15 +45,28 @@ struct BrainSkill: Codable, Equatable, Identifiable, Sendable {
     var instructions: String
     /// Raw strings, so a surface added on the server never fails the decode.
     var surfaces: [String]
+    /// Version formats it is limited to; nil or empty means every format.
+    var formats: [String]?
     var enabled: Bool
     var customized: Bool
     var sortOrder: Int
 
     static let starterSlugs: Set<String> = [
         "hook-shapes", "storytime-three-acts", "show-dont-say", "caption-that-earns-the-save",
+        "chapters-that-hold", "skimmable-sections",
     ]
 
     var isStarter: Bool { catalogSlug.map(Self.starterSlugs.contains) ?? false }
+
+    /// The formats it is limited to, in tab order; empty means all of them.
+    var versionFormats: [IdeaCanvasVersionFormat] {
+        IdeaCanvasVersionFormat.allCases.filter { (formats ?? []).contains($0.rawValue) }
+    }
+
+    /// Whether it shapes this format's writing.
+    func applies(to format: IdeaCanvasVersionFormat) -> Bool {
+        versionFormats.isEmpty || versionFormats.contains(format)
+    }
 }
 
 struct BrainSkillsResponse: Codable, Sendable { let skills: [BrainSkill] }
@@ -65,6 +78,7 @@ enum BrainSkillEdit: Equatable, Sendable {
     case whenToUse(String)
     case instructions(String)
     case surfaces([String])
+    case formats([String])
     case enabled(Bool)
 
     var patch: BrainPatch {
@@ -73,6 +87,7 @@ enum BrainSkillEdit: Equatable, Sendable {
         case .whenToUse(let value): ["whenToUse": .string(value)]
         case .instructions(let value): ["instructions": .string(value)]
         case .surfaces(let value): ["surfaces": .strings(value)]
+        case .formats(let value): ["formats": .strings(value)]
         case .enabled(let value): ["enabled": .bool(value)]
         }
     }
@@ -83,6 +98,7 @@ enum BrainSkillEdit: Equatable, Sendable {
         case .whenToUse(let value): skill.whenToUse = value
         case .instructions(let value): skill.instructions = value
         case .surfaces(let value): skill.surfaces = value
+        case .formats(let value): skill.formats = value
         case .enabled(let value): skill.enabled = value
         }
     }

@@ -61,6 +61,19 @@ struct BrainSkillEditorSheet: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
         }
+        NativeField(label: "Use for") {
+            VStack(alignment: .leading, spacing: 6) {
+                BrainFlowLayout {
+                    ForEach(IdeaCanvasVersionFormat.allCases) { format in
+                        BrainToggleChip(text: format.label, on: skill.versionFormats.contains(format)) {
+                            toggle(format, in: skill)
+                        }
+                    }
+                }
+                Text(skill.versionFormats.isEmpty ? "Nothing picked, so it shapes every format." : "Only shapes these formats.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
+        }
         NativeField(label: "Where it applies") {
             VStack(alignment: .leading, spacing: 6) {
                 BrainFlowLayout {
@@ -104,6 +117,12 @@ struct BrainSkillEditorSheet: View {
             ? skill.surfaces.filter { $0 != surface.rawValue }
             : skill.surfaces + [surface.rawValue]
         store.edit(skill.id, .surfaces(next))
+    }
+
+    private func toggle(_ format: IdeaCanvasVersionFormat, in skill: BrainSkill) {
+        let current = skill.versionFormats
+        let next = current.contains(format) ? current.filter { $0 != format } : current + [format]
+        store.edit(skill.id, .formats(IdeaCanvasVersionFormat.allCases.filter(next.contains).map(\.rawValue)))
     }
 
     private func reset(_ skill: BrainSkill) {
