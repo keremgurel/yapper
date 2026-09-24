@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/studio-ui";
+import { lapsedMediaDeleteAt } from "@/lib/billing/entitlement";
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -81,6 +82,8 @@ export default async function StoragePage() {
   const committedBytes = usedBytes + details.reservedBytes;
   const percent = storageUsagePercent(committedBytes, quotaBytes);
   const plan = planByKey(state?.plan);
+  // A lapsed account keeps its videos for 30 days after access ends.
+  const videosDeleteOn = usedBytes > 0 ? lapsedMediaDeleteAt(state) : null;
   const pressure =
     percent >= 90 ? "critical" : percent >= 70 ? "near" : "roomy";
 
@@ -101,6 +104,19 @@ export default async function StoragePage() {
           </Link>
         }
       />
+
+      {videosDeleteOn && (
+        <p className="border-border bg-card rounded-2xl border px-5 py-4 text-sm">
+          <span className="text-foreground font-semibold">
+            Your stored videos will be deleted on{" "}
+            {videosDeleteOn.toLocaleDateString("en", { dateStyle: "long" })}.
+          </span>{" "}
+          <span className="text-muted-foreground">
+            Your subscription ended. Resubscribe before then to keep them. Your
+            Brain, ideas and scripts stay either way.
+          </span>
+        </p>
+      )}
 
       <section className="border-border bg-card relative rounded-2xl border p-6">
         <div className="relative">
