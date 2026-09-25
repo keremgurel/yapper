@@ -16,6 +16,7 @@ struct NativeSurfaceHost: View {
     var body: some View {
         content
             .onAppear {
+                PerfLog.logger.debug("page \(destination.rawValue, privacy: .public) appeared")
                 StudioNavigation.shared.goTo = navigate
                 StudioNavigation.shared.openInEditor = { [session, navigate] url in
                     Task { @MainActor in

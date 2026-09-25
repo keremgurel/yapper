@@ -137,6 +137,8 @@ enum PosterHandoffService {
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         let (data, response) = try await URLSession.shared.data(for: request)
         try requireSuccess(response, body: data)
+        // A handoff creates a library item; lists read before it are stale.
+        await APIReadCache.shared.clear()
         guard let decoded = try? JSONDecoder().decode(Response.self, from: data) else {
             throw PosterHandoffError.invalidResponse
         }

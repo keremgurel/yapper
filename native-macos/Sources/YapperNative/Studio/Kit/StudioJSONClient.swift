@@ -52,19 +52,16 @@ enum StudioJSONClient {
     /// For routes whose reply the caller reads by hand, or ignores.
     @discardableResult
     static func raw(_ path: String, method: String, body: Data?, contentType: String = "application/json") async throws -> Data {
-        var request = await YapperAPI.authenticatedRequest(url: url(path))
-        request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        if let body {
-            request.httpBody = body
-            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        do {
+            return try await APITransport.send(path, method: method) { request in
+                if let body {
+                    request.httpBody = body
+                    request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+                }
+            }
+        } catch let failure as APITransport.Failure {
+            throw Self.failure(status: failure.status, body: failure.body)
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            throw failure(status: status, body: data)
-        }
-        return data
     }
 
     private struct Empty: Encodable {}

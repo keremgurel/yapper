@@ -90,11 +90,13 @@ struct AppShellView: View {
                 // No tab shows the web page any more, so it may never report
                 // who is signed in; ask Clerk for the name directly.
                 await auth.loadIdentityFromClerk()
+                if auth.isSignedIn == true { await StudioPrefetch.warm() }
             }
             .onChange(of: auth.isSignedIn) { _, signedIn in
                 // Someone signing out mid-session lands on the door, and the watcher
                 // picks them back up when they come through it.
                 if signedIn == false { auth.startWatching() } else { auth.stopWatching() }
+                if signedIn == true { Task { await StudioPrefetch.warm() } }
             }
             .onAppear {
                 // A launch straight into a web tab parks on that tab, not on Home.
@@ -224,8 +226,14 @@ struct AppShellView: View {
         if !next.isNative, next.hasWebPage { parkedWebDestination = next }
         var transaction = Transaction()
         transaction.disablesAnimations = true
+        let started = ContinuousClock.now
         withTransaction(transaction) {
             destinationRaw = next.rawValue
+        }
+        // The main thread is free again once the new page has been built and
+        // drawn, so this measures what a tab switch costs on screen.
+        DispatchQueue.main.async {
+            PerfLog.logger.debug("switch \(next.rawValue, privacy: .public) \(PerfLog.milliseconds(since: started))ms")
         }
     }
 

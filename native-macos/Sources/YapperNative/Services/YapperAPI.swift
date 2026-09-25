@@ -34,6 +34,8 @@ enum YapperAPI {
     }
 
     static func authenticatedRequest(url: URL) async -> URLRequest {
+        let started = ContinuousClock.now
+        defer { PerfLog.logger.debug("auth \(PerfLog.milliseconds(since: started))ms \(url.path, privacy: .public)") }
         let cookies = await webSessionCookies()
         let applicableCookies = cookies.filter { cookie in
             cookieApplies(cookie, to: url)
@@ -45,7 +47,7 @@ enum YapperAPI {
         // A freshly minted bearer token is authoritative when the short-lived
         // cookie has not refreshed yet. Keep cookies too: they are the cheap,
         // established path and cover older Clerk clients.
-        if let token = await freshSessionToken() {
+        if let token = await freshSessionToken(unlessCookieWorks: applicableCookies) {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         // The same name the web session uses. An unnamed URLSession posting
@@ -63,7 +65,14 @@ enum YapperAPI {
     /// showed an error for an account that was signed in. Waiting up to a few
     /// seconds for the page to mint a token closes that gap; once Clerk is up
     /// the first attempt answers at once.
-    private static func freshSessionToken() async -> String? {
+    private static func freshSessionToken(unlessCookieWorks cookies: [HTTPCookie]) async -> String? {
+        if let token = await StudioWebCommands.shared.sessionToken(askPage: false) { return token }
+        // A session cookie with a few seconds left authenticates the request
+        // by itself, so there is nothing to wait for.
+        let cookieIsLive = cookies.contains { cookie in
+            cookie.name.hasPrefix("__session") && (cookie.expiresDate.map { $0.timeIntervalSinceNow > 5 } ?? true)
+        }
+        if cookieIsLive { return nil }
         let deadline = Date().addingTimeInterval(8)
         while true {
             if let token = await StudioWebCommands.shared.sessionToken() { return token }

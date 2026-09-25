@@ -45,6 +45,8 @@ final class StudioWebCommands: ObservableObject {
 
     func signOut() {
         signOutGeneration += 1
+        cachedToken = nil
+        Task { await APIReadCache.shared.clear() }
         // Clerk clears its cookies as it goes; the shell looks again shortly
         // after so the window falls back to the sign-in screen by itself.
         StudioAuth.shared.forgetWebReport()
@@ -106,13 +108,43 @@ final class StudioWebCommands: ObservableObject {
     /// can still have a perfectly valid client session while that cookie is
     /// between refreshes, especially just after launch. Asking Clerk itself
     /// avoids turning that timing window into a spurious sign-out.
-    func sessionToken() async -> String? {
-        // Clerk's tokens live for a minute; reusing one for 30 seconds keeps
-        // a page that fires a dozen reads from making a dozen trips into the
-        // web process.
+    ///
+    /// Tried in order: a token minted in the last 30 seconds (they live for a
+    /// minute), Clerk's Frontend API directly, then the hidden page. Requests
+    /// fired together share each attempt instead of starting their own.
+    ///
+    /// - Parameter askPage: false to never wait on the hidden page, which can
+    ///   take seconds right after launch while it starts clerk-js.
+    func sessionToken(askPage: Bool = true) async -> String? {
         if let cached = cachedToken, Date().timeIntervalSince(cached.at) < 30 {
             return cached.token
         }
+        if let token = await shared(\.pendingDirect, { await ClerkTokenRefresher.mint() }) {
+            return token
+        }
+        guard askPage else { return nil }
+        return await shared(\.pendingPage) { [weak self] in await self?.tokenFromPage() }
+    }
+
+    private var pendingDirect: Task<String?, Never>?
+    private var pendingPage: Task<String?, Never>?
+
+    /// Runs `mint` once for everyone waiting on the same slot, and keeps
+    /// what it returns as the cached token.
+    private func shared(
+        _ slot: ReferenceWritableKeyPath<StudioWebCommands, Task<String?, Never>?>,
+        _ mint: @escaping @MainActor () async -> String?
+    ) async -> String? {
+        if let pending = self[keyPath: slot] { return await pending.value }
+        let task = Task { await mint() }
+        self[keyPath: slot] = task
+        defer { if self[keyPath: slot] == task { self[keyPath: slot] = nil } }
+        guard let token = await task.value else { return nil }
+        cachedToken = (token, Date())
+        return token
+    }
+
+    private func tokenFromPage() async -> String? {
         let result = await runJavaScript(
             """
             let clerk = window.Clerk;
@@ -123,7 +155,6 @@ final class StudioWebCommands: ObservableObject {
             timeout: 3
         )
         guard let token = result as? String, !token.isEmpty else { return nil }
-        cachedToken = (token, Date())
         return token
     }
 

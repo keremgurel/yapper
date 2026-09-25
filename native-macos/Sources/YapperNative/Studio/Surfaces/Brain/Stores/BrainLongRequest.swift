@@ -11,16 +11,16 @@ enum BrainLongRequest {
         timeout: TimeInterval,
         as type: T.Type = T.self
     ) async throws -> T {
-        var request = await YapperAPI.authenticatedRequest(url: StudioJSONClient.url(path))
-        request.httpMethod = "POST"
-        request.timeoutInterval = timeout
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try StudioJSONClient.encoder.encode(body)
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else {
-            throw StudioJSONClient.failure(status: status, body: data)
+        let payload = try StudioJSONClient.encoder.encode(body)
+        let data: Data
+        do {
+            data = try await APITransport.send(path, method: "POST") { request in
+                request.timeoutInterval = timeout
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = payload
+            }
+        } catch let failure as APITransport.Failure {
+            throw StudioJSONClient.failure(status: failure.status, body: failure.body)
         }
         do {
             return try StudioJSONClient.decoder.decode(T.self, from: data)

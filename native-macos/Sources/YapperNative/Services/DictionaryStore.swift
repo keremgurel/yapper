@@ -124,23 +124,17 @@ actor DictionaryStore {
         method: String,
         body: Data? = nil
     ) async throws -> [DictionaryEntry] {
-        var request = await YapperAPI.authenticatedRequest(url: YapperAPI.url(path: path))
-        request.httpMethod = method
-        request.timeoutInterval = 20
-        if let body {
-            request.httpBody = body
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard
-            let http = response as? HTTPURLResponse,
-            (200 ..< 300).contains(http.statusCode)
-        else {
-            throw YapperAPI.failure(
-                status: (response as? HTTPURLResponse)?.statusCode ?? 0,
-                body: data,
-                action: "Saving the dictionary"
-            )
+        let data: Data
+        do {
+            data = try await APITransport.send(path, method: method) { request in
+                request.timeoutInterval = 20
+                if let body {
+                    request.httpBody = body
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
+            }
+        } catch let failure as APITransport.Failure {
+            throw YapperAPI.failure(status: failure.status, body: failure.body, action: "Saving the dictionary")
         }
         let decoded = try? JSONDecoder().decode(EntriesResponse.self, from: data)
         let raw = decoded?.entries ?? decoded?.entry.map { [$0] } ?? []
