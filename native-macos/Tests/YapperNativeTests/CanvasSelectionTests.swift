@@ -140,10 +140,10 @@ struct HookPlacementTests {
         return session
     }
 
-    @Test func aHookOpensTheVideoForFiveSeconds() {
+    @Test func aHookOpensTheVideoForFiveSeconds() async {
         let session = sessionWithFootage()
         session.seekToTimelineTime(12)
-        session.addTextLayer(asHook: true)
+        await session.insertTextLayer(asHook: true)
 
         let hook = session.project.textLayers?.last
         #expect(hook?.timelineStart == 0)
@@ -151,7 +151,7 @@ struct HookPlacementTests {
     }
 
 
-    @Test func aHookOnAShortProjectStopsAtTheEnd() {
+    @Test func aHookOnAShortProjectStopsAtTheEnd() async {
         let session = EditorSession()
         let mediaID = UUID()
         session.updateProject { project in
@@ -170,7 +170,7 @@ struct HookPlacementTests {
                 clips: [TimelineClip(mediaID: mediaID, sourceStart: 0, sourceEnd: 3)]
             )
         }
-        session.addTextLayer(asHook: true)
+        await session.insertTextLayer(asHook: true)
         #expect(session.project.textLayers?.last?.duration == 3)
     }
 }
