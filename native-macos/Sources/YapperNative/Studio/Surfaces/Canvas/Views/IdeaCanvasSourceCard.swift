@@ -23,7 +23,7 @@ struct IdeaCanvasSourceCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if borrowedOnly {
-                    Text("This is someone else's video with nothing of yours in it yet. Tell Chirpy what you'd add and it becomes semi-original.")
+                    Text("This is someone else's video with nothing of yours in it yet. Add your own note below and it becomes semi-original.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

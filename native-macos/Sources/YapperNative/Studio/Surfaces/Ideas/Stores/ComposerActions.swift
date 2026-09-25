@@ -49,6 +49,12 @@ final class ComposerActions: ObservableObject {
         }
     }
 
+    /// Sends a take that failed to transcribe again, keeping its words.
+    func retryTake() async {
+        guard !saving, let heard = await dictation.retryUnsentTake() else { return }
+        draft.insertDictation(heard)
+    }
+
     func finishTake() async {
         guard let heard = await dictation.stop() else { return }
         draft.insertDictation(heard)
