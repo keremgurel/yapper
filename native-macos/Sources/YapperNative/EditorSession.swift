@@ -1409,10 +1409,15 @@ final class EditorSession: ObservableObject {
     }
 
     func addTextLayer(asHook: Bool = false) {
+        Task { await insertTextLayer(asHook: asHook) }
+    }
+
+    /// Adds a text layer (or the hook) at the playhead through the shared
+    /// action, and returns once it is on the project. The buttons use
+    /// `addTextLayer`, which does not wait.
+    func insertTextLayer(asHook: Bool = false) async {
         guard duration > 0 else { return }
-        Task {
-            await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook))
-        }
+        await performAppAction(TextLayerAddInput(text: asHook ? "Your hook" : "Text", at: .playhead, duration: nil, asHook: asHook))
     }
 
     /// Plays an effect to hear it, and says which one is playing.

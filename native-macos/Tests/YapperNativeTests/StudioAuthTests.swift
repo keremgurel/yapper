@@ -52,14 +52,24 @@ struct StudioAuthTests {
         #expect(auth.accountName == "Account")
     }
 
-    @Test("Session invalidation clears the displayed account immediately")
-    func invalidation() {
+    @Test("Forgetting the web report clears the displayed account at once")
+    func forgettingTheReport() {
         let auth = StudioAuth()
         auth.report(signedIn: true, userID: "first", displayName: "First")
         auth.forgetWebReport()
         #expect(auth.account == nil)
+    }
+
+    @Test("A refused request only signs out once Clerk confirms the session is gone")
+    func refusedRequest() async {
+        let auth = StudioAuth()
         auth.report(signedIn: true, userID: "second", displayName: "Second")
         auth.requireSignIn()
+        // Not straight away: a token that lapsed a second ago reads the same,
+        // and flipping to the sign-in door rebuilt every page.
+        #expect(auth.account?.userID == "second")
+        // With no web session to ask, Clerk has no account, so it goes.
+        await auth.signOutIfSessionIsGone()
         defer { auth.stopWatching() }
         #expect(auth.account == nil)
         #expect(auth.isSignedIn == false)

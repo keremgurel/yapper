@@ -98,18 +98,21 @@ final class StudioAuth: ObservableObject {
         // reset" after generating captions or clicking Post. Ask Clerk first.
         guard !confirmingSignOut else { return }
         confirmingSignOut = true
-        Task { [weak self] in
-            StudioWebCommands.shared.forgetToken()
-            let stillSignedIn = await StudioWebCommands.shared.accountIdentity() != nil
-            guard let self else { return }
-            self.confirmingSignOut = false
-            guard !stillSignedIn else { return }
-            self.reportedByWeb = false
-            self.account = nil
-            self.firstLook = nil
-            self.isSignedIn = false
-            self.startWatching()
-        }
+        Task { [weak self] in await self?.signOutIfSessionIsGone() }
+    }
+
+    /// Asks Clerk whether the account is really gone, and only then drops it
+    /// and shows the sign-in door.
+    func signOutIfSessionIsGone() async {
+        StudioWebCommands.shared.forgetToken()
+        let stillSignedIn = await StudioWebCommands.shared.accountIdentity() != nil
+        confirmingSignOut = false
+        guard !stillSignedIn else { return }
+        reportedByWeb = false
+        account = nil
+        firstLook = nil
+        isSignedIn = false
+        startWatching()
     }
 
     private var confirmingSignOut = false
