@@ -1,3 +1,4 @@
+import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 import type {
   IdeaExpansion,
   IdeaExpansionSection,
@@ -41,7 +42,9 @@ export function buildExpandMessages(
     "it into a talking-head lesson or invent a 45-90 second script unless that " +
     "is genuinely the source format. Return STRICT JSON only, no prose or code " +
     "fences:\n" +
-    '{"title":"<=8 words, specific, no quotes",' +
+    '{"plan":{"sourcePoints":["every point the reference teaches, each with its fix, tool or number, in its order; [] when there is no reference"],' +
+    '"creatorPoints":["what the creator\'s own material adds: proof, extra points, and any call to action they asked for"]},' +
+    '"title":"<=8 words, specific, no quotes",' +
     '"pillar":"best-fit pillar or null",' +
     '"format":"specific creative format, e.g. audio-led reaction sketch",' +
     '"summary":"the content direction: 2-4 sentences on what this piece is, what carries it, and the angle for THIS creator",' +
@@ -52,6 +55,9 @@ export function buildExpandMessages(
     '"text":"for paragraph",' +
     '"items":["for bullets or steps"]}]}\n\n' +
     "Rules:\n" +
+    "- Fill plan first and write the script from it: every sourcePoint and " +
+    "creatorPoint appears in the script unless the creator's material " +
+    "contradicts it. The plan is never shown to the creator.\n" +
     "- First identify what literally happens in the source and which layer " +
     "carries it: source audio/dialogue, acting, timing, on-screen text, edit, " +
     "or visual reveal.\n" +
@@ -63,15 +69,17 @@ export function buildExpandMessages(
     "a visual gag). Never add key points, research, or a breakdown of the " +
     "reference: the creator asks for those on the page when they want them.\n" +
     "- The script is a real first draft the creator could shoot: their angle, " +
-    "their voice, 80 to 130 spoken words (about 35 to 55 seconds). Go up to " +
-    "200 only when the idea is a story or a multi-step explainer that needs " +
-    "the room, and shorter when the format is shorter by nature. No headers, " +
+    "their voice, 80 to 130 spoken words (about 35 to 55 seconds). A story or " +
+    "a multi-step explainer may run as long as it needs, up to the reference's " +
+    "own length or 220 words, and shorter when the format is shorter by " +
+    "nature. No headers, " +
     "no bullet formatting, no stage directions unless the format is a sketch. " +
     "Never use em dashes or en dashes.\n" +
     "- The script's first line tells the viewer where this is going in one " +
     "short sentence, so they know the payoff is coming.\n" +
-    "- Beats connect with 'but' or 'therefore', never 'and then': each beat " +
-    "complicates or follows from the last one.\n" +
+    "- Each beat turns or follows from the last (a 'but' or a 'so'), never a " +
+    "flat 'and then'. Say it the way a person would; never force the words " +
+    "'therefore' or 'but' into a line.\n" +
     "- Plain words, one idea per video. Include one specific takeaway a " +
     "viewer would send to a friend.\n" +
     "- End on the payoff. No outro, no recap, no 'that's it'.\n" +
@@ -91,6 +99,7 @@ export function buildExpandMessages(
     "the source's creator did. Use first person only for what the creator's " +
     "own words or the context block below support; otherwise attribute it " +
     "('he built a prompt that...') or turn it into an instruction.\n" +
+    TEACHING_RULES +
     "- For a recreation, separate the source's reusable mechanism from the new " +
     "topic. Preserve reactions, pauses, escalation, and audio cues when those " +
     "are the point.\n" +

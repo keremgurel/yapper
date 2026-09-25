@@ -29,7 +29,9 @@ describe("buildVersionMessages", () => {
     expect(system).toContain("No timestamps");
     expect(system).toContain("never 'Intro'");
     expect(system).toContain("[B-ROLL: ...]");
-    expect(system).toContain("'but' or 'therefore'");
+    expect(system).toContain("never a flat 'and then'");
+    expect(system).toContain('"plan"');
+    expect(system).toContain("Teach, don't recap");
   });
 
   it("asks a first draft for a pillar and summary, an adaptation for neither", () => {
@@ -230,5 +232,18 @@ describe("forFormat", () => {
       "article",
     ]);
     expect(forFormat(snapshot, undefined)).toBe(snapshot);
+  });
+});
+
+describe("teaching rules", () => {
+  it("reach first drafts and Chirpy's canvas prompt too", async () => {
+    const { buildExpandMessages } = await import("@/lib/ideas/expand-prompt");
+    const { system } = buildExpandMessages({ transcript: "note" }, "original", {
+      section: "",
+      pillarNames: [],
+    });
+    expect(system).toContain("Teach, don't recap");
+    expect(system).toContain('"plan"');
+    expect(system).toContain("call to action");
   });
 });

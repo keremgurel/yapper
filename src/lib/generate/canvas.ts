@@ -1,3 +1,4 @@
+import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 import type { VersionFormat } from "@/lib/content/formats";
 import type { ContentBlock } from "@/lib/db/schema";
 import { fetchBoundedJson } from "@/lib/http/outbound";
@@ -91,6 +92,8 @@ const SYSTEM =
   "- The creator's own words, when given, carry their angle and meaning; keep " +
   "them over anything a summary says.\n" +
   "- If a reference source is given, draw on it but do not copy it.\n" +
+  "When you write or rewrite a script or a teaching block:\n" +
+  TEACHING_RULES +
   "- If the ask is a question or a chat rather than a writing task, answer it " +
   'in "note" and return no actions. When the answer is material that belongs ' +
   "on the page (key points, a list of objections, a CTA, a caption idea), put " +
