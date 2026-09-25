@@ -20,7 +20,7 @@ struct IdeaCell: View {
         case .pillar:
             IdeaPillarMenu(row: row)
         case .formats:
-            IdeaVersionBadges(lead: row.leadFormat, versions: row.versions)
+            IdeaVersionList(lead: row.leadFormat, versions: row.versions)
         case .type:
             if let kind = row.ideaType.flatMap(IdeaKind.init(rawValue:)) { quiet(kind.label) } else { empty }
         case .transcript:
@@ -79,42 +79,43 @@ struct IdeaTitleCell: View {
     }
 }
 
-/// Which versions an idea has: a letter per format, filled when written,
-/// ringed on the one the idea started in, dashed when there is none yet.
-struct IdeaVersionBadges: View {
+/// Which versions an idea has, as a quiet line: a dot in the format's colour
+/// and a word for each one written, the one the idea started in first and
+/// brightest. Formats not written yet are simply not listed.
+struct IdeaVersionList: View {
     let lead: String
     let versions: Set<String>
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(IdeaFormat.versioned) { format in
-                badge(format)
+        HStack(spacing: 10) {
+            ForEach(written) { format in
+                HStack(spacing: 5) {
+                    Circle().fill(format.tone.color).frame(width: 6, height: 6)
+                    Text(Self.word(format))
+                        .foregroundStyle(format.id == lead ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+                }
+                .help(format.id == lead ? "\(format.label), where this idea started" : format.label)
             }
         }
+        .font(.system(size: 12, weight: .medium))
+        .lineLimit(1)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(IdeaFormat.versioned.filter { versions.contains($0.id) }.map(\.label).joined(separator: ", "))
+        .accessibilityLabel(written.map(\.label).joined(separator: ", "))
     }
 
-    private func badge(_ format: IdeaFormat) -> some View {
-        let has = versions.contains(format.id)
-        let shape = RoundedRectangle(cornerRadius: 5, style: .continuous)
-        return Text(String(format.label.prefix(1)))
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundStyle(has ? Color.black.opacity(0.78) : Color.secondary.opacity(0.6))
-            .frame(width: 22, height: 18)
-            .background { if has { shape.fill(format.tone.color) } }
-            .overlay {
-                if !has {
-                    shape.strokeBorder(Color.studioLineStrong, style: StrokeStyle(lineWidth: 1, dash: [2, 2]))
-                }
-            }
-            .padding(2)
-            .overlay {
-                if format.id == lead {
-                    RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(format.tone.color, lineWidth: 1)
-                }
-            }
-            .help(has ? (format.id == lead ? "\(format.label), where this idea started" : format.label) : "No \(format.label.lowercased()) yet")
+    /// Lead first, then the rest in library order.
+    private var written: [IdeaFormat] {
+        let has = IdeaFormat.versioned.filter { versions.contains($0.id) || $0.id == lead }
+        return has.filter { $0.id == lead } + has.filter { $0.id != lead }
+    }
+
+    /// One word per format, so three fit in the column.
+    static func word(_ format: IdeaFormat) -> String {
+        switch format.id {
+        case "short": "Short"
+        case "long": "Long"
+        default: format.label
+        }
     }
 }
 
