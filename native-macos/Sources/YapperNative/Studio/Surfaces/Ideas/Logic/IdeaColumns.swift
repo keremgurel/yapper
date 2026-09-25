@@ -67,4 +67,20 @@ enum IdeaColumn: String, CaseIterable, Identifiable {
     static func minimumWidth(_ columns: [IdeaColumn]) -> CGFloat {
         columns.reduce(28 + 220 + 32) { $0 + ($1.width ?? 0) + 12 }
     }
+
+    /// Which to let go first when the window is too narrow for every chosen
+    /// column. The title, status and actions always stay.
+    static let dropOrder: [IdeaColumn] = [.transcript, .type, .added, .script, .pillar, .formats, .updated]
+
+    /// The chosen columns that fit in `width`, in their chosen order. The
+    /// table fits the window instead of scrolling sideways, which is what lets
+    /// its rows be built only as they scroll into view.
+    static func fitting(_ columns: [IdeaColumn], in width: CGFloat) -> [IdeaColumn] {
+        guard width > 0 else { return columns }
+        var shown = columns
+        for column in dropOrder where minimumWidth(shown) > width {
+            shown.removeAll { $0 == column }
+        }
+        return shown
+    }
 }

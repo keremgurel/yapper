@@ -8,6 +8,10 @@ struct IdeaBoard: View {
     let onOpen: (String) -> Void
     let onStatus: (IdeaItem, IdeaStatus) -> Void
     @State private var target: String?
+    /// How many cards each column shows; "Show more" raises it. Board
+    /// columns cannot build lazily inside the sideways scroll, so they page.
+    @State private var limits: [String: Int] = [:]
+    private static let page = 50
 
     private var effectiveGrouping: ViewGrouping { grouping ?? .status }
     private var canDrag: Bool { effectiveGrouping == .status }
@@ -32,9 +36,17 @@ struct IdeaBoard: View {
             }
             .padding(.horizontal, 6).padding(.top, 4)
 
-            ForEach(group.items) { row in
+            let limit = limits[group.id] ?? Self.page
+            ForEach(group.items.prefix(limit)) { row in
                 IdeaBoardCard(row: row) { onOpen(row.id) }
                     .modifier(IdeaDragSource(enabled: canDrag, id: row.id))
+            }
+            if group.items.count > limit {
+                Button("Show \(min(Self.page, group.items.count - limit)) more") {
+                    limits[group.id] = limit + Self.page
+                }
+                .buttonStyle(EditorGhostButtonStyle(size: .small))
+                .frame(maxWidth: .infinity)
             }
             if group.items.isEmpty {
                 Text(canDrag ? "Nothing here. Drag a card here to move it." : "Nothing here")

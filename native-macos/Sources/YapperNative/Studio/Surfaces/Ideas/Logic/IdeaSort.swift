@@ -21,36 +21,45 @@ struct IdeaSort: Equatable {
     }
 
     /// A stable sorted copy: ties keep their incoming order.
+    ///
+    /// Each row's key is worked out once, up front. Comparing the rows
+    /// directly parsed two ISO dates per comparison, about 9,000 parses to
+    /// sort 500 ideas, and the list sorts on every render.
     func apply(_ rows: [IdeaItem]) -> [IdeaItem] {
-        rows.enumerated().sorted { a, b in
-            let order = compare(a.element, b.element)
-            if order == 0 { return a.offset < b.offset }
-            return ascending ? order < 0 : order > 0
-        }.map(\.element)
+        rows.enumerated()
+            .map { (offset: $0.offset, key: sortKey($0.element), row: $0.element) }
+            .sorted { a, b in
+                let order = Self.compare(a.key, b.key)
+                if order == 0 { return a.offset < b.offset }
+                return ascending ? order < 0 : order > 0
+            }
+            .map(\.row)
+    }
+
+    private enum Key {
+        case number(Double)
+        case text(String)
     }
 
     private static let last = "\u{FFFF}"
 
-    private func compare(_ a: IdeaItem, _ b: IdeaItem) -> Int {
+    private func sortKey(_ row: IdeaItem) -> Key {
         switch key {
-        case .title:
-            return Self.order(a.displaySortTitle, b.displaySortTitle)
-        case .status:
-            return a.pipelineStatus.rank - b.pipelineStatus.rank
-        case .updated:
-            let left = a.updatedDate?.timeIntervalSince1970 ?? 0
-            let right = b.updatedDate?.timeIntervalSince1970 ?? 0
-            return left == right ? 0 : (left < right ? -1 : 1)
-        case .added:
-            let left = IdeaDates.parse(a.createdAt)?.timeIntervalSince1970 ?? 0
-            let right = IdeaDates.parse(b.createdAt)?.timeIntervalSince1970 ?? 0
-            return left == right ? 0 : (left < right ? -1 : 1)
-        case .pillar:
-            return Self.order(a.pillar?.lowercased().nonEmpty ?? Self.last, b.pillar?.lowercased().nonEmpty ?? Self.last)
-        case .type:
-            return Self.order(a.ideaType?.nonEmpty ?? Self.last, b.ideaType?.nonEmpty ?? Self.last)
-        case .script:
-            return (a.hasScript ? 1 : 0) - (b.hasScript ? 1 : 0)
+        case .title: .text(row.displaySortTitle)
+        case .status: .number(Double(row.pipelineStatus.rank))
+        case .updated: .number(row.updatedDate?.timeIntervalSince1970 ?? 0)
+        case .added: .number(IdeaDates.parse(row.createdAt)?.timeIntervalSince1970 ?? 0)
+        case .pillar: .text(row.pillar?.lowercased().nonEmpty ?? Self.last)
+        case .type: .text(row.ideaType?.nonEmpty ?? Self.last)
+        case .script: .number(row.hasScript ? 1 : 0)
+        }
+    }
+
+    private static func compare(_ a: Key, _ b: Key) -> Int {
+        switch (a, b) {
+        case let (.number(left), .number(right)): left == right ? 0 : (left < right ? -1 : 1)
+        case let (.text(left), .text(right)): order(left, right)
+        default: 0
         }
     }
 
