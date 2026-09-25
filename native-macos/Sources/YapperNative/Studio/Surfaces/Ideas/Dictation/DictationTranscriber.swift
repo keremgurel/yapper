@@ -32,9 +32,10 @@ enum DictationTranscriber {
         let contentType: String
     }
 
+    /// The file is removed only once its words are back, so a take that
+    /// fails to transcribe can be sent again.
     static func transcribe(_ file: URL) async throws -> String {
         let audio = try Data(contentsOf: file)
-        defer { try? FileManager.default.removeItem(at: file) }
         let reply: Data
         if audio.count > directUploadBytes {
             let ticket: Ticket = try await StudioJSONClient.post(
@@ -46,7 +47,9 @@ enum DictationTranscriber {
         } else {
             reply = try await StudioJSONClient.raw("api/transcribe", method: "POST", body: audio, contentType: contentType)
         }
-        return try JSONDecoder().decode(Reply.self, from: reply).text
+        let text = try JSONDecoder().decode(Reply.self, from: reply).text
+        try? FileManager.default.removeItem(at: file)
+        return text
     }
 
     private static func put(_ audio: Data, to target: String) async throws {

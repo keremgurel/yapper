@@ -52,6 +52,10 @@ struct ComposerFooter: View {
                     Button("Try again") { Task { await actions.submit() } }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
                         .disabled(actions.saving)
+                } else if dictation.unsentTake != nil {
+                    Button("Transcribe again") { Task { await actions.retryTake() } }
+                        .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
+                        .disabled(actions.saving || dictation.transcribing)
                 } else if dictation.error != nil {
                     Button(dictation.permissionBlocked && dictation.microphoneDenied ? "Open settings" : "Try again") {
                         Task { await actions.toggleVoice() }

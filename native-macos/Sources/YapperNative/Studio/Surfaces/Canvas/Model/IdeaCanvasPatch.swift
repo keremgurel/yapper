@@ -26,6 +26,8 @@ struct IdeaCanvasPatch: Encodable, Equatable {
     var hooks: [String]?
     var blocks: [IdeaCanvasStoredBlock]?
     var script: IdeaCanvasNullable<String>?
+    var originalNote: String?
+    var ideaType: String?
 
     var isEmpty: Bool { self == IdeaCanvasPatch() }
 
@@ -39,12 +41,14 @@ struct IdeaCanvasPatch: Encodable, Equatable {
             scheduledFor: newer.scheduledFor ?? scheduledFor,
             hooks: newer.hooks ?? hooks,
             blocks: newer.blocks ?? blocks,
-            script: newer.script ?? script
+            script: newer.script ?? script,
+            originalNote: newer.originalNote ?? originalNote,
+            ideaType: newer.ideaType ?? ideaType
         )
     }
 
     private enum CodingKeys: String, CodingKey {
-        case title, status, formats, pillarId, scheduledFor, hooks, blocks, script
+        case title, status, formats, pillarId, scheduledFor, hooks, blocks, script, originalNote, ideaType
     }
 
     func encode(to encoder: Encoder) throws {
@@ -57,6 +61,8 @@ struct IdeaCanvasPatch: Encodable, Equatable {
         try c.encodeIfPresent(hooks, forKey: .hooks)
         try c.encodeIfPresent(blocks, forKey: .blocks)
         try encode(script, key: .script, into: &c)
+        try c.encodeIfPresent(originalNote, forKey: .originalNote)
+        try c.encodeIfPresent(ideaType, forKey: .ideaType)
     }
 
     private func encode(

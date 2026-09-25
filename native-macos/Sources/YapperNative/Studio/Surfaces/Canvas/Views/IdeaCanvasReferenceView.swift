@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// Where the piece came from: what the creator said on camera, what the
-/// reference says, and the creator's original note.
+/// Where the piece came from: what the creator said on camera and what the
+/// reference says. The creator's note has its own card in the side column.
 struct IdeaCanvasReferenceView: View {
     let item: IdeaCanvasItem
-    @State private var noteOpen = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
@@ -18,25 +17,6 @@ struct IdeaCanvasReferenceView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     IdeaCanvasSectionTitle("Inspiration", meta: inspirationMeta) { sourceLink }
                     inspirationBody
-                }
-            }
-            if let note = trimmed(item.originalNote) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Button { noteOpen.toggle() } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: noteOpen ? "chevron.down" : "chevron.right").font(.system(size: 11, weight: .semibold))
-                            Text("Your original note").font(.nativeSectionTitle)
-                        }
-                    }
-                    .buttonStyle(.studioPlain)
-                    if noteOpen {
-                        Text(note)
-                            .font(.system(size: 15)).lineSpacing(4)
-                            .foregroundStyle(Color.primary.opacity(0.75))
-                            .textSelection(.enabled)
-                            .frame(maxWidth: 640, alignment: .leading)
-                            .nativeWell(padding: 14, radius: 12)
-                    }
                 }
             }
         }

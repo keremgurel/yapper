@@ -91,11 +91,11 @@ struct IdeaCanvasItem: Decodable, Equatable {
         versions = (try? c.decodeIfPresent([IdeaCanvasVersion].self, forKey: .versions)) ?? []
     }
 
-    /// Whether anything shows under "Where this came from".
+    /// Whether anything shows under "Where this came from". The creator's
+    /// note is not part of it; it has its own card in the side column.
     var hasOrigin: Bool {
         [sourceTitle, sourceUrl, sourceTranscript, sourceSummary, recordedTranscript]
             .contains { !($0 ?? "").isEmpty }
-            || !originalNote.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     /// The local copy after an edit, before the server has confirmed it.
@@ -109,6 +109,8 @@ struct IdeaCanvasItem: Decodable, Equatable {
         if let hooks = patch.hooks { next.hooks = hooks }
         if let blocks = patch.blocks { next.blocks = blocks }
         if let script = patch.script { next.script = script.value }
+        if let note = patch.originalNote { next.originalNote = note }
+        if let ideaType = patch.ideaType { next.ideaType = ideaType }
         return next
     }
 }

@@ -16,6 +16,8 @@ final class DictationController: ObservableObject {
     @Published private(set) var seconds = 0
     /// Recent levels, oldest first, for the waveform.
     @Published private(set) var levels: [Double] = []
+    /// A take whose transcription failed, kept so its words aren't lost.
+    @Published private(set) var unsentTake: URL?
 
     static let levelCount = 64
     private let recorder = DictationRecorder()
@@ -35,6 +37,7 @@ final class DictationController: ObservableObject {
         guard phase == .idle else { return }
         error = nil
         permissionBlocked = false
+        discardUnsentTake()
         guard await microphoneAllowed() else {
             error = "Microphone access is off."
             permissionBlocked = true
@@ -61,15 +64,33 @@ final class DictationController: ObservableObject {
         guard phase == .recording else { return nil }
         stopTicking()
         guard let file = recorder.stop() else { phase = .idle; return nil }
+        return await transcribe(file)
+    }
+
+    /// Sends the kept take again. Nil when there is none or it fails again.
+    func retryUnsentTake() async -> String? {
+        guard phase == .idle, let file = unsentTake else { return nil }
+        return await transcribe(file)
+    }
+
+    private func transcribe(_ file: URL) async -> String? {
         phase = .transcribing
+        error = nil
         defer { phase = .idle }
         do {
             let words = try await DictationTranscriber.transcribe(file)
+            unsentTake = nil
             return words.isEmpty ? nil : words
         } catch {
-            self.error = "Couldn't transcribe."
+            unsentTake = file
+            self.error = "Couldn't transcribe. Your recording is kept."
             return nil
         }
+    }
+
+    private func discardUnsentTake() {
+        if let unsentTake { try? FileManager.default.removeItem(at: unsentTake) }
+        unsentTake = nil
     }
 
     func cancel() {

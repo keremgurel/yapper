@@ -129,6 +129,7 @@ struct IdeaCanvasDocumentView<Body: IdeaCanvasBody & ObservableObject, Footer: V
                 if item.sourceUrl != nil || item.sourceTitle != nil {
                     IdeaCanvasSourceCard(item: item)
                 }
+                IdeaCanvasNoteCard(item: item, update: store.update)
             }
             if format == .long {
                 IdeaCanvasChaptersPanel(script: scriptBlock?.text ?? "")
