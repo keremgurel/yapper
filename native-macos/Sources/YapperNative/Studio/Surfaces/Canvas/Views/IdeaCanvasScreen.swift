@@ -42,6 +42,7 @@ struct IdeaCanvasScreen: View {
             }
         }
         .background(Color.editorBackground)
+        .onAppear { IdeaCanvasFocus.shared.attach(runner) }
         .task {
             await store.load()
             if let item = store.item { versions.load(item.versions) }
@@ -50,6 +51,7 @@ struct IdeaCanvasScreen: View {
         .onChange(of: store.item?.versions) { _, loaded in versions.load(loaded ?? []) }
         .onChange(of: current) { _, _ in runner.body = currentBody ?? store }
         .onDisappear {
+            IdeaCanvasFocus.shared.detach(runner)
             Task {
                 try? await store.autosave.flush()
                 try? await versions.flushAll()

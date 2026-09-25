@@ -16,6 +16,15 @@ extension EditorSession {
             let thread = assistantUsesStudioBrain ? (threads.current ?? conversation) : conversation
             let history = thread.recentHistory()
             thread.ask(text)
+            if assistantUsesStudioBrain, let canvas = IdeaCanvasFocus.shared.runner {
+                await canvas.run(text)
+                if let failure = canvas.error {
+                    thread.answer(.chirpy(failure.message, tone: .trouble))
+                } else {
+                    thread.answer(.chirpy(canvas.lastReply ?? "Done.", tone: .done))
+                }
+                return
+            }
             do {
                 let reply = try await StudioWebCommands.shared.askChirpy(
                     text,

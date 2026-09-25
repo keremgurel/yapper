@@ -1,6 +1,7 @@
 import type { VersionFormat } from "@/lib/content/formats";
 import { undash } from "@/lib/text/undash";
 import type { PromptContext } from "@/lib/ideas/expand-prompt";
+import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 
 /**
  * Writing one format of an idea: a short-form, a long-form or an article,
@@ -65,8 +66,10 @@ const SHARED_RULES =
   "- First person only for what the creator's own words or the context block " +
   "support. Never claim the creator did something only a source's creator did; " +
   "attribute it instead.\n" +
-  "- Connect beats with 'but' or 'therefore', never 'and then'.\n" +
-  "- Plain words. No filler, no hype, no generic marketing lines.\n";
+  "- Each beat turns or follows from the last (a 'but' or a 'so'), never a " +
+  "flat 'and then'. Say it naturally; never force the connecting word.\n" +
+  "- Plain words. No filler, no hype, no generic marketing lines.\n" +
+  TEACHING_RULES;
 
 const SHAPES: Record<VersionFormat, string> = {
   short:
@@ -85,8 +88,9 @@ const FORMAT_RULES: Record<VersionFormat, string> = {
   short:
     "- The hook is spoken first and the script continues from it. Never " +
     "restate or paraphrase a hook in the script.\n" +
-    "- 80 to 130 spoken words after the hook (about 35 to 55 seconds). Up to " +
-    "200 only for a story or a multi-step explainer that needs the room.\n" +
+    "- 80 to 130 spoken words after the hook (about 35 to 55 seconds). A story " +
+    "or a multi-step explainer may run up to the reference's own length or " +
+    "220 words.\n" +
     "- The script's first line says where this is going in one short sentence.\n" +
     "- One idea. Include one specific takeaway a viewer would send to a friend.\n" +
     "- End on the payoff. No outro, no recap.\n" +
@@ -106,7 +110,7 @@ const FORMAT_RULES: Record<VersionFormat, string> = {
     "- Put the second strongest point in the first body chapter. Order the " +
     "rest so the stakes rise.\n" +
     "- Every chapter opens with a question or claim that makes the viewer " +
-    "want the answer, and closes on a 'but' or 'therefore' line that opens the " +
+    "want the answer, and closes on a line that turns into the " +
     "next one. Every point gets a concrete example or a short story.\n" +
     "- The last chapter pays off what the first one opened and calls back to " +
     "its opening line or story. Then one line pointing to a next video that " +
@@ -168,8 +172,11 @@ export function buildVersionMessages(
   context: PromptContext,
 ): { system: string; user: string } {
   const firstDraft = from === null;
+  // Listing the material's points before writing is what stops a long note
+  // from crowding out everything the reference teaches.
   const shape =
-    SHAPES[target] +
+    '{"plan":{"sourcePoints":["every point the reference and the version below teach, each with its fix, tool or number"],"creatorPoints":["what the creator\'s own material adds, including any call to action"]},' +
+    SHAPES[target].slice(1) +
     (firstDraft
       ? ',"pillar":"best-fit pillar or null","summary":"2 to 4 sentences: what this piece is and the angle for this creator"}'
       : "}");
@@ -185,6 +192,8 @@ export function buildVersionMessages(
     `You write the ${NAMES[target]} version of a creator's idea, in their ` +
     "voice, ready to record or publish. Return STRICT JSON only, no prose or " +
     `code fences:\n${shape}\n\nRules:\n` +
+    "- Fill plan first and write from it: every point in it appears unless the " +
+    "creator's material contradicts it. The plan is never shown.\n" +
     FORMAT_RULES[target] +
     (from ? adaptRule(from.format, target) : "") +
     SHARED_RULES +
