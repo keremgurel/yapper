@@ -1,8 +1,10 @@
 import SwiftUI
 
 /// The list as a table: select boxes, sortable headers, optional group
-/// sections, one row per idea. Scrolls sideways when the window is narrower
-/// than the columns need.
+/// sections, one row per idea. Rows are built only as they scroll into view,
+/// so a list of hundreds opens as fast as a list of ten. A window too narrow
+/// for every chosen column hides the least important ones instead of
+/// scrolling sideways, which would force every row to be built at once.
 struct IdeaTable: View {
     let rows: [IdeaItem]
     let grouping: ViewGrouping?
@@ -12,33 +14,34 @@ struct IdeaTable: View {
     let onOpen: (String) -> Void
     let onStatus: (IdeaItem, IdeaStatus) -> Void
 
+    @State private var width: CGFloat = 0
+
+    private var shown: [IdeaColumn] { IdeaColumn.fitting(columns, in: width) }
+
     var body: some View {
-        ScrollView(.horizontal) {
-            VStack(spacing: 0) {
-                header
-                if rows.isEmpty {
-                    NativeEmptyState(systemImage: "line.3.horizontal.decrease", title: "Nothing matches those filters.")
-                } else {
-                    ForEach(IdeaGrouping.groups(rows, by: grouping).filter { !$0.items.isEmpty }) { group in
-                        if grouping != nil { sectionHeader(group) }
-                        ForEach(group.items) { row in
-                            IdeaTableRow(
-                                row: row,
-                                columns: columns,
-                                selected: selection.ids.contains(row.id),
-                                onToggle: { selection.toggle(row.id) },
-                                onOpen: { onOpen(row.id) },
-                                onStatus: { onStatus(row, $0) }
-                            )
-                        }
+        LazyVStack(spacing: 0) {
+            header
+            if rows.isEmpty {
+                NativeEmptyState(systemImage: "line.3.horizontal.decrease", title: "Nothing matches those filters.")
+            } else {
+                ForEach(IdeaGrouping.groups(rows, by: grouping).filter { !$0.items.isEmpty }) { group in
+                    if grouping != nil { sectionHeader(group) }
+                    ForEach(group.items) { row in
+                        IdeaTableRow(
+                            row: row,
+                            columns: shown,
+                            selected: selection.ids.contains(row.id),
+                            onToggle: { selection.toggle(row.id) },
+                            onOpen: { onOpen(row.id) },
+                            onStatus: { onStatus(row, $0) }
+                        )
                     }
                 }
             }
-            .containerRelativeFrame(.horizontal) { width, _ in max(width, IdeaColumn.minimumWidth(columns)) }
-            .background(NativeCardBackground())
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .scrollIndicators(.automatic)
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }, action: { width = $0 })
+        .background(NativeCardBackground())
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var header: some View {
@@ -49,7 +52,7 @@ struct IdeaTable: View {
                 selection.select(all ? [] : rows.map(\.id))
             }
             .disabled(rows.isEmpty)
-            ForEach(columns) { column in
+            ForEach(shown) { column in
                 headerCell(column).ideaColumnFrame(column)
             }
         }
