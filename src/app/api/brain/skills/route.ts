@@ -9,20 +9,20 @@ import {
 } from "@/lib/db/project-skills";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
+import { withServerTiming } from "@/lib/http/server-timing";
 
 export const runtime = "nodejs";
 
 /** Every skill the creator has installed or written, in their order. */
-export async function GET(): Promise<Response> {
+export const GET = withServerTiming(async (): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  await ensureUser(userId);
   const project = await getActiveProject(userId);
   return Response.json({
     skills: await listProjectSkillsWithDefaults(project.id),
   });
-}
+});
 
 /** Write one from scratch. */
 export async function POST(req: NextRequest): Promise<Response> {

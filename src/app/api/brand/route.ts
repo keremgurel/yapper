@@ -7,6 +7,7 @@ import {
   requestBodyErrorResponse,
 } from "@/lib/http/bounded-body";
 import { parseBrandColors } from "@/lib/brand/colors";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { presignView } from "@/lib/r2";
 
 export const runtime = "nodejs";
@@ -29,12 +30,12 @@ async function payload(userId: string) {
   return { colors: project.brandColors, logos };
 }
 
-export async function GET(): Promise<Response> {
+export const GET = withServerTiming(async (): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-  await ensureUser(userId);
+  // getActiveProject creates the user row itself when the project is new.
   return Response.json(await payload(userId));
-}
+});
 
 export async function PATCH(req: Request): Promise<Response> {
   const { userId } = await auth();

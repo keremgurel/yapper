@@ -4,18 +4,19 @@ import { parseContentInput } from "@/lib/content/input";
 import { createContentItem, listContentItems } from "@/lib/db/content";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { parseIdeaFields } from "@/lib/ideas/input";
 
 export const runtime = "nodejs";
 
 /** Every idea, whatever its status: there is one list. */
-export async function GET(): Promise<Response> {
+export const GET = withServerTiming(async (): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const items = await listContentItems(userId);
   return Response.json({ items });
-}
+});
 
 /**
  * Capture an idea. Deliberately cheap and synchronous: it stores the creator's

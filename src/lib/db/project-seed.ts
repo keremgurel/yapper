@@ -1,6 +1,6 @@
 import { and, eq, isNotNull } from "drizzle-orm";
 import { getDb } from "./client";
-import { ensurePillars, listPillars } from "./project-pillars";
+import { ensurePillars, listPillars, type PillarRow } from "./project-pillars";
 import { contentItems } from "./schema";
 
 /**
@@ -23,27 +23,46 @@ export async function legacyPillarNames(userId: string): Promise<string[]> {
 }
 
 /**
- * Fill a brand-new project's pillar list, once. Runs only while the project has
- * no pillars at all, so it can never fight a creator who has since curated
- * their own list (deleting a pillar must stay deleted).
+ * Projects this instance already tried to seed and found nothing to seed with.
+ * Without it, a creator with no pillars would pay the onboarding lookup (a
+ * Clerk Backend API call) on every read. Bounded like the other per-instance
+ * caches; forgetting an entry only costs one more lookup.
+ */
+const MAX_BARREN = 5_000;
+const barrenProjects = new Set<string>();
+
+/**
+ * The project's pillars, filling a brand-new project's list first. Seeding runs
+ * only while the project has no pillars at all, so it can never fight a creator
+ * who has since curated their own list (deleting a pillar must stay deleted).
  *
  * Onboarding pillars come first because the creator typed them deliberately;
- * pillars inferred from already-classified content are appended after.
+ * pillars inferred from already-classified content are appended after. They
+ * are loaded lazily because reading them is a network call, and a project that
+ * already has pillars never needs them.
  */
-export async function seedPillarsIfEmpty(
+export async function listPillarsSeeded(
   userId: string,
   projectId: string,
-  onboardingPillars: string[] = [],
-): Promise<void> {
+  loadOnboardingPillars: () => Promise<string[]>,
+): Promise<PillarRow[]> {
   const existing = await listPillars(projectId);
-  if (existing.length) return;
+  if (existing.length || barrenProjects.has(projectId)) return existing;
 
-  const legacy = await legacyPillarNames(userId);
-  const seed = [...onboardingPillars, ...legacy]
+  const [onboarding, legacy] = await Promise.all([
+    loadOnboardingPillars(),
+    legacyPillarNames(userId),
+  ]);
+  const seed = [...onboarding, ...legacy]
     .map((n) => n.trim())
     .filter(Boolean)
     .slice(0, 24);
-  if (!seed.length) return;
+  if (!seed.length) {
+    if (barrenProjects.size >= MAX_BARREN) barrenProjects.clear();
+    barrenProjects.add(projectId);
+    return existing;
+  }
 
   await ensurePillars(projectId, seed);
+  return listPillars(projectId);
 }

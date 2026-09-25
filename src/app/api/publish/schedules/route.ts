@@ -11,6 +11,7 @@ import { getContentItem } from "@/lib/db/content";
 import { getConnectionRow } from "@/lib/db/publish";
 import { protectPendingThumbnail } from "@/lib/db/r2-lifecycle";
 import { requestBodyErrorResponse } from "@/lib/http/bounded-body";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { resolveOwnedMediaKey } from "@/lib/publish/media";
 import { readScheduleInput, scheduleDate } from "@/lib/publish/schedule-input";
 import { schedulingEnabled } from "@/lib/publish/schedule-types";
@@ -23,7 +24,7 @@ import {
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export const GET = withServerTiming(async () => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const enabled = schedulingEnabled();
@@ -42,7 +43,7 @@ export async function GET() {
     { enabled, schedules: rows.map(scheduleSummary) },
     { headers: { "Cache-Control": "no-store" } },
   );
-}
+});
 
 export async function POST(request: Request) {
   const { userId } = await auth();

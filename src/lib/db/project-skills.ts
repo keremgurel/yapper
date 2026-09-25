@@ -43,53 +43,48 @@ export async function listProjectSkills(
 export async function listProjectSkillsWithDefaults(
   projectId: string,
 ): Promise<ProjectSkillRow[]> {
+  // The common case is a project that already has skills: one query.
+  const current = await listProjectSkills(projectId);
+  if (current.length) return current;
+
   const db = getDb();
-  const [existing] = await db
-    .select({ id: projectSkills.id })
-    .from(projectSkills)
-    .where(eq(projectSkills.projectId, projectId))
-    .limit(1);
+  const catalogEntries = await db
+    .select()
+    .from(skillCatalog)
+    .where(
+      and(
+        eq(skillCatalog.published, true),
+        eq(skillCatalog.kind, "skill"),
+        inArray(skillCatalog.slug, [...STARTER_SKILL_SLUGS]),
+      ),
+    );
+  if (!catalogEntries.length) return current;
 
-  if (!existing) {
-    const catalogEntries = await db
-      .select()
-      .from(skillCatalog)
-      .where(
-        and(
-          eq(skillCatalog.published, true),
-          eq(skillCatalog.kind, "skill"),
-          inArray(skillCatalog.slug, [...STARTER_SKILL_SLUGS]),
-        ),
-      );
-
-    if (catalogEntries.length) {
-      const order = new Map<string, number>(
-        STARTER_SKILL_SLUGS.map((slug, index) => [slug, index]),
-      );
-      const inserted = await db
-        .insert(projectSkills)
-        .values(
-          catalogEntries.map((entry) => ({
-            projectId,
-            catalogSlug: entry.slug,
-            catalogVersion: entry.version,
-            name: entry.name,
-            whenToUse: entry.whenToUse,
-            instructions: entry.instructions,
-            surfaces: entry.surfaces,
-            formats: entry.formats,
-            enabled: true,
-            customized: false,
-            sortOrder: order.get(entry.slug) ?? STARTER_SKILL_SLUGS.length,
-          })),
-        )
-        .onConflictDoNothing({
-          target: [projectSkills.projectId, projectSkills.catalogSlug],
-        })
-        .returning({ id: projectSkills.id });
-      if (inserted.length) await bumpProjectContext(projectId);
-    }
-  }
+  const order = new Map<string, number>(
+    STARTER_SKILL_SLUGS.map((slug, index) => [slug, index]),
+  );
+  const inserted = await db
+    .insert(projectSkills)
+    .values(
+      catalogEntries.map((entry) => ({
+        projectId,
+        catalogSlug: entry.slug,
+        catalogVersion: entry.version,
+        name: entry.name,
+        whenToUse: entry.whenToUse,
+        instructions: entry.instructions,
+        surfaces: entry.surfaces,
+        formats: entry.formats,
+        enabled: true,
+        customized: false,
+        sortOrder: order.get(entry.slug) ?? STARTER_SKILL_SLUGS.length,
+      })),
+    )
+    .onConflictDoNothing({
+      target: [projectSkills.projectId, projectSkills.catalogSlug],
+    })
+    .returning({ id: projectSkills.id });
+  if (inserted.length) await bumpProjectContext(projectId);
 
   return listProjectSkills(projectId);
 }
