@@ -43,16 +43,17 @@ final class IdeaCanvasVersionsStore: ObservableObject {
         _ format: IdeaCanvasVersionFormat, from source: IdeaCanvasVersionFormat
     ) async throws -> IdeaCanvasVersionEnvelope {
         let path = "api/content/\(itemID)/versions/\(format.rawValue)/write"
-        var request = await YapperAPI.authenticatedRequest(url: StudioJSONClient.url(path))
-        request.httpMethod = "POST"
-        request.timeoutInterval = 150
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.httpBody = try StudioJSONClient.encoder.encode(["from": source.rawValue])
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else { throw StudioJSONClient.failure(status: status, body: data) }
-        return try StudioJSONClient.decoder.decode(IdeaCanvasVersionEnvelope.self, from: data)
+        let payload = try StudioJSONClient.encoder.encode(["from": source.rawValue])
+        do {
+            let data = try await APITransport.send(path, method: "POST") { request in
+                request.timeoutInterval = 150
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = payload
+            }
+            return try StudioJSONClient.decoder.decode(IdeaCanvasVersionEnvelope.self, from: data)
+        } catch let failure as APITransport.Failure {
+            throw StudioJSONClient.failure(status: failure.status, body: failure.body)
+        }
     }
 
     /// Removes a written version for good. Unsaved edits to it go with it.

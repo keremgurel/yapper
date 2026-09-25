@@ -44,18 +44,18 @@ enum PosterHTTP {
     nonisolated(nonsending) static func send(
         _ path: String, method: String, body: [String: Any]?, headers: [String: String] = [:]
     ) async throws -> Data {
-        var request = await YapperAPI.authenticatedRequest(url: StudioJSONClient.url(path))
-        request.httpMethod = method
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
-        if let body {
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload = try body.map { try JSONSerialization.data(withJSONObject: $0) }
+        do {
+            return try await APITransport.send(path, method: method) { request in
+                for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
+                if let payload {
+                    request.httpBody = payload
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                }
+            }
+        } catch let failure as APITransport.Failure {
+            throw Self.failure(status: failure.status, body: failure.body)
         }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else { throw failure(status: status, body: data) }
-        return data
     }
 
     /// Raw bytes from a signed-in GET, for images served by our own routes.
