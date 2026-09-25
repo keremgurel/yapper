@@ -1,16 +1,22 @@
 import { auth } from "@clerk/nextjs/server";
 import { archivedMediaKeysForPosts } from "@/lib/db/publish";
+import { withServerTiming } from "@/lib/http/server-timing";
 import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
 import { listTikTokVideos } from "@/lib/publish/tiktok-list";
+import {
+  cachedVideoList,
+  wantsFreshList,
+} from "@/lib/publish/video-list-cache";
 
 export const runtime = "nodejs";
 
 /** The connected creator's public TikTok posts. Existing connections made
- * before video.list was added may need a one-time reconnect for this view. */
-export async function GET(): Promise<Response> {
+ * before video.list was added may need a one-time reconnect for this view.
+ * Served from a short cache; `?fresh=1` skips it. */
+export const GET = withServerTiming(async (req: Request): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
@@ -25,20 +31,25 @@ export async function GET(): Promise<Response> {
   }
 
   try {
-    const videos = await listTikTokVideos(accessToken);
-    const archived = await archivedMediaKeysForPosts(
+    const videos = await cachedVideoList(
       userId,
       "tiktok",
-      videos.map((video) => video.id),
+      async () => {
+        const listed = await listTikTokVideos(accessToken);
+        const archived = await archivedMediaKeysForPosts(
+          userId,
+          "tiktok",
+          listed.map((video) => video.id),
+        );
+        return listed.map((video) => ({
+          ...video,
+          mediaKey: archived.get(video.id),
+          sourcePlatform: "tiktok",
+        }));
+      },
+      { fresh: wantsFreshList(req) },
     );
-    return Response.json({
-      connected: true,
-      videos: videos.map((video) => ({
-        ...video,
-        mediaKey: archived.get(video.id),
-        sourcePlatform: "tiktok",
-      })),
-    });
+    return Response.json({ connected: true, videos });
   } catch (error) {
     console.error("[publish] tiktok list failed", error);
     return Response.json({
@@ -47,4 +58,4 @@ export async function GET(): Promise<Response> {
       error: "list_failed_or_reconnect_required",
     });
   }
-}
+});

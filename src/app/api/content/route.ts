@@ -5,21 +5,25 @@ import { getDb } from "@/lib/db/client";
 import { createContentItem, listContentItems } from "@/lib/db/content";
 import { submissions } from "@/lib/db/schema";
 import { ensureUser } from "@/lib/db/users";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { parseContentInput } from "@/lib/content/input";
 import { parseIdeaFields } from "@/lib/ideas/input";
 
 export const runtime = "nodejs";
 
 /** The signed-in user's Content Library (summaries, newest-updated first). */
-export async function GET(req: NextRequest): Promise<Response> {
-  const { userId } = await auth();
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const poster = req.nextUrl.searchParams.get("surface") === "poster";
-  const items = await listContentItems(userId, {
-    includePosterUploads: poster,
-  });
-  return Response.json({ items });
-}
+export const GET = withServerTiming(
+  async (req: NextRequest): Promise<Response> => {
+    const { userId } = await auth();
+    if (!userId)
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    const poster = req.nextUrl.searchParams.get("surface") === "poster";
+    const items = await listContentItems(userId, {
+      includePosterUploads: poster,
+    });
+    return Response.json({ items });
+  },
+);
 
 /** Create a library item (a drafted idea). Body fields are clamped; status
  * defaults to drafted at the DB. */

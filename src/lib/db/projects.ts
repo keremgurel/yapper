@@ -2,6 +2,7 @@ import type { VersionFormat } from "@/lib/content/formats";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "./client";
 import { projects } from "./schema";
+import { ensureUser } from "./users";
 
 /** The project fields a creator can edit. Everything else is server-owned. */
 export interface ProjectInput {
@@ -19,27 +20,39 @@ export interface ProjectInput {
 
 export type ProjectRow = typeof projects.$inferSelect;
 
+async function findProject(userId: string): Promise<ProjectRow | undefined> {
+  const [row] = await getDb()
+    .select()
+    .from(projects)
+    .where(eq(projects.userId, userId))
+    .limit(1);
+  return row;
+}
+
 /**
  * The user's project, created blank on first sight.
+ *
+ * Reads first: every request after the very first is one indexed select and
+ * never touches the write path. Only a missing row makes sure the user row
+ * exists (the FK needs it) and inserts.
  *
  * Race-safe: two concurrent first requests both attempt the insert, the
  * `projects_user_unique` index makes one of them a no-op, and the follow-up
  * select returns the single surviving row to both callers. Never returns null.
  */
 export async function getActiveProject(userId: string): Promise<ProjectRow> {
-  const db = getDb();
-  const [inserted] = await db
+  const found = await findProject(userId);
+  if (found) return found;
+
+  await ensureUser(userId);
+  const [inserted] = await getDb()
     .insert(projects)
     .values({ userId })
     .onConflictDoNothing({ target: projects.userId })
     .returning();
   if (inserted) return inserted;
 
-  const [existing] = await db
-    .select()
-    .from(projects)
-    .where(eq(projects.userId, userId))
-    .limit(1);
+  const existing = await findProject(userId);
   if (existing) return existing;
 
   // Unreachable in practice: the insert either created the row or conflicted

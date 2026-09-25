@@ -7,6 +7,7 @@ import {
 } from "@/lib/db/library-views";
 import { ensureUser } from "@/lib/db/users";
 import { contentStages, type ContentStage } from "@/lib/db/schema";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { parseViewInput } from "@/lib/views/input";
 
 export const runtime = "nodejs";
@@ -22,15 +23,24 @@ function stageOf(req: NextRequest): ContentStage {
     : "library";
 }
 
-/** The creator's saved views for one surface, seeded on first read. */
-export async function GET(req: NextRequest): Promise<Response> {
-  const { userId } = await auth();
-  if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+/** The creator's saved views for one surface, seeded on first read. A creator
+ * who already has views gets one plain select; only an empty surface pays for
+ * the user check and the locked seeding transaction. */
+export const GET = withServerTiming(
+  async (req: NextRequest): Promise<Response> => {
+    const { userId } = await auth();
+    if (!userId)
+      return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  await ensureUser(userId);
-  const views = await seedViewsIfEmpty(userId, stageOf(req));
-  return Response.json({ views });
-}
+    const stage = stageOf(req);
+    let views = await listViews(userId, stage);
+    if (!views.length) {
+      await ensureUser(userId);
+      views = await seedViewsIfEmpty(userId, stage);
+    }
+    return Response.json({ views });
+  },
+);
 
 export async function POST(req: NextRequest): Promise<Response> {
   const { userId } = await auth();

@@ -2,9 +2,10 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { invalidateBrainContext } from "@/lib/brain/context/server";
 import { listPillars, replacePillars } from "@/lib/db/project-pillars";
-import { seedPillarsIfEmpty } from "@/lib/db/project-seed";
+import { listPillarsSeeded } from "@/lib/db/project-seed";
 import { getActiveProject, updateProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
+import { withServerTiming } from "@/lib/http/server-timing";
 import { parsePillarInput, parseProjectInput } from "@/lib/project/input";
 
 export const runtime = "nodejs";
@@ -28,25 +29,19 @@ function onboardingPillars(
  * has no pillars at all, seeds them from onboarding plus whatever pillars their
  * existing library items were already classified under.
  */
-export async function GET(): Promise<Response> {
+export const GET = withServerTiming(async (): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  // The project FK requires the user row; a creator can reach Studio before any
-  // other path has called ensureUser.
-  await ensureUser(userId);
+  // Creates the user and project rows on first sight; afterwards one select.
   const project = await getActiveProject(userId);
-
-  const user = await currentUser();
-  await seedPillarsIfEmpty(
-    userId,
-    project.id,
-    onboardingPillars(user?.unsafeMetadata as Record<string, unknown>),
-  );
-
-  const pillars = await listPillars(project.id);
+  // Clerk is asked for onboarding pillars only while the project has none.
+  const pillars = await listPillarsSeeded(userId, project.id, async () => {
+    const user = await currentUser();
+    return onboardingPillars(user?.unsafeMetadata as Record<string, unknown>);
+  });
   return Response.json({ project, pillars });
-}
+});
 
 /**
  * Save edits to the brain. Fields and pillars can arrive together or apart; a

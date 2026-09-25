@@ -6,11 +6,50 @@ import { lockStorageUserWithinTx } from "./storage-accounting";
 import { creditLedger, users } from "./schema";
 
 /**
+ * Ids this instance has already seen in the users table. Rows are only removed
+ * by account deletion, after which Clerk stops issuing sessions for the id, so
+ * a remembered id never needs re-checking. Bounded so a long-lived instance
+ * cannot grow without limit; clearing it only costs one cheap read per user.
+ */
+const MAX_KNOWN_USERS = 10_000;
+const knownUsers = new Set<string>();
+
+function rememberUser(id: string): void {
+  if (knownUsers.size >= MAX_KNOWN_USERS) knownUsers.clear();
+  knownUsers.add(id);
+}
+
+/**
  * Create the user row on first sight (idempotent — safe for duplicate Clerk
  * webhooks) and grant the one-time welcome credits. Existing users just get
  * their email refreshed. Returns whether a new user was created.
+ *
+ * Without an email there is nothing to refresh, so a user this instance has
+ * already confirmed costs nothing, and an unconfirmed one costs a single
+ * primary-key read. Only a genuinely new user opens the write transaction.
  */
 export async function ensureUser(
+  id: string,
+  email?: string | null,
+): Promise<{ created: boolean }> {
+  if (!email) {
+    if (knownUsers.has(id)) return { created: false };
+    const [existing] = await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    if (existing) {
+      rememberUser(id);
+      return { created: false };
+    }
+  }
+  const result = await createOrRefreshUser(id, email);
+  rememberUser(id);
+  return result;
+}
+
+async function createOrRefreshUser(
   id: string,
   email?: string | null,
 ): Promise<{ created: boolean }> {
@@ -41,6 +80,7 @@ export async function ensureUser(
  * account rows can disappear without losing the cleanup work. */
 export async function deleteUser(id: string): Promise<void> {
   const db = getDb();
+  knownUsers.delete(id);
   await db.transaction(async (tx) => {
     await lockStorageUserWithinTx(tx, id);
     // Lock the account before taking the cleanup snapshot. Imported-media

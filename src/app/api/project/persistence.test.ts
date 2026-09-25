@@ -10,7 +10,7 @@ vi.mock("@clerk/nextjs/server", () => ({
   currentUser: vi.fn(),
 }));
 vi.mock("@/lib/db/users", () => ({ ensureUser: vi.fn() }));
-vi.mock("@/lib/db/project-seed", () => ({ seedPillarsIfEmpty: vi.fn() }));
+vi.mock("@/lib/db/project-seed", () => ({ listPillarsSeeded: vi.fn() }));
 vi.mock("@/lib/brain/context/server", () => ({
   invalidateBrainContext: vi.fn(),
 }));

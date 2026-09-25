@@ -8,6 +8,7 @@ import type { PgTransaction } from "drizzle-orm/pg-core";
 import { Pool } from "pg";
 import { warnOnCrossInstanceDatabase } from "./cross-instance-guard";
 import * as schema from "./schema";
+import { TimedClient } from "./timed-client";
 
 /** A live transaction handle shared by helpers that must commit together. */
 export type DbTx = PgTransaction<
@@ -33,6 +34,8 @@ export function getDb(): NodePgDatabase<typeof schema> {
       max: 10,
       // Fail fast instead of hanging forever if the pool is saturated.
       connectionTimeoutMillis: 10_000,
+      // Reports query and connect time to the request's Server-Timing header.
+      Client: TimedClient,
     });
     // Idle clients can drop (Neon/pgbouncer closes idle conns); without a
     // listener that 'error' is thrown and can crash the serverless instance.

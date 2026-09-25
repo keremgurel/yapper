@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
 import { getDb } from "./client";
 import {
@@ -80,6 +80,36 @@ export async function getConnectionRow(
       ),
     );
   return row ?? null;
+}
+
+/**
+ * A value that changes whenever the platform's video list may have changed
+ * through Yapper: a different connected account, or any publish job for the
+ * platform moving (queued, published, failed). One round trip, both halves
+ * served by existing indexes. Used to key the short-lived video list cache.
+ */
+export async function videoListStamp(
+  userId: string,
+  platform: PublishPlatform,
+): Promise<string> {
+  const result = await getDb().execute<{
+    account: string | null;
+    last_job: string | null;
+  }>(sql`select
+    (
+      select ${platformConnections.id} || ':' || coalesce(${platformConnections.externalAccountId}, '')
+      from ${platformConnections}
+      where ${platformConnections.userId} = ${userId}
+        and ${platformConnections.platform} = ${platform}
+    ) as account,
+    (
+      select max(${publishJobs.updatedAt})::text
+      from ${publishJobs}
+      where ${publishJobs.userId} = ${userId}
+        and ${publishJobs.platform} = ${platform}
+    ) as last_job`);
+  const row = result.rows[0];
+  return `${row?.account ?? ""}|${row?.last_job ?? ""}`;
 }
 
 /** Persist a refreshed access token (the refresh token is unchanged). */

@@ -1,11 +1,4 @@
-import {
-  DeleteObjectCommand,
-  GetObjectCommand,
-  HeadObjectCommand,
-  PutObjectCommand,
-  S3Client,
-} from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { S3Client } from "@aws-sdk/client-s3";
 import { createReadStream } from "node:fs";
 import { MAX_SERVER_PROCESSED_VIDEO_BYTES } from "@/lib/db/constants";
 import {
@@ -14,25 +7,47 @@ import {
 } from "@/lib/http/bounded-temp-file";
 
 // Cloudflare R2 (S3-compatible). Media (recordings) live here so /history can
-// replay them; $0 egress makes replays free. Lazily constructed so importing
-// this module never requires the env at build time.
-let client: S3Client | null = null;
+// replay them; $0 egress makes replays free.
+//
+// The AWS SDK is loaded on first use, not at import. Many hot routes import
+// this module only for the key helpers below (or through the storage lifecycle
+// modules), and the SDK is by far the heaviest dependency on their cold start.
+// Construction is lazy too, so importing never requires the env at build time.
+type S3Sdk = typeof import("@aws-sdk/client-s3");
 
-function s3(): S3Client {
-  if (!client) {
-    const endpoint = process.env.R2_ENDPOINT;
-    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-    if (!endpoint || !accessKeyId || !secretAccessKey) {
-      throw new Error("r2_not_configured");
-    }
-    client = new S3Client({
-      region: "auto",
-      endpoint,
-      credentials: { accessKeyId, secretAccessKey },
+let s3Ready: Promise<{ client: S3Client; sdk: S3Sdk }> | null = null;
+
+function s3(): Promise<{ client: S3Client; sdk: S3Sdk }> {
+  const endpoint = process.env.R2_ENDPOINT;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!endpoint || !accessKeyId || !secretAccessKey) {
+    return Promise.reject(new Error("r2_not_configured"));
+  }
+  if (!s3Ready) {
+    s3Ready = import("@aws-sdk/client-s3").then((sdk) => ({
+      sdk,
+      client: new sdk.S3Client({
+        region: "auto",
+        endpoint,
+        credentials: { accessKeyId, secretAccessKey },
+      }),
+    }));
+    // A failed load must not poison every later call on this instance.
+    s3Ready.catch(() => {
+      s3Ready = null;
     });
   }
-  return client;
+  return s3Ready;
+}
+
+/** The S3 client plus the presigner, both loaded on first use. */
+async function signer() {
+  const [s3Parts, { getSignedUrl }] = await Promise.all([
+    s3(),
+    import("@aws-sdk/s3-request-presigner"),
+  ]);
+  return { ...s3Parts, getSignedUrl };
 }
 
 const bucket = () => process.env.R2_BUCKET ?? "yapper-media";
@@ -82,15 +97,16 @@ export function isTranscriptionKey(userId: string, key: string): boolean {
 }
 
 /** Presigned PUT for the client to upload a recording straight to R2. */
-export function presignUpload(
+export async function presignUpload(
   key: string,
   contentType: string,
   contentLength: number,
   expiresIn = 600,
 ): Promise<string> {
+  const { client, sdk, getSignedUrl } = await signer();
   return getSignedUrl(
-    s3(),
-    new PutObjectCommand({
+    client,
+    new sdk.PutObjectCommand({
       Bucket: bucket(),
       Key: key,
       ContentType: contentType,
@@ -104,18 +120,23 @@ export function presignUpload(
 }
 
 /** Presigned GET for playback in the history view. */
-export function presignView(key: string, expiresIn = 3600): Promise<string> {
+export async function presignView(
+  key: string,
+  expiresIn = 3600,
+): Promise<string> {
+  const { client, sdk, getSignedUrl } = await signer();
   return getSignedUrl(
-    s3(),
-    new GetObjectCommand({ Bucket: bucket(), Key: key }),
+    client,
+    new sdk.GetObjectCommand({ Bucket: bucket(), Key: key }),
     { expiresIn },
   );
 }
 
 /** Server-side read of an object's bytes (e.g. to forward a video to Gemini). */
 export async function getObjectBytes(key: string): Promise<ArrayBuffer> {
-  const res = await s3().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: key }),
+  const { client, sdk } = await s3();
+  const res = await client.send(
+    new sdk.GetObjectCommand({ Bucket: bucket(), Key: key }),
   );
   const bytes = await res.Body?.transformToByteArray();
   if (!bytes) throw new Error("r2_empty");
@@ -136,8 +157,9 @@ export async function getObjectFile(
   key: string,
   options: { maxBytes?: number; signal?: AbortSignal } = {},
 ): Promise<R2ObjectFile> {
-  const response = await s3().send(
-    new GetObjectCommand({ Bucket: bucket(), Key: key }),
+  const { client, sdk } = await s3();
+  const response = await client.send(
+    new sdk.GetObjectCommand({ Bucket: bucket(), Key: key }),
     options.signal ? { abortSignal: options.signal } : undefined,
   );
   const body = response.Body;
@@ -166,8 +188,9 @@ export async function putObjectBytes(
   bytes: ArrayBuffer | Uint8Array,
   contentType: string,
 ): Promise<void> {
-  await s3().send(
-    new PutObjectCommand({
+  const { client, sdk } = await s3();
+  await client.send(
+    new sdk.PutObjectCommand({
       Bucket: bucket(),
       Key: key,
       Body: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes),
@@ -185,12 +208,13 @@ export async function putObjectFile(
   contentType: string,
   signal?: AbortSignal,
 ): Promise<void> {
+  const { client, sdk } = await s3();
   const body = createReadStream(filePath);
   const abort = () => body.destroy(new DOMException("aborted", "AbortError"));
   signal?.addEventListener("abort", abort, { once: true });
   try {
-    await s3().send(
-      new PutObjectCommand({
+    await client.send(
+      new sdk.PutObjectCommand({
         Bucket: bucket(),
         Key: key,
         Body: body,
@@ -233,8 +257,9 @@ export async function deleteObject(
   key: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  await s3().send(
-    new DeleteObjectCommand({ Bucket: bucket(), Key: key }),
+  const { client, sdk } = await s3();
+  await client.send(
+    new sdk.DeleteObjectCommand({ Bucket: bucket(), Key: key }),
     signal ? { abortSignal: signal } : undefined,
   );
 }
@@ -244,8 +269,9 @@ export async function deleteObject(
  * can't cap size, so the claimed byte count is only advisory). */
 export async function headObjectBytes(key: string): Promise<number | null> {
   try {
-    const res = await s3().send(
-      new HeadObjectCommand({ Bucket: bucket(), Key: key }),
+    const { client, sdk } = await s3();
+    const res = await client.send(
+      new sdk.HeadObjectCommand({ Bucket: bucket(), Key: key }),
     );
     return res.ContentLength ?? 0;
   } catch (e) {
@@ -265,8 +291,9 @@ export async function streamPublishMedia(
 ): Promise<Response> {
   if (range && !/^bytes=\d*-\d*$/.test(range))
     return new Response(null, { status: 416 });
-  const object = await s3().send(
-    new GetObjectCommand({
+  const { client, sdk } = await s3();
+  const object = await client.send(
+    new sdk.GetObjectCommand({
       Bucket: bucket(),
       Key: key,
       Range: range ?? undefined,

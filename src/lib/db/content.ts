@@ -101,6 +101,12 @@ export async function listContentItems(
       sourceTitle: contentItems.sourceTitle,
       sourcePlatform: contentItems.sourcePlatform,
       transcriptStatus: contentItems.transcriptStatus,
+      /**
+       * Whether the script has any visible text. Lists only need this flag,
+       * and a client that reads it can stop depending on `script` (kept below
+       * because shipped Mac builds still derive the flag from it).
+       */
+      hasScript: sql<boolean>`coalesce(${contentItems.script} ~ '[^[:space:]]', false)`,
       script: contentItems.script,
       originalNote: contentItems.originalNote,
       updatedAt: contentItems.updatedAt,

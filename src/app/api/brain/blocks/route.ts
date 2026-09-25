@@ -9,18 +9,18 @@ import {
 } from "@/lib/db/project-brain";
 import { getActiveProject } from "@/lib/db/projects";
 import { ensureUser } from "@/lib/db/users";
+import { withServerTiming } from "@/lib/http/server-timing";
 
 export const runtime = "nodejs";
 
 /** Everything the creator has written into their brain, in their order. */
-export async function GET(): Promise<Response> {
+export const GET = withServerTiming(async (): Promise<Response> => {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
-  await ensureUser(userId);
   const project = await getActiveProject(userId);
   return Response.json({ blocks: await listBrainBlocks(project.id) });
-}
+});
 
 /** Add a section. */
 export async function POST(req: NextRequest): Promise<Response> {
