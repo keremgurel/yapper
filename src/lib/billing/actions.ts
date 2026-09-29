@@ -27,7 +27,7 @@ export const PAID_ACTIONS = {
   design_overlay: { credits: 60, label: "AI overlay design" },
   scene_image: { credits: 8, label: "AI overlay picture" },
   revise_overlay: { credits: 60, label: "AI overlay revision" },
-  retime_overlay: { credits: 4, label: "AI overlay retiming" },
+  retime_overlay: { credits: 20, label: "AI overlay retiming" },
 } as const;
 
 export type PaidAction = keyof typeof PAID_ACTIONS;

@@ -40,7 +40,7 @@ need to free space before uploading more.
 | Overlay planning                    |                                      20 |
 | Overlay design or revision          |                            60 per scene |
 | Generated overlay image             |                                  8 each |
-| Overlay retiming                    |                                       4 |
+| Overlay retiming                    |                                      20 |
 
 Duration for editor transcription is read from the owned media container before
 billing, rather than trusting the client's duration header. Chunk overlap and
