@@ -987,6 +987,15 @@ export const r2ObjectStates = [
 ] as const;
 export type R2ObjectState = (typeof r2ObjectStates)[number];
 
+/** A durable inventory cursor prevents every cron run rescanning page one. */
+export const maintenanceCursors = pgTable("maintenance_cursors", {
+  name: text("name").primaryKey(),
+  cursor: text("cursor"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /**
  * Durable lifecycle state for every R2 object Yapper knows about.
  *

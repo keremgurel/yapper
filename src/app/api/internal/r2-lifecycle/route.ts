@@ -5,6 +5,7 @@ import {
   releaseSupersededMediaBatch,
 } from "@/lib/db/posted-media-retention";
 import { processR2LifecycleBatch } from "@/lib/db/r2-lifecycle";
+import { reconcileR2Inventory } from "@/lib/db/r2-reconciliation";
 import { cleanupExpiredRateLimitBuckets } from "@/lib/db/rate-limit";
 
 export const runtime = "nodejs";
@@ -41,6 +42,7 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  const deadlineAt = Date.now() + ROUTE_BUDGET_MS;
   let supersededMedia = { released: 0, failed: 0 };
   try {
     supersededMedia = await releaseSupersededMediaBatch();
@@ -55,6 +57,7 @@ export async function GET(request: Request): Promise<Response> {
     postedMedia = await releasePostedMediaBatch();
   } catch (error) {
     console.error("[maintenance] posted media release failed", error);
+    postedMedia.failed += 1;
   }
 
   let lapsedMedia = { accounts: 0, released: 0, failed: 0 };
@@ -62,11 +65,23 @@ export async function GET(request: Request): Promise<Response> {
     lapsedMedia = await releaseLapsedMediaBatch();
   } catch (error) {
     console.error("[maintenance] lapsed media release failed", error);
+    lapsedMedia.failed += 1;
+  }
+
+  let inventory = null;
+  let inventoryFailed = false;
+  try {
+    inventory = await reconcileR2Inventory(
+      Math.min(deadlineAt, Date.now() + 8_000),
+    );
+  } catch (error) {
+    inventoryFailed = true;
+    console.error("[maintenance] R2 inventory reconciliation failed", error);
   }
 
   const result = await processR2LifecycleBatch({
     limit: batchSize(request),
-    deadlineAt: Date.now() + ROUTE_BUDGET_MS,
+    deadlineAt,
   });
   let rateLimitBucketsDeleted = 0;
   let rateLimitCleanupFailed = false;
@@ -78,6 +93,15 @@ export async function GET(request: Request): Promise<Response> {
     rateLimitCleanupFailed = true;
     console.error("[maintenance] rate-limit cleanup failed", error);
   }
+  // Surface partial failure to cron/uptime monitoring instead of reporting a
+  // healthy 200 while undeleted media or expired counters keep accumulating.
+  const failed =
+    supersededMedia.failed > 0 ||
+    postedMedia.failed > 0 ||
+    lapsedMedia.failed > 0 ||
+    result.retried > 0 ||
+    inventoryFailed ||
+    rateLimitCleanupFailed;
   return Response.json(
     {
       ...result,
@@ -86,8 +110,11 @@ export async function GET(request: Request): Promise<Response> {
       lapsedMedia,
       rateLimitBucketsDeleted,
       rateLimitCleanupFailed,
+      inventory,
+      inventoryFailed,
     },
     {
+      status: failed ? 503 : 200,
       headers: { "Cache-Control": "no-store" },
     },
   );

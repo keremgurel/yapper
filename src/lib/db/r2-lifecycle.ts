@@ -18,6 +18,7 @@ import {
   importedPlatformMedia,
   projects,
   publishJobs,
+  publishingSchedules,
   r2Objects,
   submissions,
   users,
@@ -341,6 +342,26 @@ async function hasDurableR2ReferencesWithinTx(
     .limit(1);
   if (imported) return true;
 
+  // Schedules can retain legacy objects without a submission/registry row.
+  // Recheck both video and thumbnail references immediately before deletion.
+  const [schedule] = await tx
+    .select({ id: publishingSchedules.id })
+    .from(publishingSchedules)
+    .where(
+      and(
+        eq(publishingSchedules.userId, userId),
+        inArray(publishingSchedules.status, [
+          "scheduled",
+          "running",
+          "needs_attention",
+        ]),
+        sql`(${publishingSchedules.input}->>'mediaKey' = ${mediaKey}
+        or ${publishingSchedules.input}->>'thumbnailKey' = ${mediaKey})`,
+      ),
+    )
+    .limit(1);
+  if (schedule) return true;
+
   const [project] = await tx
     .select({ id: projects.id })
     .from(projects)
@@ -393,6 +414,50 @@ export async function hasLiveR2ReferencesWithinTx(
 ): Promise<boolean> {
   if (await hasDurableR2ReferencesWithinTx(tx, userId, mediaKey)) return true;
   return hasActivePublishReferenceWithinTx(tx, userId, mediaKey, now);
+}
+
+/** Adopt a legacy orphan into the normal leased deletion protocol. References
+ * are checked under the same locks as upload, attach and schedule writers. */
+export async function queueUntrackedR2Object(
+  userId: string,
+  mediaKey: string,
+  mediaBytes: number,
+  now: Date,
+): Promise<boolean> {
+  return getDb().transaction(async (tx) => {
+    if (await lockObjectRow(tx, userId, mediaKey)) return false;
+    if (await hasDurableR2ReferencesWithinTx(tx, userId, mediaKey))
+      return false;
+    // Be conservative with historical retries: any unfinished publishing job
+    // protects an untracked file, as does a successful job from the last day.
+    const [job] = await tx
+      .select({ id: publishJobs.id })
+      .from(publishJobs)
+      .where(
+        and(
+          eq(publishJobs.userId, userId),
+          eq(publishJobs.mediaKey, mediaKey),
+          sql`(${publishJobs.status} <> 'published' or ${publishJobs.updatedAt} >= ${new Date(now.getTime() - 86_400_000)})`,
+        ),
+      )
+      .limit(1);
+    if (job) return false;
+    const notBefore = new Date(now.getTime() + 86_400_000);
+    await tx.insert(r2Objects).values({
+      userId,
+      mediaKey,
+      mediaBytes,
+      purpose: /\.(png|jpe?g|webp)$/i.test(mediaKey)
+        ? "thumbnail"
+        : "recording",
+      state: "delete_pending",
+      deleteNotBefore: notBefore,
+      nextAttemptAt: notBefore,
+      deleteReason: "untracked_inventory_orphan",
+      updatedAt: now,
+    });
+    return true;
+  });
 }
 
 export async function enqueueObjectDeletionWithinTx(

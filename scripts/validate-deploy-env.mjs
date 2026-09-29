@@ -10,4 +10,12 @@ if (process.env.VERCEL === "1") {
   if (process.env.RATE_LIMIT_TRUST_PROXY !== "vercel") {
     throw new Error('RATE_LIMIT_TRUST_PROXY must equal "vercel" on Vercel');
   }
+  if (
+    process.env.VERCEL_ENV === "production" &&
+    !process.env.CRON_SECRET?.trim()
+  ) {
+    throw new Error(
+      "CRON_SECRET is required in production so storage cleanup can run",
+    );
+  }
 }

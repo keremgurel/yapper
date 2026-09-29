@@ -232,6 +232,13 @@
       "when": 1790647724653,
       "tag": "0032_provider_spend_windows",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790681061954,
+      "tag": "0033_maintenance_cursors",
+      "breakpoints": true
     }
   ]
 }

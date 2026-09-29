@@ -52,6 +52,27 @@ async function signer() {
 
 const bucket = () => process.env.R2_BUCKET ?? "yapper-media";
 
+/** Bounded inventory for the deletion worker; never downloads object bodies. */
+export async function listMediaObjects(startAfter?: string) {
+  const { client, sdk } = await s3();
+  const page = await client.send(
+    new sdk.ListObjectsV2Command({
+      Bucket: bucket(),
+      StartAfter: startAfter,
+      MaxKeys: 1000,
+    }),
+    { abortSignal: AbortSignal.timeout(5_000) },
+  );
+  return {
+    objects: (page.Contents ?? []).flatMap((item) =>
+      item.Key && item.LastModified && item.Size !== undefined
+        ? [{ key: item.Key, modifiedAt: item.LastModified, bytes: item.Size }]
+        : [],
+    ),
+    hasMore: page.IsTruncated ?? false,
+  };
+}
+
 export const r2Configured = (): boolean =>
   !!(
     process.env.R2_ENDPOINT &&

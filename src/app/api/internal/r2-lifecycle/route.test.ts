@@ -5,6 +5,8 @@ const cleanupExpiredRateLimitBuckets = vi.hoisted(() => vi.fn());
 const releaseSupersededMediaBatch = vi.hoisted(() => vi.fn());
 const releasePostedMediaBatch = vi.hoisted(() => vi.fn());
 const releaseLapsedMediaBatch = vi.hoisted(() => vi.fn());
+const reconcileR2Inventory = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/db/r2-reconciliation", () => ({ reconcileR2Inventory }));
 vi.mock("@/lib/db/lapsed-media-retention", () => ({
   releaseLapsedMediaBatch,
 }));
@@ -18,6 +20,12 @@ vi.mock("@/lib/db/rate-limit", () => ({ cleanupExpiredRateLimitBuckets }));
 import { GET } from "./route";
 
 beforeEach(() => {
+  reconcileR2Inventory.mockResolvedValue({
+    scanned: 0,
+    enqueued: 0,
+    bytesQueued: 0,
+    complete: true,
+  });
   process.env.CRON_SECRET = "test-secret";
   processR2LifecycleBatch.mockResolvedValue({ claimed: 0, deleted: 0 });
   cleanupExpiredRateLimitBuckets.mockResolvedValue(3);
@@ -99,7 +107,7 @@ describe("R2 lifecycle cron route", () => {
       }),
     );
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(503);
     expect(processR2LifecycleBatch).toHaveBeenCalledOnce();
     await expect(response.json()).resolves.toMatchObject({
       claimed: 0,
@@ -111,6 +119,54 @@ describe("R2 lifecycle cron route", () => {
       "[maintenance] rate-limit cleanup failed",
       error,
     );
+  });
+
+  it.each([
+    ["supersededMedia", releaseSupersededMediaBatch],
+    ["postedMedia", releasePostedMediaBatch],
+    ["lapsedMedia", releaseLapsedMediaBatch],
+  ] as const)(
+    "exposes a failed %s release while continuing deletion",
+    async (field, release) => {
+      release.mockRejectedValueOnce(new Error("database unavailable"));
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      const response = await GET(
+        new Request("https://example.test/api/internal/r2-lifecycle", {
+          headers: { authorization: "Bearer test-secret" },
+        }),
+      );
+      expect(response.status).toBe(503);
+      expect(processR2LifecycleBatch).toHaveBeenCalledOnce();
+      expect(await response.json()).toMatchObject({ [field]: { failed: 1 } });
+    },
+  );
+
+  it("reports an R2 deletion retry as an unhealthy cleanup run", async () => {
+    processR2LifecycleBatch.mockResolvedValueOnce({
+      claimed: 2,
+      deleted: 1,
+      retried: 1,
+    });
+    const response = await GET(
+      new Request("https://example.test/api/internal/r2-lifecycle", {
+        headers: { authorization: "Bearer test-secret" },
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ deleted: 1, retried: 1 });
+  });
+
+  it("still deletes tracked media if the bucket inventory fails", async () => {
+    reconcileR2Inventory.mockRejectedValueOnce(new Error("inventory denied"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const response = await GET(
+      new Request("https://example.test/api/internal/r2-lifecycle", {
+        headers: { authorization: "Bearer test-secret" },
+      }),
+    );
+    expect(response.status).toBe(503);
+    expect(processR2LifecycleBatch).toHaveBeenCalledOnce();
+    expect(await response.json()).toMatchObject({ inventoryFailed: true });
   });
 
   it("lets go of posted videos before deleting, and reports it", async () => {
