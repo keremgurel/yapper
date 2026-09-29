@@ -140,3 +140,41 @@ export async function deductCredits(
 ): Promise<number> {
   return getDb().transaction((tx) => deductWithinTx(tx, userId, amount, opts));
 }
+
+/** One small trial grant per account, including accounts created before v2.
+ * The user lock serializes parallel checkout deliveries; a historic plan grant
+ * disqualifies the account rather than creating another free allowance. */
+export async function grantTrialCredits(userId: string, amount: number) {
+  return getDb().transaction(async (tx) => {
+    const [owner] = await tx
+      .select({ balance: users.creditsBalance })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
+    if (!owner) throw new Error("user not found");
+    const [previous] = await tx
+      .select({ id: creditLedger.id })
+      .from(creditLedger)
+      .where(
+        and(
+          eq(creditLedger.userId, userId),
+          eq(creditLedger.reason, "subscription_grant"),
+        ),
+      )
+      .limit(1);
+    if (previous) return;
+    const balance = owner.balance + amount;
+    await tx.insert(creditLedger).values({
+      userId,
+      delta: amount,
+      reason: "subscription_grant",
+      balanceAfter: balance,
+      stripeRef: `trial_${userId}`,
+      metadata: { source: "trial", billingVersion: 2 },
+    });
+    await tx
+      .update(users)
+      .set({ creditsBalance: balance })
+      .where(eq(users.id, userId));
+  });
+}

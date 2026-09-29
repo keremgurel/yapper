@@ -41,7 +41,7 @@ describe("GET /api/billing/status", () => {
       plan: "creator_monthly",
       balance: 88,
       storageBytes: 3 * 1024 * 1024 * 1024,
-      storageQuotaBytes: 50 * 1024 * 1024 * 1024,
+      storageQuotaBytes: 5 * 1024 * 1024 * 1024,
     });
   });
 

@@ -5,7 +5,7 @@ import CaptionDelivery from "@/components/publish/captions/caption-delivery";
 import CaptionPreview from "@/components/publish/captions/caption-preview";
 import HashtagChips from "@/components/publish/captions/hashtag-chips";
 import { captionOverBy } from "@/components/publish/captions/caption-draft";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 const FIELD =

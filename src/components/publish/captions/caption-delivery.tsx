@@ -2,7 +2,7 @@
 
 import { Chip } from "@/components/studio-ui";
 import CopyCaptionButton from "@/components/publish/captions/copy-caption-button";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 /**

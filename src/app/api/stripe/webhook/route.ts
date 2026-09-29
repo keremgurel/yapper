@@ -1,13 +1,18 @@
 import type Stripe from "stripe";
 import type { NextRequest } from "next/server";
-import { grantCreditsIdempotent } from "@/lib/db/credits";
+import { grantCreditsIdempotent, grantTrialCredits } from "@/lib/db/credits";
 import {
   applySubscriptionState,
   findUserIdByStripeCustomer,
   setStripeCustomerId,
 } from "@/lib/db/billing";
 import { getStripe } from "@/lib/stripe";
-import { CREDIT_PACKS, planByKey, planByPriceId } from "@/lib/billing/plans";
+import {
+  CREDIT_PACKS,
+  planByKey,
+  planByPriceId,
+  TRIAL_CREDITS,
+} from "@/lib/billing/plans";
 
 export const runtime = "nodejs";
 
@@ -60,8 +65,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   return Response.json({ received: true });
 }
 
-/** Signup / purchase: link the customer and grant the allotment (subscription,
- * incl. trial) or the credit pack. Keyed by the session id so it grants once. */
+/** Link the customer; grant a limited trial or a paid credit pack. */
 async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
   const userId = session.client_reference_id ?? session.metadata?.userId;
   if (!userId) return;
@@ -70,17 +74,22 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (customerId) await setStripeCustomerId(userId, customerId);
 
   if (session.mode === "subscription") {
-    // Trial subscriptions are "no_payment_required"; the grant is expected at
-    // signup either way (renewals come via invoice.paid).
-    const plan = planByKey(session.metadata?.plan);
-    if (plan && plan.includedCredits > 0) {
-      await grantCreditsIdempotent(
-        userId,
-        plan.includedCredits,
-        "subscription_grant",
-        `sess_${session.id}`,
-        { plan: plan.key, source: "checkout" },
-      );
+    // Checkout grants only the small, once-per-account trial allowance.
+    // Paid credits are tied to invoices, never to opening/completing checkout.
+    if (
+      session.payment_status === "no_payment_required" &&
+      planByKey(session.metadata?.plan)
+    ) {
+      const subscriptionId =
+        typeof session.subscription === "string"
+          ? session.subscription
+          : session.subscription?.id;
+      if (subscriptionId) {
+        const subscription =
+          await getStripe().subscriptions.retrieve(subscriptionId);
+        if (subscription.status === "trialing")
+          await grantTrialCredits(userId, TRIAL_CREDITS);
+      }
     }
     return;
   }
@@ -126,11 +135,15 @@ async function onSubscriptionChange(sub: Stripe.Subscription) {
   });
 }
 
-/** Renewal: grant the monthly allotment on each paid cycle (not the initial
- * create invoice, which checkout.session.completed already covers). Idempotent
- * on the invoice id. */
+/** Paid initial invoices and renewals each grant once. A zero-dollar trial
+ * invoice grants nothing. Legacy initial invoices were credited at checkout. */
 async function onInvoicePaid(invoice: Stripe.Invoice) {
-  if (invoice.billing_reason !== "subscription_cycle") return;
+  if (invoice.status !== "paid" || invoice.amount_paid <= 0) return;
+  if (
+    invoice.billing_reason !== "subscription_cycle" &&
+    invoice.billing_reason !== "subscription_create"
+  )
+    return;
   const customerId =
     typeof invoice.customer === "string" ? invoice.customer : null;
   if (!customerId) return;
@@ -149,12 +162,35 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
     }
   }
   if (!plan || plan.includedCredits <= 0) return;
+  let grantRef = `inv_${invoice.id}`;
+  if (
+    invoice.billing_reason === "subscription_create" &&
+    invoice.parent?.subscription_details?.metadata?.creditGrantVersion !== "2"
+  ) {
+    // A checkout opened before this deployment can complete afterwards. Reuse
+    // its old session grant key, so it neither loses credits nor double-grants
+    // if the old webhook already delivered them.
+    const ref = invoice.parent?.subscription_details?.subscription;
+    const subscription = typeof ref === "string" ? ref : ref?.id;
+    if (!subscription) return;
+    const sessions = await getStripe().checkout.sessions.list({
+      subscription,
+      limit: 1,
+    });
+    const session = sessions.data[0];
+    if (!session) throw new Error("initial_invoice_checkout_not_ready");
+    grantRef = `sess_${session.id}`;
+  }
   await grantCreditsIdempotent(
     userId,
     plan.includedCredits,
     "subscription_grant",
-    `inv_${invoice.id}`,
-    { plan: plan.key, source: "renewal" },
+    grantRef,
+    {
+      plan: plan.key,
+      source: "paid_invoice",
+      billingReason: invoice.billing_reason,
+    },
   );
 }
 

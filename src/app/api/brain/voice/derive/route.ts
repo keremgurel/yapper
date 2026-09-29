@@ -1,3 +1,4 @@
+import { canUsePremium } from "@/lib/billing/gate";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { invalidateBrainContext } from "@/lib/brain/context/server";
@@ -32,6 +33,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (spendLimited) return spendLimited;
 
   await ensureUser(userId);
+  if (!(await canUsePremium(userId))) {
+    return Response.json({ error: "not_entitled" }, { status: 402 });
+  }
   const project = await getActiveProject(userId);
   const samples = await readyVoiceTranscripts(project.id);
   if (samples.length === 0) {

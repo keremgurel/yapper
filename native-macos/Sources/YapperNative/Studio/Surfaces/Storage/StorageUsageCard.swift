@@ -9,7 +9,7 @@ struct StorageUsageCard: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 16) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(usage.plan.map { "\($0.name) membership" } ?? "Included storage")
+                    Text("Temporary publishing workspace")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline, spacing: 6) {

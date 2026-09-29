@@ -4,7 +4,6 @@ import { lapsedMediaDeleteAt } from "@/lib/billing/entitlement";
 import type { Metadata } from "next";
 import { auth } from "@clerk/nextjs/server";
 import {
-  ArrowUpRight,
   Brain,
   Clapperboard,
   Database,
@@ -19,10 +18,7 @@ import { getBillingState } from "@/lib/db/billing";
 import { getStorageUsageDetails } from "@/lib/db/storage-usage";
 import { getStorageBytes } from "@/lib/db/users";
 import { storageQuotaFor } from "@/lib/billing/storage";
-import { planByKey, SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
 import { formatStorageBytes, storageUsagePercent } from "@/lib/storage/format";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Storage",
@@ -81,7 +77,6 @@ export default async function StoragePage() {
   const quotaBytes = storageQuotaFor(state);
   const committedBytes = usedBytes + details.reservedBytes;
   const percent = storageUsagePercent(committedBytes, quotaBytes);
-  const plan = planByKey(state?.plan);
   // A lapsed account keeps its videos for 30 days after access ends.
   const videosDeleteOn = usedBytes > 0 ? lapsedMediaDeleteAt(state) : null;
   const pressure =
@@ -91,18 +86,7 @@ export default async function StoragePage() {
     <div className="w-full space-y-6 pb-12">
       <PageHeader
         title="Storage"
-        description="Finished videos use your plan allowance. Your Brain, ideas and library are text and never count against it. Editor projects stay on your Mac."
-        actions={
-          <Link
-            href="/pricing"
-            className={cn(
-              buttonVariants({ variant: "outline" }),
-              "no-underline",
-            )}
-          >
-            Compare plans <ArrowUpRight className="h-4 w-4" />
-          </Link>
-        }
+        description="Temporary space for your current video and scheduled posts. Originals and editor projects stay on your device. Your Brain, ideas and scripts stay in your workspace."
       />
 
       {videosDeleteOn && (
@@ -123,7 +107,7 @@ export default async function StoragePage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-muted-foreground text-xs font-bold">
-                {plan ? `${plan.name} membership` : "Included storage"}
+                Temporary publishing workspace
               </p>
               <p className="font-display text-foreground mt-1 text-3xl font-semibold tabular-nums">
                 {formatStorageBytes(usedBytes)}
@@ -195,7 +179,8 @@ export default async function StoragePage() {
               Video storage
             </h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              These bytes count against your plan.
+              One current video, plus files needed for scheduled posts and
+              publishing retries.
             </p>
           </div>
           <Link
@@ -209,13 +194,13 @@ export default async function StoragePage() {
           <BreakdownCard
             icon={Clapperboard}
             label="Uploaded videos"
-            detail={`${details.media.recording.count} saved master${details.media.recording.count === 1 ? "" : "s"}`}
+            detail={`${details.media.recording.count} upload${details.media.recording.count === 1 ? "" : "s"}`}
             value={formatStorageBytes(details.media.recording.bytes)}
           />
           <BreakdownCard
             icon={Database}
             label="Cross-post imports"
-            detail={`${details.media.import.count} reusable platform cop${details.media.import.count === 1 ? "y" : "ies"}`}
+            detail={`${details.media.import.count} temporary import${details.media.import.count === 1 ? "" : "s"}`}
             value={formatStorageBytes(details.media.import.bytes)}
           />
           <BreakdownCard
@@ -242,7 +227,7 @@ export default async function StoragePage() {
             <p className="text-muted-foreground mt-1 max-w-2xl text-xs leading-5">
               About {formatStorageBytes(details.workspace.estimatedBytes)} of
               project, Brain, idea and library records. This is visible for
-              transparency but does not consume your video allowance.
+              transparency but does not consume your temporary storage limit.
             </p>
           </div>
           <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-[11px] font-semibold">
@@ -293,44 +278,26 @@ export default async function StoragePage() {
         </div>
       </section>
 
-      <section>
+      <section className="border-border rounded-2xl border p-5 sm:p-6">
         <h2 className="font-display text-foreground text-lg font-semibold">
-          Plan headroom
+          How temporary storage works
         </h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {SUBSCRIPTION_PLANS.map((candidate) => {
-            const current = candidate.key === state?.plan;
-            return (
-              <div
-                key={candidate.key}
-                className={`rounded-2xl border p-4 ${
-                  current
-                    ? "border-foreground/30 bg-card"
-                    : "border-border bg-card"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-foreground text-sm font-semibold">
-                    {candidate.name}
-                  </p>
-                  {current ? (
-                    <span className="bg-muted text-foreground rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                      Your plan
-                    </span>
-                  ) : null}
-                </div>
-                <p className="font-display text-foreground mt-3 text-2xl font-semibold">
-                  {candidate.storageLabel}
-                </p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {formatStorageBytes(
-                    Math.max(0, candidate.storageBytes - committedBytes),
-                  )}{" "}
-                  available at today&apos;s usage
-                </p>
-              </div>
-            );
-          })}
+        <div className="text-muted-foreground mt-3 space-y-3 text-sm leading-6">
+          <p>
+            Every membership has the same 5 GB limit at any one time. Weekly,
+            monthly and yearly describe billing only. Storage never resets or
+            accumulates.
+          </p>
+          <p>
+            Yapper keeps one current video. Scheduled posts keep the files they
+            need. After successful publishing, files are released after the
+            24-hour retry window and the next cleanup run.
+          </p>
+          <p>
+            This is publishing space, not a video archive. Keep originals on
+            your device. Your scripts, transcripts and feedback remain after
+            video files are removed.
+          </p>
         </div>
       </section>
     </div>

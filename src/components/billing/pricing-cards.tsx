@@ -3,7 +3,11 @@
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SUBSCRIPTION_PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
+import {
+  SUBSCRIPTION_PLANS,
+  TRIAL_DAYS,
+  TRIAL_CREDITS,
+} from "@/lib/billing/plans";
 import { TRAINING_FEEDBACK_CREDITS } from "@/lib/db/constants";
 
 const muted = { color: "var(--sg-text-muted)" };
@@ -37,7 +41,9 @@ export default function PricingCards({
               <h3 className="sg-display text-2xl">{plan.name}</h3>
               <div className="mt-1 flex items-end gap-2">
                 <p className="sg-display text-4xl">{plan.priceLabel}</p>
-                <p className="sg-label pb-1">{plan.cadenceLabel}</p>
+                <p className="text-muted-foreground pb-1 text-sm">
+                  {plan.cadenceLabel}
+                </p>
               </div>
               {plan.badge ? (
                 <span
@@ -47,19 +53,30 @@ export default function PricingCards({
                   {plan.badge}
                 </span>
               ) : null}
-              <p className="sg-label mt-3">
-                {plan.includedCredits.toLocaleString()} credits / {plan.cadence}
+              <p className="text-muted-foreground mt-3 text-sm leading-5">
+                {plan.includedCredits.toLocaleString()} credits after each{" "}
+                {plan.cadence === "year"
+                  ? "annual"
+                  : plan.cadence === "month"
+                    ? "monthly"
+                    : "weekly"}{" "}
+                payment
               </p>
               {/* Credits are the meter, but nobody buys a meter. The number
                   people actually compare is how many coached reps they get. */}
-              <p className="sg-label">
+              <p className="text-muted-foreground mt-1 text-sm leading-5">
                 About{" "}
                 {Math.floor(
                   plan.includedCredits / TRAINING_FEEDBACK_CREDITS,
                 ).toLocaleString()}{" "}
                 AI feedbacks
               </p>
-              <p className="sg-label">{plan.storageLabel} video storage</p>
+              <p className="text-muted-foreground mt-1 text-sm leading-5">
+                {TRIAL_CREDITS} credits during your first {TRIAL_DAYS}-day trial
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm leading-5">
+                One active video, with temporary publishing storage
+              </p>
             </div>
             <p className="text-sm leading-6" style={muted}>
               {plan.blurb}
@@ -84,7 +101,7 @@ export default function PricingCards({
                   {pending === plan.key ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    `Try ${TRIAL_DAYS} days free`
+                    "Choose membership"
                   )}
                 </Button>
               </Show>

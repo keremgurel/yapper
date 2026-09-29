@@ -1,3 +1,4 @@
+import { fetchBoundedJson } from "@/lib/http/outbound";
 interface DeepgramWord {
   word?: string;
   punctuated_word?: string;
@@ -43,14 +44,18 @@ export async function transcribeRemoteMedia(
     endpoint.searchParams.append("keyterm", term);
   }
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${key}`,
-      "Content-Type": "application/json",
+  const { response, data } = await fetchBoundedJson<unknown>(
+    endpoint,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Token ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url: mediaUrl }),
     },
-    body: JSON.stringify({ url: mediaUrl }),
-  });
+    { timeoutMs: 90_000, maxBytes: 2_000_000 },
+  );
   if (!response.ok) throw new Error(`deepgram_${response.status}`);
-  return readRemoteTranscript(await response.json());
+  return readRemoteTranscript(data);
 }

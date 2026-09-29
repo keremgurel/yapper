@@ -3,7 +3,10 @@
 import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { renderCaption, type PlatformCaption } from "@/lib/publish/caption";
+import {
+  renderCaption,
+  type PlatformCaption,
+} from "@/lib/publish/caption-format";
 
 /**
  * Copies exactly what would be posted. `renderCaption` is the single source of

@@ -3,6 +3,7 @@ import SwiftUI
 /// The four kinds of media that count against the plan, one tile each.
 struct StorageMediaSection: View {
     let media: StorageUsage.Media
+    @State private var managingVideos = false
 
     private let columns = [GridItem(.adaptive(minimum: 200), spacing: 12)]
 
@@ -11,13 +12,13 @@ struct StorageMediaSection: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Video storage").font(.nativeSectionTitle)
-                    Text("These bytes count against your plan.")
+                    Text("Current videos, scheduled posts and publishing retries.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
                 Button {
-                    StorageLinks.open(StorageLinks.history)
+                    managingVideos = true
                 } label: {
                     Label("Manage videos", systemImage: "trash")
                 }
@@ -26,12 +27,12 @@ struct StorageMediaSection: View {
             LazyVGrid(columns: columns, spacing: 12) {
                 StorageMediaTile(
                     symbol: "film", label: "Uploaded videos",
-                    detail: StorageFormat.count(media.recording.count, "saved master", "saved masters"),
+                    detail: StorageFormat.count(media.recording.count, "upload", "uploads"),
                     bytes: media.recording.bytes
                 )
                 StorageMediaTile(
                     symbol: "externaldrive", label: "Cross-post imports",
-                    detail: StorageFormat.count(media.import.count, "reusable platform copy", "reusable platform copies"),
+                    detail: StorageFormat.count(media.import.count, "temporary import", "temporary imports"),
                     bytes: media.import.bytes
                 )
                 StorageMediaTile(
@@ -46,6 +47,7 @@ struct StorageMediaSection: View {
                 )
             }
         }
+        .sheet(isPresented: $managingVideos) { StorageVideoManager() }
     }
 }
 

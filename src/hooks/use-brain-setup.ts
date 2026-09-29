@@ -3,7 +3,10 @@
 import { useCallback, useState } from "react";
 import type { NewBrainBlock } from "@/lib/brain/client";
 import { readTextFile } from "@/lib/brain/ingest-client";
-import type { BrainSetupProposal, SetupEssentialKey } from "@/lib/brain/setup";
+import type {
+  BrainSetupProposal,
+  SetupEssentialKey,
+} from "@/lib/brain/setup-types";
 import {
   blocksFor,
   projectPatchFor,
@@ -22,7 +25,7 @@ export type SetupError =
 /**
  * One document in, a reviewed Brain out.
  *
- * Extraction is the only step that costs a credit, so it waits for a click.
+ * Extraction is the only step that costs credits, so it waits for a click.
  * The proposal is editable before it is applied, and the apply writes through
  * the same project patch and block creates the page uses everywhere else.
  */

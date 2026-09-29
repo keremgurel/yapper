@@ -1,6 +1,6 @@
 "use client";
 
-import type { SetupPillar } from "@/lib/brain/setup";
+import type { SetupPillar } from "@/lib/brain/setup-types";
 import type { SetupSelection } from "@/lib/brain/setup-client";
 
 /**

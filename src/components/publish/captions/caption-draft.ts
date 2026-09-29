@@ -1,5 +1,8 @@
 import type { PublishPlatform } from "@/lib/db/schema";
-import { renderCaption, type PlatformCaption } from "@/lib/publish/caption";
+import {
+  renderCaption,
+  type PlatformCaption,
+} from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 /**

@@ -41,7 +41,7 @@ struct BrainSetupSheet: View {
                         } label: {
                             HStack(spacing: 6) {
                                 if setup.extracting { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }
-                                Text("Read it \u{00B7} 1 credit")
+                                Text("Read it \u{00B7} 8 credits")
                             }
                         }
                         .buttonStyle(EditorPrimaryButtonStyle())

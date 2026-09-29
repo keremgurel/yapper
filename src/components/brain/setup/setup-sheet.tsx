@@ -19,7 +19,7 @@ import { IMPORTABLE_EXTENSIONS } from "@/lib/brain/ingest-client";
 import {
   SETUP_ESSENTIAL_KEYS,
   type SetupEssentialKey,
-} from "@/lib/brain/setup";
+} from "@/lib/brain/setup-types";
 import { PROJECT_FIELDS, type Project } from "@/lib/project/client";
 
 const LABELS: Record<SetupEssentialKey, string> = {
@@ -136,7 +136,7 @@ export default function SetupSheet({
                   ) : (
                     <Sparkles className="size-4" aria-hidden="true" />
                   )}
-                  Read it · 1 credit
+                  Read it · 8 credits
                 </Button>
               </div>
             </>

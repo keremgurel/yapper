@@ -29,7 +29,8 @@ export default function CurrentPlanBanner() {
         <p className="sg-label mt-0.5">{status.balance} credits available</p>
         <p className="sg-label mt-0.5">
           {formatStorageBytes(status.storageBytes)} of{" "}
-          {formatStorageBytes(status.storageQuotaBytes)} video storage used ·{" "}
+          {formatStorageBytes(status.storageQuotaBytes)} temporary workspace
+          used ·{" "}
           <Link href="/studio/storage" className="underline underline-offset-2">
             View storage
           </Link>

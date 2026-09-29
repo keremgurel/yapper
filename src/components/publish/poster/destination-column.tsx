@@ -10,7 +10,7 @@ import {
   type CaptionSet,
 } from "@/components/publish/captions/caption-draft";
 import type { PublishPlatform } from "@/lib/db/schema";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import {
   evaluateDestination,
   publishSummary,

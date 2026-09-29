@@ -70,7 +70,7 @@ describe("Checkout tax and customer location", () => {
         billing_address_collection: "required",
         subscription_data: {
           trial_period_days: 7,
-          metadata: { userId: "user_test" },
+          metadata: { userId: "user_test", creditGrantVersion: "2" },
         },
       }),
     );
@@ -90,7 +90,9 @@ describe("Checkout tax and customer location", () => {
         automatic_tax: { enabled: true },
         customer_update: { address: "auto" },
         billing_address_collection: "required",
-        subscription_data: { metadata: { userId: "user_test" } },
+        subscription_data: {
+          metadata: { userId: "user_test", creditGrantVersion: "2" },
+        },
       }),
     );
   });

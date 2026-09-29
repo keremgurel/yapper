@@ -13,7 +13,15 @@ const CREDIT_EXAMPLES = [
     "3 credits",
     "Full AI feedback on one practice rep: your score and the reasoning, every grammar and word choice fix, better phrasing, and a clean version of your answer",
   ],
-  ["1 credit", "Transcribe a recording on its own, without the coaching"],
+  [
+    "4 credits per 3 minutes",
+    "Transcribe a recording. Duration is checked before transcription; partial blocks round up.",
+  ],
+  ["12 credits", "Generate an AI thumbnail"],
+  [
+    "60 credits",
+    "Design or revise one AI overlay, including up to three automatic quality checks. Generated pictures cost 8 credits each.",
+  ],
 ] as const;
 
 export default function PricingPage() {
@@ -34,8 +42,8 @@ export default function PricingPage() {
             membership is for the coaching. Every rep comes back scored, with
             the reasoning, your grammar and word choices corrected where they
             slipped, and a clean version of the answer you were reaching for.
-            Start with a 7-day free trial; your card is charged only after it
-            ends.
+            Your first 7-day trial includes 30 credits. Your card is charged
+            only after it ends, and paid plan credits arrive after payment.
           </p>
 
           <div className="mt-8 flex flex-col gap-8">
@@ -54,12 +62,17 @@ export default function PricingPage() {
             )}
             <CreditPacks pending={pending} onStart={startPack} />
             <section className="sg-panel p-6 sm:p-8">
-              <p className="sg-label">A meter you can understand</p>
+              <p className="sg-label">Pay for what you use</p>
               <h2 className="sg-display mt-2 text-2xl">What credits cover</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6" style={muted}>
                 Practicing, recording and exporting stay free. Credits are spent
                 only when Yapper calls a paid transcription or AI provider, and
-                they are returned automatically if that work fails.
+                they are returned automatically if that work fails. No automatic
+                credit top-ups or usage overage charges. Every membership has
+                the same 5 GB temporary publishing workspace; storage does not
+                accumulate each week. Published video files are released after
+                the 24-hour retry window and the next cleanup run. Keep original
+                files on your own device.
               </p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {CREDIT_EXAMPLES.map(([cost, description]) => (

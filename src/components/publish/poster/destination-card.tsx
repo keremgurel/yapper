@@ -5,7 +5,7 @@ import { AlertTriangle, Check, Clock, Info, Loader2, X } from "lucide-react";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { Chip } from "@/components/studio-ui";
 import type { ChipTone } from "@/components/studio-ui";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import type { DestinationReadiness } from "@/lib/publish/destination-readiness";
 
 const STATE_TONE: Record<DestinationReadiness["state"], ChipTone> = {

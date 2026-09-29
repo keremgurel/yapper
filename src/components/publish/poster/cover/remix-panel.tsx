@@ -121,7 +121,7 @@ export default function RemixPanel({
         )}
       </div>
       <p className="text-muted-foreground text-xs">
-        You can also paste an image here. 2 credits per generation.
+        You can also paste an image here. 12 credits per generation.
       </p>
 
       <div className="flex gap-2">

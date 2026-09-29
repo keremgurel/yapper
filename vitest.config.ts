@@ -8,6 +8,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    setupFiles: ["src/lib/costs/test-setup.ts"],
     include:
       process.env.RUN_INTEGRATION_TESTS === "1"
         ? ["src/**/*.integration.test.ts"]

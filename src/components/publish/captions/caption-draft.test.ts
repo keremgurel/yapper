@@ -9,7 +9,7 @@ import {
   visibleSplit,
   writtenPlatforms,
 } from "@/components/publish/captions/caption-draft";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 
 const caption = (over: Partial<PlatformCaption> = {}): PlatformCaption => ({
   ...blankCaption("instagram"),

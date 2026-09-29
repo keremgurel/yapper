@@ -8,7 +8,7 @@ import {
   type CaptionSet,
 } from "@/components/publish/captions/caption-draft";
 import type { PublishPlatform } from "@/lib/db/schema";
-import { captionFits } from "@/lib/publish/caption";
+import { captionFits } from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 export const tabId = (platform: PublishPlatform) => `caption-tab-${platform}`;

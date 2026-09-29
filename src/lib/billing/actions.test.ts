@@ -98,7 +98,7 @@ describe("paid action reservations", () => {
     );
     expect(reservation).toMatchObject({
       action: "creator_analysis",
-      cost: 4,
+      cost: 20,
       quantity: 1,
       balance: 42,
     });
@@ -111,7 +111,7 @@ describe("paid action reservations", () => {
 
     expect(mocks.deductCredits).toHaveBeenCalledWith(
       "user_1",
-      6,
+      180,
       expect.objectContaining({
         metadata: expect.objectContaining({
           action: "design_overlay",
@@ -119,7 +119,7 @@ describe("paid action reservations", () => {
         }),
       }),
     );
-    expect(reservation).toMatchObject({ cost: 6, quantity: 3 });
+    expect(reservation).toMatchObject({ cost: 180, quantity: 3 });
   });
 
   it("refuses a quantity outside the batch cap before touching the ledger", async () => {

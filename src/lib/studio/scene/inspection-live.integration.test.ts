@@ -18,7 +18,14 @@ vi.mock("@/lib/billing/actions", () => ({
   preflightPaidActionOrResponse: async () => null,
   reservePaidActionOrResponse: async () => ({ reservation: {} }),
   refundCreditReservation: async () => {},
-  PAID_ACTIONS: { design_overlay: { credits: 2 } },
+  PAID_ACTIONS: {
+    design_overlay: { credits: 60 },
+    direct_overlays: { credits: 20 },
+  },
+}));
+vi.mock("@/lib/billing/gate", () => ({ canUsePremium: async () => true }));
+vi.mock("@/lib/billing/included-overlay-review", () => ({
+  claimIncludedOverlayReview: async () => true,
 }));
 vi.mock("./brand-context", () => ({
   loadBrandContext: async () => ({

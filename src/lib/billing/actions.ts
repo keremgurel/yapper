@@ -8,25 +8,26 @@ import {
 import { ensureUser } from "@/lib/db/users";
 
 export const PAID_ACTIONS = {
-  chirpy_plan: { credits: 1, label: "Chirpy action planning" },
-  transcribe: { credits: 1, label: "Transcription" },
+  chirpy_plan: { credits: 6, label: "Chirpy action planning" },
+  transcribe: { credits: 4, label: "Transcription per three minutes" },
   /** Per three minutes of one of the creator's own videos. */
   voice_sample: { credits: 1, label: "Voice sample transcription" },
-  clean_transcript: { credits: 1, label: "AI edit cleanup" },
-  place_overlays: { credits: 1, label: "AI media placement" },
-  reference_analysis: { credits: 2, label: "Reference analysis" },
-  creator_analysis: { credits: 4, label: "Creator feed analysis" },
+  clean_transcript: { credits: 8, label: "AI edit cleanup" },
+  place_overlays: { credits: 4, label: "AI media placement" },
+  reference_analysis: { credits: 8, label: "Reference analysis" },
+  creator_analysis: { credits: 20, label: "Creator feed analysis" },
   capture_idea: { credits: 1, label: "Idea capture" },
-  expand_idea: { credits: 2, label: "Idea expansion" },
+  expand_idea: { credits: 8, label: "Idea expansion" },
   brainstorm: { credits: 1, label: "Idea brainstorm" },
   publish_caption: { credits: 1, label: "Publish copy" },
-  publish_thumbnail: { credits: 2, label: "AI thumbnail" },
+  publish_thumbnail: { credits: 12, label: "AI thumbnail" },
+  brain_setup: { credits: 8, label: "Brain setup" },
   ingest_context: { credits: 1, label: "Context import" },
-  direct_overlays: { credits: 1, label: "AI overlay planning" },
-  design_overlay: { credits: 2, label: "AI overlay design" },
-  scene_image: { credits: 2, label: "AI overlay picture" },
-  revise_overlay: { credits: 2, label: "AI overlay revision" },
-  retime_overlay: { credits: 1, label: "AI overlay retiming" },
+  direct_overlays: { credits: 20, label: "AI overlay planning" },
+  design_overlay: { credits: 60, label: "AI overlay design" },
+  scene_image: { credits: 8, label: "AI overlay picture" },
+  revise_overlay: { credits: 60, label: "AI overlay revision" },
+  retime_overlay: { credits: 20, label: "AI overlay retiming" },
 } as const;
 
 export type PaidAction = keyof typeof PAID_ACTIONS;
@@ -40,16 +41,19 @@ export type PaidAction = keyof typeof PAID_ACTIONS;
 export const MAX_RESERVATION_QUANTITY = 8;
 
 export interface ReservationOptions {
-  /** Units of the action, 1 to MAX_RESERVATION_QUANTITY. Defaults to 1. */
+  /** Units of the action. Up to 8, or 20 three-minute transcription blocks. */
   quantity?: number;
 }
 
-function reservationQuantity(options: ReservationOptions): number {
+function reservationQuantity(
+  options: ReservationOptions,
+  action: PaidAction,
+): number {
   const quantity = options.quantity ?? 1;
   if (
     !Number.isInteger(quantity) ||
     quantity < 1 ||
-    quantity > MAX_RESERVATION_QUANTITY
+    quantity > (action === "transcribe" ? 20 : MAX_RESERVATION_QUANTITY)
   ) {
     throw new RangeError("invalid_reservation_quantity");
   }
@@ -63,7 +67,8 @@ export async function preflightPaidActionOrResponse(
   action: PaidAction,
   options: ReservationOptions = {},
 ): Promise<Response | null> {
-  const cost = PAID_ACTIONS[action].credits * reservationQuantity(options);
+  const cost =
+    PAID_ACTIONS[action].credits * reservationQuantity(options, action);
   await ensureUser(userId);
   if (!(await canUsePremium(userId))) {
     return Response.json({ error: "not_entitled" }, { status: 402 });
@@ -101,7 +106,7 @@ export async function reservePaidAction(
   action: PaidAction,
   options: ReservationOptions = {},
 ): Promise<CreditReservation> {
-  const quantity = reservationQuantity(options);
+  const quantity = reservationQuantity(options, action);
   await ensureUser(userId);
   if (!(await canUsePremium(userId))) {
     // Logged with the account and the action, because a 402 is indistinguishable
@@ -117,7 +122,7 @@ export async function reservePaidAction(
   const usageId = crypto.randomUUID();
   try {
     const balance = await deductCredits(userId, cost, {
-      metadata: { action, usageId, quantity },
+      metadata: { action, usageId, quantity, billingVersion: 2 },
     });
     return { action, cost, quantity, balance, usageId };
   } catch (error) {

@@ -1,5 +1,8 @@
 # Public billing and cost controls
 
+> Historical audit/proposal. Current implementation and operational limits are in
+> [Launch cost controls](launch-cost-controls.md).
+
 Evaluated 2026-09-12. Design proposal, not implemented pricing. Public usage is the target. Invited testers use the same product and metering, with manual grants. No prices, balances, subscriptions, or deployments were changed for this evaluation.
 
 This supplements `unit-economics-and-pricing.md`. That report contains historical estimates and partially superseded implementation findings; it is not a current invoice. This evaluation checks the current source and selected official list prices. Production environment overrides, negotiated rates, actual Stripe prices, invoices, and user usage distributions have not been verified.

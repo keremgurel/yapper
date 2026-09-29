@@ -54,7 +54,7 @@ it("serializes duplicate model calls and charges once, including retries after c
     [user, request.executionID],
   );
   expect(ledger.rows).toHaveLength(1);
-  expect(ledger.rows[0].delta).toBe(-1);
+  expect(ledger.rows[0].delta).toBe(-6);
   await expect(
     withPlanLedger(user, { ...request, revision: 2 }, generate),
   ).rejects.toThrow("execution_conflict");

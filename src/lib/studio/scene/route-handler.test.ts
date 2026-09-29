@@ -19,7 +19,10 @@ vi.mock("@/lib/billing/actions", () => ({
   preflightPaidActionOrResponse: mocks.preflight,
   reservePaidActionOrResponse: mocks.reserve,
   refundCreditReservation: mocks.refund,
-  PAID_ACTIONS: { design_overlay: { credits: 2 } },
+  PAID_ACTIONS: {
+    direct_overlays: { credits: 20 },
+    design_overlay: { credits: 60 },
+  },
 }));
 vi.mock("./brand-context", () => ({
   loadBrandContext: async () => ({
@@ -87,7 +90,7 @@ beforeEach(() => {
   mocks.spend.mockResolvedValue(null);
   mocks.preflight.mockResolvedValue(null);
   mocks.reserve.mockResolvedValue({
-    reservation: { cost: 2, quantity: 1, usageId: "test" },
+    reservation: { cost: 60, quantity: 1, usageId: "test" },
   });
   mocks.model.mockResolvedValue({
     content: JSON.stringify({
@@ -153,9 +156,9 @@ describe("generated overlay routes", () => {
     // The designer was never asked, so the edit costs what a retime costs.
     expect(mocks.refund).toHaveBeenCalledWith(
       "user",
-      expect.objectContaining({ cost: 2 }),
+      expect.objectContaining({ cost: 60 }),
       "precise_edit",
-      { amount: 1 },
+      { amount: 40 },
     );
   });
   it("does not generate a new asset for a move-only revision", async () => {
@@ -188,9 +191,9 @@ describe("generated overlay routes", () => {
     expect(result.timelineShiftSeconds).toBe(-2);
     expect(mocks.refund).toHaveBeenCalledWith(
       "user",
-      expect.objectContaining({ cost: 2 }),
+      expect.objectContaining({ cost: 60 }),
       "move_only",
-      { amount: 1 },
+      { amount: 40 },
     );
   });
   it("requires authentication before model or billing calls", async () => {
@@ -231,7 +234,7 @@ describe("generated overlay routes", () => {
       "user",
       expect.anything(),
       "partial_design_failure",
-      { amount: 2 },
+      { amount: 60 },
     );
   });
   it("refunds malformed director replies rather than claiming no useful moments", async () => {

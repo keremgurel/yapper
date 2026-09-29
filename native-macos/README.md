@@ -45,7 +45,7 @@ transactions. The remaining native controls and web Studio migration are tracked
 in `docs/chirpy-shared-actions.md` at the repository root.
 
 Conversation lives in `chirpy-history.json` within each project package and is
-independent of Undo. Planning costs one credit per user turn; deterministic local
+independent of Undo. Planning costs six credits per user turn; deterministic local
 button actions are free. Deploy migration `0028_chirpy_plans` with the planning
 endpoint before distributing this native build. The package script embeds the
 source revision in the app's `YapperBuildCommit` Info.plist key.

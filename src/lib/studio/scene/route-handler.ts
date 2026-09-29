@@ -277,10 +277,9 @@ export async function handleSceneRequest(
  * An edit reserves the full revision price up front because it may turn into
  * a redesign. A move, or a hold applied arithmetically to the existing scene,
  * is one small planning call, the same work as a retime, so the difference is
- * returned. A number here rather than PAID_ACTIONS.retime_overlay so the
- * handler's tests, which replace the billing module, still exercise it.
+ * returned. Opus planning is priced consistently with the director.
  */
-const PLAN_ONLY_CREDITS = 1;
+const PLAN_ONLY_CREDITS = PAID_ACTIONS.direct_overlays.credits;
 
 async function refundPlanOnlyRemainder(
   userId: string,

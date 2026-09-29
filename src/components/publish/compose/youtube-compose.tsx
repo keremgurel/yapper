@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { crossPostToYouTube, generateCaptions } from "@/lib/publish/client";
-import { renderCaption } from "@/lib/publish/caption";
+import { renderCaption } from "@/lib/publish/caption-format";
 import { Button } from "@/components/ui/button";
 import { useCrossPost } from "@/hooks/use-cross-post";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
