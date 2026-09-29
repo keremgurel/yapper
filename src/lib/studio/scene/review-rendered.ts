@@ -1,3 +1,5 @@
+import { canUsePremium } from "@/lib/billing/gate";
+import { claimIncludedOverlayReview } from "@/lib/billing/included-overlay-review";
 import { auth } from "@clerk/nextjs/server";
 import {
   guardProviderIngress,
@@ -74,7 +76,7 @@ const REPAIR_SYSTEM = [
 ].join("\n\n");
 
 /** Internal generation QA: no additional creator credit charge; authenticated
- * and separately rate-limited to bound both review and automatic repair spend. */
+ * with a finite allowance earned by a paid design, revision or timing action. */
 export async function handleRenderedReview(req: Request): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
@@ -110,8 +112,15 @@ export async function handleRenderedReview(req: Request): Promise<Response> {
     !finiteBetween(placement.height, 0.01, 3)
   )
     return Response.json({ error: "bad_request" }, { status: 400 });
+  if (!(await canUsePremium(userId)))
+    return Response.json({ error: "not_entitled" }, { status: 402 });
   const limited = await guardProviderSpend(req, userId, "review-overlay");
   if (limited) return limited;
+  if (!(await claimIncludedOverlayReview(userId)))
+    return Response.json(
+      { error: "review_allowance_exhausted" },
+      { status: 429 },
+    );
   try {
     const brand = {
       ...(await loadBrandContext(userId)),

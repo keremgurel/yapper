@@ -1,10 +1,16 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  entitled: vi.fn(),
+  claim: vi.fn(),
   ingress: vi.fn(),
   spend: vi.fn(),
   model: vi.fn(),
   design: vi.fn(),
+}));
+vi.mock("@/lib/billing/gate", () => ({ canUsePremium: mocks.entitled }));
+vi.mock("@/lib/billing/included-overlay-review", () => ({
+  claimIncludedOverlayReview: mocks.claim,
 }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/provider-rate-limit", () => ({
@@ -77,6 +83,8 @@ const request = (value: unknown = body) =>
   });
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.entitled.mockResolvedValue(true);
+  mocks.claim.mockResolvedValue(true);
   mocks.auth.mockResolvedValue({ userId: "user" });
   mocks.ingress.mockResolvedValue(null);
   mocks.spend.mockResolvedValue(null);
@@ -163,4 +171,15 @@ it("fails closed on malformed model verdicts and refuses new paid images in repa
     JSON.stringify({ scene, images: [{ key: "new", prompt: "A picture" }] }),
   );
   expect((await handleRenderedReview(request())).status).toBe(502);
+});
+
+it("refuses unentitled review before any provider work", async () => {
+  mocks.entitled.mockResolvedValue(false);
+  expect((await handleRenderedReview(request())).status).toBe(402);
+  expect(mocks.model).not.toHaveBeenCalled();
+});
+it("requires a remaining review allowance from a paid action", async () => {
+  mocks.claim.mockResolvedValue(false);
+  expect((await handleRenderedReview(request())).status).toBe(429);
+  expect(mocks.model).not.toHaveBeenCalled();
 });

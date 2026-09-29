@@ -1,6 +1,6 @@
 "use client";
 
-import type { SetupBlock } from "@/lib/brain/setup";
+import type { SetupBlock } from "@/lib/brain/setup-types";
 import type { SetupSelection } from "@/lib/brain/setup-client";
 
 /** The sections of the document worth keeping as Knowledge, each optional. */

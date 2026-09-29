@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  duration: vi.fn(),
   protectPendingObject: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
@@ -11,6 +12,10 @@ const mocks = vi.hoisted(() => ({
   fetchBoundedJson: vi.fn(),
 }));
 
+vi.mock("@/lib/transcription/media-duration", async (original) => ({
+  ...(await original<typeof import("@/lib/transcription/media-duration")>()),
+  readOwnedAudioDuration: mocks.duration,
+}));
 vi.mock("@/lib/db/r2-lifecycle", () => ({
   protectPendingObject: mocks.protectPendingObject,
 }));
@@ -57,6 +62,8 @@ import { POST } from "./route";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.duration.mockReset().mockResolvedValue(1);
+  mocks.fetchBoundedJson.mockReset();
   mocks.protectPendingObject.mockResolvedValue(true);
   vi.unstubAllEnvs();
   mocks.auth.mockResolvedValue({ userId: "user_test" });
@@ -331,6 +338,7 @@ describe("POST /api/transcribe with audio already in storage", () => {
     vi.stubEnv("R2_SECRET_ACCESS_KEY", "secret");
     r2.presignView.mockResolvedValue("https://r2.test/signed-get");
     r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+    mocks.duration.mockResolvedValue(10);
     submissions.getOwnedMediaKey.mockResolvedValue(null);
   });
 
@@ -571,7 +579,7 @@ describe("POST /api/transcribe with audio already in storage", () => {
     );
     expect(r2.presignView).toHaveBeenCalledWith(
       "u/user_test/final-export.mp4",
-      900,
+      600,
     );
     expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
   });
@@ -628,7 +636,7 @@ describe("POST /api/transcribe with audio already in storage", () => {
     expect(media.resolveOwnedMediaKey).toHaveBeenCalledWith("user_test", {
       mediaKey: "u/user_test/import.mp4",
     });
-    expect(r2.presignView).toHaveBeenCalledWith("u/user_test/import.mp4", 900);
+    expect(r2.presignView).toHaveBeenCalledWith("u/user_test/import.mp4", 600);
     expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
   });
   it("rejects unowned imported media before transcription or billing", async () => {
@@ -687,6 +695,7 @@ describe("acoustic coverage and short-context recovery", () => {
       async (key: string) => `https://r2.test/${key}`,
     );
     r2.discardTranscriptionAudio.mockResolvedValue(undefined);
+    mocks.duration.mockResolvedValue(10);
   });
   const provider = (
     words: { word: string; start: number; end: number }[],
@@ -744,6 +753,9 @@ describe("acoustic coverage and short-context recovery", () => {
   });
 
   it("returns the reported half-second gap for a client that preserves uncertain audio", async () => {
+    mocks.duration.mockImplementation(async (url: string) =>
+      url.includes("primary") ? 540 : 10,
+    );
     mocks.fetchBoundedJson.mockImplementation(async (_url, init) => {
       const recovery = JSON.parse(init.body).url.includes("recovery");
       return provider(
@@ -835,6 +847,9 @@ describe("acoustic coverage and short-context recovery", () => {
   });
 
   it("keeps successful recovery excerpts when another excerpt times out", async () => {
+    mocks.duration.mockImplementation(async (url: string) =>
+      url.includes("primary") ? 10 : 5,
+    );
     const { OutboundHttpError } = await import("@/lib/http/outbound");
     mocks.fetchBoundedJson.mockImplementation(async (_url, init) => {
       const url = JSON.parse(init.body).url as string;
@@ -940,4 +955,47 @@ describe("acoustic coverage and short-context recovery", () => {
     expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
     expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
   });
+});
+
+it("bills the probed media duration rather than a smaller client claim", async () => {
+  vi.stubEnv("DEEPGRAM_API_KEY", "test");
+  mocks.duration.mockResolvedValue(181);
+  mocks.fetchBoundedJson.mockResolvedValue({
+    response: { ok: true },
+    data: {
+      metadata: { duration: 181 },
+      results: {
+        channels: [
+          { alternatives: [{ words: [{ word: "hello", start: 0, end: 1 }] }] },
+        ],
+      },
+    },
+  });
+  const response = await POST(
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "audio/wav", "x-audio-duration": "1" },
+      body: new Uint8Array([1]),
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.reservePaidActionOrResponse).toHaveBeenCalledWith(
+    "user_test",
+    "transcribe",
+    { quantity: 2 },
+  );
+});
+it("refuses unreadable media before charging or calling transcription", async () => {
+  vi.stubEnv("DEEPGRAM_API_KEY", "test");
+  mocks.duration.mockRejectedValue(new Error("invalid media"));
+  const response = await POST(
+    new Request("https://ypr.app/api/transcribe", {
+      method: "POST",
+      headers: { "content-type": "audio/wav" },
+      body: new Uint8Array([1]),
+    }),
+  );
+  expect(response.status).toBe(400);
+  expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+  expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
 });

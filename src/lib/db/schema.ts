@@ -1327,3 +1327,16 @@ export const chirpyPlans = pgTable(
   },
   (t) => [primaryKey({ columns: [t.userId, t.executionId] })],
 );
+
+/** Global admission counters, shared by all serverless instances. Amounts are
+ * conservative reservations, not claims about a provider's actual invoice. */
+export const providerSpendWindows = pgTable("provider_spend_windows", {
+  window: text("window").primaryKey(),
+  reservedMicrousd: bigint("reserved_microusd", { mode: "number" })
+    .notNull()
+    .default(0),
+  attempts: integer("attempts").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

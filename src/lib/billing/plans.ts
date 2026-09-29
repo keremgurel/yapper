@@ -9,7 +9,10 @@
 
 export type PlanKey = "creator_weekly" | "creator_monthly" | "creator_yearly";
 
-const GB = 1024 * 1024 * 1024;
+/** Temporary publishing workspace, identical for every billing cadence.
+ * This is concurrent capacity, never a weekly/monthly allocation or archive. */
+export const TEMPORARY_STORAGE_BYTES = 5 * 1024 * 1024 * 1024;
+export const TRIAL_CREDITS = 30;
 
 export interface SubscriptionPlan {
   key: PlanKey;
@@ -44,9 +47,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     cadenceLabel: "per week",
     priceId: process.env.STRIPE_PRICE_CREATOR_WEEKLY ?? "",
     includedCredits: 100,
-    storageBytes: 25 * GB,
+    storageBytes: TEMPORARY_STORAGE_BYTES,
     priceLabel: "$7.99",
-    storageLabel: "25 GB",
+    storageLabel: "5 GB temporary workspace",
     blurb:
       "Maximum flexibility. Pause or cancel whenever your posting rhythm changes.",
   },
@@ -57,9 +60,9 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     cadenceLabel: "per month",
     priceId: process.env.STRIPE_PRICE_CREATOR_MONTHLY ?? "",
     includedCredits: 500,
-    storageBytes: 50 * GB,
+    storageBytes: TEMPORARY_STORAGE_BYTES,
     priceLabel: "$24.99",
-    storageLabel: "50 GB",
+    storageLabel: "5 GB temporary workspace",
     blurb: "The best fit for creators posting consistently every week.",
     badge: "Most popular",
   },
@@ -70,11 +73,10 @@ export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
     cadenceLabel: "per year",
     priceId: process.env.STRIPE_PRICE_CREATOR_YEARLY ?? "",
     includedCredits: 6000,
-    storageBytes: 100 * GB,
+    storageBytes: TEMPORARY_STORAGE_BYTES,
     priceLabel: "$199.99",
-    storageLabel: "100 GB",
-    blurb:
-      "Eight months of the monthly price, with a full year of creation headroom.",
+    storageLabel: "5 GB temporary workspace",
+    blurb: "Pay once for a year. All 6,000 credits arrive after payment.",
     badge: "Save 33%",
   },
 ];

@@ -1,3 +1,4 @@
+import { fetchBoundedJson } from "@/lib/http/outbound";
 import {
   instagramMedia,
   instagramVideo,
@@ -32,8 +33,8 @@ async function runActor(
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("no_apify_token");
 
-  const res = await fetch(
-    `${RUN_BASE}/${actorId}/run-sync-get-dataset-items?token=${token}&clean=true`,
+  const { response: res, data } = await fetchBoundedJson<unknown>(
+    `${RUN_BASE}/${actorId}/run-sync-get-dataset-items?token=${token}&clean=true&timeout=90&maxTotalChargeUsd=0.5`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,9 +43,9 @@ async function runActor(
       // route has its own budget and the creator is waiting on it.
       signal: signal ?? AbortSignal.timeout(ACTOR_TIMEOUT_MS),
     },
+    { timeoutMs: ACTOR_TIMEOUT_MS, maxBytes: 4_000_000, signal },
   );
   if (!res.ok) throw new Error(`apify_${actorId}_${res.status}`);
-  const data = await res.json();
   return Array.isArray(data) ? data : [];
 }
 

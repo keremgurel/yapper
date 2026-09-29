@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { PublishPlatform } from "@/lib/db/schema";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import { generateCaptions } from "@/lib/publish/client";
 
 import { transcribeCaptionMedia } from "./prepare-caption-subject";

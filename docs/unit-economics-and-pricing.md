@@ -1,5 +1,8 @@
 # Unit economics and pricing
 
+> Historical audit/proposal. Current implementation and operational limits are in
+> [Launch cost controls](launch-cost-controls.md).
+
 Last verified: 2026-09-03. Supersedes the money map in `product-vision.md` §4,
 which predates the Brain, the native editor, Poster, and the current plan
 catalog. Storage rates and accounting rules stay in `storage-economics.md`. The

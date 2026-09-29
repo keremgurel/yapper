@@ -73,7 +73,7 @@ struct PosterRemixPanel: View {
                     .disabled(remix.generating)
             }
             Spacer()
-            Text("2 credits").font(.system(size: 11)).foregroundStyle(.secondary)
+            Text("12 credits").font(.system(size: 11)).foregroundStyle(.secondary)
             Button(action: onGenerate) {
                 HStack(spacing: 6) {
                     if remix.generating { ProgressView().controlSize(.mini) } else { Image(systemName: "sparkles") }

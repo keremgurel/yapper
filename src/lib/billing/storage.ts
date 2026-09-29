@@ -7,9 +7,9 @@ import { planByKey } from "@/lib/billing/plans";
  * A user's media-storage quota in bytes.
  *
  * An entitled subscriber (active, trialing, or within the dunning grace) gets
- * their tier's included storage; everyone else (free, lapsed, or on an unknown
+ * the same temporary publishing capacity; everyone else (free, lapsed, or on an unknown
  * plan key) gets the free-tier quota. This is a hard cap: when a save would
- * exceed it the caller rejects the write and the user deletes clips or upgrades.
+ * exceed it the caller rejects the write and the user frees space.
  * There is no metered overage. Pure.
  */
 export function storageQuotaFor(

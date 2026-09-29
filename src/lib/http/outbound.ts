@@ -1,3 +1,5 @@
+import { guardProviderEgress } from "@/lib/costs/provider-budget";
+
 export type OutboundHttpErrorCode =
   | "timeout"
   | "aborted"
@@ -132,6 +134,11 @@ export async function fetchBoundedResponse(
   options: BoundedFetchOptions,
 ): Promise<BoundedFetchResponse> {
   validateOptions(options);
+  if (init.signal?.aborted || options.signal?.aborted)
+    throw new OutboundHttpError("aborted");
+  // Outside the network catch: budget refusals must not look retryable.
+  const admission = guardProviderEgress(input, init);
+  if (admission) await admission;
   const timeoutSignal = AbortSignal.timeout(options.timeoutMs);
   const signals = [init.signal, options.signal, timeoutSignal].filter(
     (signal): signal is AbortSignal => signal != null,

@@ -52,7 +52,7 @@ describe("readRemoteTranscript", () => {
             channels: [{ alternatives: [{ transcript: "Hook remix." }] }],
           },
         }),
-        { status: 200 },
+        { status: 200, headers: { "content-type": "application/json" } },
       ),
     );
     vi.stubGlobal("fetch", fetchMock);

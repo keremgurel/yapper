@@ -1,3 +1,7 @@
+import {
+  readOwnedAudioDuration,
+  transcriptionUnits,
+} from "@/lib/transcription/media-duration";
 import { protectPendingObject } from "@/lib/db/r2-lifecycle";
 import { auth } from "@clerk/nextjs/server";
 import {
@@ -312,6 +316,25 @@ export async function POST(req: Request): Promise<Response> {
   // outbound, which the hosting body limit has no opinion about.
   const bytes = async (key?: string): Promise<ArrayBuffer> =>
     key ? getObjectBytes(key) : audio!;
+  const probed = new Map<string, Promise<{ url: string; duration: number }>>();
+  const probeChunk = (chunk: { key: string; duration: number }) => {
+    let result = probed.get(chunk.key);
+    if (!result) {
+      result = (async () => {
+        const url = await presignView(chunk.key, 600);
+        const duration = await readOwnedAudioDuration(url, req.signal);
+        if (
+          chunk.duration > 0 &&
+          Math.abs(duration - chunk.duration) >
+            Math.max(1, chunk.duration * 0.02)
+        )
+          throw new Error("invalid_audio_duration");
+        return { url, duration };
+      })();
+      probed.set(chunk.key, result);
+    }
+    return result;
+  };
   const transcribeStored = async (
     run: (
       chunk: { key: string; offset: number; duration: number },
@@ -361,7 +384,7 @@ export async function POST(req: Request): Promise<Response> {
           ? transcribeStored(
               async (chunk, chunkTimeoutMs) =>
                 viaDeepgramURL(
-                  await presignView(chunk.key, 900),
+                  (await probeChunk(chunk)).url,
                   deepgram,
                   keyterms,
                   req.signal,
@@ -450,7 +473,43 @@ export async function POST(req: Request): Promise<Response> {
 
   // A refused request still deletes what it was handed: the audio is useless
   // to anyone once the transcriber will not read it.
-  const billing = await preflightPaidActionOrResponse(userId, "transcribe");
+  let quantity: number;
+  try {
+    const durations = storedChunks.length
+      ? await mapTranscriptionWork(
+          storedChunks,
+          async (chunk) => ({
+            ...chunk,
+            duration: (await probeChunk(chunk)).duration,
+          }),
+          4,
+        )
+      : [
+          {
+            offset: 0,
+            duration: await readOwnedAudioDuration(audio!, req.signal),
+          },
+        ];
+    const duration = Math.max(
+      ...durations.map((chunk) => chunk.offset + chunk.duration),
+    );
+    // Bound overlap and recovery work as well as the take's elapsed duration.
+    if (
+      durations.reduce((sum, chunk) => sum + chunk.duration, 0) >
+        duration * 2 ||
+      recoveryChunks.reduce((sum, chunk) => sum + chunk.duration, 0) >
+        duration * 2 ||
+      (!stored && duration > MAX_AUDIO_DURATION_SECONDS)
+    )
+      throw new Error("invalid_audio_duration");
+    quantity = transcriptionUnits(duration);
+  } catch {
+    await discard();
+    return Response.json({ error: "invalid_audio_duration" }, { status: 400 });
+  }
+  const billing = await preflightPaidActionOrResponse(userId, "transcribe", {
+    quantity,
+  });
   if (billing) {
     await discard();
     return billing;
@@ -462,7 +521,9 @@ export async function POST(req: Request): Promise<Response> {
     return spendLimited;
   }
 
-  const access = await reservePaidActionOrResponse(userId, "transcribe");
+  const access = await reservePaidActionOrResponse(userId, "transcribe", {
+    quantity,
+  });
   if (access.response) {
     await discard();
     return access.response;
@@ -525,6 +586,7 @@ export async function POST(req: Request): Promise<Response> {
           const recovered = await mapTranscriptionWork(
             selected,
             async (chunk): Promise<TimedAsrChunk | null> => {
+              await probeChunk(chunk);
               try {
                 pending.delete(chunk);
                 const remaining = Math.min(
@@ -538,7 +600,7 @@ export async function POST(req: Request): Promise<Response> {
                 const result =
                   deepgram && round < 2
                     ? await viaDeepgramURL(
-                        await presignView(chunk.key, 900),
+                        (await probeChunk(chunk)).url,
                         deepgram,
                         keyterms,
                         req.signal,

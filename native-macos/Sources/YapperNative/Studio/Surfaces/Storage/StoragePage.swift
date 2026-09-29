@@ -8,18 +8,9 @@ struct StoragePage: View {
         NativePage() {
             NativePageHeader(
                 title: "Storage",
-                description: "Finished videos use your plan allowance. Your Brain, ideas and library are text and never count against it. Editor projects stay on your Mac."
-            ) {
-                Button {
-                    StorageLinks.open(StorageLinks.pricing)
-                } label: {
-                    HStack(spacing: 6) {
-                        Text("Compare plans")
-                        Image(systemName: "arrow.up.right")
-                    }
-                }
-                .buttonStyle(EditorSecondaryButtonStyle())
-            }
+                description: "Temporary space for your current video and scheduled posts. Originals and editor projects stay on your Mac. Your written workspace stays in Yapper."
+            )
+
             content
         }
         .task { await store.refresh() }
@@ -35,7 +26,7 @@ struct StoragePage: View {
                 StorageUsageCard(usage: usage)
                 StorageMediaSection(media: usage.media)
                 StorageWorkspaceCard(workspace: usage.workspace)
-                StoragePlanHeadroom(usage: usage)
+                StoragePlanHeadroom()
             }
         } else if let error = store.error {
             NativeErrorState(message: error) { Task { await store.refresh() } }

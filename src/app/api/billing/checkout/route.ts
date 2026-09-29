@@ -88,11 +88,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       line_items: [{ price: plan.priceId, quantity: 1 }],
       subscription_data: {
         ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
-        metadata: { userId },
+        metadata: { userId, creditGrantVersion: "2" },
       },
       payment_method_collection: "always",
       metadata: { userId, kind: "subscription", plan: plan.key },
-      allow_promotion_codes: true,
+      // Discounts must be reviewed against credit costs before enabling them.
     });
     return Response.json({ url: session.url });
   }

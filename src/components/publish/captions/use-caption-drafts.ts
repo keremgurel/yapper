@@ -5,7 +5,7 @@ import {
   mergeGeneratedCaptions,
   type CaptionSet,
 } from "@/components/publish/captions/caption-draft";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 
 /**
  * Caption drafts for every video in the Poster, keyed by video then platform.

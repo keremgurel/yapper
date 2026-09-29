@@ -48,12 +48,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
-  const billing = await preflightPaidActionOrResponse(userId, "ingest_context");
+  const billing = await preflightPaidActionOrResponse(userId, "brain_setup");
   if (billing) return billing;
 
   const spendLimited = await guardProviderSpend(req, userId, "brain-ingest");
   if (spendLimited) return spendLimited;
-  const access = await reservePaidActionOrResponse(userId, "ingest_context");
+  const access = await reservePaidActionOrResponse(userId, "brain_setup");
   if (access.response) return access.response;
   const { reservation } = access;
 

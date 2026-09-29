@@ -144,7 +144,7 @@ export default function CoverStudio({
 
       <Disclosure
         title="Remix with AI"
-        meta={draft.source === "generated" ? "in use" : "2 credits"}
+        meta={draft.source === "generated" ? "in use" : "12 credits"}
       >
         <RemixPanel
           prompt={prompt}

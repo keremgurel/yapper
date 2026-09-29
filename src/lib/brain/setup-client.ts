@@ -3,7 +3,7 @@ import type {
   BrainSetupProposal,
   SetupEssentialKey,
   SetupPillar,
-} from "@/lib/brain/setup";
+} from "@/lib/brain/setup-types";
 import type { PillarDraft, ProjectPatch } from "@/lib/project/client";
 
 /** Where a document handed to Chirpy waits until the Brain page opens. */

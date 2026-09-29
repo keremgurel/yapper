@@ -1,6 +1,6 @@
 import type { CrossPostTarget } from "@/components/publish/compose/types";
 import type { PublishPlatform } from "@/lib/db/schema";
-import { renderCaption } from "@/lib/publish/caption";
+import { renderCaption } from "@/lib/publish/caption-format";
 
 /** The sheet's own title/caption fields, used only when nothing was prepared. */
 export interface CopyOverride {

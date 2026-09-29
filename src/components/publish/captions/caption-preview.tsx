@@ -1,7 +1,7 @@
 "use client";
 
 import { visibleSplit } from "@/components/publish/captions/caption-draft";
-import type { PlatformCaption } from "@/lib/publish/caption";
+import type { PlatformCaption } from "@/lib/publish/caption-format";
 import { captionSpec } from "@/lib/publish/caption-specs";
 
 /**

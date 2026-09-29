@@ -225,6 +225,13 @@
       "when": 1790308800000,
       "tag": "0031_write_like_a_person",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790647724653,
+      "tag": "0032_provider_spend_windows",
+      "breakpoints": true
     }
   ]
 }
