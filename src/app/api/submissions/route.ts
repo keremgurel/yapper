@@ -1,3 +1,7 @@
+import {
+  PosterSlotBusyError,
+  posterSlotBusyResponse,
+} from "@/lib/db/poster-slot";
 import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
@@ -232,6 +236,8 @@ export async function POST(req: NextRequest): Promise<Response> {
       return { ...registered, contentItemId: item.id };
     });
   } catch (error) {
+    if (error instanceof PosterSlotBusyError)
+      return posterSlotBusyResponse(error.waiting);
     if (error instanceof StorageQuotaError) {
       return Response.json({ error: "storage_full" }, { status: 402 });
     }

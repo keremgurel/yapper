@@ -44,7 +44,8 @@ const posterSlot = vi.hoisted(() => ({
   findWaitingPosterVideo: vi.fn(async () => null as unknown),
   countScheduledVideos: vi.fn(async () => 0),
 }));
-vi.mock("@/lib/db/poster-slot", () => ({
+vi.mock("@/lib/db/poster-slot", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/db/poster-slot")>()),
   ...posterSlot,
   MAX_SCHEDULED_VIDEOS: 10,
   posterSlotBusyResponse: (waiting: unknown) =>

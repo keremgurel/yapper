@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { getDb } from "./client";
+import { getDb, type DbTx } from "./client";
 
 /** A video stored for posting that has not been posted or scheduled yet. */
 export interface WaitingPosterVideo {
@@ -25,34 +25,60 @@ export const MAX_SCHEDULED_VIDEOS = 10;
  * post of it succeeds (the nightly job then deletes it) or once it is
  * scheduled (it goes when the schedule does).
  */
+export function waitingPosterMediaQuery(userId?: string) {
+  return sql`
+    select * from (
+      select 'upload' as kind, s.id::text as id, s.user_id, s.media_key,
+        coalesce((select ci.title from content_items ci where ci.submission_id = s.id limit 1), s.title) as title,
+        s.created_at
+      from submissions s
+      where ${userId ? sql`s.user_id = ${userId}` : sql`true`}
+        and s.media_key is not null and s.surface = 'studio'
+        and not exists (select 1 from publish_jobs pj where pj.user_id = s.user_id and pj.media_key = s.media_key and pj.status = 'published')
+        and not exists (select 1 from publishing_schedules ps where ps.user_id = s.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = s.media_key)
+      union all
+      select 'import' as kind, i.id::text as id, i.user_id, i.media_key, i.title, i.created_at
+      from imported_platform_media i
+      where ${userId ? sql`i.user_id = ${userId}` : sql`true`}
+        and not exists (select 1 from publish_jobs pj where pj.user_id = i.user_id and pj.media_key = i.media_key and pj.status = 'published')
+        and not exists (select 1 from publishing_schedules ps where ps.user_id = i.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = i.media_key)
+    ) waiting
+  `;
+}
+
 export async function findWaitingPosterVideo(
   userId: string,
+  db: Pick<DbTx, "execute"> = getDb(),
+  exceptMediaKey?: string,
 ): Promise<WaitingPosterVideo | null> {
-  const rows = await getDb().execute<{
+  const rows = await db.execute<{
     kind: "upload" | "import";
     id: string;
     title: string | null;
   }>(sql`
-    select * from (
-      select 'upload' as kind, s.id::text as id,
-        coalesce((select ci.title from content_items ci where ci.submission_id = s.id limit 1), s.title) as title,
-        s.created_at
-      from submissions s
-      where s.user_id = ${userId} and s.media_key is not null and s.surface = 'studio'
-        and not exists (select 1 from publish_jobs pj where pj.user_id = s.user_id and pj.media_key = s.media_key and pj.status = 'published')
-        and not exists (select 1 from publishing_schedules ps where ps.user_id = s.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = s.media_key)
-      union all
-      select 'import' as kind, i.id::text as id, i.title, i.created_at
-      from imported_platform_media i
-      where i.user_id = ${userId}
-        and not exists (select 1 from publish_jobs pj where pj.user_id = i.user_id and pj.media_key = i.media_key and pj.status = 'published')
-        and not exists (select 1 from publishing_schedules ps where ps.user_id = i.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = i.media_key)
-    ) waiting
-    order by created_at desc
+    select kind, id, title from (${waitingPosterMediaQuery(userId)}) waiting
+    where ${exceptMediaKey ? sql`media_key <> ${exceptMediaKey}` : sql`true`}
+    order by created_at desc, media_key desc, id desc
     limit 1
   `);
-  const row = rows.rows[0];
-  return row ? { kind: row.kind, id: row.id, title: row.title } : null;
+  return rows.rows[0] ?? null;
+}
+
+export class PosterSlotBusyError extends Error {
+  constructor(readonly waiting: WaitingPosterVideo) {
+    super("poster_slot_busy");
+    this.name = "PosterSlotBusyError";
+  }
+}
+
+/** Caller holds the storage-user lock; excludes references to this same file. */
+export async function assertPosterSlotAvailableWithinTx(
+  tx: DbTx,
+  userId: string,
+  mediaKey: string,
+): Promise<void> {
+  const waiting = await findWaitingPosterVideo(userId, tx, mediaKey);
+  if (waiting) throw new PosterSlotBusyError(waiting);
 }
 
 /** How many distinct videos this account has scheduled and not yet sent. */
