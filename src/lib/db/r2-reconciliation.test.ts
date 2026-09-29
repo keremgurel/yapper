@@ -14,10 +14,26 @@ function dependencies(objects = [old("u/user_test/old.mp4")], hasMore = false) {
     readCursor: vi.fn().mockResolvedValue("u/user_test/earlier.mp4"),
     writeCursor: vi.fn().mockResolvedValue(undefined),
     queue: vi.fn().mockResolvedValue(true),
+    trackedKeys: vi.fn().mockResolvedValue(new Set<string>()),
   };
 }
 
 describe("bounded R2 inventory reconciliation", () => {
+  it("scans registered media without opening per-object transactions", async () => {
+    const objects = Array.from({ length: 1000 }, (_, i) =>
+      old(`u/user_test/${i}.mp4`),
+    );
+    const deps = dependencies(objects);
+    deps.trackedKeys.mockResolvedValue(
+      new Set(objects.map((object) => object.key)),
+    );
+    expect(await reconcileR2Inventory(now + 1000, deps)).toMatchObject({
+      scanned: 1000,
+      enqueued: 0,
+    });
+    expect(deps.trackedKeys).toHaveBeenCalledOnce();
+    expect(deps.queue).not.toHaveBeenCalled();
+  });
   it("also recovers abandoned transcription scratch files", async () => {
     const deps = dependencies([old("asr/user_test/expired.m4a")]);
     await reconcileR2Inventory(now + 1000, deps);

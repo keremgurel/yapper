@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { listMediaObjects } from "@/lib/r2";
 import { getDb } from "./client";
 import { queueUntrackedR2Object } from "./r2-lifecycle";
-import { maintenanceCursors } from "./schema";
+import { maintenanceCursors, r2Objects } from "./schema";
 
 const CURSOR_NAME = "r2-inventory";
 const MIN_AGE_MS = 2 * 24 * 60 * 60 * 1000;
@@ -10,6 +10,14 @@ const MIN_AGE_MS = 2 * 24 * 60 * 60 * 1000;
 const dependencies = {
   list: listMediaObjects,
   queue: queueUntrackedR2Object,
+  async trackedKeys(keys: string[]) {
+    if (!keys.length) return new Set<string>();
+    const rows = await getDb()
+      .select({ key: r2Objects.mediaKey })
+      .from(r2Objects)
+      .where(inArray(r2Objects.mediaKey, keys));
+    return new Set(rows.map((row) => row.key));
+  },
   async readCursor() {
     const [row] = await getDb()
       .select()
@@ -39,6 +47,11 @@ export async function reconcileR2Inventory(
 ) {
   const cursor = await deps.readCursor();
   const page = await deps.list(cursor);
+  // Most inventory is already registered. One lookup per page avoids taking
+  // a transaction and two locks for every healthy object as the bucket grows.
+  const tracked = await deps.trackedKeys(
+    page.objects.map((object) => object.key),
+  );
   const now = new Date(deps.now());
   let scanned = 0;
   let enqueued = 0;
@@ -52,6 +65,7 @@ export async function reconcileR2Inventory(
       ) ?? /^asr\/(user_[A-Za-z0-9_]+)\/[^/]+\.m4a$/i.exec(object.key);
     if (
       match &&
+      !tracked.has(object.key) &&
       object.modifiedAt.getTime() <= now.getTime() - MIN_AGE_MS &&
       Number.isSafeInteger(object.bytes) &&
       object.bytes >= 0
