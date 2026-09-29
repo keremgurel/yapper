@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const processR2LifecycleBatch = vi.hoisted(() => vi.fn());
 const cleanupExpiredRateLimitBuckets = vi.hoisted(() => vi.fn());
+const releaseSupersededMediaBatch = vi.hoisted(() => vi.fn());
 const releasePostedMediaBatch = vi.hoisted(() => vi.fn());
 const releaseLapsedMediaBatch = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/db/lapsed-media-retention", () => ({
@@ -10,6 +11,7 @@ vi.mock("@/lib/db/lapsed-media-retention", () => ({
 vi.mock("@/lib/db/r2-lifecycle", () => ({ processR2LifecycleBatch }));
 vi.mock("@/lib/db/posted-media-retention", () => ({
   releasePostedMediaBatch,
+  releaseSupersededMediaBatch,
 }));
 vi.mock("@/lib/db/rate-limit", () => ({ cleanupExpiredRateLimitBuckets }));
 
@@ -19,6 +21,7 @@ beforeEach(() => {
   process.env.CRON_SECRET = "test-secret";
   processR2LifecycleBatch.mockResolvedValue({ claimed: 0, deleted: 0 });
   cleanupExpiredRateLimitBuckets.mockResolvedValue(3);
+  releaseSupersededMediaBatch.mockResolvedValue({ released: 6, failed: 0 });
   releasePostedMediaBatch.mockResolvedValue({ released: 2, failed: 0 });
   releaseLapsedMediaBatch.mockResolvedValue({
     accounts: 0,
@@ -122,6 +125,7 @@ describe("R2 lifecycle cron route", () => {
     );
     expect(await response.json()).toMatchObject({
       postedMedia: { released: 2, failed: 0 },
+      supersededMedia: { released: 6, failed: 0 },
     });
   });
 });

@@ -1,3 +1,4 @@
+import { protectPendingObject } from "@/lib/db/r2-lifecycle";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -432,6 +433,20 @@ export async function POST(req: Request): Promise<Response> {
       }),
     );
   };
+
+  // Retention and this lease take the same user/object locks. A master can be
+  // superseded in another tab, but must remain readable for this entire request.
+  if (
+    durableVideoMaster &&
+    !(await protectPendingObject(
+      userId,
+      storedChunks[0].key,
+      ["recording", "import"],
+      new Date(Date.now() + (maxDuration + 60) * 1_000),
+    ))
+  ) {
+    return Response.json({ error: "media_unavailable" }, { status: 409 });
+  }
 
   // A refused request still deletes what it was handed: the audio is useless
   // to anyone once the transcriber will not read it.

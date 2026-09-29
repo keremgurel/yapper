@@ -1,6 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { releaseLapsedMediaBatch } from "@/lib/db/lapsed-media-retention";
-import { releasePostedMediaBatch } from "@/lib/db/posted-media-retention";
+import {
+  releasePostedMediaBatch,
+  releaseSupersededMediaBatch,
+} from "@/lib/db/posted-media-retention";
 import { processR2LifecycleBatch } from "@/lib/db/r2-lifecycle";
 import { cleanupExpiredRateLimitBuckets } from "@/lib/db/rate-limit";
 
@@ -38,6 +41,14 @@ export async function GET(request: Request): Promise<Response> {
     );
   }
 
+  let supersededMedia = { released: 0, failed: 0 };
+  try {
+    supersededMedia = await releaseSupersededMediaBatch();
+  } catch (error) {
+    console.error("[maintenance] superseded media release failed", error);
+    supersededMedia.failed += 1;
+  }
+
   // Posted videos are let go first, so this same run deletes their files.
   let postedMedia = { released: 0, failed: 0 };
   try {
@@ -71,6 +82,7 @@ export async function GET(request: Request): Promise<Response> {
     {
       ...result,
       postedMedia,
+      supersededMedia,
       lapsedMedia,
       rateLimitBucketsDeleted,
       rateLimitCleanupFailed,

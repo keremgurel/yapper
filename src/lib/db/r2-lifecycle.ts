@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm";
 import { deleteObject } from "@/lib/r2";
 import { getDb, type DbTx } from "./client";
+import { assertPosterSlotAvailableWithinTx } from "./poster-slot";
 import {
   brandAssets,
   importedPlatformMedia,
@@ -224,6 +225,14 @@ export async function activateObjectWithinTx(
   ) {
     throw new R2ObjectNotAttachableError();
   }
+  // Preflight checks cannot serialize two uploads. Admit the durable video
+  // under the same user lock as registration/accounting, before committing it.
+  if (
+    row.state !== "active" &&
+    (expectedPurpose === "recording" || expectedPurpose === "import")
+  ) {
+    await assertPosterSlotAvailableWithinTx(tx, userId, mediaKey);
+  }
   await tx
     .update(r2Objects)
     .set({
@@ -264,14 +273,18 @@ export async function isActiveR2Object(
 export async function protectPendingObject(
   userId: string,
   mediaKey: string,
-  expectedPurpose: R2ObjectPurpose,
+  expectedPurpose: R2ObjectPurpose | readonly R2ObjectPurpose[],
   until: Date,
 ): Promise<boolean> {
   return getDb().transaction(async (tx) => {
     const row = await lockObjectRow(tx, userId, mediaKey);
     if (
       !row ||
-      row.purpose !== expectedPurpose ||
+      !(
+        typeof expectedPurpose === "string"
+          ? [expectedPurpose]
+          : expectedPurpose
+      ).includes(row.purpose) ||
       (row.state !== "pending_upload" && row.state !== "active")
     ) {
       return false;
@@ -657,38 +670,42 @@ export async function claimNextR2Object(
   now: Date,
   leaseMs = DEFAULT_LEASE_MS,
   tokenFactory: () => string = randomUUID,
+  userId?: string,
 ): Promise<R2DeletionClaim | null> {
   const candidates = await getDb()
     .select({ mediaKey: r2Objects.mediaKey, userId: r2Objects.userId })
     .from(r2Objects)
     .where(
-      or(
-        and(
-          eq(r2Objects.state, "delete_pending"),
-          or(
-            isNull(r2Objects.deleteNotBefore),
-            lte(r2Objects.deleteNotBefore, now),
+      and(
+        userId ? eq(r2Objects.userId, userId) : undefined,
+        or(
+          and(
+            eq(r2Objects.state, "delete_pending"),
+            or(
+              isNull(r2Objects.deleteNotBefore),
+              lte(r2Objects.deleteNotBefore, now),
+            ),
+            or(
+              isNull(r2Objects.nextAttemptAt),
+              lte(r2Objects.nextAttemptAt, now),
+            ),
           ),
-          or(
-            isNull(r2Objects.nextAttemptAt),
-            lte(r2Objects.nextAttemptAt, now),
+          and(
+            eq(r2Objects.state, "pending_upload"),
+            lte(r2Objects.uploadExpiresAt, now),
+            or(
+              isNull(r2Objects.deleteNotBefore),
+              lte(r2Objects.deleteNotBefore, now),
+            ),
+            or(
+              isNull(r2Objects.nextAttemptAt),
+              lte(r2Objects.nextAttemptAt, now),
+            ),
           ),
-        ),
-        and(
-          eq(r2Objects.state, "pending_upload"),
-          lte(r2Objects.uploadExpiresAt, now),
-          or(
-            isNull(r2Objects.deleteNotBefore),
-            lte(r2Objects.deleteNotBefore, now),
+          and(
+            eq(r2Objects.state, "deleting"),
+            lte(r2Objects.leaseExpiresAt, now),
           ),
-          or(
-            isNull(r2Objects.nextAttemptAt),
-            lte(r2Objects.nextAttemptAt, now),
-          ),
-        ),
-        and(
-          eq(r2Objects.state, "deleting"),
-          lte(r2Objects.leaseExpiresAt, now),
         ),
       ),
     )

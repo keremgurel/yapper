@@ -60,7 +60,7 @@ const tx = {
       }),
     })),
   })),
-  execute: vi.fn(),
+  execute: vi.fn(async () => ({ rows: [] })),
 } as unknown as DbTx;
 
 const transaction = vi.fn(async (callback: (value: DbTx) => unknown) =>

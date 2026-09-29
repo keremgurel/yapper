@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { canUsePremium } from "@/lib/billing/gate";
 import {
+  PosterSlotBusyError,
   findWaitingPosterVideo,
   posterSlotBusyResponse,
 } from "@/lib/db/poster-slot";
@@ -280,6 +281,10 @@ export async function importInstagramVideo(
     }
     return importedResponse(registration);
   } catch (error) {
+    if (error instanceof PosterSlotBusyError) {
+      await enqueueAttemptDeletion(userId, key, "import_slot_rejected");
+      return posterSlotBusyResponse(error.waiting);
+    }
     if (error instanceof ImportedMediaQuotaError) {
       await enqueueAttemptDeletion(userId, key, "import_quota_rejected");
       return Response.json({ error: "storage_full" }, { status: 402 });

@@ -2,12 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
+  protectPendingObject: vi.fn(),
   guardProviderIngress: vi.fn(),
   guardProviderSpend: vi.fn(),
   preflightPaidActionOrResponse: vi.fn(),
   reservePaidActionOrResponse: vi.fn(),
   refundCreditReservation: vi.fn(),
   fetchBoundedJson: vi.fn(),
+}));
+
+vi.mock("@/lib/db/r2-lifecycle", () => ({
+  protectPendingObject: mocks.protectPendingObject,
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
@@ -52,6 +57,7 @@ import { POST } from "./route";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.protectPendingObject.mockResolvedValue(true);
   vi.unstubAllEnvs();
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.guardProviderIngress.mockResolvedValue(null);
@@ -567,6 +573,24 @@ describe("POST /api/transcribe with audio already in storage", () => {
       "u/user_test/final-export.mp4",
       900,
     );
+    expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+  });
+
+  it("does not charge or transcribe a master released between lookup and its lease", async () => {
+    submissions.getOwnedMediaKey.mockResolvedValue(
+      "u/user_test/final-export.mp4",
+    );
+    mocks.protectPendingObject.mockResolvedValue(false);
+    const response = await POST(
+      new Request("https://ypr.app/api/transcribe", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ submissionId: "submission-owned" }),
+      }),
+    );
+    expect(response.status).toBe(409);
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
     expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
   });
 

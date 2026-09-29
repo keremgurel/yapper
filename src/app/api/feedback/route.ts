@@ -1,3 +1,7 @@
+import {
+  PosterSlotBusyError,
+  posterSlotBusyResponse,
+} from "@/lib/db/poster-slot";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
@@ -265,6 +269,8 @@ export async function POST(req: NextRequest): Promise<Response> {
           ? e.message
           : "feedback_failed";
     await markSubmissionFailed(db, submission.id, userId, detail);
+    if (e instanceof PosterSlotBusyError)
+      return posterSlotBusyResponse(e.waiting);
     return insufficient
       ? Response.json({ error: "insufficient_credits" }, { status: 402 })
       : storageFull
