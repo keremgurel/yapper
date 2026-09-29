@@ -3,6 +3,7 @@ import type { DbTx } from "./client";
 import {
   importedPlatformMedia,
   publishJobs,
+  publishingSchedules,
   r2Objects,
   submissions,
   users,
@@ -100,10 +101,49 @@ import {
   enqueueObjectDeletionWithinTx,
   protectPendingObject,
   retryR2Deletion,
+  queueUntrackedR2Object,
 } from "./r2-lifecycle";
 
 const now = new Date("2026-08-13T12:00:00.000Z");
 const key = "u/user_test/object.mp4";
+
+describe("untracked bucket objects", () => {
+  it("registers an unreferenced legacy object with a full day of quarantine", async () => {
+    await expect(
+      queueUntrackedR2Object("user_test", key, 100, now),
+    ).resolves.toBe(true);
+    expect(harness.inserts).toContainEqual(
+      expect.objectContaining({
+        mediaKey: key,
+        mediaBytes: 100,
+        state: "delete_pending",
+        deleteReason: "untracked_inventory_orphan",
+        deleteNotBefore: new Date(now.getTime() + 86_400_000),
+      }),
+    );
+    expect(harness.events.slice(0, 2)).toEqual([
+      "user:user_test",
+      `object:user_test:${key}`,
+    ]);
+  });
+
+  it.each([
+    r2Objects,
+    submissions,
+    importedPlatformMedia,
+    publishingSchedules,
+    publishJobs,
+  ])(
+    "preserves existing registry, content, schedule or publishing references (%#)",
+    async (table) => {
+      queue(table, [{ id: "retained", ...object("active") }]);
+      await expect(
+        queueUntrackedR2Object("user_test", key, 100, now),
+      ).resolves.toBe(false);
+      expect(harness.inserts).toEqual([]);
+    },
+  );
+});
 
 function queue(table: unknown, ...rows: unknown[][]) {
   harness.rows.set(table, rows);

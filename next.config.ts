@@ -80,20 +80,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: "/ingest/static/:path*",
-        destination: "https://us-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/ingest/:path*",
-        destination: "https://us.i.posthog.com/:path*",
-      },
-    ];
-  },
-  // Required to support PostHog trailing slash API requests
-  skipTrailingSlashRedirect: true,
   experimental: {
     // Video uploads go directly to presigned R2 URLs, and editor transcription
     // is chunked below the hosting limit. Audio/full coaching still posts a

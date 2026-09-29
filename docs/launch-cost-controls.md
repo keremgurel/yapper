@@ -87,22 +87,67 @@ semantics can differ. Reservations cover this application's outbound code, not
 other applications sharing a provider key. Query `provider_spend_windows` to
 see admitted attempts and reservations; do not book those values as expenses.
 
-## Costs that still require account-level limits
+## Storage, database and analytics backstops
 
-| Cost                          | Application control                                                                                          | External control still needed                                                                                          |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| AI / transcription / scraping | Paid credits, rate limits, global admission cutoff, bounded attempts                                         | Separate Yapper provider keys; provider budgets/alerts; disable automatic balance refills unless deliberately budgeted |
-| R2                            | 5 GiB cap, pending-upload reservations/expiry, one current video, retained-reference checks, deletion worker | Account usage alerts and operation monitoring                                                                          |
-| Hosting / video transfer      | Direct uploads, finite request bodies/deadlines, publishing quotas                                           | Vercel spend management and traffic protection; watch media proxy bandwidth                                            |
-| PostgreSQL                    | Persistent limits, bounded API lists, pooled connections                                                     | Neon compute/autoscaling ceiling and storage alerts                                                                    |
-| Auth, email, analytics        | Existing app rate limits; no new automatic purchase path                                                     | Vendor plan limits, event retention and spend alerts                                                                   |
-| Payments                      | No unpaid full-plan grant; idempotent paid invoices                                                          | Include processing fees, refunds, chargebacks and tax handling in margin forecasts                                     |
+The daily cleanup also reconciles physical R2 inventory with application
+references. It examines at most 1,000 keys within an eight-second budget and
+persists its position, rather than repeatedly inspecting only the first page.
+Untracked recognized media and transcription scratch files must be at least
+48 hours old. They receive another 24-hour quarantine before the normal leased
+worker can delete them. Unknown key formats, registered uploads, saved content,
+logos, pending schedules and unfinished publishing jobs are preserved. The
+worker rechecks schedules and their thumbnails immediately before deletion.
+The database cursor makes this a repeated full-bucket scan, not a one-off purge;
+at larger bucket sizes the scan can take multiple daily runs.
 
-Account-level Vercel/Neon/provider dashboard limits were **not verified or
-changed** by this code deployment. The CLI has no authenticated Vercel account.
-The application cutoff does not cap those infrastructure invoices. Check those
-before opening unrestricted acquisition; otherwise this change alone is not a
-claim that every operating bill has a hard ceiling.
+Partial cleanup or inventory failures return HTTP 503 for monitoring. Production
+builds refuse a missing `CRON_SECRET`, because a scheduled request without it
+would only receive 401. The separate bucket-level scratch expiry and multipart
+abort rules remain useful even if the app or database is unavailable; install
+them with `scripts/r2-lifecycle.mjs --apply` using bucket-settings access.
+
+Analytics sends directly to PostHog instead of using paid hosting bandwidth as
+a proxy. Explicit product events and exception tracking remain enabled. Session
+replay, heatmaps, automatic click capture, page-leave events, performance events,
+unused feature-flag evaluation and surveys are disabled. The app owns page-view
+reporting, removing the duplicate initial page view. Vendor billing limits are
+still required: lowering event volume is not a hard spending cap.
+
+`scripts/database-cost-controls.mjs` inspects both connection paths. With
+`--apply`, it sets at most 30-second statement and idle-transaction deadlines
+for the configured role **in the configured database only**, preserving stricter
+existing limits. This was applied and verified on direct production connections
+on September 29. Existing pooled backends can retain their old defaults until
+Neon recycles them; verify the script's pooled result before treating rollout
+as complete. PgBouncer ignored startup timeout options in the live check, so
+those ineffective client options were not shipped. Production migrations use
+their own finite 120-second deadlines.
+
+## Account-level verification
+
+| Cost                          | Application control                                                                                                                       | External control still needed                                                                                          |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| AI / transcription / scraping | Paid credits, rate limits, global admission cutoff, bounded attempts                                                                      | Separate Yapper provider keys; provider budgets/alerts; disable automatic balance refills unless deliberately budgeted |
+| R2                            | 5 GiB cap, pending-upload reservations/expiry, one current video, retained-reference checks, inventory reconciliation and deletion worker | Account usage alerts, bucket lifecycle settings and operation monitoring                                               |
+| Hosting / video transfer      | Direct uploads, finite request bodies/deadlines, publishing quotas                                                                        | Vercel spend management and traffic protection; watch media proxy bandwidth                                            |
+| PostgreSQL                    | Persistent limits, bounded API lists, pooled connections                                                                                  | Neon compute/autoscaling ceiling and storage alerts                                                                    |
+| Auth, email, analytics        | Existing app rate limits; no new automatic purchase path                                                                                  | Vendor plan limits, event retention and spend alerts                                                                   |
+| Payments                      | No unpaid full-plan grant; idempotent paid invoices                                                                                       | Include processing fees, refunds, chargebacks and tax handling in margin forecasts                                     |
+
+The authorized Apify account's API returned an existing **$5 monthly usage
+limit** and seven-day retention on September 29; that stricter limit was kept.
+R2 inventory and incomplete-upload listing work with the application key, but
+bucket lifecycle settings return AccessDenied. Deepgram project discovery works,
+but billing access is denied to the application key.
+
+Other vendor billing controls remain unverified pending access to the Yapper
+owner accounts. Do not change limits on another product's signed-in account.
+Vercel's automatic spending pause is team-wide, so it must not inadvertently
+pause other products. Gemini supports a project spending cap, but its billing
+delay can permit overages. R2 has no hard bucket-size quota. These differences
+mean a budget alert is not interchangeable with a hard cap. The application
+cutoff does not cap infrastructure invoices, nor does this deployment claim
+that every operating bill has a hard ceiling.
 
 ## Verified pricing references
 
@@ -117,3 +162,9 @@ claim that every operating bill has a hard ceiling.
   $0.75/M input tokens and $4.50/M output tokens.
 - [Claude Opus 4.7](https://www.anthropic.com/news/claude-opus-4-7): published
   $5/M input and $25/M output; actual routed-provider billing can differ.
+- [Vercel spend management](https://vercel.com/docs/spend-management): team-wide
+  overage monitoring and optional project pausing.
+- [Gemini billing](https://ai.google.dev/gemini-api/docs/billing/): project spend
+  caps and their enforcement delay.
+- [Apify usage limits](https://docs.apify.com/api/v2/users-me-limits-get): account
+  limit and current usage inspection.

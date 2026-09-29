@@ -51,6 +51,10 @@ async function runLockedMigrations({ databaseUrl, cwd, log }) {
 
   try {
     await client.connect();
+    // Migrations use a direct connection and may legitimately exceed the
+    // application's 30-second role default. Keep their own finite deadline.
+    await client.query("SET statement_timeout = '120s'");
+    await client.query("SET idle_in_transaction_session_timeout = '120s'");
     await client.query("select pg_advisory_lock($1::integer, $2::integer)", [
       LOCK_NAMESPACE,
       LOCK_OPERATION,
