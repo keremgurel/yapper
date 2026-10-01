@@ -60,8 +60,8 @@ describe("GET /api/billing/status", () => {
     expect(mocks.getStorageBytes).not.toHaveBeenCalled();
   });
 
-  it("removes entitlement and storage allowance after the paid period expires", async () => {
-    vi.setSystemTime(new Date("2026-09-28T00:00:00.000Z"));
+  it("removes entitlement and storage allowance after the paid period and grace expire", async () => {
+    vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"));
 
     const response = await GET();
 
