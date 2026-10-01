@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -19,6 +19,8 @@ vi.mock("@/lib/db/users", () => ({
 import { GET } from "./route";
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-09-20T00:00:00.000Z"));
   vi.clearAllMocks();
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.getBalance.mockResolvedValue(88);
@@ -29,6 +31,10 @@ beforeEach(() => {
     plan: "creator_monthly",
     currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
   });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("GET /api/billing/status", () => {
@@ -52,5 +58,17 @@ describe("GET /api/billing/status", () => {
 
     expect(response.status).toBe(401);
     expect(mocks.getStorageBytes).not.toHaveBeenCalled();
+  });
+
+  it("removes entitlement and storage allowance after the paid period expires", async () => {
+    vi.setSystemTime(new Date("2026-09-28T00:00:00.000Z"));
+
+    const response = await GET();
+
+    await expect(response.json()).resolves.toMatchObject({
+      entitled: false,
+      storageQuotaBytes: 0,
+      balance: 88,
+    });
   });
 });
