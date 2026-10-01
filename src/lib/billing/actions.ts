@@ -7,27 +7,8 @@ import {
 } from "@/lib/db/credits";
 import { ensureUser } from "@/lib/db/users";
 
-export const PAID_ACTIONS = {
-  chirpy_plan: { credits: 1, label: "Chirpy action planning" },
-  transcribe: { credits: 1, label: "Transcription" },
-  /** Per three minutes of one of the creator's own videos. */
-  voice_sample: { credits: 1, label: "Voice sample transcription" },
-  clean_transcript: { credits: 1, label: "AI edit cleanup" },
-  place_overlays: { credits: 1, label: "AI media placement" },
-  reference_analysis: { credits: 2, label: "Reference analysis" },
-  creator_analysis: { credits: 4, label: "Creator feed analysis" },
-  capture_idea: { credits: 1, label: "Idea capture" },
-  expand_idea: { credits: 2, label: "Idea expansion" },
-  brainstorm: { credits: 1, label: "Idea brainstorm" },
-  publish_caption: { credits: 1, label: "Publish copy" },
-  publish_thumbnail: { credits: 2, label: "AI thumbnail" },
-  ingest_context: { credits: 1, label: "Context import" },
-  direct_overlays: { credits: 1, label: "AI overlay planning" },
-  design_overlay: { credits: 2, label: "AI overlay design" },
-  scene_image: { credits: 2, label: "AI overlay picture" },
-  revise_overlay: { credits: 2, label: "AI overlay revision" },
-  retime_overlay: { credits: 1, label: "AI overlay retiming" },
-} as const;
+import { PAID_ACTIONS } from "./credit-costs";
+export { PAID_ACTIONS } from "./credit-costs";
 
 export type PaidAction = keyof typeof PAID_ACTIONS;
 
@@ -40,17 +21,20 @@ export type PaidAction = keyof typeof PAID_ACTIONS;
 export const MAX_RESERVATION_QUANTITY = 8;
 
 export interface ReservationOptions {
-  /** Units of the action, 1 to MAX_RESERVATION_QUANTITY. Defaults to 1. */
+  /** Units of the action, up to 8 (60 for duration-metered work). Defaults to 1. */
   quantity?: number;
 }
 
-function reservationQuantity(options: ReservationOptions): number {
+function reservationQuantity(
+  options: ReservationOptions,
+  action: PaidAction,
+): number {
+  const maximum =
+    action === "transcribe" || action === "clean_transcript"
+      ? 60
+      : MAX_RESERVATION_QUANTITY;
   const quantity = options.quantity ?? 1;
-  if (
-    !Number.isInteger(quantity) ||
-    quantity < 1 ||
-    quantity > MAX_RESERVATION_QUANTITY
-  ) {
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > maximum) {
     throw new RangeError("invalid_reservation_quantity");
   }
   return quantity;
@@ -63,7 +47,8 @@ export async function preflightPaidActionOrResponse(
   action: PaidAction,
   options: ReservationOptions = {},
 ): Promise<Response | null> {
-  const cost = PAID_ACTIONS[action].credits * reservationQuantity(options);
+  const cost =
+    PAID_ACTIONS[action].credits * reservationQuantity(options, action);
   await ensureUser(userId);
   if (!(await canUsePremium(userId))) {
     return Response.json({ error: "not_entitled" }, { status: 402 });
@@ -101,7 +86,7 @@ export async function reservePaidAction(
   action: PaidAction,
   options: ReservationOptions = {},
 ): Promise<CreditReservation> {
-  const quantity = reservationQuantity(options);
+  const quantity = reservationQuantity(options, action);
   await ensureUser(userId);
   if (!(await canUsePremium(userId))) {
     // Logged with the account and the action, because a 402 is indistinguishable

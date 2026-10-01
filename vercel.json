@@ -5,6 +5,10 @@
     {
       "path": "/api/internal/r2-lifecycle",
       "schedule": "17 4 * * *"
+    },
+    {
+      "path": "/api/internal/billing-allowances",
+      "schedule": "23 0 * * *"
     }
   ]
 }

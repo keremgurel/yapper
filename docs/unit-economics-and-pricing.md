@@ -1,5 +1,7 @@
 # Unit economics and pricing
 
+October 1 update: the implemented Studio + Train catalog, monthly annual-plan releases, and revised core action prices are in [pricing-2026-10.md](pricing-2026-10.md). This document remains the historical provider-cost investigation; its offer and tariff tables are not the current catalog.
+
 Last verified: 2026-09-03. Supersedes the money map in `product-vision.md` §4,
 which predates the Brain, the native editor, Poster, and the current plan
 catalog. Storage rates and accounting rules stay in `storage-economics.md`. The

@@ -80,6 +80,7 @@ interface PracticeSessionContextValue {
   cameraOn: boolean;
   micOn: boolean;
   isRecording: boolean;
+  getStream: () => MediaStream | null;
   recordedBlob: Blob | null;
   recordedUrl: string | null;
   /** Small mic-only copy of the take, recorded for AI feedback only. */
@@ -116,6 +117,7 @@ export function PracticeSessionProvider({
   drillTitle,
   topicPool,
   initialGenerated = false,
+  initialSeconds = 60,
   children,
 }: {
   initialTopic: Topic;
@@ -126,6 +128,7 @@ export function PracticeSessionProvider({
   drillTitle: string;
   topicPool?: Topic[];
   initialGenerated?: boolean;
+  initialSeconds?: number;
   children: React.ReactNode;
 }) {
   const isCompactDevice = useCompactDevice();
@@ -138,6 +141,7 @@ export function PracticeSessionProvider({
   );
 
   const timer = useSessionTimer({
+    initialSeconds,
     onTimerExpired: () => {
       media.stopRecording();
       coachAudio.stop();
@@ -147,7 +151,7 @@ export function PracticeSessionProvider({
 
   const promptEditor = usePromptEditor({
     customPromptText: topicGen.customPromptText,
-    topicText: topicGen.topic.text,
+    topicText: mode === "freestyle" ? "" : topicGen.topic.text,
     onSave: (trimmed) => {
       topicGen.setCustomPromptText(trimmed);
       if (trimmed !== null) topicGen.setHasGeneratedTopic(true);
@@ -237,9 +241,16 @@ export function PracticeSessionProvider({
   }, [timer, media, coachAudio, mode]);
 
   const pauseTimer = useCallback(() => {
+    if (timer.isPaused) {
+      media.resumeRecording();
+      coachAudio.resume();
+    } else {
+      media.pauseRecording();
+      coachAudio.pause();
+    }
     timer.pause();
     trackSessionPaused({ action: timer.isPaused ? "resume" : "pause" });
-  }, [timer]);
+  }, [timer, media, coachAudio]);
 
   const wrappedToggleCamera = useCallback(async () => {
     await media.toggleCamera();
@@ -300,6 +311,7 @@ export function PracticeSessionProvider({
       cameraOn: media.cameraOn,
       micOn: media.micOn,
       isRecording: media.isRecording,
+      getStream: media.getStream,
       recordedBlob: media.recordedBlob,
       recordedUrl: media.recordedUrl,
       coachAudioBlob: coachAudio.blob,

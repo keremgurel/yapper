@@ -1,0 +1,395 @@
+.hero {
+  padding: 64px 0 56px;
+}
+.intro {
+  text-align: center;
+  margin: 0 auto 44px;
+  max-width: 800px;
+}
+.intro h1 {
+  font-size: clamp(36px, 4vw, 54px);
+}
+.intro p {
+  color: var(--sg-text-muted);
+  font-size: 18px;
+  line-height: 1.65;
+  margin-top: 20px;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 28px 0 24px;
+}
+.billingToggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface);
+  border-radius: 14px;
+}
+.billingToggle button {
+  min-height: 42px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  color: var(--sg-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.billingToggle button[aria-pressed="true"] {
+  background: var(--sg-text);
+  color: var(--sg-bg);
+}
+.billingToggle span {
+  font-size: 12px;
+  margin-left: 6px;
+}
+.exampleSelect {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--sg-text-muted);
+  font-size: 13px;
+}
+.exampleSelect select {
+  border: 1px solid var(--sg-border);
+  border-radius: 10px;
+  padding: 11px 30px 11px 12px;
+  background: var(--sg-surface);
+  color: var(--sg-text);
+  max-width: 100%;
+  cursor: pointer;
+}
+.plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.plan {
+  padding: 30px;
+  border-radius: 22px;
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface);
+  min-width: 0;
+}
+.plan[data-featured="true"] {
+  border-color: var(--sg-text-muted);
+}
+.plan h2 {
+  font-size: 22px;
+  font-weight: 550;
+  letter-spacing: -0.03em;
+}
+.plan header p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--sg-text-muted);
+  min-height: 44px;
+  line-height: 1.5;
+}
+.allowance {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-top: 24px;
+}
+.allowance strong {
+  font-size: clamp(34px, 3.4vw, 46px);
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.allowance span {
+  font-size: 14px;
+  color: var(--sg-text-muted);
+}
+.equivalent {
+  min-height: 76px;
+  font-size: 14px;
+  line-height: 1.65;
+  margin-top: 12px;
+}
+.equivalent strong {
+  font-weight: 550;
+}
+.equivalent span {
+  font-size: 12px;
+  color: var(--sg-text-muted);
+}
+.price {
+  border-top: 1px solid var(--sg-border);
+  padding-top: 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.price strong {
+  font-size: 32px;
+  letter-spacing: -0.04em;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.price span {
+  font-size: 14px;
+  color: var(--sg-text-muted);
+}
+.billingNote {
+  height: 52px;
+  color: var(--sg-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 3px;
+}
+.planFeatures {
+  margin-top: 24px;
+  display: grid;
+  gap: 13px;
+}
+.planFeatures li {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 13px;
+}
+.planFeatures svg {
+  flex-shrink: 0;
+  color: var(--sg-text-muted);
+}
+.terms {
+  text-align: center;
+  margin: 24px auto 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--sg-text-muted);
+}
+.access {
+  text-align: center;
+  margin: 14px auto 0;
+  font-size: 13px;
+  color: var(--sg-text-muted);
+  line-height: 1.6;
+}
+.access a {
+  color: var(--sg-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.error {
+  text-align: center;
+  margin-top: 20px;
+  color: var(--destructive);
+}
+.section {
+  padding: 64px 0;
+  border-top: 1px solid var(--sg-border);
+}
+.sectionHeading {
+  margin-bottom: 36px;
+}
+.sectionHeading p {
+  color: var(--sg-text-muted);
+  line-height: 1.6;
+  margin-top: 12px;
+}
+.costGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 44px;
+  row-gap: 36px;
+}
+.cost {
+  border-top: 1px solid var(--sg-border);
+  padding-top: 22px;
+}
+.cost svg {
+  color: var(--sg-text-muted);
+  margin-bottom: 16px;
+}
+.cost h3,
+.trainRow h3 {
+  font-size: 18px;
+  font-weight: 500;
+}
+.cost strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.cost p,
+.trainRow p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--sg-text-muted);
+  margin-top: 10px;
+}
+.trainRow {
+  margin-top: 36px;
+  padding: 24px;
+  background: var(--sg-surface);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.trainRow strong {
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 500;
+}
+.exampleLayout,
+.faqLayout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+}
+.exampleTotal {
+  margin-top: 28px;
+  color: var(--sg-text-muted);
+  font-size: 15px;
+}
+.exampleTotal strong {
+  color: var(--sg-text);
+  font-size: 40px;
+  font-weight: 550;
+  letter-spacing: -0.04em;
+  margin-right: 8px;
+}
+.small {
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--sg-text-muted);
+  margin-top: 12px;
+  max-width: 45ch;
+}
+.breakdown div {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--sg-border);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.breakdown dd {
+  font-variant-numeric: tabular-nums;
+}
+.faq details {
+  border-bottom: 1px solid var(--sg-border);
+}
+.faq summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 0;
+  list-style: none;
+  cursor: pointer;
+  font-size: 15px;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary svg {
+  flex-shrink: 0;
+}
+.faq details[open] summary svg {
+  transform: rotate(45deg);
+}
+.faq details p {
+  color: var(--sg-text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+  padding-bottom: 22px;
+  max-width: 65ch;
+}
+@media (max-width: 1000px) {
+  .plan {
+    padding: 22px;
+  }
+  .allowance {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+  }
+  .exampleLayout,
+  .faqLayout {
+    gap: 40px;
+  }
+  .costGrid {
+    gap: 30px;
+  }
+}
+@media (max-width: 767px) {
+  .hero {
+    padding: 44px 0;
+  }
+  .intro {
+    text-align: left;
+    margin-bottom: 28px;
+  }
+  .intro p {
+    font-size: 16px;
+  }
+  .desktopBreak {
+    display: none;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  .billingToggle {
+    width: fit-content;
+  }
+  .billingToggle button {
+    padding: 8px 12px;
+  }
+  .exampleSelect {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .plans {
+    grid-template-columns: 1fr;
+  }
+  .plan {
+    padding: 24px;
+  }
+  .plan header p {
+    min-height: 0;
+  }
+  .allowance {
+    margin-top: 24px;
+  }
+  .equivalent {
+    min-height: 0;
+    margin-bottom: 24px;
+  }
+  .price {
+    padding-top: 20px;
+  }
+  .billingNote {
+    height: 48px;
+  }
+  .terms,
+  .access {
+    text-align: left;
+  }
+  .section {
+    padding: 44px 0;
+  }
+  .costGrid,
+  .exampleLayout,
+  .faqLayout {
+    grid-template-columns: 1fr;
+  }
+  .trainRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+}

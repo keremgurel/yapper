@@ -1,3 +1,4 @@
+import { cleanupUnits } from "@/lib/billing/credit-costs";
 import { auth } from "@clerk/nextjs/server";
 import {
   preflightPaidActionOrResponse,
@@ -115,9 +116,15 @@ export async function POST(req: Request): Promise<Response> {
   const words = parseCleanTranscriptWords(body.words);
   if (!words) return Response.json({ error: "bad_request" }, { status: 400 });
 
+  const quantity = cleanupUnits(
+    Math.max(0, ...words.map((word) => word.end ?? 0)) || words.length / 2.5,
+  );
+  if (quantity > 60)
+    return Response.json({ error: "transcript_too_long" }, { status: 400 });
   const billing = await preflightPaidActionOrResponse(
     userId,
     "clean_transcript",
+    { quantity },
   );
   if (billing) return billing;
   const spendLimited = await guardProviderSpend(
@@ -126,7 +133,9 @@ export async function POST(req: Request): Promise<Response> {
     "clean-transcript",
   );
   if (spendLimited) return spendLimited;
-  const access = await reservePaidActionOrResponse(userId, "clean_transcript");
+  const access = await reservePaidActionOrResponse(userId, "clean_transcript", {
+    quantity,
+  });
   if (access.response) return access.response;
   const { reservation } = access;
 

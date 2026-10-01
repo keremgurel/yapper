@@ -1,479 +1,492 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Maximize2, Minimize2 } from "lucide-react";
-import { CATEGORIES, DIFFICULTIES } from "@/data/topics";
+import { useEffect, useRef } from "react";
 import {
-  TIMER_MAX_SECONDS,
-  TIMER_MIN_SECONDS,
-  formatSecondsDisplay,
-} from "@/lib/practice-helpers";
-import RotaryKnob from "@/components/RotaryKnob";
-import SlotLever from "@/components/SlotLever";
-import TopicReel from "@/components/TopicReel";
-import CompletionScreen from "@/components/CompletionScreen";
-import {
-  AnimatedMicIcon,
-  AnimatedCameraIcon,
-  AnimatedPausePlayIcon,
-  AnimatedStopIcon,
-  AnimatedResetIcon,
-} from "@/components/animated-icons";
+  ArrowRight,
+  Camera,
+  Check,
+  ChevronDown,
+  Mic,
+  Pause,
+  Pencil,
+  Play,
+  RotateCcw,
+  Square,
+} from "lucide-react";
 import { MeshGradient } from "@paper-design/shaders-react";
 import { usePracticeSession } from "@/contexts/practice-session";
+import topics, { CATEGORIES, DIFFICULTIES } from "@/data/topics";
+import { getTrainingMode } from "@/data/training-modes";
+import { TIMER_MAX_SECONDS, TIMER_MIN_SECONDS } from "@/lib/practice-helpers";
+import RotaryKnob from "@/components/RotaryKnob";
+import SlotLever from "@/components/SlotLever";
+import VoiceSurface from "@/components/common/voice-surface";
+import { useAudioLevel } from "@/hooks/use-audio-level";
 import { Button } from "@/components/ui/button";
+import { GlassyButton } from "@/components/ui/glassy-button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu";
+import { useDemoPlayback } from "@/components/marketing/use-demo-playback";
+import ResearchPreparation from "@/components/training/research-preparation";
+import TrainingFeedbackCta from "@/components/training/feedback-cta";
+import styles from "@/components/training/training-workspace.module.css";
 
-export default function PracticeStage() {
-  const {
-    mode,
-    category,
-    difficulty,
-    timerSeconds,
-    timeLeft,
-    timeEditorOpen,
-    timeDraft,
-    isRunning,
-    isPaused,
-    timerDone,
-    cameraOn,
-    micOn,
-    isRecording,
-    isCompactDevice,
-    inSession,
-    canEditTime,
-    videoRef,
-    timeInputRef,
-    handleCategoryChange,
-    handleDifficultyChange,
-    openTimeEditor,
-    setTimeDraft,
-    saveTimeDraft,
-    cancelTimeDraft,
-    handleTimerDoubleClick,
-    handleTimerTouchEnd,
-    handleKnobChange,
-    generateTopic,
-    startTimer,
-    pauseTimer,
-    finishTimer,
-    resetTimer,
-    toggleCamera,
-    toggleMic,
-    hasGeneratedTopic,
-    hasPool,
-    mediaError,
-    clearMediaError,
-  } = usePracticeSession();
+function clock(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
 
-  const isFreestyle = mode === "freestyle";
-  const [isFullscreen, setIsFullscreen] = useState(false);
+function Filter({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  onChange: (value: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className={styles.filterButton}
+          disabled={disabled}
+          aria-label={`${label}: ${value}`}
+        >
+          {value === "All" ? `All ${label.toLowerCase()}` : value}
+          <ChevronDown size={14} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        className={styles.filterMenu}
+        align="start"
+        sideOffset={8}
+      >
+        <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
+          {["All", ...options].map((option) => (
+            <DropdownMenuRadioItem key={option} value={option}>
+              {option === "All" ? `All ${label.toLowerCase()}` : option}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
-  const exitFullscreen = useCallback(() => setIsFullscreen(false), []);
+export default function PracticeStage({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
+  const s = usePracticeSession();
+  const config = getTrainingMode(s.drillSlug);
+  const { videoRef, cameraOn, timerDone, getStream } = s;
+  const promptInput = useRef<HTMLTextAreaElement>(null);
+  const voiceLevel = useAudioLevel(s.getStream, s.micOn, null);
+  const { ref: fieldRef, active: animateField } = useDemoPlayback(1);
+  const isFreestyle = s.mode === "freestyle";
+  const isRecall = config?.kind === "recall";
+  const isResearch = config?.kind === "research";
+  const isPassage = isRecall || config?.kind === "reading";
+  const prompt = s.customPromptText ?? s.topic.text;
+  const pool = config?.pool ?? topics;
+  const levels = DIFFICULTIES.filter((level) =>
+    pool.some(
+      (topic) =>
+        topic.difficulty === level &&
+        (s.category === "All" || topic.category === s.category),
+    ),
+  );
+  const ready = isFreestyle || s.hasGeneratedTopic;
+  const locked = s.inSession || s.spinning;
 
   useEffect(() => {
-    if (!isFullscreen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitFullscreen();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isFullscreen, exitFullscreen]);
-
-  const canStart = isFreestyle || hasGeneratedTopic;
-
-  const overlayGlass =
-    "border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.26),rgba(255,255,255,0.1))] shadow-[inset_0_1px_0_rgba(255,255,255,0.34),0_20px_44px_rgba(15,23,42,0.18)] backdrop-blur-2xl";
-  const toolChromePanel = `rounded-[28px] p-3 ${overlayGlass}`;
-
-  const selectClass = `min-w-0 flex-1 cursor-pointer rounded-2xl px-3 py-2 text-[11px] font-medium text-white outline-none sm:flex-none ${overlayGlass}`;
-
-  const toolbarIconButtonClass = `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 hover:bg-white/16 ${overlayGlass}`;
-
-  const timerColor =
-    timeLeft <= 10
-      ? "text-red-600 dark:text-red-500"
-      : timeLeft <= 30
-        ? "text-amber-600 dark:text-amber-500"
-        : cameraOn
-          ? "text-white drop-shadow-[0_2px_14px_rgba(0,0,0,0.75)]"
-          : "text-slate-900 dark:text-white";
-
-  const stageFrameClass = isFullscreen
-    ? "h-[100dvh] w-screen max-h-none max-w-none"
-    : isCompactDevice
-      ? "aspect-[9/16] w-[min(calc(100vw-2rem),calc((100dvh-1.5rem)*9/16))] max-h-[calc(100dvh-1.5rem)] lg:w-[min(calc((100vh-200px)*9/16),100%)]"
-      : "aspect-[16/9] w-full max-w-[min(1400px,100%)] max-h-[calc(100dvh-1.5rem)] md:h-auto md:max-h-[calc(100vh-200px)]";
-
-  const handleNewSession = () => {
-    resetTimer();
-    if (!isFreestyle) generateTopic();
-  };
+    const video = videoRef.current;
+    if (cameraOn && video && !timerDone) {
+      video.srcObject = getStream();
+      void video.play().catch(() => {});
+    }
+  }, [timerDone, cameraOn, getStream, videoRef]);
+  useEffect(() => {
+    if (s.promptEditorOpen) promptInput.current?.focus();
+  }, [s.promptEditorOpen]);
 
   return (
-    <main
+    <section
       id="practice"
-      className={`${
-        isFullscreen
-          ? "fixed inset-0 z-[9999] p-0"
-          : "relative flex flex-1 flex-col items-center justify-start overflow-visible px-4 pt-0 pb-6 sm:pb-16 md:justify-center md:pt-2 md:pb-20"
-      }`}
+      aria-label="Speaking practice workspace"
+      className={`${embedded ? "" : "marketing-container"} ${styles.workspace}`}
     >
-      {mediaError && (
-        <div className="mx-auto flex w-full max-w-2xl items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200">
-          <span className="shrink-0">⚠️</span>
-          <p className="flex-1">{mediaError}</p>
-          <button
-            onClick={clearMediaError}
-            className="shrink-0 rounded-md px-2 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/30"
-          >
+      {s.mediaError && (
+        <div className={styles.error} role="alert">
+          <p>{s.mediaError}</p>
+          <Button variant="ghost" size="sm" onClick={s.clearMediaError}>
             Dismiss
-          </button>
+          </Button>
         </div>
       )}
-      <div
-        className={`shadow-container relative overflow-hidden border border-slate-200/90 bg-linear-to-b from-white to-slate-100 dark:border-white/8 dark:bg-[oklch(0.16_0_0)] dark:bg-none ${isFullscreen ? "rounded-none" : "rounded-3xl"} ${stageFrameClass}`}
-      >
-        <div className="absolute inset-0">
-          <MeshGradient
-            className="absolute inset-0 h-full w-full"
-            colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
-            speed={0.3}
-            distortion={0.4}
-            swirl={0.3}
-          />
-        </div>
-
-        {cameraOn && (
-          <div className="absolute inset-0">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="h-full w-full -scale-x-100 bg-black object-cover"
-            />
+      {s.timerDone ? (
+        <div className={styles.review}>
+          <div className={styles.reviewHeading}>
+            <Check size={24} />
+            <h2 className="type-h2">One more rep in.</h2>
+            <p>Pick one thing to improve. Try it again.</p>
           </div>
-        )}
-
-        {cameraOn && <div className="absolute inset-0 bg-black/18" />}
-
-        <div className="absolute inset-x-4 top-4 z-50 flex items-start justify-between gap-3">
-          {isRecording && (
-            <div
-              className={`absolute top-0 left-0 flex items-center gap-2 rounded-full border px-3 py-1 backdrop-blur-md md:static md:flex-none ${overlayGlass}`}
-            >
-              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-              <span className="font-mono text-xs font-semibold">REC</span>
-            </div>
-          )}
-
-          {!isFreestyle && !hasPool && (
-            <div
-              className={`flex min-w-0 flex-1 flex-wrap gap-2 pr-20 transition-all duration-500 md:pr-0 ${
-                inSession || timerDone
-                  ? "pointer-events-none opacity-0"
-                  : "opacity-100"
-              }`}
-            >
-              <select
-                value={category}
-                onChange={(e) => handleCategoryChange(e.target.value)}
-                className={selectClass}
-              >
-                {["All", ...CATEGORIES].map((option) => (
-                  <option key={option} value={option}>
-                    {option === "All" ? "All Topics" : option}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={difficulty}
-                onChange={(e) => handleDifficultyChange(e.target.value)}
-                className={selectClass}
-              >
-                {["All", ...DIFFICULTIES].map((option) => (
-                  <option key={option} value={option}>
-                    {option === "All" ? "All Levels" : option}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {isFreestyle && !isRecording && (
-            <div
-              className={`flex min-w-0 flex-1 transition-all duration-500 ${
-                inSession || timerDone
-                  ? "pointer-events-none opacity-0"
-                  : "opacity-100"
-              }`}
-            />
-          )}
-
-          <div className="relative z-50 flex shrink-0 gap-2">
-            <button
-              onClick={() => {
-                if (isFullscreen) {
-                  exitFullscreen();
-                } else {
-                  setIsFullscreen(true);
-                }
-              }}
-              className={toolbarIconButtonClass}
-              title={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen"}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
+          {s.recordedUrl ? (
+            <div className={styles.replay}>
+              {s.cameraOn ? (
+                <video src={s.recordedUrl} controls playsInline />
               ) : (
-                <Maximize2 className="h-4 w-4" />
+                <audio src={s.recordedUrl} controls />
               )}
-            </button>
-
-            <div
-              className={`flex gap-2 overflow-hidden transition-all duration-500 ${timerDone ? "hidden" : inSession ? "pointer-events-none w-0 opacity-0" : "opacity-100"}`}
-            >
-              <button
-                onClick={toggleMic}
-                disabled={isRecording}
-                className={`${
-                  micOn
-                    ? toolbarIconButtonClass
-                    : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
-                } ${isRecording ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
-                title={micOn ? "Mute" : "Unmute"}
+              <Button
+                variant="outline"
+                onClick={s.downloadRecording}
+                disabled={s.isPreparingDownload}
               >
-                <AnimatedMicIcon muted={!micOn} />
-              </button>
-
-              <button
-                onClick={toggleCamera}
-                disabled={isRecording}
-                className={`${
-                  cameraOn
-                    ? toolbarIconButtonClass
-                    : `flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/18 bg-[linear-gradient(180deg,rgba(255,103,103,0.82),rgba(239,68,68,0.68))] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.26),0_18px_34px_rgba(239,68,68,0.22)] backdrop-blur-2xl transition-all duration-200 hover:opacity-92`
-                } ${isRecording ? "cursor-not-allowed opacity-45 hover:bg-inherit" : ""}`}
-                title={cameraOn ? "Camera off" : "Camera on"}
-              >
-                <AnimatedCameraIcon off={!cameraOn} />
-              </button>
-            </div>
-
-            {timerDone && (
-              <button
-                onClick={handleNewSession}
-                className={`${toolbarIconButtonClass} hidden w-auto gap-1.5 px-4 text-xs font-medium md:flex`}
-                title="New Session"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 5V1L7 6l5 5V7a6 6 0 0 1 0 12 6 6 0 0 1-6-6H4a8 8 0 1 0 8-8Z" />
-                </svg>
-                New Session
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`absolute inset-0 z-10 flex flex-col items-center justify-between px-4 pt-20 pb-4 md:px-6 md:pt-4 ${timerDone ? "invisible" : ""}`}
-        >
-          {isFreestyle ? (
-            <div className="flex w-full max-w-[560px] items-center justify-center">
-              <div
-                className={`transition-all duration-500 ${inSession ? "opacity-0" : "opacity-100"}`}
-              >
-                <p className="text-center font-sans text-[18px] font-medium text-white/60 md:text-[22px]">
-                  Freestyle
-                </p>
-                <p className="mt-1 text-center text-[12px] text-white/35">
-                  No topic, just speak
-                </p>
-              </div>
+                {s.isPreparingDownload
+                  ? "Preparing download…"
+                  : "Download recording"}
+              </Button>
             </div>
           ) : (
-            <div className="w-full max-w-[560px]">
-              <TopicReel />
-            </div>
+            <p className={styles.reviewNote}>
+              {s.cameraOn || s.micOn
+                ? "Your recording is being prepared."
+                : "You practiced without recording. How clearly did your point come across?"}
+            </p>
           )}
-
-          <div className="flex flex-col items-center gap-1">
-            {timeEditorOpen ? (
-              <div className="flex flex-col items-center gap-1">
-                <input
-                  ref={timeInputRef}
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={timeDraft}
-                  onChange={(e) => setTimeDraft(e.target.value)}
-                  onBlur={saveTimeDraft}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      saveTimeDraft();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      cancelTimeDraft();
-                    }
-                  }}
-                  className={`w-[170px] bg-transparent p-0 text-center font-mono text-[36px] leading-none font-bold tracking-[2px] outline-none md:text-[52px] ${timerColor}`}
-                />
-              </div>
-            ) : (
-              <div
-                role={canEditTime ? "button" : undefined}
-                tabIndex={canEditTime ? 0 : undefined}
-                title={
-                  canEditTime
-                    ? `Double-tap to set seconds (${TIMER_MIN_SECONDS} to ${TIMER_MAX_SECONDS})`
-                    : undefined
-                }
-                onDoubleClick={handleTimerDoubleClick}
-                onTouchEnd={handleTimerTouchEnd}
-                onKeyDown={(e) => {
-                  if (
-                    canEditTime &&
-                    (e.key === "Enter" || e.key === " ") &&
-                    e.target === e.currentTarget
-                  ) {
-                    e.preventDefault();
-                    openTimeEditor();
-                  }
-                }}
-                className={`font-mono text-[36px] leading-none font-bold tracking-[2px] drop-shadow-lg transition-colors duration-300 md:text-[52px] ${timerColor} touch-manipulation outline-none ${
-                  canEditTime
-                    ? "cursor-pointer rounded-lg px-2 focus-visible:ring-2 focus-visible:ring-white/50"
-                    : ""
-                } ${isRunning && timeLeft <= 10 ? "animate-pulse" : ""}`}
-              >
-                {formatSecondsDisplay(timeLeft)}
-              </div>
-            )}
-          </div>
-
-          <div className="flex w-full flex-col items-center gap-3">
-            {!timerDone && (
-              <div
-                className={`flex items-end justify-center gap-3 transition-all duration-500 md:hidden ${
-                  inSession
-                    ? "pointer-events-none scale-95 opacity-0"
-                    : "scale-100 opacity-100"
-                }`}
-              >
-                {!isFreestyle && (
-                  <div className={toolChromePanel}>
-                    <SlotLever onPull={generateTopic} />
-                  </div>
-                )}
-                <div className={toolChromePanel}>
-                  <RotaryKnob
-                    value={timerSeconds}
-                    onChange={handleKnobChange}
-                    min={TIMER_MIN_SECONDS}
-                    max={TIMER_MAX_SECONDS}
-                    disabled={isRunning}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {!isRunning && !timerDone && canStart && (
-                <Button type="button" size="lg" onClick={startTimer}>
-                  Start
-                </Button>
-              )}
-
-              {isRunning && (
-                <div className="flex items-center gap-3">
-                  <motion.button
-                    onClick={pauseTimer}
-                    whileTap={{ scale: 0.85 }}
-                    className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white transition-all duration-300 ${
-                      isPaused
-                        ? "border border-blue-400/30 bg-linear-to-br from-blue-500 to-blue-600 shadow-[0_4px_20px_rgba(37,99,235,0.4)]"
-                        : overlayGlass
-                    }`}
-                    title={isPaused ? "Resume" : "Pause"}
-                  >
-                    <AnimatedPausePlayIcon paused={isPaused} />
-                  </motion.button>
-                  <motion.button
-                    onClick={finishTimer}
-                    whileTap={{ scale: 0.85 }}
-                    className="flex h-12 w-12 cursor-pointer items-center justify-center rounded-full bg-linear-to-br from-blue-500 to-blue-600 text-white shadow-[0_4px_20px_rgba(37,99,235,0.4)] transition-opacity hover:opacity-90"
-                    title="Finish"
-                  >
-                    <AnimatedStopIcon />
-                  </motion.button>
-                  <motion.button
-                    onClick={resetTimer}
-                    whileTap={{ scale: 0.85 }}
-                    className={`flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-white ${overlayGlass}`}
-                    title="Reset"
-                  >
-                    <AnimatedResetIcon />
-                  </motion.button>
-                </div>
-              )}
-
-              {timerDone && (
-                <Button type="button" size="lg" onClick={handleNewSession}>
-                  Try Another
-                </Button>
-              )}
-            </div>
+          <TrainingFeedbackCta
+            audio={s.coachAudioBlob}
+            audioPending={s.coachAudioPending}
+            context={{
+              drillSlug: s.drillSlug,
+              drillTitle: s.drillTitle,
+              prompt: isFreestyle
+                ? (s.customPromptText ?? "Freestyle session")
+                : prompt,
+              targetSeconds: s.timerSeconds,
+              goals: [],
+            }}
+          />
+          <div className={styles.reviewActions}>
+            <GlassyButton onClick={s.resetTimer} height={44}>
+              Try again
+            </GlassyButton>
+            <Button
+              variant="outline"
+              onClick={() => {
+                s.resetTimer();
+                if (!isFreestyle) s.generateTopic();
+              }}
+            >
+              New prompt
+            </Button>
           </div>
         </div>
-
-        {!isFreestyle && !timerDone && (
+      ) : (
+        <>
           <div
-            className={`absolute bottom-4 left-4 z-10 hidden transition-all duration-500 md:block ${
-              inSession
-                ? "pointer-events-none scale-90 opacity-0"
-                : "scale-100 opacity-100"
-            }`}
+            className={`${styles.consoleGrid} ${s.cameraOn ? styles.withCamera : ""}`}
           >
-            <div className={toolChromePanel}>
-              <SlotLever onPull={generateTopic} />
+            <div className={styles.console}>
+              <div className={styles.toolbar}>
+                <div className={styles.filters}>
+                  {!isFreestyle && (
+                    <>
+                      {!s.hasPool && (
+                        <Filter
+                          label="Categories"
+                          value={s.category}
+                          options={[...CATEGORIES]}
+                          onChange={s.handleCategoryChange}
+                          disabled={locked}
+                        />
+                      )}
+                      <Filter
+                        label="Levels"
+                        value={s.difficulty}
+                        options={levels}
+                        onChange={s.handleDifficultyChange}
+                        disabled={locked}
+                      />
+                    </>
+                  )}
+                  {isFreestyle && <span>Your focus</span>}
+                </div>
+                <button
+                  className={styles.editButton}
+                  aria-label={isFreestyle ? "Set a focus" : "Your own prompt"}
+                  onClick={s.openPromptEditor}
+                  disabled={locked}
+                >
+                  <Pencil size={14} />
+                  <span>{isFreestyle ? "Set a focus" : "Your own prompt"}</span>
+                </button>
+              </div>
+              {s.promptEditorOpen ? (
+                <div className={styles.promptEditor}>
+                  <label htmlFor="practice-prompt">
+                    {isFreestyle
+                      ? "What do you want to talk about?"
+                      : "Your prompt"}
+                  </label>
+                  <textarea
+                    id="practice-prompt"
+                    ref={promptInput}
+                    value={s.promptDraft}
+                    onChange={(event) => s.setPromptDraft(event.target.value)}
+                    maxLength={5000}
+                  />
+                  <div>
+                    <Button size="sm" onClick={s.savePromptDraft}>
+                      Use prompt
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={s.cancelPromptDraft}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={`${styles.reelWindow} ${isPassage ? styles.passage : ""}`}
+                  aria-busy={s.spinning}
+                >
+                  {s.spinning ? (
+                    <div className={styles.reelTrack} aria-hidden="true">
+                      {s.reelBlurbs.map((text, i) => (
+                        <div className={styles.reelRow} key={i}>
+                          <h2>{text}</h2>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={styles.reelRow} aria-live="polite">
+                      <h2>
+                        {isRecall && s.inSession
+                          ? "Explain it in your own words."
+                          : ready
+                            ? isFreestyle
+                              ? (s.customPromptText ??
+                                "Follow a thought. See where it takes you.")
+                              : prompt
+                            : "A little surprise. A minute to speak."}
+                      </h2>
+                      {!ready && <p>Pull the lever to find your next topic.</p>}
+                      {isRecall && s.inSession && (
+                        <p>
+                          The passage is hidden. Share the main idea and one
+                          detail you remember.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className={styles.practiceCue}>
+                <p>
+                  {config?.instruction ??
+                    "Make a point, give an example, and bring it back to your point."}
+                </p>
+              </div>
+              <div ref={fieldRef} className={styles.controlDock}>
+                <div className={styles.mesh} aria-hidden="true">
+                  <MeshGradient
+                    style={{ width: "100%", height: "100%" }}
+                    colors={["#09252f", "#226f7a", "#62776e", "#0c3441"]}
+                    speed={animateField ? 0.25 : 0}
+                  />
+                </div>
+                <div className={styles.leverControl}>
+                  {!isFreestyle ? (
+                    <>
+                      <SlotLever
+                        compact
+                        onPull={s.generateTopic}
+                        disabled={locked}
+                      />
+                      <button
+                        className={styles.dockLink}
+                        onClick={s.generateTopic}
+                        disabled={locked}
+                      >
+                        {s.spinning ? "Rolling…" : "Generate"}
+                        <RotateCcw size={13} />
+                      </button>
+                    </>
+                  ) : (
+                    <div className={styles.freestyleMark}>
+                      <Mic size={28} />
+                      <span>
+                        No script.
+                        <br />
+                        Just you.
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className={styles.timerControl}>
+                  <RotaryKnob
+                    compact
+                    value={s.inSession ? s.timeLeft : s.timerSeconds}
+                    onChange={s.handleKnobChange}
+                    min={s.inSession ? 0 : TIMER_MIN_SECONDS}
+                    max={s.inSession ? s.timerSeconds : TIMER_MAX_SECONDS}
+                    disabled={s.inSession}
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className={styles.dockLink}
+                        disabled={s.inSession}
+                        aria-label={`Duration: ${clock(s.timerSeconds)}`}
+                      >
+                        {s.inSession ? "Timer" : clock(s.timerSeconds)}
+                        {!s.inSession && <ChevronDown size={13} />}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className={styles.filterMenu}>
+                      <DropdownMenuRadioGroup
+                        value={String(s.timerSeconds)}
+                        onValueChange={(value) =>
+                          s.handleKnobChange(Number(value))
+                        }
+                      >
+                        {[30, 60, 90, 120, 180, 300, 600].map((seconds) => (
+                          <DropdownMenuRadioItem
+                            key={seconds}
+                            value={String(seconds)}
+                          >
+                            {clock(seconds)}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                <div className={styles.startControl}>
+                  {s.inSession ? (
+                    <>
+                      <span>{s.isPaused ? "Paused" : "Speaking time"}</span>
+                      <strong
+                        className={styles.countdown}
+                        role="timer"
+                        aria-label="Time remaining"
+                      >
+                        {clock(s.timeLeft)}
+                      </strong>
+                      <div className={styles.sessionButtons}>
+                        <button
+                          className={styles.dockLink}
+                          onClick={s.pauseTimer}
+                        >
+                          {s.isPaused ? (
+                            <Play size={15} />
+                          ) : (
+                            <Pause size={15} />
+                          )}{" "}
+                          {s.isPaused ? "Resume" : "Pause"}
+                        </button>
+                        <button
+                          className={styles.dockLink}
+                          onClick={s.finishTimer}
+                        >
+                          <Square size={13} />
+                          Finish
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span>
+                        {isResearch
+                          ? "Ready to explain?"
+                          : "Your next rep starts here."}
+                      </span>
+                      <GlassyButton
+                        disabled={!ready || s.spinning || s.promptEditorOpen}
+                        onClick={s.startTimer}
+                        height={44}
+                      >
+                        Start speaking
+                        <ArrowRight size={15} />
+                      </GlassyButton>
+                      <p>
+                        {s.cameraOn || s.micOn
+                          ? "Recording is on"
+                          : "Practice without recording"}
+                      </p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            {s.cameraOn && (
+              <div className={styles.cameraPane}>
+                <div className={styles.paneHeading}>
+                  <span>Your camera</span>
+                  {s.inSession && (
+                    <span className={styles.recording}>
+                      {s.isPaused ? "Paused" : "Recording"}
+                    </span>
+                  )}
+                </div>
+                <div className={styles.cameraView}>
+                  <video ref={videoRef} autoPlay playsInline muted />
+                  {s.micOn && (
+                    <div className={styles.voice}>
+                      <VoiceSurface
+                        level={voiceLevel}
+                        active={s.inSession && !s.isPaused}
+                      >
+                        {null}
+                      </VoiceSurface>
+                    </div>
+                  )}
+                </div>
+                <p className={styles.cameraNote}>Keep the lens at eye level.</p>
+              </div>
+            )}
+          </div>
+          <div className={styles.utilityRow}>
+            <p>Make it a recording, if you like.</p>
+            <div>
+              <button
+                aria-pressed={s.micOn}
+                disabled={s.inSession}
+                onClick={() => void s.toggleMic()}
+              >
+                <Mic size={15} />
+                {s.micOn ? "Mic on" : "Mic off"}
+              </button>
+              <button
+                aria-pressed={s.cameraOn}
+                disabled={s.inSession}
+                onClick={() => void s.toggleCamera()}
+              >
+                <Camera size={15} />
+                {s.cameraOn ? "Camera on" : "Camera off"}
+              </button>
             </div>
           </div>
-        )}
-
-        {!timerDone && (
-          <div
-            className={`absolute right-4 bottom-4 z-10 hidden transition-all duration-500 md:block ${
-              inSession
-                ? "pointer-events-none scale-90 opacity-0"
-                : "scale-100 opacity-100"
-            }`}
-          >
-            <div className={toolChromePanel}>
-              <RotaryKnob
-                value={timerSeconds}
-                onChange={handleKnobChange}
-                min={TIMER_MIN_SECONDS}
-                max={TIMER_MAX_SECONDS}
-                disabled={isRunning}
-              />
-            </div>
-          </div>
-        )}
-
-        {timerDone && <CompletionScreen />}
-      </div>
-    </main>
+          {isResearch && ready && !s.spinning && !s.inSession && (
+            <ResearchPreparation key={prompt} question={prompt} />
+          )}
+        </>
+      )}
+    </section>
   );
 }

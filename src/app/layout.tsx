@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | Content Creation App for Social Media Video";
+const title = "Yapper | Speaking practice and content creation";
 const description =
-  "Create social media videos from idea to published post. Capture ideas, generate scripts, record with a teleprompter, edit by transcript, add captions, schedule, and publish.";
+  "Find your voice with Yapper speaking practice. Create videos from idea to final post with Yapper Studio.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

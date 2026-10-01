@@ -16,7 +16,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const trainingPages = programFamilies.map((program) => ({
     url: `${SITE_URL}${program.href}`,
-    lastModified: new Date(),
+
     changeFrequency:
       program.status === "Free now"
         ? ("weekly" as const)
@@ -31,7 +31,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     .filter((t) => t.href.startsWith("/tools/"))
     .map((t) => ({
       url: `${SITE_URL}${t.href}`,
-      lastModified: new Date(),
+
       changeFrequency: "monthly" as const,
       priority: 0.8,
     }));
@@ -39,44 +39,49 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: SITE_URL,
-      lastModified: new Date(),
+
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: `${SITE_URL}/features`,
-      lastModified: new Date(),
+
       changeFrequency: "monthly",
       priority: 0.9,
     },
+    ...["/products", "/products/train", "/products/studio"].map((path) => ({
+      url: `${SITE_URL}${path}`,
+      changeFrequency: "monthly" as const,
+      priority: 0.9,
+    })),
     ...marketingFeatures.map((feature) => ({
       url: `${SITE_URL}/features/${feature.slug}`,
-      lastModified: new Date(),
+
       changeFrequency: "monthly" as const,
       priority: 0.8,
     })),
     {
       url: `${SITE_URL}/tools`,
-      lastModified: new Date(),
+
       changeFrequency: "weekly",
       priority: 0.8,
     },
     ...toolPages,
     {
       url: `${SITE_URL}/blog`,
-      lastModified: new Date(),
+
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/pricing`,
-      lastModified: new Date(),
+
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${SITE_URL}/training`,
-      lastModified: new Date(),
+
       changeFrequency: "weekly",
       priority: 0.85,
     },

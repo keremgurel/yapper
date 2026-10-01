@@ -28,7 +28,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   };
   const plan = planByKey(body.plan);
   const pack = CREDIT_PACKS.find((p) => p.key === body.pack);
-  if (!plan && !pack) {
+  if ((!plan && !pack) || plan?.legacy || (plan && pack)) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
@@ -82,6 +82,17 @@ export async function POST(req: NextRequest): Promise<Response> {
     if (!plan.priceId) {
       return Response.json({ error: "price_not_configured" }, { status: 503 });
     }
+    // Do not charge a configured Stripe price that disagrees with the visible catalog.
+    const price = await stripe.prices.retrieve(plan.priceId);
+    if (
+      price.currency !== "usd" ||
+      price.unit_amount !== plan.priceCents ||
+      price.recurring?.interval !== plan.cadence ||
+      price.recurring?.interval_count !== 1 ||
+      !price.active
+    ) {
+      return Response.json({ error: "price_mismatch" }, { status: 503 });
+    }
     const session = await stripe.checkout.sessions.create({
       ...common,
       mode: "subscription",
@@ -92,7 +103,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       },
       payment_method_collection: "always",
       metadata: { userId, kind: "subscription", plan: plan.key },
-      allow_promotion_codes: true,
+      allow_promotion_codes: false,
     });
     return Response.json({ url: session.url });
   }
@@ -100,6 +111,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   // credit pack (mode: payment)
   if (!pack!.priceId) {
     return Response.json({ error: "price_not_configured" }, { status: 503 });
+  }
+  const price = await stripe.prices.retrieve(pack!.priceId);
+  if (
+    price.currency !== "usd" ||
+    price.unit_amount !== pack!.priceCents ||
+    price.type !== "one_time" ||
+    !price.active
+  ) {
+    return Response.json({ error: "price_mismatch" }, { status: 503 });
   }
   const session = await stripe.checkout.sessions.create({
     ...common,

@@ -1,5 +1,7 @@
 "use client";
 
+import VoiceSurface from "@/components/common/voice-surface";
+
 import { ArrowUp, Loader2, Mic, Square } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import VoiceWaveform from "@/components/common/voice-waveform";
@@ -102,97 +104,103 @@ export default function ChirpyComposer({
   const canSend = !working && !transcribing && (recording || !!draft.trim());
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void submit();
-      }}
-      className="p-2.5"
+    <VoiceSurface
+      stream={stream}
+      active={recording || transcribing}
+      processing={transcribing}
     >
-      <div className="bg-card border-border grid grid-rows-[auto_36px] overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[color:var(--sg-accent)]/30">
-        <textarea
-          ref={composer}
-          name="chirpy-message"
-          value={draft}
-          rows={1}
-          onChange={(event) => onDraft(event.target.value)}
-          onSelect={dictation.remember}
-          onKeyUp={dictation.remember}
-          onBlur={dictation.remember}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void submit();
-            } else if (event.key === "d" && event.metaKey) {
-              event.preventDefault();
-              void toggleVoice();
-            }
-          }}
-          placeholder={placeholder}
-          aria-label="Message Chirpy"
-          className="text-foreground placeholder:text-muted-foreground max-h-[220px] min-h-10 resize-none bg-transparent px-2.5 pt-2.5 text-xs leading-relaxed outline-none"
-        />
-        <div className="text-muted-foreground flex items-center gap-2 px-2 pb-1 text-[11px]">
-          {recording ? (
-            <>
-              <VoiceWaveform
-                stream={stream}
-                className="text-foreground/85 h-6 min-w-0 flex-1"
-              />
-              <span className="w-8 shrink-0 text-right text-[11px] tabular-nums">
-                {durationLabel(seconds)}
-              </span>
-              <button
-                type="button"
-                onClick={() => void stopDictation()}
-                aria-label="Stop dictation"
-                title="Stop dictation · keeps the words in the box"
-                className="bg-muted text-foreground hover:bg-muted/80 grid size-7 shrink-0 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-              >
-                <Square className="size-3 fill-current" aria-hidden="true" />
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="min-w-0 flex-1 truncate">
-                {error ??
-                  (transcribing
-                    ? "Transcribing…"
-                    : "⏎ send · ⇧⏎ new line · ⌘D dictate")}
-              </span>
-              <button
-                type="button"
-                onClick={() => void toggleVoice()}
-                disabled={transcribing || working}
-                aria-label="Dictate"
-                title="Dictate (⌘D)"
-                className="text-foreground hover:bg-muted grid size-7 shrink-0 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-50"
-              >
-                {transcribing ? (
-                  <Loader2
-                    className="size-3.5 animate-spin"
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Mic className="size-3.5" aria-hidden="true" />
-                )}
-              </button>
-            </>
-          )}
-          <button
-            type="submit"
-            aria-label={recording ? "Send what I said" : "Send"}
-            disabled={!canSend}
-            className="grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-black transition-opacity focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-30"
-          >
-            {working ? (
-              <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          void submit();
+        }}
+        className="p-2.5"
+      >
+        <div className="bg-card border-border grid grid-rows-[auto_36px] overflow-hidden rounded-xl border focus-within:ring-2 focus-within:ring-[color:var(--sg-accent)]/30">
+          <textarea
+            ref={composer}
+            name="chirpy-message"
+            value={draft}
+            rows={1}
+            onChange={(event) => onDraft(event.target.value)}
+            onSelect={dictation.remember}
+            onKeyUp={dictation.remember}
+            onBlur={dictation.remember}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                void submit();
+              } else if (event.key === "d" && event.metaKey) {
+                event.preventDefault();
+                void toggleVoice();
+              }
+            }}
+            placeholder={placeholder}
+            aria-label="Message Chirpy"
+            className="text-foreground placeholder:text-muted-foreground max-h-[220px] min-h-10 resize-none bg-transparent px-2.5 pt-2.5 text-xs leading-relaxed outline-none"
+          />
+          <div className="text-muted-foreground flex items-center gap-2 px-2 pb-1 text-[11px]">
+            {recording ? (
+              <>
+                <VoiceWaveform
+                  stream={stream}
+                  className="text-foreground/85 h-6 min-w-0 flex-1"
+                />
+                <span className="w-8 shrink-0 text-right text-[11px] tabular-nums">
+                  {durationLabel(seconds)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void stopDictation()}
+                  aria-label="Stop dictation"
+                  title="Stop dictation · keeps the words in the box"
+                  className="bg-muted text-foreground hover:bg-muted/80 grid size-7 shrink-0 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                >
+                  <Square className="size-3 fill-current" aria-hidden="true" />
+                </button>
+              </>
             ) : (
-              <ArrowUp className="size-3.5" aria-hidden="true" />
+              <>
+                <span className="min-w-0 flex-1 truncate">
+                  {error ??
+                    (transcribing
+                      ? "Transcribing…"
+                      : "⏎ send · ⇧⏎ new line · ⌘D dictate")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void toggleVoice()}
+                  disabled={transcribing || working}
+                  aria-label="Dictate"
+                  title="Dictate (⌘D)"
+                  className="text-foreground hover:bg-muted grid size-7 shrink-0 place-items-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none disabled:opacity-50"
+                >
+                  {transcribing ? (
+                    <Loader2
+                      className="size-3.5 animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Mic className="size-3.5" aria-hidden="true" />
+                  )}
+                </button>
+              </>
             )}
-          </button>
+            <button
+              type="submit"
+              aria-label={recording ? "Send what I said" : "Send"}
+              disabled={!canSend}
+              className="grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-black transition-opacity focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-30"
+            >
+              {working ? (
+                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+              ) : (
+                <ArrowUp className="size-3.5" aria-hidden="true" />
+              )}
+            </button>
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </VoiceSurface>
   );
 }

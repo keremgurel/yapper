@@ -1,25 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SUBSCRIPTION_PLANS, TRIAL_DAYS } from "@/lib/billing/plans";
-import { TRAINING_FEEDBACK_CREDITS } from "@/lib/db/constants";
+import {
+  SUBSCRIPTION_PLANS,
+  TRIAL_DAYS,
+  ANNUAL_DISCOUNT_PERCENT,
+  formatPrice,
+  type BillingPeriod,
+} from "@/lib/billing/plans";
+import { USAGE_EXAMPLES } from "@/lib/billing/usage-examples";
+import styles from "./pricing.module.css";
 
-const muted = { color: "var(--sg-text-muted)" };
-
-const FEATURES = [
-  "A score on every rep, and the reasoning behind it",
-  "Grammar, word choice and phrasing corrected line by line",
-  "A clean version of the answer you were reaching for",
-  "Your progress tracked across every session",
-  "Cancel anytime in Stripe",
-];
-
-/** Subscription tier cards. Render-only: the parent owns the checkout call and
- * passes which key is pending. Signed-out users are prompted to sign in first
- * (the checkout API needs an authenticated user). Only the "Most popular" plan
- * gets the accent-filled button; one primary action per view. */
 export default function PricingCards({
   pending,
   onStart,
@@ -27,62 +21,95 @@ export default function PricingCards({
   pending: string | null;
   onStart: (key: string) => void;
 }) {
+  const [period, setPeriod] = useState<BillingPeriod>("month");
+  const [exampleKey, setExampleKey] = useState<string>("workflow");
+  const example = USAGE_EXAMPLES.find((item) => item.key === exampleKey)!;
   return (
-    <div className="grid gap-4 md:grid-cols-3">
-      {SUBSCRIPTION_PLANS.map((plan) => {
-        const featured = plan.badge === "Most popular";
-        return (
-          <article key={plan.key} className="sg-card flex flex-col gap-5 p-6">
-            <div>
-              <h3 className="sg-display text-2xl">{plan.name}</h3>
-              <div className="mt-1 flex items-end gap-2">
-                <p className="sg-display text-4xl">{plan.priceLabel}</p>
-                <p className="sg-label pb-1">{plan.cadenceLabel}</p>
+    <>
+      <div className={styles.controls}>
+        <div
+          className={styles.billingToggle}
+          role="group"
+          aria-label="Billing period"
+        >
+          <button
+            type="button"
+            aria-pressed={period === "month"}
+            onClick={() => setPeriod("month")}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            aria-pressed={period === "year"}
+            onClick={() => setPeriod("year")}
+          >
+            Yearly <span>Save {ANNUAL_DISCOUNT_PERCENT}%</span>
+          </button>
+        </div>
+        <label className={styles.exampleSelect}>
+          See what’s possible
+          <select
+            value={exampleKey}
+            onChange={(event) => setExampleKey(event.target.value)}
+          >
+            {USAGE_EXAMPLES.map((item) => (
+              <option key={item.key} value={item.key}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className={styles.plans}>
+        {SUBSCRIPTION_PLANS.filter((plan) => plan.cadence === period).map(
+          (plan) => (
+            <article
+              key={plan.tier}
+              className={styles.plan}
+              data-featured={plan.tier === "creator"}
+            >
+              <header>
+                <h2>{plan.name}</h2>
+                <p>{plan.blurb}</p>
+              </header>
+              <div className={styles.allowance}>
+                <strong>{plan.monthlyCredits!.toLocaleString("en-US")}</strong>
+                <span>credits / month</span>
               </div>
-              {plan.badge ? (
-                <span
-                  className="bg-muted mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold"
-                  style={muted}
-                >
-                  {plan.badge}
-                </span>
-              ) : null}
-              <p className="sg-label mt-3">
-                {plan.includedCredits.toLocaleString()} credits / {plan.cadence}
+              <p className={styles.equivalent}>
+                Up to{" "}
+                <strong>
+                  {Math.floor(
+                    plan.monthlyCredits! / example.cost,
+                  ).toLocaleString("en-US")}
+                </strong>{" "}
+                {example.unit}
+                <br />
+                <span>if used only for this workflow</span>
               </p>
-              {/* Credits are the meter, but nobody buys a meter. The number
-                  people actually compare is how many coached reps they get. */}
-              <p className="sg-label">
-                About{" "}
-                {Math.floor(
-                  plan.includedCredits / TRAINING_FEEDBACK_CREDITS,
-                ).toLocaleString()}{" "}
-                AI feedbacks
+              <div className={styles.price}>
+                <strong>{formatPrice(plan.monthlyEquivalentCents!)}</strong>
+                <span>/ month</span>
+              </div>
+              <p className={styles.billingNote}>
+                {period === "year"
+                  ? `${plan.priceLabel} billed yearly. Credits arrive monthly.`
+                  : `${plan.priceLabel} billed monthly.`}
               </p>
-              <p className="sg-label">{plan.storageLabel} video storage</p>
-            </div>
-            <p className="text-sm leading-6" style={muted}>
-              {plan.blurb}
-            </p>
-            <ul className="flex flex-col gap-2 text-sm">
-              {FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <Check className="text-muted-foreground h-4 w-4 shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto">
               <Show when="signed-in">
                 <Button
                   type="button"
-                  onClick={() => onStart(plan.key)}
-                  disabled={pending !== null}
-                  variant={featured ? "default" : "outline"}
                   className="w-full"
+                  variant={plan.tier === "creator" ? "default" : "outline"}
+                  disabled={pending !== null}
+                  onClick={() => onStart(plan.key)}
                 >
                   {pending === plan.key ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      Opening checkout…
+                    </>
                   ) : (
                     `Try ${TRIAL_DAYS} days free`
                   )}
@@ -91,18 +118,35 @@ export default function PricingCards({
               <Show when="signed-out">
                 <SignInButton mode="modal" withSignUp>
                   <Button
-                    type="button"
-                    variant={featured ? "default" : "outline"}
                     className="w-full"
+                    variant={plan.tier === "creator" ? "default" : "outline"}
                   >
-                    Sign in to start
+                    Get {plan.name}
                   </Button>
                 </SignInButton>
               </Show>
-            </div>
-          </article>
-        );
-      })}
-    </div>
+              <ul className={styles.planFeatures}>
+                <li>
+                  <Check size={15} />
+                  One balance for Studio and Train
+                </li>
+                <li>
+                  <Check size={15} />
+                  All AI tools, charged by usage
+                </li>
+                <li>
+                  <Check size={15} />
+                  {plan.storageLabel} video storage
+                </li>
+                <li>
+                  <Check size={15} />
+                  Add credits when you need them
+                </li>
+              </ul>
+            </article>
+          ),
+        )}
+      </div>
+    </>
   );
 }

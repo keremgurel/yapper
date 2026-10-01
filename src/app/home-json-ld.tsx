@@ -1,9 +1,5 @@
-import { getSiteUrl, safeJsonLdStringify } from "@/lib/json-ld";
-import { marketingFeatures } from "@/data/marketing-features";
+import { SITE_URL as SITE, safeJsonLdStringify } from "@/lib/json-ld";
 
-const SITE = getSiteUrl();
-
-/** Identity of the site itself. Safe on any page. */
 const siteGraph = [
   {
     "@type": "WebSite",
@@ -11,7 +7,7 @@ const siteGraph = [
     url: SITE,
     name: "Yapper",
     description:
-      "The mobile and desktop content studio for video creators, plus free creator and speaking resources.",
+      "Yapper Train for speaking practice. Yapper Studio for content creation.",
     publisher: { "@id": `${SITE}/#organization` },
     inLanguage: "en",
   },
@@ -22,24 +18,27 @@ const siteGraph = [
     url: SITE,
   },
 ];
-
-/** The downloadable studio app. Only the homepage may claim this: it is not
- * released yet and its surfaces sit behind a password, so emitting it on a
- * practice page would advertise something the visitor cannot get. */
-const appGraph = [
-  {
+const products = {
+  studio: {
     "@type": "SoftwareApplication",
-    "@id": `${SITE}/#software`,
+    "@id": `${SITE}/products/studio#software`,
     name: "Yapper Studio",
-    url: SITE,
+    url: `${SITE}/products/studio`,
     applicationCategory: "MultimediaApplication",
-    operatingSystem: "iOS, Android, macOS, Windows",
     description:
-      "A mobile and desktop creator studio for capturing ideas, writing scripts, recording video, editing by transcript, adding captions, and publishing content.",
-    featureList: marketingFeatures.map((feature) => feature.shortTitle),
+      "A content creation workflow for ideas, scripts, recording, transcript editing, captions, and publishing preparation. Currently in private testing.",
   },
-];
-
+  train: {
+    "@type": "SoftwareApplication",
+    "@id": `${SITE}/products/train#software`,
+    name: "Yapper Train",
+    url: `${SITE}/products/train`,
+    applicationCategory: "EducationalApplication",
+    operatingSystem: "Web browser",
+    description:
+      "Speaking practice with prompts, a timer, recording, and optional AI coaching.",
+  },
+};
 function JsonLd({ graph }: { graph: object[] }) {
   return (
     <script
@@ -53,12 +52,12 @@ function JsonLd({ graph }: { graph: object[] }) {
     />
   );
 }
-
-/** Site identity only, for pages that are not the homepage. */
 export function SiteJsonLd() {
   return <JsonLd graph={siteGraph} />;
 }
-
+export function ProductJsonLd({ product }: { product: keyof typeof products }) {
+  return <JsonLd graph={[products[product]]} />;
+}
 export default function HomeJsonLd() {
-  return <JsonLd graph={[...siteGraph, ...appGraph]} />;
+  return <JsonLd graph={siteGraph} />;
 }

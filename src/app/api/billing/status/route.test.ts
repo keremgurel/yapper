@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
@@ -20,6 +20,8 @@ import { GET } from "./route";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-20T00:00:00Z"));
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.getBalance.mockResolvedValue(88);
   mocks.getStorageBytes.mockResolvedValue(3 * 1024 * 1024 * 1024);
@@ -30,6 +32,8 @@ beforeEach(() => {
     currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
   });
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe("GET /api/billing/status", () => {
   it("returns storage usage and the allowance for the current plan", async () => {

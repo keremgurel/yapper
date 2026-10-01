@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * A second, deliberately small recording of the microphone only, made in
@@ -44,6 +44,8 @@ export interface CoachAudio {
   start: (stream: MediaStream | null) => void;
   stop: () => void;
   reset: () => void;
+  pause: () => void;
+  resume: () => void;
 }
 
 export function useCoachAudio(): CoachAudio {
@@ -118,5 +120,22 @@ export function useCoachAudio(): CoachAudio {
     setPending(false);
   }, []);
 
-  return { blob, pending, start, stop, reset };
+  const pause = useCallback(() => {
+    if (recorderRef.current?.state === "recording") recorderRef.current.pause();
+  }, []);
+  const resume = useCallback(() => {
+    if (recorderRef.current?.state === "paused") recorderRef.current.resume();
+  }, []);
+  useEffect(
+    () => () => {
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        if (recorder.state !== "inactive") recorder.stop();
+      }
+    },
+    [],
+  );
+  return { blob, pending, start, stop, reset, pause, resume };
 }

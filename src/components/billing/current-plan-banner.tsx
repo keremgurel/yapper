@@ -19,15 +19,17 @@ export default function CurrentPlanBanner() {
   const label = status.trialing
     ? "Free trial"
     : plan
-      ? `Creator · ${plan.name}`
+      ? `Yapper ${plan.legacy ? "Creator" : plan.name} · ${plan.cadence === "year" ? "yearly" : plan.cadence === "week" ? "weekly" : "monthly"}`
       : "Subscribed";
 
   return (
     <div className="sg-panel flex flex-wrap items-center justify-between gap-3 p-5">
       <div>
-        <p className="sg-display text-lg">{label}</p>
-        <p className="sg-label mt-0.5">{status.balance} credits available</p>
-        <p className="sg-label mt-0.5">
+        <p className="text-lg font-medium">{label}</p>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {status.balance} credits available
+        </p>
+        <p className="text-muted-foreground mt-1 text-sm">
           {formatStorageBytes(status.storageBytes)} of{" "}
           {formatStorageBytes(status.storageQuotaBytes)} video storage used ·{" "}
           <Link href="/studio/storage" className="underline underline-offset-2">
@@ -47,7 +49,10 @@ export default function CurrentPlanBanner() {
         disabled={opening}
       >
         {opening ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />{" "}
+            Opening billing…
+          </>
         ) : (
           "Manage billing"
         )}

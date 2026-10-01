@@ -4,7 +4,7 @@ import PricingPage from "@/components/billing/pricing-page";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "AI coaching on your speaking practice: a score on every rep, grammar and word choice corrected, and a clean version of your answer. Weekly, monthly, or yearly, with a 7-day free trial.",
+    "Plans for Yapper Studio and Yapper Train. Monthly credits for AI ideas, scripts, one-click edits, thumbnails, captions, and coaching. Monthly or yearly billing, with optional credit packs.",
   alternates: { canonical: "https://ypr.app/pricing" },
 };
 

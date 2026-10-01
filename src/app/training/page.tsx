@@ -1,16 +1,18 @@
-import type { Metadata } from "next";
+import { marketingMetadata } from "@/lib/marketing-metadata";
 
 import TrainingHub from "@/components/training/training-hub";
 
-export const metadata: Metadata = {
-  title: "Camera Speaking Training Programs",
-  description:
-    "Explore Yapper training programs for freestyle camera reps, explain-after-reading, read-aloud delivery, interview prep, dating, conflict, creator drills, and fluency.",
-  alternates: {
-    canonical: "https://ypr.app/training",
-  },
-};
+export const metadata = marketingMetadata(
+  "Free public speaking practice & exercises online",
+  "Practice public speaking online with random topics, interview prompts, a timer, and recording. Start free without an account; add AI coaching with credits.",
+  "/training",
+);
 
-export default function TrainingPage() {
-  return <TrainingHub />;
+export default async function TrainingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string }>;
+}) {
+  const { mode } = await searchParams;
+  return <TrainingHub initialMode={mode} />;
 }
