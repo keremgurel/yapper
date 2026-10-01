@@ -12,7 +12,11 @@ import { Button } from "@/components/ui/button";
  * page, not only from Studio. Signed-in visitors get the same credit meter and
  * account menu the Studio header shows.
  */
-export default function SiteAccountControls() {
+export default function SiteAccountControls({
+  showSignup = true,
+}: {
+  showSignup?: boolean;
+}) {
   return (
     <>
       <Show when="signed-out">
@@ -21,11 +25,13 @@ export default function SiteAccountControls() {
             Sign in
           </Button>
         </SignInButton>
-        <SignUpButton mode="modal">
-          <Button type="button" size="sm" className="hidden sm:inline-flex">
-            Start free
-          </Button>
-        </SignUpButton>
+        {showSignup && (
+          <SignUpButton mode="modal">
+            <Button type="button" size="sm" className="hidden sm:inline-flex">
+              Start free
+            </Button>
+          </SignUpButton>
+        )}
       </Show>
       <Show when="signed-in">
         <span className="hidden sm:inline-flex">

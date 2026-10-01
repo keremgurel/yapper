@@ -49,10 +49,10 @@ export type TrainingNavItem = {
 
 export const fluencyProtocol: TrainingProtocol = {
   slug: "fluency-on-steroids",
-  title: "Fluency on steroids",
+  title: "Speaking warm-up",
   eyebrow: "Protocol 01",
   description:
-    "A four-drill routine for faster word retrieval, smoother vocal control, and cleaner summaries under pressure.",
+    "Four short exercises for a clear opening, controlled pace, vocal expression, and a concise summary.",
   promise:
     "Use this before a random topic or freestyle rep when your brain feels slow, your voice gets tight, or your thoughts come out messy.",
   duration: "12 minutes",
@@ -63,7 +63,7 @@ export const fluencyProtocol: TrainingProtocol = {
       id: "clear-freeze-label",
       title: "Clear the freeze label",
       category: "Mindset",
-      protocol: "Fluency on steroids",
+      protocol: "Speaking warm-up",
       duration: "90 sec",
       level: "Starter",
       outcome:
@@ -73,29 +73,29 @@ export const fluencyProtocol: TrainingProtocol = {
       steps: [
         "Write the old label in one plain sentence.",
         "Replace it with one observable behavior.",
-        "Start the speaking rep immediately after the replacement sentence.",
+        "Practice that opening sentence twice, then move to the reading exercise.",
       ],
       cue: "Swap “I am underconfident” for “I can start with one clear sentence.”",
       avoid:
-        "Do not turn this into therapy cosplay. One label, one replacement, then speak.",
+        "Keep it practical: choose one thing you can do in your next attempt.",
     },
     {
       id: "rapid-speed-reading",
-      title: "Rapid speed-reading",
+      title: "Read with a changing pace",
       category: "Retrieval",
-      protocol: "Fluency on steroids",
-      duration: "5 pages",
+      protocol: "Speaking warm-up",
+      duration: "4 min 30 sec",
       level: "Starter",
       outcome:
-        "Push word retrieval and articulation above normal conversation speed so regular speech feels less chaotic.",
+        "Read the same passage at different speeds while keeping every word clear.",
       whyItWorks:
-        "Fast out-loud reading creates a controlled sprint: your eyes, brain, breath, and mouth have to coordinate without inventing the content.",
+        "Using a written passage lets you focus on pacing and articulation without composing your answer at the same time.",
       steps: [
         "Choose an easy book, article, or note.",
-        "Read out loud faster than comfortable while keeping words recognizable.",
-        "Repeat one messy sentence cleaner, then keep moving.",
+        "Read for 90 seconds at a comfortable pace, then 90 seconds slightly faster.",
+        "Use the last 90 seconds to slow down and repeat the sentences that lost clarity.",
       ],
-      cue: "Five pages. Fast enough to stretch you, clear enough that another person could still understand you.",
+      cue: "Clarity comes first. Keep the same words understandable at each pace.",
       avoid:
         "Do not fake speed by mumbling. If endings disappear, slow down one notch and articulate.",
     },
@@ -103,7 +103,7 @@ export const fluencyProtocol: TrainingProtocol = {
       id: "smooth-pitch-gliding",
       title: "Smooth pitch gliding",
       category: "Voice",
-      protocol: "Fluency on steroids",
+      protocol: "Speaking warm-up",
       duration: "3 min",
       level: "Intermediate",
       outcome:
@@ -123,17 +123,17 @@ export const fluencyProtocol: TrainingProtocol = {
       id: "three-step-summary",
       title: "The 3-step summary",
       category: "Structure",
-      protocol: "Fluency on steroids",
-      duration: "1 paragraph",
+      protocol: "Speaking warm-up",
+      duration: "3 min",
       level: "Starter",
       outcome:
         "Compress information into a clean spoken point instead of dragging every thought into the answer.",
       whyItWorks:
         "Rambling is often failed compression. This drill trains the sequence: find the point, explain why it matters, land the takeaway.",
       steps: [
-        "Read one paragraph once.",
+        "Spend one minute reading a short paragraph.",
         "Close the page or turn away from the screen.",
-        "Summarize out loud: main idea, context, conclusion.",
+        "Explain the main idea, context, and conclusion for one minute. Use the last minute to try a shorter, clearer version.",
       ],
       cue: "Main idea: what it says. Context: why it matters. Conclusion: what to remember.",
       avoid: "Do not recite the paragraph. Compression is the rep.",

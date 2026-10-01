@@ -1,5 +1,7 @@
 "use client";
 
+import VoiceSurface from "@/components/common/voice-surface";
+
 import { Loader2, Mic, Square } from "lucide-react";
 import { useVoiceCapture } from "@/hooks/use-voice-capture";
 
@@ -12,6 +14,7 @@ export default function VoiceNoteButton({
 }) {
   const {
     phase,
+    stream,
     error,
     start,
     stop,
@@ -37,26 +40,33 @@ export default function VoiceNoteButton({
   const transcribing = phase === "transcribing";
 
   return (
-    <button
-      type="button"
-      onClick={() => void toggle()}
-      disabled={transcribing}
-      aria-label={recording ? "Stop recording" : "Record a voice note"}
-      title={error ?? (recording ? "Stop" : "Record a voice note")}
-      className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition-colors ${
-        recording
-          ? "border-transparent bg-red-500 text-white"
-          : "border-border text-foreground/70 hover:bg-muted hover:text-foreground"
-      }`}
+    <VoiceSurface
+      stream={stream}
+      active={recording || transcribing}
+      processing={transcribing}
     >
-      {transcribing ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : recording ? (
-        <Square className="h-4 w-4 fill-current" />
-      ) : (
-        <Mic className="h-4 w-4" />
-      )}
-      {transcribing ? "Transcribing…" : recording ? "Stop" : "Voice"}
-    </button>
+      <button
+        type="button"
+        onClick={() => void toggle()}
+        disabled={transcribing}
+        aria-pressed={recording}
+        aria-label={recording ? "Stop recording" : "Record a voice note"}
+        title={error ?? (recording ? "Stop" : "Record a voice note")}
+        className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-sm font-bold transition-colors ${
+          recording
+            ? "border-transparent bg-red-500 text-white"
+            : "border-border text-foreground/70 hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        {transcribing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : recording ? (
+          <Square className="h-4 w-4 fill-current" />
+        ) : (
+          <Mic className="h-4 w-4" />
+        )}
+        {transcribing ? "Transcribing…" : recording ? "Stop" : "Voice"}
+      </button>
+    </VoiceSurface>
   );
 }

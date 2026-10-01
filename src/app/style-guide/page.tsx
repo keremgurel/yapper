@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ArrowRight, Check, Mic } from "lucide-react";
 
-import TrainingLayout from "@/app/training-layout";
+import MarketingLayout from "@/components/marketing/marketing-layout";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
@@ -19,10 +19,10 @@ const sections = [
 ] as const;
 
 const rules = [
-  "Use Hanken Grotesk for every interface and marketing surface.",
+  "Use the system sans for every interface and marketing surface.",
   "Use the shared type classes. Do not invent a font size inside a page.",
   "Use the shared Button component for every CTA and standard action.",
-  "Use one 1200px marketing container and one 1440px Studio container.",
+  "Use one 1360px marketing container and one 1440px Studio container.",
   "Write labels in sentence case. Reserve uppercase for real acronyms.",
   "Reserve monospace for code, timecodes, and technical data only.",
   "Every section must work in light and dark mode.",
@@ -30,7 +30,7 @@ const rules = [
 
 export default function StyleGuidePage() {
   return (
-    <TrainingLayout>
+    <MarketingLayout>
       <div className="marketing-container pt-16 pb-32 sm:pt-24">
         <header className="max-w-4xl">
           <p className="type-label text-[var(--sg-accent-strong)]">
@@ -87,7 +87,7 @@ export default function StyleGuidePage() {
             id="typography"
             label="Typography"
             title="One family, one hierarchy"
-            description="Hanken Grotesk carries display and body copy. Weight, size, and spacing create hierarchy without introducing novelty fonts."
+            description="The system sans carries display and body copy. Weight, size, and spacing create hierarchy without introducing novelty fonts."
           >
             <div className="border-border divide-border divide-y rounded-2xl border">
               <TypeRow name="Display / H1" use="Homepage and route title">
@@ -181,7 +181,7 @@ export default function StyleGuidePage() {
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <ContentCard
-                title="Marketing: 1200px"
+                title="Marketing: 1360px"
                 text="Use .marketing-container on the homepage, feature pages, tools, blog, and legal pages."
               />
               <ContentCard
@@ -217,7 +217,7 @@ export default function StyleGuidePage() {
           </GuideSection>
         </div>
       </div>
-    </TrainingLayout>
+    </MarketingLayout>
   );
 }
 

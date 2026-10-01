@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      { source: "/studio", destination: "/products/studio", permanent: true },
       // Keep canonical slash handling in the static routing table rather than
       // running Clerk/Proxy for every crawler request to public content.
       {

@@ -4,6 +4,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   useCallback,
+  useId,
   useEffect,
   useState,
 } from "react";
@@ -14,6 +15,7 @@ import {
   Gauge,
   MessageSquareText,
 } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
 import { useTheme } from "next-themes";
 import { SparklesCore } from "@/components/sparkles";
 import { Button } from "@/components/ui/button";
@@ -74,7 +76,9 @@ const FEATURES = [
 /*  Email form with glow lines + sparkles                              */
 /* ------------------------------------------------------------------ */
 
-function WaitlistForm() {
+export function WaitlistForm() {
+  const id = useId();
+  const reduceMotion = useReducedMotion();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -91,6 +95,7 @@ function WaitlistForm() {
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      if (loading) return;
       if (!email.trim()) {
         setMessage("Enter a valid email.");
         return;
@@ -109,16 +114,23 @@ function WaitlistForm() {
         setLoading(false);
       }
     },
-    [email],
+    [email, loading],
   );
 
   return (
     <div className="relative w-full">
       <div className="waitlist-card relative rounded-2xl p-3 shadow-lg backdrop-blur-md">
         {!message || !isSuccess ? (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} aria-busy={loading}>
+            <label htmlFor={id} className="sr-only">
+              Your email
+            </label>
             <div className="flex flex-col gap-3 sm:flex-row">
               <input
+                id={id}
+                name="email"
+                disabled={loading}
+                aria-describedby={message ? `${id}-message` : undefined}
                 type="email"
                 placeholder="Enter your email"
                 value={email}
@@ -163,12 +175,16 @@ function WaitlistForm() {
                     Joining...
                   </span>
                 ) : (
-                  "Join Waitlist"
+                  "Join waitlist"
                 )}
               </Button>
             </div>
             {message && !isSuccess && (
-              <p className="mt-2 px-1 text-[13px] text-red-400" role="alert">
+              <p
+                id={`${id}-message`}
+                className="text-destructive mt-2 px-1 text-[13px]"
+                role="alert"
+              >
                 {message}
               </p>
             )}
@@ -202,7 +218,7 @@ function WaitlistForm() {
               "radial-gradient(100% 100% at 50% 0%, black 30%, transparent 70%)",
           }}
         >
-          {mounted && (
+          {mounted && reduceMotion === false && (
             <SparklesCore
               background="transparent"
               minSize={0.4}

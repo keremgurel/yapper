@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type CSSProperties } from "react";
+import Link from "next/link";
 import { playAluminumClick } from "@/lib/audio";
 
 /* ── shared styling logic ── */
@@ -137,6 +138,9 @@ export function GlassyIconButton({
 /* ── GlassyButton (pill, optional leading icon + label) ── */
 
 interface GlassyButtonProps {
+  href?: string;
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
   children: ReactNode;
   icon?: ReactNode;
   onClick?: () => void;
@@ -145,6 +149,9 @@ interface GlassyButtonProps {
 }
 
 export function GlassyButton({
+  href,
+  type = "button",
+  disabled = false,
   children,
   icon,
   onClick,
@@ -154,63 +161,81 @@ export function GlassyButton({
   const { pressed, state, handlers } = useGlassState();
   const radius = 8;
 
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        playAluminumClick();
-        onClick?.();
-      }}
-      {...handlers}
-      className={className}
+  const style: CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    height,
+    padding: 2,
+    borderRadius: radius,
+    border: "none",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.5 : 1,
+    willChange: "transform",
+    background: OUTER_GRADIENT,
+    boxShadow: outerShadow(state),
+    transform: pressed ? "scale(0.97)" : "scale(1)",
+    transition: SPRING,
+  };
+  const content = (
+    <span
       style={{
-        display: "inline-flex",
+        display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        height,
-        padding: 2,
-        borderRadius: radius,
-        border: "none",
-        cursor: "pointer",
-        willChange: "transform",
-        background: OUTER_GRADIENT,
-        boxShadow: outerShadow(state),
-        transform: pressed ? "scale(0.97)" : "scale(1)",
-        transition: SPRING,
+        gap: 8,
+        height: "100%",
+        width: "100%",
+        paddingLeft: icon ? height * 0.28 : height * 0.38,
+        paddingRight: height * 0.38,
+        borderRadius: radius - 1,
+        background: INNER_GRADIENT,
+        boxShadow: innerShadow(pressed),
+        transition: "box-shadow 0.3s ease",
       }}
     >
-      <div
+      <span
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
           gap: 8,
-          height: "100%",
-          paddingLeft: icon ? height * 0.28 : height * 0.38,
-          paddingRight: height * 0.38,
-          borderRadius: radius - 1,
-          background: INNER_GRADIENT,
-          boxShadow: innerShadow(pressed),
-          transition: "box-shadow 0.3s ease",
+          opacity: pressed ? 0.8 : 1,
+          transition: "opacity 0.2s ease",
+          color: "rgba(0,0,0,0.7)",
+          fontSize: 14,
+          fontWeight: 600,
+          whiteSpace: "nowrap",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            opacity: pressed ? 0.8 : 1,
-            transition: "opacity 0.2s ease",
-            color: "rgba(0,0,0,0.7)",
-            fontSize: 14,
-            fontWeight: 600,
-            whiteSpace: "nowrap",
-          }}
-        >
-          {icon}
-          {children}
-        </div>
-      </div>
+        {icon}
+        {children}
+      </span>
+    </span>
+  );
+  const handleClick = () => {
+    playAluminumClick();
+    onClick?.();
+  };
+  return href ? (
+    <Link
+      href={href}
+      className={className}
+      style={style}
+      {...handlers}
+      onClick={handleClick}
+    >
+      {content}
+    </Link>
+  ) : (
+    <button
+      type={type}
+      disabled={disabled}
+      className={className}
+      style={style}
+      {...handlers}
+      onClick={handleClick}
+    >
+      {content}
     </button>
   );
 }

@@ -9,6 +9,7 @@ interface RotaryKnobProps {
   min?: number;
   max?: number;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 const SIZE = 140;
@@ -21,6 +22,7 @@ export default function RotaryKnob({
   min = 30,
   max = 90,
   disabled = false,
+  compact = false,
 }: RotaryKnobProps) {
   const knobRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
@@ -79,8 +81,10 @@ export default function RotaryKnob({
         Math.min(totalRotation, accumulatedRotation.current + delta),
       );
 
-      const newVal =
-        min + Math.round(accumulatedRotation.current / degreesPerStep);
+      const newVal = Math.min(
+        max,
+        min + Math.round(accumulatedRotation.current / degreesPerStep / 5) * 5,
+      );
 
       if (newVal !== currentValue.current) {
         playLuxuryDetent(newVal, min, max);
@@ -105,21 +109,19 @@ export default function RotaryKnob({
   }, [degreesPerStep, disabled, getAngle, max, min, onChange, totalRotation]);
 
   // Build tick marks using absolute positioning with trig
-  const labelSteps = [30, 45, 60, 75, 90];
+  const tickCount = 49;
   const tickElements = [];
   const cx = SIZE / 2;
   const cy = SIZE / 2;
   const outerR = SIZE / 2 - 2; // where ticks start (outer edge)
 
-  for (let s = min; s <= max; s += 5) {
-    const isLabel = labelSteps.includes(s);
-    const isActive = s <= value;
-    const tickLen = isLabel ? 14 : 8;
-    const tickW = isLabel ? 3 : 2;
+  for (let s = 0; s < tickCount; s++) {
+    const isActive = s / (tickCount - 1) <= (value - min) / totalSteps;
+    const tickLen = 9;
+    const tickW = 2;
 
     // Angle: map value to rotation. 0 step = -135deg from top, last step = +135deg
-    const angleDeg =
-      ((s - min) / totalSteps) * totalRotation - totalRotation / 2;
+    const angleDeg = (s / (tickCount - 1)) * totalRotation - totalRotation / 2;
     // Convert to radians, offset by -90 so 0deg = top
     const angleRad = ((angleDeg - 90) * Math.PI) / 180;
 
@@ -166,9 +168,11 @@ export default function RotaryKnob({
         gap: "8px",
       }}
     >
-      <div className="mb-0.5 text-[9px] font-semibold tracking-[2px] text-white/80 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
-        Timer
-      </div>
+      {!compact && (
+        <div className="mb-0.5 text-[9px] font-semibold tracking-[2px] text-white/80 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+          Timer
+        </div>
+      )}
       <div
         style={{
           position: "relative",
@@ -210,6 +214,30 @@ export default function RotaryKnob({
         {/* Knob body */}
         <div
           ref={knobRef}
+          role="slider"
+          tabIndex={disabled ? -1 : 0}
+          aria-label="Speaking time"
+          aria-valuemin={min}
+          aria-valuemax={max}
+          aria-valuenow={value}
+          aria-valuetext={`${value} seconds`}
+          aria-disabled={disabled}
+          onKeyDown={(event) => {
+            const next =
+              event.key === "Home"
+                ? min
+                : event.key === "End"
+                  ? max
+                  : ["ArrowRight", "ArrowUp"].includes(event.key)
+                    ? Math.min(max, value + 5)
+                    : ["ArrowLeft", "ArrowDown"].includes(event.key)
+                      ? Math.max(min, value - 5)
+                      : null;
+            if (!disabled && next !== null) {
+              event.preventDefault();
+              onChange(next);
+            }
+          }}
           onMouseDown={handleStart}
           onTouchStart={handleStart}
           style={{
@@ -224,6 +252,7 @@ export default function RotaryKnob({
               "conic-gradient(from 0deg, #b8b8b8, #e8e8e8 15%, #a0a0a0 30%, #d8d8d8 45%, #909090 60%, #c8c8c8 75%, #a8a8a8 90%, #b8b8b8)",
             boxShadow:
               "0 6px 20px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.7), inset 0 -1px 0 rgba(0,0,0,0.1)",
+            touchAction: "none",
             cursor: disabled ? "not-allowed" : "grab",
             userSelect: "none",
             display: "flex",
@@ -287,12 +316,16 @@ export default function RotaryKnob({
         </svg>
       </div>
 
-      <div className="font-mono text-[22px] font-bold tracking-[2px] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
-        {formatSeconds(value)}
-      </div>
-      <div className="text-[11px] tracking-[1.5px] text-white/78 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
-        {disabled ? "LOCKED" : "DRAG TO SET"}
-      </div>
+      {!compact && (
+        <>
+          <div className="font-mono text-[22px] font-bold tracking-[2px] text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
+            {formatSeconds(value)}
+          </div>
+          <div className="text-[11px] tracking-[1.5px] text-white/78 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.45)]">
+            {disabled ? "LOCKED" : "DRAG TO SET"}
+          </div>
+        </>
+      )}
     </div>
   );
 }
