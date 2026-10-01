@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./marketing.css";
 
 /* Make the `dark:` variant follow the app theme class (set by next-themes)
    instead of the OS `prefers-color-scheme`. The app toggles a `.dark` class on
@@ -222,7 +223,7 @@
   /* One workspace width across every Studio route. Dashboard pages and the
    * full-height editor both consume this token through StudioContentFrame. */
   --studio-content-max-width: 90rem;
-  --marketing-content-max-width: 75rem;
+  --marketing-content-max-width: 85rem;
 
   /* legacy var mapping (existing components inherit the new palette) */
   --background: var(--sg-bg);
@@ -266,7 +267,7 @@
   width: 100%;
   max-width: var(--marketing-content-max-width);
   margin-inline: auto;
-  padding-inline: 1rem;
+  padding-inline: 1.25rem;
 }
 
 .type-display,
@@ -318,24 +319,28 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .marketing-container {
+    padding-inline: 2rem;
+  }
+}
+
 .dark {
   color-scheme: dark;
 
-  /* The same warmth, inverted. The dark ramp keeps the red cast of the ink so
-     the two themes read as one palette at two brightnesses, rather than a warm
-     site and a cold one. */
-  --sg-bg: #131114;
-  --sg-bg-2: #1b181c;
-  --sg-surface: #201d21;
-  --sg-surface-raised: #2a262b;
-  --sg-surface-sunken: #1b181c;
+  /* Pure black page canvas; raised surfaces use neutral graphite. */
+  --sg-bg: #000000;
+  --sg-bg-2: #111113;
+  --sg-surface: #171719;
+  --sg-surface-raised: #222225;
+  --sg-surface-sunken: #111113;
   --sg-border: rgba(255, 255, 255, 0.09);
   --sg-border-strong: rgba(255, 255, 255, 0.16);
-  --sg-text: #f7f5f3;
-  --sg-text-muted: #a9a2ac;
-  --sg-text-faint: #766f79;
+  --sg-text: #f5f5f6;
+  --sg-text-muted: #a4a4ab;
+  --sg-text-faint: #777780;
   --sg-label: #ff9e1f;
-  --sg-display-muted: #766f79;
+  --sg-display-muted: #777780;
   --sg-accent: #f96f4b;
   --sg-accent-strong: #ff8a68;
   --sg-accent-fg: #1b0d08;
@@ -1415,4 +1420,56 @@ select {
  * know the route. */
 [data-slot="studio-content-frame"]:has(> [data-fluid-page]) {
   max-width: none;
+}
+
+/* Libraries.dev materials: text and controls remain ordinary accessible UI. */
+.voice-surface {
+  position: relative;
+  border-radius: inherit;
+}
+.voice-surface-effect {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 3;
+}
+.metal-action {
+  position: relative;
+  display: inline-flex;
+  border-radius: 8px;
+  isolation: isolate;
+}
+.metal-action-material {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.metal-action-material > div {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.metal-action-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 44px;
+  border-radius: 8px;
+}
+.metal-action-control {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+}
+.metal-action-control > [data-slot="button"] {
+  background: transparent;
+  color: var(--sg-text);
+  border-color: var(--sg-border-strong);
+  box-shadow: none;
+}
+.metal-action-control > [data-slot="button"]:hover {
+  background: rgb(128 128 128 / 0.08);
 }

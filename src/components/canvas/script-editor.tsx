@@ -23,7 +23,9 @@ export default function ScriptEditor({
   onChange,
   onWrite,
   onAsk,
+  minHeight = 420,
 }: {
+  minHeight?: number;
   text: string;
   onChange: (text: string) => void;
   /** Asks Chirpy to write the whole script. */
@@ -59,7 +61,7 @@ export default function ScriptEditor({
       />
       <GrowingTextarea
         value={text}
-        minHeight={420}
+        minHeight={minHeight}
         onChange={(event) => onChange(event.target.value)}
         placeholder="The words you will say. Type here, or have Chirpy write a first draft."
         aria-label="Script"

@@ -5,7 +5,7 @@ import topics, {
 } from "@/data/topics";
 
 export const TIMER_MIN_SECONDS = 30;
-export const TIMER_MAX_SECONDS = 90;
+export const TIMER_MAX_SECONDS = 600;
 
 export function getRandomTopic(
   exclude: Topic | null,
@@ -34,6 +34,19 @@ export function getRandomFromPool(pool: Topic[], exclude: Topic | null): Topic {
     nextTopic = pool[Math.floor(Math.random() * pool.length)];
   } while (nextTopic === exclude && pool.length > 1);
   return nextTopic;
+}
+
+/** Apply filters inside the selected exercise; never substitute unrelated topics. */
+export function filterTopicPool(
+  pool: Topic[],
+  category: Category | "All",
+  difficulty: Difficulty | "All",
+): Topic[] {
+  return pool.filter(
+    (topic) =>
+      (category === "All" || topic.category === category) &&
+      (difficulty === "All" || topic.difficulty === difficulty),
+  );
 }
 
 export function pickReelBlurbs(pool?: Topic[]): string[] {

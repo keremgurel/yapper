@@ -37,6 +37,21 @@ const describeGoals = (context: TrainingContext): string => {
   return labels.length > 0 ? labels.join(", ") : "not stated";
 };
 
+const EXERCISE_SCORING_GUIDANCE = [
+  "Adapt your assessment to the named exercise. Read aloud is delivery practice:",
+  "the supplied passage is source text, not an open-ended question. Do not",
+  "penalize the speaker for using its wording, lacking an original hook, or",
+  "not inventing an argument. Separate source wording from spoken errors.",
+  "For explain after reading, compare their main idea and details with the",
+  "supplied passage while allowing paraphrase. For research and explain,",
+  "assess the clarity of the explanation; you have not seen their research",
+  "sources and must not claim to have verified them or their preparation.",
+  "Interview, social, and conflict exercises are solo rehearsals. Do not",
+  "invent the other person's reactions. On-camera practice still provides",
+  "only audio/transcript evidence here: do not claim to assess eye contact",
+  "or body language. For freestyle, allow the speaker to choose their focus.",
+].join(" ");
+
 export const SCORING_SYSTEM_PROMPT = [
   "You are a sharp, warm speaking and English coach scoring one timed",
   "impromptu speaking rep. The speaker is practicing thinking and speaking on",
@@ -61,6 +76,8 @@ export const SCORING_SYSTEM_PROMPT = [
   "prepositions), vocabulary (range and precision of word choice for the",
   "register), delivery (pace, pauses, and filler habits, from the metrics),",
   "impact (does the opening earn attention and the ending land).",
+  "",
+  EXERCISE_SCORING_GUIDANCE,
   "",
   "Scoring rules:",
   "",
@@ -152,6 +169,8 @@ export const COACHING_SYSTEM_PROMPT = [
   "ground truth. Do not contradict them, do not re-score, do not hint that a",
   "number should have been different. Your job now is everything the speaker",
   "does with the result.",
+  "",
+  EXERCISE_SCORING_GUIDANCE,
   "",
   "Honesty beats padding everywhere. strengths may be an empty array; never",
   "invent a strength to soften the message. improvements name the change and",

@@ -104,7 +104,7 @@ export default function TrainingFeedbackCta({
 
   if (!audio) {
     return (
-      <p className="text-center text-[13px] text-white/45">
+      <p className="text-muted-foreground text-center text-[13px]">
         {audioPending
           ? "Getting your rep ready…"
           : "Turn on your mic before a rep to get AI feedback on it."}
@@ -156,13 +156,16 @@ export default function TrainingFeedbackCta({
       </Show>
 
       {busy && (
-        <p className="text-[12px] text-white/45">
+        <p className="text-muted-foreground text-[12px]">
           Transcribing and scoring. This takes about half a minute.
         </p>
       )}
 
       {error && !busy && (
-        <p role="alert" className="text-center text-[13px] text-white/70">
+        <p
+          role="alert"
+          className="text-muted-foreground text-center text-[13px]"
+        >
           {MESSAGES[error]}{" "}
           {BUY_CREDITS.includes(error) && (
             <Link href="/pricing" className="underline">

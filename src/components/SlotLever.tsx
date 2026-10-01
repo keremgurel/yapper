@@ -6,14 +6,19 @@ import {
   playLeverRelease,
   preloadLeverSound,
   playSlotSpin,
-  playSlotLand,
 } from "@/lib/audio";
 
 interface SlotLeverProps {
   onPull: () => void;
+  disabled?: boolean;
+  compact?: boolean;
 }
 
-export default function SlotLever({ onPull }: SlotLeverProps) {
+export default function SlotLever({
+  onPull,
+  disabled = false,
+  compact = false,
+}: SlotLeverProps) {
   const [pullY, setPullY] = useState(0);
   const [phase, setPhase] = useState<
     "idle" | "pulling" | "spinning" | "landed"
@@ -23,12 +28,19 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
   const startY = useRef(0);
   const thresholdSoundPlayed = useRef(false);
   const pullRef = useRef(0);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (settleTimer.current) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
   const maxPull = 120;
   const threshold = 70;
 
   const handleStart = useCallback(
     (e: React.MouseEvent | React.TouchEvent) => {
-      if (phase !== "idle") return;
+      if (phase !== "idle" || disabled) return;
       e.preventDefault();
       dragging.current = true;
       setIsDragging(true);
@@ -38,7 +50,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       thresholdSoundPlayed.current = false;
       setPhase("pulling");
     },
-    [phase],
+    [phase, disabled],
   );
 
   useEffect(() => {
@@ -52,6 +64,7 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
       const clientY =
         "touches" in e ? e.touches[0].clientY : (e as MouseEvent).clientY;
       const delta = Math.max(0, Math.min(maxPull, clientY - startY.current));
+      pullRef.current = delta;
       setPullY(delta);
 
       if (delta >= threshold && !thresholdSoundPlayed.current) {
@@ -72,12 +85,8 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         playLeverRelease();
         playSlotSpin();
         setPullY(0);
-        setTimeout(() => {
-          playSlotLand();
-          setPhase("landed");
-          onPull();
-          setTimeout(() => setPhase("idle"), 400);
-        }, 600);
+        onPull();
+        settleTimer.current = setTimeout(() => setPhase("idle"), 1300);
       } else {
         setPullY(0);
         setPhase("idle");
@@ -100,10 +109,15 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
   const isPastThreshold = pullY >= threshold;
 
   return (
-    <div className="flex flex-col items-center select-none">
-      <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-950 uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-        Generate
-      </div>
+    <div
+      className="flex flex-col items-center select-none"
+      style={{ opacity: disabled ? 0.4 : 1 }}
+    >
+      {!compact && (
+        <div className="mb-2 text-[9px] font-semibold tracking-[2px] text-slate-950 uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+          Generate
+        </div>
+      )}
       <div
         className="relative flex flex-col items-center"
         style={{ width: "56px", height: "160px" }}
@@ -161,10 +175,25 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
         </div>
         {/* Ball grip */}
         <div
+          role="button"
+          aria-label="Pull to generate a prompt"
+          aria-disabled={disabled || phase !== "idle"}
+          tabIndex={disabled ? -1 : 0}
+          onKeyDown={(event) => {
+            if (
+              ["Enter", " "].includes(event.key) &&
+              !disabled &&
+              phase === "idle"
+            ) {
+              event.preventDefault();
+              onPull();
+            }
+          }}
           onMouseDown={handleStart}
           onTouchStart={handleStart}
           className="absolute z-[3]"
           style={{
+            touchAction: "none",
             top: `${18 + progress * 115}px`,
             left: "50%",
             transform: "translateX(-50%)",
@@ -212,35 +241,39 @@ export default function SlotLever({ onPull }: SlotLeverProps) {
           }}
         />
       </div>
-      <div
-        className={`mt-2.5 flex h-[14px] w-[7rem] shrink-0 items-center justify-center text-center text-[11px] font-semibold tracking-[1.5px] uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
-          phase === "landed"
-            ? "text-emerald-800 dark:text-emerald-300"
-            : phase === "spinning"
-              ? "text-slate-950 dark:text-white/90"
-              : isPastThreshold
-                ? "text-amber-800 dark:text-amber-300"
-                : "text-slate-950 dark:text-white/90"
-        }`}
-        aria-live="polite"
-      >
-        {phase === "spinning" ? (
-          <span className="sr-only">Generating topic</span>
-        ) : phase === "landed" ? (
-          "LANDED!"
-        ) : isPastThreshold ? (
-          "RELEASE!"
-        ) : (
-          "PULL"
-        )}
-      </div>
-      <div
-        className={`mt-0.5 animate-bounce text-sm text-slate-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] transition-opacity dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
-          phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        ↓
-      </div>
+      {!compact && (
+        <>
+          <div
+            className={`mt-2.5 flex h-[14px] w-[7rem] shrink-0 items-center justify-center text-center text-[11px] font-semibold tracking-[1.5px] uppercase drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
+              phase === "landed"
+                ? "text-emerald-800 dark:text-emerald-300"
+                : phase === "spinning"
+                  ? "text-slate-950 dark:text-white/90"
+                  : isPastThreshold
+                    ? "text-amber-800 dark:text-amber-300"
+                    : "text-slate-950 dark:text-white/90"
+            }`}
+            aria-live="polite"
+          >
+            {phase === "spinning" ? (
+              <span className="sr-only">Generating topic</span>
+            ) : phase === "landed" ? (
+              "LANDED!"
+            ) : isPastThreshold ? (
+              "RELEASE!"
+            ) : (
+              "PULL"
+            )}
+          </div>
+          <div
+            className={`mt-0.5 animate-bounce text-sm text-slate-950 drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] transition-opacity dark:text-white dark:drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)] ${
+              phase === "idle" && pullY === 0 ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            ↓
+          </div>
+        </>
+      )}
     </div>
   );
 }
