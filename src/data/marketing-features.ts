@@ -189,41 +189,6 @@ export const marketingFeatures: MarketingFeature[] = [
       "Create word-synced, styled captions for short-form videos and improve spelling with a personal transcription dictionary.",
   },
   {
-    slug: "creator-feedback",
-    eyebrow: "Improve",
-    title: "An AI speech coach for your next take.",
-    shortTitle: "Creator feedback",
-    description:
-      "Review delivery, pacing, clarity, and on-camera presence while the recording is still fresh enough to improve.",
-    promise: "A private second opinion for every take.",
-    accent: "#34d399",
-    number: "06",
-    highlights: [
-      "Pacing and pause analysis",
-      "Filler-word and clarity signals",
-      "On-camera delivery review",
-      "Concrete suggestions for the next take",
-    ],
-    steps: [
-      {
-        title: "Choose a review",
-        description: "Focus on the audio, the visual delivery, or both.",
-      },
-      {
-        title: "See the signals",
-        description:
-          "Understand pacing, clarity, fillers, and presentation patterns.",
-      },
-      {
-        title: "Try again",
-        description: "Use specific coaching notes on the very next recording.",
-      },
-    ],
-    seoTitle: "AI speech coach for pacing, clarity & delivery",
-    seoDescription:
-      "Get private feedback on pacing, filler words, clarity, and on-camera delivery before publishing your creator video.",
-  },
-  {
     slug: "social-publishing",
     eyebrow: "Publish",
     title: "A social media scheduler connected to your video.",

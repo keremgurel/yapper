@@ -20,6 +20,10 @@ function audioConstraintFor(
   return deviceId ? { deviceId: { exact: deviceId } } : true;
 }
 
+/** Shown when the browser refuses the microphone. Exported so the practice
+ * console can present that case as a quiet prompt instead of an error. */
+export const MIC_REQUIRED_MESSAGE = "Microphone access is required.";
+
 export function useMediaStream() {
   const [cameraOn, setCameraOn] = useState(false);
   const [micOn, setMicOn] = useState(false);
@@ -276,7 +280,7 @@ export function useMediaStream() {
       }
       setMicOn(true);
     } catch {
-      setMediaError("Microphone access is required.");
+      setMediaError(MIC_REQUIRED_MESSAGE);
     }
   }, [cameraOn, micOn]);
 

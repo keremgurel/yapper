@@ -1,83 +1,162 @@
-# Yapper keyword research and implementation — October 1, 2026
+# Yapper SEO research, October 1, 2026
 
-This is an applied search-intent study with historical volume context. It is not a fresh quantitative keyword report. The implementation is local, not deployed.
+This is the evidence base for splitting ypr.app into Yapper Train and Yapper Studio. It replaces the first pass written earlier the same day, which had no first-party data and no current keyword volumes. The decisions that follow from it are in [the architecture plan](../../product-architecture-and-seo-plan.md), the per-page targets are in [the page and keyword matrix](../page-keyword-matrix-2026-10-01.md).
 
-## Evidence and access
+Nothing here is a ranking forecast. Read every number with its source and date.
 
-- Reviewed speaking-coach's `homepage-hero-keywords-2026-09.md`, `OPERATING-LOOP.md`, `blog-technical-review-2026-09-11.md`, blog metadata/related-post implementation, and sitemap lastmod/coverage code.
-- Reviewed Yapper's April keyword plan and August 1 DataForSEO summary. The April ranges lack a verifiable provider export and are excluded from prioritization. The August document labels its source Google US/English, but no underlying raw response was found in the inspected files. Treat those numbers as historical reported estimates, not independently verified measurements. A zero difficulty value does not establish an easy query.
-- Semrush was inspected in the authorized **Can** Chrome profile. Switched the report to the United States database and requested a bounded batch of 18 relevant phrases. Its editor retained the old TCF entry, making the actual attempted batch 19; no results returned. The modal said **“You’ve used 10 free requests”**. Saved the visible error in `semrush-access.txt`. No trial, upgrade, purchase, or repeated report attempt was made. The speaking-coach operating log also records an existing API-unit exhaustion; that known failure was not retried.
-- Fresh web searches checked the phrases below and directly inspected six primary competitor pages. These results establish wording and candidate intent, not US rank positions, measured traffic, difficulty, or keyword volume. Search results can vary by location and date.
+## Sources and what each one can support
 
-## What we adopted from speaking-coach
+| Source                                                                                  | Retrieved                                        | Scope                                                                                                                                | Kind of evidence                               | Stored                                                |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------- | ----------------------------------------------------- |
+| Google Search Console API, property `sc-domain:ypr.app`, service account `gsc-reader`   | Oct 1, 2026                                      | Web search, finalized data, all countries. 28 days Aug 31 to Sep 27, the 28 days before (Aug 3 to Aug 30), and 90 days ending Sep 27 | Observed first-party performance               | Raw JSON in `private/` (gitignored). Aggregates below |
+| Production crawl of ypr.app, 51 sitemap URLs plus 13 extra paths, no redirects followed | Oct 1, 2026                                      | Status, title, description, canonical, robots, H1, H2, JSON-LD types, internal links                                                 | Observed production state                      | `production-crawl.json`, script `production-crawl.py` |
+| DataForSEO Labs keyword overview, Google, United States, English                        | Oct 1, 2026 (provider data updated Sep 12 to 17) | 52 seed keywords                                                                                                                     | Third-party estimates of volume and difficulty | `dataforseo-us-en.json`                               |
+| DataForSEO live Google SERP, United States, English, desktop, top 10                    | Oct 1, 2026                                      | 9 queries (a tenth, "impromptu speech topics", failed in transit and was not retried)                                                | Qualitative SERP observation                   | Summarized below                                      |
+| Higgsfield pricing page, read in a browser                                              | Oct 1, 2026                                      | Plan mechanics                                                                                                                       | Qualitative reference for pricing              | Summarized in `docs/pricing-2026-10.md`               |
 
-1. Write down which page owns the query and why; separate the product overview, feature, usable tool, and explanatory article.
-2. Use the category in the title, H1, and opening explanation. Keep the benefit specific; do not substitute a slogan for what the software does.
-3. Preserve existing URLs, canonicals, and useful guides. Connect related workflow stages and training guides with descriptive links.
-4. Keep a repeatable rendered-HTML SEO check covering canonical, titles, H1, structured data, indexability, and sitemap coverage.
-5. Record evidence, release state, and measurement windows. Do not reset timestamps or rewrite titles daily to simulate progress.
+Unavailable, and not replaced with guesses:
 
-## Fresh search-intent observations
+| Wanted                                                                  | What happened                                                                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Semrush keyword, domain and competitor reports                          | The API helper in speaking-coach answered "Semrush tools unavailable; check its OAuth connection" on the one check made. The browser attempt earlier today in the Can profile hit "You've used 10 free requests" (`semrush-access.txt`). No trial, upgrade or retry. |
+| Semrush Content Optimizer reviews                                       | Same access problem. Every page is marked pending in the matrix. No scores are claimed.                                                                                                                                                                              |
+| PostHog landing sessions, practice completions, signups by landing page | The PostHog connection in this session reaches only the CELPIP organization. Yapper reports to a different project key. Conversion by product intent is therefore unknown, not zero.                                                                                 |
+| Bing Webmaster data                                                     | The stored key covers the CELPIP domains only. Not checked for ypr.app.                                                                                                                                                                                              |
+| Backlinks and referring domains to `/studio` and other URLs             | Not pulled. Search Console's links report is not in the API.                                                                                                                                                                                                         |
 
-| Query cluster                   | Primary source inspected                                                                                                                                                                                       | Observation and decision                                                                                                                                                                                                          |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AI video script generator       | [BIGVU](https://bigvu.tv/tools/ai-script-generator/)                                                                                                                                                           | A concrete script-generation page with editable drafts and teleprompter continuation. Use this category for our script page, supported by a sample hook and draft; exclude generic text-to-video generation.                      |
-| Transcript video editor         | [Pireel](https://pireel.com/en/transcript-video-editor)                                                                                                                                                        | Text-based cutting is the defining job. Lead with transcript editing, with “talking-head videos” as context; do not replace this with the much broader video-editor category.                                                     |
-| Video caption generator         | [Descript](https://www.descript.com/tools/video-caption-generator)                                                                                                                                             | Captions mean timed video text, not social post copy. Use “video” and show a captioned frame. Do not claim unsupported subtitle export formats.                                                                                   |
-| Social media scheduler          | [Buffer](https://buffer.com/publish), [Postiz](https://postiz.com/)                                                                                                                                            | Searchers expect account connections, schedule preparation, and delivery. Name the category, show a draft and chosen date, retain private access and provider limitations. Do not claim every network or autonomous agent access. |
-| Content planning tool           | [Storyflow](https://storyflow.so/content-planning-tool)                                                                                                                                                        | Planning connects ideas and a calendar. Our calendar page owns planning; social publishing owns scheduling/delivery. Do not create a second synonym page.                                                                         |
-| Public speaking app             | [speaking.app](https://speaking.app/public-speaking)                                                                                                                                                           | App evaluation and practice/feedback are intertwined. Product page explains Yapper; `/training` lets visitors immediately choose a practice exercise.                                                                             |
-| Public speaking practice online | [FounderVoice](https://foundervoice.app/tools/public-speaking-practice), [Complete Presenter](https://games.completepresenter.com/)                                                                            | Usable exercises and recording are expected. `/training` must lead to real practice. Existing explanatory articles retain their instructional intent.                                                                             |
-| AI speech coach                 | [SpeakUp AI](https://speakupai.app/ai-speech-coach), [TalkPrep](https://www.talkprep.co/)                                                                                                                      | Delivery feedback is more specific than generic speaking practice. Assign to existing creator-feedback URL; explain credits and recorded feedback without inventing live roleplay.                                                |
-| Teleprompter app                | [GoTeleprompter](https://goteleprompter.com/), [Open Prompter](https://openprompter.app/for)                                                                                                                   | Reading while recording is the central task. Target app + recorder, but exclude “free” and mobile-store availability while Studio remains private.                                                                                |
-| Content idea generator          | [Brainstormer](https://brainstormer.ai/content-ideas)                                                                                                                                                          | Generation is adjacent to capture, not identical. Keep capture first; explain expansion from a supplied thought instead of promising a free instant topic tool.                                                                   |
-| Content library                 | [Wistia](https://wistia.com/product/video-management), [Veel](https://veelapp.com/content-library)                                                                                                             | Broad term includes asset storage and management. Narrow our page to creator projects, scripts, takes, and production status. No enterprise DAM claim.                                                                            |
-| Content creation app            | [Adobe Express product material](https://business.adobe.com/assets/pdfs/resources/guides/create-on-brand-content-with-adobe-express/create-on-brand-content-with-adobe-express.pdf) and current search results | Broad category includes many media types. Keep homepage category, immediately narrow to people making spoken video, and make Studio the workflow overview.                                                                        |
+## What Search Console shows
 
-These are observations of competing pages, not endorsements or proof of their claims. No competitor text was copied into Yapper.
+Property totals, from the device breakdown (query rows hide anonymized queries, and page rows count anchor links as separate rows, so neither is used for totals):
 
-## Keyword-to-page map
+| Window                     | Clicks | Impressions |
+| -------------------------- | -----: | ----------: |
+| Aug 31 to Sep 27 (28 days) |    110 |       5,236 |
+| Aug 3 to Aug 30 (28 days)  |    214 |       7,179 |
+| 90 days ending Sep 27      |    731 |      22,863 |
 
-Each volume below is **reported in Yapper's August 1, 2026 DataForSEO US/English summary**, not pulled today. “Unknown” is not zero. Do not sum overlapping variants.
+Clicks fell 49% between the two 28 day windows. The data does not say why. The homepage changed from the topic generator to a Studio landing page during this period, and that is a hypothesis worth testing, not a finding.
 
-| Owner                                       | Primary query                      | Supporting query / distinction                             | Historical monthly volume / KD                            | Priority                                  |
-| ------------------------------------------- | ---------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------- |
-| `/`                                         | content creation app               | content creator tools; brand and product discovery         | 9,900 / 0 (unverified raw data)                           | P1                                        |
-| `/products/studio`                          | video creation software            | script, record, edit workflow; named Studio product        | Unknown                                                   | P1                                        |
-| `/products/yapper`                          | public speaking app                | speaking practice app; Yapper overview                     | Unknown                                                   | P1                                        |
-| `/training`                                 | public speaking practice           | free public speaking practice online; actionable exercises | Unknown                                                   | P1                                        |
-| `/features/ai-script-writer`                | AI video script generator          | video script generator; short-form scripts                 | 260 / 16; broader variant 480 / 21                        | P1                                        |
-| `/features/teleprompter-recorder`           | teleprompter app                   | teleprompter video recorder                                | 8,100 / 59                                                | P1                                        |
-| `/features/transcript-video-editor`         | transcript video editor            | text-based video editing; talking-head video editor        | Unknown; do not transfer “short form video editor” volume | P1                                        |
-| `/features/automatic-captions`              | video caption generator            | automatic captions; word-synced captions                   | 880 / 37                                                  | P1                                        |
-| `/features/creator-feedback`                | AI speech coach                    | pacing feedback; filler words; speaking clarity            | Unknown                                                   | P1                                        |
-| `/features/social-publishing`               | social media scheduler             | video publishing; per-platform post preparation            | 60,500 / 33                                               | P2: strong competition, release dependent |
-| `/features/content-calendar`                | content planning tool              | content calendar for video creators                        | 260 / 29                                                  | P2                                        |
-| `/features/idea-capture`                    | content idea capture               | content idea generator; voice notes to ideas               | Primary unknown; adjacent generator 320 / 17              | P2                                        |
-| `/features/content-library`                 | content library for video creators | organize video projects and scripts                        | Unknown                                                   | P2                                        |
-| Existing `/training/random-topic-generator` | random topic generator             | random speaking topics; timed practice                     | April estimates excluded                                  | Preserve tool owner                       |
+Pages, 90 days ending Sep 27:
 
-The homepage and Studio overview share subject matter. Their purposes differ, but that does not guarantee Google will select the intended URL. Check query-to-page behavior after release. “Free” is used for open speaking practice, not for private Studio features. Native apps and external AI integrations are not acquisition promises yet.
+| Page                                      |  Clicks | Impressions | Avg position |
+| ----------------------------------------- | ------: | ----------: | -----------: |
+| `/blog/1-minute-speech-topics`            |     435 |      11,953 |         10.1 |
+| `/`                                       |     210 |       6,605 |          8.0 |
+| `/blog/random-topic-generator-with-timer` |      34 |       1,004 |         14.9 |
+| `/blog/random-topic-generator`            |      20 |         595 |         14.8 |
+| `/blog/speech-topic-ideas-for-practice`   |      10 |         530 |         26.2 |
+| `/tools/words-per-minute`                 |       0 |         620 |         50.1 |
+| `/blog/good-speech-topics`                |       2 |         426 |         33.7 |
+| `/studio`                                 |       0 |          62 |         14.3 |
+| `/training`                               |       2 |          29 |         10.6 |
+| All nine `/features/*` pages combined     |       3 |          48 |       varies |
+| `/training/random-topic-generator`        | no rows |     no rows |         none |
 
-## Implemented changes
+Two pages earn 88% of clicks. Both are speaking practice.
 
-- Category-first homepage H1/title and explicit video workflow introduction.
-- Specific titles and H1s for all nine existing feature pages, both product overviews, and the training hub. No keyword meta tag or keyword-density target.
-- Contextual feature links cross the workflow: script → recorder → editor → captions → publishing. Feedback links to practical speaking guides; the Yapper product page links to existing practice articles instead of duplicating them.
-- Replaced the text-only workflow box with interactive script, recording, transcript-cut, captions, and draft-date demonstrations. A generated editorial creator frame supplies realistic visual content; all demonstrations are labelled illustrations, not actual app screenshots or customer evidence.
-- Removed the loose conversational training cross-sell and repeated testing notes from the hero. A compact product/status row communicates those facts.
-- Added `scripts/audit-marketing-seo.py` for repeatable rendered metadata and sitemap verification. Retained previously corrected canonicals, exact Studio redirect, and product ownership in schema.
+What the homepage ranks for (query and page rows, 90 days): "unprompted topic generator" (773 impressions, position 7.1), "unprompted random topic generator" (211), "speech topic generator" (105), "random speech topic generator" (65), "random topic generator for speech" (57), and about 60 more variants of the same intent, almost all at positions 6 to 10. The brand term "yapper" adds 1,096 impressions at position 6.6 and 4 clicks. Searchers who type "yapper" mostly want something else (slang, a social app), so that click rate is not a problem to solve.
 
-## Release and measurement
+Grouping the visible 90 day query rows: topic generator variants 57 clicks from 2,156 impressions, speech topic lists 55 from 2,060, brand 8 from 1,418, anything related to Studio (teleprompter, script, caption, editing, scheduling, content) 0 clicks from 10 impressions.
 
-No production change, indexing submission, or rank-tracking project setup was performed. Before deployment obtain Yapper-specific Search Console baseline, especially query-to-page distribution and existing `/studio` traffic. After deployment verify actual HTML/canonicals, then compare 14 and 28 finalized days with matching pre-release windows. Measure feature-to-product visits, waitlist signup, and completed practice separately. No traffic uplift forecast is justified here.
+Countries, 90 days: India 144 clicks, United States 96, United Kingdom 43, Germany 39, Canada 28, Indonesia 22, Australia 17. Impressions are led by the United States (4,386) and India (4,328). The audience is English speaking and spread across many countries. There is no evidence for targeting one country, and nothing from speaking-coach's Canadian focus carries over. US volumes are used below as a common reference, not as the market.
 
-Next quantitative step: once the intended Semrush entitlement or authorized API units are available, run the saved 18-term seed set, expand the strongest clusters, and capture US volume/difficulty, SERP composition, and Postiz/BIGVU/Descript keyword overlap. Prefer relevant long-tail opportunities over broad scheduler traffic. No purchase is authorized by this plan.
+Devices, 90 days: desktop 358 clicks, mobile 345, tablet 28.
 
-## Verification
+### What follows from this
 
-- `npx next build` passed, including TypeScript and 163 generated pages. Existing unrelated tracing warning remains in the feedback API import chain through `bounded-temp-file.ts` and `next.config.ts`. No production migration script ran.
-- Targeted ESLint, Prettier, and diff whitespace checks passed. Final follow-up copy-only edits were formatted/linted after the build.
-- Rendered crawl passed all 16 pages and 51 unique sitemap URLs; results saved in `local-audit.txt`. This is a technical eligibility check, not evidence of ranking/indexation.
-- Visually reviewed revised homepage/demo at 320/390px and desktop, script page at 768px in dark mode, and Yapper overview at desktop. Confirmed no horizontal overflow in the measured small/tablet views. Tested filler removal/undo state, caption toggling, script-hook choice, posting-date selection, and arrow-key tab selection.
-- No Lighthouse/field CWV score, authenticated Studio/native runtime test, actual video rendering/export, live posting, or live waitlist signup was performed. Demo timecodes, script, frames, and draft date are sample content.
+1. Yapper's organic traffic today is Train traffic. Studio has none to protect.
+2. The homepage is the page Google ranks for topic generator searches, because it used to be the generator. The generator now lives at `/training/random-topic-generator`, which has no impressions yet. Turning the homepage into a brand page puts those rankings at risk until Google moves them to the generator page. This is the main SEO risk in the restructure and it is measured explicitly in the plan.
+3. For the head term "random topic generator" the site sits around position 34. The clicks come from longer speech-specific variants.
+
+## Third-party keyword estimates
+
+DataForSEO, Google, United States, English. Monthly volume and keyword difficulty (0 to 100). A dash means the provider returned no difficulty. Unknown is not zero. Variants overlap, so do not add them up.
+
+Train:
+
+| Keyword                         | Volume |  KD | Intent        |
+| ------------------------------- | -----: | --: | ------------- |
+| random topic generator          |  6,600 |   4 | informational |
+| interview practice              |  2,400 |  35 | informational |
+| words per minute calculator     |  2,400 |   - | informational |
+| impromptu speech topics         |  1,600 |   - | informational |
+| practice speaking english       |  1,600 |  52 | informational |
+| ai interview practice           |  1,300 |  33 | informational |
+| table topics questions          |  1,300 |   - | informational |
+| mock interview ai               |    880 |  17 | informational |
+| public speaking practice        |    390 |  12 | informational |
+| public speaking app             |    320 |  18 | transactional |
+| how to practice public speaking |    170 |  16 | informational |
+| public speaking exercises       |    170 |   4 | informational |
+| speech topic generator          |    140 |   - | informational |
+| read aloud practice             |    140 |   - | informational |
+| speech coach app                |     90 |  42 | transactional |
+| ai speech coach                 |     70 |  38 | commercial    |
+| 1 minute speech topics          |     70 |   - | informational |
+| ai public speaking coach        |     50 |  19 | commercial    |
+| speaking practice app           |     50 |  19 | transactional |
+| public speaking practice online |     30 |  22 | informational |
+| impromptu speaking practice     |     20 |   - | informational |
+| filler word counter             |     10 |   - | informational |
+
+Studio:
+
+| Keyword                        | Volume |  KD | Intent        |
+| ------------------------------ | -----: | --: | ------------- |
+| social media scheduler         | 90,500 |  33 | commercial    |
+| teleprompter app               |  8,100 |  59 | transactional |
+| content creation app           |  6,600 |   - | commercial    |
+| teleprompter online            |  6,600 |  34 | informational |
+| content calendar               |  4,400 |  36 | informational |
+| auto captions                  |  2,400 |  51 | informational |
+| add captions to video          |  1,900 |  34 | informational |
+| content creator tools          |  1,900 |   - | commercial    |
+| capcut alternative             |  1,900 |   - | informational |
+| video creation software        |  1,600 |  70 | commercial    |
+| ai script writer               |  1,000 |  19 | commercial    |
+| ai thumbnail generator         |    880 |  39 | transactional |
+| video caption generator        |    880 |  34 | informational |
+| video script generator         |    390 |  21 | transactional |
+| content library                |    390 |   - | informational |
+| content idea generator         |    260 |  29 | informational |
+| ai video script generator      |    210 |  18 | transactional |
+| content planning tool          |    210 |  29 | commercial    |
+| descript alternative           |    210 |   - | informational |
+| short form video editor        |    170 |   - | transactional |
+| text based video editing       |     50 |   5 | commercial    |
+| teleprompter recorder          |     30 |  50 | transactional |
+| remove filler words from video |     20 |   - | informational |
+| transcript video editor        |     10 |   - | transactional |
+| talking head video editor      |     10 |   - | commercial    |
+
+Brand and competitors: yapper 8,100 (mixed intent, see above), yoodli 9,900, orai app 260.
+
+Yapper's own first-party data disagrees with one estimate in a useful way. "1 minute speech topics" shows 70 searches a month in the US, yet the post ranking for it and its long variants drew 11,953 impressions worldwide in 90 days. Long-tail demand is much larger than any single head term's estimate. Treat volumes as a guide to relative size.
+
+The August 2026 summary in `docs/seo-research-2026-08.md` reported some different figures (for example "content creation app" at 9,900 and "social media scheduler" at 60,500). Today's pull supersedes them. The April ranges in `docs/keyword_research.md` have no provider export and are not used.
+
+## What ranks, by query
+
+Observed Oct 1, United States, desktop. Positions vary by place and day. These describe page types, not targets to copy, and say nothing about why a page ranks.
+
+| Query                    | What the first page is made of                                                                                                                                                                                                                | What it means for Yapper                                                                                                                                                                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| random topic generator   | Single-purpose tool pages: codebeautify.org, randomtopics.app, randomtopicgen.com, speechtopicgen.com, capitalizemytitle.com, randomtopicgenerator.net, plus a Reddit thread and an Instagram reel from the creator behind randomtopicgen.com | The searcher wants a tool that works on load. `/training/random-topic-generator` is the right owner. Two of the ranking sites are speech-practice generators, so the speaking angle is a real segment of this query                 |
+| public speaking practice | AI overview, then advice articles (Lifehack, IEEE, MIT), forums, a Udemy course                                                                                                                                                               | Informational. The blog guides own it. `/training` supports with exercises                                                                                                                                                          |
+| public speaking app      | App store listings (Google Play, App Store), VR app articles, Reddit threads from people who built practice apps, an Orai review                                                                                                              | Searchers expect an installable app. Train is a web app. The product page can describe what Train is but should not imply a store app                                                                                               |
+| ai interview practice    | Dedicated products: interviewsby.ai, Big Interview, StandOut, InterviewCoach.AI, Exponent, plus Google and Harvard career pages                                                                                                               | These tools generate questions from a job description and run a mock interview. Train's interview exercise offers prompts and feedback on a recorded answer. It should say that plainly and not present itself as an AI interviewer |
+| teleprompter app         | App Store and Google Play listings, forum threads, YouTube roundups of free apps                                                                                                                                                              | Install and free intent. Studio's teleprompter is behind an invitation, so it cannot meet this intent today                                                                                                                         |
+| ai script writer         | Screenwriting tools (Laper, Squibler, Storyflow), generic generators (QuillBot, DeepAI), Powtoon and Creatify for video                                                                                                                       | Mixed between screenplays and video scripts. "Video script generator" is the closer match for Studio                                                                                                                                |
+| video caption generator  | Free online caption tools (ShortSync, Castmagic, short.ai), and several results about social post captions                                                                                                                                    | The word "caption" is ambiguous between timed subtitles and post text. The page must say "video" and "subtitles"                                                                                                                    |
+| text based video editing | Descript, Adobe's Premiere help page, Vimeo, Choppity, Visla, Soundstripe's roundup                                                                                                                                                           | A defined category with strong incumbents and low volume. Useful for describing the feature accurately, small as a traffic source                                                                                                   |
+| content creation app     | App Store listings, LinkedIn and Substack posts, a nonprofit tools roundup, social video "perspectives"                                                                                                                                       | Broad and unfocused. Not a sensible target for the homepage                                                                                                                                                                         |
+
+## Limits
+
+Search Console query rows omit anonymized queries, so query-level sums undercount. Page rows include anchor-link URLs as separate rows. The 28 day comparison spans site changes whose dates were not reconstructed, so no cause is assigned to the drop. DataForSEO volumes are modeled estimates for one country. SERPs were read once, on desktop, from one location. Conversion data was not available, so nothing here says which queries produce practice sessions, signups or waitlist entries.
+
+## Next evidence to get
+
+1. Yapper's PostHog project: organic landing sessions by page, practice starts and completions, feedback requests, waitlist submissions. This needs a connection to the right project.
+2. Semrush, once the intended plan is active in the Can profile: the same 52 seeds, the Content Optimizer reviews in the matrix, and keyword overlap with randomtopicgen.com, speechtopicgen.com and yoodli.com.
+3. Search Console's links report for `/studio` and `/` before any further URL change.

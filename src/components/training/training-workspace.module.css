@@ -293,7 +293,7 @@
   padding: 24px 32px;
   overflow: auto;
 }
-.reelRow h2 {
+.reelRow .reelText {
   font-size: clamp(23px, 2.1vw, 28px);
   font-weight: 500;
   letter-spacing: -0.6px;
@@ -308,7 +308,7 @@
 .reelTrack .reelRow {
   overflow: hidden;
 }
-.reelTrack h2 {
+.reelTrack .reelText {
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
@@ -577,7 +577,7 @@
   .reelRow {
     padding: 20px;
   }
-  .reelRow h2 {
+  .reelRow .reelText {
     font-size: 23px;
   }
   .passage h2 {
@@ -705,4 +705,128 @@
   outline: 2px solid #6aafff;
   outline-offset: 4px;
   border-radius: 50%;
+}
+
+/* Plain links to each exercise's own page, for readers and crawlers who want
+   the explanation before the practice. */
+.guides {
+  margin-top: 56px;
+  padding-top: 28px;
+  border-top: 1px solid var(--sg-border);
+}
+.guides h2 {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.guides ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  font-size: 14px;
+}
+.guides a {
+  color: var(--sg-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.guides a:hover {
+  color: var(--sg-text);
+}
+
+/* Toolbar end: mic state, camera, own prompt. */
+.toolbarEnd {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.micStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.micStatus i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3fae6b;
+}
+.micStatus[data-recording="true"] {
+  color: var(--sg-text);
+}
+.micStatus[data-recording="true"] i {
+  background: #d9493f;
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+.micStatus[data-off="true"] {
+  padding: 6px 12px;
+  border: 1px solid var(--sg-border-strong);
+  border-radius: 8px;
+  color: var(--sg-text);
+  cursor: pointer;
+}
+.toolbarEnd .editButton[aria-pressed="true"] {
+  color: var(--sg-text);
+}
+/* The live voice glow sits along the bottom edge of the prompt. */
+.promptVoice {
+  border-radius: 0;
+}
+@keyframes mic-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+/* Finish screen. */
+.reviewMark {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: var(--sg-surface-sunken);
+}
+.reviewPrompt {
+  max-width: 46ch;
+  margin: 12px auto 0;
+  color: var(--sg-text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.reviewFeedback {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid var(--sg-border);
+  border-radius: 18px;
+  background: var(--sg-surface);
+}
+@media (prefers-reduced-motion: reduce) {
+  .micStatus[data-recording="true"] i {
+    animation: none;
+  }
+}
+@media (max-width: 640px) {
+  .toolbarEnd {
+    gap: 10px;
+  }
+  .micStatus {
+    font-size: 12px;
+  }
+}
+
+.toolbarEnd .editButton span {
+  white-space: nowrap;
+}
+/* The console is narrow beside the control dock until wide screens, so the
+   own-prompt control is its icon alone there. Its name stays in aria-label. */
+@media (max-width: 1240px) {
+  .toolbarEnd .editButton span {
+    display: none;
+  }
 }

@@ -3,7 +3,33 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // Legacy editor deep links (/studio?tab=feedback etc.) still resolve to
+      // the editor. Listed before the plain /studio rule below, because
+      // redirects match in order and that rule would otherwise take them.
+      {
+        source: "/studio",
+        has: [{ type: "query", key: "tab" }],
+        destination: "/studio/editor",
+        permanent: false,
+      },
+      // Product overviews. /studio was the first Studio landing page;
+      // /studio/* is the signed-in workspace and is not touched by this rule.
       { source: "/studio", destination: "/products/studio", permanent: true },
+      // The brand homepage introduces both products, so the separate
+      // comparison page was folded into it.
+      { source: "/products", destination: "/", permanent: true },
+      {
+        source: "/products/yapper",
+        destination: "/products/train",
+        permanent: true,
+      },
+      // AI feedback is a Train feature and moved out of the Studio features
+      // folder to sit with the product that owns it.
+      {
+        source: "/features/creator-feedback",
+        destination: "/products/train/ai-feedback",
+        permanent: true,
+      },
       // Keep canonical slash handling in the static routing table rather than
       // running Clerk/Proxy for every crawler request to public content.
       {
@@ -16,9 +42,15 @@ const nextConfig: NextConfig = {
         destination: "/blog/:path+",
         statusCode: 301,
       },
+      // Straight to the final URL, so no old link takes two hops.
+      {
+        source: "/freestyle",
+        destination: "/freestyle-speech",
+        statusCode: 301,
+      },
       {
         source: "/freestyle/",
-        destination: "/freestyle",
+        destination: "/freestyle-speech",
         statusCode: 301,
       },
       {
@@ -44,15 +76,6 @@ const nextConfig: NextConfig = {
         has: [{ type: "host", value: "www.ypr.app" }],
         destination: "https://ypr.app/:path*",
         statusCode: 301,
-      },
-      // Legacy editor deep links (/studio?tab=feedback etc.) still resolve to
-      // the editor. /studio itself is now the Studio marketing page
-      // (src/app/studio/page.tsx), so there is no plain /studio redirect.
-      {
-        source: "/studio",
-        has: [{ type: "query", key: "tab" }],
-        destination: "/studio/editor",
-        permanent: false,
       },
       // The Create hub became the Studio; ideation folded into the Content
       // Library (ideas now live there, imported from localStorage on first

@@ -1,5 +1,6 @@
 "use client";
 
+import { takeRetryPrompt } from "@/lib/practice/retry-prompt";
 import { useCallback, useEffect, useRef, useState } from "react";
 import topics, {
   type Category,
@@ -36,6 +37,19 @@ export function useTopicGenerator(
     tickTimer.current = null;
   }, []);
   useEffect(() => cancelSpin, [cancelSpin]);
+  // Arriving from a report's "try this prompt again": start on that prompt.
+  useEffect(() => {
+    const retry = takeRetryPrompt();
+    if (!retry) return;
+    // Session storage is only readable after mount, so this state cannot be
+    // an initial value. Applied on the next tick, outside the effect body.
+    // Not cancelled on cleanup: the prompt is read once, and a development
+    // double-mount would otherwise lose it.
+    requestAnimationFrame(() => {
+      setCustomPromptText(retry);
+      setHasGeneratedTopic(true);
+    });
+  }, []);
   const hasPool = !!pool && pool.length > 0;
 
   const generateTopic = useCallback(() => {

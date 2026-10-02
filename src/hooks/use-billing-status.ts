@@ -12,6 +12,16 @@ export interface BillingStatus {
   balance: number;
   storageBytes: number;
   storageQuotaBytes: number;
+  /** Yapper Train's own subscription and what a feedback session can spend.
+   * The fields above are Studio's. */
+  train: {
+    entitled: boolean;
+    status: string | null;
+    plan: string | null;
+    currentPeriodEnd: string | null;
+    balance: number;
+    unlimited: boolean;
+  };
 }
 
 async function fetchBillingStatus(): Promise<BillingStatus | null> {

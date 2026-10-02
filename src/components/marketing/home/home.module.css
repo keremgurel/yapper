@@ -1,0 +1,25 @@
+.intro {
+  max-width: 720px;
+  margin-bottom: 40px;
+}
+.intro :global(.type-description) {
+  margin-top: 16px;
+  color: var(--sg-text-muted);
+}
+.report {
+  padding: 32px;
+  border: 1px solid var(--sg-border);
+  border-radius: 20px;
+  background: var(--sg-surface);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+@media (max-width: 640px) {
+  .report {
+    padding: 20px 16px;
+  }
+}

@@ -43,6 +43,9 @@ beforeEach(() => {
   vi.spyOn(SUBSCRIPTION_PLANS[1], "priceId", "get").mockReturnValue(
     "price_monthly",
   );
+  vi.spyOn(SUBSCRIPTION_PLANS[3], "priceId", "get").mockReturnValue(
+    "price_train",
+  );
   vi.spyOn(CREDIT_PACKS[0], "priceId", "get").mockReturnValue("price_pack");
 });
 
@@ -70,7 +73,11 @@ describe("Checkout tax and customer location", () => {
         billing_address_collection: "required",
         subscription_data: {
           trial_period_days: 7,
-          metadata: { userId: "user_test", creditGrantVersion: "2" },
+          metadata: {
+            userId: "user_test",
+            creditGrantVersion: "2",
+            product: "studio",
+          },
         },
       }),
     );
@@ -91,7 +98,11 @@ describe("Checkout tax and customer location", () => {
         customer_update: { address: "auto" },
         billing_address_collection: "required",
         subscription_data: {
-          metadata: { userId: "user_test", creditGrantVersion: "2" },
+          metadata: {
+            userId: "user_test",
+            creditGrantVersion: "2",
+            product: "studio",
+          },
         },
       }),
     );
@@ -114,6 +125,52 @@ describe("Checkout tax and customer location", () => {
         customer_update: { address: "auto" },
         billing_address_collection: "required",
       }),
+    );
+  });
+});
+
+describe("Each product checks out on its own", () => {
+  it("starts Train Plus with no trial and returns to Train", async () => {
+    const response = await POST(request({ plan: "train_plus_monthly" }));
+    expect(response.status).toBe(200);
+    expect(mocks.getBillingState).toHaveBeenCalledWith("user_test", "train");
+    const session = mocks.createSession.mock.calls[0][0];
+    expect(session.line_items).toEqual([{ price: "price_train", quantity: 1 }]);
+    expect(session.subscription_data.trial_period_days).toBeUndefined();
+    expect(session.subscription_data.metadata.product).toBe("train");
+    expect(session.success_url).toBe(
+      "https://yapper.test/progress?checkout=success",
+    );
+    expect(session.cancel_url).toBe(
+      "https://yapper.test/products/train/pricing?checkout=cancel",
+    );
+  });
+
+  it("lets a Studio subscriber buy Train Plus", async () => {
+    mocks.getBillingState.mockImplementation(async (_id, product) =>
+      product === "train"
+        ? { stripeCustomerId: "cus_existing", subscriptionStatus: null }
+        : { stripeCustomerId: "cus_existing", subscriptionStatus: "active" },
+    );
+    const response = await POST(request({ plan: "train_plus_monthly" }));
+    expect(response.status).toBe(200);
+  });
+
+  it("refuses a second Train Plus subscription", async () => {
+    mocks.getBillingState.mockResolvedValue({
+      stripeCustomerId: "cus_existing",
+      subscriptionStatus: "active",
+      currentPeriodEnd: null,
+    });
+    const response = await POST(request({ plan: "train_plus_monthly" }));
+    expect(response.status).toBe(409);
+  });
+
+  it("returns a Studio checkout to the Studio pricing page", async () => {
+    await POST(request({ plan: "creator_monthly" }));
+    expect(mocks.getBillingState).toHaveBeenCalledWith("user_test", "studio");
+    expect(mocks.createSession.mock.calls[0][0].cancel_url).toBe(
+      "https://yapper.test/products/studio/pricing?checkout=cancel",
     );
   });
 });

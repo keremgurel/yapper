@@ -11,7 +11,7 @@ const muted = { color: "var(--sg-text-muted)" };
  * create loop. Visuals use the shared sg-* design system. */
 export default function ToolsHub() {
   return (
-    <TrainingLayout>
+    <TrainingLayout footer>
       <section className="px-4 pt-16 pb-10 sm:px-6 sm:pt-20 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <span className="sg-chip">Free tools</span>

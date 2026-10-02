@@ -31,6 +31,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", "test");
   vi.spyOn(SUBSCRIPTION_PLANS[2], "priceId", "get").mockReturnValue("yearly");
+  vi.spyOn(SUBSCRIPTION_PLANS[3], "priceId", "get").mockReturnValue(
+    "train_monthly",
+  );
   mocks.retrieve.mockResolvedValue({ status: "trialing" });
 });
 async function send(type: string, object: unknown) {
@@ -84,6 +87,7 @@ it("paid checkout defers the full allotment to its paid invoice", async () => {
     "subscription_grant",
     "inv_in_1",
     expect.anything(),
+    "studio",
   );
 });
 it("trial zero invoices, unpaid invoices and legacy initial deliveries do not double-grant", async () => {
@@ -125,5 +129,75 @@ it("credits a checkout opened before deployment with the legacy deduplication ke
     "subscription_grant",
     "sess_cs_legacy",
     expect.anything(),
+    "studio",
   );
+});
+
+const subscription = (
+  price: string,
+  metadata: Record<string, string> = {},
+) => ({
+  customer: "cus_1",
+  status: "active",
+  metadata,
+  items: { data: [{ price: { id: price }, current_period_end: 1800000000 }] },
+});
+it("mirrors a Train Plus subscription into the Train fields only", async () => {
+  await send("customer.subscription.created", subscription("train_monthly"));
+  expect(mocks.apply).toHaveBeenCalledWith(
+    "owner",
+    expect.objectContaining({
+      plan: "train_plus_monthly",
+      subscriptionStatus: "active",
+    }),
+    "train",
+  );
+});
+it("mirrors a Studio subscription into the Studio fields", async () => {
+  await send("customer.subscription.updated", subscription("yearly"));
+  expect(mocks.apply).toHaveBeenCalledWith(
+    "owner",
+    expect.objectContaining({ plan: "creator_yearly" }),
+    "studio",
+  );
+});
+it("uses the product stamped at checkout when the price is no longer mapped", async () => {
+  await send(
+    "customer.subscription.deleted",
+    subscription("retired_price", { product: "train" }),
+  );
+  expect(mocks.apply).toHaveBeenCalledWith(
+    "owner",
+    expect.objectContaining({ plan: null }),
+    "train",
+  );
+});
+it("treats an unmapped subscription with no stamp as Studio", async () => {
+  await send("customer.subscription.updated", subscription("retired_price"));
+  expect(mocks.apply).toHaveBeenCalledWith(
+    "owner",
+    expect.anything(),
+    "studio",
+  );
+});
+it("a paid Train Plus invoice grants no credits", async () => {
+  await send("invoice.paid", {
+    ...invoice,
+    amount_paid: 900,
+    lines: {
+      data: [{ pricing: { price_details: { price: "train_monthly" } } }],
+    },
+  });
+  expect(mocks.grant).not.toHaveBeenCalled();
+});
+it("a Train Plus checkout never receives the Studio trial credits", async () => {
+  await send("checkout.session.completed", {
+    id: "cs_train",
+    mode: "subscription",
+    client_reference_id: "owner",
+    payment_status: "no_payment_required",
+    subscription: "sub_train",
+    metadata: { plan: "train_plus_monthly" },
+  });
+  expect(mocks.trial).not.toHaveBeenCalled();
 });

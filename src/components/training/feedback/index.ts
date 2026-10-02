@@ -16,3 +16,5 @@ export { default as TranscriptSection } from "@/components/training/feedback/tra
 export { default as StrengthsImprovements } from "@/components/training/feedback/strengths-improvements";
 export { default as UpgradeLines } from "@/components/training/feedback/upgrade-lines";
 export { default as StructuralGaps } from "@/components/training/feedback/structural-gaps";
+export { default as SpeechTimeline } from "@/components/training/feedback/speech-timeline";
+export { default as DeliveryGauges } from "@/components/training/feedback/delivery-gauges";

@@ -13,6 +13,7 @@ import {
   planByPriceId,
   TRIAL_CREDITS,
 } from "@/lib/billing/plans";
+import { isProduct, type Product } from "@/lib/billing/products";
 
 export const runtime = "nodejs";
 
@@ -76,9 +77,10 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (session.mode === "subscription") {
     // Checkout grants only the small, once-per-account trial allowance.
     // Paid credits are tied to invoices, never to opening/completing checkout.
+    // Only Studio plans carry a trial. Train Plus has none and no credits.
     if (
       session.payment_status === "no_payment_required" &&
-      planByKey(session.metadata?.plan)
+      planByKey(session.metadata?.plan)?.trial
     ) {
       const subscriptionId =
         typeof session.subscription === "string"
@@ -110,6 +112,7 @@ async function onCheckoutCompleted(session: Stripe.Checkout.Session) {
       "purchase",
       `sess_${session.id}`,
       { pack: pack.key },
+      pack.product,
     );
   }
 }
@@ -128,11 +131,28 @@ async function onSubscriptionChange(sub: Stripe.Subscription) {
   const priceId = sub.items.data[0]?.price?.id;
   const plan = planByPriceId(priceId);
   const periodEnd = sub.items.data[0]?.current_period_end;
-  await applySubscriptionState(userId, {
-    subscriptionStatus: sub.status,
-    plan: plan?.key ?? null,
-    currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
-  });
+  await applySubscriptionState(
+    userId,
+    {
+      subscriptionStatus: sub.status,
+      plan: plan?.key ?? null,
+      currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+    },
+    subscriptionProduct(sub, plan?.product),
+  );
+}
+
+/** Which product's mirror a subscription event writes. The price is the best
+ * evidence; checkout also stamps the product on the subscription so an event
+ * for a retired price still lands in the right place. Subscriptions created
+ * before the split carry neither and are Studio. */
+function subscriptionProduct(
+  sub: Stripe.Subscription,
+  fromPlan: Product | undefined,
+): Product {
+  if (fromPlan) return fromPlan;
+  const stamped = sub.metadata?.product;
+  return isProduct(stamped) ? stamped : "studio";
 }
 
 /** Paid initial invoices and renewals each grant once. A zero-dollar trial
@@ -161,6 +181,8 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       break;
     }
   }
+  // An unlimited plan (Train Plus) carries no allowance. Its entitlement is
+  // the subscription state mirrored by onSubscriptionChange.
   if (!plan || plan.includedCredits <= 0) return;
   let grantRef = `inv_${invoice.id}`;
   if (
@@ -191,6 +213,7 @@ async function onInvoicePaid(invoice: Stripe.Invoice) {
       source: "paid_invoice",
       billingReason: invoice.billing_reason,
     },
+    plan.product,
   );
 }
 

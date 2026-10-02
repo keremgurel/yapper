@@ -1,0 +1,188 @@
+{
+  "/": {
+    "product": "brand",
+    "sources": ["src/app/page.tsx", "src/components/marketing/home"]
+  },
+  "/pricing": {
+    "product": "brand",
+    "sources": ["src/app/pricing/page.tsx", "src/lib/billing/plans.ts"]
+  },
+  "/products/studio": {
+    "product": "studio",
+    "sources": ["src/app/products/studio/page.tsx"]
+  },
+  "/products/studio/pricing": {
+    "product": "studio",
+    "sources": [
+      "src/app/products/studio/pricing/page.tsx",
+      "src/components/billing/studio-pricing-page.tsx",
+      "src/components/billing/studio-plan-cards.tsx",
+      "src/lib/billing/plans.ts",
+      "src/lib/billing/credit-costs.ts"
+    ]
+  },
+  "/features": {
+    "product": "studio",
+    "sources": ["src/app/features/page.tsx", "src/data/marketing-navigation.ts"]
+  },
+  "/features/idea-capture": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/ai-script-writer": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/teleprompter-recorder": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/transcript-video-editor": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/automatic-captions": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/social-publishing": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/content-calendar": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/features/content-library": {
+    "product": "studio",
+    "sources": [
+      "src/app/features/[slug]/page.tsx",
+      "src/data/marketing-features.ts",
+      "src/data/feature-details.ts"
+    ]
+  },
+  "/products/train": {
+    "product": "train",
+    "sources": ["src/app/products/train/page.tsx"]
+  },
+  "/products/train/pricing": {
+    "product": "train",
+    "sources": [
+      "src/app/products/train/pricing/page.tsx",
+      "src/components/billing/train-pricing-page.tsx",
+      "src/components/billing/train-plan-cards.tsx",
+      "src/lib/billing/plans.ts"
+    ]
+  },
+  "/products/train/ai-feedback": {
+    "product": "train",
+    "sources": [
+      "src/app/products/train/ai-feedback/page.tsx",
+      "src/data/train-feedback.ts"
+    ]
+  },
+  "/training": {
+    "product": "train",
+    "sources": [
+      "src/app/training/page.tsx",
+      "src/components/training/training-hub.tsx",
+      "src/data/training-modes.ts"
+    ]
+  },
+  "/training/random-topic-generator": {
+    "product": "train",
+    "sources": [
+      "src/app/training/random-topic-generator",
+      "src/data/training.ts"
+    ]
+  },
+  "/training/explain-after-reading": {
+    "product": "train",
+    "sources": [
+      "src/app/training/explain-after-reading",
+      "src/data/training.ts"
+    ]
+  },
+  "/training/read-aloud": {
+    "product": "train",
+    "sources": ["src/app/training/read-aloud", "src/data/training.ts"]
+  },
+  "/training/interview-prep": {
+    "product": "train",
+    "sources": ["src/app/training/interview-prep", "src/data/training.ts"]
+  },
+  "/training/dating": {
+    "product": "train",
+    "sources": ["src/app/training/dating", "src/data/training.ts"]
+  },
+  "/training/conflict": {
+    "product": "train",
+    "sources": ["src/app/training/conflict", "src/data/training.ts"]
+  },
+  "/training/creator-camera-drills": {
+    "product": "train",
+    "sources": [
+      "src/app/training/creator-camera-drills",
+      "src/data/training.ts"
+    ]
+  },
+  "/training/fluency-on-steroids": {
+    "product": "train",
+    "sources": [
+      "src/app/training/fluency-on-steroids/page.tsx",
+      "src/data/training.ts"
+    ]
+  },
+  "/freestyle-speech": {
+    "product": "train",
+    "sources": ["src/app/freestyle-speech", "src/data/training.ts"]
+  },
+  "/tools": {
+    "product": "train",
+    "sources": ["src/app/tools/page.tsx", "src/data/tools.ts"]
+  },
+  "/tools/words-per-minute": {
+    "product": "train",
+    "sources": ["src/app/tools/words-per-minute"]
+  },
+  "/blog": {
+    "product": "train",
+    "sources": ["src/app/blog/page.tsx"]
+  },
+  "/privacy": {
+    "product": "brand",
+    "sources": ["src/app/privacy/page.tsx"]
+  },
+  "/terms": {
+    "product": "brand",
+    "sources": ["src/app/terms/page.tsx"]
+  }
+}

@@ -12,7 +12,7 @@ const muted = { color: "var(--sg-text-muted)" };
  * and the funnel into the create loop (record at this pace) and the guide. */
 export default function WpmToolPage() {
   return (
-    <TrainingLayout>
+    <TrainingLayout footer>
       <section className="px-4 pt-16 pb-8 sm:px-6 sm:pt-20 lg:px-8">
         <div className="mx-auto max-w-6xl">
           <span className="sg-chip">Free tool</span>

@@ -88,6 +88,54 @@
   text-decoration: none;
   flex-shrink: 0;
 }
+.site-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+/* The product a visitor is inside, set quietly beside the brand. */
+.site-product-name {
+  padding: 2px 0 2px 12px;
+  border-left: 1px solid var(--sg-border);
+  color: var(--sg-text-muted);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.site-product-name:hover,
+.site-product-name[aria-current="page"] {
+  color: var(--sg-text);
+}
+/* One understated way across to the other product. */
+.site-product-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 6px;
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.site-product-switch:hover {
+  color: var(--sg-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.site-product-switch-mobile {
+  display: flex;
+  margin-top: 18px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--sg-border);
+}
+.site-panel-columns {
+  display: grid;
+  grid-template-columns: repeat(var(--site-panel-columns, 4), minmax(0, 220px));
+  gap: 24px 48px;
+  padding-bottom: 28px;
+}
 .site-desktop-nav {
   display: flex;
   gap: 2px;
@@ -105,6 +153,7 @@
   border: 0;
   border-radius: 5px;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 }
 .site-nav-trigger:hover,
@@ -149,7 +198,8 @@
   left: 0;
   right: 0;
   padding: 32px 0 0;
-  background: var(--sg-surface);
+  /* Same canvas as the header bar it drops from, in both themes. */
+  background: var(--sg-bg);
   border-bottom: 1px solid var(--sg-border);
   box-shadow: 0 16px 30px -22px rgb(0 0 0 / 0.25);
 }
@@ -702,8 +752,12 @@
     font-size: 22px;
   }
   .site-desktop-nav,
-  .site-desktop-panel {
+  .site-desktop-panel,
+  .site-header-actions > .site-product-switch {
     display: none;
+  }
+  .site-product-name {
+    font-size: 14px;
   }
   .site-mobile-trigger {
     display: flex;
@@ -721,7 +775,7 @@
     max-height: calc(100dvh - 64px);
     overflow-y: auto;
     overscroll-behavior: contain;
-    background: var(--sg-surface);
+    background: var(--sg-bg);
     border-bottom: 1px solid var(--sg-border);
     box-shadow: 0 16px 24px -20px rgb(0 0 0 / 0.2);
   }
@@ -1046,7 +1100,7 @@
   justify-content: space-between;
   margin-bottom: 20px;
 }
-.studio-panel-heading h2 {
+.studio-panel-heading :is(h2, .demo-heading) {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -2038,7 +2092,7 @@
   min-width: 0;
   padding: 32px 24px;
 }
-.idea-demo-library .studio-panel-heading h2 {
+.idea-demo-library .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 16px;
 }
 .idea-demo-library .studio-panel-heading > span {
@@ -3518,9 +3572,9 @@ button.publisher-remix-glass {
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--studio-tab-count, 5), minmax(0, 1fr));
   gap: 0;
-  width: min(100%, 590px);
+  width: min(100%, calc(var(--studio-tab-count, 5) * 118px));
   height: 58px;
   margin: 0 auto 28px;
   padding: 5px;
@@ -3729,7 +3783,7 @@ button.publisher-remix-glass {
 .idea-demo-library .studio-panel-heading {
   margin-bottom: 24px;
 }
-.idea-demo-library .studio-panel-heading h2 {
+.idea-demo-library .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 18px;
   letter-spacing: -0.025em;
 }
@@ -4056,7 +4110,7 @@ button.publisher-remix-glass {
 .idea-library-scene .studio-panel-heading {
   margin-bottom: 22px;
 }
-.idea-library-scene .studio-panel-heading h2 {
+.idea-library-scene .studio-panel-heading :is(h2, .demo-heading) {
   font-size: 18px;
   font-weight: 550;
 }
@@ -4769,4 +4823,44 @@ button.publisher-remix-glass {
 }
 .pricing-intro .type-h1 {
   font-size: clamp(34px, 4vw, 48px);
+}
+
+/* Homepage: headline, product tabs, then the selected product's demo. */
+.marketing-home-hero {
+  padding-block: 56px 80px;
+}
+.home-showcase {
+  margin-top: 36px;
+}
+/* A product page hero set on the center line, above a full-width demo. */
+.marketing-hero-centered {
+  max-width: 760px;
+  margin-inline: auto;
+  text-align: center;
+}
+.marketing-hero-grid:has(> .studio-showcase) > .marketing-hero-centered {
+  max-width: 760px;
+}
+.marketing-hero-centered .marketing-lede {
+  margin-inline: auto;
+}
+.marketing-hero-centered .marketing-actions {
+  justify-content: center;
+}
+
+/* The homepage product switch uses the same capsule with two wider slots. */
+.studio-showcase-tabs.product-tabs {
+  width: min(100%, 340px);
+  margin-bottom: 0;
+}
+.studio-showcase-tabs.product-tabs button {
+  font-size: 15px;
+}
+
+/* The public site uses neutral greys for sunken surfaces in light mode. The
+   app's warm cream reads as yellow against the white demo screens. */
+:root:not(.dark)
+  :is(.marketing-site, .site-neutral, .site-header, .site-footer) {
+  --sg-surface-sunken: #f4f4f5;
+  --sg-bg-2: #ececee;
 }

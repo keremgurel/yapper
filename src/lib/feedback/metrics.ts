@@ -22,6 +22,12 @@ export interface DeliveryMetrics {
   fillerPerMin: number;
   fillerBreakdown: { word: string; count: number }[];
   pauseCount: number;
+  /**
+   * Pauses that fall inside a sentence, not at its end. Listeners hear these
+   * as hesitation; a pause after a finished sentence reads as control.
+   * Undefined on records scored before this was measured.
+   */
+  midSentencePauseCount?: number;
   longPauseCount: number;
   totalPauseSec: number;
   longestPauseSec: number;
@@ -55,9 +61,11 @@ const BIGRAM_FILLERS = [
   ["kind", "of"],
 ];
 
-const PAUSE = 0.5; // seconds — a noticeable pause
-const LONG_PAUSE = 1.5; // seconds — dead air
+export const PAUSE = 0.5; // seconds — a noticeable pause
+export const LONG_PAUSE = 1.5; // seconds — dead air
 const LOW_CONFIDENCE = 0.6;
+/** A word that closes a sentence or clause, by its transcript punctuation. */
+export const BOUNDARY = /[.?!,;:]["')\]]?$/;
 
 const norm = (t: string): string => t.toLowerCase().replace(/[^\p{L}']/gu, "");
 
@@ -65,6 +73,35 @@ const round = (n: number, d = 1): number => {
   const f = 10 ** d;
   return Math.round(n * f) / f;
 };
+
+/**
+ * Where each filler was said. Uses the same word list as the counts, so a
+ * timeline of fillers always agrees with the totals beside it.
+ */
+export function fillerMoments(
+  words: FeedbackWord[],
+): { word: string; start: number; end: number }[] {
+  const tokens = words.map((w) => norm(w.text));
+  const moments: { word: string; start: number; end: number }[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    if (!t) continue;
+    if (FILLERS.has(t)) {
+      moments.push({ word: t, start: words[i].start, end: words[i].end });
+      continue;
+    }
+    const next = tokens[i + 1];
+    if (BIGRAM_FILLERS.some(([a, b]) => a === t && b === next)) {
+      moments.push({
+        word: `${t} ${next}`,
+        start: words[i].start,
+        end: words[i + 1].end,
+      });
+      i++;
+    }
+  }
+  return moments;
+}
 
 export function computeMetrics(words: FeedbackWord[]): DeliveryMetrics {
   const tokens = words.map((w) => norm(w.text));
@@ -76,6 +113,7 @@ export function computeMetrics(words: FeedbackWord[]): DeliveryMetrics {
 
   // Pauses (gaps between consecutive words).
   let pauseCount = 0;
+  let midSentencePauseCount = 0;
   let longPauseCount = 0;
   let totalPauseSec = 0;
   let longestPauseSec = 0;
@@ -83,6 +121,7 @@ export function computeMetrics(words: FeedbackWord[]): DeliveryMetrics {
     const gap = words[i].start - words[i - 1].end;
     if (gap >= PAUSE) {
       pauseCount++;
+      if (!BOUNDARY.test(words[i - 1].text.trim())) midSentencePauseCount++;
       totalPauseSec += gap;
       if (gap >= LONG_PAUSE) longPauseCount++;
       if (gap > longestPauseSec) longestPauseSec = gap;
@@ -146,6 +185,7 @@ export function computeMetrics(words: FeedbackWord[]): DeliveryMetrics {
     fillerPerMin: round(fillerCount / minutes),
     fillerBreakdown,
     pauseCount,
+    midSentencePauseCount,
     longPauseCount,
     totalPauseSec: round(totalPauseSec),
     longestPauseSec: round(longestPauseSec),

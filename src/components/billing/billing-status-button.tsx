@@ -13,7 +13,7 @@ export default function BillingStatusButton() {
 
   return (
     <Button asChild variant="outline" size="sm" className="h-8 px-2.5">
-      <Link href="/pricing" className="no-underline">
+      <Link href="/products/studio/pricing" className="no-underline">
         {status?.entitled ? (
           <>
             <Coins className="h-3.5 w-3.5" />

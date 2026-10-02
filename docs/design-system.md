@@ -186,10 +186,15 @@ A restrained blue/lilac shadow may trace the main demo screen’s border.
 ### Product navigation and finishing materials
 
 Yapper is the umbrella brand. The products are Yapper Studio (creation) and
-Yapper Train (speaking practice). Product menus use two clearly titled panes,
-with aligned vertical links. Features are grouped under those same product names
-on desktop and mobile. Train’s canonical product page is /products/train; retain
-a permanent redirect from /products/yapper.
+Yapper Train (speaking practice). The header reads the product from the URL
+(`src/data/site-navigation.ts`). Brand pages (home, pricing, legal) show Studio,
+Train and Pricing. Inside a product the header shows the product name beside
+the wordmark, that product's own menu and call to action, and one quiet text
+link to the other product at 13px in the muted text color. A product's menu
+never links into the other product. Menus are titled columns of links in the
+shared container. The footer has one column per product. Train’s canonical
+product page is /products/train; retain a permanent redirect from
+/products/yapper.
 Dark mode keeps a pure black page with neutral graphite surfaces (#171719),
 raised graphite (#222225), and neutral silver text. Use translucent glass only
 on the Chirpy assistant and processing overlays: blur, a fine neutral edge and
@@ -263,16 +268,16 @@ and the practice action. No Y eyebrow pills or stacked promotional sections.
 Keep the functional practice workspace, then concise steps, benefits and native
 FAQ disclosures in the shared type scale. The directory groups drills by daily
 skills and real situations, with a single featured random-topic entry.
-Pricing identifies Yapper Train, shows the three existing billing cadences and
-quotas, and lists shared coaching benefits once. Keep the configured prices,
-trial terms and billing actions intact. Studio availability appears at the end.
+Train exercise pages close with a Train next step (AI feedback and more
+exercises), never the Studio waitlist. Practice prompts and demo labels are
+content, not headings: do not mark them up as h2.
 All Studio signups reuse WaitlistForm, including its inset input, original action,
 fine glow and particles. Keep one concise signup section, without a second
 product feature list. Disable particle motion for reduced-motion preferences.
 
 ## Credit pricing
 
-Pricing covers Studio and Train together. Compare allowances across tiers; monthly/yearly is one billing selector, not separate feature tiers. Lead each card with monthly credits, an explicitly alternative usage example, price, full billing total, and one action. A shared cost table explains the core actions; an itemized workflow prevents adding mutually exclusive examples together. Retain the shared container, graphite surfaces, and fixed card heights when billing or examples change.
+Studio and Train have separate pricing pages (/products/studio/pricing and /products/train/pricing); /pricing only chooses between them. Never describe a shared balance. Studio shows its one membership at three billing cadences (weekly, monthly, yearly), each card with the price, the credits that arrive with each payment, and one action. A cost table explains what credits pay for. Train shows free practice beside the one paid plan, which is unlimited AI feedback (never quote a session count), and uses the feedback comparison demo, never Studio imagery. Retain the shared container, graphite surfaces, and fixed card heights when billing or examples change.
 
 ### Train product storytelling
 

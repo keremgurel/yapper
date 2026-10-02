@@ -25,7 +25,9 @@ export function IdeaLibraryScene({
   return (
     <div className="idea-library-scene">
       <div className="studio-panel-heading">
-        <h2>{added ? "Your idea bank" : "Content library"}</h2>
+        <p className="demo-heading">
+          {added ? "Your idea bank" : "Content library"}
+        </p>
         <span>
           {added ? (
             <>

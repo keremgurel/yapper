@@ -2,7 +2,7 @@
 
 import FreestyleHero from "@/components/freestyle-hero";
 import MarketingLayout from "@/components/marketing/marketing-layout";
-import { StudioSignup } from "@/components/marketing/product-sections";
+import TrainNextStep from "@/components/training/train-next-step";
 import PracticeGuide from "@/components/training/practice-guide";
 import PracticeStage from "@/components/practice-stage";
 
@@ -45,7 +45,7 @@ export default function FreestyleSpeechClient({
       </PracticeSessionProvider>
 
       <PracticeGuide freestyle />
-      <StudioSignup />
+      <TrainNextStep />
     </MarketingLayout>
   );
 }
