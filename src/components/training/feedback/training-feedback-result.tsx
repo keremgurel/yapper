@@ -5,6 +5,7 @@ import type {
   TrainingContext,
   TranscriptWord,
 } from "@/lib/training-feedback/types";
+import { skillReasons, skillScores } from "@/lib/training-feedback/skills";
 import AttemptChanges from "@/components/training/feedback/attempt-changes";
 import {
   compareAttempts,
@@ -72,7 +73,10 @@ export default function TrainingFeedbackResult({
         </ReportSection>
       )}
       <ReportSection title="Your scores">
-        <ScoreTiles scores={coaching.scores} rationales={coaching.rationales} />
+        <ScoreTiles
+          skills={skillScores(coaching.scores, pronunciation)}
+          reasons={skillReasons(coaching.rationales)}
+        />
       </ReportSection>
       <ReportSection title="How it sounded">
         <SpeechTimeline words={transcript} />

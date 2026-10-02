@@ -10,7 +10,7 @@ export default function TrainNextStep() {
           <h2 className="type-h2">Want to know how that went?</h2>
           <p className="type-description">
             Record an attempt and ask for AI feedback. You get a transcript,
-            five scores and one thing to work on next. Your first session is
+            four scores and one thing to work on next. Your first session is
             free.
           </p>
         </div>

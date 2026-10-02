@@ -8,10 +8,10 @@ import { TrainingCta } from "@/components/marketing/product-sections";
 import { GlassyButton } from "@/components/ui/glassy-button";
 import { feedbackQuestions, feedbackSteps } from "@/data/train-feedback";
 import {
-  DIMENSION_BLURBS,
-  DIMENSION_LABELS,
-  TRAINING_DIMENSIONS,
-} from "@/lib/training-feedback/types";
+  SKILL_BLURBS,
+  SKILL_LABELS,
+  SKILLS,
+} from "@/lib/training-feedback/skills";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import { SITE_URL, safeJsonLdStringify } from "@/lib/json-ld";
 import styles from "@/components/marketing/train-product.module.css";
@@ -19,7 +19,7 @@ import styles from "@/components/marketing/train-product.module.css";
 const PATH = "/products/train/ai-feedback";
 const TITLE = "AI speech coach: feedback on your speaking practice";
 const DESCRIPTION =
-  "Record a practice answer in Yapper Train and get AI feedback: a transcript, five scores, corrections in your own words and one thing to work on next. First session free.";
+  "Record a practice answer in Yapper Train and get AI feedback: a transcript, four scores, corrections in your own words and one thing to work on next. First session free.";
 
 export const metadata = marketingMetadata(TITLE, DESCRIPTION, PATH);
 
@@ -84,18 +84,19 @@ export default function TrainFeedbackPage() {
         <div className="marketing-container">
           <h2 className="type-h2">What your answer is scored on</h2>
           <p className="type-description mt-4">
-            Each of the five is scored from 0 to 100, with a short explanation
-            of why.
+            Each of the four is scored from 0 to 100, with a short explanation
+            of why. Clear, Fluent and Expressive also use what was measured from
+            your audio.
           </p>
           <table className="marketing-comparison">
             <caption className="sr-only">
-              The five things Yapper Train scores
+              The four things Yapper Train scores
             </caption>
             <tbody>
-              {TRAINING_DIMENSIONS.map((dimension) => (
+              {SKILLS.map((dimension) => (
                 <tr key={dimension}>
-                  <th scope="row">{DIMENSION_LABELS[dimension]}</th>
-                  <td>{DIMENSION_BLURBS[dimension]}</td>
+                  <th scope="row">{SKILL_LABELS[dimension]}</th>
+                  <td>{SKILL_BLURBS[dimension]}</td>
                 </tr>
               ))}
             </tbody>

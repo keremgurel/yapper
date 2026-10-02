@@ -1,5 +1,5 @@
 import type { DimensionProgressEntry } from "@/lib/progress/types";
-import { DIMENSION_LABELS } from "@/lib/training-feedback/types";
+import { SKILL_LABELS } from "@/lib/training-feedback/skills";
 
 function deltaLabel(delta: number | null): string {
   if (delta === null) return "no earlier reps to compare";
@@ -12,7 +12,7 @@ function Row({ entry }: { entry: DimensionProgressEntry }) {
   return (
     <div className="flex min-h-10 items-center gap-4 py-2">
       <p className="text-foreground w-44 shrink-0 text-sm font-medium">
-        {DIMENSION_LABELS[entry.dimension]}
+        {SKILL_LABELS[entry.dimension]}
       </p>
       {/* The meter repeats the number visually; the number carries the value.
           The fill takes the same informational cyan as DimensionMeter, which
@@ -34,7 +34,7 @@ function Row({ entry }: { entry: DimensionProgressEntry }) {
 }
 
 /**
- * The five dimensions with their latest-window average and the change against
+ * The four skills with their latest-window average and the change against
  * the earlier window, so someone can see which skill is moving.
  */
 export default function DimensionProgress({
@@ -60,7 +60,7 @@ export default function DimensionProgress({
   if (dimensions.every((entry) => entry.average === null)) {
     return (
       <p className="text-muted-foreground text-sm">
-        Dimension scores show up after your first coached rep.
+        Skill scores show up after your first coached rep.
       </p>
     );
   }

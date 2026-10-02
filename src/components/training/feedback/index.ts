@@ -10,7 +10,6 @@ export {
 export { default as FeedbackSkeleton } from "@/components/training/feedback/feedback-skeleton";
 export { default as FeedbackError } from "@/components/training/feedback/feedback-error";
 export { default as ScoreHero } from "@/components/training/feedback/score-hero";
-export { default as DimensionBreakdown } from "@/components/training/feedback/dimension-breakdown";
 export { default as DeliveryStrip } from "@/components/training/feedback/delivery-strip";
 export { default as TranscriptSection } from "@/components/training/feedback/transcript-section";
 export { default as StrengthsImprovements } from "@/components/training/feedback/strengths-improvements";

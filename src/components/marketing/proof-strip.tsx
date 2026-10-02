@@ -1,6 +1,6 @@
 import { topics } from "@/data/topics";
 import { programFamilies } from "@/data/training";
-import { TRAINING_DIMENSIONS } from "@/lib/training-feedback/types";
+import { SKILLS } from "@/lib/training-feedback/skills";
 import { WELCOME_CREDITS } from "@/lib/db/constants";
 
 /**
@@ -11,7 +11,7 @@ import { WELCOME_CREDITS } from "@/lib/db/constants";
 const FIGURES: [string, string][] = [
   [topics.length.toLocaleString(), "speaking prompts"],
   [String(programFamilies.length), "practice drills"],
-  [String(TRAINING_DIMENSIONS.length), "dimensions scored"],
+  [String(SKILLS.length), "skills scored"],
   [String(WELCOME_CREDITS), "free credits to start"],
 ];
 

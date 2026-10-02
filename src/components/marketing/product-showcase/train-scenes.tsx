@@ -9,10 +9,7 @@ import {
   Shuffle,
   Sparkles,
 } from "lucide-react";
-import {
-  DIMENSION_LABELS,
-  TRAINING_DIMENSIONS,
-} from "@/lib/training-feedback/types";
+import { SKILL_LABELS, SKILLS } from "@/lib/training-feedback/skills";
 import styles from "./product-showcase.module.css";
 
 const EXERCISES = [
@@ -22,8 +19,8 @@ const EXERCISES = [
   { label: "Hard conversations", Icon: MessageCircle },
 ];
 const PROMPT = "What’s something you changed your mind about recently?";
-// Sample scores for the demonstration, one per real feedback dimension.
-const SAMPLE_SCORES = [74, 81, 68, 62, 70];
+// Sample scores for the demonstration, one per skill a report shows.
+const SAMPLE_SCORES = [81, 68, 62, 74];
 
 /** The countdown ring. `from` and `to` are fractions of the minute left; the
  * sweep between them runs for as long as the scene is on screen. */
@@ -126,12 +123,12 @@ export function FeedbackScene() {
         <Sparkles size={13} aria-hidden="true" /> Your feedback
       </p>
       <dl className={styles.scores}>
-        {TRAINING_DIMENSIONS.map((dimension, index) => (
+        {SKILLS.map((dimension, index) => (
           <div
             key={dimension}
             style={{ ["--delay" as string]: `${index * 110}ms` }}
           >
-            <dt>{DIMENSION_LABELS[dimension]}</dt>
+            <dt>{SKILL_LABELS[dimension]}</dt>
             <dd>
               <span>
                 <i style={{ width: `${SAMPLE_SCORES[index]}%` }} />
