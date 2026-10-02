@@ -10,6 +10,7 @@
  */
 
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
+import type { PronunciationReport } from "@/lib/pronunciation/types";
 
 /** The five things a rep is scored on, in the order every surface shows them. */
 export const TRAINING_DIMENSIONS = [
@@ -138,6 +139,8 @@ export interface TrainingFeedbackRecord {
   metrics: DeliveryMetrics;
   coaching: TrainingCoaching;
   context: TrainingContext;
+  /** Added after the rest, by the browser, when the audio could be scored. */
+  pronunciation?: PronunciationReport | null;
 }
 
 /** Successful response from POST /api/training/feedback. */

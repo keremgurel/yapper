@@ -2,10 +2,18 @@
 
 import { useCallback, useState } from "react";
 
+import {
+  savePronunciation,
+  scorePronunciation,
+} from "@/lib/pronunciation/client";
 import type {
   TrainingContext,
   TrainingFeedbackResponse,
 } from "@/lib/training-feedback/types";
+
+/** How long to hold the report for pronunciation scores once coaching is back.
+ * Past this the report opens without them. */
+const PRONUNCIATION_GRACE_MS = 15_000;
 
 export type TrainingFeedbackState = "idle" | "running" | "error";
 
@@ -68,6 +76,10 @@ export function useTrainingFeedback() {
       form.append("audio", audio, `rep.${extension}`);
       form.append("context", JSON.stringify(context));
 
+      // Scored in the browser while the coaching request runs, so it usually
+      // adds no wait. It never fails the rep.
+      const pronunciation = scorePronunciation(audio);
+
       try {
         const response = await fetch("/api/training/feedback", {
           method: "POST",
@@ -82,6 +94,13 @@ export function useTrainingFeedback() {
           return null;
         }
         const result = (await response.json()) as TrainingFeedbackResponse;
+        const report = await Promise.race([
+          pronunciation,
+          new Promise<null>((resolve) =>
+            setTimeout(() => resolve(null), PRONUNCIATION_GRACE_MS),
+          ),
+        ]);
+        if (report) await savePronunciation(result.submissionId, report);
         setState("idle");
         return result;
       } catch {

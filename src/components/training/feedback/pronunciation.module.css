@@ -1,0 +1,155 @@
+.section {
+  display: grid;
+  gap: 28px;
+}
+.rings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  border: 1px solid var(--sg-border);
+  border-radius: 20px;
+  background: var(--sg-surface);
+  text-align: center;
+}
+.ringDial {
+  position: relative;
+  width: 132px;
+}
+.ringDial svg {
+  display: block;
+  transform: rotate(-90deg);
+}
+.ringDial span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.ringTrack,
+.ringFill {
+  fill: none;
+  stroke-width: 7;
+}
+.ringTrack {
+  stroke: var(--sg-surface-sunken);
+}
+.ringFill {
+  stroke: var(--sg-cyan-500);
+  stroke-linecap: round;
+  stroke-dashoffset: var(--rest);
+}
+.ringLabel {
+  margin-top: 16px;
+  font-size: 16px;
+  font-weight: 500;
+}
+.ringHint {
+  max-width: 24ch;
+  margin-top: 4px;
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.note {
+  max-width: 68ch;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.wordsHeading {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.words {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+}
+.word {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--sg-surface-sunken);
+}
+.wordText {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+.wordBar {
+  display: block;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: var(--sg-border-strong);
+  overflow: hidden;
+}
+.wordBar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--sg-orange-500, #f97316);
+}
+.wordMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--sg-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.basis {
+  max-width: 68ch;
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .section:not([data-in-view="true"]) .ringFill {
+    stroke-dashoffset: var(--full);
+  }
+  .section[data-in-view="true"] .ringFill {
+    transition: stroke-dashoffset 1100ms cubic-bezier(0.22, 1, 0.36, 1)
+      var(--delay);
+  }
+}
+@media (max-width: 640px) {
+  .rings {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .ring {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    column-gap: 16px;
+    align-items: center;
+    padding: 16px;
+    text-align: left;
+  }
+  .ringDial {
+    grid-row: span 2;
+    width: 84px;
+  }
+  .ringDial span {
+    font-size: 26px;
+  }
+  .ringLabel {
+    margin-top: 0;
+    align-self: end;
+  }
+  .ringHint {
+    align-self: start;
+    max-width: none;
+  }
+}

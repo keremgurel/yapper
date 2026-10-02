@@ -7,6 +7,7 @@ import {
   sampleContext,
   sampleMetrics,
   samplePrevious,
+  samplePronunciation,
   sampleTranscript,
 } from "@/data/sample-feedback";
 
@@ -36,6 +37,7 @@ export default function SampleReportPage() {
           transcript={sampleTranscript}
           context={sampleContext}
           previous={samplePrevious}
+          pronunciation={samplePronunciation}
         />
       </div>
     </TrainingLayout>
