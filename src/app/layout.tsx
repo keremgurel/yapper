@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper | Speaking practice and content creation";
+const title = "Yapper: speaking practice and a video studio";
 const description =
-  "Find your voice with Yapper speaking practice. Create videos from idea to final post with Yapper Studio.";
+  "Yapper makes two separate products: Yapper Train for speaking practice and Yapper Studio for making and publishing video.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -31,27 +31,13 @@ export const metadata: Metadata = {
   applicationName: "Yapper",
   authors: [{ name: "Yapper", url: siteUrl }],
   creator: "Yapper",
-  keywords: [
-    "content creation app",
-    "content creator tools",
-    "social media content creation",
-    "short form video editor",
-    "transcript video editor",
-    "teleprompter recorder",
-    "AI script writer for video",
-    "content idea capture",
-    "automatic video captions",
-    "content calendar for creators",
-    "social media publishing tool",
-  ],
   robots: {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true },
   },
-  alternates: {
-    canonical: siteUrl,
-  },
+  // No default canonical. A page that forgets its own would otherwise claim
+  // to be the homepage; every indexable page sets one in marketingMetadata.
   category: "software",
   openGraph: {
     title,

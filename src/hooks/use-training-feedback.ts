@@ -18,6 +18,7 @@ export type TrainingFeedbackError =
   | "insufficient_credits"
   | "too_short"
   | "rate_limited"
+  | "fair_use_limit"
   | "no_provider"
   | "unknown";
 
@@ -27,13 +28,14 @@ const KNOWN_ERRORS = new Set<string>([
   "insufficient_credits",
   "too_short",
   "no_provider",
+  "fair_use_limit",
 ]);
 
 function toError(status: number, code: unknown): TrainingFeedbackError {
-  if (status === 429 || status === 503) return "rate_limited";
   if (typeof code === "string" && KNOWN_ERRORS.has(code)) {
     return code as TrainingFeedbackError;
   }
+  if (status === 429 || status === 503) return "rate_limited";
   return "unknown";
 }
 

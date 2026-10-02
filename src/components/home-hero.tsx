@@ -7,8 +7,8 @@ export default function HomeHero({
 }) {
   return (
     <DrillPracticeHero
-      titleTop="Random topic"
-      titleBottom="speaking practice"
+      titleTop="Random topic generator"
+      titleBottom="for speaking practice"
       description="Pick a topic, set your timer, and practice thinking out loud. Record your answer to listen back, or just give it a try."
       onJumpToPractice={onJumpToPractice}
     />

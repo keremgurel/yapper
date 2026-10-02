@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import {
   ArrowRight,
   Camera,
-  Check,
   ChevronDown,
   Mic,
   Pause,
@@ -33,7 +32,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDemoPlayback } from "@/components/marketing/use-demo-playback";
 import ResearchPreparation from "@/components/training/research-preparation";
-import TrainingFeedbackCta from "@/components/training/feedback-cta";
+import MicStatus from "@/components/training/console/mic-status";
+import SessionReview from "@/components/training/console/session-review";
+import { useAutoMicrophone } from "@/hooks/use-auto-microphone";
+import { MIC_REQUIRED_MESSAGE } from "@/hooks/use-media-stream";
 import styles from "@/components/training/training-workspace.module.css";
 
 function clock(seconds: number) {
@@ -92,6 +94,11 @@ export default function PracticeStage({
   const { videoRef, cameraOn, timerDone, getStream } = s;
   const promptInput = useRef<HTMLTextAreaElement>(null);
   const voiceLevel = useAudioLevel(s.getStream, s.micOn, null);
+  useAutoMicrophone(s.micOn, s.toggleMic);
+  // A refused microphone is not an error to announce. The toolbar offers a
+  // way to turn it on, and practice works without it.
+  const mediaError =
+    s.mediaError === MIC_REQUIRED_MESSAGE ? null : s.mediaError;
   const { ref: fieldRef, active: animateField } = useDemoPlayback(1);
   const isFreestyle = s.mode === "freestyle";
   const isRecall = config?.kind === "recall";
@@ -126,73 +133,38 @@ export default function PracticeStage({
       aria-label="Speaking practice workspace"
       className={`${embedded ? "" : "marketing-container"} ${styles.workspace}`}
     >
-      {s.mediaError && (
+      {mediaError && (
         <div className={styles.error} role="alert">
-          <p>{s.mediaError}</p>
+          <p>{mediaError}</p>
           <Button variant="ghost" size="sm" onClick={s.clearMediaError}>
             Dismiss
           </Button>
         </div>
       )}
       {s.timerDone ? (
-        <div className={styles.review}>
-          <div className={styles.reviewHeading}>
-            <Check size={24} />
-            <h2 className="type-h2">One more rep in.</h2>
-            <p>Pick one thing to improve. Try it again.</p>
-          </div>
-          {s.recordedUrl ? (
-            <div className={styles.replay}>
-              {s.cameraOn ? (
-                <video src={s.recordedUrl} controls playsInline />
-              ) : (
-                <audio src={s.recordedUrl} controls />
-              )}
-              <Button
-                variant="outline"
-                onClick={s.downloadRecording}
-                disabled={s.isPreparingDownload}
-              >
-                {s.isPreparingDownload
-                  ? "Preparing download…"
-                  : "Download recording"}
-              </Button>
-            </div>
-          ) : (
-            <p className={styles.reviewNote}>
-              {s.cameraOn || s.micOn
-                ? "Your recording is being prepared."
-                : "You practiced without recording. How clearly did your point come across?"}
-            </p>
-          )}
-          <TrainingFeedbackCta
-            audio={s.coachAudioBlob}
-            audioPending={s.coachAudioPending}
-            context={{
-              drillSlug: s.drillSlug,
-              drillTitle: s.drillTitle,
-              prompt: isFreestyle
-                ? (s.customPromptText ?? "Freestyle session")
-                : prompt,
-              targetSeconds: s.timerSeconds,
-              goals: [],
-            }}
-          />
-          <div className={styles.reviewActions}>
-            <GlassyButton onClick={s.resetTimer} height={44}>
-              Try again
-            </GlassyButton>
-            <Button
-              variant="outline"
-              onClick={() => {
-                s.resetTimer();
-                if (!isFreestyle) s.generateTopic();
-              }}
-            >
-              New prompt
-            </Button>
-          </div>
-        </div>
+        <SessionReview
+          recordedUrl={s.recordedUrl}
+          isVideo={s.cameraOn}
+          recorded={s.cameraOn || s.micOn}
+          audio={s.coachAudioBlob}
+          audioPending={s.coachAudioPending}
+          context={{
+            drillSlug: s.drillSlug,
+            drillTitle: s.drillTitle,
+            prompt: isFreestyle
+              ? (s.customPromptText ?? "Freestyle session")
+              : prompt,
+            targetSeconds: s.timerSeconds,
+            goals: [],
+          }}
+          onDownload={s.downloadRecording}
+          preparingDownload={s.isPreparingDownload}
+          onRetry={s.resetTimer}
+          onNewPrompt={() => {
+            s.resetTimer();
+            if (!isFreestyle) s.generateTopic();
+          }}
+        />
       ) : (
         <>
           <div
@@ -223,15 +195,36 @@ export default function PracticeStage({
                   )}
                   {isFreestyle && <span>Your focus</span>}
                 </div>
-                <button
-                  className={styles.editButton}
-                  aria-label={isFreestyle ? "Set a focus" : "Your own prompt"}
-                  onClick={s.openPromptEditor}
-                  disabled={locked}
-                >
-                  <Pencil size={14} />
-                  <span>{isFreestyle ? "Set a focus" : "Your own prompt"}</span>
-                </button>
+                <div className={styles.toolbarEnd}>
+                  <MicStatus
+                    on={s.micOn}
+                    recording={s.inSession && !s.isPaused}
+                    disabled={s.inSession}
+                    onEnable={() => void s.toggleMic()}
+                  />
+                  <button
+                    className={styles.editButton}
+                    aria-label={
+                      s.cameraOn ? "Turn camera off" : "Turn camera on"
+                    }
+                    aria-pressed={s.cameraOn}
+                    onClick={() => void s.toggleCamera()}
+                    disabled={s.inSession}
+                  >
+                    <Camera size={15} />
+                  </button>
+                  <button
+                    className={styles.editButton}
+                    aria-label={isFreestyle ? "Set a focus" : "Your own prompt"}
+                    onClick={s.openPromptEditor}
+                    disabled={locked}
+                  >
+                    <Pencil size={14} />
+                    <span>
+                      {isFreestyle ? "Set a focus" : "Your own prompt"}
+                    </span>
+                  </button>
+                </div>
               </div>
               {s.promptEditorOpen ? (
                 <div className={styles.promptEditor}>
@@ -261,40 +254,48 @@ export default function PracticeStage({
                   </div>
                 </div>
               ) : (
-                <div
-                  className={`${styles.reelWindow} ${isPassage ? styles.passage : ""}`}
-                  aria-busy={s.spinning}
+                <VoiceSurface
+                  level={voiceLevel}
+                  active={s.micOn && !s.isPaused}
+                  className={styles.promptVoice}
                 >
-                  {s.spinning ? (
-                    <div className={styles.reelTrack} aria-hidden="true">
-                      {s.reelBlurbs.map((text, i) => (
-                        <div className={styles.reelRow} key={i}>
-                          <h2>{text}</h2>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className={styles.reelRow} aria-live="polite">
-                      <h2>
-                        {isRecall && s.inSession
-                          ? "Explain it in your own words."
-                          : ready
-                            ? isFreestyle
-                              ? (s.customPromptText ??
-                                "Follow a thought. See where it takes you.")
-                              : prompt
-                            : "A little surprise. A minute to speak."}
-                      </h2>
-                      {!ready && <p>Pull the lever to find your next topic.</p>}
-                      {isRecall && s.inSession && (
-                        <p>
-                          The passage is hidden. Share the main idea and one
-                          detail you remember.
+                  <div
+                    className={`${styles.reelWindow} ${isPassage ? styles.passage : ""}`}
+                    aria-busy={s.spinning}
+                  >
+                    {s.spinning ? (
+                      <div className={styles.reelTrack} aria-hidden="true">
+                        {s.reelBlurbs.map((text, i) => (
+                          <div className={styles.reelRow} key={i}>
+                            <p className={styles.reelText}>{text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.reelRow} aria-live="polite">
+                        <p className={styles.reelText}>
+                          {isRecall && s.inSession
+                            ? "Explain it in your own words."
+                            : ready
+                              ? isFreestyle
+                                ? (s.customPromptText ??
+                                  "Follow a thought. See where it takes you.")
+                                : prompt
+                              : "A little surprise. A minute to speak."}
                         </p>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        {!ready && (
+                          <p>Pull the lever to find your next topic.</p>
+                        )}
+                        {isRecall && s.inSession && (
+                          <p>
+                            The passage is hidden. Share the main idea and one
+                            detail you remember.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </VoiceSurface>
               )}
               <div className={styles.practiceCue}>
                 <p>
@@ -426,8 +427,8 @@ export default function PracticeStage({
                       </GlassyButton>
                       <p>
                         {s.cameraOn || s.micOn
-                          ? "Recording is on"
-                          : "Practice without recording"}
+                          ? "Your attempt will be recorded"
+                          : "Practicing without a recording"}
                       </p>
                     </>
                   )}
@@ -460,27 +461,6 @@ export default function PracticeStage({
                 <p className={styles.cameraNote}>Keep the lens at eye level.</p>
               </div>
             )}
-          </div>
-          <div className={styles.utilityRow}>
-            <p>Make it a recording, if you like.</p>
-            <div>
-              <button
-                aria-pressed={s.micOn}
-                disabled={s.inSession}
-                onClick={() => void s.toggleMic()}
-              >
-                <Mic size={15} />
-                {s.micOn ? "Mic on" : "Mic off"}
-              </button>
-              <button
-                aria-pressed={s.cameraOn}
-                disabled={s.inSession}
-                onClick={() => void s.toggleCamera()}
-              >
-                <Camera size={15} />
-                {s.cameraOn ? "Camera on" : "Camera off"}
-              </button>
-            </div>
           </div>
           {isResearch && ready && !s.spinning && !s.inSession && (
             <ResearchPreparation key={prompt} question={prompt} />

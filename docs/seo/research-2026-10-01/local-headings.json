@@ -1,0 +1,470 @@
+{
+  "/": {
+    "title": "Yapper: speaking practice and a video studio",
+    "desc": "Yapper makes two separate products. Yapper Train is free speaking practice with a random topic generator, timed exercises and AI feedback. Yapper Studio takes a video from idea to published post.",
+    "h": [
+      ["h1", "Get better at speaking.Make better videos."],
+      ["h2", "Practice speaking before it counts."],
+      ["h2", "One place for the whole video."],
+      ["h2", "Hook"],
+      ["h2", "Script59 words \u00b7 0:24"],
+      ["h2", "Which one do you need?"],
+      ["h2", "Common questions"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/pricing": {
+    "title": "Yapper pricing for Train and Studio",
+    "desc": "Yapper Train and Yapper Studio are priced separately. Train is free to practice, with AI feedback from $9 a month. Studio plans start at $19 a month.",
+    "h": [
+      ["h1", "Yapper pricing"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/products/studio": {
+    "title": "Video creation software: script, record & edit | Yapper",
+    "desc": "Capture content ideas, write video scripts, record with a teleprompter, edit by transcript, add captions, and prepare social posts in Yapper Studio. Join the waitlist.",
+    "h": [
+      ["h1", "Video creation software.From script to final cut."],
+      ["h2", "Hook"],
+      ["h2", "Script59 words \u00b7 0:24"],
+      ["h2", "Keep the work together."],
+      ["h2", "Hook"],
+      ["h2", "Keep your point.Lose the extra takes."],
+      ["h2", "Know what\u2019s ready.Know what comes next."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/products/studio/pricing": {
+    "title": "Yapper Studio pricing: plans and AI credits | Yapper",
+    "desc": "Yapper Studio plans from $19 a month, billed monthly or yearly. Each includes credits for AI scripts, transcription, one-click edits, thumbnails and publishing copy.",
+    "h": [
+      ["h1", "Yapper Studio pricing"],
+      ["h2", "Starter"],
+      ["h2", "Creator"],
+      ["h2", "Pro"],
+      ["h2", "What credits pay for"],
+      ["h2", "What does one video use?"],
+      ["h2", "Add credits when you need them"],
+      ["h2", "Billing details"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features": {
+    "title": "Yapper Studio features for scripted video | Yapper",
+    "desc": "Everything in Yapper Studio: idea capture, AI script writing, teleprompter recording, transcript video editing, captions, a content calendar and social publishing.",
+    "h": [
+      ["h1", "Yapper Studio features"],
+      ["h2", "Capture and write"],
+      ["h2", "Record"],
+      ["h2", "Edit"],
+      ["h2", "Plan and publish"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/idea-capture": {
+    "title": "Content idea capture & generator for creators | Yapper",
+    "desc": "Capture content ideas by voice, text, or link. Yapper organizes and expands every idea into hooks, outlines, and scripts.",
+    "h": [
+      ["h1", "Capture content ideas. Turn them into your next video."],
+      ["h2", "A thought worth keeping."],
+      ["h2", "Start with the thought you already had."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/ai-script-writer": {
+    "title": "AI video script generator for Reels & Shorts | Yapper",
+    "desc": "Generate short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
+    "h": [
+      ["h1", "An AI video script generator that starts with your ideas."],
+      ["h2", "Hook"],
+      ["h2", "Script59 words \u00b7 0:24"],
+      ["h2", "Structure for your point. Room for your voice."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/teleprompter-recorder": {
+    "title": "Teleprompter app & video recorder for creators | Yapper",
+    "desc": "Record creator videos with a built-in teleprompter, camera controls, portrait guides, and a direct path into editing.",
+    "h": [
+      ["h1", "A teleprompter app that keeps you ready to record."],
+      ["h2", "Find your reading pace."],
+      ["h2", "Keep your place without losing your delivery."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/transcript-video-editor": {
+    "title": "Transcript video editor for talking-head videos | Yapper",
+    "desc": "Edit talking-head videos by editing text. Remove mistakes, filler words, silences, and retakes with Yapper's transcript video editor.",
+    "h": [
+      ["h1", "A transcript video editor. Cut the words. Keep the story."],
+      ["h2", "Find the moment by finding the words."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/automatic-captions": {
+    "title": "Video caption generator & automatic captions | Yapper",
+    "desc": "Create word-synced, styled captions for short-form videos and improve spelling with a personal transcription dictionary.",
+    "h": [
+      ["h1", "A video caption generator with timing built in."],
+      ["h2", "Captions that follow your voice."],
+      ["h2", "The transcript does more than help you cut."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/social-publishing": {
+    "title": "Social media scheduler for video creators | Yapper",
+    "desc": "Prepare and publish short-form video across social platforms with per-platform captions, thumbnails, and connected accounts.",
+    "h": [
+      ["h1", "A social media scheduler connected to your video."],
+      ["h2", "Give each destination the right version."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/content-calendar": {
+    "title": "Content calendar & planning tool for creators | Yapper",
+    "desc": "Plan short-form video with a content calendar connected to your ideas, scripts, recordings, production status, and social posts.",
+    "h": [
+      ["h1", "A content calendar for the videos you\u2019re making."],
+      ["h2", "October 2026"],
+      ["h2", "See the plan and the work behind it."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/features/content-library": {
+    "title": "Content library for video projects & scripts | Yapper",
+    "desc": "Organize content ideas, scripts, video takes, edits, and publishing status in one connected creator content library.",
+    "h": [
+      ["h1", "A content library for ideas, scripts, and videos."],
+      ["h2", "Content library"],
+      ["h2", "Keep the context, not just the file."],
+      ["h2", "How it works"],
+      ["h2", "A few useful details"],
+      ["h2", "See how it all fits together."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/products/train": {
+    "title": "Public speaking app with practice & AI coaching | Yapper",
+    "desc": "Build speaking confidence with random topics, freestyle practice, interview prompts, and AI feedback. Start practicing online with Yapper Train, free and without an account.",
+    "h": [
+      ["h1", "Get comfortablebeing heard."],
+      ["h2", "Real life doesn\u2019t comewith a script."],
+      ["h2", "Don\u2019t just hear yourself.Understand yourself."],
+      ["h2", "A little warm-up.A clearer head."],
+      ["h2", "Your next conversationstarts here."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/products/train/pricing": {
+    "title": "Yapper Train pricing: free practice and Train Plus | Yapper",
+    "desc": "Speaking practice in Yapper Train is free and needs no account. Train Plus adds 40 AI feedback sessions a month for $9, or less billed yearly.",
+    "h": [
+      ["h1", "Yapper Train pricing"],
+      ["h2", "Free practice"],
+      ["h2", "Train Plus"],
+      ["h2", "What one session gives you"],
+      ["h2", "Need more sessions this month?"],
+      ["h2", "Billing details"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/products/train/ai-feedback": {
+    "title": "AI speech coach: feedback on your speaking practice | Yapper",
+    "desc": "Record a practice answer in Yapper Train and get AI feedback: a transcript, five scores, corrections in your own words and one thing to work on next. First session free.",
+    "h": [
+      ["h1", "An AI speech coach for your practice"],
+      ["h2", "What your answer is scored on"],
+      ["h2", "How it works"],
+      ["h2", "Questions about feedback"],
+      ["h2", "Make your next practice session more useful."],
+      ["h2", "Start with a one-minute speaking exercise."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training": {
+    "title": "Free speaking practice: exercises you can start now | Yapper",
+    "desc": "Practice speaking online with a random topic generator, interview questions, read-aloud passages and conversation scenarios. Timed, free, and no account needed.",
+    "h": [
+      ["h1", "What would you liketo practice?"],
+      ["h2", "Everyday practice"],
+      ["h2", "Real situations"],
+      ["h2", "How each exercise works"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/random-topic-generator": {
+    "title": "Free Random Topic Generator for Speech Practice | Yapper",
+    "desc": "Free random topic generator for impromptu speaking practice, table topics, and speech prompts. Built-in timer, optional recording, and no sign-up.",
+    "h": [
+      ["h1", "Random topic generator for speaking practice"],
+      ["h2", "A little surprise. A minute to speak."],
+      ["h2", "Make each attempt useful."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/explain-after-reading": {
+    "title": "Explain After Reading: Free Speaking Practice | Yapper",
+    "desc": "Free explain-after-reading speech drill. Read a short passage, hide it, and explain the main idea out loud with a timer and optional recording.",
+    "h": [
+      ["h1", "Explain after reading practice"],
+      [
+        "h2",
+        "We tend to treat attention as free, but it is the one resource you spend every waking minute whether you notice or not. Every notification, open tab, and unfinished thought takes a small cut. The real cost is not the interruption itself; it is the time your brain needs afterward to find its way back to what it was doing. Deep work is less about trying harder and more about protecting long, unbroken stretches where your attention can stay pointed at one thing. Guard those stretches like they are expensive, because in the only currency that actually matters, they are."
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/read-aloud": {
+    "title": "Read Aloud: Free Speaking Practice | Yapper",
+    "desc": "Free read-aloud speaking practice. Train articulation, pacing, and emphasis by reading passages out loud with a timer and optional camera recording.",
+    "h": [
+      ["h1", "Read aloud speaking practice"],
+      [
+        "h2",
+        "Good speakers are not the ones who never pause. They are the ones who pause on purpose. They let the important word land, take a breath the listener can follow, and trust that a clear sentence does not need to be a fast one. When you slow down at the right moment, people lean in. When you rush, they fall behind, and the point you cared about most slips by unnoticed."
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/interview-prep": {
+    "title": "Interview Answer Practice: Free & No Sign-Up | Yapper",
+    "desc": "Free interview answer practice. Get behavioral questions, set a timer, and record concise STAR-style answers, then review your delivery.",
+    "h": [
+      ["h1", "Interview answer practice"],
+      [
+        "h2",
+        "Describe a project where the goal was unclear. How did you create clarity and move the work forward?"
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/dating": {
+    "title": "Dating & Social Conversation Practice | Yapper",
+    "desc": "Free dating and social conversation practice. Rehearse warm, playful, specific answers with a timer and optional recording, no sign-up.",
+    "h": [
+      ["h1", "Dating & social conversation practice"],
+      [
+        "h2",
+        "Tell a 45-second story about a tiny inconvenience that reveals something charming or funny about you."
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/conflict": {
+    "title": "Conflict Handling Speaking Practice | Yapper",
+    "desc": "Free conflict practice. Rehearse calm, direct responses to tense scenarios out loud with a timer and optional recording, no sign-up.",
+    "h": [
+      ["h1", "Conflict handling practice"],
+      [
+        "h2",
+        "Set a boundary with someone who keeps interrupting you. Be direct, respectful, and brief."
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/creator-camera-drills": {
+    "title": "Creator Camera Drills: Practice On-Camera | Yapper",
+    "desc": "Free creator camera drills. Practice hooks, payoffs, and crisp examples on camera with a timer, then rewatch your takes. No sign-up.",
+    "h": [
+      ["h1", "Creator camera drills"],
+      [
+        "h2",
+        "Pitch one saved content idea with a hook, one useful payoff, and a concrete example."
+      ],
+      ["h2", "How to practice"],
+      ["h2", "What you\u2019ll work on"],
+      ["h2", "Common questions"],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/training/fluency-on-steroids": {
+    "title": "12-minute speaking warm-up | Yapper",
+    "desc": "Four short exercises for a clear opening, controlled pace, vocal expression, and a concise summary before speaking practice.",
+    "h": [
+      ["h1", "A 12-minute speaking warmup."],
+      ["h2", "Clear the freeze label"],
+      ["h2", "Read with a changing pace"],
+      ["h2", "Smooth pitch gliding"],
+      ["h2", "The 3-step summary"],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/freestyle-speech": {
+    "title": "Freestyle Speech Practice | Yapper",
+    "desc": "Practice freestyle impromptu speaking with a timer. No topic, no prompts. Just set your time and start talking. Free, no sign-up.",
+    "h": [
+      ["h1", "Freestyle speaking practice"],
+      ["h2", "Follow a thought. See where it takes you."],
+      ["h2", "Make each attempt useful."],
+      ["h2", "Get early access to Yapper Studio."],
+      ["h2", "Yapper Train"],
+      ["h2", "Yapper Studio"],
+      ["h2", "Resources"]
+    ]
+  },
+  "/tools": {
+    "title": "Free Tools for Talking to Camera | Yapper",
+    "desc": "Free, no-sign-up creator tools: a words-per-minute calculator, a teleprompter recorder, and a transcript-based video editor. Plan, record, and edit in your browser.",
+    "h": [
+      ["h1", "Free tools for talking to camera"],
+      ["h2", "Words per minute calculator"]
+    ]
+  },
+  "/tools/words-per-minute": {
+    "title": "Words Per Minute Calculator (Speaking Time) | Yapper",
+    "desc": "Free words-per-minute calculator: paste a script to get its spoken length, or find how many words fit a target time at slow, conversational, or fast pace.",
+    "h": [
+      ["h1", "Words per minute calculator"],
+      ["h2", "Questions"]
+    ]
+  },
+  "/blog": {
+    "title": "Speaking guides and practice ideas | Yapper",
+    "desc": "Tips, tactics, and practical advice for improving your public speaking and making the most of every practice session.",
+    "h": [["h1", "Speaking tips & tactics"]]
+  },
+  "/privacy": {
+    "title": "Privacy Policy | Yapper",
+    "desc": "How Yapper, by OCX Software Inc., collects, uses, shares, and protects your data, including data from connected social platforms.",
+    "h": [
+      ["h1", "Privacy Policy"],
+      ["h2", "1. Information we collect"],
+      ["h2", "2. How we use your information"],
+      ["h2", "3. AI processing"],
+      ["h2", "4. How we share information (service providers)"],
+      ["h2", "5. Connected social platforms"],
+      ["h2", "6. Data retention"],
+      ["h2", "7. Your rights and choices"],
+      ["h2", "8. Security"],
+      ["h2", "9. Cookies"],
+      ["h2", "10. Children"],
+      ["h2", "11. International users"],
+      ["h2", "12. Changes to this policy"]
+    ]
+  },
+  "/terms": {
+    "title": "Terms of Service | Yapper",
+    "desc": "The terms that govern your use of Yapper, the content creation and cross-posting app by OCX Software Inc.",
+    "h": [
+      ["h1", "Terms of Service"],
+      ["h2", "1. Who we are"],
+      ["h2", "2. Eligibility and accounts"],
+      ["h2", "3. Subscriptions, credits, and billing"],
+      ["h2", "4. Your content"],
+      ["h2", "5. AI-generated output"],
+      ["h2", "6. Connecting social platforms"],
+      ["h2", "7. Acceptable use"],
+      ["h2", "8. Intellectual property"],
+      ["h2", "9. Termination"],
+      ["h2", "10. Disclaimers and limitation of liability"],
+      ["h2", "11. Indemnification"],
+      ["h2", "12. Changes and governing law"]
+    ]
+  }
+}

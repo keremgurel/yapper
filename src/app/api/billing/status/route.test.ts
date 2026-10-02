@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getBalance: vi.fn(),
   getBillingState: vi.fn(),
   getStorageBytes: vi.fn(),
+  getTrainSpendable: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
@@ -14,6 +15,9 @@ vi.mock("@/lib/db/billing", () => ({
 vi.mock("@/lib/db/credits", () => ({ getBalance: mocks.getBalance }));
 vi.mock("@/lib/db/users", () => ({
   getStorageBytes: mocks.getStorageBytes,
+}));
+vi.mock("@/lib/db/train-wallet", () => ({
+  getTrainSpendable: mocks.getTrainSpendable,
 }));
 
 import { GET } from "./route";
@@ -25,12 +29,17 @@ beforeEach(() => {
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.getBalance.mockResolvedValue(88);
   mocks.getStorageBytes.mockResolvedValue(3 * 1024 * 1024 * 1024);
-  mocks.getBillingState.mockResolvedValue({
-    stripeCustomerId: "cus_test",
-    subscriptionStatus: "active",
-    plan: "creator_monthly",
-    currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
-  });
+  mocks.getTrainSpendable.mockResolvedValue(3);
+  mocks.getBillingState.mockImplementation(async (_id, product = "studio") =>
+    product === "train"
+      ? null
+      : {
+          stripeCustomerId: "cus_test",
+          subscriptionStatus: "active",
+          plan: "creator_monthly",
+          currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
+        },
+  );
 });
 
 afterEach(() => {
@@ -69,6 +78,34 @@ describe("GET /api/billing/status", () => {
       entitled: false,
       storageQuotaBytes: 0,
       balance: 88,
+    });
+  });
+
+  it("reports Train separately from Studio", async () => {
+    const withoutPlan = await (await GET()).json();
+    expect(withoutPlan.train).toMatchObject({
+      entitled: false,
+      plan: null,
+      balance: 3,
+      unlimited: false,
+    });
+
+    mocks.getBillingState.mockImplementation(async (_id, product = "studio") =>
+      product === "train"
+        ? {
+            stripeCustomerId: "cus_test",
+            subscriptionStatus: "active",
+            plan: "train_plus_monthly",
+            currentPeriodEnd: new Date("2026-10-20T00:00:00.000Z"),
+          }
+        : null,
+    );
+    const withPlan = await (await GET()).json();
+    expect(withPlan.entitled).toBe(false);
+    expect(withPlan.train).toMatchObject({
+      entitled: true,
+      plan: "train_plus_monthly",
+      unlimited: true,
     });
   });
 });

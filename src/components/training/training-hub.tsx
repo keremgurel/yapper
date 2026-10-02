@@ -14,6 +14,7 @@ import {
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import TrainingWorkspace from "./training-workspace";
 import { trainingModes, getTrainingMode } from "@/data/training-modes";
+import { trainPractice } from "@/data/site-navigation";
 import styles from "./training-workspace.module.css";
 
 const icons = [
@@ -102,9 +103,24 @@ export default function TrainingHub({ initialMode }: { initialMode?: string }) {
               </Link>
             </div>
             <p className={styles.accessNote}>
-              Prompts and practice are free. Camera and microphone are optional.
-              AI coaching uses credits.
+              Prompts and practice are free. Camera and microphone are optional.{" "}
+              <Link href="/products/train/ai-feedback" className="underline">
+                AI feedback
+              </Link>{" "}
+              is optional too, and your first session is free.
             </p>
+            <nav className={styles.guides} aria-labelledby="exercise-guides">
+              <h2 id="exercise-guides">How each exercise works</h2>
+              <ul>
+                {trainPractice
+                  .flatMap((column) => column.links)
+                  .map((link) => (
+                    <li key={link.href}>
+                      <Link href={link.href}>{link.label}</Link>
+                    </li>
+                  ))}
+              </ul>
+            </nav>
           </>
         )}
       </div>

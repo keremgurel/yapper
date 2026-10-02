@@ -4,10 +4,7 @@ import { Check } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import FeaturePreview from "@/components/marketing/feature-preview";
-import {
-  StudioSignup,
-  TrainingCta,
-} from "@/components/marketing/product-sections";
+import { StudioSignup } from "@/components/marketing/product-sections";
 import { Button } from "@/components/ui/button";
 import {
   getMarketingFeature,
@@ -15,7 +12,6 @@ import {
 } from "@/data/marketing-features";
 import { featureDetails } from "@/data/feature-details";
 import { relatedFeatures } from "@/data/marketing-resources";
-import SpeakingGuides from "@/components/marketing/speaking-guides";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import { SITE_URL, safeJsonLdStringify } from "@/lib/json-ld";
 
@@ -46,8 +42,6 @@ export default async function FeaturePage({
   const feature = getMarketingFeature(slug);
   const detail = featureDetails[slug];
   if (!feature || !detail) notFound();
-  const training = slug === "creator-feedback";
-  const product = training ? "train" : "studio";
   const related = relatedFeatures[slug] ?? [];
   return (
     <MarketingLayout>
@@ -62,9 +56,9 @@ export default async function FeaturePage({
             description: feature.seoDescription,
             about: {
               "@type": "SoftwareApplication",
-              "@id": `${SITE_URL}/products/${product}#software`,
-              name: training ? "Yapper Train" : "Yapper Studio",
-              url: `${SITE_URL}/products/${product}`,
+              "@id": `${SITE_URL}/products/studio#software`,
+              name: "Yapper Studio",
+              url: `${SITE_URL}/products/studio`,
             },
           }),
         }}
@@ -73,11 +67,8 @@ export default async function FeaturePage({
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              {
-                label: training ? "Yapper Train" : "Yapper Studio",
-                href: `/products/${product}`,
-              },
-              ...(!training ? [{ label: "Features", href: "/features" }] : []),
+              { label: "Yapper Studio", href: "/products/studio" },
+              { label: "Features", href: "/features" },
               { label: feature.shortTitle, href: `/features/${slug}` },
             ]}
           />
@@ -87,16 +78,10 @@ export default async function FeaturePage({
               <p className="marketing-lede">{feature.description}</p>
               <div className="marketing-actions">
                 <Button asChild>
-                  <Link href={training ? "/training" : "#waitlist"}>
-                    {training ? "Start practicing" : "Join the Studio waitlist"}
-                  </Link>
+                  <Link href="#waitlist">Join the Studio waitlist</Link>
                 </Button>
               </div>
-              <p className="marketing-note">
-                {training
-                  ? "Free practice. AI coaching uses credits."
-                  : "In private testing."}
-              </p>
+              <p className="marketing-note">In private beta.</p>
             </div>
             <FeaturePreview slug={slug} />
           </div>
@@ -148,32 +133,35 @@ export default async function FeaturePage({
           </div>
         </div>
       </section>
-      {!training && (
-        <section className="marketing-section marketing-rule">
-          <div className="marketing-container">
-            <h2 className="type-h2">See how it all fits together.</h2>
-            <p className="type-description mt-4">
-              Connect this step to the rest of your content creation workflow.
-            </p>
-            <div className="marketing-actions">
-              {related.map((relatedSlug) => (
-                <Link
-                  href={`/features/${relatedSlug}`}
-                  className="marketing-text-link"
-                  key={relatedSlug}
-                >
-                  {getMarketingFeature(relatedSlug)!.shortTitle}
-                </Link>
-              ))}
-              <Link href="/products/studio" className="marketing-text-link">
-                Explore the full Studio workflow
+      <section className="marketing-section marketing-rule">
+        <div className="marketing-container">
+          <h2 className="type-h2">See how it all fits together.</h2>
+          <p className="type-description mt-4">
+            Connect this step to the rest of your content creation workflow.
+          </p>
+          <div className="marketing-actions">
+            {related.map((relatedSlug) => (
+              <Link
+                href={`/features/${relatedSlug}`}
+                className="marketing-text-link"
+                key={relatedSlug}
+              >
+                {getMarketingFeature(relatedSlug)!.shortTitle}
               </Link>
-            </div>
+            ))}
+            <Link href="/products/studio" className="marketing-text-link">
+              Explore the full Studio workflow
+            </Link>
+            <Link
+              href="/products/studio/pricing"
+              className="marketing-text-link"
+            >
+              Studio pricing
+            </Link>
           </div>
-        </section>
-      )}
-      {training && <SpeakingGuides />}
-      {training ? <TrainingCta /> : <StudioSignup />}
+        </div>
+      </section>
+      <StudioSignup />
     </MarketingLayout>
   );
 }

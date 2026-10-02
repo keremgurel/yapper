@@ -8,11 +8,11 @@ import {
 } from "@/lib/blog";
 
 export const metadata: Metadata = {
-  title: "Blog",
+  title: "Speaking guides and practice ideas",
   description:
     "Tips, tactics, and practical advice for improving your public speaking and making the most of every practice session.",
   alternates: {
-    canonical: "/blog",
+    canonical: "https://ypr.app/blog",
   },
   openGraph: {
     title: "Yapper Blog",
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog | Yapper",
+    title: "Speaking guides and practice ideas | Yapper",
     description:
       "Practical speaking tips, practice strategies, and confidence-building tactics.",
   },

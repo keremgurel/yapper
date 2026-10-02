@@ -5,7 +5,7 @@ import {
   PracticeErrorFallback,
 } from "@/components/ErrorBoundary";
 import MarketingLayout from "@/components/marketing/marketing-layout";
-import { StudioSignup } from "@/components/marketing/product-sections";
+import TrainNextStep from "@/components/training/train-next-step";
 import PracticeStage from "@/components/practice-stage";
 
 import DrillPracticeHero from "@/components/training/drill-practice-hero";
@@ -71,7 +71,7 @@ export default function DrillPracticePage({
 
       <DrillSeoSections drill={drill} />
 
-      <StudioSignup />
+      <TrainNextStep />
     </MarketingLayout>
   );
 }

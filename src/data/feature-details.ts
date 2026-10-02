@@ -108,26 +108,6 @@ export const featureDetails: Record<string, FeatureDetail> = {
       },
     ],
   },
-  "creator-feedback": {
-    preview: "Record",
-    heading: "One useful change for the next attempt.",
-    explanation:
-      "Review your delivery while the recording is fresh. Use coaching on pacing, pauses, wording, and clarity to choose a specific improvement, then practice it in another take. Feedback guides practice; it is not a guarantee of results.",
-    availability:
-      "Yapper Train’s practice tools are available now. AI coaching requires an account and uses credits. Studio’s connected creation workflow remains in private testing.",
-    questions: [
-      {
-        question: "Is feedback part of Train or Studio?",
-        answer:
-          "Speaking improvement belongs to Yapper Train. Creators can use that practice and feedback to work on delivery, while Studio provides the content creation workflow.",
-      },
-      {
-        question: "Is AI feedback free?",
-        answer:
-          "Practice itself is free. AI feedback uses credits; current membership, trial, and credit details are on the pricing page.",
-      },
-    ],
-  },
   "social-publishing": {
     preview: "Publish",
     heading: "Give each destination the right version.",

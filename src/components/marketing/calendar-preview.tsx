@@ -24,7 +24,7 @@ export default function CalendarPreview() {
     >
       <div aria-hidden="true">
         <div className="studio-panel-heading">
-          <h2>October 2026</h2>
+          <p className="demo-heading">October 2026</p>
           <span>Content plan</span>
         </div>
         <div className="calendar-demo-month" inert>

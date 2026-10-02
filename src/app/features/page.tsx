@@ -2,15 +2,16 @@ import Link from "next/link";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import { StudioSignup } from "@/components/marketing/product-sections";
-import { featureGroups, trainFeatures } from "@/data/marketing-navigation";
+import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 
 export const metadata = marketingMetadata(
-  "Content creation & speaking practice features",
-  "Explore idea capture, AI scripts, teleprompter recording, transcript editing, captions, content planning, and social publishing in Yapper Studio. Build speaking confidence with Yapper Train.",
+  "Yapper Studio features for scripted video",
+  "Everything in Yapper Studio: idea capture, AI script writing, teleprompter recording, transcript video editing, captions, a content calendar and social publishing.",
   "/features",
 );
+
 export default function FeaturesPage() {
   return (
     <MarketingLayout>
@@ -18,19 +19,17 @@ export default function FeaturesPage() {
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              { label: "Products", href: "/products" },
+              { label: "Yapper Studio", href: "/products/studio" },
               { label: "Features", href: "/features" },
             ]}
           />
-          <h1 className="type-h1 max-w-2xl">
-            Create your next video. Practice your next conversation.
-          </h1>
+          <h1 className="type-h1 max-w-2xl">Yapper Studio features</h1>
           <p className="marketing-lede">
-            Yapper Studio takes you from idea to published video. Yapper Train
-            helps you build the confidence to say it.
+            Studio covers a video from the first note to the published post.
+            Each feature below has its own page with a working example.
           </p>
           <p className="marketing-note">
-            Studio is in private testing.{" "}
+            Studio is in private beta.{" "}
             <Link
               href="/products/studio#waitlist"
               className="underline underline-offset-4"
@@ -40,9 +39,6 @@ export default function FeaturesPage() {
             .
           </p>
           <nav aria-label="Feature categories" className="marketing-actions">
-            <Link className="marketing-text-link mr-5" href="#train">
-              Yapper Train
-            </Link>
             {featureGroups.map((group) => (
               <Link
                 key={group.id}
@@ -55,8 +51,7 @@ export default function FeaturesPage() {
           </nav>
         </div>
       </section>
-      <section id="studio" className="marketing-container pb-16">
-        <p className="marketing-product-label">Yapper Studio</p>
+      <div className="marketing-container pb-16">
         {featureGroups.map((group) => (
           <section
             key={group.id}
@@ -83,32 +78,7 @@ export default function FeaturesPage() {
             </div>
           </section>
         ))}
-      </section>
-      <section id="train" className="marketing-section marketing-rule">
-        <div className="marketing-container">
-          <p className="marketing-product-label">Yapper Train</p>
-          <div className="marketing-feature-group">
-            <div>
-              <h2 className="type-h2">Speak with more confidence.</h2>
-              <p className="type-description mt-4">
-                Practice out loud, work on your delivery, and learn what to
-                improve. Free practice tools, with optional AI coaching.
-              </p>
-            </div>
-            <div className="marketing-feature-list">
-              {trainFeatures.map((feature) => (
-                <Link key={feature.href} href={feature.href}>
-                  <h3 className="type-h3">{feature.title}</h3>
-                  <p className="type-description">{feature.description}</p>
-                  <span className="marketing-text-link mt-4">
-                    Explore {feature.title.toLowerCase()}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
       <StudioSignup />
     </MarketingLayout>
   );

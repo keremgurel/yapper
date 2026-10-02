@@ -5,12 +5,15 @@ import { ensureUser } from "@/lib/db/users";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { CREDIT_PACKS, planByKey, TRIAL_DAYS } from "@/lib/billing/plans";
 import { isEntitled } from "@/lib/billing/entitlement";
+import { PRODUCT_PATHS } from "@/lib/billing/products";
 
 export const runtime = "nodejs";
 
 /**
- * Start a Stripe Checkout: a subscription (with a free trial) for `{ plan }`, or
- * a one-time credit pack for `{ pack }`. We create/reuse the Stripe customer up
+ * Start a Stripe Checkout: a subscription for `{ plan }` (with a free trial
+ * where the plan has one), or a one-time credit pack for `{ pack }`. Each plan
+ * and pack belongs to one product, and only that product's subscription
+ * decides whether the purchase is allowed. We create/reuse the Stripe customer up
  * front and store its id, so subscription webhooks can map back to the user
  * even if they arrive before checkout.session.completed. Returns { url }.
  */
@@ -33,7 +36,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   const stripe = getStripe();
-  const state = await getBillingState(userId);
+  const product = (plan ?? pack!).product;
+  const state = await getBillingState(userId, product);
   if (plan && isEntitled(state)) {
     return Response.json({ error: "already_subscribed" }, { status: 409 });
   }
@@ -59,7 +63,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Only offer the free trial to users who have never had a subscription, so it
   // can't be farmed by cancel-and-resubscribe. subscriptionStatus is null until
   // the first subscription; any prior value (even "canceled") means no trial.
-  const trialEligible = !state?.subscriptionStatus;
+  const trialEligible = !!plan?.trial && !state?.subscriptionStatus;
 
   const origin = new URL(req.url).origin;
   const common = {
@@ -70,12 +74,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     // purchase. Save the collected address so tax uses it for renewals too.
     customer_update: { address: "auto" },
     billing_address_collection: "required",
-    // Land on the training dashboard, not Studio. Studio sits behind a shared
-    // password while it is unfinished, so sending a customer there at the exact
-    // moment their card clears would greet them with a password prompt for a
-    // product they were never sold.
-    success_url: `${origin}/progress?checkout=success`,
-    cancel_url: `${origin}/pricing?checkout=cancel`,
+    success_url: `${origin}${PRODUCT_PATHS[product].afterCheckout}`,
+    cancel_url: `${origin}${PRODUCT_PATHS[product].pricing}?checkout=cancel`,
   } as const;
 
   if (plan) {
@@ -88,10 +88,10 @@ export async function POST(req: NextRequest): Promise<Response> {
       line_items: [{ price: plan.priceId, quantity: 1 }],
       subscription_data: {
         ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
-        metadata: { userId, creditGrantVersion: "2" },
+        metadata: { userId, creditGrantVersion: "2", product },
       },
       payment_method_collection: "always",
-      metadata: { userId, kind: "subscription", plan: plan.key },
+      metadata: { userId, kind: "subscription", plan: plan.key, product },
       // Discounts must be reviewed against credit costs before enabling them.
     });
     return Response.json({ url: session.url });
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     ...common,
     mode: "payment",
     line_items: [{ price: pack!.priceId, quantity: 1 }],
-    metadata: { userId, kind: "pack", pack: pack!.key },
+    metadata: { userId, kind: "pack", pack: pack!.key, product },
   });
   return Response.json({ url: session.url });
 }

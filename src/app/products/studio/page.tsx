@@ -8,7 +8,7 @@ import {
   WorkflowLinks,
 } from "@/components/marketing/product-sections";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
-import { GlassyButton } from "@/components/ui/glassy-button";
+import { Button } from "@/components/ui/button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import { ProductJsonLd } from "@/app/home-json-ld";
 
@@ -25,13 +25,12 @@ export default function StudioProductPage() {
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              { label: "Products", href: "/products" },
+              { label: "Home", href: "/" },
               { label: "Yapper Studio", href: "/products/studio" },
             ]}
           />
           <div className="marketing-hero-grid">
-            <div>
-              <p className="marketing-product-label">Yapper Studio</p>
+            <div className="marketing-hero-centered">
               <h1 className="type-display">
                 Video creation software.
                 <br />
@@ -43,15 +42,18 @@ export default function StudioProductPage() {
                 the final post.
               </p>
               <div className="marketing-actions">
-                <GlassyButton href="#waitlist" height={48}>
-                  Join the Studio waitlist
-                </GlassyButton>
-                <Link className="marketing-text-link" href="/features">
-                  Explore the features
-                </Link>
+                <Button asChild size="lg">
+                  <Link href="#waitlist">Join the Studio waitlist</Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <Link href="/features">See all features</Link>
+                </Button>
               </div>
               <p className="marketing-note">
-                In private testing. Public access is coming.
+                In private beta.{" "}
+                <Link href="/products/studio/pricing" className="underline">
+                  See pricing
+                </Link>
               </p>
             </div>
             <StudioPreview initialStep="Script" />

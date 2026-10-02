@@ -31,7 +31,7 @@ export default function YapperProductPage() {
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              { label: "Products", href: "/products" },
+              { label: "Home", href: "/" },
               { label: "Yapper Train", href: "/products/train" },
             ]}
           />
@@ -238,8 +238,11 @@ export default function YapperProductPage() {
                 <span>One useful focus for your next attempt</span>
               </li>
             </ul>
-            <Link href="/pricing" className="marketing-text-link">
-              Explore plans and coaching credits <ArrowUpRight size={15} />
+            <Link
+              href="/products/train/ai-feedback"
+              className="marketing-text-link"
+            >
+              How AI feedback works <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>
@@ -325,11 +328,11 @@ export default function YapperProductPage() {
               <div>
                 <strong>Get coaching when you want it.</strong>
                 <p>
-                  Sign in for AI feedback with credits shared across Yapper
-                  Train and Yapper Studio.
+                  Your first feedback session is free when you sign up. Train
+                  Plus makes it unlimited.
                 </p>
-                <Link href="/pricing">
-                  See plans and credits <ArrowUpRight size={15} />
+                <Link href="/products/train/pricing">
+                  See Train pricing <ArrowUpRight size={15} />
                 </Link>
               </div>
             </div>

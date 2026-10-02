@@ -3,11 +3,9 @@ import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { TRAINING_FEEDBACK_CREDITS } from "@/lib/db/constants";
-import {
-  deductWithinTx,
-  getBalance,
-  InsufficientCreditsError,
-} from "@/lib/db/credits";
+import { InsufficientCreditsError } from "@/lib/db/credits";
+import { deductTrainWithinTx, getTrainSpendable } from "@/lib/db/train-wallet";
+import { resolveTrainFeedbackAccess } from "@/lib/training-feedback/access";
 import { submissions } from "@/lib/db/schema";
 import { ensureUser } from "@/lib/db/users";
 import { computeMetrics, type FeedbackWord } from "@/lib/feedback/metrics";
@@ -114,20 +112,14 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 
   await ensureUser(userId);
-  // Training feedback is metered by credits alone, with no separate
-  // subscription gate. The rest of the AI surface calls canUsePremium first,
-  // but doing that here would make the welcome grant unspendable: a brand new
-  // account has 3 credits and no subscription, so the very rep the onboarding
-  // promises would be free would come back as not_entitled. Credits are the
-  // paywall here. The only ways to hold one are the one-time welcome grant,
-  // a subscription, or a top-up pack (itself subscriber-only), so nobody gets
-  // a second free rep out of this.
-  //
-  // Fast reject before spending compute; the debit at the end re-checks the
-  // balance atomically, so this is only a courtesy early-out.
-  if ((await getBalance(userId)) < TRAINING_FEEDBACK_CREDITS) {
-    return Response.json({ error: "insufficient_credits" }, { status: 402 });
-  }
+  // Train Plus subscribers get unlimited feedback up to a fair-use ceiling.
+  // Without a plan, credits are the paywall: a brand new account holds exactly
+  // one session's worth from the welcome grant, so the first rep is free and
+  // there is no second one. Decided before any provider work; the debit at the
+  // end re-checks the balance atomically.
+  const access = await resolveTrainFeedbackAccess(userId);
+  if (access instanceof Response) return access;
+  const cost = access === "plan" ? 0 : TRAINING_FEEDBACK_CREDITS;
   const deepgramKey = process.env.DEEPGRAM_API_KEY;
   if (!deepgramKey || !process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
@@ -218,14 +210,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     // Charge and mark complete in one transaction: a crash before commit rolls
     // back the debit and the result together.
     const balance = await db.transaction(async (tx) => {
-      const bal = await deductWithinTx(tx, userId, TRAINING_FEEDBACK_CREDITS, {
-        submissionId: submission.id,
-      });
+      // A plan session costs nothing and writes no ledger entry.
+      const bal =
+        cost > 0
+          ? await deductTrainWithinTx(tx, userId, cost, {
+              submissionId: submission.id,
+            })
+          : await getTrainSpendable(userId);
       const completed = await tx
         .update(submissions)
         .set({
           status: "complete",
-          creditsCost: TRAINING_FEEDBACK_CREDITS,
+          creditsCost: cost,
           durationSec: record.metrics.durationSec,
           transcript,
           feedback: record,

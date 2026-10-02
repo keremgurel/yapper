@@ -1,0 +1,345 @@
+.showcase {
+  text-align: center;
+}
+.walkthrough {
+  margin-top: 28px;
+  text-align: left;
+}
+/* Stage names sit in the demo's own title bar, as quiet text. */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+.steps button {
+  min-height: 32px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: var(--subtle, var(--sg-text-muted));
+  font-size: 13px;
+  cursor: pointer;
+}
+.steps button:hover {
+  color: var(--ink, var(--sg-text));
+}
+.steps button[aria-current="step"] {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  color: var(--ink, var(--sg-text));
+  font-weight: 500;
+}
+/* Under the demo and aligned to its edges: what it is on the left, what to do
+   on the right. */
+.caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px 48px;
+  margin-top: 32px;
+  text-align: left;
+}
+.caption :global(.type-description) {
+  margin-top: 8px;
+  max-width: 52ch;
+  color: var(--sg-text-muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  gap: 12px;
+}
+/* Every Studio stage plays inside one frame of fixed height, so moving from
+   stage to stage never moves the page. */
+.studioFrame :global(.studio-showcase-screen) {
+  height: 700px;
+}
+
+/* Train keeps its own pastel field and dark ink in both themes. */
+.trainField {
+  --ink: #262331;
+  --subtle: #65606f;
+  padding: 44px 28px;
+  border-radius: 24px;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
+    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
+}
+.trainWindow {
+  max-width: 760px;
+  margin-inline: auto;
+  border: 1px solid #ffffffa8;
+  border-radius: 16px;
+  background: #faf9fd;
+  box-shadow:
+    0 16px 40px #3022431c,
+    0 2px 6px #3022430a;
+  overflow: hidden;
+}
+.trainHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 17px 22px;
+  border-bottom: 1px solid #29223512;
+  font-size: 14px;
+}
+.trainHeading strong {
+  font-weight: 650;
+  letter-spacing: -0.6px;
+}
+.trainStage {
+  overflow: hidden;
+  border-radius: 0 0 16px 16px;
+}
+.trainScene {
+  height: 400px;
+  padding: 28px 24px;
+}
+/* Every scene is one centered column, so the stage reads the same from step
+   to step and only the content changes. */
+.scene {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  height: 100%;
+  text-align: center;
+  animation: sceneIn 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.sceneTitle {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #ece9f4;
+  color: #4b4460;
+  font-size: 12px;
+  font-weight: 500;
+}
+.live {
+  background: #fdeceb;
+  color: #a03a34;
+}
+.live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d9493f;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.prompt {
+  max-width: 22ch;
+  font-size: clamp(22px, 2.3vw, 28px);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.7px;
+  text-wrap: balance;
+}
+.sceneNote {
+  color: var(--subtle);
+  font-size: 14px;
+}
+.start {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 20px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+.deck {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 460px;
+}
+.deck li {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid #29223518;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
+}
+.deck li svg {
+  color: #736092;
+}
+.deck li[data-picked="true"] {
+  animation: pick 600ms cubic-bezier(0.22, 1, 0.36, 1) 1400ms both;
+}
+.ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 104px;
+  height: 104px;
+}
+.ring svg {
+  position: absolute;
+  inset: 0;
+  fill: none;
+  stroke-width: 5;
+  transform: rotate(-90deg);
+}
+.ring circle:first-child {
+  stroke: #e6e2ee;
+}
+.ring circle:last-child {
+  stroke: #736092;
+  stroke-linecap: round;
+  stroke-dashoffset: var(--ring-to);
+  animation: sweep 4200ms linear both;
+}
+.ring span {
+  font-size: 26px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.8px;
+}
+.feedback {
+  align-items: stretch;
+  max-width: 480px;
+  margin-inline: auto;
+  text-align: left;
+}
+.feedback .chip {
+  align-self: flex-start;
+}
+.scores {
+  display: grid;
+  gap: 13px;
+}
+.scores > div {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+}
+.scores dd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.scores dd span {
+  flex: 1;
+  height: 8px;
+  border-radius: 8px;
+  background: #e6e2ee;
+  overflow: hidden;
+}
+.scores dd i {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #8f7bb5, #736092);
+  transform-origin: left;
+  animation: grow 800ms cubic-bezier(0.22, 1, 0.36, 1) var(--delay) both;
+}
+.scores dd b {
+  width: 22px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.focus {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f1eef7;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.focus strong {
+  font-weight: 600;
+}
+@keyframes sceneIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+@keyframes pick {
+  to {
+    border-color: #736092;
+    background: #efebf7;
+    box-shadow: 0 10px 24px -14px #30224366;
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+@keyframes sweep {
+  from {
+    stroke-dashoffset: var(--ring-from);
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene,
+  .deck li[data-picked="true"],
+  .ring circle:last-child,
+  .scores dd i,
+  .live i {
+    animation: none;
+  }
+  .deck li[data-picked="true"] {
+    border-color: #736092;
+    background: #efebf7;
+  }
+}
+@media (max-width: 700px) {
+  .caption {
+    flex-direction: column;
+  }
+  .trainHeading {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .trainField {
+    padding: 22px 14px;
+  }
+  .trainScene {
+    height: 440px;
+    padding: 22px 16px;
+  }
+  .deck li {
+    padding: 14px;
+    font-size: 14px;
+  }
+  .scores > div {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .studioFrame :global(.studio-showcase-screen) {
+    height: auto;
+    min-height: 560px;
+  }
+  .studioFrame :global(.studio-screen-heading) {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}

@@ -1,0 +1,294 @@
+.intro {
+  max-width: 720px;
+  margin-bottom: 40px;
+}
+.intro :global(.type-description) {
+  margin-top: 16px;
+  color: var(--sg-text-muted);
+}
+.bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(190px, auto);
+  gap: 14px;
+}
+.card {
+  border-radius: 20px;
+  overflow: hidden;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 36px -24px rgb(20 16 30 / 0.5);
+}
+.card a {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 22px;
+  text-decoration: none;
+  color: inherit;
+}
+.card a:focus-visible {
+  outline: 2px solid var(--sg-text);
+  outline-offset: -4px;
+  border-radius: 20px;
+}
+.card h3 {
+  margin-top: auto;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.card p {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+/* The three picture cards sit on Train's pastel fields with dark ink, in
+   both themes. */
+.generator,
+.interview,
+.aloud {
+  --ink: #262331;
+  --subtle: #5b5568;
+  color: var(--ink);
+}
+.generator p,
+.interview p,
+.aloud p {
+  color: var(--subtle);
+}
+.generator {
+  grid-column: span 2;
+  grid-row: span 2;
+  background:
+    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
+    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
+}
+.generator h3 {
+  margin-top: 0;
+  font-size: 26px;
+}
+.interview {
+  grid-column: span 2;
+  background:
+    radial-gradient(ellipse at 100% 0%, #f3cbb0 0%, transparent 65%), #f6e3d4;
+}
+.aloud {
+  background:
+    radial-gradient(ellipse at 0% 0%, #b4cec4 0%, transparent 70%), #e3ecdf;
+}
+.small {
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface);
+}
+.small svg {
+  color: var(--sg-text-muted);
+}
+.small p {
+  color: var(--sg-text-muted);
+}
+
+/* Warm-up: the whole routine on one bar, drills sized by their length. */
+.warmup {
+  grid-column: 1 / -1;
+  border: 1px solid var(--sg-border);
+  background: var(--sg-surface);
+}
+.warmup a {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: center;
+  gap: 40px;
+  padding: 26px;
+}
+.warmup h3 {
+  margin-top: 0;
+}
+.warmup p {
+  color: var(--sg-text-muted);
+}
+.routine {
+  display: flex;
+  gap: 6px;
+}
+.routine li {
+  flex-basis: 0;
+  min-width: 0;
+}
+.routine i {
+  display: block;
+  height: 8px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  background: #b9aee0;
+}
+.routine li:nth-child(2) i {
+  background: #9dbfb0;
+}
+.routine li:nth-child(3) i {
+  background: #eab995;
+}
+.routine li:nth-child(4) i {
+  background: #a9b9cc;
+}
+.routine span {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+.routine small {
+  display: block;
+  margin-top: 3px;
+  color: var(--sg-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Generator: a window where topics roll past, like the real reel. */
+.reel {
+  height: 96px;
+  margin: auto 0;
+  padding: 0 22px;
+  border-radius: 14px;
+  background: #faf9fd;
+  box-shadow: 0 10px 28px -16px #30224366;
+  overflow: hidden;
+}
+.reel > div {
+  animation: roll 12s cubic-bezier(0.7, 0, 0.2, 1) infinite;
+}
+.reel p {
+  display: flex;
+  align-items: center;
+  height: 96px;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(18px, 1.7vw, 23px);
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  line-height: 1.25;
+}
+@keyframes roll {
+  0%,
+  20% {
+    transform: translateY(0);
+  }
+  25%,
+  45% {
+    transform: translateY(-96px);
+  }
+  50%,
+  70% {
+    transform: translateY(-192px);
+  }
+  75%,
+  95% {
+    transform: translateY(-288px);
+  }
+  100% {
+    transform: translateY(-384px);
+  }
+}
+/* Interview: the question and the shape of an answer. */
+.bubbles {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.bubbles span {
+  padding: 10px 14px;
+  border-radius: 14px 14px 14px 4px;
+  background: #fff;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.bubbles span:last-child {
+  align-self: flex-end;
+  border-radius: 14px 14px 4px 14px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+}
+/* Read aloud: a voice. */
+.wave {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 56px;
+  margin-bottom: 16px;
+}
+.wave i {
+  flex: 1;
+  max-width: 5px;
+  border-radius: 4px;
+  background: #627969;
+  animation: breathe 1.4s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+@keyframes breathe {
+  to {
+    transform: scaleY(0.45);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .reel > div,
+  .wave i {
+    animation: none;
+  }
+  .card {
+    transition: none;
+  }
+  .card:hover {
+    transform: none;
+  }
+}
+@media (max-width: 1000px) {
+  .bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .generator {
+    grid-row: span 1;
+    min-height: 300px;
+  }
+  .warmup a {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+}
+@media (max-width: 560px) {
+  .bento {
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+  .small a {
+    gap: 14px;
+  }
+  .generator,
+  .interview {
+    grid-column: span 1;
+  }
+  .routine {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .routine li {
+    display: grid;
+    grid-template-columns: 8px 1fr auto;
+    align-items: center;
+    gap: 12px;
+  }
+  .routine i {
+    width: 8px;
+    margin: 0;
+  }
+  .routine small {
+    margin: 0;
+  }
+}

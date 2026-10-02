@@ -1,33 +1,36 @@
 import Link from "next/link";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 
+// One column per product, so a visitor can tell which links belong to which.
 const columns = [
   {
-    title: "Products",
+    title: "Yapper Train",
     links: [
-      ["Yapper Studio", "/products/studio"],
-      ["Yapper Train", "/products/train"],
-      ["Compare products", "/products"],
-      ["Pricing", "/pricing"],
+      ["Overview", "/products/train"],
+      ["Speaking exercises", "/training"],
+      ["Random topic generator", "/training/random-topic-generator"],
+      ["Interview practice", "/training/interview-prep"],
+      ["AI feedback", "/products/train/ai-feedback"],
+      ["Train pricing", "/products/train/pricing"],
     ],
   },
   {
-    title: "Create with Studio",
+    title: "Yapper Studio",
     links: [
-      ["Capture ideas", "/features/idea-capture"],
-      ["Write scripts", "/features/ai-script-writer"],
-      ["Record with a teleprompter", "/features/teleprompter-recorder"],
-      ["Edit videos", "/features/transcript-video-editor"],
-      ["Plan and publish", "/features/social-publishing"],
+      ["Overview", "/products/studio"],
+      ["All features", "/features"],
+      ["AI script writer", "/features/ai-script-writer"],
+      ["Teleprompter recorder", "/features/teleprompter-recorder"],
+      ["Transcript video editor", "/features/transcript-video-editor"],
+      ["Studio pricing", "/products/studio/pricing"],
     ],
   },
   {
-    title: "Learn and explore",
+    title: "Resources",
     links: [
-      ["Speaking practice", "/training"],
-      ["Random topics", "/training/random-topic-generator"],
+      ["Speaking guides", "/blog"],
       ["Free tools", "/tools"],
-      ["Guides and ideas", "/blog"],
+      ["Pricing", "/pricing"],
     ],
   },
 ];
@@ -50,7 +53,7 @@ export function Component() {
           </div>
           {columns.map((column) => (
             <div key={column.title}>
-              <h2 className="site-footer-heading">{column.title}</h2>
+              <p className="site-footer-heading">{column.title}</p>
               <ul>
                 {column.links.map(([label, href]) => (
                   <li key={href}>

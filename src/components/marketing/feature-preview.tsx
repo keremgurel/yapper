@@ -6,7 +6,6 @@ import PublisherPreview from "./publisher-preview";
 import LibraryPreview from "./idea-library-preview";
 import CalendarPreview from "./calendar-preview";
 import CaptionsPreview from "./captions-preview";
-import FeedbackPreview from "./feedback-preview";
 
 const previews = {
   "idea-capture": IdeaPreview,
@@ -17,7 +16,6 @@ const previews = {
   "content-library": LibraryPreview,
   "content-calendar": CalendarPreview,
   "automatic-captions": CaptionsPreview,
-  "creator-feedback": FeedbackPreview,
 };
 
 export default function FeaturePreview({ slug }: { slug: string }) {

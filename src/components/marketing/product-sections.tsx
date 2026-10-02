@@ -5,41 +5,6 @@ import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 import StudioWaitlist from "@/components/marketing/studio-waitlist";
 
-export function ProductPair() {
-  return (
-    <div className="marketing-product-pair">
-      <article className="marketing-product-summary">
-        <p className="type-label mb-4">Create content</p>
-        <h3 className="type-h2">Yapper Studio</h3>
-        <p className="type-description">
-          A place for your ideas, scripts, recordings, edits, and publishing
-          plan. Keep the whole video together.
-        </p>
-        <Link className="marketing-text-link" href="/products/studio">
-          Explore Studio
-          <ArrowUpRight size={15} />
-        </Link>
-        <p className="marketing-note">In private testing</p>
-      </article>
-      <article className="marketing-product-summary">
-        <p className="type-label mb-4">Learn to speak</p>
-        <h3 className="type-h2">Yapper Train</h3>
-        <p className="type-description">
-          Get comfortable saying what you mean. Practice with prompts, listen
-          back, and get feedback for your next attempt.
-        </p>
-        <Link className="marketing-text-link" href="/products/train">
-          Explore Train
-          <ArrowUpRight size={15} />
-        </Link>
-        <p className="marketing-note">
-          Free practice available now. AI coaching uses credits.
-        </p>
-      </article>
-    </div>
-  );
-}
-
 export function WorkflowLinks() {
   return (
     <div className="marketing-workflow">

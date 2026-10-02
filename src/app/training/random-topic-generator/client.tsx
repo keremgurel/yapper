@@ -6,7 +6,7 @@ import {
 } from "@/components/ErrorBoundary";
 import HomeHero from "@/components/home-hero";
 import MarketingLayout from "@/components/marketing/marketing-layout";
-import { StudioSignup } from "@/components/marketing/product-sections";
+import TrainNextStep from "@/components/training/train-next-step";
 import PracticeGuide from "@/components/training/practice-guide";
 import PracticeStage from "@/components/practice-stage";
 
@@ -51,7 +51,7 @@ export default function RandomTopicClient({
       </PracticeSessionProvider>
 
       <PracticeGuide />
-      <StudioSignup />
+      <TrainNextStep />
     </MarketingLayout>
   );
 }
