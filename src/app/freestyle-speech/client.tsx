@@ -1,12 +1,10 @@
 "use client";
 
 import FreestyleHero from "@/components/freestyle-hero";
+import MarketingLayout from "@/components/marketing/marketing-layout";
+import TrainNextStep from "@/components/training/train-next-step";
+import PracticeGuide from "@/components/training/practice-guide";
 import PracticeStage from "@/components/practice-stage";
-import { FreestyleFaq } from "@/components/freestyle-faq";
-import Waitlist from "@/components/waitlist";
-import TrainingEntryCard from "@/components/training/training-entry-card";
-import TrainingHeader from "@/components/training/training-header";
-import { Component as Footer } from "@/components/ui/footer-taped-design";
 
 import { PracticeSessionProvider } from "@/contexts/practice-session";
 import type { Topic } from "@/data/topics";
@@ -26,30 +24,28 @@ export default function FreestyleSpeechClient({
     const elementCenter = window.scrollY + rect.top + rect.height / 2;
     window.scrollTo({
       top: elementCenter - window.innerHeight / 2,
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
     });
   };
 
   return (
-    <div className="flex min-h-screen flex-col transition-colors duration-300">
-      <TrainingHeader />
-
+    <MarketingLayout>
       <FreestyleHero onJumpToPractice={handleJumpToPractice} />
 
       <PracticeSessionProvider
         initialTopic={initialTopic}
         mode="freestyle"
+        initialSeconds={90}
         drillSlug="freestyle-speech"
         drillTitle="Freestyle speech"
       >
         <PracticeStage />
       </PracticeSessionProvider>
 
-      <TrainingEntryCard />
-
-      <Waitlist variant="full" />
-      <FreestyleFaq />
-      <Footer />
-    </div>
+      <PracticeGuide freestyle />
+      <TrainNextStep />
+    </MarketingLayout>
   );
 }

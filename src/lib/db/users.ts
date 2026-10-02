@@ -17,7 +17,13 @@ export async function ensureUser(
   return getDb().transaction(async (tx) => {
     const inserted = await tx
       .insert(users)
-      .values({ id, email: email ?? null, creditsBalance: WELCOME_CREDITS })
+      // The welcome grant pays for one Train feedback session, so it lands
+      // in the Train wallet. A new account starts with no Studio credits.
+      .values({
+        id,
+        email: email ?? null,
+        trainCreditsBalance: WELCOME_CREDITS,
+      })
       .onConflictDoNothing({ target: users.id })
       .returning({ id: users.id });
 
@@ -31,6 +37,7 @@ export async function ensureUser(
       delta: WELCOME_CREDITS,
       reason: "welcome_grant",
       balanceAfter: WELCOME_CREDITS,
+      product: "train",
     });
     return { created: true };
   });

@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "./client";
 import { users } from "./schema";
 import { storageQuotaFor } from "@/lib/billing/storage";
+import { DEFAULT_PRODUCT, type Product } from "@/lib/billing/products";
+import { subscriptionColumns } from "./wallet";
 
 /** A user's Stripe/subscription state (the raw fields; entitlement is derived). */
 export interface BillingState {
@@ -11,23 +13,23 @@ export interface BillingState {
   currentPeriodEnd: Date | null;
 }
 
+/** One product's subscription. The Stripe customer is shared by both. */
 export async function getBillingState(
   userId: string,
+  product: Product = DEFAULT_PRODUCT,
 ): Promise<BillingState | null> {
   const [row] = await getDb()
     .select({
       stripeCustomerId: users.stripeCustomerId,
-      subscriptionStatus: users.subscriptionStatus,
-      plan: users.plan,
-      currentPeriodEnd: users.currentPeriodEnd,
+      ...subscriptionColumns(product),
     })
     .from(users)
     .where(eq(users.id, userId));
   return row ?? null;
 }
 
-/** The user's media-storage quota (bytes), derived from their current plan and
- * entitlement. Free-tier quota when there is no active subscription. */
+/** The user's media-storage quota (bytes), derived from their Studio plan and
+ * entitlement. Train sells no storage. Free-tier quota when there is no active subscription. */
 export async function getStorageQuota(userId: string): Promise<number> {
   return storageQuotaFor(await getBillingState(userId));
 }
@@ -51,8 +53,17 @@ export async function applySubscriptionState(
     plan: string | null;
     currentPeriodEnd: Date | null;
   },
+  product: Product = DEFAULT_PRODUCT,
 ): Promise<void> {
-  await getDb().update(users).set(s).where(eq(users.id, userId));
+  const values =
+    product === "train"
+      ? {
+          trainSubscriptionStatus: s.subscriptionStatus,
+          trainPlan: s.plan,
+          trainCurrentPeriodEnd: s.currentPeriodEnd,
+        }
+      : s;
+  await getDb().update(users).set(values).where(eq(users.id, userId));
 }
 
 export async function findUserIdByStripeCustomer(

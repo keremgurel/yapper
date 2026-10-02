@@ -1,5 +1,9 @@
 # Unit economics and pricing
 
+> Superseded in part on October 1, 2026. The provider cost tables in sections 2 and 3 remain the cost basis. The plan and credit recommendations in sections 7 and 8 are replaced by separate Studio and Train offers. See `docs/product-architecture-and-seo-plan.md` and `docs/pricing-2026-10.md`.
+
+October 1 update: the implemented Studio + Train catalog, monthly annual-plan releases, and revised core action prices are in [pricing-2026-10.md](pricing-2026-10.md). This document remains the historical provider-cost investigation; its offer and tariff tables are not the current catalog.
+
 Last verified: 2026-09-03. Supersedes the money map in `product-vision.md` §4,
 which predates the Brain, the native editor, Poster, and the current plan
 catalog. Storage rates and accounting rules stay in `storage-economics.md`. The

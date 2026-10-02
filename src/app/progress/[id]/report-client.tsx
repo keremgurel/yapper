@@ -11,6 +11,7 @@ import {
   FeedbackSkeleton,
   TrainingFeedbackResult,
 } from "@/components/training/feedback";
+import type { AttemptSnapshot } from "@/components/training/feedback/attempt-comparison";
 import type {
   TrainingFeedbackRecord,
   TranscriptWord,
@@ -25,6 +26,26 @@ type Loaded =
       record: TrainingFeedbackRecord;
       transcript: TranscriptWord[];
     };
+
+/** The earlier attempt at the same prompt. Optional: a report is complete
+ * without it, so a failed lookup is ignored. */
+function usePreviousAttempt(id: string, ready: boolean) {
+  const [previous, setPrevious] = useState<AttemptSnapshot | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    let cancelled = false;
+    fetch(`/api/submissions/${id}/previous`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { previous?: AttemptSnapshot | null } | null) => {
+        if (!cancelled) setPrevious(body?.previous ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [id, ready]);
+  return previous;
+}
 
 interface SubmissionRow {
   status: string;
@@ -49,6 +70,7 @@ function isTrainingRecord(value: unknown): value is TrainingFeedbackRecord {
 
 export default function SessionReport({ id }: { id: string }) {
   const [state, setState] = useState<Loaded>({ kind: "loading" });
+  const previous = usePreviousAttempt(id, state.kind === "ready");
 
   useEffect(() => {
     let cancelled = false;
@@ -155,6 +177,7 @@ export default function SessionReport({ id }: { id: string }) {
           metrics={state.record.metrics}
           transcript={state.transcript}
           context={state.record.context}
+          previous={previous}
         />
       )}
     </div>

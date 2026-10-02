@@ -1,5 +1,7 @@
 # Yapper — Product Vision & Build Plan
 
+> Superseded in part on October 1, 2026. Yapper is now two separately sold products, Train and Studio. Where this document folds training into the creator funnel or describes one paywall and one credit pool, it no longer applies. See `docs/product-architecture-and-seo-plan.md` and `docs/pricing-2026-10.md`.
+
 > **Status:** living document · **Last updated:** 2026-07-01
 > The single place that captures _what we're building, why, how it makes money,
 > and in what order._ Cost figures are grounded in 2026 provider pricing

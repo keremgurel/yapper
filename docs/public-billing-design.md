@@ -1,5 +1,7 @@
 # Public billing and cost controls
 
+> Superseded in part on October 1, 2026. Studio and Train now have separate plans, wallets and entitlements. The single-membership design described here no longer applies. See `docs/product-architecture-and-seo-plan.md` and `docs/pricing-2026-10.md`.
+
 Evaluated 2026-09-12. Design proposal, not implemented pricing. Public usage is the target. Invited testers use the same product and metering, with manual grants. No prices, balances, subscriptions, or deployments were changed for this evaluation.
 
 This supplements `unit-economics-and-pricing.md`. That report contains historical estimates and partially superseded implementation findings; it is not a current invoice. This evaluation checks the current source and selected official list prices. Production environment overrides, negotiated rates, actual Stripe prices, invoices, and user usage distributions have not been verified.

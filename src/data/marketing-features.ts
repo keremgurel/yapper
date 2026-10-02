@@ -17,7 +17,7 @@ export const marketingFeatures: MarketingFeature[] = [
   {
     slug: "idea-capture",
     eyebrow: "Ideas",
-    title: "Catch the idea before it disappears",
+    title: "Capture content ideas. Turn them into your next video.",
     shortTitle: "Idea capture",
     description:
       "Speak a thought, type a note, or drop a reference link. Yapper keeps the original and turns it into something you can actually make.",
@@ -45,14 +45,14 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Send the ideas worth making to your content library.",
       },
     ],
-    seoTitle: "Content Idea Capture for Creators",
+    seoTitle: "Content idea capture & generator for creators",
     seoDescription:
       "Capture content ideas by voice, text, or link. Yapper organizes and expands every idea into hooks, outlines, and scripts.",
   },
   {
     slug: "ai-script-writer",
     eyebrow: "Script",
-    title: "Turn rough thoughts into scripts that sound like you",
+    title: "An AI video script generator that starts with your ideas.",
     shortTitle: "Script writer",
     description:
       "Build hooks, outlines, talking points, and full scripts from your own ideas and references, not a blank prompt box.",
@@ -79,14 +79,14 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Edit freely before sending the script to the recorder.",
       },
     ],
-    seoTitle: "Video Script Generator for Short-Form Content",
+    seoTitle: "AI video script generator for Reels & Shorts",
     seoDescription:
       "Generate short-form video hooks, outlines, talking points, and teleprompter scripts from your own content ideas with Yapper.",
   },
   {
     slug: "teleprompter-recorder",
     eyebrow: "Record",
-    title: "Record without juggling five different tools",
+    title: "A teleprompter app that keeps you ready to record.",
     shortTitle: "Teleprompter recorder",
     description:
       "Keep your script in sight, frame the shot, choose your devices, and capture a clean take in the same workflow.",
@@ -113,14 +113,14 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Review it and continue directly into the editor.",
       },
     ],
-    seoTitle: "Teleprompter and Video Recorder for Creators",
+    seoTitle: "Teleprompter app & video recorder for creators",
     seoDescription:
       "Record creator videos with a built-in teleprompter, camera controls, portrait guides, and a direct path into editing.",
   },
   {
     slug: "transcript-video-editor",
     eyebrow: "Edit",
-    title: "Edit the words. Yapper edits the video.",
+    title: "A transcript video editor. Cut the words. Keep the story.",
     shortTitle: "Transcript editor",
     description:
       "Cut mistakes, retakes, filler words, and dead air by editing a transcript instead of wrestling with a traditional timeline.",
@@ -149,14 +149,14 @@ export const marketingFeatures: MarketingFeature[] = [
           "Use the timeline for overlays, audio, and precise finishing.",
       },
     ],
-    seoTitle: "Transcript-Based Video Editor",
+    seoTitle: "Transcript video editor for talking-head videos",
     seoDescription:
       "Edit talking-head videos by editing text. Remove mistakes, filler words, silences, and retakes with Yapper's transcript video editor.",
   },
   {
     slug: "automatic-captions",
     eyebrow: "Caption",
-    title: "Captions that are already in the right place",
+    title: "A video caption generator with timing built in.",
     shortTitle: "Automatic captions",
     description:
       "Generate timed captions from the transcript, style them for the frame, and teach Yapper the names it should always spell correctly.",
@@ -184,49 +184,14 @@ export const marketingFeatures: MarketingFeature[] = [
           "Add brand names and vocabulary once for cleaner future captions.",
       },
     ],
-    seoTitle: "Automatic Captions for Creator Videos",
+    seoTitle: "Video caption generator & automatic captions",
     seoDescription:
       "Create word-synced, styled captions for short-form videos and improve spelling with a personal transcription dictionary.",
   },
   {
-    slug: "creator-feedback",
-    eyebrow: "Improve",
-    title: "Get useful feedback before the comments section does",
-    shortTitle: "Creator feedback",
-    description:
-      "Review delivery, pacing, clarity, and on-camera presence while the recording is still fresh enough to improve.",
-    promise: "A private second opinion for every take.",
-    accent: "#34d399",
-    number: "06",
-    highlights: [
-      "Pacing and pause analysis",
-      "Filler-word and clarity signals",
-      "On-camera delivery review",
-      "Concrete suggestions for the next take",
-    ],
-    steps: [
-      {
-        title: "Choose a review",
-        description: "Focus on the audio, the visual delivery, or both.",
-      },
-      {
-        title: "See the signals",
-        description:
-          "Understand pacing, clarity, fillers, and presentation patterns.",
-      },
-      {
-        title: "Try again",
-        description: "Use specific coaching notes on the very next recording.",
-      },
-    ],
-    seoTitle: "AI Speaking and On-Camera Feedback for Creators",
-    seoDescription:
-      "Get private feedback on pacing, filler words, clarity, and on-camera delivery before publishing your creator video.",
-  },
-  {
     slug: "social-publishing",
     eyebrow: "Publish",
-    title: "Finish once. Publish wherever your audience is.",
+    title: "A social media scheduler connected to your video.",
     shortTitle: "Social publishing",
     description:
       "Prepare the caption, thumbnail, and destination for each platform without rebuilding the same post from scratch.",
@@ -253,14 +218,14 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Publish now or place it into your posting plan.",
       },
     ],
-    seoTitle: "Social Media Publishing for Video Creators",
+    seoTitle: "Social media scheduler for video creators",
     seoDescription:
       "Prepare and publish short-form video across social platforms with per-platform captions, thumbnails, and connected accounts.",
   },
   {
     slug: "content-calendar",
     eyebrow: "Plan",
-    title: "See the whole content pipeline, not another blank calendar",
+    title: "A content calendar for the videos you’re making.",
     shortTitle: "Content calendar",
     description:
       "Plan with the work already in progress. Move ideas, scripts, recordings, and finished posts through a calendar built around production.",
@@ -287,14 +252,14 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "See gaps and keep your content pillars represented.",
       },
     ],
-    seoTitle: "Content Calendar for Video Creators",
+    seoTitle: "Content calendar & planning tool for creators",
     seoDescription:
       "Plan short-form video with a content calendar connected to your ideas, scripts, recordings, production status, and social posts.",
   },
   {
     slug: "content-library",
     eyebrow: "Organize",
-    title: "One home for everything you are making",
+    title: "A content library for ideas, scripts, and videos.",
     shortTitle: "Content library",
     description:
       "Keep the idea, script, recordings, edits, and publishing status together so a promising concept never gets lost between apps.",
@@ -324,7 +289,7 @@ export const marketingFeatures: MarketingFeature[] = [
           "Know what is an idea, ready to record, edited, scheduled, or posted.",
       },
     ],
-    seoTitle: "Content Library for Video Creators",
+    seoTitle: "Content library for video projects & scripts",
     seoDescription:
       "Organize content ideas, scripts, video takes, edits, and publishing status in one connected creator content library.",
   },

@@ -41,6 +41,15 @@ export const users = pgTable("users", {
   subscriptionStatus: text("subscription_status"),
   plan: text("plan"), // plan key from the plans config (e.g. "creator_monthly")
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  // Yapper Train is sold separately from Studio. Its wallet and subscription
+  // mirror the Studio fields above and are never mixed with them. The Stripe
+  // customer is shared, because one person pays for both.
+  trainCreditsBalance: integer("train_credits_balance").notNull().default(0),
+  trainSubscriptionStatus: text("train_subscription_status"),
+  trainPlan: text("train_plan"),
+  trainCurrentPeriodEnd: timestamp("train_current_period_end", {
+    withTimezone: true,
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -97,6 +106,10 @@ export const creditLedger = pgTable(
     delta: integer("delta").notNull(), // +grant / -deduction
     reason: text("reason", { enum: creditReasons }).notNull(),
     balanceAfter: integer("balance_after").notNull(),
+    // Which wallet moved. Rows written before the split are all Studio.
+    product: text("product", { enum: ["studio", "train"] })
+      .notNull()
+      .default("studio"),
     submissionId: uuid("submission_id"), // soft link (deductions/refunds)
     // Idempotency key for Stripe-driven grants (invoice / checkout-session id).
     // Nullable-unique: many NULLs allowed (non-Stripe rows), Stripe refs unique,
@@ -114,6 +127,10 @@ export const creditLedger = pgTable(
     check(
       "credit_ledger_reason_check",
       sql`${t.reason} in ('welcome_grant','subscription_grant','purchase','deduction','refund','adjustment')`,
+    ),
+    check(
+      "credit_ledger_product_check",
+      sql`${t.product} in ('studio','train')`,
     ),
     // At most one welcome grant per user — double-grants become impossible.
     uniqueIndex("credit_ledger_one_welcome_per_user")

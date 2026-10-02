@@ -1,10 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   getBalance: vi.fn(),
   getBillingState: vi.fn(),
   getStorageBytes: vi.fn(),
+  getTrainSpendable: vi.fn(),
 }));
 
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
@@ -12,6 +13,9 @@ vi.mock("@/lib/db/billing", () => ({
   getBillingState: mocks.getBillingState,
 }));
 vi.mock("@/lib/db/credits", () => ({ getBalance: mocks.getBalance }));
+vi.mock("@/lib/db/train-wallet", () => ({
+  getTrainSpendable: mocks.getTrainSpendable,
+}));
 vi.mock("@/lib/db/users", () => ({
   getStorageBytes: mocks.getStorageBytes,
 }));
@@ -20,16 +24,30 @@ import { GET } from "./route";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-20T00:00:00Z"));
   mocks.auth.mockResolvedValue({ userId: "user_test" });
   mocks.getBalance.mockResolvedValue(88);
   mocks.getStorageBytes.mockResolvedValue(3 * 1024 * 1024 * 1024);
-  mocks.getBillingState.mockResolvedValue({
-    stripeCustomerId: "cus_test",
-    subscriptionStatus: "active",
-    plan: "creator_monthly",
-    currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
-  });
+  mocks.getTrainSpendable.mockResolvedValue(9);
+  mocks.getBillingState.mockImplementation(async (_id, product) =>
+    product === "train"
+      ? {
+          stripeCustomerId: "cus_test",
+          subscriptionStatus: null,
+          plan: null,
+          currentPeriodEnd: null,
+        }
+      : {
+          stripeCustomerId: "cus_test",
+          subscriptionStatus: "active",
+          plan: "creator_monthly",
+          currentPeriodEnd: new Date("2026-09-27T00:00:00.000Z"),
+        },
+  );
 });
+
+afterEach(() => vi.useRealTimers());
 
 describe("GET /api/billing/status", () => {
   it("returns storage usage and the allowance for the current plan", async () => {
@@ -42,6 +60,18 @@ describe("GET /api/billing/status", () => {
       balance: 88,
       storageBytes: 3 * 1024 * 1024 * 1024,
       storageQuotaBytes: 50 * 1024 * 1024 * 1024,
+    });
+  });
+
+  it("reports Train separately from the Studio plan", async () => {
+    const body = await (await GET()).json();
+    expect(body.train).toEqual({
+      entitled: false,
+      status: null,
+      plan: null,
+      currentPeriodEnd: null,
+      balance: 9,
+      unlimited: false,
     });
   });
 

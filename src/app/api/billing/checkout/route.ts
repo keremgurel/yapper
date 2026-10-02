@@ -5,6 +5,7 @@ import { ensureUser } from "@/lib/db/users";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
 import { CREDIT_PACKS, planByKey, TRIAL_DAYS } from "@/lib/billing/plans";
 import { isEntitled } from "@/lib/billing/entitlement";
+import { PRODUCT_PATHS } from "@/lib/billing/products";
 
 export const runtime = "nodejs";
 
@@ -28,12 +29,16 @@ export async function POST(req: NextRequest): Promise<Response> {
   };
   const plan = planByKey(body.plan);
   const pack = CREDIT_PACKS.find((p) => p.key === body.pack);
-  if (!plan && !pack) {
+  if ((!plan && !pack) || plan?.legacy || (plan && pack)) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
+  // A plan or pack belongs to exactly one product. Everything below (existing
+  // subscription, trial eligibility, where checkout returns) is judged for
+  // that product alone: owning Studio neither blocks nor unlocks Train.
+  const product = (plan ?? pack)!.product;
   const stripe = getStripe();
-  const state = await getBillingState(userId);
+  const state = await getBillingState(userId, product);
   if (plan && isEntitled(state)) {
     return Response.json({ error: "already_subscribed" }, { status: 409 });
   }
@@ -59,7 +64,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Only offer the free trial to users who have never had a subscription, so it
   // can't be farmed by cancel-and-resubscribe. subscriptionStatus is null until
   // the first subscription; any prior value (even "canceled") means no trial.
-  const trialEligible = !state?.subscriptionStatus;
+  const trialEligible = !!plan?.trial && !state?.subscriptionStatus;
 
   const origin = new URL(req.url).origin;
   const common = {
@@ -70,17 +75,28 @@ export async function POST(req: NextRequest): Promise<Response> {
     // purchase. Save the collected address so tax uses it for renewals too.
     customer_update: { address: "auto" },
     billing_address_collection: "required",
-    // Land on the training dashboard, not Studio. Studio sits behind a shared
-    // password while it is unfinished, so sending a customer there at the exact
-    // moment their card clears would greet them with a password prompt for a
-    // product they were never sold.
-    success_url: `${origin}/progress?checkout=success`,
-    cancel_url: `${origin}/pricing?checkout=cancel`,
+    // Each product returns to its own page. Studio returns to its pricing
+    // page, not the workspace: Studio sits behind an invitation while it is
+    // unfinished, so sending a customer there at the exact moment their card
+    // clears would greet them with a gate.
+    success_url: `${origin}${PRODUCT_PATHS[product].afterCheckout}`,
+    cancel_url: `${origin}${PRODUCT_PATHS[product].pricing}?checkout=cancel`,
   } as const;
 
   if (plan) {
     if (!plan.priceId) {
       return Response.json({ error: "price_not_configured" }, { status: 503 });
+    }
+    // Do not charge a configured Stripe price that disagrees with the visible catalog.
+    const price = await stripe.prices.retrieve(plan.priceId);
+    if (
+      price.currency !== "usd" ||
+      price.unit_amount !== plan.priceCents ||
+      price.recurring?.interval !== plan.cadence ||
+      price.recurring?.interval_count !== 1 ||
+      !price.active
+    ) {
+      return Response.json({ error: "price_mismatch" }, { status: 503 });
     }
     const session = await stripe.checkout.sessions.create({
       ...common,
@@ -88,11 +104,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       line_items: [{ price: plan.priceId, quantity: 1 }],
       subscription_data: {
         ...(trialEligible ? { trial_period_days: TRIAL_DAYS } : {}),
-        metadata: { userId },
+        metadata: { userId, product },
       },
       payment_method_collection: "always",
-      metadata: { userId, kind: "subscription", plan: plan.key },
-      allow_promotion_codes: true,
+      metadata: { userId, kind: "subscription", plan: plan.key, product },
+      allow_promotion_codes: false,
     });
     return Response.json({ url: session.url });
   }
@@ -101,11 +117,20 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!pack!.priceId) {
     return Response.json({ error: "price_not_configured" }, { status: 503 });
   }
+  const price = await stripe.prices.retrieve(pack!.priceId);
+  if (
+    price.currency !== "usd" ||
+    price.unit_amount !== pack!.priceCents ||
+    price.type !== "one_time" ||
+    !price.active
+  ) {
+    return Response.json({ error: "price_mismatch" }, { status: 503 });
+  }
   const session = await stripe.checkout.sessions.create({
     ...common,
     mode: "payment",
     line_items: [{ price: pack!.priceId, quantity: 1 }],
-    metadata: { userId, kind: "pack", pack: pack!.key },
+    metadata: { userId, kind: "pack", pack: pack!.key, product },
   });
   return Response.json({ url: session.url });
 }

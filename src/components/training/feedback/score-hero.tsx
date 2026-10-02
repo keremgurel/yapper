@@ -5,7 +5,7 @@ import {
   type TrainingContext,
   type TrainingScores,
 } from "@/lib/training-feedback/types";
-import ScoreRing from "@/components/training/feedback/score-ring";
+import ScoreArc from "@/components/training/feedback/score-arc";
 
 /**
  * The payoff surface: the overall score ring, the band it lands in, and the
@@ -16,17 +16,20 @@ export default function ScoreHero({
   scores,
   overview,
   context,
+  previousOverall,
 }: {
   scores: TrainingScores;
   overview: string;
   context?: TrainingContext | null;
+  /** Overall score of the last attempt at this prompt, when there was one. */
+  previousOverall?: number | null;
 }) {
   const band = scoreBand(scores.overall);
 
   return (
     <div className="bg-card border-border rounded-xl border p-5">
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
-        <ScoreRing value={scores.overall} />
+      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+        <ScoreArc value={scores.overall} previous={previousOverall} />
         <div className="min-w-0 flex-1 text-center sm:text-left">
           <Chip tone="neutral" pill>
             {SCORE_BAND_LABELS[band]}

@@ -2,7 +2,7 @@
 
 import { Show, SignInButton } from "@clerk/nextjs";
 import { Loader2 } from "lucide-react";
-import { CREDIT_PACKS } from "@/lib/billing/plans";
+import type { CreditPack } from "@/lib/billing/plans";
 import { Button } from "@/components/ui/button";
 
 const muted = { color: "var(--sg-text-muted)" };
@@ -10,27 +10,32 @@ const muted = { color: "var(--sg-text-muted)" };
 /** One-time top-up packs, for when a subscriber runs out mid-month. Render-only.
  * (Only useful to subscribers, so the copy frames it as a top-up.) */
 export default function CreditPacks({
+  packs,
+  heading,
+  note,
+  action,
   pending,
   onStart,
 }: {
+  packs: CreditPack[];
+  heading: string;
+  note: string;
+  action: string;
   pending: string | null;
   onStart: (key: string) => void;
 }) {
   return (
     <div>
-      <h2 className="sg-display text-2xl">Need more this month?</h2>
+      <h2 className="type-h2">{heading}</h2>
       <p className="mt-1 mb-4 text-sm leading-6" style={muted}>
-        Member top-ups never expire and stack on top of your included credits.
+        {note}
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {CREDIT_PACKS.map((pack) => (
-          <article
-            key={pack.key}
-            className="sg-card flex items-center justify-between gap-4 p-5"
-          >
+      <div className="grid gap-4 md:grid-cols-3">
+        {packs.map((pack) => (
+          <article key={pack.key} className="pricing-pack">
             <div>
-              <p className="sg-display text-xl">{pack.name}</p>
-              <p className="sg-label mt-0.5">{pack.priceLabel}</p>
+              <p className="text-base font-medium">{pack.name}</p>
+              <p className="mt-1 text-sm">{pack.priceLabel}</p>
             </div>
             <Show when="signed-in">
               <Button
@@ -40,9 +45,12 @@ export default function CreditPacks({
                 disabled={pending !== null}
               >
                 {pending === pack.key ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Opening…
+                  </>
                 ) : (
-                  "Buy"
+                  action
                 )}
               </Button>
             </Show>

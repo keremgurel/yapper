@@ -35,6 +35,16 @@ export default function DeliveryStrip({
     `${metrics.pauseCount}`,
     metrics.pauseCount === 1 ? "pause" : "pauses",
   );
+  add(
+    metrics.midSentencePauseCount,
+    `${metrics.midSentencePauseCount}`,
+    "mid-sentence pauses",
+  );
+  add(
+    metrics.longPauseCount,
+    `${metrics.longPauseCount}`,
+    metrics.longPauseCount === 1 ? "long pause" : "long pauses",
+  );
   add(metrics.longestPauseSec, `${metrics.longestPauseSec}s`, "longest pause");
   add(
     metrics.typeTokenRatio,

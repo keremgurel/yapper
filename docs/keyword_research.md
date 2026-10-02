@@ -1,5 +1,7 @@
 # Yapper (ypr.app) — Keyword Research & SEO Strategy
 
+> Historical as of October 1, 2026. The volume ranges here have no provider export and are not used for prioritization. See `docs/product-architecture-and-seo-plan.md` and `docs/pricing-2026-10.md`.
+
 _Last updated: April 2026 | Author: Marketer Sub-Agent_
 
 ---

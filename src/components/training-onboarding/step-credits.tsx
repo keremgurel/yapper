@@ -15,7 +15,7 @@ import { TRAINING_FEEDBACK_CREDITS, WELCOME_CREDITS } from "@/lib/db/constants";
  */
 export default function StepCredits({ onDone }: { onDone: () => void }) {
   const { status, loading } = useBillingStatus();
-  const balance = status?.balance ?? WELCOME_CREDITS;
+  const balance = status?.train.balance ?? WELCOME_CREDITS;
   const feedbacks = Math.floor(balance / TRAINING_FEEDBACK_CREDITS);
 
   return (
@@ -39,8 +39,8 @@ export default function StepCredits({ onDone }: { onDone: () => void }) {
           Start practicing
         </Button>
         <Button asChild size="lg" variant="ghost" className="w-full">
-          <Link href="/pricing" className="no-underline">
-            See what a membership includes
+          <Link href="/products/train/pricing" className="no-underline">
+            See what Train Plus includes
           </Link>
         </Button>
       </div>

@@ -11,16 +11,18 @@ import TrainingOnboardingFlow from "@/components/training-onboarding/training-on
 import { Button } from "@/components/ui/button";
 import { useTrainingFeedback } from "@/hooks/use-training-feedback";
 import { useTrainingOnboarding } from "@/hooks/use-training-onboarding";
-import { TRAINING_FEEDBACK_CREDITS } from "@/lib/db/constants";
 import type { TrainingContext } from "@/lib/training-feedback/types";
 import type { TrainingFeedbackError } from "@/hooks/use-training-feedback";
 
 const MESSAGES: Record<TrainingFeedbackError, string> = {
   unauthorized: "Sign in to get feedback on this rep.",
-  not_entitled: "Feedback needs a membership. The free trial covers it.",
-  insufficient_credits: "You are out of credits.",
+  not_entitled: "Feedback needs Train Plus.",
+  insufficient_credits:
+    "You have used your free feedback session. Train Plus gives you unlimited feedback.",
   too_short: "That rep was too short to coach. Try saying a bit more.",
   rate_limited: "Too many reps in a row. Give it a minute.",
+  fair_use_limit:
+    "That is a lot of practice for one day. Feedback opens again tomorrow.",
   no_provider: "Coaching is temporarily unavailable. Try again shortly.",
   unknown: "Could not get feedback. Try again.",
 };
@@ -104,7 +106,7 @@ export default function TrainingFeedbackCta({
 
   if (!audio) {
     return (
-      <p className="text-center text-[13px] text-white/45">
+      <p className="text-muted-foreground text-center text-[13px]">
         {audioPending
           ? "Getting your rep ready…"
           : "Turn on your mic before a rep to get AI feedback on it."}
@@ -149,24 +151,27 @@ export default function TrainingFeedbackCta({
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Get AI feedback ({TRAINING_FEEDBACK_CREDITS} credits)
+              Get AI feedback
             </>
           )}
         </Button>
       </Show>
 
       {busy && (
-        <p className="text-[12px] text-white/45">
+        <p className="text-muted-foreground text-[12px]">
           Transcribing and scoring. This takes about half a minute.
         </p>
       )}
 
       {error && !busy && (
-        <p role="alert" className="text-center text-[13px] text-white/70">
+        <p
+          role="alert"
+          className="text-muted-foreground text-center text-[13px]"
+        >
           {MESSAGES[error]}{" "}
           {BUY_CREDITS.includes(error) && (
-            <Link href="/pricing" className="underline">
-              See plans
+            <Link href="/products/train/pricing" className="underline">
+              See Train Plus
             </Link>
           )}
         </p>

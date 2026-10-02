@@ -104,3 +104,36 @@ it("does not reuse a training result as a Studio recording", async () => {
     saved.submission.id,
   );
 });
+
+it("rejects a second completed upload even when both already received upload URLs", async () => {
+  const first = await (await POST(request())).json();
+  const secondKey = "user_test/second.mp4";
+  await db.insert(schema.r2Objects).values({
+    userId: "user_test",
+    mediaKey: secondKey,
+    purpose: "recording",
+    state: "pending_upload",
+    mediaBytes: 128,
+    uploadExpiresAt: new Date(Date.now() + 60_000),
+  });
+  const second = await POST(
+    new Request("https://test/api/submissions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mediaKey: secondKey, createLibraryItem: true }),
+    }) as NextRequest,
+  );
+  expect(second.status).toBe(409);
+  expect(await second.json()).toMatchObject({
+    error: "poster_slot_busy",
+    waiting: { id: first.submission.id },
+  });
+  expect(await db.select().from(schema.submissions)).toHaveLength(1);
+  expect(await db.select().from(schema.contentItems)).toHaveLength(0);
+  expect((await db.select().from(schema.users))[0].storageBytes).toBe(128);
+  expect(
+    (await db.select().from(schema.r2Objects)).find(
+      (row) => row.mediaKey === secondKey,
+    )?.state,
+  ).toBe("pending_upload");
+});

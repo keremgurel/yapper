@@ -1,0 +1,326 @@
+[
+  [
+    "1 minute speech topics",
+    70,
+    null,
+    null,
+    "LOW",
+    "informational",
+    "2026-09-12"
+  ],
+  [
+    "add captions to video",
+    1900,
+    34,
+    4.69,
+    "MEDIUM",
+    "informational",
+    "2026-09-14"
+  ],
+  [
+    "ai interview practice",
+    1300,
+    33,
+    5.08,
+    "MEDIUM",
+    "informational",
+    "2026-09-13"
+  ],
+  [
+    "ai public speaking coach",
+    50,
+    19,
+    9.52,
+    "MEDIUM",
+    "commercial",
+    "2026-09-15"
+  ],
+  ["ai script writer", 1000, 19, 5.04, "MEDIUM", "commercial", "2026-09-12"],
+  ["ai speech coach", 70, 38, 7.69, "MEDIUM", "commercial", "2026-09-14"],
+  [
+    "ai thumbnail generator",
+    880,
+    39,
+    4.52,
+    "MEDIUM",
+    "transactional",
+    "2026-09-12"
+  ],
+  [
+    "ai video script generator",
+    210,
+    18,
+    5.55,
+    "MEDIUM",
+    "transactional",
+    "2026-09-14"
+  ],
+  ["auto captions", 2400, 51, 2.66, "LOW", "informational", "2026-09-12"],
+  [
+    "capcut alternative",
+    1900,
+    null,
+    4.52,
+    "LOW",
+    "informational",
+    "2026-09-15"
+  ],
+  ["content calendar", 4400, 36, 29.98, "HIGH", "informational", "2026-09-16"],
+  [
+    "content creation app",
+    6600,
+    null,
+    11.32,
+    "MEDIUM",
+    "commercial",
+    "2026-09-12"
+  ],
+  [
+    "content creator tools",
+    1900,
+    null,
+    9.15,
+    "MEDIUM",
+    "commercial",
+    "2026-09-13"
+  ],
+  [
+    "content idea generator",
+    260,
+    29,
+    9.53,
+    "LOW",
+    "informational",
+    "2026-09-14"
+  ],
+  ["content library", 390, null, 17.08, "LOW", "informational", "2026-09-13"],
+  ["content planning tool", 210, 29, 36.69, "LOW", "commercial", "2026-09-12"],
+  [
+    "descript alternative",
+    210,
+    null,
+    15.54,
+    "LOW",
+    "informational",
+    "2026-09-15"
+  ],
+  ["edit video by text", 10, 37, null, "HIGH", "informational", "2026-09-14"],
+  ["filler word counter", 10, null, null, "LOW", "informational", "2026-09-14"],
+  [
+    "how to practice public speaking",
+    170,
+    16,
+    6.79,
+    "LOW",
+    "informational",
+    "2026-09-13"
+  ],
+  [
+    "impromptu speaking practice",
+    20,
+    null,
+    1.25,
+    "LOW",
+    "informational",
+    "2026-09-15"
+  ],
+  [
+    "impromptu speech topics",
+    1600,
+    null,
+    0.29,
+    "LOW",
+    "informational",
+    "2026-09-16"
+  ],
+  ["interview practice", 2400, 35, 3.6, "LOW", "informational", "2026-09-12"],
+  ["mock interview ai", 880, 17, 5.31, "MEDIUM", "informational", "2026-09-15"],
+  ["orai app", 260, 16, 2.68, "LOW", "navigational", "2026-09-15"],
+  [
+    "practice speaking english",
+    1600,
+    52,
+    5.17,
+    "LOW",
+    "informational",
+    "2026-09-12"
+  ],
+  ["public speaking app", 320, 18, 5.55, "LOW", "transactional", "2026-09-15"],
+  [
+    "public speaking exercises",
+    170,
+    4,
+    5.35,
+    "LOW",
+    "informational",
+    "2026-09-14"
+  ],
+  [
+    "public speaking practice",
+    390,
+    12,
+    5.84,
+    "LOW",
+    "informational",
+    "2026-09-12"
+  ],
+  [
+    "public speaking practice online",
+    30,
+    22,
+    6.68,
+    "MEDIUM",
+    "informational",
+    "2026-09-17"
+  ],
+  [
+    "random topic generator",
+    6600,
+    4,
+    1.35,
+    "LOW",
+    "informational",
+    "2026-09-13"
+  ],
+  [
+    "read aloud practice",
+    140,
+    null,
+    19.41,
+    "LOW",
+    "informational",
+    "2026-09-12"
+  ],
+  [
+    "remove filler words from video",
+    20,
+    null,
+    null,
+    "LOW",
+    "informational",
+    "2026-09-12"
+  ],
+  [
+    "short form video editor",
+    170,
+    null,
+    8.4,
+    "MEDIUM",
+    "transactional",
+    "2026-09-15"
+  ],
+  [
+    "social media scheduler",
+    90500,
+    33,
+    23.08,
+    "LOW",
+    "commercial",
+    "2026-09-12"
+  ],
+  [
+    "speaking practice app",
+    50,
+    19,
+    3.75,
+    "MEDIUM",
+    "transactional",
+    "2026-09-15"
+  ],
+  ["speech coach app", 90, 42, 5.96, "LOW", "transactional", "2026-09-14"],
+  [
+    "speech practice app",
+    40,
+    42,
+    4.28,
+    "MEDIUM",
+    "transactional",
+    "2026-09-13"
+  ],
+  [
+    "speech topic generator",
+    140,
+    null,
+    null,
+    "LOW",
+    "informational",
+    "2026-09-14"
+  ],
+  [
+    "table topics questions",
+    1300,
+    null,
+    0.46,
+    "HIGH",
+    "informational",
+    "2026-09-14"
+  ],
+  [
+    "talking head video editor",
+    10,
+    null,
+    16.22,
+    "MEDIUM",
+    "commercial",
+    "2026-09-13"
+  ],
+  ["teleprompter app", 8100, 59, 4.38, "MEDIUM", "transactional", "2026-09-13"],
+  ["teleprompter online", 6600, 34, 3.56, "LOW", "informational", "2026-09-12"],
+  [
+    "teleprompter recorder",
+    30,
+    50,
+    4.15,
+    "HIGH",
+    "transactional",
+    "2026-09-15"
+  ],
+  ["text based video editing", 50, 5, 14.21, "LOW", "commercial", "2026-09-17"],
+  [
+    "transcript video editor",
+    10,
+    null,
+    null,
+    "MEDIUM",
+    "transactional",
+    "2026-09-12"
+  ],
+  [
+    "video caption generator",
+    880,
+    34,
+    3.64,
+    "MEDIUM",
+    "informational",
+    "2026-09-14"
+  ],
+  [
+    "video creation software",
+    1600,
+    70,
+    7.73,
+    "HIGH",
+    "commercial",
+    "2026-09-14"
+  ],
+  [
+    "video script generator",
+    390,
+    21,
+    3.91,
+    "MEDIUM",
+    "transactional",
+    "2026-09-12"
+  ],
+  [
+    "words per minute calculator",
+    2400,
+    null,
+    0.03,
+    "LOW",
+    "informational",
+    "2026-09-15"
+  ],
+  ["yapper", 8100, 2, 2.92, "LOW", "informational", "2026-09-15"],
+  ["yoodli", 9900, 15, 1.84, "MEDIUM", "informational", "2026-09-12"]
+]

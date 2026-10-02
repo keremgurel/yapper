@@ -1,6 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, type DbTx } from "./client";
 import { creditLedger, users, type CreditReason } from "./schema";
+import { DEFAULT_PRODUCT, type Product } from "@/lib/billing/products";
+import { balanceColumn, balanceField } from "./wallet";
 
 /** Thrown by `deductCredits` when the user can't cover the cost. */
 export class InsufficientCreditsError extends Error {
@@ -13,11 +15,16 @@ export class InsufficientCreditsError extends Error {
 interface LedgerOpts {
   submissionId?: string;
   metadata?: Record<string, unknown>;
+  /** Which wallet moves. Studio unless a Train caller says otherwise. */
+  product?: Product;
 }
 
-export async function getBalance(userId: string): Promise<number> {
+export async function getBalance(
+  userId: string,
+  product: Product = DEFAULT_PRODUCT,
+): Promise<number> {
   const [row] = await getDb()
-    .select({ balance: users.creditsBalance })
+    .select({ balance: balanceColumn(product) })
     .from(users)
     .where(eq(users.id, userId));
   return row?.balance ?? 0;
@@ -32,18 +39,21 @@ export async function grantCredits(
   opts: LedgerOpts = {},
 ): Promise<number> {
   if (amount <= 0) throw new Error("grant amount must be positive");
+  const product = opts.product ?? DEFAULT_PRODUCT;
+  const balance = balanceColumn(product);
   return getDb().transaction(async (tx) => {
     const [u] = await tx
       .update(users)
-      .set({ creditsBalance: sql`${users.creditsBalance} + ${amount}` })
+      .set({ [balanceField(product)]: sql`${balance} + ${amount}` })
       .where(eq(users.id, userId))
-      .returning({ balance: users.creditsBalance });
+      .returning({ balance });
     if (!u) throw new Error("user not found");
     await tx.insert(creditLedger).values({
       userId,
       delta: amount,
       reason,
       balanceAfter: u.balance,
+      product,
       submissionId: opts.submissionId,
       metadata: opts.metadata,
     });
@@ -62,8 +72,10 @@ export async function grantCreditsIdempotent(
   reason: CreditReason,
   stripeRef: string,
   metadata?: Record<string, unknown>,
+  product: Product = DEFAULT_PRODUCT,
 ): Promise<{ balance: number; granted: boolean }> {
   if (amount <= 0) throw new Error("grant amount must be positive");
+  const balance = balanceColumn(product);
   return getDb().transaction(async (tx) => {
     const claimed = await tx
       .insert(creditLedger)
@@ -72,6 +84,7 @@ export async function grantCreditsIdempotent(
         delta: amount,
         reason,
         balanceAfter: 0, // set below once we know the new balance
+        product,
         stripeRef,
         metadata,
       })
@@ -80,7 +93,7 @@ export async function grantCreditsIdempotent(
 
     if (claimed.length === 0) {
       const [u] = await tx
-        .select({ balance: users.creditsBalance })
+        .select({ balance })
         .from(users)
         .where(eq(users.id, userId));
       return { balance: u?.balance ?? 0, granted: false };
@@ -88,9 +101,9 @@ export async function grantCreditsIdempotent(
 
     const [u] = await tx
       .update(users)
-      .set({ creditsBalance: sql`${users.creditsBalance} + ${amount}` })
+      .set({ [balanceField(product)]: sql`${balance} + ${amount}` })
       .where(eq(users.id, userId))
-      .returning({ balance: users.creditsBalance });
+      .returning({ balance });
     if (!u) throw new Error("user not found");
     await tx
       .update(creditLedger)
@@ -114,17 +127,20 @@ export async function deductWithinTx(
   opts: LedgerOpts = {},
 ): Promise<number> {
   if (amount <= 0) throw new Error("deduct amount must be positive");
+  const product = opts.product ?? DEFAULT_PRODUCT;
+  const balance = balanceColumn(product);
   const [u] = await tx
     .update(users)
-    .set({ creditsBalance: sql`${users.creditsBalance} - ${amount}` })
-    .where(and(eq(users.id, userId), sql`${users.creditsBalance} >= ${amount}`))
-    .returning({ balance: users.creditsBalance });
+    .set({ [balanceField(product)]: sql`${balance} - ${amount}` })
+    .where(and(eq(users.id, userId), sql`${balance} >= ${amount}`))
+    .returning({ balance });
   if (!u) throw new InsufficientCreditsError();
   await tx.insert(creditLedger).values({
     userId,
     delta: -amount,
     reason: "deduction",
     balanceAfter: u.balance,
+    product,
     submissionId: opts.submissionId,
     metadata: opts.metadata,
   });

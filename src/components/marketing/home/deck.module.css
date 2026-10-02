@@ -1,0 +1,96 @@
+.intro {
+  max-width: 720px;
+  margin-bottom: 40px;
+}
+.intro :global(.type-description) {
+  margin-top: 16px;
+  color: var(--sg-text-muted);
+}
+.deck {
+  display: grid;
+  gap: 28px;
+}
+/* Each card sticks a little lower than the one before, so the deck builds up
+   and the earlier steps stay visible as a stack of edges. */
+.card {
+  position: sticky;
+  top: calc(var(--site-header) + 20px + var(--i) * 18px);
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  min-height: 440px;
+  border: 1px solid var(--sg-border);
+  border-radius: 24px;
+  background: var(--sg-surface);
+  box-shadow: 0 -10px 30px -22px rgb(0 0 0 / 0.35);
+  overflow: hidden;
+}
+.copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px;
+}
+.count {
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.copy h3 {
+  margin-top: 14px;
+  font-size: clamp(26px, 2.6vw, 36px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.text {
+  max-width: 40ch;
+  margin-top: 14px;
+  color: var(--sg-text-muted);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.link {
+  align-self: flex-start;
+  margin-top: 22px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.stage {
+  position: relative;
+  min-height: 440px;
+  isolation: isolate;
+  overflow: hidden;
+}
+.film {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 36px 28px;
+}
+.film > * {
+  width: 100%;
+  max-width: 355px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+}
+@media (max-width: 820px) {
+  .card {
+    position: static;
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .copy {
+    padding: 28px 24px;
+  }
+  .stage {
+    min-height: 400px;
+  }
+}

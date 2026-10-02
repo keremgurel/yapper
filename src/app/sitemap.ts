@@ -1,86 +1,24 @@
 import type { MetadataRoute } from "next";
 
-import { programFamilies } from "@/data/training";
-import { publicTools } from "@/data/tools";
 import { getAllBlogPosts } from "@/lib/blog";
 import { SITE_URL } from "@/lib/json-ld";
-import { marketingFeatures } from "@/data/marketing-features";
+import { PUBLIC_PATHS, routeLastmod } from "@/lib/seo/public-routes";
 
+/**
+ * Canonical, indexable URLs only: no redirects, no query-string states, no
+ * signed-in pages. Pages come from the public route registry; blog posts add
+ * themselves. lastmod is the date the page's own files last changed (see
+ * scripts/update-sitemap-lastmod.mjs), never the build date. priority and
+ * changefreq are omitted because Google ignores both.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const blogPosts = getAllBlogPosts().map((post) => ({
+  const pages = PUBLIC_PATHS.map((path) => ({
+    url: `${SITE_URL}${path === "/" ? "" : path}`,
+    lastModified: routeLastmod(path),
+  }));
+  const posts = getAllBlogPosts().map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}`,
     lastModified: new Date(post.publishedAt),
-    changeFrequency: "monthly" as const,
-    priority: 0.7,
   }));
-
-  const trainingPages = programFamilies.map((program) => ({
-    url: `${SITE_URL}${program.href}`,
-    lastModified: new Date(),
-    changeFrequency:
-      program.status === "Free now"
-        ? ("weekly" as const)
-        : ("monthly" as const),
-    priority: program.status === "Free now" ? 0.9 : 0.65,
-  }));
-
-  // Standalone tool landing pages (under /tools/). Product routes referenced by
-  // the registry (e.g. /record, /studio) are reached via internal links, not
-  // listed here.
-  const toolPages = publicTools
-    .filter((t) => t.href.startsWith("/tools/"))
-    .map((t) => ({
-      url: `${SITE_URL}${t.href}`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
-
-  return [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${SITE_URL}/features`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.9,
-    },
-    ...marketingFeatures.map((feature) => ({
-      url: `${SITE_URL}/features/${feature.slug}`,
-      lastModified: new Date(),
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    })),
-    {
-      url: `${SITE_URL}/tools`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    ...toolPages,
-    {
-      url: `${SITE_URL}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/pricing`,
-      lastModified: new Date(),
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/training`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.85,
-    },
-    ...trainingPages,
-    ...blogPosts,
-  ];
+  return [...pages, ...posts];
 }

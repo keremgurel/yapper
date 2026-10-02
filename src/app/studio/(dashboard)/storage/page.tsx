@@ -94,7 +94,7 @@ export default async function StoragePage() {
         description="Finished videos use your plan allowance. Your Brain, ideas and library are text and never count against it. Editor projects stay on your Mac."
         actions={
           <Link
-            href="/pricing"
+            href="/products/studio/pricing"
             className={cn(
               buttonVariants({ variant: "outline" }),
               "no-underline",
@@ -298,8 +298,10 @@ export default async function StoragePage() {
           Plan headroom
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {SUBSCRIPTION_PLANS.map((candidate) => {
-            const current = candidate.key === state?.plan;
+          {SUBSCRIPTION_PLANS.filter(
+            (candidate) => candidate.cadence === "month",
+          ).map((candidate) => {
+            const current = candidate.tier === planByKey(state?.plan)?.tier;
             return (
               <div
                 key={candidate.key}

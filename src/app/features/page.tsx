@@ -1,71 +1,85 @@
-import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-
-import TrainingLayout from "@/app/training-layout";
-import Waitlist from "@/components/waitlist";
-import { Card } from "@/components/ui/card";
-import { Component as Footer } from "@/components/ui/footer-taped-design";
+import MarketingLayout from "@/components/marketing/marketing-layout";
+import Breadcrumbs from "@/components/marketing/breadcrumbs";
+import { StudioSignup } from "@/components/marketing/product-sections";
+import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
+import { marketingMetadata } from "@/lib/marketing-metadata";
 
-export const metadata: Metadata = {
-  title: "Content Creator Tools From Idea to Published Video",
-  description:
-    "Explore Yapper's connected content creator tools: idea capture, video scripts, teleprompter recording, transcript video editing, captions, planning, and social publishing.",
-  alternates: { canonical: "https://ypr.app/features" },
-};
+export const metadata = marketingMetadata(
+  "Yapper Studio features for scripted video",
+  "Everything in Yapper Studio: idea capture, AI script writing, teleprompter recording, transcript video editing, captions, a content calendar and social publishing.",
+  "/features",
+);
 
 export default function FeaturesPage() {
   return (
-    <TrainingLayout>
-      <section className="marketing-container relative pt-16 pb-14 text-center sm:pt-24 sm:pb-20">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] opacity-70"
-          style={{
-            background:
-              "radial-gradient(52% 65% at 50% 0%, color-mix(in srgb, var(--sg-accent-2) 19%, transparent), transparent 72%)",
-          }}
-        />
-        <h1 className="type-h1 mx-auto max-w-5xl">
-          Everything between “I have an idea” and “it’s live.”
-        </h1>
-        <p className="type-description mx-auto mt-6 max-w-2xl sm:text-lg">
-          Yapper connects the content creator tools that usually live in
-          separate apps into one mobile and desktop production flow.
-        </p>
-      </section>
-
-      <section className="marketing-container pb-24">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {marketingFeatures.map((feature) => (
-            <Card
-              key={feature.slug}
-              className="group gap-0 p-6 transition-all hover:-translate-y-0.5 hover:border-[var(--sg-border-strong)] hover:shadow-md"
+    <MarketingLayout>
+      <section className="marketing-hero">
+        <div className="marketing-container">
+          <Breadcrumbs
+            items={[
+              { label: "Yapper Studio", href: "/products/studio" },
+              { label: "Features", href: "/features" },
+            ]}
+          />
+          <h1 className="type-h1 max-w-2xl">Yapper Studio features</h1>
+          <p className="marketing-lede">
+            Studio covers a video from the first note to the published post.
+            Each feature below has its own page with a working example.
+          </p>
+          <p className="marketing-note">
+            Studio is in private beta.{" "}
+            <Link
+              href="/products/studio#waitlist"
+              className="underline underline-offset-4"
             >
-              <Link href={`/features/${feature.slug}`} className="no-underline">
-                <div
-                  className="mb-5 h-1 w-10 rounded-full"
-                  style={{ background: feature.accent }}
-                />
-                <h2 className="type-h3 text-xl">{feature.shortTitle}</h2>
-                <p className="type-description mt-2 text-sm">
-                  {feature.description}
-                </p>
-                <span className="text-foreground mt-5 inline-flex items-center gap-2 text-sm font-bold">
-                  Learn more
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
+              Join the waitlist
+            </Link>
+            .
+          </p>
+          <nav aria-label="Feature categories" className="marketing-actions">
+            {featureGroups.map((group) => (
+              <Link
+                key={group.id}
+                className="marketing-text-link mr-5"
+                href={`#${group.id}`}
+              >
+                {group.title}
               </Link>
-            </Card>
-          ))}
+            ))}
+          </nav>
         </div>
       </section>
-
-      <div id="waitlist">
-        <Waitlist variant="full" />
+      <div className="marketing-container pb-16">
+        {featureGroups.map((group) => (
+          <section
+            key={group.id}
+            id={group.id}
+            className="marketing-feature-group"
+          >
+            <div>
+              <h2 className="type-h2">{group.title}</h2>
+              <p className="type-description mt-4">{group.description}</p>
+            </div>
+            <div className="marketing-feature-list">
+              {group.slugs.map((slug) => {
+                const feature = marketingFeatures.find((f) => f.slug === slug)!;
+                return (
+                  <Link key={slug} href={`/features/${slug}`}>
+                    <h3 className="type-h3">{feature.shortTitle}</h3>
+                    <p className="type-description">{feature.description}</p>
+                    <span className="marketing-text-link mt-4">
+                      Explore {feature.shortTitle.toLowerCase()}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ))}
       </div>
-      <Footer />
-    </TrainingLayout>
+      <StudioSignup />
+    </MarketingLayout>
   );
 }

@@ -1,0 +1,83 @@
+ok   /  [brand]  Yapper: speaking practice and a video studio
+ok   /pricing  [brand]  Yapper pricing for Train and Studio
+ok   /products/studio  [studio]  Video creation software: script, record & edit | Yapper
+ok   /products/studio/pricing  [studio]  Yapper Studio pricing: plans and AI credits | Yapper
+ok   /features  [studio]  Yapper Studio features for scripted video | Yapper
+ok   /features/idea-capture  [studio]  Content idea capture & generator for creators | Yapper
+ok   /features/ai-script-writer  [studio]  AI video script generator for Reels & Shorts | Yapper
+ok   /features/teleprompter-recorder  [studio]  Teleprompter app & video recorder for creators | Yapper
+ok   /features/transcript-video-editor  [studio]  Transcript video editor for talking-head videos | Yapper
+ok   /features/automatic-captions  [studio]  Video caption generator & automatic captions | Yapper
+ok   /features/social-publishing  [studio]  Social media scheduler for video creators | Yapper
+ok   /features/content-calendar  [studio]  Content calendar & planning tool for creators | Yapper
+ok   /features/content-library  [studio]  Content library for video projects & scripts | Yapper
+ok   /products/train  [train]  Public speaking app with practice & AI coaching | Yapper
+ok   /products/train/pricing  [train]  Yapper Train pricing: free practice and Train Plus | Yapper
+ok   /products/train/ai-feedback  [train]  AI speech coach: feedback on your speaking practice | Yapper
+ok   /training  [train]  Free speaking practice: exercises you can start now | Yapper
+ok   /training/random-topic-generator  [train]  Free Random Topic Generator for Speech Practice | Yapper
+ok   /training/explain-after-reading  [train]  Explain After Reading: Free Speaking Practice | Yapper
+ok   /training/read-aloud  [train]  Read Aloud: Free Speaking Practice | Yapper
+ok   /training/interview-prep  [train]  Interview Answer Practice: Free & No Sign-Up | Yapper
+ok   /training/dating  [train]  Dating & Social Conversation Practice | Yapper
+ok   /training/conflict  [train]  Conflict Handling Speaking Practice | Yapper
+ok   /training/creator-camera-drills  [train]  Creator Camera Drills: Practice On-Camera | Yapper
+ok   /training/fluency-on-steroids  [train]  12-minute speaking warm-up | Yapper
+ok   /freestyle-speech  [train]  Freestyle Speech Practice | Yapper
+ok   /tools  [train]  Free Tools for Talking to Camera | Yapper
+ok   /tools/words-per-minute  [train]  Words Per Minute Calculator (Speaking Time) | Yapper
+ok   /blog  [train]  Speaking guides and practice ideas | Yapper
+ok   /privacy  [brand]  Privacy Policy | Yapper
+ok   /terms  [brand]  Terms of Service | Yapper
+ok   /blog/1-minute-speech-topics  [train]  1-Minute Speech Topics: 75 Prompts for Fast Speaking Practice | Yapper
+ok   /blog/filler-words-examples  [train]  Filler Words Examples: What to Cut and What to Keep | Yapper
+ok   /blog/fluency-practice-drills  [train]  4 Fluency Practice Drills for Thinking Faster While Speaking | Yapper
+ok   /blog/good-speech-topics  [train]  Good Speech Topics: 120 Ideas That Are Easy to Practice | Yapper
+ok   /blog/how-to-practice-public-speaking-alone  [train]  How to Practice Public Speaking Alone (And Actually Improve) | Yapper
+ok   /blog/how-to-start-a-speech  [train]  How to Start a Speech: 7 Opening Lines That Actually Work | Yapper
+ok   /blog/how-to-think-faster-when-speaking  [train]  How to Think Faster When Speaking: 7 Practice Drills | Yapper
+ok   /blog/impromptu-speaking-frameworks  [train]  3 Frameworks for Answering Any Impromptu Topic | Yapper
+ok   /blog/impromptu-speaking-practice  [train]  Impromptu Speaking Practice: A 20-Minute Routine That Works | Yapper
+ok   /blog/impromptu-speaking-topics-timer  [train]  Impromptu Speaking Topics: Practice With a Timer, Not a List | Yapper
+ok   /blog/overcome-filler-words  [train]  How to Stop Saying 'Um' and 'Like' When You Speak | Yapper
+ok   /blog/practice-public-speaking-online-free  [train]  Practice Public Speaking Online Free: A 10-Minute Routine | Yapper
+ok   /blog/presentation-practice  [train]  Presentation Practice: A 10-Minute Routine That Actually Helps | Yapper
+ok   /blog/public-speaking-practice-exercises  [train]  Public Speaking Practice Exercises: 7 Drills You Can Do Alone | Yapper
+ok   /blog/random-topic-generator  [train]  Random Topic Generator: Practice Speaking With a Timer | Yapper
+ok   /blog/random-topic-generator-with-timer  [train]  Random Topic Generator With Timer: How to Practice Speaking | Yapper
+ok   /blog/speaking-under-pressure  [train]  Speaking Under Pressure: How to Train Your First Sentence | Yapper
+ok   /blog/speech-topic-ideas-for-practice  [train]  Speech Topic Ideas: 90 Prompts That Build Speaking Skill | Yapper
+ok   /blog/table-topics-questions  [train]  Table Topics Questions: 80 Prompts for Impromptu Speaking Practice | Yapper
+ok   /blog/topics-to-talk-about-speaking-practice  [train]  Topics to Talk About: 100 Prompts for Speaking Practice | Yapper
+ok   /blog/what-are-filler-words  [train]  What Are Filler Words? How to Pause Instead | Yapper
+ok   /blog/what-to-do-when-your-mind-goes-blank  [train]  What to Do When Your Mind Goes Blank Mid-Speech | Yapper
+ok   /blog/words-per-minute-speaking  [train]  Words Per Minute Speaking: Find a Pace People Can Follow | Yapper
+ok   /studio -> /products/studio
+ok   /products -> /
+ok   /products/yapper -> /products/train
+ok   /features/creator-feedback -> /products/train/ai-feedback
+ok   /freestyle -> /freestyle-speech
+ok   /training/freestyle-speech -> /freestyle-speech
+ok   /random-topic-generator -> /training/random-topic-generator
+ok   /training?mode=interview-prep -> /training/interview-prep
+ok   /training?mode=random-topic-generator -> /training/random-topic-generator
+ok   /training?mode=freestyle-speech -> /freestyle-speech
+ok   /training?mode=research-and-explain -> noindex
+ok   /training?mode=not-a-mode -> noindex
+
+WARN 12
+/blog/1-minute-speech-topics: title is 70 characters
+/blog/fluency-practice-drills: title is 69 characters
+/blog/how-to-practice-public-speaking-alone: title is 69 characters
+/blog/how-to-start-a-speech: title is 66 characters
+/blog/impromptu-speaking-practice: title is 68 characters
+/blog/impromptu-speaking-topics-timer: title is 69 characters
+/blog/practice-public-speaking-online-free: title is 66 characters
+/blog/presentation-practice: title is 71 characters
+/blog/public-speaking-practice-exercises: title is 70 characters
+/blog/random-topic-generator-with-timer: title is 68 characters
+/blog/speaking-under-pressure: title is 66 characters
+/blog/table-topics-questions: title is 75 characters
+
+PASS 31 pages, 23 posts, 7 redirects, 54 sitemap URLs.
+Technical eligibility only. Does not establish indexing or rankings.

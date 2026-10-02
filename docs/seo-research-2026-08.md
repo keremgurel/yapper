@@ -1,5 +1,7 @@
 # Yapper SEO Research
 
+> Historical as of October 1, 2026. Volumes were re-pulled on October 1 and the page targets changed with the two-product split. See `docs/product-architecture-and-seo-plan.md` and `docs/pricing-2026-10.md`.
+
 Research date: August 1, 2026
 
 Source: DataForSEO Labs, Google US, English. Search volumes are monthly
