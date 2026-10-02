@@ -165,6 +165,10 @@ Studio keeps its existing `STRIPE_PRICE_CREATOR_*` and `STRIPE_PRICE_CREDITS_*` 
 
 The Stripe billing portal shows both subscriptions on the one customer. Its return URL is now `/pricing`.
 
+## Pronunciation scoring cost
+
+Each feedback session also runs Azure Speech pronunciation assessment on up to the first 90 seconds of the recording. Azure bills this as standard speech to text, about $1 an audio hour at list price, so at most about 2.5 cents a session. A typical one-minute rep adds under 2 cents. This is on top of the transcription and coaching cost above, and is not yet measured on real usage.
+
 ## Open questions
 
 1. Train Plus at $9 is set from cost, not from willingness to pay. Competitor prices were not verified.

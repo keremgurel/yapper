@@ -1,4 +1,5 @@
 import type { DeliveryMetrics } from "@/lib/feedback/metrics";
+import type { PronunciationReport } from "@/lib/pronunciation/types";
 import type {
   TrainingCoaching,
   TrainingContext,
@@ -11,6 +12,7 @@ import {
 } from "@/components/training/feedback/attempt-comparison";
 import DeliveryDetails from "@/components/training/feedback/delivery-details";
 import DeliveryGauges from "@/components/training/feedback/delivery-gauges";
+import PronunciationSection from "@/components/training/feedback/pronunciation-section";
 import NextAttempt from "@/components/training/feedback/next-attempt";
 import ReportSection from "@/components/training/feedback/report-section";
 import ScoreTiles from "@/components/training/feedback/score-tiles";
@@ -28,6 +30,8 @@ export interface TrainingFeedbackResultProps {
   context?: TrainingContext | null;
   /** The earlier attempt at this same prompt, when there was one. */
   previous?: AttemptSnapshot | null;
+  /** Scores measured from the audio, when the recording could be assessed. */
+  pronunciation?: PronunciationReport | null;
 }
 
 /**
@@ -44,6 +48,7 @@ export default function TrainingFeedbackResult({
   transcript,
   context,
   previous,
+  pronunciation,
 }: TrainingFeedbackResultProps) {
   const [focus, ...otherImprovements] = coaching.improvements;
   const changes = previous
@@ -74,6 +79,11 @@ export default function TrainingFeedbackResult({
         <DeliveryGauges metrics={metrics} />
         <DeliveryDetails metrics={metrics} />
       </ReportSection>
+      {pronunciation && (
+        <ReportSection title="Pronunciation and intonation">
+          <PronunciationSection report={pronunciation} />
+        </ReportSection>
+      )}
       <ReportSection title="Transcript">
         <TranscriptSection
           words={transcript}

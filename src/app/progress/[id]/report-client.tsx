@@ -178,6 +178,7 @@ export default function SessionReport({ id }: { id: string }) {
           transcript={state.transcript}
           context={state.record.context}
           previous={previous}
+          pronunciation={state.record.pronunciation}
         />
       )}
     </div>

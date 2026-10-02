@@ -12,6 +12,7 @@ import { recordRateLimitTelemetry } from "@/lib/rate-limit/telemetry";
 export type ProviderSpendEndpoint =
   | "feedback"
   | "training-feedback"
+  | "speech-token"
   | "transcribe"
   | "clean-transcript"
   | "place-overlays"
@@ -49,6 +50,8 @@ const ENDPOINT_POLICIES: Record<
 > = {
   feedback: { capacity: 2, refillPerSecond: 6 / HOUR },
   "training-feedback": { capacity: 3, refillPerSecond: 20 / HOUR },
+  // One token per feedback session, so it shares that endpoint's pace.
+  "speech-token": { capacity: 3, refillPerSecond: 20 / HOUR },
   // An edit is one transcription and one cleanup, and a creator working
   // through a shoot runs several in a row. These were set when the editor sent
   // a take as a dozen separate chunked requests, so four transcriptions meant

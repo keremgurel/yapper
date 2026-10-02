@@ -1,4 +1,5 @@
 import { computeMetrics, type FeedbackWord } from "@/lib/feedback/metrics";
+import type { PronunciationReport } from "@/lib/pronunciation/types";
 import type {
   TrainingCoaching,
   TrainingContext,
@@ -150,4 +151,18 @@ export const samplePrevious = {
     midSentencePauseCount: (sampleMetrics.midSentencePauseCount ?? 0) + 3,
     longPauseCount: sampleMetrics.longPauseCount + 1,
   },
+};
+
+export const samplePronunciation: PronunciationReport = {
+  accuracy: 84,
+  fluency: 71,
+  prosody: 63,
+  monotoneShare: 41,
+  assessedSeconds: 31,
+  words: [
+    { text: "particularly", accuracy: 48, start: 6.2, sound: "l" },
+    { text: "thoroughly", accuracy: 55, start: 14.8, sound: "th" },
+    { text: "comfortable", accuracy: 62, start: 21.4, sound: "er" },
+    { text: "schedule", accuracy: 67, start: 26.1, sound: "jh" },
+  ],
 };
