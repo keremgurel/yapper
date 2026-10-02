@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import StudioPreview from "@/components/marketing/studio-preview";
 import {
-  StudioSignup,
+  StudioStart,
   WorkflowLinks,
 } from "@/components/marketing/product-sections";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
@@ -14,7 +14,7 @@ import { ProductJsonLd } from "@/app/home-json-ld";
 
 export const metadata = marketingMetadata(
   "Video creation software: script, record & edit",
-  "Capture content ideas, write video scripts, record with a teleprompter, edit by transcript, add captions, and prepare social posts in Yapper Studio. Join the waitlist.",
+  "Capture content ideas, write video scripts, record with a teleprompter, edit by transcript, add captions, and prepare social posts in Yapper Studio. Free for 7 days.",
   "/products/studio",
 );
 export default function StudioProductPage() {
@@ -43,17 +43,16 @@ export default function StudioProductPage() {
               </p>
               <div className="marketing-actions">
                 <Button asChild size="lg">
-                  <Link href="#waitlist">Join the Studio waitlist</Link>
+                  <Link href="/products/studio/pricing">
+                    Start your free trial
+                  </Link>
                 </Button>
                 <Button asChild size="lg" variant="outline">
                   <Link href="/features">See all features</Link>
                 </Button>
               </div>
               <p className="marketing-note">
-                In private beta.{" "}
-                <Link href="/products/studio/pricing" className="underline">
-                  See pricing
-                </Link>
+                7 days free, then from $7.99 a week. Cancel anytime.
               </p>
             </div>
             <StudioPreview initialStep="Script" />
@@ -125,15 +124,14 @@ export default function StudioProductPage() {
             </p>
           </div>
           <div className="marketing-availability">
-            <strong>Where Studio stands today.</strong> Studio is in private
-            testing, with web workflows and a native Mac editor. Scheduling and
+            <strong>Where Studio stands today.</strong> Studio runs on the web,
+            with a native Mac editor for recording and editing. Scheduling and
             automated delivery depend on enabled services and supported
-            accounts. Mobile and Windows apps are not available. Access is by
-            application for now.
+            accounts. Mobile and Windows apps are not available yet.
           </div>
         </div>
       </section>
-      <StudioSignup />
+      <StudioStart />
     </MarketingLayout>
   );
 }

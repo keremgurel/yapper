@@ -126,8 +126,8 @@ export default function StudioDeck() {
           </h2>
           <p className="type-description">
             Yapper Studio keeps the idea, the script, the take and the post in
-            one place, so nothing is retyped or re-uploaded between tools.
-            Studio is in private beta.
+            one place, so nothing is retyped or re-uploaded between tools. Try
+            it free for 7 days.
           </p>
         </div>
         <ol className={styles.deck}>
@@ -137,9 +137,7 @@ export default function StudioDeck() {
         </ol>
         <div className={styles.actions}>
           <Button asChild>
-            <Link href="/products/studio#waitlist">
-              Apply for the Studio beta
-            </Link>
+            <Link href="/products/studio/pricing">Start your free trial</Link>
           </Button>
           <Button asChild variant="outline">
             <Link href="/products/studio">How Studio works</Link>

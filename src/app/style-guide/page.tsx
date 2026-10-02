@@ -150,7 +150,7 @@ export default function StyleGuidePage() {
           >
             <div className="space-y-8">
               <Specimen label="Variants">
-                <Button>Join the waitlist</Button>
+                <Button>Start free trial</Button>
                 <Button>Download Yapper</Button>
                 <Button variant="outline">See all features</Button>
                 <Button variant="ghost">Not now</Button>

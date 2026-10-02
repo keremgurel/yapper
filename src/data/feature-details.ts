@@ -14,7 +14,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "A voice note, a few rough sentences, or a reference link can be the beginning of a video. Keep the original thought attached as you develop the angle and decide what to make.",
     availability:
-      "Idea capture is part of the Studio private test. Apply for the beta to get access.",
+      "Idea capture is included in every Studio membership and in the 7-day free trial.",
     questions: [
       {
         question: "Can I start with something other than a written idea?",
@@ -34,7 +34,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Start with your own idea and references. Develop hook options, arrange the talking points, then edit a full draft before recording. The script stays connected to the source, so you can keep refining the point.",
     availability:
-      "Script generation is part of Studio’s private test. AI access and limits will be explained when public access opens.",
+      "Script generation uses Studio credits. Each membership payment includes credits, and the pricing page lists what each action costs.",
     questions: [
       {
         question: "Can I edit the generated script?",
@@ -54,7 +54,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Bring the script into the recorder and choose a readable text size and scroll pace. Check the camera and microphone before a take, then keep the recording with the project you are making.",
     availability:
-      "The Studio recorder is in private testing. Camera and microphone access require your permission. Dedicated mobile apps are not available yet.",
+      "Camera and microphone access require your permission. Dedicated mobile apps are not available yet.",
     questions: [
       {
         question: "Can I change the teleprompter speed?",
@@ -64,7 +64,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
       {
         question: "Is this a free public teleprompter?",
         answer:
-          "The Studio recorder is currently behind private-test access. You can apply for the Studio beta; Yapper Train’s separate speaking practice tools are available now.",
+          "The Studio recorder is included in every Studio membership and the 7-day free trial. Yapper Train’s separate speaking practice tools are free.",
       },
     ],
   },
@@ -74,7 +74,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Read through the timed transcript to locate a false start or repeated thought. Cut the unwanted words, then use timeline controls for the edits that need a closer look. Add captions before exporting the finished take.",
     availability:
-      "Editing uses Yapper Studio’s native Mac editor, currently in private testing. A browser-only editor, Windows release, and mobile editor are not being offered here.",
+      "Editing uses Yapper Studio’s native Mac editor. A browser-only editor, Windows release, and mobile editor are not being offered here.",
     questions: [
       {
         question: "Does deleting transcript text edit the video?",
@@ -94,7 +94,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Use the recording’s word timings to create captions. Choose their appearance and placement, then correct the names and specialist vocabulary that matter to your content with the personal dictionary.",
     availability:
-      "Caption styling and export are part of the native Mac editor’s private test. Always review transcription before publishing.",
+      "Caption styling and export happen in the native Mac editor. Always review transcription before publishing.",
     questions: [
       {
         question: "Can I change how the captions look?",
@@ -114,7 +114,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Start with the finished video, then review the cover, caption, and account for each destination. Keep preparation and delivery status together so a draft, a scheduled delivery, and a published post stay distinct.",
     availability:
-      "Publishing is in private testing. Available destinations depend on connected accounts and platform approvals. Scheduled delivery requires an enabled publishing service; a planning date alone does not publish a post.",
+      "Available destinations depend on connected accounts and platform approvals. Scheduled delivery requires an enabled publishing service; a planning date alone does not publish a post.",
     questions: [
       {
         question: "Does putting a video on the calendar publish it?",
@@ -134,7 +134,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "A useful calendar tells you what needs making, not just what day it is. Organize upcoming content around the ideas, scripts, recordings, and finished pieces already in your workflow.",
     availability:
-      "The calendar is part of Studio’s private test. Planned content and scheduled delivery are separate states; automatic publishing requires an enabled service.",
+      "Planned content and scheduled delivery are separate states; automatic publishing requires an enabled service.",
     questions: [
       {
         question: "Is a planned post automatically scheduled?",
@@ -154,7 +154,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "The finished video started somewhere. Keep its idea, script, takes, and production status in the same workflow, so you can pick it up again without piecing together scattered notes.",
     availability:
-      "Content organization is part of Studio’s private test. Storage and access limits are subject to the current account’s plan.",
+      "Storage and access limits are subject to the current account’s plan.",
     questions: [
       {
         question: "What belongs in the library?",

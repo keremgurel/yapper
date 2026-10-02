@@ -78,7 +78,7 @@ export function BrandHeroSection() {
               }}
             >
               <GlassyButton height={46}>Jump to practice</GlassyButton>
-              <Button>Join waitlist</Button>
+              <Button>Start free trial</Button>
             </div>
           </div>
         </div>

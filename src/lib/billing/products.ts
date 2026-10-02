@@ -24,9 +24,7 @@ export const PRODUCT_PATHS: Record<
 > = {
   studio: {
     pricing: "/products/studio/pricing",
-    // Studio sits behind an invitation while it is in private beta, so a new
-    // subscriber lands on the page that explains access instead of a gate.
-    afterCheckout: "/products/studio/pricing?checkout=success",
+    afterCheckout: "/studio/home?checkout=success",
   },
   train: {
     pricing: "/products/train/pricing",

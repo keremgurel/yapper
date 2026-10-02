@@ -116,7 +116,7 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
       },
       { label: "Pricing", href: "/products/studio/pricing" },
     ],
-    cta: { label: "Apply for the beta", href: "/products/studio#waitlist" },
+    cta: { label: "Start free trial", href: "/products/studio/pricing" },
     switchTo: { label: "Yapper Train", href: "/products/train" },
   },
   train: {

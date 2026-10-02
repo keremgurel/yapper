@@ -1,11 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-
-import {
-  STUDIO_ACCESS_COOKIE,
-  hasStudioAccess,
-  isStudioAccessEnabled,
-} from "@/lib/studio-access";
 
 const isStudioPage = createRouteMatcher(["/studio/(.*)"]);
 // Both handoffs must render for a signed-OUT visitor: each exists precisely to
@@ -61,22 +54,6 @@ export default clerkMiddleware(async (auth, request) => {
     .get("user-agent")
     ?.includes("YapperStudioNative/");
   if (nativeShell) return;
-
-  // Studio is not finished, but the marketing site and the training tools
-  // around it are live and take payment, so the deployment cannot sit behind
-  // project-level protection. A shared password keeps the public out of this
-  // one subtree. It runs before Clerk so an outsider never even sees a
-  // sign-in form for a product they should not know is here.
-  if (isStudioAccessEnabled()) {
-    const unlocked = await hasStudioAccess(
-      request.cookies.get(STUDIO_ACCESS_COOKIE)?.value,
-    );
-    if (!unlocked) {
-      const url = new URL("/studio-access", request.url);
-      url.searchParams.set("next", request.nextUrl.pathname);
-      return NextResponse.redirect(url);
-    }
-  }
 
   await auth.protect();
 });

@@ -41,7 +41,7 @@ MODES = {
     'research-and-explain': None,
     'not-a-mode': None,
 }
-PRIVATE = ['/progress', '/history', '/studio-access', '/style-guide']
+PRIVATE = ['/progress', '/history', '/style-guide']
 GATED = ['/studio/home', '/studio/editor']
 
 

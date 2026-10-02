@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import FeaturePreview from "@/components/marketing/feature-preview";
-import { StudioSignup } from "@/components/marketing/product-sections";
+import { StudioStart } from "@/components/marketing/product-sections";
 import { Button } from "@/components/ui/button";
 import {
   getMarketingFeature,
@@ -78,10 +78,12 @@ export default async function FeaturePage({
               <p className="marketing-lede">{feature.description}</p>
               <div className="marketing-actions">
                 <Button asChild>
-                  <Link href="#waitlist">Apply for the Studio beta</Link>
+                  <Link href="/products/studio/pricing">
+                    Start your free trial
+                  </Link>
                 </Button>
               </div>
-              <p className="marketing-note">In private beta.</p>
+              <p className="marketing-note">7 days free. Cancel anytime.</p>
             </div>
             <FeaturePreview slug={slug} />
           </div>
@@ -161,7 +163,7 @@ export default async function FeaturePage({
           </div>
         </div>
       </section>
-      <StudioSignup />
+      <StudioStart />
     </MarketingLayout>
   );
 }

@@ -652,34 +652,6 @@
   color: var(--sg-text);
   font-weight: 500;
 }
-.marketing-waitlist {
-  scroll-margin-top: 100px;
-}
-.marketing-waitlist-form {
-  margin-top: 24px;
-}
-.marketing-waitlist-form label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-.marketing-waitlist-fields {
-  display: flex;
-  gap: 10px;
-}
-.marketing-waitlist-fields input {
-  min-width: 0;
-  flex: 1;
-  height: 44px;
-  min-height: 44px;
-  border: 1px solid var(--sg-border-strong);
-  border-radius: 8px;
-  padding: 0 14px;
-  background: var(--sg-surface);
-  color: var(--sg-text);
-  font-size: 16px;
-}
 .marketing-form-message {
   margin-top: 12px;
   font-size: 14px;
@@ -912,9 +884,6 @@
   .marketing-workflow,
   .marketing-feature-list {
     grid-template-columns: 1fr;
-  }
-  .marketing-waitlist-fields {
-    flex-direction: column;
   }
   .site-header-actions [data-slot="button"] {
     padding-inline: 8px;
@@ -4429,10 +4398,6 @@ button.publisher-remix-glass {
 }
 .studio-signup > .type-description {
   margin: 16px 0 28px;
-}
-.studio-signup .waitlist-input:focus-visible {
-  outline: 2px solid var(--sg-text-muted);
-  outline-offset: 2px;
 }
 .train-hub-hero {
   display: grid;

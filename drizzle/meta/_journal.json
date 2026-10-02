@@ -253,6 +253,13 @@
       "when": 1790985600000,
       "tag": "0035_studio_beta_applications",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791072000000,
+      "tag": "0036_drop_studio_beta",
+      "breakpoints": true
     }
   ]
 }

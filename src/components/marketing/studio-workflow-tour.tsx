@@ -438,10 +438,7 @@ export default function StudioWorkflowTour() {
               follows.
             </p>
             <Button asChild className="mt-7">
-              <a href="#waitlist">
-                Apply for the beta
-                <ArrowRight />
-              </a>
+              <a href="/products/studio/pricing">Start your free trial</a>
             </Button>
           </div>
         </div>
