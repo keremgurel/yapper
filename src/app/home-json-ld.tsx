@@ -26,7 +26,7 @@ const products = {
     url: `${SITE}/products/studio`,
     applicationCategory: "MultimediaApplication",
     description:
-      "A content creation workflow for ideas, scripts, recording, transcript editing, captions, and publishing preparation. Currently in private testing.",
+      "A content creation workflow for ideas, scripts, recording, transcript editing, captions, and publishing preparation.",
   },
   train: {
     "@type": "SoftwareApplication",

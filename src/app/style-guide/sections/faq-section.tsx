@@ -15,7 +15,7 @@ const ITEMS = [
   },
   {
     q: "Is it free?",
-    a: "The practice rep is free forever. Guided programs are the premium layer you can join the waitlist for.",
+    a: "The practice rep is free forever. AI feedback is the paid layer, with one free session.",
   },
 ];
 

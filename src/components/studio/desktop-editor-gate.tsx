@@ -104,7 +104,7 @@ export default function DesktopEditorGate({
           <p className="text-muted-foreground mt-3 text-xs">
             {itemId
               ? "Sign in to the same account in the Mac app. Your saved recording will download into a local project."
-              : "Available to approved private-beta installations on macOS."}
+              : "Available for macOS."}
           </p>
         </div>
 

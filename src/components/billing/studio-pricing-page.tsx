@@ -104,11 +104,6 @@ export default function StudioPricingPage() {
             Your selected plan is charged after the trial unless you cancel.
             Prices in USD, plus applicable tax.
           </p>
-          <p className={styles.access}>
-            Studio is in private beta and requires an invitation. A plan does
-            not include one.{" "}
-            <Link href="/products/studio#waitlist">Apply for the beta</Link>.
-          </p>
           <CheckoutError error={error} productName="Studio" />
         </div>
       </section>
@@ -133,7 +128,7 @@ export default function StudioPricingPage() {
           </div>
         </div>
       </section>
-      <section className={styles.section}>
+      <section id="credits" className={styles.section}>
         <div className="marketing-container">
           <CreditPacks
             packs={packsFor("studio")}

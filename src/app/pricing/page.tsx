@@ -48,8 +48,8 @@ export default function PricingChooser() {
                 transcription and AI with each payment.
               </p>
               <p className={styles.from}>
-                From {studioFrom.priceLabel} {studioFrom.cadenceLabel}. Private
-                beta.
+                From {studioFrom.priceLabel} {studioFrom.cadenceLabel}, with a
+                7-day free trial.
               </p>
               <Button asChild variant="outline">
                 <Link href="/products/studio/pricing">See Studio pricing</Link>

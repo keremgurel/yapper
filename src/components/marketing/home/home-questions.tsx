@@ -38,11 +38,11 @@ export default function HomeQuestions() {
           <details>
             <summary>Can I use Yapper Studio now?</summary>
             <p>
-              Studio is in private beta and needs an invitation.{" "}
-              <Link href="/products/studio#waitlist" className="underline">
-                Apply for the beta
-              </Link>{" "}
-              and you will hear when a place opens.
+              Yes. Studio is open to everyone, with a 7-day free trial.
+              <Link href="/products/studio/pricing" className="underline">
+                See Studio plans
+              </Link>
+              .
             </p>
           </details>
         </div>

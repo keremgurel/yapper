@@ -28,10 +28,10 @@ const PRODUCTS = [
     tab: "Studio",
     heading: "One place for the whole video.",
     description:
-      "Save an idea, script it, record with a teleprompter, edit by transcript and publish. Studio is in private beta.",
+      "Save an idea, script it, record with a teleprompter, edit by transcript and publish. Try it free for 7 days.",
     primary: {
-      label: "Apply for the Studio beta",
-      href: "/products/studio#waitlist",
+      label: "Start your free trial",
+      href: "/products/studio/pricing",
     },
     secondary: { label: "How Studio works", href: "/products/studio" },
     Demo: StudioWalkthrough,

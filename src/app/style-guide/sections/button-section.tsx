@@ -25,7 +25,7 @@ export function ButtonSection() {
         }}
       >
         <GlassyButton height={46}>Jump to practice</GlassyButton>
-        <Button>Join waitlist</Button>
+        <Button>Start free trial</Button>
         <Button variant="outline">Skip for now</Button>
         <span className="sg-chip">
           <span className="sg-chip-dot" />

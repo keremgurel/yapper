@@ -119,17 +119,4 @@ describe("provider-spend route boundary", () => {
       expect(source.slice(spend, reservation)).not.toContain("await fetch(");
     },
   );
-
-  it("waitlist limits IP before parsing and email before Resend", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/app/api/waitlist/route.ts"),
-      "utf8",
-    );
-    expect(source.indexOf("guardWaitlistIp(req)")).toBeLessThan(
-      source.indexOf("req.json()"),
-    );
-    expect(source.indexOf("guardWaitlistEmail(trimmed)")).toBeLessThan(
-      source.indexOf("new Resend("),
-    );
-  });
 });

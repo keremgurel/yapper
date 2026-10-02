@@ -17,7 +17,6 @@ import { ButtonSection } from "./sections/button-section";
 import { FaqSection } from "./sections/faq-section";
 import { ControlsSection } from "./sections/controls-section";
 import { SurfaceSection } from "./sections/surface-section";
-import { WaitlistSection } from "./sections/waitlist-section";
 import { MascotSection } from "./sections/mascot-section";
 
 /**
@@ -47,7 +46,6 @@ export function StyleGuideClient() {
       <FaqSection />
       <ControlsSection />
       <SurfaceSection />
-      <WaitlistSection />
       <MascotSection />
       <footer
         style={{

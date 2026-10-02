@@ -16,7 +16,7 @@ export function trackPageView(url?: string) {
   });
 }
 
-/** Identify a user (e.g. after waitlist signup) */
+/** Identify a user (e.g. after sign-up) */
 export function identifyUser(
   distinctId: string,
   properties?: Record<string, unknown>,
@@ -111,11 +111,6 @@ export function trackRecordingDownloaded(props: { hasVideo: boolean }) {
 /** User shared their recording */
 export function trackRecordingShared() {
   track("recording_shared");
-}
-
-/** User submitted waitlist email */
-export function trackWaitlistSubmitted(props: { success: boolean }) {
-  track("waitlist_submitted", props);
 }
 
 /** User switched between random/freestyle mode on landing */

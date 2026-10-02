@@ -3,7 +3,6 @@ import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
-import StudioWaitlist from "@/components/marketing/studio-waitlist";
 
 export function WorkflowLinks() {
   return (
@@ -33,18 +32,26 @@ export function WorkflowLinks() {
   );
 }
 
-export function StudioSignup() {
+/** The closing call to action on Studio pages: start the trial, or open
+ * Studio and look around first. */
+export function StudioStart() {
   return (
-    <section id="waitlist" className="marketing-section marketing-rule">
+    <section id="start" className="marketing-section marketing-rule">
       <div className="marketing-container">
         <div className="studio-signup">
-          <h2 className="type-h2">Apply for the Studio private beta.</h2>
+          <h2 className="type-h2">Make your next video in Yapper Studio.</h2>
           <p className="type-description">
-            Studio is open to a small group of testers. Tell us what you make,
-            and if you are approved we will email your access code and the Mac
-            app.
+            Every tool, 30 credits to try the AI, and 7 days before your first
+            payment. Cancel anytime.
           </p>
-          <StudioWaitlist />
+          <div className="marketing-actions">
+            <Button asChild size="lg">
+              <Link href="/products/studio/pricing">Start your free trial</Link>
+            </Button>
+            <Button asChild size="lg" variant="outline">
+              <Link href="/studio/home">Open Studio</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>

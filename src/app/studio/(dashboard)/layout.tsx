@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
 import { Show } from "@clerk/nextjs";
-import { isRevokedTester } from "@/lib/studio-beta/tester-status";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import TrainingHeader from "@/components/training/training-header";
 import AppSidebar from "@/components/studio-shell/app-sidebar";
@@ -9,6 +7,7 @@ import StudioGate from "@/components/studio-shell/studio-gate";
 import AppChrome from "@/components/studio-shell/app-chrome";
 import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
 import StudioChirpy from "@/components/studio-shell/studio-chirpy";
+import PaywallDialog from "@/components/billing/paywall-dialog";
 
 /**
  * The Studio dashboard shell: a shadcn sidebar app-shell (collapsible icon rail
@@ -16,14 +15,11 @@ import StudioChirpy from "@/components/studio-shell/studio-chirpy";
  * visual shell outside this route group, while the transparent /studio layout
  * owns the shared project session across both shells.
  */
-export default async function StudioDashboardLayout({
+export default function StudioDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // A beta tester whose access was revoked still holds a signed cookie until
-  // it expires. Send them back to the access page instead.
-  if (await isRevokedTester()) redirect("/studio-access?revoked=1");
   return (
     <div className="flex min-h-svh flex-col">
       {/* Flags the desktop shell so we can drop website chrome (web: no-op). */}
@@ -41,6 +37,7 @@ export default async function StudioDashboardLayout({
             <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
               <Show when="signed-in">
                 <StudioContentFrame>{children}</StudioContentFrame>
+                <PaywallDialog />
               </Show>
               <Show when="signed-out">
                 <StudioGate />

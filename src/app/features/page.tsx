@@ -1,7 +1,7 @@
 import Link from "next/link";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
-import { StudioSignup } from "@/components/marketing/product-sections";
+import { StudioStart } from "@/components/marketing/product-sections";
 import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 import { marketingMetadata } from "@/lib/marketing-metadata";
@@ -29,12 +29,12 @@ export default function FeaturesPage() {
             Each feature below has its own page with a working example.
           </p>
           <p className="marketing-note">
-            Studio is in private beta.{" "}
+            Try every feature free for 7 days.
             <Link
-              href="/products/studio#waitlist"
+              href="/products/studio/pricing"
               className="underline underline-offset-4"
             >
-              Apply for the beta
+              See plans
             </Link>
             .
           </p>
@@ -79,7 +79,7 @@ export default function FeaturesPage() {
           </section>
         ))}
       </div>
-      <StudioSignup />
+      <StudioStart />
     </MarketingLayout>
   );
 }
