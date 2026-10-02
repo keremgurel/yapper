@@ -439,7 +439,7 @@ export default function StudioWorkflowTour() {
             </p>
             <Button asChild className="mt-7">
               <a href="#waitlist">
-                Join the waitlist
+                Apply for the beta
                 <ArrowRight />
               </a>
             </Button>

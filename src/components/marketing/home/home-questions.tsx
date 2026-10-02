@@ -40,7 +40,7 @@ export default function HomeQuestions() {
             <p>
               Studio is in private beta and needs an invitation.{" "}
               <Link href="/products/studio#waitlist" className="underline">
-                Join the waitlist
+                Apply for the beta
               </Link>{" "}
               and you will hear when a place opens.
             </p>

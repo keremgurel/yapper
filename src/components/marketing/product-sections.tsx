@@ -38,9 +38,11 @@ export function StudioSignup() {
     <section id="waitlist" className="marketing-section marketing-rule">
       <div className="marketing-container">
         <div className="studio-signup">
-          <h2 className="type-h2">Get early access to Yapper Studio.</h2>
+          <h2 className="type-h2">Apply for the Studio private beta.</h2>
           <p className="type-description">
-            Join the list and we’ll tell you when Studio is ready.
+            Studio is open to a small group of testers. Tell us what you make,
+            and if you are approved we will email your access code and the Mac
+            app.
           </p>
           <StudioWaitlist />
         </div>

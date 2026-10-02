@@ -1366,3 +1366,48 @@ export const providerSpendWindows = pgTable("provider_spend_windows", {
     .notNull()
     .defaultNow(),
 });
+
+export const studioBetaStatuses = [
+  "pending",
+  "approved",
+  "rejected",
+  "revoked",
+] as const;
+export type StudioBetaStatus = (typeof studioBetaStatuses)[number];
+
+/**
+ * Applications to the Studio private beta. One row per email. An approved
+ * tester holds a personal access code; only its hash is stored here.
+ */
+export const studioBetaApplications = pgTable(
+  "studio_beta_applications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    email: text("email").notNull().unique(),
+    name: text("name").notNull(),
+    /** Where they publish: a channel or profile link. */
+    link: text("link"),
+    /** What they want to make with Studio, in their words. */
+    useCase: text("use_case"),
+    status: text("status", { enum: studioBetaStatuses })
+      .notNull()
+      .default("pending"),
+    accessCodeHash: text("access_code_hash"),
+    /** Clerk id of the admin who approved, rejected or revoked. */
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    /** When the invitation email was last sent. */
+    invitedAt: timestamp("invited_at", { withTimezone: true }),
+    lastAccessAt: timestamp("last_access_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      "studio_beta_applications_status_check",
+      sql`${t.status} in ('pending','approved','rejected','revoked')`,
+    ),
+    index("studio_beta_applications_status_idx").on(t.status, t.createdAt),
+  ],
+);

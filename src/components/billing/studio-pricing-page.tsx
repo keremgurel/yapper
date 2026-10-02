@@ -107,7 +107,7 @@ export default function StudioPricingPage() {
           <p className={styles.access}>
             Studio is in private beta and requires an invitation. A plan does
             not include one.{" "}
-            <Link href="/products/studio#waitlist">Join the waitlist</Link>.
+            <Link href="/products/studio#waitlist">Apply for the beta</Link>.
           </p>
           <CheckoutError error={error} productName="Studio" />
         </div>

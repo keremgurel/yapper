@@ -27,8 +27,8 @@ export default function ClosingCta() {
             <GradientText>Post it better tomorrow.</GradientText>
           </h2>
           <p className="mx-auto mt-5 max-w-[52ch] text-base leading-relaxed text-white/65">
-            The practice tools are free and need no account. Studio opens to the
-            waitlist first.
+            The practice tools are free and need no account. Studio is in
+            private beta, by application.
           </p>
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">

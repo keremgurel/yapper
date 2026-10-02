@@ -34,7 +34,7 @@ export default function FeaturesPage() {
               href="/products/studio#waitlist"
               className="underline underline-offset-4"
             >
-              Join the waitlist
+              Apply for the beta
             </Link>
             .
           </p>

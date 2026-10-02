@@ -14,7 +14,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "A voice note, a few rough sentences, or a reference link can be the beginning of a video. Keep the original thought attached as you develop the angle and decide what to make.",
     availability:
-      "Idea capture is part of the Studio private test. Join the waitlist for public access.",
+      "Idea capture is part of the Studio private test. Apply for the beta to get access.",
     questions: [
       {
         question: "Can I start with something other than a written idea?",
@@ -64,7 +64,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
       {
         question: "Is this a free public teleprompter?",
         answer:
-          "The Studio recorder is currently behind private-test access. You can join the Studio waitlist; Yapper Train’s separate speaking practice tools are available now.",
+          "The Studio recorder is currently behind private-test access. You can apply for the Studio beta; Yapper Train’s separate speaking practice tools are available now.",
       },
     ],
   },
