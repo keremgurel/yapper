@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 export default async function StudioAccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; revoked?: string }>;
 }) {
-  const { next } = await searchParams;
+  const { next, revoked } = await searchParams;
   return (
     <TrainingLayout>
-      <StudioAccessForm next={next} />
+      <StudioAccessForm next={next} revoked={revoked === "1"} />
     </TrainingLayout>
   );
 }

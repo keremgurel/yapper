@@ -1,0 +1,78 @@
+.card {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+  max-width: 680px;
+  padding: 24px;
+  border: 1px solid var(--sg-border);
+  border-radius: 20px;
+  background: var(--sg-surface);
+  text-align: left;
+}
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.field label span {
+  margin-left: 6px;
+  color: var(--sg-text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--sg-border-strong);
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.field textarea:focus-visible {
+  outline: 2px solid var(--sg-text);
+  outline-offset: 1px;
+}
+.card button[type="submit"] {
+  justify-self: start;
+}
+.error {
+  color: var(--destructive);
+  font-size: 13px;
+}
+.done {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--sg-green-500) 18%, transparent);
+}
+.card h3 {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.card > p {
+  max-width: 46ch;
+  color: var(--sg-text-muted);
+  line-height: 1.6;
+}
+@media (max-width: 520px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+  .card {
+    padding: 18px;
+  }
+}

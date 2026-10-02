@@ -1,4 +1,6 @@
+import { redirect } from "next/navigation";
 import { Show } from "@clerk/nextjs";
+import { isRevokedTester } from "@/lib/studio-beta/tester-status";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import TrainingHeader from "@/components/training/training-header";
 import AppSidebar from "@/components/studio-shell/app-sidebar";
@@ -14,11 +16,14 @@ import StudioChirpy from "@/components/studio-shell/studio-chirpy";
  * visual shell outside this route group, while the transparent /studio layout
  * owns the shared project session across both shells.
  */
-export default function StudioDashboardLayout({
+export default async function StudioDashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // A beta tester whose access was revoked still holds a signed cookie until
+  // it expires. Send them back to the access page instead.
+  if (await isRevokedTester()) redirect("/studio-access?revoked=1");
   return (
     <div className="flex min-h-svh flex-col">
       {/* Flags the desktop shell so we can drop website chrome (web: no-op). */}

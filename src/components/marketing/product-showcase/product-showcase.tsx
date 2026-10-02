@@ -30,7 +30,7 @@ const PRODUCTS = [
     description:
       "Save an idea, script it, record with a teleprompter, edit by transcript and publish. Studio is in private beta.",
     primary: {
-      label: "Join the Studio waitlist",
+      label: "Apply for the Studio beta",
       href: "/products/studio#waitlist",
     },
     secondary: { label: "How Studio works", href: "/products/studio" },

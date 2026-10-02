@@ -128,8 +128,8 @@ export default function StudioProductPage() {
             <strong>Where Studio stands today.</strong> Studio is in private
             testing, with web workflows and a native Mac editor. Scheduling and
             automated delivery depend on enabled services and supported
-            accounts. Mobile and Windows apps are not available. We’ll share
-            public availability through the waitlist.
+            accounts. Mobile and Windows apps are not available. Access is by
+            application for now.
           </div>
         </div>
       </section>

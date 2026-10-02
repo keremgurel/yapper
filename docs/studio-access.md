@@ -1,4 +1,47 @@
-# Studio access password
+# Studio access: the private beta and the team password
+
+Studio is open to approved beta testers and to the team. Testers get in with a
+personal access code; the team keeps a shared password. Both end in the same
+cookie check in `src/proxy.ts`, and Clerk sign-in still applies afterwards.
+
+## The private beta
+
+1. Someone applies with the form on `/products/studio#waitlist`
+   (`POST /api/studio-beta/apply`). It stores a row in
+   `studio_beta_applications`: name, email, where they post, what they want to
+   make. Applying twice with one email keeps the first row.
+2. An admin opens `/studio/admin/beta`. Admins are the Clerk ids in
+   `ADMIN_USER_IDS`; everyone else gets a 404.
+3. Approving issues a personal access code (three groups of four characters),
+   stores only its hash, and emails the invitation: the code, the link to
+   `/studio-access`, and the Mac app download. The panel shows the code once.
+4. The tester enters their email and code on `/studio-access`. The cookie they
+   get names their application and expiry and is signed with the access
+   secret, so the proxy checks it without a database read. It lasts 30 days.
+5. Revoking sets the application to `revoked` and clears the code. The Studio
+   layout checks a tester cookie against the database on each page load, so a
+   revoked tester is sent back to `/studio-access` on their next request.
+   "Send a new code" replaces the old code; a tester already inside stays in
+   until their cookie expires.
+
+The code is bound to the email it was issued for, and the access form does not
+say whether the email or the code was wrong. Attempts are rate limited per IP
+(see below).
+
+### Email
+
+Invitations go out through Resend from `STUDIO_BETA_FROM_EMAIL`, which must be
+on a domain verified in Resend. Until that variable is set, nothing is sent:
+approving still works, and the panel tells the admin to pass the code on by
+hand. `STUDIO_BETA_REPLY_TO` is optional.
+
+### What is not gated
+
+The Mac app download is a public GitHub release, and the native shell skips
+the cookie gate (see the exemptions below). The beta gate keeps the public out
+of the web Studio; Clerk and the paid entitlement are what protect the API.
+
+## The team password
 
 Studio is unfinished, but the marketing site, the training tools and AI
 feedback around it are live and take payment. So the deployment cannot sit
@@ -25,7 +68,9 @@ When it is set:
 
 The cookie never contains the password. It carries an HMAC-SHA256 over a fixed
 label keyed by the password, so a stolen cookie reveals nothing, and changing
-`STUDIO_ACCESS_PASSWORD` invalidates every outstanding cookie at once. That is
+`STUDIO_ACCESS_PASSWORD` invalidates every outstanding cookie at once,
+including testers' cookies, which are signed with the same secret. Testers
+then enter their code again. That is
 the rotation procedure: change the variable, redeploy, and hand out the new
 password.
 

@@ -11,6 +11,8 @@
  * password invalidates every outstanding cookie at once.
  */
 
+import { readTesterCookie } from "@/lib/studio-beta/tester-cookie";
+
 export const STUDIO_ACCESS_COOKIE = "yapper_studio_access";
 
 /** 30 days: long enough that a tester signs in once a month, short enough that
@@ -66,7 +68,12 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-/** True when the presented cookie was minted from the current password. */
+/**
+ * True when the presented cookie opens Studio: either the team cookie minted
+ * from the current password, or an approved beta tester's own signed cookie.
+ * A tester's cookie is only checked for signature and expiry here; whether
+ * their application is still approved is checked by the Studio layout.
+ */
 export async function hasStudioAccess(
   cookieValue: string | undefined,
 ): Promise<boolean> {
@@ -74,7 +81,8 @@ export async function hasStudioAccess(
   if (!password) return true;
   if (!cookieValue) return false;
   const expected = await studioAccessToken(password);
-  return timingSafeEqual(cookieValue, expected);
+  if (timingSafeEqual(cookieValue, expected)) return true;
+  return (await readTesterCookie(password, cookieValue)) !== null;
 }
 
 async function sha256Hex(value: string): Promise<string> {

@@ -138,7 +138,7 @@ export default function StudioDeck() {
         <div className={styles.actions}>
           <Button asChild>
             <Link href="/products/studio#waitlist">
-              Join the Studio waitlist
+              Apply for the Studio beta
             </Link>
           </Button>
           <Button asChild variant="outline">

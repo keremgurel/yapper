@@ -78,7 +78,7 @@ export default async function FeaturePage({
               <p className="marketing-lede">{feature.description}</p>
               <div className="marketing-actions">
                 <Button asChild>
-                  <Link href="#waitlist">Join the Studio waitlist</Link>
+                  <Link href="#waitlist">Apply for the Studio beta</Link>
                 </Button>
               </div>
               <p className="marketing-note">In private beta.</p>
