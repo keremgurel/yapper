@@ -31,7 +31,7 @@ export default function CorrectionLegend({
         </Chip>
       ))}
       <span className="text-muted-foreground text-xs">
-        Select a marked phrase to see the fix.
+        Select a marked phrase to see its fix.
       </span>
     </div>
   );

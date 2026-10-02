@@ -3,7 +3,6 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
 import { submissions } from "@/lib/db/schema";
-import { dimensionAverages } from "@/lib/progress/dimension-averages";
 import {
   parseTrainingContext,
   parseTrainingScores,
@@ -14,7 +13,9 @@ import type {
   ProgressSession,
   TrainingProgressResponse,
 } from "@/lib/progress/types";
-import { TRAINING_DIMENSIONS } from "@/lib/training-feedback/types";
+import { skillWindowAverages } from "@/lib/progress/skill-averages";
+import { parsePronunciation } from "@/lib/pronunciation/parse";
+import { SKILLS, skillScores } from "@/lib/training-feedback/skills";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,8 @@ export async function GET(req: NextRequest): Promise<Response> {
         status: submissions.status,
         context: submissions.context,
         scores: submissions.scores,
+        // Only this one key: the full feedback blob is large and unused here.
+        pronunciation: sql<unknown>`${submissions.feedback}->'pronunciation'`,
       })
       .from(submissions)
       .where(trainingOnly)
@@ -83,6 +86,15 @@ export async function GET(req: NextRequest): Promise<Response> {
       .limit(STREAK_ROW_CAP),
   ]);
 
+  // Newest first, like `rows`. The skills are derived the same way the report
+  // derives them, so the dashboard and a session's own page always agree.
+  const skillsByRow = rows.map((row) => {
+    const scores = parseTrainingScores(row.scores);
+    return scores
+      ? skillScores(scores, parsePronunciation(row.pronunciation))
+      : null;
+  });
+
   const sessions: ProgressSession[] = rows.map((row) => ({
     id: row.id,
     createdAt: row.createdAt.toISOString(),
@@ -100,7 +112,12 @@ export async function GET(req: NextRequest): Promise<Response> {
     .reverse()
     .flatMap((session) => (session.scores ? [session.scores] : []));
   const trend = scoreTrend(coachedScores.map((scores) => scores.overall));
-  const byDimension = dimensionAverages(coachedScores, TRAINING_DIMENSIONS);
+  const bySkill = skillWindowAverages(
+    skillsByRow
+      .slice()
+      .reverse()
+      .flatMap((skills) => (skills ? [skills] : [])),
+  );
 
   const body: TrainingProgressResponse = {
     sessions,
@@ -118,10 +135,10 @@ export async function GET(req: NextRequest): Promise<Response> {
       earlierAverage: trend.earlierAverage,
       overallDelta: trend.delta,
     },
-    dimensions: TRAINING_DIMENSIONS.map((dimension) => ({
-      dimension,
-      average: byDimension[dimension].average,
-      delta: byDimension[dimension].delta,
+    dimensions: SKILLS.map((skill) => ({
+      dimension: skill,
+      average: bySkill[skill].average,
+      delta: bySkill[skill].delta,
     })),
   };
 

@@ -20,7 +20,7 @@ const FREE = [
 ];
 const PLUS = [
   "Unlimited AI feedback on your recordings",
-  "Five scores, corrections and a clearer version of your answer",
+  "Four scores, pronunciation, corrections and a clearer version of your answer",
   "Saved sessions and progress over time",
 ];
 

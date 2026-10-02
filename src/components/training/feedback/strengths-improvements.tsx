@@ -1,5 +1,8 @@
+import { Check, Target } from "lucide-react";
+import styles from "@/components/training/feedback/takeaways.module.css";
+
 /**
- * What worked and what to work on, side by side. When one list is empty the
+ * What worked and what to work on, as two panels. When one list is empty the
  * other takes the full width; when both are empty the parent skips the
  * section entirely.
  */
@@ -10,40 +13,28 @@ export default function StrengthsImprovements({
   strengths: string[];
   improvements: string[];
 }) {
-  const columns = [
-    {
-      title: "What worked",
-      items: strengths,
-      dot: "bg-[color:var(--sg-green-500)]",
-    },
-    {
-      title: "What to work on",
-      items: improvements,
-      dot: "bg-[color:var(--sg-cyan-500)]",
-    },
-  ].filter((c) => c.items.length > 0);
-
-  if (columns.length === 0) return null;
+  const panels = [
+    { key: "keep", title: "Keep doing", items: strengths, Icon: Check },
+    { key: "next", title: "Work on next", items: improvements, Icon: Target },
+  ].filter((panel) => panel.items.length > 0);
+  if (panels.length === 0) return null;
 
   return (
-    <div className={`grid gap-6 ${columns.length > 1 ? "sm:grid-cols-2" : ""}`}>
-      {columns.map((col) => (
-        <div key={col.title}>
-          <h3 className="text-foreground text-sm font-semibold">{col.title}</h3>
-          <ul className="mt-2 space-y-2">
-            {col.items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2.5">
-                <span
-                  aria-hidden
-                  className={`mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full ${col.dot}`}
-                />
-                <p className="text-foreground max-w-[68ch] text-[15px] leading-relaxed">
-                  {item}
-                </p>
+    <div className={styles.panels} data-single={panels.length === 1}>
+      {panels.map(({ key, title, items, Icon }) => (
+        <section key={key} className={styles.panel} data-kind={key}>
+          <h3>{title}</h3>
+          <ul>
+            {items.map((item, index) => (
+              <li key={index}>
+                <span className={styles.icon} aria-hidden="true">
+                  <Icon size={14} strokeWidth={2.4} />
+                </span>
+                <p>{item}</p>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       ))}
     </div>
   );

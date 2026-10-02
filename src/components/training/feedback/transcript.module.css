@@ -1,0 +1,56 @@
+/* The transcript beside the fix for the selected phrase. The fix stays in
+   view while a long transcript scrolls. */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.layout[data-solo="true"] {
+  grid-template-columns: 1fr;
+}
+.stepper {
+  position: sticky;
+  top: calc(var(--site-header, 73px) + 16px);
+}
+.stepperBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-bottom: 10px;
+}
+.stepperBar p {
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.stepperBar div {
+  display: flex;
+  gap: 6px;
+}
+.stepperBar button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--sg-border-strong);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.stepperBar button:hover {
+  background: var(--sg-surface-sunken);
+}
+.stepperBar button:focus-visible {
+  outline: 2px solid var(--sg-text);
+  outline-offset: 2px;
+}
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .stepper {
+    position: static;
+  }
+}

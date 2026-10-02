@@ -4,9 +4,9 @@
  * client components can import it.
  */
 
+import type { Skill } from "@/lib/training-feedback/skills";
 import type {
   TrainingContext,
-  TrainingDimension,
   TrainingScores,
 } from "@/lib/training-feedback/types";
 
@@ -46,8 +46,8 @@ export interface ProgressStats {
 }
 
 export interface DimensionProgressEntry {
-  dimension: TrainingDimension;
-  /** Latest-window average for this dimension. */
+  dimension: Skill;
+  /** Latest-window average for this skill. */
   average: number | null;
   /** Latest-window average minus the earlier average. */
   delta: number | null;

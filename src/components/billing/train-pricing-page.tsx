@@ -28,7 +28,7 @@ const questions = [
   {
     question: "What do I get back?",
     answer:
-      "A transcript, five scores, corrections in your own words and one thing to work on next. Practicing without asking for feedback is always free.",
+      "A transcript, four scores, pronunciation, corrections in your own words and one thing to work on next. Practicing without asking for feedback is always free.",
   },
   {
     question: "What stays free?",

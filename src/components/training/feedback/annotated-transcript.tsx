@@ -13,10 +13,13 @@ import {
 import { CORRECTION_TONES } from "@/components/training/feedback/correction-tones";
 import CorrectionDetail from "@/components/training/feedback/correction-detail";
 import CorrectionLegend from "@/components/training/feedback/correction-legend";
+import CorrectionStepper from "@/components/training/feedback/correction-stepper";
+import styles from "@/components/training/feedback/transcript.module.css";
 
 /**
- * The spoken transcript with corrected spans marked in their type's tone.
- * Selecting a mark shows that correction's fix and note below the prose.
+ * The spoken transcript with corrected spans marked in their type's tone, and
+ * the fix for the selected one beside it. The first fix is open from the
+ * start, and the stepper walks through the rest in the order they were said.
  * Corrections that could not be anchored to the text still appear at the end
  * so nothing the coach flagged is lost.
  */
@@ -27,11 +30,23 @@ export default function AnnotatedTranscript({
   words: TranscriptWord[];
   corrections: TrainingCorrection[];
 }) {
-  const [selected, setSelected] = useState<number | null>(null);
   const segments = useMemo(
     () => annotateTranscript(words, corrections),
     [words, corrections],
   );
+  // Marked corrections in the order they appear in the transcript.
+  const order = useMemo(
+    () => [
+      ...new Set(
+        segments.flatMap((segment) =>
+          segment.correctionIndex === null ? [] : [segment.correctionIndex],
+        ),
+      ),
+    ],
+    [segments],
+  );
+  const [picked, setPicked] = useState<number | null>(null);
+  const selected = picked ?? order[0] ?? null;
   const leftover = useMemo(
     () => unmatchedCorrections(segments, corrections),
     [segments, corrections],
@@ -47,41 +62,48 @@ export default function AnnotatedTranscript({
 
   return (
     <div className="space-y-4">
-      {corrections.length > 0 ? (
-        <CorrectionLegend corrections={corrections} />
-      ) : (
-        <p className="text-muted-foreground text-xs">
-          No inline corrections for this rep.
-        </p>
-      )}
-      <p className="text-foreground max-w-[68ch] text-[17px] leading-[1.75]">
-        {segments.map((seg, i) => {
-          if (seg.correctionIndex === null) {
-            return <span key={i}>{seg.text}</span>;
-          }
-          const correction = corrections[seg.correctionIndex];
-          const tone = CHIP_TONES[CORRECTION_TONES[correction.type]];
-          const isSelected = selected === seg.correctionIndex;
-          return (
-            <button
-              key={i}
-              type="button"
-              aria-expanded={isSelected}
-              onClick={() =>
-                setSelected(isSelected ? null : seg.correctionIndex)
+      <div className={styles.layout} data-solo={selected === null}>
+        <div className="space-y-4">
+          {corrections.length > 0 ? (
+            <CorrectionLegend corrections={corrections} />
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              No inline corrections for this rep.
+            </p>
+          )}
+          <p className="text-foreground max-w-[68ch] text-[17px] leading-[1.75]">
+            {segments.map((seg, i) => {
+              if (seg.correctionIndex === null) {
+                return <span key={i}>{seg.text}</span>;
               }
-              className={`inline rounded-sm px-0.5 text-inherit ${tone.bg} focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-                isSelected ? "ring-2 ring-[color:var(--sg-accent)]" : ""
-              }`}
-            >
-              {seg.text}
-            </button>
-          );
-        })}
-      </p>
-      {selected !== null && corrections[selected] && (
-        <CorrectionDetail correction={corrections[selected]} />
-      )}
+              const correction = corrections[seg.correctionIndex];
+              const tone = CHIP_TONES[CORRECTION_TONES[correction.type]];
+              const isSelected = selected === seg.correctionIndex;
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setPicked(seg.correctionIndex)}
+                  className={`inline rounded-sm px-0.5 text-inherit ${tone.bg} focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
+                    isSelected ? "ring-2 ring-[color:var(--sg-accent)]" : ""
+                  }`}
+                >
+                  {seg.text}
+                </button>
+              );
+            })}
+          </p>
+        </div>
+        {selected !== null && corrections[selected] && (
+          <CorrectionStepper
+            corrections={corrections}
+            order={order}
+            selected={selected}
+            onSelect={setPicked}
+          />
+        )}
+      </div>
       {leftover.length > 0 && (
         <Section title="Also flagged" rank="quiet">
           <div className="space-y-2">
