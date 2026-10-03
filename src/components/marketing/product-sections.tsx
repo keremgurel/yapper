@@ -1,4 +1,5 @@
 import Link from "next/link";
+import StudioStartActions from "@/components/marketing/studio-start-actions";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { featureGroups } from "@/data/marketing-navigation";
@@ -44,14 +45,7 @@ export function StudioStart() {
             Every tool, 30 credits to try the AI, and 7 days before your first
             payment. Cancel anytime.
           </p>
-          <div className="marketing-actions">
-            <Button asChild size="lg">
-              <Link href="/products/studio/pricing">Start your free trial</Link>
-            </Button>
-            <Button asChild size="lg" variant="outline">
-              <Link href="/studio/home">Open Studio</Link>
-            </Button>
-          </div>
+          <StudioStartActions />
         </div>
       </div>
     </section>

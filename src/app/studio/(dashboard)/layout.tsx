@@ -1,6 +1,5 @@
 import { Show } from "@clerk/nextjs";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import TrainingHeader from "@/components/training/training-header";
 import AppSidebar from "@/components/studio-shell/app-sidebar";
 import StudioHeader from "@/components/studio-shell/studio-header";
 import StudioGate from "@/components/studio-shell/studio-gate";
@@ -10,7 +9,8 @@ import StudioChirpy from "@/components/studio-shell/studio-chirpy";
 import PaywallDialog from "@/components/billing/paywall-dialog";
 
 /**
- * The Studio dashboard shell: a shadcn sidebar app-shell (collapsible icon rail
+ * The Studio dashboard shell, on its own without the website's navbar: a
+ * shadcn sidebar app-shell (collapsible icon rail
  * + inset content with a sticky header). The editor keeps its own full-screen
  * visual shell outside this route group, while the transparent /studio layout
  * owns the shared project session across both shells.
@@ -21,14 +21,14 @@ export default function StudioDashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col">
+    // Studio is an app, not a page of the website: no site navbar, so the
+    // height the shell reserved for it is zero.
+    <div
+      className="flex min-h-svh flex-col"
+      style={{ "--site-header": "0px" } as React.CSSProperties}
+    >
       {/* Flags the desktop shell so we can drop website chrome (web: no-op). */}
       <AppChrome />
-      {/* Global site navbar — website only. In the native app it's hidden and
-          its height reservation (--site-header) collapses to 0. */}
-      <div className="marketing-chrome">
-        <TrainingHeader accountControls={false} />
-      </div>
       <StudioChirpy>
         <SidebarProvider className="min-h-[calc(100svh-var(--site-header,3.5rem))] flex-1">
           <AppSidebar />

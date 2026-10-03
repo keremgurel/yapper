@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useHeaderCta } from "./use-header-cta";
 import { isPanel, type SiteNavigation } from "@/data/site-navigation";
 
 /** The phone menu: the same items as the desktop row, one level deep. */
@@ -11,6 +12,7 @@ export default function MobileNav({
   navigation: SiteNavigation;
   onNavigate: () => void;
 }) {
+  const cta = useHeaderCta(navigation.cta);
   return (
     <nav
       id="site-mobile-navigation"
@@ -58,10 +60,10 @@ export default function MobileNav({
           </Link>
         ),
       )}
-      {navigation.cta && (
+      {cta && (
         <Button asChild className="mt-5 w-full">
-          <Link href={navigation.cta.href} onClick={onNavigate}>
-            {navigation.cta.label}
+          <Link href={cta.href} onClick={onNavigate}>
+            {cta.label}
           </Link>
         </Button>
       )}

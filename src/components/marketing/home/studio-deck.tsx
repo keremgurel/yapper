@@ -12,6 +12,7 @@ import {
 } from "@/components/marketing/feature-scenes";
 import { useDemoPlayback } from "@/components/marketing/use-demo-playback";
 import { Button } from "@/components/ui/button";
+import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import styles from "./deck.module.css";
 
 const IDEA =
@@ -136,9 +137,7 @@ export default function StudioDeck() {
           ))}
         </ol>
         <div className={styles.actions}>
-          <Button asChild>
-            <Link href="/products/studio/pricing">Start your free trial</Link>
-          </Button>
+          <StudioCtaButton />
           <Button asChild variant="outline">
             <Link href="/products/studio">How Studio works</Link>
           </Button>

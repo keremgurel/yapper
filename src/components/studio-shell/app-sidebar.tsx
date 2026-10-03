@@ -9,11 +9,13 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import StudioNavIcon from "@/components/studio-shell/studio-nav-icon";
 import { studioNavGroups, type StudioNavItem } from "@/data/studio-nav";
 
@@ -43,18 +45,34 @@ function NavMenu({ items }: { items: StudioNavItem[] }) {
   );
 }
 
-/** The Studio nav rail. Sits BELOW the global site navbar (logo + account), so
- * it holds only the Studio surfaces, grouped by stage: Lab (where ideas come
- * from), Studio (make the video), Press (send it out), Settings (one-time
- * plumbing). Each group is a labeled section from `studioNavGroups`. Collapses
- * to an icon rail on desktop, a sheet on mobile. The `top-14` offset keeps the
- * fixed rail under the 56px sticky header. */
+/** The Studio nav rail: the app's mark at the top, then the Studio surfaces,
+ * grouped by stage: Lab (where ideas come from), Studio (make the video),
+ * Press (send it out), Settings (one-time plumbing). Each group is a labeled
+ * section from `studioNavGroups`. Collapses to an icon rail on desktop, a
+ * sheet on mobile. */
 export default function AppSidebar() {
   return (
     <Sidebar
       collapsible="icon"
       className="top-[var(--site-header,3.5rem)] h-[calc(100svh-var(--site-header,3.5rem))]"
     >
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild size="lg" tooltip="Yapper Studio">
+              <Link href="/studio/home" className="no-underline">
+                <ChirpyMark size={24} />
+                <span className="text-[17px] font-semibold tracking-[-0.03em]">
+                  yapper{" "}
+                  <span className="text-muted-foreground font-normal">
+                    studio
+                  </span>
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
       <SidebarContent>
         {studioNavGroups.map((group) => (
           <SidebarGroup key={group.label || "home"}>
