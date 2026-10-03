@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
+import { studioHost, studioHostRedirects } from "./src/lib/routing/studio-host";
 
 const nextConfig: NextConfig = {
   async redirects() {
     return [
+      // Studio on its own host. Empty until STUDIO_HOST is set, and listed
+      // first so its front door wins over the /studio landing redirect.
+      ...studioHostRedirects(studioHost(process.env)),
       // Legacy editor deep links (/studio?tab=feedback etc.) still resolve to
       // the editor. Listed before the plain /studio rule below, because
       // redirects match in order and that rule would otherwise take them.
