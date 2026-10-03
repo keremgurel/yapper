@@ -13,7 +13,7 @@ import {
   Sparkles,
   WandSparkles,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import StudioCtaButton from "@/components/marketing/studio-cta-button";
 
 type WorkflowStep = {
   number: string;
@@ -437,9 +437,7 @@ export default function StudioWorkflowTour() {
               script, take, edit, publishing asset, post, and learning that
               follows.
             </p>
-            <Button asChild className="mt-7">
-              <a href="/products/studio/pricing">Start your free trial</a>
-            </Button>
+            <StudioCtaButton className="mt-7" />
           </div>
         </div>
 

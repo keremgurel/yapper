@@ -11,7 +11,6 @@ import {
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import TrainingPreview from "@/components/marketing/training-preview";
 import TrainFeedbackDemo from "@/components/marketing/train-feedback-demo";
-import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import { GlassyButton } from "@/components/ui/glassy-button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import { ProductJsonLd } from "@/app/home-json-ld";
@@ -29,12 +28,6 @@ export default function YapperProductPage() {
       <ProductJsonLd product="train" />
       <section className={styles.hero}>
         <div className="marketing-container">
-          <Breadcrumbs
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Yapper Train", href: "/products/train" },
-            ]}
-          />
           <div className={styles.heroGrid}>
             <div className={styles.heroCopy}>
               <h1 className="type-display">

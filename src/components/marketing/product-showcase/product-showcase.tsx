@@ -1,9 +1,10 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import { AudioLines, Clapperboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import GlassTabs from "../glass-tabs";
 import StudioWalkthrough from "./studio-walkthrough";
 import TrainWalkthrough from "./train-walkthrough";
@@ -51,14 +52,52 @@ const TABS = [
 export default function ProductShowcase() {
   const id = useId();
   const [selected, setSelected] = useState(0);
+  const root = useRef<HTMLDivElement>(null);
+
+  /** Bring the chosen demo fully into view: the tabs just under the header
+   * when everything fits, otherwise the whole demo with the tabs above it. */
+  const reveal = () => {
+    const node = root.current;
+    const demo = node?.querySelector<HTMLElement>(
+      '[role="tabpanel"]:not([hidden]) .demo-field',
+    );
+    if (!node || !demo) return;
+    const header =
+      parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          "--site-header",
+        ),
+      ) || 0;
+    const gap = 12;
+    const tabs = node.getBoundingClientRect().top;
+    const bottom = demo.getBoundingClientRect().bottom;
+    if (tabs >= header && bottom <= window.innerHeight) return;
+    // Lift the tabs to the header, then further only if the demo still runs
+    // off the bottom of the screen.
+    const shift = Math.max(
+      tabs - header - gap,
+      bottom - (window.innerHeight - gap),
+    );
+    window.scrollTo({
+      top:
+        window.scrollY +
+        Math.min(shift, demo.getBoundingClientRect().top - header - gap),
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
+
   return (
-    <div className={styles.showcase}>
+    <div ref={root} className={styles.showcase}>
       <GlassTabs
         tabs={TABS}
         value={PRODUCTS[selected].key}
-        onChange={(key) =>
-          setSelected(PRODUCTS.findIndex((product) => product.key === key))
-        }
+        onChange={(key) => {
+          setSelected(PRODUCTS.findIndex((product) => product.key === key));
+          // After the panel switches, so the measurement is of the new demo.
+          requestAnimationFrame(reveal);
+        }}
         panelId={(key) => `${id}-panel-${key}`}
         id={`${id}-tab`}
         label="Yapper products"
@@ -79,9 +118,15 @@ export default function ProductShowcase() {
               <p className="type-description">{product.description}</p>
             </div>
             <div className={styles.actions}>
-              <Button asChild size="lg">
-                <Link href={product.primary.href}>{product.primary.label}</Link>
-              </Button>
+              {product.key === "studio" ? (
+                <StudioCtaButton size="lg" />
+              ) : (
+                <Button asChild size="lg">
+                  <Link href={product.primary.href}>
+                    {product.primary.label}
+                  </Link>
+                </Button>
+              )}
               <Button asChild size="lg" variant="outline">
                 <Link href={product.secondary.href}>
                   {product.secondary.label}

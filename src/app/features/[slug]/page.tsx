@@ -4,8 +4,8 @@ import { Check } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import FeaturePreview from "@/components/marketing/feature-preview";
+import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import { StudioStart } from "@/components/marketing/product-sections";
-import { Button } from "@/components/ui/button";
 import {
   getMarketingFeature,
   marketingFeatures,
@@ -77,11 +77,7 @@ export default async function FeaturePage({
               <h1 className="type-h1">{feature.title}</h1>
               <p className="marketing-lede">{feature.description}</p>
               <div className="marketing-actions">
-                <Button asChild>
-                  <Link href="/products/studio/pricing">
-                    Start your free trial
-                  </Link>
-                </Button>
+                <StudioCtaButton />
               </div>
               <p className="marketing-note">7 days free. Cancel anytime.</p>
             </div>

@@ -44,10 +44,10 @@ async function fetchBillingStatus(): Promise<BillingStatus | null> {
  * read is right: the header shows the last known figure instantly and corrects
  * itself in the background.
  */
-export function useBillingStatus() {
+export function useBillingStatus(enabled = true) {
   const { data } = useClientResource(
     STUDIO_RESOURCE_KEYS.billing,
-    true,
+    enabled,
     fetchBillingStatus,
   );
 

@@ -7,7 +7,7 @@ import {
   StudioStart,
   WorkflowLinks,
 } from "@/components/marketing/product-sections";
-import Breadcrumbs from "@/components/marketing/breadcrumbs";
+import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import { Button } from "@/components/ui/button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import { ProductJsonLd } from "@/app/home-json-ld";
@@ -23,12 +23,6 @@ export default function StudioProductPage() {
       <ProductJsonLd product="studio" />
       <section className="marketing-hero">
         <div className="marketing-container">
-          <Breadcrumbs
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Yapper Studio", href: "/products/studio" },
-            ]}
-          />
           <div className="marketing-hero-grid">
             <div className="marketing-hero-centered">
               <h1 className="type-display">
@@ -42,11 +36,7 @@ export default function StudioProductPage() {
                 the final post.
               </p>
               <div className="marketing-actions">
-                <Button asChild size="lg">
-                  <Link href="/products/studio/pricing">
-                    Start your free trial
-                  </Link>
-                </Button>
+                <StudioCtaButton size="lg" />
                 <Button asChild size="lg" variant="outline">
                   <Link href="/features">See all features</Link>
                 </Button>
