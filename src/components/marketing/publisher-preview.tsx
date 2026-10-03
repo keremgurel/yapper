@@ -9,6 +9,11 @@ import { BorderBeam } from "border-beam";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { useDemoPlayback } from "./use-demo-playback";
 
+const PUBLISH_FRAMES = 18;
+const PUBLISH_FRAME_MS = 1500;
+/** How long one full pass of this demo takes. */
+export const PUBLISH_DEMO_MS = PUBLISH_FRAMES * PUBLISH_FRAME_MS;
+
 const destinations = [
   {
     platform: "youtube" as const,
@@ -93,6 +98,25 @@ export function PublishingScene({
             <RotateCcw size={15} />
           </button>
         </div>
+        <div className="publisher-copy-action">
+          {generating ? (
+            <>
+              <ThinkingOrb state="composing" size={32} paused={!playing} />
+              <span>Generating titles and captions</span>
+            </>
+          ) : written ? (
+            <>
+              <Check size={15} />
+              <span>Tailored to each platform</span>
+            </>
+          ) : (
+            <button type="button" onClick={() => onSeek?.(1)}>
+              <Sparkles size={15} />
+              Generate titles and captions
+              <ArrowUpRight size={14} />
+            </button>
+          )}
+        </div>
         <div className="publisher-destinations">
           {destinations.map((destination, i) => (
             <div
@@ -136,25 +160,6 @@ export function PublishingScene({
               </div>
             </div>
           ))}
-        </div>
-        <div className="publisher-copy-action">
-          {generating ? (
-            <>
-              <ThinkingOrb state="composing" size={32} paused={!playing} />
-              <span>Generating titles and captions</span>
-            </>
-          ) : written ? (
-            <>
-              <Check size={15} />
-              <span>Tailored to each platform</span>
-            </>
-          ) : (
-            <button type="button" onClick={() => onSeek?.(1)}>
-              <Sparkles size={15} />
-              Generate titles and captions
-              <ArrowUpRight size={14} />
-            </button>
-          )}
         </div>
       </div>
       <div className="publisher-demo-delivery">
@@ -247,7 +252,10 @@ export function PublishingScene({
   );
 }
 export default function PublisherPreview() {
-  const { ref, frame, active, seek, reducedMotion } = useDemoPlayback(18, 1500);
+  const { ref, frame, active, seek, reducedMotion } = useDemoPlayback(
+    PUBLISH_FRAMES,
+    PUBLISH_FRAME_MS,
+  );
   const [reducedFrame, setReducedFrame] = useState(9);
   return (
     <div ref={ref}>

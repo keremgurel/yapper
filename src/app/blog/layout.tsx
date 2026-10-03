@@ -1,16 +1,11 @@
-import TrainingHeader from "@/components/training/training-header";
-import { Component as Footer } from "@/components/ui/footer-taped-design";
+import MarketingLayout from "@/components/marketing/marketing-layout";
 
+/** Guides share the site's header, footer and container with every other
+ * public page. */
 export default function BlogLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <>
-      <TrainingHeader />
-      {children}
-      <Footer />
-    </>
-  );
+  return <MarketingLayout>{children}</MarketingLayout>;
 }

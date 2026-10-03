@@ -88,46 +88,13 @@ export default async function BlogPostPage({ params }: PageProps) {
     wordCount: post.content.split(/\s+/).length,
   };
 
-  const breadcrumbJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      {
-        "@type": "ListItem",
-        position: 1,
-        name: "Home",
-        item: siteUrl,
-      },
-      {
-        "@type": "ListItem",
-        position: 2,
-        name: "Blog",
-        item: `${siteUrl}/blog`,
-      },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: post.title,
-        item: `${siteUrl}/blog/${post.slug}`,
-      },
-    ],
-  };
-
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(articleJsonLd) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: safeJsonLdStringify(breadcrumbJsonLd),
-        }}
-      />
-      <main className="bg-background flex-1">
-        <BlogPostShell post={post} relatedPosts={relatedPosts} />
-      </main>
+      <BlogPostShell post={post} relatedPosts={relatedPosts} />
     </>
   );
 }

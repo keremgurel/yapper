@@ -54,18 +54,9 @@
   height: 700px;
 }
 
-/* Train keeps its own pastel field and dark ink in both themes. */
-.trainField {
-  --ink: #262331;
-  --subtle: #65606f;
-  padding: 44px 28px;
-  border-radius: 24px;
-  color: var(--ink);
-  background:
-    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
-    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
-}
+/* Train's window keeps dark ink on light in both themes. */
 .trainWindow {
+  color: var(--ink);
   max-width: 760px;
   margin-inline: auto;
   border: 1px solid #ffffffa8;
@@ -318,9 +309,6 @@
   .trainHeading {
     flex-wrap: wrap;
     gap: 8px;
-  }
-  .trainField {
-    padding: 22px 14px;
   }
   .trainScene {
     height: 440px;

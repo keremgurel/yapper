@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 
 import { BlogExplorer } from "@/components/blog/blog-explorer";
+import Breadcrumbs from "@/components/marketing/breadcrumbs";
+import styles from "@/components/blog/blog.module.css";
 import {
   getAllBlogPosts,
   getBlogCategories,
@@ -34,14 +36,28 @@ export default function BlogPage() {
   const featuredPost = getFeaturedBlogPost(posts);
 
   return (
-    <main className="bg-background flex-1">
-      <section className="mx-auto max-w-6xl px-6 pt-12 pb-24">
+    <section className="marketing-section">
+      <div className="marketing-container">
+        <Breadcrumbs
+          items={[
+            { label: "Yapper Train", href: "/products/train" },
+            { label: "Speaking guides", href: "/blog" },
+          ]}
+        />
+        <div className={styles.intro}>
+          <h1 className="type-h1">Speaking guides</h1>
+          <p className="marketing-lede">
+            Practical routines, prompts and fixes for getting better at
+            speaking, each one something you can try in your next practice
+            session.
+          </p>
+        </div>
         <BlogExplorer
           categories={categories}
           featuredPost={featuredPost}
           posts={posts}
         />
-      </section>
-    </main>
+      </div>
+    </section>
   );
 }

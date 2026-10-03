@@ -31,7 +31,7 @@ export default function TrainWalkthrough() {
   const Scene = SCENES[frame];
   return (
     <div ref={ref} className={styles.walkthrough}>
-      <div className={styles.trainField}>
+      <div className="demo-field">
         <div className={styles.trainWindow}>
           <div className={styles.trainHeading}>
             <span>

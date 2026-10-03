@@ -932,6 +932,24 @@
   margin-top: 24px;
   gap: 24px;
 }
+/* The pastel field every product demo sits on, in both themes: Train and
+   Studio on the homepage and the Studio page's tabbed demo. One backdrop, so
+   moving between products or stages never changes what is behind the app. */
+.demo-field {
+  --ink: #262331;
+  --subtle: #65606f;
+  padding: 44px 28px;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 95% 0%, #c4cedb 0%, transparent 62%),
+    radial-gradient(ellipse at 0% 100%, #c1b7e4 0%, transparent 60%), #e1dced;
+}
+@media (max-width: 700px) {
+  .demo-field {
+    padding: 22px 14px;
+    border-radius: 20px;
+  }
+}
 .studio-showcase {
   min-width: 0;
   margin: 0;
@@ -2861,7 +2879,7 @@
   align-items: center;
   gap: 8px;
   min-height: 48px;
-  margin-top: 8px;
+  margin-bottom: 8px;
   color: var(--sg-text-muted);
   font-size: 12px;
 }

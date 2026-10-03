@@ -81,16 +81,41 @@
   gap: 12px;
   margin-top: 36px;
 }
+/* Phones stack too. Each card is kept shorter than the screen, which is what
+   lets the next one slide over it, and the offsets tighten so five edges fit. */
 @media (max-width: 820px) {
   .card {
-    position: static;
+    top: calc(var(--site-header) + 12px + var(--i) * 10px);
     grid-template-columns: 1fr;
     min-height: 0;
+    border-radius: 20px;
   }
   .copy {
-    padding: 28px 24px;
+    padding: 22px 20px 18px;
+  }
+  .copy h3 {
+    margin-top: 8px;
+  }
+  .text {
+    margin-top: 8px;
+    font-size: 15px;
+  }
+  .link {
+    margin-top: 12px;
   }
   .stage {
-    min-height: 400px;
+    min-height: 0;
+    height: min(330px, 46svh);
+  }
+  .film {
+    padding: 20px 16px;
+  }
+  /* The product films are drawn for a 355px panel; shrink them whole rather
+     than reflowing them, so each stays the same picture. */
+  .film > * {
+    zoom: 0.8;
+  }
+  .deck {
+    gap: 18px;
   }
 }

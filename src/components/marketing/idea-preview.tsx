@@ -7,8 +7,13 @@ import DemoDictation from "./demo-dictation";
 import { spokenIdea } from "./demo-content";
 import { useDemoPlayback } from "./use-demo-playback";
 
+const IDEA_FRAMES = 14;
+const IDEA_FRAME_MS = 1400;
+/** How long one full pass of this demo takes. */
+export const IDEA_DEMO_MS = IDEA_FRAMES * IDEA_FRAME_MS;
+
 export default function IdeaPreview() {
-  const { ref, frame, active } = useDemoPlayback(14, 1400);
+  const { ref, frame, active } = useDemoPlayback(IDEA_FRAMES, IDEA_FRAME_MS);
   const saved = frame >= 7;
   const categorized = frame >= 6;
   const listening = frame >= 1 && frame <= 4;
