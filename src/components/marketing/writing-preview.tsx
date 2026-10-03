@@ -15,6 +15,11 @@ import {
 } from "./demo-content";
 import { useDemoPlayback } from "./use-demo-playback";
 
+const WRITING_FRAMES = 17;
+const WRITING_FRAME_MS = 1600;
+/** How long one full pass of this demo takes. */
+export const WRITING_DEMO_MS = WRITING_FRAMES * WRITING_FRAME_MS;
+
 const noop = () => {};
 export function WritingScene({
   frame,
@@ -139,7 +144,10 @@ export function WritingScene({
   );
 }
 export default function WritingPreview() {
-  const { ref, frame, active } = useDemoPlayback(17, 1600);
+  const { ref, frame, active } = useDemoPlayback(
+    WRITING_FRAMES,
+    WRITING_FRAME_MS,
+  );
   return (
     <div ref={ref}>
       <WritingScene frame={frame} playing={active} />

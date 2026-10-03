@@ -25,28 +25,30 @@ export default function StudioPreview({
         panelId={`${id}-panel`}
         id={id}
       />
-      <div
-        className="studio-showcase-screen"
-        role="tabpanel"
-        id={`${id}-panel`}
-        aria-labelledby={`${id}-${step}`}
-      >
-        <div className="studio-screen-heading">
-          <span>
-            yapper <span>studio</span>
-          </span>
+      <div className="demo-field">
+        <div
+          className="studio-showcase-screen"
+          role="tabpanel"
+          id={`${id}-panel`}
+          aria-labelledby={`${id}-${step}`}
+        >
+          <div className="studio-screen-heading">
+            <span>
+              yapper <span>studio</span>
+            </span>
+          </div>
+          {step === "Idea" ? (
+            <IdeaPreview />
+          ) : step === "Script" ? (
+            <WritingPreview />
+          ) : step === "Record" ? (
+            <TeleprompterPreview />
+          ) : step === "Edit" ? (
+            <EditorPreview />
+          ) : (
+            <PublisherPreview />
+          )}
         </div>
-        {step === "Idea" ? (
-          <IdeaPreview />
-        ) : step === "Script" ? (
-          <WritingPreview />
-        ) : step === "Record" ? (
-          <TeleprompterPreview />
-        ) : step === "Edit" ? (
-          <EditorPreview />
-        ) : (
-          <PublisherPreview />
-        )}
       </div>
     </figure>
   );

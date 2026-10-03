@@ -5,6 +5,10 @@ import { Scissors } from "lucide-react";
 import EditProgressPreview from "./edit-progress-preview";
 import { useDemoPlayback } from "./use-demo-playback";
 
+const EDITOR_FRAME_MS = 1100;
+/** How long one full pass of this demo takes. */
+export const EDITOR_DEMO_MS = editorFrameCount * EDITOR_FRAME_MS;
+
 import {
   editSegments,
   sourceDuration,
@@ -169,7 +173,10 @@ export function EditorScene({
 }
 
 export default function EditorPreview() {
-  const { ref, frame, active } = useDemoPlayback(editorFrameCount, 1100);
+  const { ref, frame, active } = useDemoPlayback(
+    editorFrameCount,
+    EDITOR_FRAME_MS,
+  );
   return (
     <div ref={ref}>
       <EditorScene frame={frame} playing={active} />

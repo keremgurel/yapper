@@ -5,10 +5,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /** Words-per-minute presets the speed control steps through. Teleprompter speed
  * is most intuitive as reading pace, not pixels/sec. */
 export const WPM_PRESETS = [100, 130, 160, 200] as const;
-const DEFAULT_WPM = 130;
-/** Rough px of scroll per word at the overlay's font size — tuned by feel, not
- * exact; the creator adjusts speed live anyway. */
+export const DEFAULT_WPM = 130;
+/** Fallback px of scroll per word, used only until the text can be measured. */
 const PX_PER_WORD = 9;
+
+/**
+ * How far the script moves for each word read: the height of the text block
+ * divided by its word count. Measured from what is on screen, so the chosen
+ * words per minute is the real reading pace at any font size, width or prompt
+ * height.
+ */
+function measuredPxPerWord(el: HTMLElement, fontScale: number): number {
+  const content = (el.firstElementChild as HTMLElement | null) ?? el;
+  const words = (content.textContent ?? "").trim().split(/\s+/).length;
+  const height = content.offsetHeight;
+  return words > 0 && height > 0 ? height / words : PX_PER_WORD * fontScale;
+}
 
 /**
  * Auto-scroll engine for the teleprompter overlay. One concern: advance a
@@ -28,7 +40,7 @@ export function useTeleprompterScroll(fontScale = 1) {
   useEffect(() => {
     wpmRef.current = wpm;
   }, [wpm]);
-  // Bigger text is taller, so scroll faster to hold the same reading pace.
+  // Only for the fallback; measured text already accounts for its size.
   const fontScaleRef = useRef(fontScale);
   useEffect(() => {
     fontScaleRef.current = fontScale;
@@ -59,7 +71,7 @@ export function useTeleprompterScroll(fontScale = 1) {
       if (lastTsRef.current !== null) {
         const dt = (ts - lastTsRef.current) / 1000;
         const pxPerSec =
-          (wpmRef.current / 60) * PX_PER_WORD * fontScaleRef.current;
+          (wpmRef.current / 60) * measuredPxPerWord(el, fontScaleRef.current);
         offsetRef.current += pxPerSec * dt;
         el.scrollTop = offsetRef.current;
         // Stop at the bottom so we don't spin forever once the script is read.
