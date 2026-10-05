@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
-import { studioHost, studioHostRedirects } from "./src/lib/routing/studio-host";
+import {
+  studioHost,
+  studioHostHeaders,
+  studioHostRedirects,
+} from "./src/lib/routing/studio-host";
 
 const nextConfig: NextConfig = {
+  async headers() {
+    return studioHostHeaders(studioHost(process.env));
+  },
   async redirects() {
     return [
       // Studio on its own host. Empty until STUDIO_HOST is set, and listed

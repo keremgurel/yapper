@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 // without types.
 // @ts-expect-error untyped module
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
-import { studioHost, studioHostRedirects } from "./studio-host";
+import {
+  studioHost,
+  studioHostHeaders,
+  studioHostRedirects,
+} from "./studio-host";
 
 const rules = studioHostRedirects("studio.ypr.app");
 const rule = (source: string) => rules.find((r) => r.source === source)!;
@@ -65,5 +69,14 @@ describe("Studio on its own host", () => {
     expect(rule("/api/publish/connect/:platform").destination).toBe(
       "https://ypr.app/api/publish/connect/:platform",
     );
+  });
+
+  it("keeps the Studio host out of search results", () => {
+    expect(studioHostHeaders(null)).toEqual([]);
+    const [header] = studioHostHeaders("studio.ypr.app");
+    expect(header.has).toEqual([{ type: "host", value: "studio.ypr.app" }]);
+    expect(header.headers).toEqual([
+      { key: "X-Robots-Tag", value: "noindex, nofollow" },
+    ]);
   });
 });

@@ -14,7 +14,7 @@
  *   callback addresses registered with each platform are on ypr.app.
  */
 
-import type { Redirect } from "next/dist/lib/load-custom-routes";
+import type { Header, Redirect } from "next/dist/lib/load-custom-routes";
 
 export type HostRedirect = Redirect;
 
@@ -72,6 +72,22 @@ export function studioHostRedirects(
         { type: "header", key: "user-agent", value: NATIVE_USER_AGENT },
       ],
       permanent: false,
+    },
+  ];
+}
+
+/**
+ * The Studio host is a signed-in app with nothing to rank, and the public
+ * Studio pages live on the main host. Tell search engines to leave every
+ * response on the Studio host out of the index.
+ */
+export function studioHostHeaders(studio: string | null): Header[] {
+  if (!studio) return [];
+  return [
+    {
+      source: "/:path*",
+      has: [{ type: "host", value: studio }],
+      headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
     },
   ];
 }
