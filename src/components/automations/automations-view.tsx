@@ -190,8 +190,8 @@ function AutomationEditor() {
       {!data.available && (
         <p className="border-border bg-muted/40 text-muted-foreground rounded-xl border px-4 py-3 text-sm">
           {data.setupAvailable === false
-            ? "Automation setup isn’t available on this server yet."
-            : "New video checks are paused on this server. Prepared deliveries may still send; pause the rule below to cancel waiting work."}
+            ? "Automations aren’t available yet."
+            : "Automations are paused, so new Instagram videos aren’t being checked right now. Posts already prepared may still send. Pause the rule below to stop them."}
         </p>
       )}
       {connectionsError && (

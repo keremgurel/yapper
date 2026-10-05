@@ -266,8 +266,8 @@ function ScheduleList() {
       )}
       {data && !data.enabled && rows.length > 0 && (
         <p role="status" className="text-muted-foreground mt-3 text-sm">
-          Scheduled publishing is paused on this server. Your saved posts remain
-          here, and you can cancel them before sending resumes.
+          Scheduled publishing is paused, so these posts won’t send on their own
+          yet. They stay here, and you can cancel any of them.
         </p>
       )}
       {rows.length > 0 && (

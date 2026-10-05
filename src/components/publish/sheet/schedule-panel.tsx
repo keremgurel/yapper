@@ -167,8 +167,8 @@ export default function SchedulePanel({
             </p>
           ) : !enabled ? (
             <p className="text-muted-foreground text-sm">
-              Scheduled publishing isn’t available on this server yet. Calendar
-              dates can still help you plan.
+              Scheduling posts for later isn’t available yet. You can post now,
+              and Calendar dates still help you plan.
             </p>
           ) : (
             <>
