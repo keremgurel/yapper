@@ -67,19 +67,21 @@ export async function fetchPlatformVideos(platform: PublishPlatform): Promise<{
   const res = await fetch(`/api/publish/${platform}/videos`, {
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`videos_${res.status}`);
-  const body = (await res.json()) as {
+  const body = (await res.json().catch(() => null)) as {
     connected?: unknown;
     videos?: unknown;
     error?: unknown;
   };
+  // The route says why it failed (for example "reconnect"); keep that reason
+  // so the screen can say what to do about it.
+  if (typeof body?.error === "string") throw new Error(body.error);
   if (
+    !res.ok ||
     !body ||
     typeof body.connected !== "boolean" ||
-    !Array.isArray(body.videos) ||
-    body.error
+    !Array.isArray(body.videos)
   )
-    throw new Error("videos_unavailable");
+    throw new Error(`videos_${res.status}`);
   return { connected: body.connected, videos: body.videos as PlatformVideo[] };
 }
 

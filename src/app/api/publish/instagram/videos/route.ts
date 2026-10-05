@@ -66,9 +66,19 @@ export const GET = withServerTiming(async (req: Request): Promise<Response> => {
       { headers: NO_STORE_HEADERS },
     );
   } catch (e) {
-    console.error("[publish] instagram list failed", e);
+    console.error(
+      "[publish] instagram list failed",
+      e instanceof Error ? e.message : e,
+    );
+    // Graph code 190 means the token is no longer accepted: the creator has
+    // to reconnect, and retrying will not help.
+    const reconnect = (e as { graphCode?: number }).graphCode === 190;
     return Response.json(
-      { connected: true, videos: [], error: "list_failed" },
+      {
+        connected: true,
+        videos: [],
+        error: reconnect ? "reconnect" : "list_failed",
+      },
       { status: 502, headers: NO_STORE_HEADERS },
     );
   }
