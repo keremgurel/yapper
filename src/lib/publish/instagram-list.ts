@@ -100,7 +100,7 @@ export async function listInstagramVideos(
   // Always ask Graph for the current first page instead of reusing a cached
   // provider response.
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`instagram_media_${res.status}`);
+  if (!res.ok) throw await instagramError(res, "media");
   const json = (await res.json()) as { data?: InstagramMedia[] };
   const videos = mapInstagramMedia(json.data ?? []);
 
@@ -132,4 +132,23 @@ async function fetchViewCount(
   } catch {
     return 0;
   }
+}
+
+/** Instagram's error for a failed call: HTTP status, Graph error code and its
+ * message. Built from the response body only, so the access token in the
+ * request URL never reaches a log. */
+export async function instagramError(res: Response, call: string) {
+  const body = (await res.json().catch(() => null)) as {
+    error?: { code?: number; error_subcode?: number; message?: string };
+  } | null;
+  const detail = body?.error;
+  const error = new Error(
+    `instagram_${call}_${res.status}${
+      detail
+        ? ` code ${detail.code ?? "?"}${detail.error_subcode ? `/${detail.error_subcode}` : ""}: ${detail.message ?? ""}`
+        : ""
+    }`,
+  ) as Error & { graphCode?: number };
+  error.graphCode = detail?.code;
+  return error;
 }

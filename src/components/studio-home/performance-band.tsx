@@ -1,5 +1,6 @@
 import { StatBlock } from "@/components/studio-ui";
 import { compactNumber } from "@/components/studio-home/format-number";
+import { publishPlatforms } from "@/lib/db/schema";
 
 /** The four channel numbers, once, in one Level-1 card. Cells are separated
  * by hairlines rather than one bordered box per stat; while channel history
@@ -11,6 +12,7 @@ export default function PerformanceBand({
   averageViews,
   connectedCount,
   unavailable = false,
+  missing = "",
 }: {
   loaded: boolean;
   totalViews: number;
@@ -18,6 +20,8 @@ export default function PerformanceBand({
   averageViews: number;
   connectedCount: number;
   unavailable?: boolean;
+  /** Channels whose history failed to load, named for the detail line. */
+  missing?: string;
 }) {
   const stats = [
     {
@@ -37,7 +41,7 @@ export default function PerformanceBand({
     },
     {
       label: "Channels",
-      value: `${connectedCount}/3`,
+      value: `${connectedCount}/${publishPlatforms.length}`,
       detail: "Connected for publishing",
     },
   ];
@@ -57,7 +61,11 @@ export default function PerformanceBand({
               label={stat.label}
               value={loaded ? (unavailable ? "n/a" : stat.value) : null}
               detail={
-                unavailable ? "Some data couldn’t be loaded" : stat.detail
+                unavailable
+                  ? "Some data couldn’t be loaded"
+                  : missing && stat.label !== "Channels"
+                    ? `${missing} not included`
+                    : stat.detail
               }
             />
           </div>

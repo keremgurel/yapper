@@ -16,6 +16,11 @@ import UpNextSection from "@/components/studio-home/up-next-section";
 import { dailyIdeas } from "@/components/studio-home/daily-ideas";
 import { rankVideos } from "@/components/studio-home/rank-videos";
 import { isChannelConnected } from "@/components/studio-home/connection-state";
+import {
+  allChannelsFailed,
+  failedChannels,
+  joinPlatformNames,
+} from "@/components/studio-home/channel-health";
 import { useBankIdeas } from "@/components/studio-home/use-bank-ideas";
 import { useChannelVideos } from "@/components/studio-home/use-channel-videos";
 import { usePipelineItems } from "@/components/studio-home/use-pipeline-items";
@@ -44,7 +49,12 @@ export default function StudioDashboard() {
     isChannelConnected(platform, channels, connections),
   ).length;
   const todaysIdeas = dailyIdeas(ideas.data ?? [], ranked[0]);
-  const channelError = Boolean(channels?.some((channel) => channel.error));
+  const failed = failedChannels(channels);
+  const channelError = failed.length > 0;
+  // Numbers from the channels that did load still count; only when nothing
+  // loaded is the whole band unavailable.
+  const performanceUnavailable =
+    allChannelsFailed(channels) || Boolean(connectionsError);
   const pipelineError = pipeline.data === null && Boolean(pipeline.error);
   const ideasError = ideas.data === null && Boolean(ideas.error);
   const refresh = () => {
@@ -83,8 +93,9 @@ export default function StudioDashboard() {
             className="border-border bg-card flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm"
           >
             <p>
-              Some Studio data couldn’t be loaded. Refresh to check your
-              channels, Library, and ideas again.
+              {pipelineError || ideasError || connectionsError
+                ? "Some Studio data couldn’t be loaded. Refresh to check your channels, Library and ideas again."
+                : `${joinPlatformNames(failed)} couldn’t be loaded just now, so ${failed.length === 1 ? "its" : "their"} posts are left out below. Refresh to try again, or reconnect in Connections if it keeps happening.`}
             </p>
             <Button size="sm" variant="outline" onClick={refresh}>
               Refresh
@@ -92,7 +103,8 @@ export default function StudioDashboard() {
           </div>
         )}
         <PerformanceBand
-          unavailable={channelError || Boolean(connectionsError)}
+          unavailable={performanceUnavailable}
+          missing={performanceUnavailable ? "" : joinPlatformNames(failed)}
           loaded={channels !== null}
           totalViews={totalViews}
           postCount={ranked.length}

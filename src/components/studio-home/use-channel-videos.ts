@@ -21,12 +21,15 @@ export function useChannelVideos(enabled: boolean) {
         publishPlatforms.map(async (platform): Promise<ChannelResult> => {
           try {
             return { platform, ...(await fetchPlatformVideos(platform)) };
-          } catch {
+          } catch (error) {
             return {
               platform,
               connected: false,
               videos: [],
-              error: "videos_unavailable",
+              error:
+                error instanceof Error && error.message
+                  ? error.message
+                  : "videos_unavailable",
             };
           }
         }),
