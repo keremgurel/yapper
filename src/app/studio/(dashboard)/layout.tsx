@@ -7,6 +7,7 @@ import AppChrome from "@/components/studio-shell/app-chrome";
 import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
 import StudioChirpy from "@/components/studio-shell/studio-chirpy";
 import PaywallDialog from "@/components/billing/paywall-dialog";
+import { automationsEnabled } from "@/lib/publish/automation-types";
 
 /**
  * The Studio dashboard shell, on its own without the website's navbar: a
@@ -31,7 +32,12 @@ export default function StudioDashboardLayout({
       <AppChrome />
       <StudioChirpy>
         <SidebarProvider className="min-h-[calc(100svh-var(--site-header,3.5rem))] flex-1">
-          <AppSidebar />
+          {/* Automations cannot run until the server turns them on, so the
+              entry stays out of the way instead of inviting a rule that
+              never fires. */}
+          <AppSidebar
+            hiddenHrefs={automationsEnabled() ? [] : ["/studio/automations"]}
+          />
           <SidebarInset className="min-h-[calc(100svh-var(--site-header,3.5rem))]">
             <StudioHeader />
             <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">

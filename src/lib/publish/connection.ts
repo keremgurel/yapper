@@ -1,4 +1,9 @@
-import { getConnectionRow, updateAccessToken } from "@/lib/db/publish";
+import {
+  getConnectionRow,
+  markConnectionExpired,
+  updateAccessToken,
+} from "@/lib/db/publish";
+import { isRejectedLogin } from "@/lib/publish/rejected-login";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { refreshAccessToken } from "@/lib/publish/oauth";
 import { decryptToken } from "@/lib/publish/tokens";
@@ -21,6 +26,10 @@ export async function getFreshAccessToken(
 ): Promise<string> {
   const row = await getConnectionRow(userId, platform);
   if (!row) throw new NoConnectionError(`${platform}_not_connected`);
+  // A login the platform already refused stays refused until the creator
+  // reconnects; asking again would only fail again.
+  if (row.status !== "active")
+    throw new NoConnectionError(`${platform}_reauth_required`);
   if (
     expectedAccountId &&
     (row.externalAccountId !== expectedAccountId || row.status !== "active")
@@ -40,7 +49,14 @@ export async function getFreshAccessToken(
     throw new NoConnectionError(`${platform}_reauth_required`);
   }
   const refreshToken = decryptToken(row.refreshTokenEnc);
-  const fresh = await refreshAccessToken(platform, refreshToken);
+  let fresh: Awaited<ReturnType<typeof refreshAccessToken>>;
+  try {
+    fresh = await refreshAccessToken(platform, refreshToken);
+  } catch (error) {
+    if (!isRejectedLogin(error)) throw error;
+    await markConnectionExpired(userId, platform);
+    throw new NoConnectionError(`${platform}_reauth_required`);
+  }
   const saved = await updateAccessToken(
     userId,
     platform,

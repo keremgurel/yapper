@@ -50,7 +50,12 @@ function NavMenu({ items }: { items: StudioNavItem[] }) {
  * Press (send it out), Settings (one-time plumbing). Each group is a labeled
  * section from `studioNavGroups`. Collapses to an icon rail on desktop, a
  * sheet on mobile. */
-export default function AppSidebar() {
+export default function AppSidebar({
+  hiddenHrefs = [],
+}: {
+  /** Surfaces this deployment cannot offer yet. */
+  hiddenHrefs?: string[];
+}) {
   return (
     <Sidebar
       collapsible="icon"
@@ -74,16 +79,24 @@ export default function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {studioNavGroups.map((group) => (
-          <SidebarGroup key={group.label || "home"}>
-            {group.label ? (
-              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            ) : null}
-            <SidebarGroupContent>
-              <NavMenu items={group.items} />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {studioNavGroups
+          .map((group) => ({
+            ...group,
+            items: group.items.filter(
+              (item) => !hiddenHrefs.includes(item.href),
+            ),
+          }))
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
+            <SidebarGroup key={group.label || "home"}>
+              {group.label ? (
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              ) : null}
+              <SidebarGroupContent>
+                <NavMenu items={group.items} />
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
       </SidebarContent>
 
       <SidebarRail />

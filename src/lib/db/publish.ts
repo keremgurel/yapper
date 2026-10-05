@@ -112,6 +112,24 @@ export async function videoListStamp(
   return `${row?.account ?? ""}|${row?.last_job ?? ""}`;
 }
 
+/** Mark a connection as needing a reconnect after the platform rejected its
+ * login. Only an active row changes; reconnecting sets it active again. */
+export async function markConnectionExpired(
+  userId: string,
+  platform: PublishPlatform,
+): Promise<void> {
+  await getDb()
+    .update(platformConnections)
+    .set({ status: "expired", updatedAt: new Date() })
+    .where(
+      and(
+        eq(platformConnections.userId, userId),
+        eq(platformConnections.platform, platform),
+        eq(platformConnections.status, "active"),
+      ),
+    );
+}
+
 /** Persist a refreshed access token (the refresh token is unchanged). */
 export async function updateAccessToken(
   userId: string,

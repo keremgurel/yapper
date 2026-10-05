@@ -3,7 +3,11 @@ import {
   getFreshAccessToken,
   NoConnectionError,
 } from "@/lib/publish/connection";
-import { archivedMediaKeysForPosts } from "@/lib/db/publish";
+import {
+  archivedMediaKeysForPosts,
+  markConnectionExpired,
+} from "@/lib/db/publish";
+import { isRejectedLogin } from "@/lib/publish/rejected-login";
 import { withServerTiming } from "@/lib/http/server-timing";
 import { listInstagramVideos } from "@/lib/publish/instagram-list";
 import {
@@ -70,9 +74,10 @@ export const GET = withServerTiming(async (req: Request): Promise<Response> => {
       "[publish] instagram list failed",
       e instanceof Error ? e.message : e,
     );
-    // Graph code 190 means the token is no longer accepted: the creator has
-    // to reconnect, and retrying will not help.
-    const reconnect = (e as { graphCode?: number }).graphCode === 190;
+    // Instagram no longer accepts the login: the creator has to reconnect, so
+    // mark it, and Connections offers the reconnect.
+    const reconnect = isRejectedLogin(e);
+    if (reconnect) await markConnectionExpired(userId, "instagram");
     return Response.json(
       {
         connected: true,
