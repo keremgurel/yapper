@@ -1,5 +1,6 @@
 "use client";
 
+import RemoveUpload from "./remove-upload";
 import { Chip, statusTone } from "@/components/studio-ui";
 import type { PosterVideo } from "@/components/publish/poster/poster-video";
 import SavedVideoThumbnail from "./saved-video-thumbnail";
@@ -20,10 +21,12 @@ export default function VideoCard({
   video,
   active,
   onOpen,
+  onRemoved,
 }: {
   video: Extract<PosterVideo, { kind: "yapper" }>;
   active: boolean;
   onOpen: () => void;
+  onRemoved?: (id: string) => void;
 }) {
   return (
     <article
@@ -31,6 +34,13 @@ export default function VideoCard({
         active ? "border-[color:var(--sg-accent)]" : "border-border"
       }`}
     >
+      {onRemoved && (
+        <RemoveUpload
+          id={video.contentItemId}
+          title={video.title}
+          onRemoved={onRemoved}
+        />
+      )}
       <button
         type="button"
         onClick={onOpen}

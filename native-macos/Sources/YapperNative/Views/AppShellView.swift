@@ -466,6 +466,7 @@ private struct StudioTopBar: View {
                 if session.isBusy || session.isExporting {
                     ProgressView().controlSize(.small)
                 }
+                ManagedMediaNotice(session: session)
                 Text(session.statusMessage)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)

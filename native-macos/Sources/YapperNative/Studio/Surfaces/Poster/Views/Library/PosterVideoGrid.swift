@@ -10,6 +10,7 @@ struct PosterVideoGrid: View {
     @ObservedObject var bench: PosterBench
     @ObservedObject var upload: PosterUploadStore
     let onConnect: (PublishPlatform) -> Void
+    var onTrashProject: ((ProjectListing) -> Void)? = nil
 
     private let columns = [GridItem(.adaptive(minimum: 168, maximum: 240), spacing: 16, alignment: .top)]
 
@@ -33,7 +34,7 @@ struct PosterVideoGrid: View {
                     PosterUploadTile(upload: upload)
                 }
                 ForEach(videos) { video in
-                    PosterVideoCard(video: video, importing: bench.importingID == video.id) {
+                    PosterVideoCard(video: video, importing: bench.importingID == video.id, onTrashProject: onTrashProject) {
                         Task { await bench.open(video) }
                     }
                 }

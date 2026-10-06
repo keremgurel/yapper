@@ -17,6 +17,8 @@ struct ProjectsHomeView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 header
+                ProjectStorageSummary(listings: listings)
+                ManagedMediaNotice(session: session)
                 if loaded, listings.isEmpty {
                     emptyState
                 } else {

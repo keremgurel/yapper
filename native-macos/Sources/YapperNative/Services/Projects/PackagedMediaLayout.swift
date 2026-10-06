@@ -1,7 +1,6 @@
 import Foundation
 
-/// Downloaded Studio sources travel with their project; imported camera files
-/// retain their original locations.
+/// Managed source footage travels with its project.
 enum PackagedMediaLayout {
     static func file(for id: UUID, extension ext: String, in root: URL) -> URL {
         root.appending(path: "recordings", directoryHint: .isDirectory)
@@ -20,7 +19,7 @@ enum PackagedMediaLayout {
             guard let layer = result.audioLayers?[index], let id = layer.packagedMediaID else { continue }
             result.audioLayers?[index].url = file(for: id, extension: layer.url.pathExtension, in: root)
         }
-        return result
+        return ManagedProjectMedia.resolved(result, in: ProjectPackage(url: root))
     }
 
     static func copyAssets(in project: EditorProject, to root: URL) throws {

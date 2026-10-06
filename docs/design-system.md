@@ -303,3 +303,22 @@ with offscreen and reduced-motion handling. The lever starts a 1.3-second reel
 that decelerates onto the actual selected prompt; reduced motion reveals it
 immediately. Duration uses a keyboard-accessible dial with 49 uniformly sized
 marks, independent of the supported time range, plus a compact preset menu.
+
+## Poster and local project media
+
+Poster opens on real video thumbnails. Keep source selection in a compact,
+left-aligned strip within the shared page container, followed by the selected
+library. Desktop starts with Made in Yapper; web starts with uploads. Do not add
+an intermediate source-selection page or a separate View uploads action.
+Use existing system typography, semantic graphite/light surfaces, neutral edges,
+13px source names and 11–12px secondary status. Selected sources have both a check
+and a stronger neutral outline. No navigation animation. Upload removal uses a
+red X with an accessible name, a confirmation and an inline recoverable error.
+
+Editor imports save into their project package in the background. Keep saving
+status visible until the live player and saved project use the owned file.
+Project storage labels show logical file sizes, not guaranteed physical space
+freed: APFS copies can share blocks. Move to Trash is available from project cards
+in Editor and Poster; sources travel with the project, and render caches are
+removed. Originals outside Yapper remain untouched. Poster-only uploads use the
+chosen file directly and do not enter the local project library.

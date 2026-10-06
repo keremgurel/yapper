@@ -18,7 +18,7 @@ struct ProjectMedia: Codable, Equatable, Identifiable, Sendable {
     /// SHA-256 of the source bytes when the media was imported by a version
     /// that records identity. Optional keeps older project files readable.
     var sourceFingerprint: String?
-    /// A Studio recording downloaded inside this project package.
+    /// Source footage owned by this project package, including imported files.
     var packagedSource: Bool?
     /// Present on a generated overlay: what it was made for, how it was
     /// described, the palette its tokens resolve against, and its versions.

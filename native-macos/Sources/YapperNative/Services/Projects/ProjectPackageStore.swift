@@ -18,10 +18,11 @@ actor ProjectPackageStore: ProjectPersisting {
 
     func load() async throws -> EditorProject? {
         guard let project = try await store.load() else { return nil }
-        return PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: package.url), to: package.url)
+        return ManagedProjectMedia.resolved(PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: package.url), to: package.url), in: package)
     }
 
     func save(_ project: EditorProject) async throws {
+        let project = ManagedProjectMedia.resolved(project, in: package)
         try await store.save(project)
         try Self.writeSummary(for: project, in: package)
     }

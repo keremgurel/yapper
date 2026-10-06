@@ -65,7 +65,10 @@ export async function listContentItems(
         eq(contentItems.userId, userId),
         or(
           isNull(contentItems.sourceUrl),
-          ne(contentItems.sourceUrl, "yapper://poster-upload"),
+          and(
+            ne(contentItems.sourceUrl, "yapper://poster-upload"),
+            ne(contentItems.sourceUrl, "yapper://poster-upload/completed"),
+          ),
         ),
       );
 

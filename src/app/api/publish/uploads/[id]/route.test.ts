@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({ auth: vi.fn(), drain: vi.fn() }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/db/client", () => ({ getDb: () => db }));
 vi.mock("@/lib/db/r2-drain", () => ({ drainR2AfterResponse: mocks.drain }));
-import { GET, DELETE } from "./route";
+import { DELETE } from "./route";
 const old = new Date("2026-01-01T00:00:00Z");
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "drizzle" });
@@ -48,39 +48,47 @@ beforeEach(async () => {
 afterAll(async () => {
   await client.close();
 });
-const request = (mediaKey: string) =>
-  new Request("https://ypr.app/api/storage/videos", {
-    method: "DELETE",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ mediaKey }),
-  });
-it("lists only files from the native session's own account", async () => {
-  const response = await GET();
-  expect(await response.json()).toEqual({
-    videos: [{ mediaKey: "owner/video", bytes: 100, title: "owner's clip" }],
-  });
-  expect((await DELETE(request("other/video"))).status).toBe(404);
-});
-it("removes the current file once while preserving its transcript", async () => {
-  const replies = await Promise.all([
-    DELETE(request("owner/video")),
-    DELETE(request("owner/video")),
-  ]);
-  expect(replies.filter((r) => r.status === 200)).toHaveLength(1);
+
+async function uploadRow(
+  userId = "owner",
+  sourceUrl = "yapper://poster-upload",
+) {
+  const [submission] = await db
+    .select()
+    .from(schema.submissions)
+    .where(eq(schema.submissions.userId, userId));
+  const [item] = await db
+    .insert(schema.contentItems)
+    .values({ userId, title: "Upload", submissionId: submission.id, sourceUrl })
+    .returning();
+  return item;
+}
+const remove = (id: string) =>
+  DELETE(
+    new Request("https://studio.ypr.app/api/publish/uploads/" + id, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ id }) },
+  );
+it("removes only the caller's standalone upload and releases its video", async () => {
+  const item = await uploadRow();
+  expect((await remove(item.id)).status).toBe(200);
+  expect(await db.select().from(schema.contentItems)).toHaveLength(0);
   const [owner] = await db
     .select()
     .from(schema.users)
     .where(eq(schema.users.id, "owner"));
   expect(owner.storageBytes).toBe(0);
-  const [submission] = await db
-    .select()
-    .from(schema.submissions)
-    .where(eq(schema.submissions.userId, "owner"));
-  expect(submission.mediaKey).toBeNull();
-  expect(submission.transcript).toEqual(["keep these words"]);
-  expect(mocks.drain).toHaveBeenCalledOnce();
 });
-it("refuses a file while a scheduled post still needs it", async () => {
+it("rejects other accounts and edited projects", async () => {
+  expect((await remove((await uploadRow("other")).id)).status).toBe(404);
+  expect(
+    (await remove((await uploadRow("owner", "yapper://project/123")).id))
+      .status,
+  ).toBe(404);
+});
+it("keeps the upload and file while a scheduled post needs it", async () => {
+  const item = await uploadRow();
   await db.insert(schema.publishingSchedules).values({
     userId: "owner",
     platform: "youtube",
@@ -99,28 +107,6 @@ it("refuses a file while a scheduled post still needs it", async () => {
     entryIndex: 0,
     status: "scheduled",
   });
-  expect((await DELETE(request("owner/video"))).status).toBe(409);
-  expect(mocks.drain).not.toHaveBeenCalled();
-  expect(
-    (
-      await db.select().from(schema.users).where(eq(schema.users.id, "owner"))
-    )[0].storageBytes,
-  ).toBe(100);
-});
-it("requires authentication for both listing and deletion", async () => {
-  mocks.auth.mockResolvedValue({ userId: null });
-  expect((await GET()).status).toBe(401);
-  expect((await DELETE(request("owner/video"))).status).toBe(401);
-});
-
-it("allows explicitly removing a new upload without waiting for its retention grace", async () => {
-  await db
-    .update(schema.submissions)
-    .set({ updatedAt: new Date() })
-    .where(eq(schema.submissions.userId, "owner"));
-  await db
-    .update(schema.r2Objects)
-    .set({ deleteNotBefore: new Date(Date.now() + 60_000) })
-    .where(eq(schema.r2Objects.userId, "owner"));
-  expect((await DELETE(request("owner/video"))).status).toBe(200);
+  expect((await remove(item.id)).status).toBe(409);
+  expect(await db.select().from(schema.contentItems)).toHaveLength(1);
 });

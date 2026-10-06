@@ -11,6 +11,17 @@ final class PosterProjectSync: ObservableObject {
     private var uploads: [String: Task<PosterContentItem, Error>] = [:]
     private var completed: [String: PosterContentItem] = [:]
 
+    func isUploading(projectID: UUID) -> Bool {
+        uploads.keys.contains { $0.contains(":\(projectID):") }
+    }
+
+    func cancel(projectID: UUID) async {
+        pending.removeValue(forKey: projectID)?.cancel()
+        await PosterProjectRender.shared.cancel(projectID: projectID)
+        status[projectID] = nil
+        errors[projectID] = nil
+    }
+
     func schedule(_ listing: ProjectListing, delay: Double = 2) {
         guard !ProjectStore.isTesting, listing.summary.clipCount > 0 else { return }
         pending[listing.summary.id]?.cancel()

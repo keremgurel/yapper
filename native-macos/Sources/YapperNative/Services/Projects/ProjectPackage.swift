@@ -1,8 +1,8 @@
 import Foundation
 
 /// One project on disk: a folder with a `.yapperproj` extension that Finder
-/// shows as a single document. Camera imports reference their original files;
-/// downloaded Studio recordings and generated assets live inside the package.
+/// shows as a single document. Imported footage is saved in the background inside the package, alongside
+/// downloaded Studio recordings and generated assets.
 struct ProjectPackage: Hashable, Sendable {
     static let pathExtension = "yapperproj"
 

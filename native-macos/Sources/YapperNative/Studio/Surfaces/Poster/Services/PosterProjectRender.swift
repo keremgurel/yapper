@@ -6,6 +6,7 @@ import Foundation
 actor PosterProjectRender {
     static let shared = PosterProjectRender()
     private var inFlight: [String: Task<URL, Error>] = [:]
+    private var projectTasks: [UUID: [String: Task<URL, Error>]] = [:]
     private var lastRender: Task<URL, Error>?
 
     static func revision(_ project: EditorProject) throws -> String {
@@ -25,6 +26,12 @@ actor PosterProjectRender {
             data.append(Data("\(url.path):\(values?.fileSize ?? -1):\(values?.contentModificationDate?.timeIntervalSince1970 ?? -1)".utf8))
         }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
+    func cancel(projectID: UUID) async {
+        let tasks = projectTasks.removeValue(forKey: projectID) ?? [:]
+        for task in tasks.values { task.cancel() }
+        for task in tasks.values { _ = try? await task.value }
     }
 
     func cached(_ listing: ProjectListing) async -> URL? {
@@ -52,9 +59,10 @@ actor PosterProjectRender {
             try await ExportService.export(project: project, to: output, maximumRenderDimension: 1920)
             return output
         }
+        projectTasks[project.id, default: [:]][revision] = task
         inFlight[revision] = task
         lastRender = task
-        defer { inFlight[revision] = nil }
+        defer { inFlight[revision] = nil; projectTasks[project.id]?[revision] = nil }
         return try await task.value
     }
 }

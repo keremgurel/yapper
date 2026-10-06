@@ -105,6 +105,11 @@ final class EditorSession: ObservableObject {
     @Published private(set) var canRedo = false
     @Published private(set) var aiProgress = 0.0
     @Published private(set) var oneClickEditStage: OneClickEditStage?
+    @Published var managedMediaStatus: String?
+    var managedMediaTask: Task<Void, Never>?
+    var managedMediaPackage: ProjectPackage?
+    var managedMediaFailures: Set<URL> = []
+
     @Published private(set) var statusMessage = "Import video to begin"
     @Published private(set) var errorMessage: String?
     @Published private(set) var waveformByMedia: [UUID: [Float]] = [:]
@@ -916,7 +921,9 @@ final class EditorSession: ObservableObject {
             for url in urls {
                 let canonical = url.resolvingSymlinksInPath()
                 let media: ProjectMedia
-                if let existing = project.media.first(where: { $0.url == canonical }) {
+                if let existing = project.media.first(where: { media in
+                    media.url == canonical || (projectNavigation.currentPackage.map { ManagedProjectMedia.originalURL(for: media.id, in: $0) == canonical } ?? false)
+                }) {
                     media = existing
                 } else {
                     media = try await MediaProbe.inspect(url: canonical)
@@ -2949,6 +2956,7 @@ final class EditorSession: ObservableObject {
             // that is not there right now is a file to reconnect, and every cut
             // made against it is still exactly right. See MediaAvailability.
             project = saved
+            saveMediaInBackground()
             persistedLockBaseline = saved
             conversation.attach(projectID: saved.id, root: projectNavigation.currentPackage?.url)
             repairBuiltInAudioURLs()
@@ -2976,14 +2984,41 @@ final class EditorSession: ObservableObject {
         }
     }
 
+    /// Switch the live player as well as persistence to the owned source. Wait
+    /// for an in-progress edit, then use its latest timeline under the commit lock.
+    func adoptManagedMedia(in package: ProjectPackage, projectID: UUID) async throws {
+        while isBusy || isExporting {
+            try Task.checkCancellation()
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        try Task.checkCancellation()
+        guard project.id == projectID, projectNavigation.currentPackage == package else { return }
+        await acquireEditCommitSlot()
+        defer { releaseEditCommitSlot() }
+        guard project.id == projectID, projectNavigation.currentPackage == package else { return }
+        let previous = project
+        let owned = ManagedProjectMedia.resolved(project, in: package)
+        let wasPlaying = player.timeControlStatus == .playing
+        project = owned
+        if !project.clips.isEmpty { try await rebuildComposition(preserveTime: true) }
+        try await persist()
+        await reconcileDerivedMedia(from: previous)
+        mediaAvailability.refresh()
+        if wasPlaying { player.play() }
+    }
+
     private var persistedLockBaseline: EditorProject?
 
     func persist(allowLockedChanges: Bool = false) async throws {
         if !allowLockedChanges, let previous = persistedLockBaseline {
             try project.validateLocks(since: previous)
         }
+        if let package = projectNavigation.currentPackage {
+            project = ManagedProjectMedia.resolved(project, in: package)
+        }
         try await store.save(project)
         persistedLockBaseline = project
+        saveMediaInBackground()
         if let package = projectNavigation.currentPackage, !project.clips.isEmpty {
             PosterProjectSync.shared.schedule(ProjectListing(package: package, summary: ProjectSummary(project: project)), delay: 45)
         }
@@ -3001,7 +3036,7 @@ final class EditorSession: ObservableObject {
         project = next
         persistedLockBaseline = next
         conversation.attach(projectID: next.id, root: projectNavigation.currentPackage?.url)
-        if let root = projectNavigation.currentPackage?.url { project = GeneratedAssetLayout.relocated(project, to: root) }
+        if let root = projectNavigation.currentPackage?.url { project = PackagedMediaLayout.relocated(GeneratedAssetLayout.relocated(project, to: root), to: root) }
         if !keepingHistory {
             selectedClipID = project.clips.first?.id
             selectedTextLayerID = project.textLayers?.first?.id
