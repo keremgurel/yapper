@@ -69,6 +69,16 @@ final class PosterDraftStore: ObservableObject {
         outcomes[outcome.videoID] = set
     }
 
+    private var revisions: [String: String] = [:]
+    func useRevision(_ revision: String, for video: PosterVideo) {
+        if let previous = revisions[video.id], previous != revision {
+            covers[video.id] = nil
+            captions[video.id] = nil
+            outcomes[video.id] = nil
+        }
+        revisions[video.id] = revision
+    }
+
     private func sourceCaptions(_ video: PosterVideo) -> PosterCaptionSet {
         guard let original = video.sourceCaption else { return [:] }
         var set: PosterCaptionSet = [:]

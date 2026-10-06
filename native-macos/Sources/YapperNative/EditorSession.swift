@@ -2984,6 +2984,9 @@ final class EditorSession: ObservableObject {
         }
         try await store.save(project)
         persistedLockBaseline = project
+        if let package = projectNavigation.currentPackage, !project.clips.isEmpty {
+            PosterProjectSync.shared.schedule(ProjectListing(package: package, summary: ProjectSummary(project: project)), delay: 45)
+        }
     }
 
     /// Make `next` the open project outright: no undo across projects, no

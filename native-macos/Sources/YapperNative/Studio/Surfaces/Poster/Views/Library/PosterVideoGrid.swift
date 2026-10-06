@@ -18,7 +18,10 @@ struct PosterVideoGrid: View {
             PosterConnectTile(platform: platform) { onConnect(platform) }
         } else if loading && videos.isEmpty {
             skeleton
-        } else if source != .yapper && videos.isEmpty {
+        } else if source == .yapper && videos.isEmpty {
+            NativeEmptyState(systemImage: "film", title: "Your edited projects appear here",
+                             message: "Save an edit in Editor. Its latest version is automatically ready to prepare in Poster.")
+        } else if source != .uploads && videos.isEmpty {
             NativeEmptyState(
                 systemImage: "film",
                 title: "Nothing posted here yet",
@@ -26,7 +29,7 @@ struct PosterVideoGrid: View {
             )
         } else {
             LazyVGrid(columns: columns, alignment: .leading, spacing: 16) {
-                if source == .yapper {
+                if source == .uploads {
                     PosterUploadTile(upload: upload)
                 }
                 ForEach(videos) { video in

@@ -10,6 +10,7 @@ actor PosterMediaResolver {
     private var inFlight: [PosterMediaRef: Task<URL, Error>] = [:]
 
     func url(for media: PosterMediaRef) async throws -> URL {
+        if let url = media.previewURL { return url }
         if let hit = cache[media], Date().timeIntervalSince(hit.at) < 240 { return hit.url }
         if let task = inFlight[media] { return try await task.value }
         let task = Task { try await Self.resolve(media) }
@@ -19,6 +20,8 @@ actor PosterMediaResolver {
         cache[media] = (url, Date())
         return url
     }
+
+    func invalidate(_ media: PosterMediaRef) { cache[media] = nil }
 
     /// The storage key behind a video, for routes that take one.
     static func key(for media: PosterMediaRef) async throws -> String {

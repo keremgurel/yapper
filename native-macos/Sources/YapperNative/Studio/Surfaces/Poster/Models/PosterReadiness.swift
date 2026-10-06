@@ -82,7 +82,7 @@ struct PosterReadiness: Equatable {
         if bodyUsed > spec.bodyMax {
             blockers.append("Caption is \(bodyUsed - spec.bodyMax) over the \(spec.bodyMax) limit.")
         }
-        if !hasCover && spec.hasTitle { blockers.append("Pick a cover image.") }
+        if !hasCover && spec.hasTitle { notes.append("A custom thumbnail is optional. YouTube can choose a frame.") }
         if hashtagsUsed < spec.hashtagMin {
             notes.append("\(spec.hashtagMin) to \(spec.hashtagMax) hashtags work best here.")
         }

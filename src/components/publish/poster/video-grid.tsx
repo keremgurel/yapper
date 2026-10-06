@@ -38,11 +38,11 @@ export default function VideoGrid({
   onAdd: () => void;
   onOpen: (video: PosterVideo) => void;
 }) {
-  if (source !== "yapper" && !connected && !loading) {
+  if (source !== "uploads" && !connected && !loading) {
     return <ConnectTile platform={source} />;
   }
   if (loading && videos.length === 0) return <VideoGridSkeleton />;
-  if (source !== "yapper" && videos.length === 0) {
+  if (source !== "uploads" && videos.length === 0) {
     return (
       <EmptyState
         icon={Film}
@@ -53,7 +53,7 @@ export default function VideoGrid({
   }
   return (
     <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-      {source === "yapper" ? (
+      {source === "uploads" ? (
         <UploadTile
           state={uploadState}
           progress={uploadProgress}

@@ -24,6 +24,10 @@ final class PosterCaptionGenerator: ObservableObject {
         defer { generating = false }
         do {
             var transcript: String?
+            if case let .project(listing) = video.origin,
+               let project = try await ProjectPackageStore(package: listing.package).load() {
+                transcript = TimelineInspectionService.timelineWords(project: project).map(\.text).joined(separator: " ")
+            }
             if let key = video.mediaKey {
                 transcript = try await hear(key)
             }

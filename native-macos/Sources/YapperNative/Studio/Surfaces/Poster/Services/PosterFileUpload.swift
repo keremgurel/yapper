@@ -9,7 +9,7 @@ enum PosterFileUpload {
     static func ticket(bytes: Int, mimeType: String, ext: String, purpose: Purpose) async throws -> PosterUploadTicket {
         do {
             return try await PosterHTTP.post("api/media/upload-url", body: [
-                "sizeBytes": bytes, "mimeType": mimeType, "ext": ext, "purpose": purpose.rawValue,
+                "sizeBytes": bytes, "mimeType": mimeType, "ext": ext, "purpose": purpose.rawValue, "surface": "poster",
             ])
         } catch let error as PosterHTTPError {
             switch error.code {
@@ -50,10 +50,10 @@ enum PosterFileUpload {
     }
 
     /// Uploads a rendered cover and returns its storage key.
-    static func uploadCover(png: Data) async throws -> String {
-        let ticket = try await ticket(bytes: png.count, mimeType: "image/png", ext: "png", purpose: .thumbnail)
+    static func uploadCover(jpeg: Data) async throws -> String {
+        let ticket = try await ticket(bytes: jpeg.count, mimeType: "image/jpeg", ext: "jpg", purpose: .thumbnail)
         guard let url = URL(string: ticket.url) else { throw PosterUploadFailure("failed") }
-        try await put(data: png, to: url, mimeType: "image/png")
+        try await put(data: jpeg, to: url, mimeType: "image/jpeg")
         return ticket.key
     }
 

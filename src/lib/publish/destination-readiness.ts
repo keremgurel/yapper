@@ -126,8 +126,9 @@ export function evaluateDestination(
     );
   }
   if (!input.hasCover && spec.hasTitle) {
-    // Only where the platform shows a chosen thumbnail rather than a frame.
-    readiness.blockers.push("Pick a cover image.");
+    readiness.notes.push(
+      "A custom thumbnail is optional. YouTube can choose a frame.",
+    );
   }
 
   if (readiness.hashtags.used < spec.hashtags.min) {

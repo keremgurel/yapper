@@ -167,7 +167,7 @@ struct PosterDecodingTests {
         let caption = PosterCaption(platform: "youtube", title: "", body: "Body", hashtags: [])
         let blocked = PosterReadiness(platform: .youtube, connected: true, caption: caption, hasCover: false)
         #expect(blocked.state == .blocked)
-        #expect(blocked.blockers == ["A title is required.", "Pick a cover image."])
+        #expect(blocked.blockers == ["A title is required."])
         let ready = PosterReadiness(platform: .instagram, connected: true, caption: caption, hasCover: false)
         #expect(ready.state == .ready)
         #expect(PosterPublishSummary([blocked, ready]).label == "Publish to 1 destination")

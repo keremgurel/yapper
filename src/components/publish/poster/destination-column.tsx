@@ -33,7 +33,7 @@ export default function DestinationColumn({
   generating,
   captionError,
   publishing,
-  framePending,
+  mediaPending,
   transcriptStatus,
   onToggle,
   onConnect,
@@ -52,7 +52,7 @@ export default function DestinationColumn({
   generating: boolean;
   captionError: string;
   publishing: boolean;
-  framePending: boolean;
+  mediaPending: boolean;
   transcriptStatus: "ready" | "pending" | "needs_media" | "unavailable" | null;
   onToggle: (platform: PublishPlatform) => void;
   onConnect: (platform: PublishPlatform) => void;
@@ -176,7 +176,7 @@ export default function DestinationColumn({
             type="button"
             className="w-full"
             size="lg"
-            disabled={!summary.canPublish || publishing || framePending}
+            disabled={!summary.canPublish || publishing || mediaPending}
             onClick={onPublish}
           >
             {publishing ? (
@@ -184,8 +184,8 @@ export default function DestinationColumn({
             ) : null}
             {publishing
               ? "Publishing…"
-              : framePending
-                ? "Preparing thumbnail…"
+              : mediaPending
+                ? "Preparing video…"
                 : summary.label}
           </Button>
           {summary.blocked > 0 && (

@@ -4,6 +4,7 @@ import Foundation
 /// a connected channel.
 enum PosterSource: Hashable {
     case yapper
+    case uploads
     case platform(PublishPlatform)
 }
 
@@ -12,6 +13,8 @@ enum PosterSource: Hashable {
 /// published it, or (Instagram) can have its file imported on demand.
 struct PosterVideo: Identifiable, Equatable {
     enum Origin: Equatable {
+        case project(ProjectListing)
+        case file(URL)
         case yapper(submissionID: String, contentItemID: String, status: String, scheduledFor: String?, transcriptStatus: String?)
         case platform(PublishPlatform, sourceID: String, caption: String?, thumbnail: URL?, viewCount: Int, publishedAt: String, url: String, mediaKey: String?, importable: Bool)
     }
@@ -19,6 +22,22 @@ struct PosterVideo: Identifiable, Equatable {
     let id: String
     var title: String
     var origin: Origin
+    var previewURL: URL? = nil
+    var preparedSubmissionID: String? = nil
+    var preparedContentItemID: String? = nil
+
+    init(project: ProjectListing) {
+        id = "project:\(project.summary.id.uuidString)"
+        title = project.summary.name
+        origin = .project(project)
+    }
+
+    init(file: URL) {
+        id = "file:\(UUID().uuidString)"
+        title = file.deletingPathExtension().lastPathComponent
+        origin = .file(file)
+        previewURL = file
+    }
 
     init(item: PosterContentItem) {
         let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -37,6 +56,7 @@ struct PosterVideo: Identifiable, Equatable {
         let title = video.title.trimmingCharacters(in: .whitespacesAndNewlines)
         id = "\(platform.rawValue):\(video.id)"
         self.title = title.isEmpty ? "Untitled" : title
+        previewURL = video.sourceFileUrl.flatMap(URL.init(string:))
         origin = .platform(
             platform,
             sourceID: video.id,
@@ -51,11 +71,13 @@ struct PosterVideo: Identifiable, Equatable {
     }
 
     var submissionID: String? {
+        if let preparedSubmissionID { return preparedSubmissionID }
         if case let .yapper(submissionID, _, _, _, _) = origin { return submissionID }
         return nil
     }
 
     var contentItemID: String? {
+        if let preparedContentItemID { return preparedContentItemID }
         if case let .yapper(_, contentItemID, _, _, _) = origin { return contentItemID }
         return nil
     }
@@ -83,14 +105,23 @@ struct PosterVideo: Identifiable, Equatable {
     /// Whether Yapper can get at the master file, now or after an import.
     var canOpen: Bool {
         switch origin {
-        case .yapper: true
+        case .yapper, .project, .file: true
         case let .platform(_, _, _, _, _, _, _, mediaKey, importable): mediaKey != nil || importable
         }
     }
 
     /// The master behind this video, for previews, frames and publishing.
     var media: PosterMediaRef {
-        PosterMediaRef(submissionID: submissionID, mediaKey: mediaKey)
+        PosterMediaRef(submissionID: submissionID, mediaKey: mediaKey, previewURL: previewURL)
+    }
+
+    var readyToPublish: Bool {
+        switch origin {
+        case .project: previewURL?.isFileURL == true
+        case .file: submissionID != nil
+        case .yapper: true
+        case .platform: mediaKey != nil
+        }
     }
 
     /// Same-origin bytes of an Instagram post's original cover.
@@ -102,8 +133,9 @@ struct PosterVideo: Identifiable, Equatable {
         return "api/publish/instagram/thumbnail?mediaId=\(encoded)"
     }
 
-    func withImportedMedia(key: String, title: String) -> PosterVideo {
+    func withImportedMedia(key: String?, title: String) -> PosterVideo {
         var copy = self
+        if key != nil { copy.previewURL = nil }
         if case let .platform(platform, sourceID, caption, thumbnail, views, publishedAt, url, _, importable) = origin {
             copy.origin = .platform(platform, sourceID: sourceID, caption: caption, thumbnail: thumbnail, viewCount: views, publishedAt: publishedAt, url: url, mediaKey: key, importable: importable)
         }
@@ -116,6 +148,7 @@ struct PosterVideo: Identifiable, Equatable {
 struct PosterMediaRef: Hashable {
     var submissionID: String?
     var mediaKey: String?
+    var previewURL: URL? = nil
 }
 
 extension PosterContentItem {

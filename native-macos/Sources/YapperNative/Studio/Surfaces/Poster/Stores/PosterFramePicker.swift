@@ -16,6 +16,7 @@ final class PosterFramePicker: ObservableObject {
 
     /// Receives each decoded frame and its time.
     var onFrame: (CGImage, Double) -> Void = { _, _ in }
+    private var generation = UUID()
     private var wanted = 0
     private var media: PosterMediaRef?
     private var initialTime: Double = 1
@@ -27,29 +28,54 @@ final class PosterFramePicker: ObservableObject {
     var ready: Bool { source != nil }
 
     func load(_ media: PosterMediaRef, initialTime: Double) async {
+        let request = UUID()
+        generation = request
+        source = nil
+        busy = false
+        videoURL = nil
+        tiles = []
+        cache.removeAll()
+        let started = ContinuousClock.now
         self.media = media
         self.initialTime = initialTime
         loading = true
         error = nil
+        guard media.previewURL != nil || media.submissionID != nil || media.mediaKey != nil else { return }
         do {
             let url = try await PosterMediaResolver.shared.url(for: media)
+            guard generation == request, !Task.isCancelled else { return }
             videoURL = url
             let source = try await PosterFrameSource.open(url)
-            guard self.media == media else { return }
+            guard generation == request, !Task.isCancelled else { return }
+            PerfLog.logger.info("poster.preview.ready \(PerfLog.milliseconds(since: started))ms")
             self.source = source
             loading = false
             select(source.frameIndex(at: initialTime))
             let strip = await source.filmstrip(count: 12)
-            if self.media == media { tiles = strip }
+            if generation == request, !Task.isCancelled { tiles = strip }
         } catch {
+            guard generation == request, !Task.isCancelled else { return }
             loading = false
-            self.error = "The video preview could not be loaded."
+            PerfLog.logger.error("poster.preview.failed \(PerfLog.milliseconds(since: started))ms \(error.localizedDescription, privacy: .public)")
+            self.error = "The video preview could not be loaded. You can still post with the current thumbnail."
         }
+    }
+
+    func fail(_ message: String) {
+        generation = UUID()
+        loading = false
+        busy = false
+        error = message
     }
 
     func retry() {
         if let media, source == nil {
-            Task { await load(media, initialTime: initialTime) }
+            Task {
+                var fresh = media
+                if fresh.previewURL?.isFileURL != true, fresh.mediaKey != nil || fresh.submissionID != nil { fresh.previewURL = nil }
+                await PosterMediaResolver.shared.invalidate(fresh)
+                await load(fresh, initialTime: initialTime)
+            }
         } else {
             cache.removeAll()
             select(index)
@@ -77,9 +103,10 @@ final class PosterFramePicker: ObservableObject {
 
     private func decode() async {
         guard let source else { return }
+        let request = generation
         busy = true
         error = nil
-        defer { busy = false }
+        defer { if generation == request { busy = false } }
         while true {
             let target = wanted
             if let cached = cache[target] {
@@ -88,12 +115,15 @@ final class PosterFramePicker: ObservableObject {
             }
             do {
                 let image = try await source.frame(at: target)
+                guard generation == request, !Task.isCancelled else { return }
+                if cache.count >= 12 { cache.removeAll(keepingCapacity: true) }
                 cache[target] = image
                 if target == wanted {
                     onFrame(image, source.time(ofFrame: target))
                     return
                 }
             } catch {
+                guard generation == request else { return }
                 self.error = "That frame could not be read. Try again."
                 return
             }

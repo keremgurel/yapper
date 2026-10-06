@@ -12,6 +12,7 @@ struct PosterSourceTabs: View {
         VStack(spacing: 0) {
             HStack(spacing: 4) {
                 tab(.yapper) { Text("Made in Yapper") }
+                tab(.uploads) { Text("Uploads") }
                 ForEach(PublishPlatform.allCases) { platform in
                     tab(.platform(platform)) {
                         HStack(spacing: 6) {

@@ -17,25 +17,38 @@ final class PosterPublishPrep: ObservableObject {
         preparing = true
         warning = nil
         defer { preparing = false }
-        var thumbnailKey: String?
-        if cover.image != nil {
-            if let png = PosterCoverRenderer.png(cover) {
-                thumbnailKey = try? await PosterFileUpload.uploadCover(png: png)
+        let needsCover = cover.image != nil && destinations.contains(where: { $0 != .tiktok })
+        async let uploadedCover = uploadCover(cover, needed: needsCover)
+        var submissionID = video.submissionID
+        var contentItemID = video.contentItemID
+        if case let .project(listing) = video.origin {
+            do {
+                let saved = try await PosterProjectSync.shared.prepare(listing)
+                submissionID = saved.submissionId
+                contentItemID = saved.id
+            } catch {
+                warning = error.localizedDescription
+                return
             }
-            if thumbnailKey == nil { warning = "The cover couldn't upload. The video is still ready to publish." }
         }
+        let thumbnailKey = await uploadedCover
+        if needsCover && thumbnailKey == nil { warning = "The cover couldn't upload. The video is still ready to publish." }
         let headline = cover.headline.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = PosterPublishTarget(
             id: video.id,
             title: video.title,
             fallbackTitle: headline.isEmpty ? video.title : headline,
             captions: captions,
-            submissionID: video.submissionID,
+            submissionID: submissionID,
             mediaKey: video.mediaKey,
-            contentItemID: video.contentItemID,
+            contentItemID: contentItemID,
             thumbnailKey: thumbnailKey
         )
         sheet = PosterPublishSheetRequest(targets: [target], platforms: destinations)
+    }
+    private func uploadCover(_ cover: PosterCoverDraft, needed: Bool) async -> String? {
+        guard needed, let jpeg = PosterCoverRenderer.jpeg(cover) else { return nil }
+        return try? await PosterFileUpload.uploadCover(jpeg: jpeg)
     }
 }
 

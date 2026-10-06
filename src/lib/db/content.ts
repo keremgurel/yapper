@@ -98,6 +98,7 @@ export async function listContentItems(
       >`coalesce(${projectPillars.name}, ${contentItems.pillar})`,
       pillarId: contentItems.pillarId,
       sourceUrl: contentItems.sourceUrl,
+      editorRevision: contentItems.editorRevision,
       sourceTitle: contentItems.sourceTitle,
       sourcePlatform: contentItems.sourcePlatform,
       transcriptStatus: contentItems.transcriptStatus,

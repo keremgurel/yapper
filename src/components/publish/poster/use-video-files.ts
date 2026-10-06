@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, type ChangeEvent } from "react";
-import { useAddVideo } from "@/hooks/use-add-video";
+import { useAddVideo, videoTypeFor } from "@/hooks/use-add-video";
 import type { ContentDetail } from "@/lib/content/client";
 
 /**
@@ -14,6 +14,7 @@ import type { ContentDetail } from "@/lib/content/client";
 export function useVideoFiles(
   onAdded: (item: ContentDetail) => void,
   onUpdated?: (item: ContentDetail) => void,
+  onSelected?: (file: File) => void,
 ) {
   const ref = useRef<HTMLInputElement>(null);
   const { state, error, notice, progress, add } = useAddVideo(
@@ -28,21 +29,27 @@ export function useVideoFiles(
         // Sequential: each upload streams a whole video, and running a dropped
         // batch in parallel is how a slow connection stalls all of them.
         void (async () => {
-          for (const file of files) await add(file);
+          for (const file of files) {
+            if (videoTypeFor(file)) onSelected?.(file);
+            await add(file);
+          }
         })();
       }
       event.target.value = "";
     },
-    [add],
+    [add, onSelected],
   );
 
   const addFiles = useCallback(
     (files: File[]) => {
       void (async () => {
-        for (const file of files) await add(file);
+        for (const file of files) {
+          if (videoTypeFor(file)) onSelected?.(file);
+          await add(file);
+        }
       })();
     },
-    [add],
+    [add, onSelected],
   );
 
   const open = useCallback(() => ref.current?.click(), []);

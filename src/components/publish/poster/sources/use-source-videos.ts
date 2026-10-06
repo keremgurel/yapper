@@ -6,7 +6,7 @@ import type { PublishPlatform } from "@/lib/db/schema";
 import type { PostableVideo } from "@/lib/publish/postable-videos";
 import { fromPlatform, fromPostable, type PosterVideo } from "../poster-video";
 
-export type PosterSource = "yapper" | PublishPlatform;
+export type PosterSource = "uploads" | PublishPlatform;
 
 /**
  * The videos behind the selected source tab, in one shape. Yapper's finished
@@ -21,14 +21,14 @@ export function useSourceVideos(
   signedIn: boolean,
 ) {
   const [sort, setSort] = useState<VideoSort>("recent");
-  const platform: PublishPlatform = source === "yapper" ? "youtube" : source;
+  const platform: PublishPlatform = source === "uploads" ? "youtube" : source;
   const channel = usePlatformVideos(
     platform,
-    signedIn && source !== "yapper",
+    signedIn && source !== "uploads",
     sort,
   );
 
-  if (source === "yapper") {
+  if (source === "uploads") {
     return {
       videos: library.videos.map(fromPostable) as PosterVideo[],
       loading: library.loading,

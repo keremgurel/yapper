@@ -10,6 +10,7 @@ export async function uploadThumbnailFile(
   const ext = mimeType.split("/")[1]?.split(";")[0] || "png";
   const presign = await fetch("/api/media/upload-url", {
     method: "POST",
+    signal: AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       sizeBytes: file.size,
@@ -25,6 +26,7 @@ export async function uploadThumbnailFile(
   };
   const put = await fetch(url, {
     method: "PUT",
+    signal: AbortSignal.timeout(30_000),
     headers: { "Content-Type": mimeType },
     body: file,
   });

@@ -230,6 +230,7 @@ export async function activateObjectWithinTx(
   // under the same user lock as registration/accounting, before committing it.
   if (
     row.state !== "active" &&
+    !/^u\/[^/]+\/(?:project-|poster-|ig-import-)/.test(mediaKey) &&
     (expectedPurpose === "recording" || expectedPurpose === "import")
   ) {
     await assertPosterSlotAvailableWithinTx(tx, userId, mediaKey);

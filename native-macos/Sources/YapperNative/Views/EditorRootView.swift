@@ -387,13 +387,7 @@ private struct EditorHeader: View {
             .buttonStyle(EditorSecondaryButtonStyle())
             .disabled(session.project.clips.isEmpty || session.isBusy)
 
-            Button {
-                ImportPanels.exportAndPost(for: session)
-            } label: {
-                Label("Export & Post", systemImage: "paperplane.fill")
-            }
-            .buttonStyle(EditorPrimaryButtonStyle())
-            .disabled(session.project.clips.isEmpty || session.isBusy)
+
         }
         .padding(.horizontal, 16)
         .frame(height: 52)

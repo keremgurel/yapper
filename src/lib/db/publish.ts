@@ -429,6 +429,14 @@ export async function archivedMediaKeysForPosts(
       mediaKey: publishJobs.mediaKey,
     })
     .from(publishJobs)
+    .innerJoin(
+      r2Objects,
+      and(
+        eq(r2Objects.mediaKey, publishJobs.mediaKey),
+        eq(r2Objects.userId, publishJobs.userId),
+        eq(r2Objects.state, "active"),
+      ),
+    )
     .where(
       and(
         eq(publishJobs.userId, userId),

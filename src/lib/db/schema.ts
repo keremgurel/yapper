@@ -675,6 +675,9 @@ export const contentItems = pgTable(
     sourcePlatform: text("source_platform"),
     transcriptStatus: text("transcript_status", { enum: transcriptStatuses }),
     sourceClientId: text("source_client_id"),
+    /** Saved native edit represented by this final master. */
+    editorRevision: text("editor_revision"),
+    editorUpdatedAt: timestamp("editor_updated_at", { withTimezone: true }),
     submissionId: uuid("submission_id").references(() => submissions.id, {
       onDelete: "set null",
     }),

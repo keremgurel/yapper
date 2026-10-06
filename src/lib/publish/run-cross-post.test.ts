@@ -84,3 +84,26 @@ it("does not label an uncertain delivery as a failure", async () => {
     pending: 1,
   });
 });
+
+it("reports a fast destination while the slow destination is still pending", async () => {
+  let finishSlow!: (value: CrossPostResult) => void;
+  const slow = new Promise<CrossPostResult>((resolve) => {
+    finishSlow = resolve;
+  });
+  const seen: string[] = [];
+  const result = runCrossPost(
+    targets("youtube", "instagram"),
+    (platform) =>
+      platform === "youtube" ? slow : Promise.resolve({ jobId: "fast" }),
+    (outcome) => seen.push(outcome.platform),
+  );
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(seen).toEqual(["instagram"]);
+  finishSlow({ jobId: "slow" });
+  expect((await result).map((outcome) => outcome.platform)).toEqual([
+    "youtube",
+    "instagram",
+  ]);
+  expect(seen).toEqual(["instagram", "youtube"]);
+});

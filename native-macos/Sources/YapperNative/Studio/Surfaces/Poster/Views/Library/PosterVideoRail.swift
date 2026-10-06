@@ -11,7 +11,7 @@ struct PosterVideoRail: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if source == .yapper {
+            if source == .uploads {
                 Button { upload.choose() } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "plus").font(.system(size: 12))

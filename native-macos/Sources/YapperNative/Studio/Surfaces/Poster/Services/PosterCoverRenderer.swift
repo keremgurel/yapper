@@ -25,6 +25,11 @@ enum PosterCoverRenderer {
         return NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
     }
 
+    static func jpeg(_ draft: PosterCoverDraft) -> Data? {
+        guard let image = render(draft) else { return nil }
+        return NSBitmapImageRep(cgImage: image).representation(using: .jpeg, properties: [.compressionFactor: 0.9])
+    }
+
     private static func fillRect(for image: CGImage) -> CGRect {
         let scale = max(size.width / CGFloat(image.width), size.height / CGFloat(image.height))
         let width = CGFloat(image.width) * scale

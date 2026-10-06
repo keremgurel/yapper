@@ -115,3 +115,19 @@ describe("publishSummary", () => {
     expect(summary.label).toBe("Nothing ready to publish");
   });
 });
+
+it("does not block a valid YouTube post while thumbnail extraction is unavailable", () => {
+  const result = evaluateDestination({
+    platform: "youtube",
+    connected: true,
+    hasCover: false,
+    caption: {
+      platform: "youtube",
+      title: "A finished video",
+      body: "Ready to publish",
+      hashtags: [],
+    },
+  });
+  expect(result.state).toBe("ready");
+  expect(result.blockers).toEqual([]);
+});

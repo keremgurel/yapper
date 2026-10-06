@@ -9,11 +9,13 @@ export default function FramePreview({
   time,
   image,
   capturing,
+  error,
 }: {
   mediaUrl: string | null;
   time: number;
   image: string | null;
   capturing: boolean;
+  error?: string;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const target = useRef(time);
@@ -88,8 +90,12 @@ export default function FramePreview({
           ) : (
             <Film className="h-6 w-6" />
           )}
-          <span className="text-xs">
-            {capturing ? "Opening your video…" : "No frame selected"}
+          <span className="px-4 text-center text-xs">
+            {error
+              ? "Preview unavailable. You can still use your thumbnail."
+              : capturing
+                ? "Opening your video…"
+                : "No frame selected"}
           </span>
         </div>
       ) : null}

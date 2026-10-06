@@ -27,8 +27,15 @@ final class PosterFrameSource: @unchecked Sendable {
 
     static func open(_ url: URL) async throws -> PosterFrameSource {
         let asset = AVURLAsset(url: url)
-        let duration = try await asset.load(.duration).seconds
-        let track = try await asset.loadTracks(withMediaType: .video).first
+        let deadline = Task {
+            try await Task.sleep(for: .seconds(20))
+            asset.cancelLoading()
+        }
+        defer { deadline.cancel() }
+        async let durationLoad = asset.load(.duration)
+        async let tracksLoad = asset.loadTracks(withMediaType: .video)
+        let duration = try await durationLoad.seconds
+        let track = try await tracksLoad.first
         let rate = try await track?.load(.nominalFrameRate) ?? 30
         guard duration.isFinite, duration > 0 else { throw PosterUploadFailure("video_unavailable") }
         return PosterFrameSource(asset: asset, duration: duration, fps: rate > 0 ? Double(rate) : 30)
@@ -46,6 +53,11 @@ final class PosterFrameSource: @unchecked Sendable {
 
     func frame(at index: Int) async throws -> CGImage {
         let time = CMTime(seconds: time(ofFrame: index), preferredTimescale: 60_000)
+        let deadline = Task {
+            try await Task.sleep(for: .seconds(15))
+            generator.cancelAllCGImageGeneration()
+        }
+        defer { deadline.cancel() }
         return try await generator.image(at: time).image
     }
 

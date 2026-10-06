@@ -45,14 +45,26 @@ export async function POST(req: NextRequest): Promise<Response> {
     return Response.json({ error: "storage_unavailable" }, { status: 501 });
   }
 
-  const { sizeBytes, mimeType, ext, purpose } = (await req
+  const { sizeBytes, mimeType, ext, purpose, projectId, surface } = (await req
     .json()
     .catch(() => ({}))) as {
     sizeBytes?: number;
     mimeType?: string;
     ext?: string;
     purpose?: unknown;
+    projectId?: unknown;
+    surface?: unknown;
   };
+  const posterUpload = surface === "poster";
+  if (surface !== undefined && !posterUpload)
+    return Response.json({ error: "bad_request" }, { status: 400 });
+  const projectUpload =
+    typeof projectId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      projectId,
+    );
+  if (projectId !== undefined && !projectUpload)
+    return Response.json({ error: "bad_request" }, { status: 400 });
   if (
     !Number.isSafeInteger(sizeBytes) ||
     !sizeBytes ||
@@ -78,7 +90,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   // One video waiting to be posted per account. The next one needs the
   // waiting one posted, scheduled or discarded first.
-  if (purpose === "recording") {
+  if (purpose === "recording" && !projectUpload && !posterUpload) {
     const waiting = await findWaitingPosterVideo(userId);
     if (waiting) return posterSlotBusyResponse(waiting);
   }
@@ -98,7 +110,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
       : `${Date.now()}`;
-  const key = mediaKey(userId, id, (ext ?? "webm").replace(/[^a-z0-9]/gi, ""));
+  const key = mediaKey(
+    userId,
+    projectUpload
+      ? `project-${projectId}-${id}`
+      : posterUpload
+        ? `poster-${id}`
+        : id,
+    (ext ?? "webm").replace(/[^a-z0-9]/gi, ""),
+  );
   // A big file on a slow uplink must not outlive its presigned PUT. Budget for a
   // very slow ~40 KB/s and clamp to 30 min .. 6 hours, so e.g. a 267 MB upload
   // (~114 min at that floor) still has a valid URL the whole way.

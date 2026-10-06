@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { LayoutGrid, RefreshCw } from "lucide-react";
@@ -25,7 +25,8 @@ import {
   mediaOf,
 } from "@/components/publish/poster/poster-video";
 import { downloadCover } from "@/components/publish/poster/render-cover";
-import SourceTabs from "@/components/publish/poster/sources/source-tabs";
+import SourceOptions from "@/components/publish/poster/sources/source-options";
+import { PLATFORMS } from "@/lib/publish/platforms";
 import { useOpenVideo } from "@/components/publish/poster/sources/use-open-video";
 import { useRequestedVideo } from "@/components/publish/poster/sources/use-requested-video";
 import {
@@ -43,7 +44,10 @@ import { useContentList } from "@/hooks/use-content-list";
 import type { PublishPlatform } from "@/lib/db/schema";
 import { beginConnect } from "@/lib/publish/begin-connect";
 import { DEFAULT_CAPTION_BRIEF } from "@/lib/publish/caption-prompt";
-import { postableVideos } from "@/lib/publish/postable-videos";
+import {
+  postableVideos,
+  posterLibraryVideos,
+} from "@/lib/publish/postable-videos";
 import type { ContentDetail } from "@/lib/content/client";
 
 /**
@@ -58,6 +62,7 @@ import type { ContentDetail } from "@/lib/content/client";
  */
 export default function PosterWorkspace() {
   const { isSignedIn } = useUser();
+  const params = useSearchParams();
   const { items, loadFailed, refresh, prependRow, patchRow } = useContentList(
     !!isSignedIn,
     { includePosterUploads: true },
@@ -76,10 +81,15 @@ export default function PosterWorkspace() {
     [connections],
   );
 
-  const [source, setSource] = useState<PosterSource>("yapper");
+  const [sourceChosen, setSourceChosen] = useState(Boolean(params.get("item")));
+  const [source, setSource] = useState<PosterSource>("uploads");
   const sourceVideos = useSourceVideos(
     source,
-    { videos: library, loading: items === null },
+    {
+      videos:
+        source === "uploads" ? posterLibraryVideos(items, source) : library,
+      loading: items === null,
+    },
     !!isSignedIn,
   );
   const bench = useOpenVideo();
@@ -89,7 +99,7 @@ export default function PosterWorkspace() {
   );
 
   const [covers, setCovers] = useState<Record<string, CoverDraft>>({});
-  const [framePending, setFramePending] = useState(false);
+  const [, setFramePending] = useState(false);
   // Per video, because two videos genuinely go to different places and one
   // shared Set could never say so.
   const [destinationsByVideo, setDestinationsByVideo] = useState<
@@ -104,6 +114,36 @@ export default function PosterWorkspace() {
     useCaptionGeneration(applyGenerated);
   const prep = usePublishPrep();
 
+  const localUpload = useRef<{ id: string; url: string } | null>(null);
+  useEffect(
+    () => () => {
+      if (localUpload.current) URL.revokeObjectURL(localUpload.current.url);
+    },
+    [],
+  );
+  const selectLocalFile = useCallback(
+    (file: File) => {
+      if (localUpload.current) URL.revokeObjectURL(localUpload.current.url);
+      const local = { id: crypto.randomUUID(), url: URL.createObjectURL(file) };
+      localUpload.current = local;
+      bench.close();
+      bench.setActive({
+        kind: "yapper",
+        id: local.id,
+        title: file.name.replace(/\.[^.]+$/, ""),
+        submissionId: "",
+        contentItemId: "",
+        previewUrl: local.url,
+        status: "ready",
+        scheduledFor: null,
+        transcriptStatus: "pending",
+      });
+      setSource("uploads");
+      setSourceChosen(true);
+    },
+    [bench],
+  );
+
   const openUploaded = useCallback(
     (item: ContentDetail) => {
       // Publish the returned row into the shared resource immediately. A
@@ -112,8 +152,12 @@ export default function PosterWorkspace() {
       prependRow(item);
       const [video] = postableVideos([item]);
       if (video) {
-        setSource("yapper");
-        bench.setActive(fromPostable(video));
+        const local = localUpload.current;
+        bench.setActive((current) =>
+          current && local && current.id === local.id
+            ? { ...fromPostable(video), id: current.id, previewUrl: local?.url }
+            : current,
+        );
       }
     },
     [prependRow, bench],
@@ -130,10 +174,10 @@ export default function PosterWorkspace() {
   } = useVideoFiles(
     openUploaded,
     useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
+    selectLocalFile,
   );
 
   // The editor hands a finished cut over by linking to /studio/poster?item=<id>.
-  const params = useSearchParams();
   const requested = params.get("item");
   useRequestedVideo(requested, library, bench.setActive);
 
@@ -196,6 +240,7 @@ export default function PosterWorkspace() {
   };
 
   const changeSource = (next: PosterSource) => {
+    setSourceChosen(true);
     setSource(next);
     bench.close();
   };
@@ -207,11 +252,24 @@ export default function PosterWorkspace() {
           title="Poster"
           description="Pick a video, choose its thumbnail and captions, and send it to every channel at once."
           actions={
-            <PosterActions
-              uploadState={uploadState}
-              progress={uploadProgress}
-              onAdd={openFilePicker}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {active && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    bench.close();
+                    setSourceChosen(false);
+                  }}
+                >
+                  Post another video
+                </Button>
+              )}
+              <PosterActions
+                uploadState={uploadState}
+                progress={uploadProgress}
+                onAdd={openFilePicker}
+              />
+            </div>
           }
         />
 
@@ -256,150 +314,179 @@ export default function PosterWorkspace() {
             </Button>
           </div>
         )}
-        <SourceTabs
-          source={source}
-          connected={connectedPlatforms}
-          onChange={changeSource}
-        />
-
-        {sourceVideos.error ? (
-          <EmptyState
-            icon={RefreshCw}
-            title="This channel couldn’t be loaded"
-            description="Check the connection and try loading its videos again."
-            action={
-              <Button
-                variant="outline"
-                onClick={() => void sourceVideos.refresh()}
-              >
-                Try again
-              </Button>
-            }
-          />
-        ) : source === "yapper" && items === null && loadFailed ? (
-          <EmptyState
-            icon={RefreshCw}
-            title="Your videos could not be loaded"
-            description="The library did not answer. Try again, or add a new export and it will open here."
-            action={
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void refresh()}
-              >
-                <RefreshCw aria-hidden />
-                Try again
-              </Button>
-            }
-          />
-        ) : !active || !cover ? (
-          <VideoGrid
-            source={source}
-            videos={sourceVideos.videos}
-            loading={sourceVideos.loading}
-            connected={sourceVideos.connected}
-            activeId={null}
-            importingId={bench.importingId}
-            uploadState={uploadState}
-            uploadProgress={uploadProgress}
-            onAdd={openFilePicker}
-            onOpen={(video) => void bench.open(video)}
-          />
+        {sourceChosen ? (
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                bench.close();
+                setSourceChosen(false);
+              }}
+            >
+              Change source
+            </Button>
+            <span className="text-sm font-semibold">
+              {source === "uploads" ? "Uploads" : PLATFORMS[source].label}
+            </span>
+          </div>
         ) : (
-          <div className="grid gap-8 xl:grid-cols-[240px_minmax(0,1fr)_400px]">
-            <Section
-              title="Videos"
-              meta={String(sourceVideos.videos.length)}
+          <SourceOptions
+            connected={connectedPlatforms}
+            onChoose={changeSource}
+            onUpload={openFilePicker}
+          />
+        )}
+
+        {sourceChosen &&
+          (sourceVideos.error ? (
+            <EmptyState
+              icon={RefreshCw}
+              title="This channel couldn’t be loaded"
+              description="Check the connection and try loading its videos again."
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => void sourceVideos.refresh()}
+                >
+                  Try again
+                </Button>
+              }
+            />
+          ) : source === "uploads" && items === null && loadFailed ? (
+            <EmptyState
+              icon={RefreshCw}
+              title="Your videos could not be loaded"
+              description="The library did not answer. Try again, or add a new export and it will open here."
               action={
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={bench.close}
+                  variant="outline"
+                  onClick={() => void refresh()}
                 >
-                  <LayoutGrid aria-hidden />
-                  All videos
+                  <RefreshCw aria-hidden />
+                  Try again
                 </Button>
               }
-            >
-              <VideoRail
-                source={source}
-                videos={sourceVideos.videos}
-                activeId={active.id}
-                importingId={bench.importingId}
-                onOpen={(video) => void bench.open(video)}
-                onAdd={openFilePicker}
-              />
-            </Section>
-
-            <Section title="Thumbnail" meta={active.title}>
-              <CoverStudio
-                key={active.id}
-                draft={cover}
-                media={mediaOf(active)}
-                originalImage={originalThumbnail(active)}
-                onChange={(next) =>
-                  setCovers((current) => ({ ...current, [active.id]: next }))
+            />
+          ) : !active || !cover ? (
+            <VideoGrid
+              source={source}
+              videos={sourceVideos.videos}
+              loading={sourceVideos.loading}
+              connected={sourceVideos.connected}
+              activeId={null}
+              importingId={bench.importingId}
+              uploadState={uploadState}
+              uploadProgress={uploadProgress}
+              onAdd={openFilePicker}
+              onOpen={(video) => void bench.open(video)}
+            />
+          ) : (
+            <div className="grid gap-8 xl:grid-cols-[240px_minmax(0,1fr)_400px]">
+              <Section
+                title="Videos"
+                meta={String(sourceVideos.videos.length)}
+                action={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={bench.close}
+                  >
+                    <LayoutGrid aria-hidden />
+                    All videos
+                  </Button>
                 }
-                onDownload={() => void downloadCover(cover)}
-                onFramePendingChange={setFramePending}
-              />
-            </Section>
+              >
+                <VideoRail
+                  source={source}
+                  videos={sourceVideos.videos}
+                  activeId={active.id}
+                  importingId={bench.importingId}
+                  onOpen={(video) => void bench.open(video)}
+                  onAdd={openFilePicker}
+                />
+              </Section>
 
-            <Section title="Send to">
-              <div className="space-y-4">
-                <DestinationColumn
-                  captions={captions}
-                  hasOriginalCaption={
-                    active.kind === "platform" && Boolean(active.caption)
+              <Section title="Thumbnail" meta={active.title}>
+                <CoverStudio
+                  key={active.id}
+                  draft={cover}
+                  media={mediaOf(active)}
+                  originalImage={originalThumbnail(active)}
+                  onChange={(next) =>
+                    setCovers((current) => ({ ...current, [active.id]: next }))
                   }
-                  onUseOriginalCaption={() =>
-                    applyGenerated(
-                      active.id,
-                      Object.values(sourceCaptions(active)).map((caption) => ({
-                        ...caption,
-                        title: captions[caption.platform]?.title ?? "",
-                      })),
-                    )
-                  }
-                  onGenerateTitle={() => draftCaptions(true)}
-                  reading={reading}
-                  chosen={destinations}
-                  connected={connectedPlatforms}
-                  hasCover={Boolean(cover.image)}
-                  generating={generating}
-                  captionError={error}
-                  publishing={prep.preparing}
-                  framePending={framePending}
-                  transcriptStatus={
-                    active.kind === "yapper" ? active.transcriptStatus : null
-                  }
-                  onToggle={toggleDestination}
-                  onConnect={beginConnect}
-                  onCaptionChange={(caption) => setCaption(active.id, caption)}
-                  onGenerate={() => draftCaptions()}
-                  onPublish={() =>
-                    void prep.prepare(
-                      [active],
-                      { ...covers, [active.id]: cover },
-                      { ...byVideo, [active.id]: captions },
-                    )
-                  }
+                  onDownload={() => void downloadCover(cover)}
+                  onFramePendingChange={setFramePending}
                 />
-                <CaptionBriefDisclosure
-                  value={brief}
-                  disabled={generating}
-                  onChange={(value) =>
-                    setBriefsByVideo((current) => ({
-                      ...current,
-                      [active.id]: value,
-                    }))
-                  }
-                />
-              </div>
-            </Section>
-          </div>
-        )}
+              </Section>
+
+              <Section title="Send to">
+                <div className="space-y-4">
+                  <DestinationColumn
+                    captions={captions}
+                    hasOriginalCaption={
+                      active.kind === "platform" && Boolean(active.caption)
+                    }
+                    onUseOriginalCaption={() =>
+                      applyGenerated(
+                        active.id,
+                        Object.values(sourceCaptions(active)).map(
+                          (caption) => ({
+                            ...caption,
+                            title: captions[caption.platform]?.title ?? "",
+                          }),
+                        ),
+                      )
+                    }
+                    onGenerateTitle={() => draftCaptions(true)}
+                    reading={
+                      reading ||
+                      (active.kind === "platform" && !active.mediaKey)
+                    }
+                    chosen={destinations}
+                    connected={connectedPlatforms}
+                    hasCover={Boolean(cover.image)}
+                    generating={generating}
+                    captionError={error}
+                    publishing={prep.preparing}
+                    mediaPending={
+                      active.kind === "platform"
+                        ? !active.mediaKey
+                        : !active.submissionId
+                    }
+                    transcriptStatus={
+                      active.kind === "yapper" ? active.transcriptStatus : null
+                    }
+                    onToggle={toggleDestination}
+                    onConnect={beginConnect}
+                    onCaptionChange={(caption) =>
+                      setCaption(active.id, caption)
+                    }
+                    onGenerate={() => draftCaptions()}
+                    onPublish={() =>
+                      void prep.prepare(
+                        [active],
+                        { ...covers, [active.id]: cover },
+                        { ...byVideo, [active.id]: captions },
+                      )
+                    }
+                  />
+                  <CaptionBriefDisclosure
+                    value={brief}
+                    disabled={generating}
+                    onChange={(value) =>
+                      setBriefsByVideo((current) => ({
+                        ...current,
+                        [active.id]: value,
+                      }))
+                    }
+                  />
+                </div>
+              </Section>
+            </div>
+          ))}
 
         {prep.targets && (
           <CrossPostSheet
@@ -407,6 +494,12 @@ export default function PosterWorkspace() {
             items={prep.targets}
             initialPlatforms={[...destinations]}
             onClose={prep.clear}
+            onNext={() => {
+              prep.clear();
+              bench.close();
+              setSourceChosen(false);
+              void refresh();
+            }}
           />
         )}
       </div>

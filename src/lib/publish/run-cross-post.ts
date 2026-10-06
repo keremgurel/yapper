@@ -23,28 +23,32 @@ export interface CrossPostOutcome {
 export async function runCrossPost(
   targets: { platform: PublishPlatform }[],
   post: (platform: PublishPlatform) => Promise<CrossPostResult>,
+  onOutcome?: (outcome: CrossPostOutcome) => void,
 ): Promise<CrossPostOutcome[]> {
-  const settled = await Promise.allSettled(
-    targets.map((t) => post(t.platform)),
+  return Promise.all(
+    targets.map(async ({ platform }) => {
+      let outcome: CrossPostOutcome;
+      try {
+        const result = await post(platform);
+        outcome = {
+          platform,
+          status: result.draft ? "draft" : "posted",
+          url: result.url,
+        };
+      } catch (error) {
+        outcome = {
+          platform,
+          status:
+            error instanceof Error && error.message === "publish_in_progress"
+              ? "pending"
+              : "failed",
+          error: error instanceof Error ? error.message : "failed",
+        };
+      }
+      onOutcome?.(outcome);
+      return outcome;
+    }),
   );
-  return settled.map((s, i) => {
-    const platform = targets[i].platform;
-    if (s.status === "fulfilled") {
-      return {
-        platform,
-        status: s.value.draft ? "draft" : "posted",
-        url: s.value.url,
-      };
-    }
-    return {
-      platform,
-      status:
-        s.reason instanceof Error && s.reason.message === "publish_in_progress"
-          ? "pending"
-          : "failed",
-      error: s.reason instanceof Error ? s.reason.message : "failed",
-    };
-  });
 }
 
 /** Tally a fan-out's outcomes for the closing summary line. */

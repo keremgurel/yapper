@@ -19,7 +19,7 @@ struct PosterCoverStudio: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 20) {
                 pane("Pick the frame") {
-                    PosterFramePlayer(url: picker.videoURL, time: picker.time)
+                    PosterFramePlayer(url: picker.videoURL, time: picker.time, error: picker.error)
                 }
                 pane("Your thumbnail") {
                     PosterCoverPreview(draft: draft, originalAvailable: original != nil, busy: remix.generating) { update($0) }
@@ -54,7 +54,7 @@ struct PosterCoverStudio: View {
                 PosterTextOverlayPanel(draft: draft) { update($0) }
             }
         }
-        .task(id: video.id) {
+        .task(id: video.media) {
             let untouched = !drafts.hasCover(video)
             picker.onFrame = { [drafts, video] image, time in
                 drafts.setCover(drafts.cover(video).withFrame(image, at: time), for: video)
@@ -63,7 +63,10 @@ struct PosterCoverStudio: View {
             async let cover: Void = loadOriginal(applying: untouched)
             _ = await (frames, cover)
         }
-        .onChange(of: picker.busy || picker.error != nil) { _, pending in
+        .onReceive(PosterBench.shared.$error) { error in
+            if let error, PosterBench.shared.active?.id == video.id, picker.videoURL == nil { picker.fail(error) }
+        }
+        .onChange(of: picker.busy) { _, pending in
             framePending = draft.source == .frame && pending
         }
         .onDisappear { framePending = false }
@@ -87,7 +90,7 @@ struct PosterCoverStudio: View {
               let image = PosterImageData.image(from: data)
         else { return }
         original = image
-        if applying, draft.source == .frame {
+        if applying, draft.source == .frame, draft.frameImage == nil {
             var next = draft
             next.image = image
             next.source = .original

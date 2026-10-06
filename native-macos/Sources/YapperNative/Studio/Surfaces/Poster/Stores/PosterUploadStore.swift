@@ -24,6 +24,7 @@ final class PosterUploadStore: ObservableObject {
 
     /// Called with each new row as soon as it exists, then again once its
     /// transcript status settles.
+    var onSelected: (PosterVideo) -> Void = { _ in }
     var onAdded: (PosterContentItem) -> Void = { _ in }
     var onUpdated: (PosterContentItem) -> Void = { _ in }
 
@@ -50,6 +51,8 @@ final class PosterUploadStore: ObservableObject {
             phase = .failed
             return
         }
+        let localVideo = PosterVideo(file: file)
+        onSelected(localVideo)
         phase = .uploading
         progress = 0
         errorCode = nil
@@ -72,10 +75,15 @@ final class PosterUploadStore: ObservableObject {
                 "sourceTitle": "Poster upload",
                 "transcriptStatus": "pending",
             ])
+            if PosterBench.shared.active?.id == localVideo.id {
+                var prepared = localVideo
+                prepared.preparedSubmissionID = submission
+                prepared.preparedContentItemID = created.item.id
+                PosterBench.shared.active = prepared
+            }
             onAdded(created.item)
-            phase = .preparing
-            await transcribe(item: created.item, submission: submission)
             phase = .idle
+            Task { await transcribe(item: created.item, submission: submission) }
         } catch let failure as PosterUploadFailure {
             if failure.code == "slot_busy", let waiting = failure.waiting {
                 self.waiting = waiting
