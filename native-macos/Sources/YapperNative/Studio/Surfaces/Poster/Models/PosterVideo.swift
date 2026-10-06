@@ -23,6 +23,8 @@ struct PosterVideo: Identifiable, Equatable {
     var title: String
     var origin: Origin
     var previewURL: URL? = nil
+    var noSpeech = false
+    var preparedTranscriptStatus: String? = nil
     var preparedSubmissionID: String? = nil
     var preparedContentItemID: String? = nil
 
@@ -43,6 +45,7 @@ struct PosterVideo: Identifiable, Equatable {
         let title = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
         id = item.id
         self.title = title.isEmpty ? "Untitled" : title
+        noSpeech = item.noSpeech == true || (item.transcriptStatus == "ready" && item.recordedTranscript == "")
         origin = .yapper(
             submissionID: item.submissionId ?? "",
             contentItemID: item.id,
@@ -98,6 +101,7 @@ struct PosterVideo: Identifiable, Equatable {
     }
 
     var transcriptStatus: String? {
+        if let preparedTranscriptStatus { return preparedTranscriptStatus }
         if case let .yapper(_, _, _, _, status) = origin { return status }
         return nil
     }

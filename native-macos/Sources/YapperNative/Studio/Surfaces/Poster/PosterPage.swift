@@ -170,7 +170,14 @@ struct PosterPage: View {
             library.upsert(item)
 
         }
-        upload.onUpdated = { library.upsert($0) }
+        upload.onUpdated = { item in
+            library.upsert(item)
+            if var active = bench.active, active.contentItemID == item.id {
+                active.preparedTranscriptStatus = item.transcriptStatus
+                active.noSpeech = item.transcriptStatus == "ready" && item.recordedTranscript == ""
+                bench.active = active
+            }
+        }
         takeHandoff()
         async let connectionsLoad: Void = connections.refresh()
         async let libraryLoad: Void = library.refresh()

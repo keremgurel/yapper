@@ -10,6 +10,9 @@ struct PosterDestinationCard: View {
     let sending: Bool
     let onChange: (PosterCaption) -> Void
     let onRemove: () -> Void
+    var canReuse = false
+    var onCopy: () -> Void = {}
+    var onGenerateOthers: () -> Void = {}
 
     private var done: Bool { [.posted, .scheduled].contains(readiness.state) }
 
@@ -49,6 +52,14 @@ struct PosterDestinationCard: View {
                 NativeTextArea(text: binding(\.body), placeholder: "What this says here", font: .system(size: 13), minHeight: 84)
             }
             Text(foldNote).font(.system(size: 11)).foregroundStyle(.secondary)
+            if !caption.rendered.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { reuseButtons }
+                    VStack(alignment: .leading, spacing: 8) { reuseButtons }
+                }
+                Text("Replaces captions for other selected destinations. Copying keeps their titles.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+            }
             PosterHashtagEditor(tags: caption.hashtags, min: readiness.spec.hashtagMin, max: readiness.spec.hashtagMax) { tags in
                 var next = caption
                 next.hashtags = tags
@@ -60,6 +71,18 @@ struct PosterDestinationCard: View {
             }
             notes
         }
+    }
+
+    @ViewBuilder
+    private var reuseButtons: some View {
+        Button("Generate others", action: onGenerateOthers)
+            .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+            .accessibilityLabel("Generate other captions from \(readiness.platform.label)")
+            .disabled(!canReuse)
+        Button("Copy to others", action: onCopy)
+            .buttonStyle(EditorGhostButtonStyle(size: .small))
+            .accessibilityLabel("Copy \(readiness.platform.label) caption to other destinations")
+            .disabled(!canReuse)
     }
 
     private var notes: some View {

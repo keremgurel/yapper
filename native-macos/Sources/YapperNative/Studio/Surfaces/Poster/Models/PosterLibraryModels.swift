@@ -10,6 +10,8 @@ struct PosterContentItem: Codable, Equatable, Identifiable {
     let submissionId: String?
     let transcriptStatus: String?
     let updatedAt: String
+    var noSpeech: Bool? = nil
+    var recordedTranscript: String? = nil
     var sourceUrl: String? = nil
     var editorRevision: String? = nil
 }

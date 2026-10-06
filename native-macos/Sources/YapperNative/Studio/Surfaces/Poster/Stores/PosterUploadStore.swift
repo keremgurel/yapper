@@ -79,6 +79,7 @@ final class PosterUploadStore: ObservableObject {
                 var prepared = localVideo
                 prepared.preparedSubmissionID = submission
                 prepared.preparedContentItemID = created.item.id
+                prepared.preparedTranscriptStatus = "pending"
                 PosterBench.shared.active = prepared
             }
             onAdded(created.item)
@@ -141,7 +142,6 @@ final class PosterUploadStore: ObservableObject {
     private func transcribe(item: PosterContentItem, submission: String) async {
         do {
             let transcript: PosterTranscript = try await PosterHTTP.post("api/transcribe", body: ["submissionId": submission])
-            guard !transcript.text.isEmpty else { throw PosterUploadFailure("transcript_failed") }
             let updated: PosterContentEnvelope = try await PosterHTTP.patch(
                 "api/content/\(item.id)", body: ["recordedTranscript": transcript.text, "transcriptStatus": "ready"]
             )
