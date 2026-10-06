@@ -235,3 +235,16 @@ describe("parseCaptions", () => {
     expect(out).toHaveLength(1);
   });
 });
+
+it("grounds a video without speech in the creator's description and chosen caption", () => {
+  const { system, user } = buildCaptionMessages({
+    title: "IMG_013.mp4",
+    platforms: ["instagram"],
+    videoDescription: "A silent walkthrough of Yapper's editor",
+    captionReference: "My new editor workflow. #yapper",
+  });
+  expect(system).toContain("do not invent speech");
+  expect(user).toContain("A silent walkthrough of Yapper's editor");
+  expect(user).toContain("My new editor workflow. #yapper");
+  expect(user).not.toContain("What is said on camera:");
+});

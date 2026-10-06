@@ -23,6 +23,11 @@ import {
  */
 export default function DestinationColumn({
   captions,
+  noSpeech = false,
+  description,
+  onDescriptionChange,
+  onGenerateOthers,
+  onCopyOthers,
   hasOriginalCaption = false,
   onUseOriginalCaption,
   onGenerateTitle,
@@ -42,6 +47,11 @@ export default function DestinationColumn({
   onPublish,
 }: {
   captions: CaptionSet | undefined;
+  noSpeech?: boolean;
+  description: string;
+  onDescriptionChange: (value: string) => void;
+  onGenerateOthers: (platform: PublishPlatform) => void;
+  onCopyOthers: (platform: PublishPlatform) => void;
   hasOriginalCaption?: boolean;
   onUseOriginalCaption?: () => void;
   onGenerateTitle?: () => void;
@@ -82,6 +92,26 @@ export default function DestinationColumn({
 
       {chosen.size > 0 ? (
         <>
+          <label className="block space-y-1.5 text-sm">
+            <span>
+              What is this video about?{" "}
+              <span className="text-muted-foreground">Optional</span>
+            </span>
+            <textarea
+              value={description}
+              onChange={(event) => onDescriptionChange(event.target.value)}
+              maxLength={2000}
+              rows={2}
+              placeholder="Describe what happens or what you want to say."
+              className="border-border bg-background focus-visible:ring-ring w-full resize-y rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
+            />
+          </label>
+          {noSpeech && (
+            <p role="status" className="text-muted-foreground text-sm">
+              No speech detected. Describe the video above for generated
+              captions, or write a caption below.
+            </p>
+          )}
           {hasOriginalCaption ? (
             <div className="space-y-2">
               <p className="text-muted-foreground text-xs">
@@ -102,7 +132,12 @@ export default function DestinationColumn({
                   variant="outline"
                   className="w-full"
                   onClick={onGenerateTitle}
-                  disabled={generating || readingVideo || mediaPending}
+                  disabled={
+                    generating ||
+                    readingVideo ||
+                    mediaPending ||
+                    (noSpeech && !description.trim() && !hasOriginalCaption)
+                  }
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate YouTube title
@@ -114,7 +149,12 @@ export default function DestinationColumn({
             type="button"
             variant="outline"
             onClick={onGenerate}
-            disabled={generating || readingVideo || mediaPending}
+            disabled={
+              generating ||
+              readingVideo ||
+              mediaPending ||
+              (noSpeech && !description.trim() && !hasOriginalCaption)
+            }
             className="w-full"
           >
             {generating || readingVideo ? (
@@ -131,16 +171,22 @@ export default function DestinationColumn({
                   : "Write the captions"}
           </Button>
           <p className="text-muted-foreground flex items-center justify-center gap-1.5 text-xs">
-            {transcriptStatus === "ready" ? (
+            {transcriptStatus === "ready" && !noSpeech ? (
               <CheckCircle2 className="h-3.5 w-3.5 text-[color:var(--sg-green-500)]" />
             ) : (
               <AudioLines className="h-3.5 w-3.5" />
             )}
-            {transcriptStatus === "ready"
-              ? "From the video's transcript, one per platform"
-              : readingVideo
-                ? "Transcript is being prepared"
-                : "Generation reads the video transcript first"}
+            {description.trim()
+              ? "Captions use your description of this video"
+              : hasOriginalCaption
+                ? "Captions use your original caption"
+                : noSpeech
+                  ? "Captions use your description or a caption you wrote"
+                  : transcriptStatus === "ready"
+                    ? "From the video's transcript, one per platform"
+                    : readingVideo
+                      ? "Transcript is being prepared"
+                      : "Generation reads the video transcript first"}
           </p>
           {captionError && (
             <p
@@ -165,6 +211,13 @@ export default function DestinationColumn({
           onCaptionChange={onCaptionChange}
           onRemove={() => onToggle(r.platform)}
           busy={false}
+          onGenerateOthers={
+            chosen.size > 1 ? () => onGenerateOthers(r.platform) : undefined
+          }
+          onCopyOthers={
+            chosen.size > 1 ? () => onCopyOthers(r.platform) : undefined
+          }
+          generating={generating}
         />
       ))}
 

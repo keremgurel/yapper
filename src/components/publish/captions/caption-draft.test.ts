@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   addHashtags,
+  copyCaptionToOthers,
+  unchangedCaption,
   blankCaption,
   captionOverBy,
   hasCaptionText,
@@ -119,4 +121,45 @@ describe("writtenPlatforms", () => {
     ).toBe(1);
     expect(writtenPlatforms(undefined)).toBe(0);
   });
+});
+
+it("copies a caption verbatim to selected destinations while preserving their titles", () => {
+  const source = caption({ body: "x".repeat(2300), hashtags: ["demo"] });
+  const youtube = caption({
+    platform: "youtube",
+    title: "Keep this title",
+    body: "Old caption",
+  });
+  const copied = copyCaptionToOthers(
+    { instagram: source, youtube },
+    "instagram",
+    ["instagram", "youtube", "tiktok"],
+  );
+  expect(copied.map((c) => c.platform)).toEqual(["youtube", "tiktok"]);
+  expect(copied[0]).toMatchObject({
+    title: "Keep this title",
+    body: source.body,
+    hashtags: ["demo"],
+  });
+  expect(copied[1].body).toHaveLength(2300);
+  expect(captionOverBy(copied[1]).body).toBeGreaterThan(0);
+  copied[0].hashtags.push("changed");
+  expect(source.hashtags).toEqual(["demo"]);
+  expect(copied[1].hashtags).toEqual(["demo"]);
+  expect(youtube.body).toBe("Old caption");
+});
+it("detects edits made while a caption request is in flight", () => {
+  const initial = caption({ body: "Original" });
+  expect(unchangedCaption(initial, { ...initial, hashtags: [] })).toBe(true);
+  expect(unchangedCaption({ ...initial, body: "New writing" }, initial)).toBe(
+    false,
+  );
+  expect(unchangedCaption({ ...initial, title: "New title" }, initial)).toBe(
+    false,
+  );
+  expect(unchangedCaption({ ...initial, hashtags: ["new"] }, initial)).toBe(
+    false,
+  );
+  expect(unchangedCaption(initial, undefined)).toBe(false);
+  expect(unchangedCaption(undefined, undefined)).toBe(true);
 });

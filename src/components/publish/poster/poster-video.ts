@@ -20,6 +20,7 @@ export type PosterVideo =
       status: PostableVideo["status"];
       scheduledFor: string | null;
       transcriptStatus: PostableVideo["transcriptStatus"];
+      noSpeech?: boolean;
     }
   | {
       kind: "platform";
@@ -48,6 +49,7 @@ export function fromPostable(video: PostableVideo): PosterVideo {
     status: video.status,
     scheduledFor: video.scheduledFor,
     transcriptStatus: video.transcriptStatus,
+    noSpeech: video.noSpeech,
   };
 }
 

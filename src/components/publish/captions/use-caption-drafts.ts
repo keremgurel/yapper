@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import {
   mergeGeneratedCaptions,
+  unchangedCaption,
   type CaptionSet,
 } from "@/components/publish/captions/caption-draft";
 import type { PlatformCaption } from "@/lib/publish/caption-format";
@@ -33,11 +34,19 @@ export function useCaptionDrafts() {
       captions: PlatformCaption[],
       titleOnly = false,
       sourceCaption = "",
+      initialCaptions?: CaptionSet,
     ) => {
       setByVideo((current) => {
         const merged = mergeGeneratedCaptions(
           current[videoId],
-          captions,
+          initialCaptions
+            ? captions.filter((caption) =>
+                unchangedCaption(
+                  current[videoId]?.[caption.platform],
+                  initialCaptions[caption.platform],
+                ),
+              )
+            : captions,
           titleOnly,
           sourceCaption,
         );

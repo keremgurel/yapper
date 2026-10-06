@@ -105,6 +105,7 @@ export async function listContentItems(
       sourceTitle: contentItems.sourceTitle,
       sourcePlatform: contentItems.sourcePlatform,
       transcriptStatus: contentItems.transcriptStatus,
+      noSpeech: sql<boolean>`coalesce(${contentItems.transcriptStatus} = 'ready' and ${contentItems.recordedTranscript} = '', false)`,
       /**
        * Whether the script has any visible text. Lists only need this flag,
        * and a client that reads it can stop depending on `script` (kept below

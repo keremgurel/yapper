@@ -40,11 +40,15 @@ export async function loadRecordedTranscript(
   userId: string,
   item: {
     recordedTranscript?: string | null;
+    transcriptStatus?: string | null;
     submissionId?: string | null;
     sourceUrl?: string | null;
     sourceTranscript?: string | null;
   },
 ): Promise<string | null> {
+  // A completed empty transcript is evidence of no speech, not missing data.
+  if (item.transcriptStatus === "ready" && item.recordedTranscript === "")
+    return "";
   const own = item.recordedTranscript?.trim();
   if (own) return own;
   // Older Poster uploads saved the export's speech in the inspiration field.

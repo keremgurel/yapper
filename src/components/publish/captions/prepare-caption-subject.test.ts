@@ -21,10 +21,10 @@ describe("imported video transcription", () => {
     });
   });
   it.each([
-    Response.json({ words: [] }),
+    Response.json({ unexpected: true }),
     Response.json({ error: "failed" }, { status: 502 }),
   ])(
-    "refuses to generate from a failed or empty transcript",
+    "rejects failed and malformed transcription responses",
     async (response) => {
       vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
       await expect(transcribeCaptionMedia("u/me/import.mp4")).rejects.toThrow(
@@ -93,7 +93,9 @@ describe("uploaded video transcript recovery", () => {
     const fetcher = vi
       .fn()
       .mockResolvedValueOnce(Response.json({ item }))
-      .mockResolvedValueOnce(Response.json({ words: [] }))
+      .mockResolvedValueOnce(
+        Response.json({ error: "unavailable" }, { status: 502 }),
+      )
       .mockResolvedValueOnce(Response.json({ item }))
       .mockResolvedValueOnce(Response.json({ words: [{ text: "Recovered" }] }))
       .mockResolvedValueOnce(
@@ -124,4 +126,39 @@ describe("uploaded video transcript recovery", () => {
     );
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+});
+
+it("treats successful empty speech as a normal result", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue(Response.json({ words: [] })),
+  );
+  expect(await transcribeCaptionMedia("silent-video")).toBe("");
+});
+it("persists no speech and reuses that result instead of transcribing again", async () => {
+  const item = {
+    id: "silent",
+    submissionId: "silent-submission",
+    transcriptStatus: "pending",
+    recordedTranscript: null,
+  };
+  const ready = { ...item, transcriptStatus: "ready", recordedTranscript: "" };
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ item }))
+    .mockResolvedValueOnce(Response.json({ words: [] }))
+    .mockResolvedValueOnce(Response.json({ item: ready }))
+    .mockResolvedValueOnce(Response.json({ item: ready }));
+  vi.stubGlobal("fetch", fetcher);
+  expect(await prepareUploadedCaption(item.id, item.submissionId)).toEqual(
+    ready,
+  );
+  expect(JSON.parse(fetcher.mock.calls[2][1].body)).toEqual({
+    recordedTranscript: "",
+    transcriptStatus: "ready",
+  });
+  expect(await prepareUploadedCaption(item.id, item.submissionId)).toEqual(
+    ready,
+  );
+  expect(fetcher).toHaveBeenCalledTimes(4);
 });

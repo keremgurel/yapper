@@ -171,6 +171,8 @@ async function publishError(response: Response): Promise<Error> {
  * read the video's own script, which is the difference between a caption about
  * this video and a caption about its title. */
 export async function generateCaptions(input: {
+  videoDescription?: string;
+  captionReference?: string;
   title: string;
   platforms: PublishPlatform[];
   contentItemId?: string;

@@ -17,11 +17,11 @@ export async function transcribeCaptionMedia(
   });
   if (!response.ok) throw new Error("caption_transcript_failed");
   const data = (await response.json()) as { words?: { text?: string }[] };
-  const transcript = (data.words ?? [])
+  if (!Array.isArray(data.words)) throw new Error("caption_transcript_failed");
+  const transcript = data.words
     .map((word) => word.text ?? "")
     .join(" ")
     .trim();
-  if (!transcript) throw new Error("caption_transcript_failed");
   return transcript;
 }
 
@@ -39,7 +39,11 @@ export function prepareUploadedCaption(
     const item = await getContent(contentItemId);
     if (item.submissionId !== submissionId)
       throw new Error("caption_transcript_failed");
-    if (item.recordedTranscript?.trim()) return item;
+    if (
+      item.recordedTranscript?.trim() ||
+      (item.transcriptStatus === "ready" && item.recordedTranscript === "")
+    )
+      return item;
     const transcript = await transcribeCaptionMedia({ submissionId });
     return patchContent(contentItemId, {
       recordedTranscript: transcript,

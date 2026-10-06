@@ -96,3 +96,40 @@ it("separates uploads and keeps only the latest final edit per project", () => {
     "final-edit",
   ]);
 });
+
+it("keeps no-speech state from both library summaries and freshly updated details", () => {
+  const out = postableVideos([
+    item({
+      id: "summary",
+      submissionId: "a",
+      noSpeech: true,
+      transcriptStatus: "ready",
+    }),
+    item({
+      id: "detail",
+      noSpeech: false,
+      submissionId: "b",
+      recordedTranscript: "",
+      transcriptStatus: "ready",
+    }),
+    item({
+      id: "pending",
+      submissionId: "c",
+      recordedTranscript: "",
+      transcriptStatus: "pending",
+    }),
+    item({
+      id: "spoken",
+      noSpeech: true,
+      submissionId: "d",
+      recordedTranscript: "Hello",
+      transcriptStatus: "ready",
+    }),
+  ]);
+  expect(out.map((v) => [v.id, v.noSpeech])).toEqual([
+    ["summary", true],
+    ["detail", true],
+    ["pending", false],
+    ["spoken", false],
+  ]);
+});
