@@ -113,7 +113,10 @@ function paintHeadline(context: CanvasRenderingContext2D, draft: CoverDraft) {
 }
 
 /** Render the exact frame/generated artwork shown in Poster as a 9:16 PNG. */
-export async function renderCover(draft: CoverDraft): Promise<File> {
+export async function renderCover(
+  draft: CoverDraft,
+  mimeType: "image/png" | "image/jpeg" = "image/png",
+): Promise<File> {
   if (!draft.image) throw new Error("cover_image_missing");
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
@@ -128,11 +131,15 @@ export async function renderCover(draft: CoverDraft): Promise<File> {
   const blob = await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (result) => (result ? resolve(result) : reject(new Error("cover_blob"))),
-      "image/png",
-      0.95,
+      mimeType,
+      0.9,
     ),
   );
-  return new File([blob], "yapper-thumbnail.png", { type: "image/png" });
+  return new File(
+    [blob],
+    `yapper-thumbnail.${mimeType === "image/png" ? "png" : "jpg"}`,
+    { type: mimeType },
+  );
 }
 
 export async function downloadCover(draft: CoverDraft) {

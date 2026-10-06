@@ -47,8 +47,8 @@ final class PosterPublishPrep: ObservableObject {
         sheet = PosterPublishSheetRequest(targets: [target], platforms: destinations)
     }
     private func uploadCover(_ cover: PosterCoverDraft, needed: Bool) async -> String? {
-        guard needed, let png = PosterCoverRenderer.png(cover) else { return nil }
-        return try? await PosterFileUpload.uploadCover(png: png)
+        guard needed, let jpeg = PosterCoverRenderer.jpeg(cover) else { return nil }
+        return try? await PosterFileUpload.uploadCover(jpeg: jpeg)
     }
 }
 

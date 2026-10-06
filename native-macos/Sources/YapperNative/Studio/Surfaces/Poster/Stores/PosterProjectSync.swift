@@ -21,7 +21,7 @@ final class PosterProjectSync: ObservableObject {
                 let id = listing.summary.id
                 status[id] = "Preparing latest edit…"
                 errors[id] = nil
-                defer { if uploads.isEmpty { status[id] = nil } }
+                defer { if status[id] == "Preparing latest edit…" { status[id] = nil } }
                 _ = try await PosterProjectRender.shared.render(listing)
             } catch is CancellationError { }
             catch { errors[listing.summary.id] = error.localizedDescription }

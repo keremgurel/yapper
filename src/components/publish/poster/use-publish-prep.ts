@@ -35,7 +35,9 @@ export function usePublishPrep() {
           let thumbnail: { key: string; previewUrl: string } | undefined;
           if (cover.image) {
             try {
-              thumbnail = await uploadThumbnailFile(await renderCover(cover));
+              thumbnail = await uploadThumbnailFile(
+                await renderCover(cover, "image/jpeg"),
+              );
             } catch {
               // A cover is optional. Keep preparing and show one non-blocking
               // warning after the batch is ready.
