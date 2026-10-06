@@ -14,6 +14,7 @@ enum ManagedProjectMedia {
         let source: URL
         let bytes: Int
         let modified: Date?
+        var managedModified: Date? = nil
         var fingerprint: String? = nil
     }
 
@@ -33,6 +34,15 @@ enum ManagedProjectMedia {
         guard let values = try? receipt.source.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
               values.fileSize == receipt.bytes, values.contentModificationDate == receipt.modified else { return nil }
         return receipt.source
+    }
+
+    static func importReceipt(for id: UUID, managedURL: URL, fingerprint: String?) -> Receipt? {
+        let package = ProjectPackage(url: managedURL.deletingLastPathComponent().deletingLastPathComponent())
+        guard managedURL == PackagedMediaLayout.file(for: id, extension: managedURL.pathExtension, in: package.url),
+              let data = try? Data(contentsOf: receiptURL(id, in: package)),
+              let receipt = try? JSONDecoder().decode(Receipt.self, from: data),
+              receipt.fingerprint == fingerprint else { return nil }
+        return receipt
     }
 
     static func receiptURL(_ id: UUID, in package: ProjectPackage) -> URL {
@@ -123,6 +133,9 @@ enum ManagedProjectMedia {
         guard before.fileSize == after.fileSize, before.contentModificationDate == after.contentModificationDate, copied == bytes else {
             throw NSError(domain: "YapperMedia", code: 2, userInfo: [NSLocalizedDescriptionKey: "The source changed while saving. Keep it connected and retry."])
         }
+        if let modified = after.contentModificationDate {
+            try fm.setAttributes([.modificationDate: modified], ofItemAtPath: temporary.path)
+        }
         guard fm.fileExists(atPath: package.projectFileURL.path) else { throw CancellationError() }
         // Never overwrite an existing managed original, including one retained
         // by undo. A replacement needs a distinct media identity.
@@ -137,7 +150,7 @@ enum ManagedProjectMedia {
             try fm.moveItem(at: temporary, to: target)
         }
         do {
-            let receipt = Receipt(source: source.url, bytes: bytes, modified: after.contentModificationDate, fingerprint: source.fingerprint)
+            let receipt = Receipt(source: source.url, bytes: bytes, modified: after.contentModificationDate, managedModified: try target.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate, fingerprint: source.fingerprint)
             try JSONEncoder().encode(receipt).write(to: receiptURL(source.id, in: package), options: .atomic)
         } catch {
             try? fm.removeItem(at: target)

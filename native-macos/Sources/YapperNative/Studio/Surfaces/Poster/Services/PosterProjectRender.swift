@@ -17,13 +17,39 @@ actor PosterProjectRender {
         renderInput.createdAt = Date(timeIntervalSince1970: 0)
         renderInput.updatedAt = Date(timeIntervalSince1970: 0)
         renderInput.studioSource = nil
+        // A byte-identical owned copy is the same edit. Preserve its original
+        // identity so importing into local storage does not trigger another export.
+        var imports: [URL: ManagedProjectMedia.Receipt] = [:]
+        for i in renderInput.media.indices where renderInput.media[i].packagedSource == true {
+            let media = renderInput.media[i]
+            if let receipt = ManagedProjectMedia.importReceipt(for: media.id, managedURL: media.url, fingerprint: media.sourceFingerprint) {
+                imports[media.url] = receipt
+                renderInput.media[i].url = receipt.source
+                renderInput.media[i].packagedSource = nil
+            }
+        }
+        for i in renderInput.audioLayers?.indices ?? 0..<0 {
+            guard let layer = renderInput.audioLayers?[i], let id = layer.packagedMediaID,
+                  let receipt = ManagedProjectMedia.importReceipt(for: id, managedURL: layer.url, fingerprint: layer.sourceFingerprint) else { continue }
+            imports[layer.url] = receipt
+            renderInput.audioLayers?[i].url = receipt.source
+            renderInput.audioLayers?[i].packagedMediaID = nil
+        }
         var data = Data("poster-1080-v1".utf8)
         data.append(try encoder.encode(renderInput))
         // Same-path source replacements must not reuse an older render.
         let urls = project.media.map(\.url) + (project.audioLayers ?? []).map(\.url)
-        for url in urls.sorted(by: { $0.path < $1.path }) {
+        let identities = renderInput.media.map(\.url) + (renderInput.audioLayers ?? []).map(\.url)
+        for (identity, url) in zip(identities, urls).sorted(by: { $0.0.path < $1.0.path }) {
             let values = try? url.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
-            data.append(Data("\(url.path):\(values?.fileSize ?? -1):\(values?.contentModificationDate?.timeIntervalSince1970 ?? -1)".utf8))
+            var modified = values?.contentModificationDate
+            if let receipt = imports[url], receipt.bytes == values?.fileSize,
+               modified == (receipt.managedModified ?? receipt.modified) {
+                // Filesystems can round modification times when copying. The
+                // receipt ties the unchanged owned file to its original metadata.
+                modified = receipt.modified
+            }
+            data.append(Data("\(identity.path):\(values?.fileSize ?? -1):\(modified?.timeIntervalSince1970 ?? -1)".utf8))
         }
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
