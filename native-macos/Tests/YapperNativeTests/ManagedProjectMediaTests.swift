@@ -68,6 +68,25 @@ struct ManagedProjectMediaTests {
         #expect(FileManager.default.fileExists(atPath: owned.url.path))
     }
 
+    @Test("A retry recovers committed bytes and removes an interrupted partial copy")
+    func interruptedCopy() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "managed-interrupted-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let package = try await ProjectLibrary(directory: root).create(named: "Edit")
+        try await ProjectPackageStore(package: package).save(EditorProject())
+        let original = root.appending(path: "source.mov")
+        try Data(repeating: 7, count: 1_024).write(to: original)
+        let source = ManagedProjectMedia.Source(id: UUID(), url: original)
+        let target = PackagedMediaLayout.file(for: source.id, extension: "mov", in: package.url)
+        try FileManager.default.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: original, to: target)
+        let partial = target.deletingLastPathComponent().appending(path: ".\(source.id.uuidString).old.importing")
+        try Data([1]).write(to: partial)
+        try await ManagedProjectMedia.copy(source, into: package)
+        #expect(ManagedProjectMedia.resolved(source, in: package) == target)
+        #expect(!FileManager.default.fileExists(atPath: partial.path))
+    }
+
     @Test("A cancelled copy never replaces the source or leaves a completed receipt")
     func cancellation() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "managed-cancel-\(UUID())")

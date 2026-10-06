@@ -92,7 +92,13 @@ enum ManagedProjectMedia {
         guard before.isRegularFile == true, let bytes = before.fileSize else { throw CocoaError(.fileReadUnsupportedScheme) }
         let target = PackagedMediaLayout.file(for: source.id, extension: source.url.pathExtension, in: package.url)
         try fm.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
-        let temporary = target.deletingLastPathComponent().appending(path: ".\(UUID().uuidString).importing")
+        let prefix = ".\(source.id.uuidString)."
+        // Resume cleanly after the app quits during a streaming copy.
+        for partial in try fm.contentsOfDirectory(at: target.deletingLastPathComponent(), includingPropertiesForKeys: nil)
+            where partial.lastPathComponent.hasPrefix(prefix) && partial.pathExtension == "importing" {
+            try fm.removeItem(at: partial)
+        }
+        let temporary = target.deletingLastPathComponent().appending(path: "\(prefix)\(UUID().uuidString).importing")
         defer { try? fm.removeItem(at: temporary) }
         let cloned = !forceStreaming && clonefile(source.url.path, temporary.path, 0) == 0
         if !cloned {
