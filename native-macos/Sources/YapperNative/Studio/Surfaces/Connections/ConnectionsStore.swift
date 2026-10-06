@@ -10,6 +10,16 @@ final class ConnectionsStore: ObservableObject {
     @Published private(set) var error: String?
     @Published private(set) var pending: Set<PublishPlatform> = []
 
+    @Published private(set) var connecting: PublishPlatform?
+    private let loadConnections: () async throws -> ConnectionsResponse
+    private var refreshGeneration = 0
+
+    init(loadConnections: @escaping () async throws -> ConnectionsResponse = {
+        try await StudioJSONClient.get("api/publish/connections")
+    }) {
+        self.loadConnections = loadConnections
+    }
+
     var loading: Bool { response == nil && error == nil }
 
     func connection(for platform: PublishPlatform) -> ConnectionSummary? {
@@ -21,15 +31,42 @@ final class ConnectionsStore: ObservableObject {
     }
 
     func refresh() async {
+        refreshGeneration += 1
+        let generation = refreshGeneration
         do {
-            response = try await StudioJSONClient.get("api/publish/connections")
+            let fresh = try await loadConnections()
+            guard generation == refreshGeneration else { return }
+            response = fresh
             error = nil
         } catch {
-            if response == nil { self.error = error.localizedDescription }
+            guard generation == refreshGeneration else { return }
+            self.error = "Couldn't refresh connections. Try refreshing again."
+        }
+    }
+
+    func beginConnecting(_ platform: PublishPlatform) {
+        connecting = platform
+        error = nil
+    }
+
+    func cancelConnecting(message: String? = nil) {
+        connecting = nil
+        error = message
+    }
+
+    func finishConnecting(at url: URL) async {
+        let platform = connecting
+        await refresh()
+        guard connecting == platform else { return }
+        connecting = nil
+        let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        if query.contains(where: { $0.name == "connect_error" }) {
+            error = "The account wasn't connected. Choose Connect to try again."
         }
     }
 
     func disconnect(_ platform: PublishPlatform) async {
+        guard connecting == nil, !pending.contains(platform) else { return }
         pending.insert(platform)
         defer { pending.remove(platform) }
         do {
@@ -41,6 +78,7 @@ final class ConnectionsStore: ObservableObject {
     }
 
     func connect(_ platform: PublishPlatform) {
+        guard connecting == nil, pending.isEmpty else { return }
         StudioWebCommands.shared.openOAuth(path: "/api/publish/connect/\(platform.rawValue)")
     }
 }

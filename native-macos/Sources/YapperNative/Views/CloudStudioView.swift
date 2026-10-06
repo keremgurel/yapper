@@ -412,7 +412,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler, NSWindowDelegate {
         private static let authenticationStateKey = "yapperNativeAuthenticationState"
         weak var webView: WKWebView?
         // Keep the OAuth surface alive for the coordinator's lifetime. Closing
@@ -530,10 +530,9 @@ private struct CloudStudioWebView: NSViewRepresentable {
             if webView === oauthWebView {
                 guard
                     let url = webView.url,
-                    Self.isYapperHost(url.host),
-                    url.path == "/studio/connections"
+                    ConnectionOAuthReturn.matches(url)
                 else { return }
-                finishOAuthFlow()
+                finishOAuthFlow(at: url)
                 return
             }
             webView.evaluateJavaScript(CloudStudioWebView.applyThemeScript(currentTheme))
@@ -547,12 +546,22 @@ private struct CloudStudioWebView: NSViewRepresentable {
             didFailProvisionalNavigation navigation: WKNavigation?,
             withError error: Error
         ) {
-            guard webView !== oauthWebView else { return }
+            if webView === oauthWebView {
+                if (error as NSError).code != NSURLErrorCancelled {
+                    ConnectionsStore.shared.cancelConnecting(message: "Sign-in couldn't load. Close the window and try connecting again.")
+                }
+                return
+            }
             handleLoadFailure(error)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation?, withError error: Error) {
-            guard webView !== oauthWebView else { return }
+            if webView === oauthWebView {
+                if (error as NSError).code != NSURLErrorCancelled {
+                    ConnectionsStore.shared.cancelConnecting(message: "Sign-in couldn't load. Close the window and try connecting again.")
+                }
+                return
+            }
             handleLoadFailure(error)
         }
 
@@ -769,6 +778,7 @@ private struct CloudStudioWebView: NSViewRepresentable {
             // The coordinator owns and reuses it until the Studio web view is
             // dismantled.
             window.isReleasedWhenClosed = false
+            window.delegate = self
             window.contentView = oauthWebView
             window.center()
             window.makeKeyAndOrderFront(nil)
@@ -783,11 +793,20 @@ private struct CloudStudioWebView: NSViewRepresentable {
         /// transform to tear down, and retaining the window/web view prevents
         /// either object from disappearing while WebKit is unwinding the
         /// callback stack.
-        private func finishOAuthFlow() {
+        func windowWillClose(_ notification: Notification) {
+            guard let window = notification.object as? NSWindow, window === oauthWindow else { return }
+            oauthWebView?.stopLoading()
+            ConnectionsStore.shared.cancelConnecting()
+        }
+
+        private func finishOAuthFlow(at url: URL) {
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.oauthWindow?.orderOut(nil)
-                self.webView?.reload()
+                Task { @MainActor in
+                    await ConnectionsStore.shared.finishConnecting(at: url)
+                    await PosterConnectionStore.shared.refresh()
+                }
             }
         }
 
@@ -799,8 +818,16 @@ private struct CloudStudioWebView: NSViewRepresentable {
             _ webView: WKWebView,
             decidePolicyFor navigationAction: WKNavigationAction
         ) async -> WKNavigationActionPolicy {
-            guard webView !== oauthWebView, let url = navigationAction.request.url
-            else { return .allow }
+            guard let url = navigationAction.request.url else { return .allow }
+            if webView === oauthWebView {
+                // The callback has already persisted tokens before redirecting.
+                // Do not wait for the entire hosted Studio page to load.
+                if navigationAction.targetFrame?.isMainFrame == true, ConnectionOAuthReturn.matches(url) {
+                    finishOAuthFlow(at: url)
+                    return .cancel
+                }
+                return .allow
+            }
 
             // Google will not serve OAuth to an embedded web view at all, so
             // this is the one thing that genuinely belongs in a real browser.

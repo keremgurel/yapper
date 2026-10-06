@@ -51,6 +51,7 @@ private struct ConnectionRow: View {
             }
             Spacer(minLength: 12)
             trailing(connection)
+                .disabled(store.connecting != nil || !store.pending.isEmpty)
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
@@ -58,7 +59,14 @@ private struct ConnectionRow: View {
 
     @ViewBuilder
     private func trailing(_ connection: ConnectionSummary?) -> some View {
-        if let connection {
+        if store.connecting == platform || store.pending.contains(platform) {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(store.connecting == platform ? "Connecting…" : "Disconnecting…")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+        } else if let connection {
             HStack(spacing: 10) {
                 if connection.status == "active" {
                     Label("Connected", systemImage: "checkmark")
@@ -73,7 +81,7 @@ private struct ConnectionRow: View {
                 }
                 Button("Disconnect") { Task { await store.disconnect(platform) } }
                     .buttonStyle(EditorGhostButtonStyle(size: .small))
-                    .disabled(store.pending.contains(platform))
+                    .disabled(store.connecting != nil || !store.pending.isEmpty)
             }
         } else if store.loading {
             RoundedRectangle(cornerRadius: 7).fill(Color.studioFaintFill).frame(width: 80, height: 28)
