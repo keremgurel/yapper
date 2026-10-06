@@ -62,6 +62,7 @@ export default function FramePreview({
     <div className="relative mx-auto aspect-[9/16] w-full max-w-[270px] overflow-hidden rounded-xl bg-black ring-1 ring-white/10">
       {mediaUrl ? (
         <video
+          crossOrigin="anonymous"
           ref={videoRef}
           src={mediaUrl}
           muted

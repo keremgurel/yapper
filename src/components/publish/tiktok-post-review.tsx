@@ -130,6 +130,7 @@ export default function TikTokPostReview({
       <legend className="px-1 font-semibold">TikTok · {source.title}</legend>
       {preview ? (
         <video
+          crossOrigin="anonymous"
           controls
           playsInline
           preload="metadata"
