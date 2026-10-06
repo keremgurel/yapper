@@ -56,6 +56,10 @@ final class ConnectionsStore: ObservableObject {
 
     func finishConnecting(at url: URL) async {
         let platform = connecting
+        // OAuth writes through WKWebView, outside APITransport's usual write
+        // invalidation. Otherwise refresh reuses the pre-login snapshot for
+        // 20 seconds (and account-specific video lists can stay stale too).
+        await APIReadCache.shared.clear()
         await refresh()
         guard connecting == platform else { return }
         connecting = nil
