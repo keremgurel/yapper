@@ -40,7 +40,13 @@ struct PosterDestinationColumn: View {
                     readiness: item, caption: captions.caption(for: item.platform),
                     sending: prep.preparing && item.state == .ready,
                     onChange: { drafts.setCaption($0, for: video) },
-                    onRemove: { drafts.toggle(item.platform, for: video, connected: connected) }
+                    onRemove: { drafts.toggle(item.platform, for: video, connected: connected) },
+                    canReuse: chosen.count > 1 && !generator.generating,
+                    onCopy: { drafts.copyCaption(from: item.platform, to: chosen, for: video) },
+                    onGenerateOthers: {
+                        generate(PublishPlatform.allCases.filter { chosen.contains($0) && $0 != item.platform },
+                                 titleOnly: false, reference: captions.caption(for: item.platform).rendered)
+                    }
                 )
             }
             if !chosen.isEmpty {
@@ -70,8 +76,13 @@ struct PosterDestinationColumn: View {
     @ViewBuilder
     private func writer(chosen: Set<PublishPlatform>) -> some View {
         let hasOriginal = !(video.sourceCaption ?? "").isEmpty
-        let reading = generator.reading || video.transcriptStatus == "pending" || (video.platform != nil && video.mediaKey == nil)
+        let hasDescription = !drafts.description(video).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let reading = generator.reading || (!hasDescription && (video.transcriptStatus == "pending" || (video.platform != nil && video.mediaKey == nil)))
         VStack(alignment: .leading, spacing: 8) {
+            Text("What is this video about? Optional").font(.system(size: 12)).foregroundStyle(.secondary)
+            NativeTextArea(text: Binding(get: { drafts.description(video) }, set: { drafts.setDescription($0, for: video) }),
+                           placeholder: "Describe what happens or what you want to say.", font: .system(size: 13), minHeight: 64)
+                .accessibilityLabel("What is this video about? Optional")
             if hasOriginal {
                 Text("Starts with your original caption.").font(.system(size: 12)).foregroundStyle(.secondary)
                 HStack(spacing: 8) {
@@ -99,7 +110,7 @@ struct PosterDestinationColumn: View {
                   systemImage: video.transcriptStatus == "ready" ? "checkmark.circle" : "waveform")
                 .font(.system(size: 12)).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity)
-            if let error = generator.error {
+            if generator.errorVideoID == video.id, let error = generator.error {
                 Text(error).font(.system(size: 12)).foregroundStyle(NativeChip.Tone.yellow.color)
             }
         }
@@ -112,14 +123,16 @@ struct PosterDestinationColumn: View {
     }
 
     private func source(hasOriginal: Bool, reading: Bool) -> String {
+        if video.noSpeech { return "No speech detected. Describe the video or write a caption." }
+        if !drafts.description(video).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "From your description" }
         if video.transcriptStatus == "ready" { return "From the video's transcript, one per platform" }
         if reading { return "Transcript is being prepared" }
         return hasOriginal ? "Generation reads the video transcript first" : "From the title and your caption prompt"
     }
 
-    private func generate(_ platforms: [PublishPlatform], titleOnly: Bool) {
+    private func generate(_ platforms: [PublishPlatform], titleOnly: Bool, reference: String? = nil) {
         Task {
-            await generator.generate(for: video, platforms: platforms, brief: drafts.brief(video), titleOnly: titleOnly, into: drafts)
+            await generator.generate(for: video, platforms: platforms, brief: drafts.brief(video), titleOnly: titleOnly, into: drafts, reference: reference)
         }
     }
 

@@ -11,6 +11,7 @@ final class PosterDraftStore: ObservableObject {
     @Published private var covers: [String: PosterCoverDraft] = [:]
     @Published private var destinations: [String: Set<PublishPlatform>] = [:]
     @Published private var captions: [String: PosterCaptionSet] = [:]
+    @Published private var descriptions: [String: String] = [:]
     @Published private var briefs: [String: String] = [:]
     @Published private var outcomes: [String: [PublishPlatform: PosterOutcome]] = [:]
 
@@ -55,6 +56,21 @@ final class PosterDraftStore: ObservableObject {
             var caption = original
             caption.title = current[platform]?.title ?? ""
             setCaption(caption, for: video)
+        }
+    }
+
+    func description(_ video: PosterVideo) -> String { descriptions[video.id] ?? "" }
+    func setDescription(_ value: String, for video: PosterVideo) { descriptions[video.id] = value }
+
+    func copyCaption(from source: PublishPlatform, to destinations: Set<PublishPlatform>, for video: PosterVideo) {
+        let current = captions(video)
+        let reference = current.caption(for: source)
+        guard !reference.rendered.isEmpty else { return }
+        for platform in destinations where platform != source {
+            var target = current.caption(for: platform)
+            target.body = reference.body
+            target.hashtags = reference.hashtags
+            setCaption(target, for: video)
         }
     }
 

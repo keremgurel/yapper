@@ -18,8 +18,8 @@ struct PosterBanners: View {
                 warning(PosterErrorCopy.upload(code))
             } else if upload.busy {
                 progress
-            } else if upload.transcriptFailed {
-                warning("The video uploaded, but its transcript could not be prepared. Captions will use the title and your prompt.")
+            } else if bench.active?.transcriptStatus == "unavailable" {
+                warning("The video uploaded, but its transcript could not be prepared. Describe the video or write a caption to continue.")
             }
             if let error = bench.error {
                 HStack(spacing: 12) {

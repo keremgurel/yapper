@@ -67,4 +67,28 @@ import Testing
         #expect(!drafts.hasCover(video))
     }
 
+    @Test @MainActor func copiedCaptionOnlyChangesChosenBodiesAndTags() {
+        let drafts = PosterDraftStore()
+        let video = PosterVideo(file: URL(filePath: "/tmp/test.mp4"))
+        drafts.setCaption(PosterCaption(platform: "tiktok", title: "", body: "My description", hashtags: ["video"]), for: video)
+        drafts.setCaption(PosterCaption(platform: "youtube", title: "Keep this title", body: "Old", hashtags: []), for: video)
+        drafts.setCaption(PosterCaption(platform: "facebook", title: "", body: "Unselected", hashtags: []), for: video)
+        drafts.copyCaption(from: .tiktok, to: [.tiktok, .youtube, .instagram], for: video)
+        let captions = drafts.captions(video)
+        #expect(captions[.youtube]?.title == "Keep this title")
+        #expect(captions[.youtube]?.rendered == "My description\n\n#video")
+        #expect(captions[.instagram]?.body == "My description")
+        #expect(captions[.facebook]?.body == "Unselected")
+        #expect(captions[.tiktok]?.body == "My description")
+        let other = PosterVideo(file: URL(filePath: "/tmp/other.mp4"))
+        #expect(drafts.captions(other).isEmpty)
+    }
+
+    @Test func silentTranscriptDecodesAsSuccessfulEmptyResult() throws {
+        let transcript = try JSONDecoder().decode(PosterTranscript.self, from: Data(#"{"words":[],"coverageChecked":false}"#.utf8))
+        #expect(transcript.text.isEmpty)
+        let summary = try JSONDecoder().decode(PosterContentItem.self, from: Data(#"{"id":"silent","title":"Silent video","status":"captured","updatedAt":"2026-10-07","transcriptStatus":"ready","noSpeech":true}"#.utf8))
+        #expect(PosterVideo(item: summary).noSpeech)
+    }
+
 }

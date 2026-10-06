@@ -584,6 +584,42 @@ describe("POST /api/transcribe with audio already in storage", () => {
     expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["audio_track_missing", 200],
+    ["invalid_audio_duration", 400],
+    ["audio_probe_aborted", 400],
+  ] as const)(
+    "handles owned video probe %s without charging",
+    async (error, status) => {
+      submissions.getOwnedMediaKey.mockResolvedValue("u/user_test/silent.mp4");
+      mocks.duration.mockRejectedValueOnce(new Error(error));
+      const response = await POST(
+        new Request("https://ypr.app/api/transcribe", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ submissionId: "submission-owned" }),
+        }),
+      );
+      expect(response.status).toBe(status);
+      if (status === 200)
+        expect(await response.json()).toEqual({
+          words: [],
+          coverageChecked: false,
+        });
+      expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+      expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+      expect(r2.discardTranscriptionAudio).not.toHaveBeenCalled();
+    },
+  );
+
+  it("still rejects a scratch audio recording without an audio track", async () => {
+    mocks.duration.mockRejectedValueOnce(new Error("audio_track_missing"));
+    const response = await POST(stored("u/user_test/asr/no-audio.m4a"));
+    expect(response.status).toBe(400);
+    expect(mocks.reservePaidActionOrResponse).not.toHaveBeenCalled();
+    expect(mocks.fetchBoundedJson).not.toHaveBeenCalled();
+  });
+
   it("does not charge or transcribe a master released between lookup and its lease", async () => {
     submissions.getOwnedMediaKey.mockResolvedValue(
       "u/user_test/final-export.mp4",

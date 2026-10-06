@@ -503,7 +503,16 @@ export async function POST(req: Request): Promise<Response> {
     )
       throw new Error("invalid_audio_duration");
     quantity = transcriptionUnits(duration);
-  } catch {
+  } catch (error) {
+    // A valid owned video can intentionally have no audio track. There is
+    // nothing to send to ASR or charge for; clients persist this empty result.
+    if (
+      durableVideoMaster &&
+      error instanceof Error &&
+      error.message === "audio_track_missing"
+    ) {
+      return Response.json({ words: [], coverageChecked: false });
+    }
     await discard();
     return Response.json({ error: "invalid_audio_duration" }, { status: 400 });
   }
