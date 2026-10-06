@@ -3,7 +3,30 @@ import Testing
 @testable import YapperNative
 
 @MainActor
+@Suite(.serialized)
 struct ConnectionsStoreTests {
+    @Test func oauthReturnDiscardsTheCachedDisconnectedSnapshot() async throws {
+        let cache = APIReadCache.shared
+        await cache.clear()
+        let path = "api/publish/connections"
+        let empty = try JSONEncoder().encode(ConnectionsResponse(connections: [], available: ["tiktok"]))
+        let saved = try JSONEncoder().encode(connected)
+        _ = try await cache.data(for: path) { empty }
+        let store = ConnectionsStore(loadConnections: {
+            let data = try await cache.data(for: path) { saved }
+            return try JSONDecoder().decode(ConnectionsResponse.self, from: data)
+        })
+        await store.refresh()
+        #expect(store.connection(for: .tiktok) == nil)
+
+        // The OAuth web window has saved the connection, outside APITransport.
+        store.beginConnecting(.tiktok)
+        await store.finishConnecting(at: URL(string: "https://ypr.app/studio/connections?connected=tiktok")!)
+        #expect(store.connection(for: .tiktok)?.handle == "Creator")
+        #expect(store.connecting == nil)
+        await cache.clear()
+    }
+
     private let connected = ConnectionsResponse(
         connections: [.init(platform: "tiktok", handle: "Creator", status: "active", updatedAt: "now")],
         available: ["tiktok"]
