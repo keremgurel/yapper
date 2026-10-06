@@ -73,8 +73,8 @@ export default function UploadProgress({
   if (notice === "transcript_failed") {
     return (
       <p className="text-sm text-[color:var(--sg-yellow-500)]">
-        The video uploaded, but its transcript could not be prepared. Captions
-        will use the title and your prompt.
+        The video uploaded, but its transcript could not be prepared. Describe
+        the video for generated captions, or write a caption yourself.
       </p>
     );
   }

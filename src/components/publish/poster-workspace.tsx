@@ -7,6 +7,11 @@ import { LayoutGrid, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState, PageHeader, Section } from "@/components/studio-ui";
 import CrossPostSheet from "@/components/publish/cross-post-sheet";
+import {
+  captionFor,
+  copyCaptionToOthers,
+} from "@/components/publish/captions/caption-draft";
+import { renderCaption } from "@/lib/publish/caption-format";
 import { useCaptionDrafts } from "@/components/publish/captions/use-caption-drafts";
 import { useCaptionGeneration } from "@/components/publish/captions/use-caption-generation";
 import CaptionBriefDisclosure from "@/components/publish/poster/caption-brief-disclosure";
@@ -107,10 +112,12 @@ export default function PosterWorkspace() {
   );
 
   const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
-  const { generating, reading, error, generate } = useCaptionGeneration(
-    applyGenerated,
-    useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
-  );
+  const [descriptions, setDescriptions] = useState<Record<string, string>>({});
+  const { generating, reading, error, errorVideoId, noSpeech, generate } =
+    useCaptionGeneration(
+      applyGenerated,
+      useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
+    );
   const prep = usePublishPrep();
 
   const localUpload = useRef<{ id: string; url: string } | null>(null);
@@ -214,13 +221,19 @@ export default function PosterWorkspace() {
     ? { ...sourceCaptions(active), ...byVideo[active.id] }
     : {};
 
-  const draftCaptions = (titleOnly = false) => {
+  const draftCaptions = (titleOnly = false, reference?: PublishPlatform) => {
     if (!active) return;
     void generate(
       [
         {
           id: active.id,
           title: active.title,
+          videoDescription: descriptions[active.id],
+          captionReference: reference
+            ? renderCaption(captionFor(captions, reference))
+            : undefined,
+          noSpeech: active.kind === "yapper" && active.noSpeech,
+          initialCaptions: byVideo[active.id] ?? {},
           submissionId:
             active.kind === "yapper" ? active.submissionId : undefined,
           transcriptStatus:
@@ -234,7 +247,9 @@ export default function PosterWorkspace() {
             active.kind === "yapper" ? active.contentItemId : undefined,
         },
       ],
-      titleOnly ? ["youtube"] : [...destinations],
+      titleOnly
+        ? ["youtube"]
+        : [...destinations].filter((platform) => platform !== reference),
       true,
       brief,
       titleOnly,
@@ -440,7 +455,29 @@ export default function PosterWorkspace() {
                   connected={connectedPlatforms}
                   hasCover={Boolean(cover.image)}
                   generating={generating}
-                  captionError={error}
+                  captionError={errorVideoId === active.id ? error : ""}
+                  noSpeech={Boolean(
+                    noSpeech[active.id] ||
+                    (active.kind === "yapper" && active.noSpeech),
+                  )}
+                  description={descriptions[active.id] ?? ""}
+                  onDescriptionChange={(value) =>
+                    setDescriptions((current) => ({
+                      ...current,
+                      [active.id]: value,
+                    }))
+                  }
+                  onGenerateOthers={(platform) =>
+                    draftCaptions(false, platform)
+                  }
+                  onCopyOthers={(platform) =>
+                    applyGenerated(
+                      active.id,
+                      copyCaptionToOthers(captions, platform, [
+                        ...destinations,
+                      ]),
+                    )
+                  }
                   publishing={prep.preparing}
                   mediaPending={
                     active.kind === "platform"

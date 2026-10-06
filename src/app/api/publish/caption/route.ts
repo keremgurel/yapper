@@ -104,7 +104,14 @@ export async function POST(req: Request): Promise<Response> {
 
     const brain = await getBrainContextSafe(userId, {
       surface: "caption",
-      task: [title, hook, (spoken ?? script)?.slice(0, 1200), pillar]
+      task: [
+        title,
+        str(body.videoDescription, 2000),
+        str(body.captionReference, 1200),
+        hook,
+        (spoken ?? script)?.slice(0, 1200),
+        pillar,
+      ]
         .filter(Boolean)
         .join("\n"),
       signal: req.signal,
@@ -113,6 +120,8 @@ export async function POST(req: Request): Promise<Response> {
     const captions = await generateCaptions(
       {
         title,
+        videoDescription: str(body.videoDescription, 2000),
+        captionReference: str(body.captionReference, 6000),
         context: brain.section,
         hook,
         script: spoken ?? script,

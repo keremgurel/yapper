@@ -117,3 +117,31 @@ export function mergeGeneratedCaptions(
   }
   return merged;
 }
+
+/** Copy the actual caption without truncating it or replacing destination titles. */
+export function copyCaptionToOthers(
+  current: CaptionSet,
+  source: PublishPlatform,
+  destinations: readonly PublishPlatform[],
+): PlatformCaption[] {
+  const original = captionFor(current, source);
+  return destinations
+    .filter((platform) => platform !== source)
+    .map((platform) => ({
+      ...captionFor(current, platform),
+      body: original.body,
+      hashtags: [...original.hashtags],
+    }));
+}
+
+/** An async generation must not overwrite a caption edited while it ran. */
+export function unchangedCaption(
+  current: PlatformCaption | undefined,
+  previous: PlatformCaption | undefined,
+): boolean {
+  return (
+    current?.title === previous?.title &&
+    current?.body === previous?.body &&
+    JSON.stringify(current?.hashtags) === JSON.stringify(previous?.hashtags)
+  );
+}

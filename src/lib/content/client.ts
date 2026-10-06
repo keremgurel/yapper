@@ -26,6 +26,9 @@ export interface ContentSummary {
   sourceTitle: string | null;
   sourcePlatform: string | null;
   transcriptStatus: TranscriptStatus | null;
+  /** A successfully analyzed video with no spoken words. */
+  noSpeech?: boolean;
+  recordedTranscript?: string | null;
   script: string | null;
   originalNote: string;
   updatedAt: string;

@@ -77,3 +77,21 @@ describe("caption generation context", () => {
     expect(mocks.generate).not.toHaveBeenCalled();
   });
 });
+
+it("generates from a description and reference caption without spoken words", async () => {
+  const response = await POST(
+    request({
+      platforms: ["instagram"],
+      videoDescription: "A silent product walkthrough",
+      captionReference: "A faster way to edit",
+      requireTranscript: false,
+    }),
+  );
+  expect(response.status).toBe(200);
+  expect(mocks.generate.mock.calls[0][0]).toMatchObject({
+    videoDescription: "A silent product walkthrough",
+    captionReference: "A faster way to edit",
+    platforms: ["instagram"],
+  });
+  expect(mocks.transcript).not.toHaveBeenCalled();
+});

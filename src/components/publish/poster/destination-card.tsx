@@ -2,6 +2,7 @@
 
 import { AlertTriangle, Check, Clock, Info, Loader2, X } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { Chip } from "@/components/studio-ui";
 import type { ChipTone } from "@/components/studio-ui";
@@ -61,12 +62,18 @@ export default function DestinationCard({
   onCaptionChange,
   onRemove,
   busy,
+  onGenerateOthers,
+  onCopyOthers,
+  generating,
 }: {
   readiness: DestinationReadiness;
   caption: PlatformCaption;
   onCaptionChange: (caption: PlatformCaption) => void;
   onRemove: () => void;
   busy?: boolean;
+  onGenerateOthers?: () => void;
+  onCopyOthers?: () => void;
+  generating?: boolean;
 }) {
   const { state } = readiness;
   const done = state === "posted" || state === "scheduled";
@@ -148,6 +155,35 @@ export default function DestinationCard({
             </span>
           </label>
 
+          {caption.body.trim() && onCopyOthers && (
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onGenerateOthers}
+                  disabled={generating}
+                  aria-label={`Generate other captions from ${readiness.label}`}
+                >
+                  Generate others
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onCopyOthers}
+                  aria-label={`Copy ${readiness.label} caption to other destinations`}
+                >
+                  Copy to others
+                </Button>
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Replaces captions for the other selected destinations. Copying
+                keeps their titles.
+              </p>
+            </div>
+          )}
           {readiness.blockers.length > 0 && (
             <ul className="space-y-1">
               {readiness.blockers.map((blocker) => (

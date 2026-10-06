@@ -10,6 +10,8 @@ import {
   transcribeCaptionMedia,
 } from "./prepare-caption-subject";
 
+import type { CaptionSet } from "./caption-draft";
+
 import type { ContentDetail } from "@/lib/content/client";
 
 /** A video to write captions for. */
@@ -23,12 +25,16 @@ export interface CaptionSubject {
   submissionId?: string;
   transcriptStatus?: string | null;
   sourceCaption?: string;
+  videoDescription?: string;
+  captionReference?: string;
+  noSpeech?: boolean;
+  initialCaptions?: CaptionSet;
 }
 
 function messageFor(error: unknown): string {
   const reason = error instanceof Error ? error.message : "";
   if (reason === "caption_transcript_failed")
-    return "The video could not be transcribed. Your original caption is safe. Try again before generating.";
+    return "The video could not be transcribed. Your original caption is safe. Retry, describe the video, or write a caption yourself.";
   if (reason === "no_provider") return "AI captions aren't set up yet.";
   return "Caption generation failed. Your existing text is safe.";
 }
@@ -44,6 +50,7 @@ export function useCaptionGeneration(
     captions: PlatformCaption[],
     titleOnly?: boolean,
     sourceCaption?: string,
+    initialCaptions?: CaptionSet,
   ) => void,
   onContentUpdated?: (item: ContentDetail) => void,
 ) {
@@ -51,6 +58,8 @@ export function useCaptionGeneration(
   const [reading, setReading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
+  const [errorVideoId, setErrorVideoId] = useState<string>();
+  const [noSpeech, setNoSpeech] = useState<Record<string, boolean>>({});
 
   const generate = useCallback(
     async (
@@ -63,14 +72,23 @@ export function useCaptionGeneration(
       if (!subjects.length || !platforms.length) return;
       setGenerating(true);
       setError("");
+      setErrorVideoId(subjects[0].id);
       try {
         const drafted = await Promise.all(
           subjects.map(async (subject) => {
             let transcript: string | undefined;
+            let silent = subject.noSpeech || noSpeech[subject.id];
+            const suppliedContext = Boolean(
+              subject.videoDescription?.trim() ||
+              subject.captionReference?.trim() ||
+              subject.sourceCaption?.trim(),
+            );
             if (
               subject.submissionId &&
               subject.contentItemId &&
-              subject.transcriptStatus !== "ready"
+              subject.transcriptStatus !== "ready" &&
+              !suppliedContext &&
+              !silent
             ) {
               setReading(true);
               try {
@@ -79,13 +97,14 @@ export function useCaptionGeneration(
                   subject.submissionId,
                 );
                 onContentUpdated?.(updated);
+                silent = updated.recordedTranscript === "";
               } finally {
                 setReading(false);
               }
             }
-            if (subject.mediaKey) {
+            if (subject.mediaKey && !suppliedContext && !silent) {
               transcript = transcripts.current.get(subject.mediaKey);
-              if (!transcript) {
+              if (transcript === undefined) {
                 setReading(true);
                 try {
                   transcript = await transcribeCaptionMedia(subject.mediaKey);
@@ -95,7 +114,12 @@ export function useCaptionGeneration(
                 }
               }
             }
+            silent ||= transcript === "";
+            if (silent)
+              setNoSpeech((current) => ({ ...current, [subject.id]: true }));
+            if (silent && !suppliedContext) return null;
             return {
+              initialCaptions: subject.initialCaptions,
               id: subject.id,
               sourceCaption: subject.sourceCaption,
               captions: await generateCaptions({
@@ -105,23 +129,34 @@ export function useCaptionGeneration(
                 matchStyle,
                 transcript,
                 sourceCaption: subject.sourceCaption,
-                requireTranscript: Boolean(subject.mediaKey),
+                videoDescription: subject.videoDescription,
+                captionReference: subject.captionReference,
+                requireTranscript:
+                  Boolean(subject.mediaKey) && !suppliedContext && !silent,
                 titleOnly,
                 instructions,
               }),
             };
           }),
         );
-        for (const { id, captions, sourceCaption } of drafted)
-          onCaptions(id, captions, titleOnly, sourceCaption);
+        for (const result of drafted) {
+          if (result)
+            onCaptions(
+              result.id,
+              result.captions,
+              titleOnly,
+              result.sourceCaption,
+              result.initialCaptions,
+            );
+        }
       } catch (cause) {
         setError(messageFor(cause));
       } finally {
         setGenerating(false);
       }
     },
-    [onCaptions, onContentUpdated],
+    [onCaptions, onContentUpdated, noSpeech],
   );
 
-  return { generating, reading, error, generate };
+  return { generating, reading, error, errorVideoId, noSpeech, generate };
 }

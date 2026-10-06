@@ -46,3 +46,15 @@ describe("legacy Poster transcript recovery", () => {
     ).toBe("New export");
   });
 });
+
+it("does not replace completed no-speech analysis with an older take", async () => {
+  expect(
+    await loadRecordedTranscript("owner", {
+      recordedTranscript: "",
+      transcriptStatus: "ready",
+      submissionId: "old-submission",
+      sourceUrl: "yapper://poster-upload",
+      sourceTranscript: "Old words",
+    }),
+  ).toBe("");
+});

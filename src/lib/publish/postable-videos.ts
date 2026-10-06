@@ -9,6 +9,7 @@ export interface PostableVideo {
   status: ContentSummary["status"];
   scheduledFor: string | null;
   updatedAt: string;
+  noSpeech?: boolean;
   transcriptStatus: ContentSummary["transcriptStatus"];
 }
 
@@ -34,6 +35,10 @@ export function postableVideos(
       scheduledFor: it.scheduledFor,
       updatedAt: it.updatedAt,
       transcriptStatus: it.transcriptStatus,
+      noSpeech:
+        it.recordedTranscript !== undefined
+          ? it.transcriptStatus === "ready" && it.recordedTranscript === ""
+          : it.noSpeech === true,
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
