@@ -19,6 +19,8 @@ struct ManagedProjectMediaTests {
         project.clips = [TimelineClip(mediaID: media.id, sourceStart: 2, sourceEnd: 9)]
         let store = ProjectPackageStore(package: package)
         try await store.save(project)
+        let savedBeforeCopy = try #require(try await store.load())
+        let revisionBeforeCopy = try PosterProjectRender.revision(savedBeforeCopy)
         let source = ManagedProjectMedia.Source(id: media.id, url: original)
         try await ManagedProjectMedia.copy(source, into: package, forceStreaming: streaming)
         try FileManager.default.removeItem(at: original)
@@ -26,6 +28,7 @@ struct ManagedProjectMediaTests {
         try await store.save(project)
         let loaded = try #require(try await store.load())
         #expect(loaded.media[0].packagedSource == true)
+        #expect(try PosterProjectRender.revision(loaded) == revisionBeforeCopy)
         #expect(loaded.clips == project.clips)
         #expect(try Data(contentsOf: loaded.media[0].url) == bytes)
         let renamed = try await library.rename(package, to: "Renamed")
@@ -66,6 +69,34 @@ struct ManagedProjectMediaTests {
         #expect(session.player.currentItem != nil)
         #expect(session.offlineMedia.isEmpty)
         #expect(FileManager.default.fileExists(atPath: owned.url.path))
+    }
+
+    @Test("Reachable footage is saved even while another required source is offline") @MainActor
+    func savesWhileAnotherSourceIsOffline() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "managed-offline-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let package = try await ProjectLibrary(directory: root).create(named: "Offline")
+        let original = root.appending(path: "available.mov")
+        try await SyntheticVideo.write(color: CGColor(gray: 0.4, alpha: 1), size: CGSize(width: 320, height: 180), seconds: 1, to: original)
+        let available = try await MediaProbe.inspect(url: original)
+        let missing = ProjectMedia(url: root.appending(path: "missing.mov"), name: "Missing", duration: 2, width: 320, height: 180, hasAudio: false)
+        var project = EditorProject(name: "Offline")
+        project.media = [available, missing]
+        project.clips = [TimelineClip(mediaID: missing.id, sourceStart: 0, sourceEnd: 1)]
+        let store = ProjectPackageStore(package: package)
+        try await store.save(project)
+        let session = EditorSession(store: store)
+        for _ in 0..<200 where session.project.id != project.id {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try #require(session.project.id == project.id)
+        session.projectNavigation.currentPackage = package
+        try await ManagedProjectMedia.copy(.init(id: available.id, url: original, fingerprint: available.sourceFingerprint), into: package)
+        try await session.adoptManagedMedia(in: package, projectID: project.id)
+        let saved = try #require(try await store.load())
+        #expect(saved.media.first?.packagedSource == true)
+        #expect(!session.mediaAvailability.requiredOffline.isEmpty)
+        #expect(saved.clips == project.clips)
     }
 
     @Test("A retry recovers committed bytes and removes an interrupted partial copy")

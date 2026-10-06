@@ -3000,11 +3000,15 @@ final class EditorSession: ObservableObject {
         let owned = ManagedProjectMedia.resolved(project, in: package)
         let wasPlaying = player.timeControlStatus == .playing
         project = owned
-        if !project.clips.isEmpty { try await rebuildComposition(preserveTime: true) }
+        // Saving reachable footage must not depend on an unrelated offline
+        // source. Keep its recovery state while committing the owned files.
         try await persist()
+        mediaAvailability.refresh(notifyRestored: false)
+        if mediaAvailability.requiredOffline.isEmpty, !project.clips.isEmpty {
+            try await rebuildComposition(preserveTime: true)
+            if wasPlaying { player.play() }
+        }
         await reconcileDerivedMedia(from: previous)
-        mediaAvailability.refresh()
-        if wasPlaying { player.play() }
     }
 
     private var persistedLockBaseline: EditorProject?
