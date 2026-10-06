@@ -53,6 +53,7 @@ function VideoFrame({ submissionId }: { submissionId: string }) {
       )}
       {url && !failed && (
         <video
+          crossOrigin="anonymous"
           muted
           playsInline
           preload="metadata"
