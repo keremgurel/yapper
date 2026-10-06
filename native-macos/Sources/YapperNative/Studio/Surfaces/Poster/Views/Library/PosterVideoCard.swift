@@ -48,7 +48,7 @@ struct PosterVideoCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Latest edit · \(Int(listing.summary.duration))s")
                 if let status = sync.status[listing.summary.id] { Text(status) }
-                else if sync.errors[listing.summary.id] != nil { Text("Available on this Mac").foregroundStyle(NativeChip.Tone.yellow.color) }
+                else if sync.errors[listing.summary.id] != nil { Text("Preview needs attention").foregroundStyle(NativeChip.Tone.yellow.color) }
             }.font(.system(size: 12)).foregroundStyle(.secondary)
         case .file:
             Text("Uploading…").font(.system(size: 12)).foregroundStyle(.secondary)

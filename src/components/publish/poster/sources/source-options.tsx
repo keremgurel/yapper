@@ -1,6 +1,6 @@
 "use client";
 
-import { Clapperboard, Upload, ArrowRight } from "lucide-react";
+import { Upload } from "lucide-react";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
@@ -26,22 +26,8 @@ export default function SourceOptions({
         What would you like to post?
       </h2>
       <p className="text-muted-foreground mb-6 text-sm">
-        Start with your latest edit, a finished file, or a video from a
-        connected channel.
+        Start with a finished file or a video from a connected channel.
       </p>
-      <button className={row} onClick={() => onChoose("yapper")}>
-        <Clapperboard
-          aria-hidden
-          className="text-muted-foreground size-6 shrink-0"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold">Made in Yapper</span>
-          <span className="text-muted-foreground mt-1 block text-sm">
-            The latest finished version of each edited project.
-          </span>
-        </span>
-        <ArrowRight aria-hidden className="size-4 shrink-0" />
-      </button>
       <div className="border-border flex items-center gap-3 border-b">
         <button className={`${row} border-0`} onClick={onUpload}>
           <Upload

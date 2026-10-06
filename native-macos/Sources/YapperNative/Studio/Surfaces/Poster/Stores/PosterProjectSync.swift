@@ -1,7 +1,7 @@
 import Foundation
 
-/// Keep the latest saved edit available in both Posters. Debounce editor saves,
-/// share work with selection/publishing, and upload only a changed revision.
+/// Prepare saved edits locally. Upload only for an explicit publish request,
+/// sharing each render and transfer across simultaneous requests.
 @MainActor
 final class PosterProjectSync: ObservableObject {
     static let shared = PosterProjectSync()
@@ -17,7 +17,12 @@ final class PosterProjectSync: ObservableObject {
         pending[listing.summary.id] = Task {
             do {
                 try await Task.sleep(for: .seconds(delay))
-                _ = try await prepare(listing)
+                guard await PosterProjectRender.shared.cached(listing) == nil else { return }
+                let id = listing.summary.id
+                status[id] = "Preparing latest edit…"
+                errors[id] = nil
+                defer { if uploads.isEmpty { status[id] = nil } }
+                _ = try await PosterProjectRender.shared.render(listing)
             } catch is CancellationError { }
             catch { errors[listing.summary.id] = error.localizedDescription }
         }

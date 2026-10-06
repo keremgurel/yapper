@@ -16,7 +16,8 @@ actor PosterProjectRender {
         renderInput.createdAt = Date(timeIntervalSince1970: 0)
         renderInput.updatedAt = Date(timeIntervalSince1970: 0)
         renderInput.studioSource = nil
-        var data = try encoder.encode(renderInput)
+        var data = Data("poster-1080-v1".utf8)
+        data.append(try encoder.encode(renderInput))
         // Same-path source replacements must not reuse an older render.
         let urls = project.media.map(\.url) + (project.audioLayers ?? []).map(\.url)
         for url in urls.sorted(by: { $0.path < $1.path }) {
@@ -48,7 +49,7 @@ actor PosterProjectRender {
             _ = try? await previous?.value
             try Task.checkCancellation()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try await ExportService.export(project: project, to: output)
+            try await ExportService.export(project: project, to: output, maximumRenderDimension: 1920)
             return output
         }
         inFlight[revision] = task

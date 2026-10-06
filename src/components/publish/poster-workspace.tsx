@@ -82,14 +82,12 @@ export default function PosterWorkspace() {
   );
 
   const [sourceChosen, setSourceChosen] = useState(Boolean(params.get("item")));
-  const [source, setSource] = useState<PosterSource>("yapper");
+  const [source, setSource] = useState<PosterSource>("uploads");
   const sourceVideos = useSourceVideos(
     source,
     {
       videos:
-        source === "yapper" || source === "uploads"
-          ? posterLibraryVideos(items, source)
-          : library,
+        source === "uploads" ? posterLibraryVideos(items, source) : library,
       loading: items === null,
     },
     !!isSignedIn,
@@ -328,11 +326,7 @@ export default function PosterWorkspace() {
               Change source
             </Button>
             <span className="text-sm font-semibold">
-              {source === "yapper"
-                ? "Made in Yapper"
-                : source === "uploads"
-                  ? "Uploads"
-                  : PLATFORMS[source].label}
+              {source === "uploads" ? "Uploads" : PLATFORMS[source].label}
             </span>
           </div>
         ) : (
@@ -358,7 +352,7 @@ export default function PosterWorkspace() {
                 </Button>
               }
             />
-          ) : source === "yapper" && items === null && loadFailed ? (
+          ) : source === "uploads" && items === null && loadFailed ? (
             <EmptyState
               icon={RefreshCw}
               title="Your videos could not be loaded"

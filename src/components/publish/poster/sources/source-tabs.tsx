@@ -65,7 +65,6 @@ export default function SourceTabs({
       aria-label="Video source"
       className="border-border/70 flex flex-wrap items-center border-b"
     >
-      {tab("yapper", "Made in Yapper")}
       {tab("uploads", "Uploads")}
       {publishPlatforms.map((platform) =>
         tab(

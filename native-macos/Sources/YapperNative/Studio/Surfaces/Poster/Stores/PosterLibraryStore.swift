@@ -15,12 +15,7 @@ final class PosterLibraryStore: ObservableObject {
     var belongsToCurrentAccount: Bool { accountID == StudioAuth.shared.account?.userID }
 
     var projectVideos: [PosterVideo] {
-        let local = projects.filter { $0.summary.clipCount > 0 }.map(PosterVideo.init(project:))
-        let localSources = Set(projects.map { "yapper://project/\($0.summary.id.uuidString.lowercased())" })
-        let remote = PosterContentItem.postable(items ?? []).filter {
-            $0.sourceUrl?.hasPrefix("yapper://project/") == true && !localSources.contains($0.sourceUrl ?? "")
-        }.map(PosterVideo.init(item:))
-        return local + remote
+        projects.filter { $0.summary.clipCount > 0 }.map(PosterVideo.init(project:))
     }
 
     var videos: [PosterVideo] { PosterContentItem.postable((items ?? []).filter { $0.sourceUrl == "yapper://poster-upload" }).map(PosterVideo.init(item:)) }
