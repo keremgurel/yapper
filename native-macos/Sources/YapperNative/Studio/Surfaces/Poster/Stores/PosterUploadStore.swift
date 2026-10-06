@@ -79,6 +79,7 @@ final class PosterUploadStore: ObservableObject {
                 var prepared = localVideo
                 prepared.preparedSubmissionID = submission
                 prepared.preparedContentItemID = created.item.id
+                prepared.preparedTranscriptStatus = "pending"
                 PosterBench.shared.active = prepared
             }
             onAdded(created.item)
