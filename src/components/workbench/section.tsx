@@ -27,22 +27,24 @@ export default function Section({
   return (
     <section>
       <header
-        className={`flex items-baseline justify-between gap-3 ${
+        className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-2 ${
           lead ? "border-border/70 mb-3 border-b pb-1.5" : "mb-1.5"
         }`}
       >
-        <div className="flex items-baseline gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
           <h2
             className={
               lead
-                ? "text-foreground font-display text-[13px] font-black tracking-[0.14em] uppercase"
-                : "text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase"
+                ? "text-foreground font-display text-sm font-semibold"
+                : "text-muted-foreground text-xs font-semibold"
             }
           >
             {title}
           </h2>
           {meta && (
-            <span className="text-muted-foreground text-xs">{meta}</span>
+            <span className="text-muted-foreground min-w-0 text-xs [overflow-wrap:anywhere]">
+              {meta}
+            </span>
           )}
         </div>
         {action}

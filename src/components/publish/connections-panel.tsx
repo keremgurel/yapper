@@ -3,13 +3,21 @@
 import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { Camera, Check, Music2, Video, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  Camera,
+  Check,
+  Music2,
+  Video,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConnections } from "@/hooks/use-connections";
 import { beginConnect } from "@/lib/publish/begin-connect";
 import FacebookPagePicker from "./facebook-page-picker";
 import TikTokInsightsRow from "@/components/publish/tiktok-insights-row";
+import { CHIP_TONES } from "@/components/studio-ui/chip-tones";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 
@@ -95,14 +103,14 @@ export default function ConnectionsPanel() {
           return (
             <div
               key={p}
-              className="flex items-center gap-3 border-b px-4 py-4 last:border-b-0"
+              className="grid grid-cols-[24px_minmax(0,1fr)] items-start gap-x-3 gap-y-2 border-b px-4 py-4 last:border-b-0 sm:grid-cols-[24px_minmax(0,1fr)_auto] sm:items-center"
             >
               <Icon className="text-foreground/70 h-6 w-6 shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="text-foreground text-[15px] font-bold">
                   {spec.label}
                 </p>
-                <p className="text-muted-foreground truncate text-xs">
+                <p className="text-muted-foreground text-xs [overflow-wrap:anywhere]">
                   {connected
                     ? (connected.handle ?? "Connected")
                     : spec.postMeaning}
@@ -115,56 +123,64 @@ export default function ConnectionsPanel() {
                   />
                 )}
               </div>
-              {connected ? (
-                <span className="flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-xs font-bold text-[color:var(--sg-green-500)]">
-                    <Check className="h-3.5 w-3.5" />{" "}
-                    {connected.status === "active"
-                      ? "Connected"
-                      : "Reconnect required"}
-                  </span>
-                  {connected.status !== "active" && canConnect && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => beginConnect(p)}
+              <div className="col-start-2 min-w-0 sm:col-start-3">
+                {connected ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 text-xs font-semibold whitespace-nowrap ${connected.status === "active" ? CHIP_TONES.green.fg : CHIP_TONES.yellow.fg}`}
                     >
-                      Reconnect
+                      {connected.status === "active" ? (
+                        <Check className="h-3.5 w-3.5" />
+                      ) : (
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                      )}
+                      {connected.status === "active"
+                        ? "Connected"
+                        : "Reconnect required"}
+                    </span>
+                    {connected.status !== "active" && canConnect && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => beginConnect(p)}
+                      >
+                        Reconnect
+                      </Button>
+                    )}
+                    <Button
+                      disabled={pending.includes(p)}
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void disconnect(p)}
+                    >
+                      Disconnect
                     </Button>
-                  )}
+                  </span>
+                ) : loading ? (
+                  // `available` starts empty before the fetch resolves — without
+                  // this, every platform reads as unconfigured and flashes
+                  // "Coming soon" on every load, configured or not.
+                  <span className="bg-muted block h-7 w-20 animate-pulse rounded-lg" />
+                ) : error && connections === null ? (
+                  <span className="text-muted-foreground text-xs">
+                    Unavailable
+                  </span>
+                ) : canConnect ? (
                   <Button
-                    disabled={pending.includes(p)}
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => void disconnect(p)}
+                    onClick={() => beginConnect(p)}
                   >
-                    Disconnect
+                    Connect
                   </Button>
-                </span>
-              ) : loading ? (
-                // `available` starts empty before the fetch resolves — without
-                // this, every platform reads as unconfigured and flashes
-                // "Coming soon" on every load, configured or not.
-                <span className="bg-muted h-7 w-20 animate-pulse rounded-lg" />
-              ) : error && connections === null ? (
-                <span className="text-muted-foreground text-xs">
-                  Unavailable
-                </span>
-              ) : canConnect ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => beginConnect(p)}
-                >
-                  Connect
-                </Button>
-              ) : (
-                <span className="text-muted-foreground text-xs font-bold">
-                  Coming soon
-                </span>
-              )}
+                ) : (
+                  <span className="text-muted-foreground text-xs font-bold">
+                    Coming soon
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}

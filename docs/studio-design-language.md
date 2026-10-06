@@ -1,8 +1,7 @@
 # Studio design language
 
 The contract for every Studio work surface (Home, Idea Bank, Content Library,
-workbench). Three agents build against this in parallel; where this doc and a
-personal instinct disagree, this doc wins. The canvas
+workbench). Use this shared contract when changing a surface. The canvas
 (`src/components/canvas/*`) and the simple item list
 (`src/components/items/item-list.tsx`) are the reference implementation: match
 them, do not contradict them.
@@ -34,27 +33,27 @@ size and gets out of the way.
 SF Pro on Apple devices (where the native app runs) and to the platform face
 elsewhere. Apple's own guidance applies: the system font ships optical sizing
 and size-specific tracking, so we do not fight it with letter-spacing except
-on large titles (negative) and small uppercase labels (positive). A second
+on large titles (negative). UI headings, labels and actions use sentence case. A second
 display family is ruled out; contrast comes from size, weight, case and
 tracking. `--sg-font-mono` (SF Mono, then Menlo) is reserved for tabular
 numerals: stat values, durations, counts, timecodes. Never for prose or labels.
 
 The scale (exact classes, use these strings):
 
-| Role                                   | Classes                                                                                                                                               |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Page title                             | `font-display text-[22px] font-bold tracking-[-0.01em] text-foreground`                                                                               |
-| Page description                       | `text-sm text-muted-foreground max-w-[60ch]`                                                                                                          |
-| Section lead                           | `font-display text-[13px] font-black uppercase tracking-[0.14em] text-foreground` + hairline (`border-b border-border/70 pb-1.5`) spanning the column |
-| Section quiet                          | `text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground`                                                                              |
-| Body / content                         | `text-[15px] leading-relaxed`                                                                                                                         |
-| Hero prose (script, teleprompter text) | `text-[17px] leading-[1.75] max-w-[68ch]`                                                                                                             |
-| Table title cell                       | `text-sm font-medium text-foreground`                                                                                                                 |
-| Table cell                             | `text-[13px]`                                                                                                                                         |
-| Table header                           | `text-xs font-semibold text-muted-foreground`                                                                                                         |
-| Meta (timestamps, counts, helper text) | `text-xs text-muted-foreground`                                                                                                                       |
-| Stat value                             | `font-mono text-[26px] font-semibold tabular-nums tracking-[-0.01em]`                                                                                 |
-| Chip                                   | `text-[11px] font-semibold`                                                                                                                           |
+| Role                                   | Classes                                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Page title                             | `font-display text-[22px] font-bold tracking-[-0.01em] text-foreground`                                                  |
+| Page description                       | `text-sm text-muted-foreground max-w-[60ch]`                                                                             |
+| Section lead                           | `font-display text-sm font-semibold text-foreground` + hairline (`border-b border-border/70 pb-1.5`) spanning the column |
+| Section quiet                          | `text-xs font-semibold text-muted-foreground`                                                                            |
+| Body / content                         | `text-[15px] leading-relaxed`                                                                                            |
+| Hero prose (script, teleprompter text) | `text-[17px] leading-[1.75] max-w-[68ch]`                                                                                |
+| Table title cell                       | `text-sm font-medium text-foreground`                                                                                    |
+| Table cell                             | `text-[13px]`                                                                                                            |
+| Table header                           | `text-xs font-semibold text-muted-foreground`                                                                            |
+| Meta (timestamps, counts, helper text) | `text-xs text-muted-foreground`                                                                                          |
+| Stat value                             | `font-mono text-[26px] font-semibold tabular-nums tracking-[-0.01em]`                                                    |
+| Chip                                   | `text-[11px] font-semibold`                                                                                              |
 
 Section lead and section quiet are already implemented as
 `<Section rank="lead" />` and `<Section rank="quiet" />` in
@@ -63,19 +62,20 @@ do not hand-roll section headers.
 
 Hard rules:
 
-- **Weight is rationed.** `font-black` (900) is legal only on uppercase labels
-  of 13px or smaller (the Section lead treatment). Titles are `font-bold`,
-  running text is `font-normal` to `font-semibold`. Today Home has 900 on
-  metric labels, metric values, card titles, video titles and list items at
-  once; when everything is black, nothing is.
-- **Floor is 11px**, and 11px is only for chips and quiet labels. `text-[10px]`
-  is banned everywhere.
+- **Weight is rationed.** Titles use `font-bold`, section headings use
+  `font-semibold`, and running text uses `font-normal` to `font-medium`.
+- **Floor is 11px**, reserved for compact chips. Labels use at least 12px.
 - **Reading measure**: any multi-line prose (scripts, notes, descriptions) is
   capped at `max-w-[68ch]`. Never let a textarea or paragraph run the full
   width of a wide column.
-- At most **one uppercase label per group** of content. Never stack an
-  uppercase micro-label above every control in a rail; use the inline
-  `RailRow` pattern (`src/components/workbench/rail-row.tsx`).
+- **Sentence case throughout.** Use the inline `RailRow` pattern for small
+  controls instead of stacking uppercase micro-labels above them.
+- **Status chips stay on one line.** Pass symbols through `Chip`'s `icon`
+  prop and removable actions through `endAdornment`; only the text truncates.
+- **Narrow layouts preserve actions.** Headers wrap actions; connection rows
+  place actions below identities on phones. Header and page content share
+  `StudioContentFrame` and `px-4 sm:px-6 lg:px-8` outer gutters. Icon-only
+  header controls retain accessible names and visible focus rings.
 
 ## 3. Depth and surfaces
 

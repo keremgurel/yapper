@@ -17,9 +17,7 @@ export default function StatBlock({
 }) {
   return (
     <div className="min-w-0 p-4 sm:p-5">
-      <p className="text-muted-foreground text-[11px] font-bold tracking-[0.1em] uppercase">
-        {label}
-      </p>
+      <p className="text-muted-foreground text-xs font-medium">{label}</p>
       {value === null ? (
         <div
           aria-hidden
@@ -31,7 +29,9 @@ export default function StatBlock({
         </p>
       )}
       {detail && (
-        <p className="text-muted-foreground mt-1 truncate text-xs">{detail}</p>
+        <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
+          {detail}
+        </p>
       )}
     </div>
   );

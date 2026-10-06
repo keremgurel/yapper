@@ -13,7 +13,11 @@ export default function Toolbar({
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2">
       {children}
-      {end && <div className="ml-auto flex items-center gap-2">{end}</div>}
+      {end && (
+        <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center gap-2">
+          {end}
+        </div>
+      )}
     </div>
   );
 }

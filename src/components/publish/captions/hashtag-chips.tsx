@@ -41,17 +41,22 @@ export default function HashtagChips({
     <div>
       <div className="flex flex-wrap items-center gap-2">
         {tags.map((tag) => (
-          <Chip key={tag} tone="neutral">
-            #{tag}
-            <button
-              type="button"
-              aria-label={`Remove #${tag}`}
-              disabled={disabled}
-              onClick={() => onChange(removeHashtag(tags, tag))}
-              className="text-muted-foreground hover:text-foreground -mr-1 ml-0.5 rounded-full p-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-            >
-              <X aria-hidden className="h-3 w-3" />
-            </button>
+          <Chip
+            key={tag}
+            tone="neutral"
+            endAdornment={
+              <button
+                type="button"
+                aria-label={`Remove #${tag}`}
+                disabled={disabled}
+                onClick={() => onChange(removeHashtag(tags, tag))}
+                className="text-muted-foreground hover:text-foreground -mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+              >
+                <X aria-hidden className="h-3 w-3" />
+              </button>
+            }
+          >
+            {`#${tag}`}
           </Chip>
         ))}
         <input
@@ -76,7 +81,7 @@ export default function HashtagChips({
               onChange(tags.slice(0, -1));
             }
           }}
-          className="text-foreground placeholder:text-muted-foreground h-6 w-28 min-w-0 bg-transparent text-[13px] outline-none"
+          className="text-foreground placeholder:text-muted-foreground focus-visible:ring-ring h-8 w-28 min-w-0 rounded-md bg-transparent px-1 text-[13px] outline-none focus-visible:ring-2"
         />
       </div>
       <p className="text-muted-foreground mt-2 text-xs">

@@ -81,22 +81,31 @@ export default function DestinationCard({
 
   return (
     <div className="border-border bg-card rounded-xl border">
-      <div className="border-border/60 flex items-center gap-3 border-b px-4 py-3">
-        <PlatformIcon platform={readiness.platform} className="h-4 w-4" />
-        <span className="text-foreground text-sm font-semibold">
+      <div className="border-border/60 flex flex-wrap items-center gap-2 border-b px-4 py-3">
+        <PlatformIcon
+          platform={readiness.platform}
+          className="h-4 w-4 shrink-0"
+        />
+        <span className="text-foreground min-w-0 flex-1 text-[13px] font-semibold">
           {readiness.label}
         </span>
 
-        <Chip tone={STATE_TONE[state]} variant="tint" pill className="ml-auto">
-          {busy ? (
-            <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" />
-          ) : state === "ready" || state === "posted" ? (
-            <Check className="h-3 w-3" />
-          ) : state === "blocked" || state === "failed" ? (
-            <AlertTriangle className="h-3 w-3" />
-          ) : state === "scheduled" ? (
-            <Clock className="h-3 w-3" />
-          ) : null}
+        <Chip
+          tone={STATE_TONE[state]}
+          pill
+          className="ml-auto"
+          icon={
+            busy ? (
+              <Loader2 className="animate-spin motion-reduce:animate-none" />
+            ) : state === "ready" || state === "posted" ? (
+              <Check />
+            ) : state === "blocked" || state === "failed" ? (
+              <AlertTriangle />
+            ) : state === "scheduled" ? (
+              <Clock />
+            ) : undefined
+          }
+        >
           {busy ? "Sending" : STATE_LABEL[state]}
         </Chip>
 
@@ -105,7 +114,7 @@ export default function DestinationCard({
             type="button"
             onClick={onRemove}
             aria-label={`Remove ${readiness.label}`}
-            className="text-muted-foreground hover:text-foreground rounded focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
           >
             <X className="h-4 w-4" />
           </button>
@@ -116,7 +125,7 @@ export default function DestinationCard({
         <div className="space-y-3 p-4">
           {spec.title.applies && (
             <label className="block">
-              <span className="text-muted-foreground mb-1.5 flex items-center justify-between text-[11px] font-bold tracking-[0.1em] uppercase">
+              <span className="text-muted-foreground mb-1.5 flex items-center justify-between text-xs font-medium">
                 Title
                 <Counter used={spec.title.used} max={spec.title.max} label="" />
               </span>
@@ -126,13 +135,13 @@ export default function DestinationCard({
                   onCaptionChange({ ...caption, title: e.target.value })
                 }
                 placeholder="The whole click decision, in plain words"
-                className="border-border bg-background w-full rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                className="border-border bg-background w-full scroll-mb-28 rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
               />
             </label>
           )}
 
           <label className="block">
-            <span className="text-muted-foreground mb-1.5 flex items-center justify-between text-[11px] font-bold tracking-[0.1em] uppercase">
+            <span className="text-muted-foreground mb-1.5 flex items-center justify-between text-xs font-medium">
               Caption
               <Counter used={spec.body.used} max={spec.body.max} label="" />
             </span>
@@ -143,13 +152,12 @@ export default function DestinationCard({
               }
               rows={4}
               placeholder="What this says here"
-              className="border-border bg-background w-full resize-y rounded-lg border px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+              className="border-border bg-background w-full resize-y scroll-mb-28 rounded-lg border px-3 py-2 text-sm leading-relaxed focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
             />
             {/* The fold is the part people forget, so it is drawn rather than
                 described: everything past it is collapsed behind "more". */}
             <span className="text-muted-foreground mt-1.5 block text-[11px]">
-              First {spec.visibleChars} characters show before
-              &ldquo;more&rdquo;
+              {`First ${spec.visibleChars} characters show before “more”`}
               {spec.body.used > spec.visibleChars &&
                 `, ${spec.body.used - spec.visibleChars} hidden`}
             </span>
