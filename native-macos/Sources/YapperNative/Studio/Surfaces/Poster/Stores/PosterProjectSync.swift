@@ -42,18 +42,21 @@ final class PosterProjectSync: ObservableObject {
         let revision = try PosterProjectRender.revision(project)
         let key = "\(userID):\(id):\(revision)"
         if let task = uploads[key] { return try await task.value }
-        if let done = completed[key], done.title == project.name { return done }
-        // The server's one-per-project row is the durable receipt across app launches.
-        if PosterLibraryStore.shared.belongsToCurrentAccount, let saved = PosterLibraryStore.shared.items?.first(where: {
-            $0.sourceUrl == "yapper://project/\(id.uuidString.lowercased())" && $0.editorRevision == revision && $0.submissionId != nil
-        }) {
-            let current: PosterContentItem
-            if saved.title != project.name, let submission = saved.submissionId {
-                current = try await PosterProjectUpload.attach(submissionID: submission, project: project, revision: revision, userID: userID)
+        // Validate a receipt before reuse: Storage may have deleted its file since
+        // the library loaded. The attachment endpoint checks ownership and lifecycle.
+        let saved = completed[key] ?? (PosterLibraryStore.shared.belongsToCurrentAccount
+            ? PosterLibraryStore.shared.items?.first(where: {
+                $0.sourceUrl == "yapper://project/\(id.uuidString.lowercased())" && $0.editorRevision == revision && $0.submissionId != nil
+            }) : nil)
+        if let submission = saved?.submissionId {
+            do {
+                let current = try await PosterProjectUpload.attach(submissionID: submission, project: project, revision: revision, userID: userID)
+                completed[key] = current
                 PosterLibraryStore.shared.upsert(current)
-            } else { current = saved }
-            completed[key] = current
-            return current
+                return current
+            } catch let error as PosterHTTPError where ["bad_submission", "media_unavailable"].contains(error.code) {
+                completed[key] = nil
+            }
         }
         errors[id] = nil
         status[id] = "Preparing latest edit…"
@@ -66,7 +69,7 @@ final class PosterProjectSync: ObservableObject {
             }
             guard let latest = try await ProjectPackageStore(package: listing.package).load(),
                   try PosterProjectRender.revision(latest) == revision else {
-                throw NativeEditorError.exportFailed("The edit changed while preparing. Its latest version will sync after saving.")
+                throw NativeEditorError.exportFailed("The edit changed while preparing. Its latest version will be prepared after saving.")
             }
             status[id] = "Uploading latest edit…"
             let item = try await PosterProjectUpload.prepare(file, project: project, userID: userID) { progress in
