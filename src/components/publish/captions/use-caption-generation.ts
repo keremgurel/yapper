@@ -5,7 +5,12 @@ import type { PublishPlatform } from "@/lib/db/schema";
 import type { PlatformCaption } from "@/lib/publish/caption-format";
 import { generateCaptions } from "@/lib/publish/client";
 
-import { transcribeCaptionMedia } from "./prepare-caption-subject";
+import {
+  prepareUploadedCaption,
+  transcribeCaptionMedia,
+} from "./prepare-caption-subject";
+
+import type { ContentDetail } from "@/lib/content/client";
 
 /** A video to write captions for. */
 export interface CaptionSubject {
@@ -15,6 +20,8 @@ export interface CaptionSubject {
    * from the title alone. Always pass it when the video has a library row. */
   contentItemId?: string;
   mediaKey?: string;
+  submissionId?: string;
+  transcriptStatus?: string | null;
   sourceCaption?: string;
 }
 
@@ -38,6 +45,7 @@ export function useCaptionGeneration(
     titleOnly?: boolean,
     sourceCaption?: string,
   ) => void,
+  onContentUpdated?: (item: ContentDetail) => void,
 ) {
   const transcripts = useRef(new Map<string, string>());
   const [reading, setReading] = useState(false);
@@ -59,6 +67,22 @@ export function useCaptionGeneration(
         const drafted = await Promise.all(
           subjects.map(async (subject) => {
             let transcript: string | undefined;
+            if (
+              subject.submissionId &&
+              subject.contentItemId &&
+              subject.transcriptStatus !== "ready"
+            ) {
+              setReading(true);
+              try {
+                const updated = await prepareUploadedCaption(
+                  subject.contentItemId,
+                  subject.submissionId,
+                );
+                onContentUpdated?.(updated);
+              } finally {
+                setReading(false);
+              }
+            }
             if (subject.mediaKey) {
               transcript = transcripts.current.get(subject.mediaKey);
               if (!transcript) {
@@ -96,7 +120,7 @@ export function useCaptionGeneration(
         setGenerating(false);
       }
     },
-    [onCaptions],
+    [onCaptions, onContentUpdated],
   );
 
   return { generating, reading, error, generate };

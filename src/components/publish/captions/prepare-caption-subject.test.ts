@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { transcribeCaptionMedia } from "./prepare-caption-subject";
+import {
+  prepareUploadedCaption,
+  transcribeCaptionMedia,
+} from "./prepare-caption-subject";
 
 afterEach(() => vi.unstubAllGlobals());
 describe("imported video transcription", () => {
@@ -29,4 +32,96 @@ describe("imported video transcription", () => {
       );
     },
   );
+});
+
+describe("uploaded video transcript recovery", () => {
+  it("recovers a stale pending upload and shares concurrent requests", async () => {
+    const item = {
+      id: "recover",
+      submissionId: "submission",
+      transcriptStatus: "pending",
+      recordedTranscript: null,
+    };
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ item }))
+      .mockResolvedValueOnce(
+        Response.json({ words: [{ text: "Actual speech" }] }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          item: {
+            ...item,
+            recordedTranscript: "Actual speech",
+            transcriptStatus: "ready",
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    const [first, second] = await Promise.all([
+      prepareUploadedCaption("recover", "submission"),
+      prepareUploadedCaption("recover", "submission"),
+    ]);
+    expect(first).toEqual(second);
+    expect(first.transcriptStatus).toBe("ready");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(fetcher.mock.calls[1][1].body)).toEqual({
+      submissionId: "submission",
+    });
+    expect(JSON.parse(fetcher.mock.calls[2][1].body)).toEqual({
+      recordedTranscript: "Actual speech",
+      transcriptStatus: "ready",
+    });
+  });
+  it("reuses a recorded transcript without transcribing again", async () => {
+    const item = {
+      id: "ready",
+      submissionId: "submission",
+      recordedTranscript: "Already heard",
+    };
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ item }));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await prepareUploadedCaption("ready", "submission")).toEqual(item);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+  it("allows retry after failure without saving an empty transcript", async () => {
+    const item = {
+      id: "retry",
+      submissionId: "submission",
+      recordedTranscript: null,
+    };
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ item }))
+      .mockResolvedValueOnce(Response.json({ words: [] }))
+      .mockResolvedValueOnce(Response.json({ item }))
+      .mockResolvedValueOnce(Response.json({ words: [{ text: "Recovered" }] }))
+      .mockResolvedValueOnce(
+        Response.json({
+          item: {
+            ...item,
+            recordedTranscript: "Recovered",
+            transcriptStatus: "ready",
+          },
+        }),
+      );
+    vi.stubGlobal("fetch", fetcher);
+    await expect(prepareUploadedCaption("retry", "submission")).rejects.toThrow(
+      "caption_transcript_failed",
+    );
+    expect(
+      (await prepareUploadedCaption("retry", "submission")).recordedTranscript,
+    ).toBe("Recovered");
+    expect(fetcher).toHaveBeenCalledTimes(5);
+  });
+  it("rejects a changed submission before transcribing", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(Response.json({ item: { submissionId: "changed" } }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(prepareUploadedCaption("changed", "old")).rejects.toThrow(
+      "caption_transcript_failed",
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });

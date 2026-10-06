@@ -69,7 +69,7 @@ export default function DestinationColumn({
     }),
   );
   const summary = publishSummary(readiness);
-  const readingVideo = reading || transcriptStatus === "pending";
+  const readingVideo = reading;
 
   return (
     <div className="space-y-4">
@@ -102,7 +102,7 @@ export default function DestinationColumn({
                   variant="outline"
                   className="w-full"
                   onClick={onGenerateTitle}
-                  disabled={generating || readingVideo}
+                  disabled={generating || readingVideo || mediaPending}
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate YouTube title
@@ -114,7 +114,7 @@ export default function DestinationColumn({
             type="button"
             variant="outline"
             onClick={onGenerate}
-            disabled={generating || readingVideo}
+            disabled={generating || readingVideo || mediaPending}
             className="w-full"
           >
             {generating || readingVideo ? (
@@ -140,9 +140,7 @@ export default function DestinationColumn({
               ? "From the video's transcript, one per platform"
               : readingVideo
                 ? "Transcript is being prepared"
-                : hasOriginalCaption
-                  ? "Generation reads the video transcript first"
-                  : "From the title and your caption prompt"}
+                : "Generation reads the video transcript first"}
           </p>
           {captionError && (
             <p
@@ -166,7 +164,7 @@ export default function DestinationColumn({
           caption={captionFor(captions, r.platform)}
           onCaptionChange={onCaptionChange}
           onRemove={() => onToggle(r.platform)}
-          busy={publishing && r.state === "ready"}
+          busy={false}
         />
       ))}
 
@@ -183,7 +181,7 @@ export default function DestinationColumn({
               <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />
             ) : null}
             {publishing
-              ? "Publishing…"
+              ? "Preparing review…"
               : mediaPending
                 ? "Preparing video…"
                 : summary.label}

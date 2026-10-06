@@ -7,6 +7,8 @@ import {
   type ContentDetail,
 } from "@/lib/content/client";
 
+import { prepareUploadedCaption } from "@/components/publish/captions/prepare-caption-subject";
+
 export type AddVideoState = "idle" | "uploading" | "preparing" | "error";
 export type AddVideoError =
   | "storage_full"
@@ -166,25 +168,10 @@ export function useAddVideo(
         setState("idle");
         void (async () => {
           try {
-            const transcriptResponse = await fetch("/api/transcribe", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ submissionId }),
-            });
-            if (!transcriptResponse.ok) throw new Error("transcript_failed");
-            const data = (await transcriptResponse.json()) as {
-              words?: { text?: string }[];
-            };
-            const transcript = (data.words ?? [])
-              .map((word) => word.text ?? "")
-              .join(" ")
-              .replace(/\s+/g, " ")
-              .trim();
-            if (!transcript) throw new Error("transcript_failed");
-            const updated = await patchContent(linked.id, {
-              recordedTranscript: transcript,
-              transcriptStatus: "ready",
-            });
+            const updated = await prepareUploadedCaption(
+              linked.id,
+              submissionId,
+            );
             onUpdated?.(updated);
           } catch {
             setNotice("transcript_failed");

@@ -107,8 +107,10 @@ export default function PosterWorkspace() {
   );
 
   const { byVideo, setCaption, applyGenerated } = useCaptionDrafts();
-  const { generating, reading, error, generate } =
-    useCaptionGeneration(applyGenerated);
+  const { generating, reading, error, generate } = useCaptionGeneration(
+    applyGenerated,
+    useCallback((item: ContentDetail) => patchRow(item.id, item), [patchRow]),
+  );
   const prep = usePublishPrep();
 
   const localUpload = useRef<{ id: string; url: string } | null>(null);
@@ -219,6 +221,10 @@ export default function PosterWorkspace() {
         {
           id: active.id,
           title: active.title,
+          submissionId:
+            active.kind === "yapper" ? active.submissionId : undefined,
+          transcriptStatus:
+            active.kind === "yapper" ? active.transcriptStatus : undefined,
           mediaKey: active.kind === "platform" ? active.mediaKey : undefined,
           sourceCaption:
             active.kind === "platform" ? active.caption : undefined,
