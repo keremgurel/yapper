@@ -27,12 +27,12 @@ export default function CalendarHeader({
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={onPrev}
           aria-label="Previous"
-          className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-md p-1.5"
+          className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-8 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:outline-none"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -40,11 +40,11 @@ export default function CalendarHeader({
           type="button"
           onClick={onNext}
           aria-label="Next"
-          className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-md p-1.5"
+          className="hover:bg-muted text-muted-foreground hover:text-foreground focus-visible:ring-ring inline-flex size-8 shrink-0 items-center justify-center rounded-md focus-visible:ring-2 focus-visible:outline-none"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
-        <h2 className="font-display text-foreground min-w-40 text-lg font-semibold tracking-tight">
+        <h2 className="font-display text-foreground min-w-0 text-base font-semibold tracking-tight sm:text-lg">
           {label}
         </h2>
         <Button type="button" variant="outline" size="sm" onClick={onToday}>
@@ -57,7 +57,8 @@ export default function CalendarHeader({
             key={v.key}
             type="button"
             onClick={() => setView(v.key)}
-            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+            aria-pressed={view === v.key}
+            className={`focus-visible:ring-ring min-h-8 rounded-md px-3 py-1 text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none ${
               view === v.key
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

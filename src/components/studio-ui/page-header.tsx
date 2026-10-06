@@ -14,7 +14,7 @@ export default function PageHeader({
 }) {
   return (
     <header className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-      <div className="min-w-0">
+      <div className="max-w-full min-w-0">
         <h1 className="font-display text-foreground text-[22px] font-bold tracking-[-0.01em]">
           {title}
         </h1>
@@ -25,7 +25,7 @@ export default function PageHeader({
         )}
       </div>
       {actions && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2">
           {actions}
         </div>
       )}

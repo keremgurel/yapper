@@ -56,7 +56,7 @@ export default function ChannelsSection({
             return (
               <li
                 key={platform}
-                className="flex min-h-14 items-center gap-3 px-4 py-2"
+                className="grid min-h-14 grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 px-4 py-3"
               >
                 <span className="bg-muted grid h-9 w-9 shrink-0 place-items-center rounded-lg">
                   <PlatformIcon
@@ -65,11 +65,11 @@ export default function ChannelsSection({
                     className="h-4 w-4"
                   />
                 </span>
-                <span className="min-w-0 flex-1">
+                <span className="col-span-2 min-w-0">
                   <span className="text-foreground block text-sm font-medium">
                     {PLATFORMS[platform].label}
                   </span>
-                  <span className="text-muted-foreground block truncate text-xs">
+                  <span className="text-muted-foreground block text-xs [overflow-wrap:anywhere]">
                     {connection?.handle ||
                       (connected
                         ? "Account connected"
@@ -79,16 +79,20 @@ export default function ChannelsSection({
                 {pending ? (
                   <span
                     aria-hidden
-                    className="bg-muted h-4 w-24 animate-pulse rounded"
+                    className="bg-muted col-start-2 h-4 w-24 animate-pulse rounded"
                   />
                 ) : unavailable || channel?.error ? (
-                  <Chip tone="neutral" pill>
+                  <Chip
+                    tone="neutral"
+                    pill
+                    className="col-start-2 justify-self-start"
+                  >
                     Couldn’t load
                   </Chip>
                 ) : (
                   <>
                     {connected && (
-                      <span className="text-muted-foreground hidden shrink-0 text-xs sm:block">
+                      <span className="text-muted-foreground col-start-2 row-start-2 text-xs">
                         <span className="text-foreground font-mono text-[13px] tabular-nums">
                           {compactNumber(views)}
                         </span>{" "}
@@ -102,7 +106,11 @@ export default function ChannelsSection({
                         posts
                       </span>
                     )}
-                    <Chip tone={connected ? "green" : "neutral"} pill>
+                    <Chip
+                      tone={connected ? "green" : "neutral"}
+                      pill
+                      className="col-start-3 row-start-2"
+                    >
                       {connected ? "Connected" : "Not connected"}
                     </Chip>
                   </>

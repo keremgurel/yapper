@@ -93,7 +93,7 @@ function DictionaryRow({
                 void save(term, entry.aliases);
               }
             }}
-            className="text-foreground w-full bg-transparent text-[15px] font-semibold outline-none"
+            className="text-foreground focus-visible:ring-ring w-full rounded bg-transparent text-[15px] font-semibold outline-none focus-visible:ring-2"
           />
           <p className="text-muted-foreground mt-0.5 text-xs">
             Preferred spelling sent to the transcriber
@@ -247,9 +247,11 @@ export default function DictionaryPanel() {
               />
             </label>
             <label className="grid gap-1.5 text-xs font-bold">
-              Common mishearing{" "}
-              <span className="text-muted-foreground font-normal">
-                (optional)
+              <span>
+                Common mishearing{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
               </span>
               <input
                 value={alias}

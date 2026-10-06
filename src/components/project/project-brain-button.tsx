@@ -17,8 +17,9 @@ export default function ProjectBrainButton() {
         variant="ghost"
         size="sm"
         onClick={() => setOpen(true)}
+        aria-label="Project brain"
         title="Project brain: what you make, who it's for, how you sound"
-        className="text-muted-foreground hover:text-foreground h-8 gap-1.5 px-2.5"
+        className="text-muted-foreground hover:text-foreground size-8 gap-1.5 p-0 has-[>svg]:px-0 lg:w-auto lg:px-2.5 lg:has-[>svg]:px-2.5"
       >
         <Brain className="h-4 w-4" />
         <span className="hidden text-xs font-semibold lg:inline">Project</span>

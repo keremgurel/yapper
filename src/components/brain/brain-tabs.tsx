@@ -19,7 +19,7 @@ export default function BrainTabs({
     <div
       role="tablist"
       aria-label="Brain sections"
-      className="border-border mb-6 flex overflow-x-auto border-b"
+      className="border-border mb-6 flex flex-wrap border-b"
     >
       {tabs.map((tab) => {
         const active = view === tab.value;
@@ -30,7 +30,7 @@ export default function BrainTabs({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(tab.value)}
-            className={`relative px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
+            className={`relative px-2.5 py-3 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none sm:px-4 ${
               active
                 ? "text-foreground after:absolute after:inset-x-3 after:bottom-[-1px] after:h-0.5 after:rounded-full after:bg-[color:var(--sg-accent)]"
                 : "text-muted-foreground hover:text-foreground"

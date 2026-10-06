@@ -55,7 +55,11 @@ function trainMeter(status: Status): Meter {
  * pages it is the Train plan or the feedback left. The paywall is discoverable
  * before an action fails, and members can always see what they have.
  */
-export default function BillingStatusButton() {
+export default function BillingStatusButton({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
   const pathname = usePathname();
   const { status, loading } = useBillingStatus();
   if (loading || !status) return null;
@@ -65,14 +69,30 @@ export default function BillingStatusButton() {
       : studioMeter(status);
 
   return (
-    <Button asChild variant="outline" size="sm" className="h-8 px-2.5">
-      <Link href={meter.href} className="no-underline">
+    <Button
+      asChild
+      variant="outline"
+      size="sm"
+      className={
+        compact
+          ? "size-8 p-0 has-[>svg]:px-0 sm:w-auto sm:px-2.5 sm:has-[>svg]:px-2.5"
+          : "h-8 px-2.5"
+      }
+    >
+      <Link
+        href={meter.href}
+        className="no-underline"
+        aria-label={meter.label}
+        title={meter.label}
+      >
         {meter.member ? (
           <Coins className="h-3.5 w-3.5" aria-hidden="true" />
         ) : (
           <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
         )}
-        <span className="text-xs">{meter.label}</span>
+        <span className={compact ? "hidden text-xs sm:inline" : "text-xs"}>
+          {meter.label}
+        </span>
       </Link>
     </Button>
   );

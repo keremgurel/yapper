@@ -42,7 +42,8 @@ export default function UserMenu() {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="account-shimmer-trigger border-border bg-card hover:bg-muted flex items-center gap-2 rounded-full border p-1 shadow-sm transition-colors sm:py-1 sm:pr-2.5 sm:pl-1"
+          aria-label={`Account menu for ${name}`}
+          className="account-shimmer-trigger border-border bg-card hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full border p-1 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:py-1 sm:pr-2.5 sm:pl-1"
         >
           <span className="account-shimmer block h-7 w-7 shrink-0 rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -50,7 +50,7 @@ export default function TikTokInsightsRow() {
   return (
     <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
       {known.map(([label, value]) => (
-        <span key={label}>
+        <span key={label} className="whitespace-nowrap">
           <span className="text-foreground font-bold">{compact(value!)}</span>{" "}
           {label}
         </span>
