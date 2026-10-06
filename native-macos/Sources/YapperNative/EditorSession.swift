@@ -2944,6 +2944,7 @@ final class EditorSession: ObservableObject {
     func restoreProject() async {
         do {
             guard let saved = try await store.load() else { return }
+            defer { saveMediaInBackground() }
             let recoveryNotice = await store.takeRecoveryNotice()
             history.clear()
             pendingEdit = nil
@@ -2956,7 +2957,6 @@ final class EditorSession: ObservableObject {
             // that is not there right now is a file to reconnect, and every cut
             // made against it is still exactly right. See MediaAvailability.
             project = saved
-            saveMediaInBackground()
             persistedLockBaseline = saved
             conversation.attach(projectID: saved.id, root: projectNavigation.currentPackage?.url)
             repairBuiltInAudioURLs()
