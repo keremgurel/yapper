@@ -61,6 +61,13 @@ final class PosterFramePicker: ObservableObject {
         }
     }
 
+    func fail(_ message: String) {
+        generation = UUID()
+        loading = false
+        busy = false
+        error = message
+    }
+
     func retry() {
         if let media, source == nil {
             Task {

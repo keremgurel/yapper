@@ -84,7 +84,12 @@ export default function CoverStudio({
             mediaUrl={source.url}
             time={picker.previewTime}
             image={picker.frame?.image ?? null}
-            capturing={picker.busy || picker.frame?.time !== picker.time}
+            capturing={
+              !source.error &&
+              !picker.error &&
+              (picker.busy || picker.frame?.time !== picker.time)
+            }
+            error={source.error || picker.error}
           />
         </Section>
         <Section title="Your thumbnail" rank="quiet">

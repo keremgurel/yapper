@@ -4,6 +4,7 @@ import SwiftUI
 /// frame pulled from their master in the background. Either way the page
 /// never waits for it: a quiet placeholder holds the space.
 struct PosterVideoStill: View {
+    @ObservedObject private var sync = PosterProjectSync.shared
     let video: PosterVideo
     var iconSize: CGFloat = 18
     @State private var frame: CGImage?
@@ -30,9 +31,11 @@ struct PosterVideoStill: View {
                 }
             }
         .clipped()
-        .task(id: video.id) {
+        .task(id: thumbnailIdentity) {
             if case let .project(listing) = video.origin {
-                frame = await ProjectPosterLoader.shared.poster(for: listing)
+                if let file = await PosterProjectRender.shared.cached(listing) {
+                    frame = await PosterThumbnailCache.shared.image(for: PosterMediaRef(previewURL: file))
+                }
                 return
             }
             guard video.submissionID != nil || video.previewURL != nil else { return }
@@ -42,6 +45,13 @@ struct PosterVideoStill: View {
                 frame = await PosterThumbnailCache.shared.image(for: video.media)
             }
         }
+    }
+
+    private var thumbnailIdentity: String {
+        if case let .project(listing) = video.origin {
+            return "\(video.id):\(listing.summary.updatedAt):\(sync.status[listing.summary.id] ?? "ready")"
+        }
+        return video.id
     }
 
     private var placeholder: some View {

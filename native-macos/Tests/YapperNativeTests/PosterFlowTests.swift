@@ -54,4 +54,17 @@ import Testing
         #expect(bench.importingID == nil)
         #expect(bench.error == nil)
     }
+    @Test @MainActor func aNewEditDoesNotReuseItsPreviousCover() {
+        let drafts = PosterDraftStore()
+        let video = PosterVideo(file: URL(filePath: "/tmp/edit.mp4"))
+        drafts.useRevision("first", for: video)
+        var cover = PosterCoverDraft()
+        cover.headline = "Previous edit"
+        drafts.setCover(cover, for: video)
+        drafts.useRevision("first", for: video)
+        #expect(drafts.hasCover(video))
+        drafts.useRevision("second", for: video)
+        #expect(!drafts.hasCover(video))
+    }
+
 }

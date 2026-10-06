@@ -63,6 +63,9 @@ struct PosterCoverStudio: View {
             async let cover: Void = loadOriginal(applying: untouched)
             _ = await (frames, cover)
         }
+        .onReceive(PosterBench.shared.$error) { error in
+            if let error, PosterBench.shared.active?.id == video.id, picker.videoURL == nil { picker.fail(error) }
+        }
         .onChange(of: picker.busy) { _, pending in
             framePending = draft.source == .frame && pending
         }

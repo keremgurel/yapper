@@ -26,6 +26,13 @@ actor PosterProjectRender {
         return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
+    func cached(_ listing: ProjectListing) async -> URL? {
+        guard let project = try? await ProjectPackageStore(package: listing.package).load(),
+              let revision = try? Self.revision(project) else { return nil }
+        let file = ProjectStore.directory.appending(path: "Poster renders/\(project.id.uuidString)/\(revision).mp4")
+        return FileManager.default.fileExists(atPath: file.path) ? file : nil
+    }
+
     func render(_ listing: ProjectListing) async throws -> URL {
         guard let project = try await ProjectPackageStore(package: listing.package).load(), !project.clips.isEmpty else {
             throw NativeEditorError.exportFailed("Open this project in Editor and add a clip first.")

@@ -22,6 +22,7 @@ final class PosterBench: ObservableObject {
             if case let .project(listing) = video.origin {
                 let rendered = try await PosterProjectRender.shared.render(listing)
                 guard generation == request else { return }
+                PosterDraftStore.shared.useRevision(rendered.deletingPathExtension().lastPathComponent, for: video)
                 active?.previewURL = rendered
                 return
             }

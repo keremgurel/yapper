@@ -17,6 +17,8 @@ final class PosterPublishPrep: ObservableObject {
         preparing = true
         warning = nil
         defer { preparing = false }
+        let needsCover = cover.image != nil && destinations.contains(where: { $0 != .tiktok })
+        async let uploadedCover = uploadCover(cover, needed: needsCover)
         var submissionID = video.submissionID
         var contentItemID = video.contentItemID
         if case let .project(listing) = video.origin {
@@ -29,13 +31,8 @@ final class PosterPublishPrep: ObservableObject {
                 return
             }
         }
-        var thumbnailKey: String?
-        if cover.image != nil {
-            if let png = PosterCoverRenderer.png(cover) {
-                thumbnailKey = try? await PosterFileUpload.uploadCover(png: png)
-            }
-            if thumbnailKey == nil { warning = "The cover couldn't upload. The video is still ready to publish." }
-        }
+        let thumbnailKey = await uploadedCover
+        if needsCover && thumbnailKey == nil { warning = "The cover couldn't upload. The video is still ready to publish." }
         let headline = cover.headline.trimmingCharacters(in: .whitespacesAndNewlines)
         let target = PosterPublishTarget(
             id: video.id,
@@ -48,6 +45,10 @@ final class PosterPublishPrep: ObservableObject {
             thumbnailKey: thumbnailKey
         )
         sheet = PosterPublishSheetRequest(targets: [target], platforms: destinations)
+    }
+    private func uploadCover(_ cover: PosterCoverDraft, needed: Bool) async -> String? {
+        guard needed, let png = PosterCoverRenderer.png(cover) else { return nil }
+        return try? await PosterFileUpload.uploadCover(png: png)
     }
 }
 
