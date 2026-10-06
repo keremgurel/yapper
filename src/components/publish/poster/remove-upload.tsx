@@ -47,7 +47,7 @@ export default function RemoveUpload({
         variant="outline"
         size="icon"
         aria-label={`Remove ${title}`}
-        className="bg-background text-destructive absolute top-2 right-2 z-10"
+        className="bg-background dark:bg-background text-destructive hover:text-destructive absolute top-2 right-2 z-10"
         onClick={() => setOpen(true)}
       >
         <X aria-hidden className="size-4" />
