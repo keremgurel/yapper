@@ -116,10 +116,16 @@ struct CanvasDeselectionTests {
     }
 }
 
+// Hook placement must not race restoration of another test's saved project.
+private actor HookPlacementStore: ProjectPersisting {
+    func load() async throws -> EditorProject? { nil }
+    func save(_ project: EditorProject) async throws { }
+}
+
 @MainActor
 struct HookPlacementTests {
     private func sessionWithFootage() -> EditorSession {
-        let session = EditorSession()
+        let session = EditorSession(store: HookPlacementStore())
         let mediaID = UUID()
         session.updateProject { project in
             project = EditorProject(
@@ -152,7 +158,7 @@ struct HookPlacementTests {
 
 
     @Test func aHookOnAShortProjectStopsAtTheEnd() async {
-        let session = EditorSession()
+        let session = EditorSession(store: HookPlacementStore())
         let mediaID = UUID()
         session.updateProject { project in
             project = EditorProject(
