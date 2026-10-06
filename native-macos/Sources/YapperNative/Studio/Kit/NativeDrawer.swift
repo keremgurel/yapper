@@ -59,6 +59,7 @@ extension View {
     /// Presents a `NativeDrawer` over this view while `item` is set.
     func nativeDrawer<Item: Identifiable, Drawer: View>(
         item: Binding<Item?>,
+        dismissOnOutsideTap: Bool = true,
         @ViewBuilder drawer: @escaping (Item) -> Drawer
     ) -> some View {
         overlay {
@@ -67,7 +68,7 @@ extension View {
                     Color.black.opacity(0.28)
                         .ignoresSafeArea()
                         .contentShape(Rectangle())
-                        .onTapGesture { item.wrappedValue = nil }
+                        .onTapGesture { if dismissOnOutsideTap { item.wrappedValue = nil } }
                         .transition(.opacity)
                 }
                 if let value = item.wrappedValue {

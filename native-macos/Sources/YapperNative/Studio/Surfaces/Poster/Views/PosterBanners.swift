@@ -56,7 +56,7 @@ struct PosterBanners: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(uploading ? "Uploading the final export, \(Int(upload.progress * 100))%" : "Reading the video for captions")
                         .font(.system(size: 13, weight: .semibold))
-                    Text(uploading ? "The video opens here as soon as it lands." : "The transcript grounds every platform draft.")
+                    Text(uploading ? "The preview is ready. You can write captions while it uploads." : "The transcript grounds every platform draft.")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                 }
                 Spacer()
