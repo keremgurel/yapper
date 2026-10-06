@@ -87,6 +87,67 @@ it("rejects other accounts and edited projects", async () => {
       .status,
   ).toBe(404);
 });
+it.each(["published", "failed"] as const)(
+  "removes an upload immediately after a %s attempt without deleting post history",
+  async (status) => {
+    const item = await uploadRow();
+    await db.insert(schema.publishJobs).values({
+      userId: "owner",
+      mediaKey: "owner/video",
+      platform: "youtube",
+      status,
+      updatedAt: new Date(),
+    });
+
+    expect((await remove(item.id)).status).toBe(200);
+    expect(await db.select().from(schema.contentItems)).toHaveLength(0);
+    const [submission] = await db
+      .select()
+      .from(schema.submissions)
+      .where(eq(schema.submissions.userId, "owner"));
+    expect(submission.mediaKey).toBeNull();
+    expect(submission.transcript).toEqual(["keep these words"]);
+    const [owner] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, "owner"));
+    expect(owner.storageBytes).toBe(0);
+    const [object] = await db
+      .select()
+      .from(schema.r2Objects)
+      .where(eq(schema.r2Objects.mediaKey, "owner/video"));
+    expect(object.state).toBe("delete_pending");
+    expect(await db.select().from(schema.publishJobs)).toHaveLength(1);
+    expect(mocks.drain).toHaveBeenCalledOnce();
+  },
+);
+it.each(["queued", "uploading", "processing"] as const)(
+  "keeps an upload with an active %s attempt even when it is old",
+  async (status) => {
+    const item = await uploadRow();
+    await db.insert(schema.publishJobs).values({
+      userId: "owner",
+      mediaKey: "owner/video",
+      platform: "youtube",
+      status,
+      updatedAt: old,
+    });
+
+    expect((await remove(item.id)).status).toBe(409);
+    expect(await db.select().from(schema.contentItems)).toHaveLength(1);
+    const [owner] = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.id, "owner"));
+    expect(owner.storageBytes).toBe(100);
+    const [object] = await db
+      .select()
+      .from(schema.r2Objects)
+      .where(eq(schema.r2Objects.mediaKey, "owner/video"));
+    expect(object.state).toBe("active");
+    expect(mocks.drain).not.toHaveBeenCalled();
+  },
+);
 it("keeps the upload and file while a scheduled post needs it", async () => {
   const item = await uploadRow();
   await db.insert(schema.publishingSchedules).values({

@@ -72,7 +72,7 @@ function protectedMediaQuery(
   candidate: PostedMediaCandidate,
   now: Date,
   protectEdit: boolean,
-  protectRecentUpload = true,
+  protectGracePeriods = true,
 ) {
   const { userId, mediaKey } = candidate;
   return sql`
@@ -85,12 +85,12 @@ function protectedMediaQuery(
       or exists (select 1 from publish_jobs pj
         where pj.user_id = ${userId} and pj.media_key = ${mediaKey}
           and (pj.status in ('queued', 'uploading', 'processing')
-            or pj.updated_at >= ${new Date(now.getTime() - POSTED_MEDIA_GRACE_MS)}))
+            or (${protectGracePeriods} and pj.updated_at >= ${new Date(now.getTime() - POSTED_MEDIA_GRACE_MS)})))
       or exists (select 1 from r2_objects r
         where r.user_id = ${userId} and r.media_key = ${mediaKey}
-          and (r.state <> 'active' or (${protectRecentUpload} and r.delete_not_before > ${now})))
+          and (r.state <> 'active' or (${protectGracePeriods} and r.delete_not_before > ${now})))
       or exists (select 1 from submissions s
-        where ${protectRecentUpload} and s.user_id = ${userId} and s.media_key = ${mediaKey}
+        where ${protectGracePeriods} and s.user_id = ${userId} and s.media_key = ${mediaKey}
           and s.updated_at > ${new Date(now.getTime() - 10 * 60 * 1_000)})
   `;
 }
@@ -177,6 +177,7 @@ export async function releasePostedMedia(
             candidate,
             now,
             reason !== "subscription_lapsed",
+            // Explicit removal waives retry/upload grace, never active references.
             reason !== "user_requested",
           ),
         )
