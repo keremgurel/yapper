@@ -88,10 +88,22 @@ final class StudioWebCommands: ObservableObject {
         guard let webView, let literal = try? String(
             data: JSONSerialization.data(withJSONObject: ["url": "https://ypr.app\(path)"]),
             encoding: .utf8
-        ) else { return }
+        ) else {
+            ConnectionsStore.shared.cancelConnecting(message: "Studio isn't ready to connect yet. Try again shortly.")
+            return
+        }
+        if let platform = PublishPlatform(rawValue: String(path.split(separator: "/").last ?? "")) {
+            ConnectionsStore.shared.beginConnecting(platform)
+        }
         webView.evaluateJavaScript(
-            "window.webkit?.messageHandlers?.yapperNative?.postMessage({command:'open_oauth_flow', args:\(literal)})"
-        )
+            "window.webkit.messageHandlers.yapperNative.postMessage({command:'open_oauth_flow', args:\(literal)})"
+        ) { _, error in
+            if error != nil {
+                Task { @MainActor in
+                    ConnectionsStore.shared.cancelConnecting(message: "Couldn't open sign-in. Try connecting again.")
+                }
+            }
+        }
     }
 
     func register(webView: WKWebView) {

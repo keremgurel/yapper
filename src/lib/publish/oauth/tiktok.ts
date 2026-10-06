@@ -18,6 +18,9 @@ export const tiktok: OAuthProvider = {
     const params = new URLSearchParams({
       client_key: creds.id,
       response_type: "code",
+      // A deliberate Connect/Reconnect must let the creator review the account
+      // and permissions, even when TikTok remembers a previous authorization.
+      disable_auto_auth: "1",
       scope: tiktokScopes().join(","),
       redirect_uri: redirectUri,
       state,

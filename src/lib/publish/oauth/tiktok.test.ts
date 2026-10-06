@@ -5,6 +5,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe("tiktok.buildAuthUrl", () => {
+  it("shows authorization again while preserving the callback and CSRF state", () => {
+    const callback = "https://ypr.app/api/publish/callback/tiktok";
+    const url = new URL(
+      tiktok.buildAuthUrl(
+        { id: "client", secret: "secret" },
+        callback,
+        "nonce",
+      ),
+    );
+    expect(url.origin + url.pathname).toBe(
+      "https://www.tiktok.com/v2/auth/authorize/",
+    );
+    expect(url.searchParams.get("disable_auto_auth")).toBe("1");
+    expect(url.searchParams.get("redirect_uri")).toBe(callback);
+    expect(url.searchParams.get("state")).toBe("nonce");
+    expect(url.searchParams.has("client_secret")).toBe(false);
+  });
+});
+
 describe("tiktok.refreshAccessToken", () => {
   it("returns the rotated refresh token so it can be persisted", async () => {
     // TikTok's refresh grant returns a fresh refresh_token each time; dropping
