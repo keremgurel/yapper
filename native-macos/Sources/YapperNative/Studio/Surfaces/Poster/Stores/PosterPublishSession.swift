@@ -57,6 +57,14 @@ final class PosterPublishSession: ObservableObject {
                     drafts.record(outcome)
                 }
             }
+            let results = outcomes.filter { $0.videoID == target.id }
+            if results.count == chosen.count, results.allSatisfy({ $0.status == .posted || $0.status == .draft }),
+               let id = target.contentItemID,
+               PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {
+                if let updated: PosterContentEnvelope = try? await PosterHTTP.patch("api/content/\(id)", body: ["sourceUrl": "yapper://poster-upload/completed"]) {
+                    PosterLibraryStore.shared.upsert(updated.item)
+                }
+            }
         }
     }
 

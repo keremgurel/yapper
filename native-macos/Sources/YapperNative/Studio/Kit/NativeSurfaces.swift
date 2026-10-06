@@ -51,7 +51,7 @@ struct NativeSurfaceHost: View {
         case .brain:
             BrainPage()
         case .poster:
-            PosterPage()
+            PosterPage(session: session)
         default:
             EmptyView()
         }

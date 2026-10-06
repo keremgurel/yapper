@@ -26,6 +26,7 @@ export default function VideoGrid({
   uploadProgress,
   onAdd,
   onOpen,
+  onRemoved,
 }: {
   source: PosterSource;
   videos: PosterVideo[];
@@ -37,6 +38,7 @@ export default function VideoGrid({
   uploadProgress: number;
   onAdd: () => void;
   onOpen: (video: PosterVideo) => void;
+  onRemoved?: (id: string) => void;
 }) {
   if (source !== "uploads" && !connected && !loading) {
     return <ConnectTile platform={source} />;
@@ -66,6 +68,7 @@ export default function VideoGrid({
             key={video.id}
             video={video}
             active={activeId === video.id}
+            onRemoved={source === "uploads" ? onRemoved : undefined}
             onOpen={() => void onOpen(video)}
           />
         ) : (

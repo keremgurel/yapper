@@ -68,6 +68,7 @@ extension EditorSession {
 
     func renameCurrentProject(to name: String) async {
         guard let package = projectNavigation.currentPackage else { return }
+        await stopManagedMedia(for: projectNavigation.currentPackage)
         do {
             let renamed = try await library.rename(package, to: name)
             store = ProjectPackageStore(package: renamed)
@@ -84,11 +85,13 @@ extension EditorSession {
 
     func duplicateCurrentProject() async {
         guard let package = projectNavigation.currentPackage else { return }
+        await stopManagedMedia(for: projectNavigation.currentPackage)
         try? await persist()
         await duplicateProject(package)
     }
 
     func duplicateProject(_ package: ProjectPackage) async {
+        await stopManagedMedia(for: package)
         do {
             let copy = try await library.duplicate(package)
             projectNavigation.noteLibraryChanged()
@@ -101,17 +104,28 @@ extension EditorSession {
     /// Into the Trash. Trashing the open project leaves the grid showing.
     func trashProject(_ package: ProjectPackage) async {
         do {
+            if let listing = try await library.listings().first(where: { $0.package == package }),
+               PosterProjectSync.shared.isUploading(projectID: listing.summary.id) {
+                showMessage("Wait for this project’s upload to finish before moving it to Trash.")
+                return
+            }
+            await stopManagedMedia(for: package)
             if projectNavigation.currentPackage == package {
                 await leaveCurrentProject()
+                await stopManagedMedia(for: package)
                 store = ProjectStore(directory: FileManager.default.temporaryDirectory
                     .appending(path: "yapper-detached-\(UUID().uuidString)", directoryHint: .isDirectory))
                 projectNavigation.currentPackage = nil
                 resetProject(to: EditorProject())
                 projectNavigation.showsProjectsHome = true
             }
+            if let listing = try await library.listings().first(where: { $0.package == package }) {
+                await PosterProjectSync.shared.cancel(projectID: listing.summary.id)
+            }
             try await library.trash(package)
             await ProjectPosterLoader.shared.invalidate(package)
             projectNavigation.noteLibraryChanged()
+            saveMediaInBackground()
         } catch {
             show(error)
         }
@@ -121,6 +135,7 @@ extension EditorSession {
     /// open one. What Cmd+S means in an app that already saves everything.
     func saveCopy(to url: URL) async {
         let destination = ProjectPackage(url: url)
+        await stopManagedMedia(for: projectNavigation.currentPackage)
         do {
             try FileManager.default.createDirectory(at: destination.url, withIntermediateDirectories: true)
             var copy = project

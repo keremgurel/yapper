@@ -1,78 +1,55 @@
 "use client";
 
-import { Upload } from "lucide-react";
+import { Check, Upload } from "lucide-react";
 import PlatformIcon from "@/components/publish/platform-icon";
 import { PLATFORMS } from "@/lib/publish/platforms";
 import { publishPlatforms, type PublishPlatform } from "@/lib/db/schema";
 import type { PosterSource } from "./use-source-videos";
 
 export default function SourceOptions({
+  selected,
   onChoose,
-  onUpload,
   connected,
 }: {
+  selected: PosterSource;
   onChoose: (source: PosterSource) => void;
-  onUpload: () => void;
   connected: PublishPlatform[];
 }) {
-  const row =
-    "group flex min-h-24 w-full items-center gap-4 border-b border-border py-5 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring";
   return (
-    <section
-      aria-label="Choose a video source"
-      className="mx-auto w-full max-w-3xl py-6"
+    <nav
+      aria-label="Video sources"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5"
     >
-      <h2 className="mb-2 text-xl font-semibold">
-        What would you like to post?
-      </h2>
-      <p className="text-muted-foreground mb-6 text-sm">
-        Start with a finished file or a video from a connected channel.
-      </p>
-      <div className="border-border flex items-center gap-3 border-b">
-        <button className={`${row} border-0`} onClick={onUpload}>
-          <Upload
-            aria-hidden
-            className="text-muted-foreground size-6 shrink-0"
-          />
+      {(["uploads", ...publishPlatforms] as const).map((source) => (
+        <button
+          key={source}
+          type="button"
+          onClick={() => onChoose(source)}
+          aria-pressed={selected === source}
+          className={`focus-visible:outline-ring flex min-h-16 items-center gap-3 rounded-lg border p-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 ${selected === source ? "border-foreground/50 bg-muted" : "border-border hover:bg-muted/50"}`}
+        >
+          {source === "uploads" ? (
+            <Upload aria-hidden className="size-5 shrink-0" />
+          ) : (
+            <PlatformIcon platform={source} className="size-5 shrink-0" />
+          )}
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold">Upload a video</span>
-            <span className="text-muted-foreground mt-1 block text-sm">
-              Choose a finished file from your computer.
+            <span className="block text-sm font-semibold">
+              {source === "uploads" ? "Uploads" : PLATFORMS[source].label}
+            </span>
+            <span className="text-muted-foreground mt-1 block text-xs">
+              {source === "uploads"
+                ? "Ready to post"
+                : connected.includes(source)
+                  ? "Connected"
+                  : "Connect account"}
             </span>
           </span>
+          {selected === source && (
+            <Check aria-hidden className="size-3 shrink-0" />
+          )}
         </button>
-        <button
-          onClick={() => onChoose("uploads")}
-          className="focus-visible:outline-ring shrink-0 rounded-md px-2 py-3 text-sm font-medium underline underline-offset-4 focus-visible:outline-2"
-        >
-          View uploads
-        </button>
-      </div>
-      <div className="py-5">
-        <h3 className="font-semibold">From a platform</h3>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Choose one of your published videos to send elsewhere.
-        </p>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {publishPlatforms.map((platform) => (
-            <button
-              key={platform}
-              onClick={() => onChoose(platform)}
-              className="border-border hover:bg-muted focus-visible:outline-ring flex min-h-16 items-center gap-2 rounded-lg border px-3 py-3 text-left text-sm font-medium focus-visible:outline-2"
-            >
-              <PlatformIcon platform={platform} className="size-4 shrink-0" />
-              <span>
-                {PLATFORMS[platform].label}
-                <span className="text-muted-foreground block text-xs font-normal">
-                  {connected.includes(platform)
-                    ? "Connected"
-                    : "Connect account"}
-                </span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
+      ))}
+    </nav>
   );
 }

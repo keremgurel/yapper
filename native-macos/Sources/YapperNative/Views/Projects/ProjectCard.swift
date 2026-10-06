@@ -10,6 +10,7 @@ struct ProjectCard: View {
     let onDuplicate: () -> Void
     let onReveal: () -> Void
     let onTrash: () -> Void
+    @State private var storedBytes: Int64 = 0
 
     private static let relative: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
@@ -42,6 +43,7 @@ struct ProjectCard: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                Text("\(ProjectDiskUsage.label(storedBytes)) in project").font(.system(size: 11)).foregroundStyle(.secondary)
                 .padding(.horizontal, 2)
             }
         }
@@ -55,6 +57,10 @@ struct ProjectCard: View {
             Button("Show in Finder") { onReveal() }
             Divider()
             Button("Move to Trash", role: .destructive) { onTrash() }
+        }
+        .task(id: listing) {
+            let url = listing.package.url
+            storedBytes = await Task.detached(priority: .utility) { ProjectDiskUsage.bytes(in: url) }.value
         }
         .accessibilityLabel("\(listing.summary.name), \(duration)")
     }

@@ -123,7 +123,12 @@ actor ProjectLibrary {
 
     /// To the Trash, never gone.
     func trash(_ package: ProjectPackage) throws {
+        let projectID = summary(for: package)?.id
         try FileManager.default.trashItem(at: package.url, resultingItemURL: nil)
+        if let projectID {
+            let cache = ProjectStore.directory.appending(path: "Poster renders/\(projectID.uuidString)")
+            try? FileManager.default.removeItem(at: cache)
+        }
         RecentProjects.forget(package.url)
     }
 

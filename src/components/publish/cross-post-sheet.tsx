@@ -120,6 +120,7 @@ export default function CrossPostSheet({
   initialPlatforms,
   onClose,
   onNext,
+  onCompleted,
 }: {
   item?: CrossPostTarget;
   items?: CrossPostTarget[];
@@ -128,6 +129,7 @@ export default function CrossPostSheet({
   initialPlatforms?: PublishPlatform[];
   onClose: () => void;
   onNext?: () => void;
+  onCompleted?: (source: CrossPostTarget) => void;
 }) {
   const sources = useMemo(
     () => (items?.length ? items : item ? [item] : []),
@@ -239,6 +241,19 @@ export default function CrossPostSheet({
           setOutcomes([...finished]);
         },
       );
+    }
+    for (const source of sources) {
+      const results = finished.filter(
+        (outcome) => outcome.sourceId === source.id,
+      );
+      if (
+        results.length === targets.length &&
+        results.every(
+          (outcome) =>
+            outcome.status === "posted" || outcome.status === "draft",
+        )
+      )
+        onCompleted?.(source);
     }
     operation.current = false;
     setPosting(false);

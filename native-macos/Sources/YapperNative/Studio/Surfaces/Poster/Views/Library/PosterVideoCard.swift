@@ -6,7 +6,11 @@ struct PosterVideoCard: View {
     @ObservedObject private var sync = PosterProjectSync.shared
     let video: PosterVideo
     let importing: Bool
+    var onTrashProject: ((ProjectListing) -> Void)? = nil
     let onOpen: () -> Void
+    @State private var confirmRemoval = false
+    @State private var removing = false
+    @State private var removalError: String?
 
     var body: some View {
         Button(action: onOpen) {
@@ -38,6 +42,40 @@ struct PosterVideoCard: View {
         }
         .buttonStyle(.studioPlain)
         .disabled(!video.canOpen || importing)
+        .overlay(alignment: .topTrailing) {
+            if case let .yapper(_, id, _, _, _) = video.origin,
+               PosterLibraryStore.shared.items?.first(where: { $0.id == id })?.sourceUrl == "yapper://poster-upload" {
+                Button { confirmRemoval = true } label: {
+                    Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Color.studioDanger).frame(width: 32, height: 32)
+                        .background(Circle().fill(Color.panelBackground))
+                }.buttonStyle(.studioPlain).padding(8).disabled(removing).help("Remove upload")
+                    .accessibilityLabel("Remove \(video.title)")
+            }
+        }
+        .alert("Remove this upload?", isPresented: $confirmRemoval) {
+            Button("Cancel", role: .cancel) { }
+            Button("Remove upload", role: .destructive) {
+                guard let id = video.contentItemID else { return }
+                removing = true
+                Task {
+                    defer { removing = false }
+                    do {
+                        try await StudioJSONClient.delete("api/publish/uploads/\(id)")
+                        await PosterLibraryStore.shared.refresh()
+                    } catch { removalError = "Couldn’t remove this upload. It may still be needed for publishing or a scheduled post. Try again after it finishes." }
+                }
+            }
+        } message: { Text("Your original file and published posts stay untouched.") }
+        .alert("Upload could not be removed", isPresented: Binding(get: { removalError != nil }, set: { if !$0 { removalError = nil } })) {
+            Button("OK") { removalError = nil }
+        } message: { Text(removalError ?? "") }
+        .contextMenu {
+            if case let .project(listing) = video.origin, let onTrashProject {
+                Button("Show in Finder") { ProjectPanels.revealInFinder(listing.package) }
+                Button("Move project to Trash", role: .destructive) { onTrashProject(listing) }
+            }
+        }
         .help(video.canOpen ? "" : "Only videos posted through Yapper can be reposted from here")
     }
 

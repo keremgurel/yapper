@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 /// the middle, the destinations on the right with the one publish button.
 /// A finished video can be dropped anywhere on the page.
 struct PosterPage: View {
+    @ObservedObject var session: EditorSession
     @ObservedObject private var library = PosterLibraryStore.shared
     @ObservedObject private var channels = PosterChannelStore.shared
     @ObservedObject private var connections = PosterConnectionStore.shared
@@ -19,7 +20,6 @@ struct PosterPage: View {
     @ObservedObject private var prep = PosterPublishPrep.shared
     @ObservedObject private var commands = StudioWebCommands.shared
     @ObservedObject private var handoff = PosterHandoff.shared
-    @State private var sourceChosen = false
     @State private var source: PosterSource = .yapper
     @State private var dropTargeted = false
 
@@ -30,7 +30,7 @@ struct PosterPage: View {
                 description: "Pick a video, choose its thumbnail and captions, and send it to every channel at once."
             ) {
                 if bench.active != nil {
-                    Button("Post another video") { bench.close(); sourceChosen = false }
+                    Button("Post another video") { bench.close() }
                         .buttonStyle(EditorGhostButtonStyle())
                 }
                 Button { upload.choose() } label: {
@@ -41,22 +41,22 @@ struct PosterPage: View {
             }
             VStack(alignment: .leading, spacing: 20) {
                 PosterBanners(upload: upload, bench: bench, prep: prep, connections: connections)
-                if sourceChosen {
-                    HStack {
-                        Button("Change source", systemImage: "chevron.left") { bench.close(); sourceChosen = false }
-                            .buttonStyle(EditorGhostButtonStyle(size: .small))
-                        Text(sourceLabel).font(.system(size: 13, weight: .semibold))
-                        Spacer()
-                    }
-                    content
-                } else {
-                    PosterSourceOptions(connected: connections.connected, onChoose: { next in
+                if bench.active == nil {
+                    PosterSourceOptions(selected: source, connected: connections.connected, onChoose: { next in
                         source = next
-                        sourceChosen = true
-                        bench.close()
                         Task { await refreshSource(force: false) }
-                    }, onUpload: { upload.choose() })
+                    })
+                    HStack {
+                        Text(sourceLabel).font(.nativeSectionTitle)
+                        Spacer()
+                        if source == .yapper { ProjectStorageSummary(listings: library.projects) }
+                    }.padding(.top, 8)
+                    if source == .yapper { ManagedMediaNotice(session: session) }
+                } else {
+                    Button("All videos", systemImage: "chevron.left") { bench.close() }
+                        .buttonStyle(EditorGhostButtonStyle(size: .small))
                 }
+                content
             }
         }
         .overlay {
@@ -81,7 +81,6 @@ struct PosterPage: View {
             PosterPublishSheet(request: request, connections: connections, drafts: drafts, onNext: {
                 prep.sheet = nil
                 bench.close()
-                sourceChosen = false
                 Task { await library.refresh() }
             }) { prep.sheet = nil }
         }
@@ -107,7 +106,12 @@ struct PosterPage: View {
                             drafts: drafts, connections: connections)
         } else {
             PosterVideoGrid(source: source, videos: videos, loading: sourceLoading, connected: sourceConnected,
-                            bench: bench, upload: upload, onConnect: connections.connect)
+                            bench: bench, upload: upload, onConnect: connections.connect, onTrashProject: { listing in
+                                Task {
+                                    await session.trashProject(listing.package)
+                                    await library.refresh()
+                                }
+                            })
         }
     }
 
@@ -159,7 +163,6 @@ struct PosterPage: View {
         upload.onDiscarded = { Task { await library.refresh() } }
         upload.onSelected = { video in
             source = .uploads
-            sourceChosen = true
             bench.close()
             bench.active = video
         }
@@ -178,7 +181,6 @@ struct PosterPage: View {
     private func takeHandoff() {
         guard handoff.take(generation: commands.posterGeneration, itemID: commands.posterItemID) else { return }
         source = .uploads
-        sourceChosen = true
         Task {
             await library.refresh()
             handoff.openIfReady(in: library, bench: bench)
