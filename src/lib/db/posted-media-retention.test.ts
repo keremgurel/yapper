@@ -98,6 +98,33 @@ async function schedule(
   });
 }
 
+it.each(["published", "failed"] as const)(
+  "keeps automatic retry grace after %s but honors explicit removal through object cleanup",
+  async (status) => {
+    await video("finished");
+    await publish("finished", status, now);
+    const candidate = { userId: "owner", mediaKey: "finished" };
+
+    expect(
+      await releasePostedMedia(candidate, "subscription_lapsed", now),
+    ).toBe("skipped");
+    expect(await releasePostedMedia(candidate, "user_requested", now)).toBe(
+      "released",
+    );
+    await processR2LifecycleBatch();
+    expect(remove).toHaveBeenCalledExactlyOnceWith(
+      "finished",
+      expect.any(AbortSignal),
+    );
+    const [object] = await db
+      .select()
+      .from(schema.r2Objects)
+      .where(eq(schema.r2Objects.mediaKey, "finished"));
+    expect(object.state).toBe("deleted");
+    expect(await db.select().from(schema.publishJobs)).toHaveLength(1);
+  },
+);
+
 it("reclaims legacy unposted uploads and imports, keeps one video, text and logos, and refunds shared objects once", async () => {
   const first = await video("old");
   await video("current", recent);
