@@ -19,6 +19,7 @@ struct PosterPage: View {
     @ObservedObject private var prep = PosterPublishPrep.shared
     @ObservedObject private var commands = StudioWebCommands.shared
     @ObservedObject private var handoff = PosterHandoff.shared
+    @State private var sourceChosen = false
     @State private var source: PosterSource = .yapper
     @State private var dropTargeted = false
 
@@ -28,6 +29,10 @@ struct PosterPage: View {
                 title: "Poster",
                 description: "Pick a video, choose its thumbnail and captions, and send it to every channel at once."
             ) {
+                if bench.active != nil {
+                    Button("Post another video") { bench.close(); sourceChosen = false }
+                        .buttonStyle(EditorGhostButtonStyle())
+                }
                 Button { upload.choose() } label: {
                     Label(addLabel, systemImage: "square.and.arrow.up")
                 }
@@ -36,12 +41,22 @@ struct PosterPage: View {
             }
             VStack(alignment: .leading, spacing: 20) {
                 PosterBanners(upload: upload, bench: bench, prep: prep, connections: connections)
-                PosterSourceTabs(source: source, connected: connections.connected) { next in
-                    source = next
-                    bench.close()
-                    Task { await refreshSource(force: false) }
+                if sourceChosen {
+                    HStack {
+                        Button("Change source", systemImage: "chevron.left") { bench.close(); sourceChosen = false }
+                            .buttonStyle(EditorGhostButtonStyle(size: .small))
+                        Text(sourceLabel).font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                    }
+                    content
+                } else {
+                    PosterSourceOptions(connected: connections.connected, onChoose: { next in
+                        source = next
+                        sourceChosen = true
+                        bench.close()
+                        Task { await refreshSource(force: false) }
+                    }, onUpload: { upload.choose() })
                 }
-                content
             }
         }
         .overlay {
@@ -63,7 +78,12 @@ struct PosterPage: View {
             }
         }
         .nativeDrawer(item: $prep.sheet) { request in
-            PosterPublishSheet(request: request, connections: connections, drafts: drafts) { prep.sheet = nil }
+            PosterPublishSheet(request: request, connections: connections, drafts: drafts, onNext: {
+                prep.sheet = nil
+                bench.close()
+                sourceChosen = false
+                Task { await library.refresh() }
+            }) { prep.sheet = nil }
         }
     }
 
@@ -76,7 +96,7 @@ struct PosterPage: View {
                 Button("Try again") { Task { await channels.refresh(platform, force: true) } }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             }
-        } else if source == .yapper && library.items == nil && library.loadFailed {
+        } else if source == .uploads && library.items == nil && library.loadFailed {
             NativeEmptyState(systemImage: "arrow.clockwise", title: "Your videos could not be loaded",
                              message: "The library did not answer. Try again, or add a new export and it will open here.") {
                 Button("Try again") { Task { await library.refresh() } }
@@ -91,6 +111,14 @@ struct PosterPage: View {
         }
     }
 
+    private var sourceLabel: String {
+        switch source {
+        case .yapper: "Made in Yapper"
+        case .uploads: "Uploads"
+        case let .platform(platform): platform.label
+        }
+    }
+
     private var addLabel: String {
         switch upload.phase {
         case .uploading: "Uploading \(Int(upload.progress * 100))%"
@@ -101,14 +129,16 @@ struct PosterPage: View {
 
     private var sourceVideos: [PosterVideo] {
         switch source {
-        case .yapper: library.videos
+        case .yapper: library.projectVideos
+        case .uploads: library.videos
         case let .platform(platform): channels.videos(for: platform)
         }
     }
 
     private var sourceLoading: Bool {
         switch source {
-        case .yapper: library.loading
+        case .yapper: !library.projectsLoaded
+        case .uploads: library.loading
         case let .platform(platform): channels.loading(platform)
         }
     }
@@ -127,10 +157,15 @@ struct PosterPage: View {
 
     private func start() async {
         upload.onDiscarded = { Task { await library.refresh() } }
+        upload.onSelected = { video in
+            source = .uploads
+            sourceChosen = true
+            bench.close()
+            bench.active = video
+        }
         upload.onAdded = { item in
             library.upsert(item)
-            source = .yapper
-            if item.submissionId != nil { bench.active = PosterVideo(item: item) }
+
         }
         upload.onUpdated = { library.upsert($0) }
         takeHandoff()
@@ -142,7 +177,8 @@ struct PosterPage: View {
 
     private func takeHandoff() {
         guard handoff.take(generation: commands.posterGeneration, itemID: commands.posterItemID) else { return }
-        source = .yapper
+        source = .uploads
+        sourceChosen = true
         Task {
             await library.refresh()
             handoff.openIfReady(in: library, bench: bench)
@@ -151,7 +187,7 @@ struct PosterPage: View {
 
     private func refreshSource(force: Bool) async {
         switch source {
-        case .yapper: await library.refresh()
+        case .yapper, .uploads: await library.refresh()
         case let .platform(platform): await channels.refresh(platform, force: force)
         }
     }

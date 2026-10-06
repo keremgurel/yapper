@@ -3,6 +3,7 @@ import SwiftUI
 /// One video, portrait like the video itself. The whole card opens it.
 /// A channel post Yapper has no file for is shown but cannot be opened.
 struct PosterVideoCard: View {
+    @ObservedObject private var sync = PosterProjectSync.shared
     let video: PosterVideo
     let importing: Bool
     let onOpen: () -> Void
@@ -43,6 +44,14 @@ struct PosterVideoCard: View {
     @ViewBuilder
     private var meta: some View {
         switch video.origin {
+        case let .project(listing):
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Latest edit · \(Int(listing.summary.duration))s")
+                if let status = sync.status[listing.summary.id] { Text(status) }
+                else if sync.errors[listing.summary.id] != nil { Text("Available on this Mac").foregroundStyle(NativeChip.Tone.yellow.color) }
+            }.font(.system(size: 12)).foregroundStyle(.secondary)
+        case .file:
+            Text("Uploading…").font(.system(size: 12)).foregroundStyle(.secondary)
         case let .yapper(_, _, status, scheduledFor, _):
             HStack(spacing: 8) {
                 Text(PosterFormat.scheduled(scheduledFor)).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1)

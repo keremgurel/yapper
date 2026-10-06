@@ -15,6 +15,7 @@ export type PosterVideo =
       id: string;
       title: string;
       submissionId: string;
+      previewUrl?: string;
       contentItemId: string;
       status: PostableVideo["status"];
       scheduledFor: string | null;
@@ -32,6 +33,7 @@ export type PosterVideo =
       publishedAt: string;
       url: string;
       mediaKey?: string;
+      previewUrl?: string;
       /** The file can be fetched from the platform (Instagram only). */
       importable: boolean;
     };
@@ -57,7 +59,13 @@ export function currentPosterVideo(
   if (selected?.kind !== "yapper") return selected;
   const current = library.find((video) => video.id === selected.contentItemId);
   // An uploaded video can open before its library row reaches this render.
-  return current ? fromPostable(current) : selected;
+  return current
+    ? {
+        ...fromPostable(current),
+        id: selected.id,
+        previewUrl: selected.previewUrl,
+      }
+    : selected;
 }
 
 export function fromPlatform(
@@ -76,6 +84,7 @@ export function fromPlatform(
     publishedAt: video.publishedAt,
     url: video.url,
     mediaKey: video.mediaKey,
+    previewUrl: video.sourceFileUrl ?? undefined,
     importable:
       platform === "instagram" &&
       (Boolean(video.sourceFileUrl) || Boolean(video.url)),
@@ -92,8 +101,15 @@ export function canOpen(video: PosterVideo): boolean {
 export function mediaOf(video: PosterVideo): {
   submissionId?: string;
   mediaKey?: string;
+  previewUrl?: string;
 } {
   return video.kind === "yapper"
-    ? { submissionId: video.submissionId }
-    : { mediaKey: video.mediaKey };
+    ? {
+        submissionId: video.submissionId || undefined,
+        previewUrl: video.previewUrl,
+      }
+    : {
+        mediaKey: video.mediaKey,
+        previewUrl: video.previewUrl,
+      };
 }

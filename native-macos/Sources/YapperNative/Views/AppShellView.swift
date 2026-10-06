@@ -490,13 +490,7 @@ private struct StudioTopBar: View {
                 }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 .disabled(session.project.clips.isEmpty || session.isBusy)
-                Button {
-                    ImportPanels.exportAndPost(for: session)
-                } label: {
-                    Label("Export & Post", systemImage: "paperplane.fill")
-                }
-                .buttonStyle(EditorPrimaryButtonStyle(size: .small))
-                .disabled(session.project.clips.isEmpty || session.isBusy)
+
             }
 
             NativeThemeSwitcher(theme: theme, action: toggleTheme)

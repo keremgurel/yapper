@@ -131,6 +131,31 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
         const track = await input.getPrimaryVideoTrack();
         if (!track || !(await track.canDecode()))
           throw new Error("unsupported_video");
+        // Show a decoded frame before indexing every packet in a long video.
+        const sink = new VideoSampleSink(track);
+        const first = await sink.getSample(initial.current);
+        if (!first) throw new Error("empty_video");
+        const firstTime = first.timestamp;
+        first.close();
+        const end = await track.computeDuration();
+        if (!live) return;
+        clearTimeout(timer);
+        const current: Engine = {
+          input,
+          sink,
+          times: [firstTime],
+          running: false,
+          disposed: false,
+          frames: new Map(),
+        };
+        engine.current = current;
+        selected.current = 0;
+        setIndex(0);
+        setTimes(current.times);
+        setDuration(end);
+        await decode();
+
+        // Accurate frame stepping becomes available once the metadata index is ready.
         const timestamps: number[] = [];
         for await (const packet of new EncodedPacketSink(track).packets(
           undefined,
@@ -140,25 +165,18 @@ export function useFramePicker(mediaUrl: string | null, initialTime: number) {
           if (!live) return;
           timestamps.push(packet.timestamp);
         }
-        const timeline = presentationTimes(timestamps);
-        const end = await track.computeDuration();
-        if (!timeline.length) throw new Error("empty_video");
         if (!live) return;
-        clearTimeout(timer);
-        engine.current = {
-          input,
-          sink: new VideoSampleSink(track),
-          times: timeline,
-          running: false,
-          disposed: false,
-          frames: new Map(),
-        };
-        const start = nearestFrame(timeline, initial.current);
+        const timeline = presentationTimes(timestamps);
+        if (!timeline.length) return;
+        const start = nearestFrame(
+          timeline,
+          current.times[selected.current] ?? firstTime,
+        );
+        current.times = timeline;
+        current.frames.clear();
         selected.current = start;
         setIndex(start);
         setTimes(timeline);
-        setDuration(end);
-        void decode();
       } catch {
         input?.dispose();
         if (live) {

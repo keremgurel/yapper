@@ -1,6 +1,9 @@
 import type { ContentStage } from "@/lib/db/schema";
 import { describe, expect, it } from "vitest";
-import { postableVideos } from "@/lib/publish/postable-videos";
+import {
+  postableVideos,
+  posterLibraryVideos,
+} from "@/lib/publish/postable-videos";
 import type { ContentSummary } from "@/lib/content/client";
 
 function item(
@@ -64,4 +67,32 @@ describe("postableVideos", () => {
   it("returns an empty list for null (not-yet-loaded) items", () => {
     expect(postableVideos(null)).toEqual([]);
   });
+});
+
+it("separates uploads and keeps only the latest final edit per project", () => {
+  const items = [
+    item({ id: "raw", submissionId: "raw" }),
+    item({
+      id: "upload",
+      submissionId: "upload",
+      sourceUrl: "yapper://poster-upload",
+    }),
+    item({
+      id: "old-edit",
+      submissionId: "old",
+      sourceUrl: "yapper://project/one",
+    }),
+    item({
+      id: "final-edit",
+      submissionId: "new",
+      sourceUrl: "yapper://project/one",
+      updatedAt: "2026-10-06T00:00:00Z",
+    }),
+  ];
+  expect(posterLibraryVideos(items, "uploads").map((row) => row.id)).toEqual([
+    "upload",
+  ]);
+  expect(posterLibraryVideos(items, "yapper").map((row) => row.id)).toEqual([
+    "final-edit",
+  ]);
 });

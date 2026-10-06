@@ -50,9 +50,7 @@ export default function CoverStudio({
   const [useFrame, setUseFrame] = useState(true);
 
   useEffect(() => {
-    onFramePendingChange(
-      draft.source === "frame" && (picker.busy || Boolean(picker.error)),
-    );
+    onFramePendingChange(draft.source === "frame" && picker.busy);
     return () => onFramePendingChange(false);
   }, [draft.source, picker.busy, picker.error, onFramePendingChange]);
 
@@ -139,7 +137,10 @@ export default function CoverStudio({
         onSelect={picker.select}
         onStep={picker.step}
         onJump={picker.jump}
-        onRetry={picker.retry}
+        onRetry={() => {
+          source.retry();
+          picker.retry();
+        }}
       />
 
       <Disclosure

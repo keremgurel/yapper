@@ -9,7 +9,7 @@ enum PosterFileUpload {
     static func ticket(bytes: Int, mimeType: String, ext: String, purpose: Purpose) async throws -> PosterUploadTicket {
         do {
             return try await PosterHTTP.post("api/media/upload-url", body: [
-                "sizeBytes": bytes, "mimeType": mimeType, "ext": ext, "purpose": purpose.rawValue,
+                "sizeBytes": bytes, "mimeType": mimeType, "ext": ext, "purpose": purpose.rawValue, "surface": "poster",
             ])
         } catch let error as PosterHTTPError {
             switch error.code {

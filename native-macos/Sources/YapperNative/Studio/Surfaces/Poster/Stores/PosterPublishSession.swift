@@ -45,19 +45,18 @@ final class PosterPublishSession: ObservableObject {
         outcomes = []
         defer { posting = false }
         for target in targets {
-            let results = await withTaskGroup(of: PosterOutcome.self) { group in
+            await withTaskGroup(of: PosterOutcome.self) { group in
                 for platform in chosen {
                     let key = attemptKey("\(target.id):\(platform.rawValue)")
                     let review = tiktokReviews[target.id]
                     let account = connections.accountID(for: platform)
                     group.addTask { await Self.send(target, platform, key: key, review: review, account: account) }
                 }
-                var collected: [PosterOutcome] = []
-                for await outcome in group { collected.append(outcome) }
-                return chosen.compactMap { platform in collected.first { $0.platform == platform } }
+                for await outcome in group {
+                    outcomes.append(outcome)
+                    drafts.record(outcome)
+                }
             }
-            outcomes.append(contentsOf: results)
-            results.forEach(drafts.record)
         }
     }
 

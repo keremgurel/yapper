@@ -34,12 +34,15 @@ export function waitingPosterMediaQuery(userId?: string) {
       from submissions s
       where ${userId ? sql`s.user_id = ${userId}` : sql`true`}
         and s.media_key is not null and s.surface = 'studio'
+        and s.media_key not like 'u/%/project-%' and s.media_key not like 'u/%/poster-%'
+        and not exists (select 1 from content_items ci where ci.user_id = s.user_id and ci.submission_id = s.id and (ci.editor_revision is not null or ci.source_url = 'yapper://poster-upload'))
         and not exists (select 1 from publish_jobs pj where pj.user_id = s.user_id and pj.media_key = s.media_key and pj.status = 'published')
         and not exists (select 1 from publishing_schedules ps where ps.user_id = s.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = s.media_key)
       union all
       select 'import' as kind, i.id::text as id, i.user_id, i.media_key, i.title, i.created_at
       from imported_platform_media i
       where ${userId ? sql`i.user_id = ${userId}` : sql`true`}
+        and i.media_key not like 'u/%/ig-import-%'
         and not exists (select 1 from publish_jobs pj where pj.user_id = i.user_id and pj.media_key = i.media_key and pj.status = 'published')
         and not exists (select 1 from publishing_schedules ps where ps.user_id = i.user_id and ps.status in ('scheduled', 'running', 'needs_attention') and ps.input->>'mediaKey' = i.media_key)
     ) waiting

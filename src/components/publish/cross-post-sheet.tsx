@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import {
   Sheet,
@@ -118,6 +119,7 @@ export default function CrossPostSheet({
   items,
   initialPlatforms,
   onClose,
+  onNext,
 }: {
   item?: CrossPostTarget;
   items?: CrossPostTarget[];
@@ -125,6 +127,7 @@ export default function CrossPostSheet({
    * pick them twice. Still visible and still removable. */
   initialPlatforms?: PublishPlatform[];
   onClose: () => void;
+  onNext?: () => void;
 }) {
   const sources = useMemo(
     () => (items?.length ? items : item ? [item] : []),
@@ -162,6 +165,7 @@ export default function CrossPostSheet({
   } = useConnections(open);
 
   const close = (next: boolean) => {
+    if (operation.current) return;
     setOpen(next);
     if (!next) onClose();
   };
@@ -214,31 +218,34 @@ export default function CrossPostSheet({
     // large uploads in memory. Each video's platform fan-out still runs in
     // parallel and independently through runCrossPost.
     for (const source of sources) {
-      const sourceResults = await runCrossPost(targets, (platform) =>
-        postSource(
-          source,
-          platform,
-          editable,
-          attemptKeys.current!.forTarget(`${source.id}:${platform}`),
-          tiktokReviews[source.id],
-          connections?.find((connection) => connection.platform === platform)
-            ?.externalAccountId ?? undefined,
-        ),
+      await runCrossPost(
+        targets,
+        (platform) =>
+          postSource(
+            source,
+            platform,
+            editable,
+            attemptKeys.current!.forTarget(`${source.id}:${platform}`),
+            tiktokReviews[source.id],
+            connections?.find((connection) => connection.platform === platform)
+              ?.externalAccountId ?? undefined,
+          ),
+        (result) => {
+          finished.push({
+            ...result,
+            sourceId: source.id,
+            sourceTitle: source.title,
+          });
+          setOutcomes([...finished]);
+        },
       );
-      finished.push(
-        ...sourceResults.map((result) => ({
-          ...result,
-          sourceId: source.id,
-          sourceTitle: source.title,
-        })),
-      );
-      setOutcomes([...finished]);
     }
     operation.current = false;
     setPosting(false);
   };
 
-  const done = outcomes.length === sources.length * targets.length;
+  const done =
+    outcomes.length > 0 && outcomes.length === sources.length * targets.length;
   const failures = outcomes.filter((outcome) => outcome.status === "failed");
 
   return (
@@ -262,7 +269,9 @@ export default function CrossPostSheet({
             <SingleCopyFields
               title={title}
               caption={caption}
-              disabled={posting || scheduling || scheduled}
+              disabled={
+                posting || scheduling || scheduled || outcomes.length > 0
+              }
               onTitle={setTitle}
               onCaption={setCaption}
             />
@@ -301,7 +310,9 @@ export default function CrossPostSheet({
                 )}
                 connected={connected}
                 selected={selected}
-                disabled={posting || scheduling || scheduled}
+                disabled={
+                  posting || scheduling || scheduled || outcomes.length > 0
+                }
                 onToggle={togglePlatform}
                 onToggleAll={() =>
                   setSelected(
@@ -341,24 +352,30 @@ export default function CrossPostSheet({
                 </p>
               )}
 
-              {!scheduled && (
-                <PublishButton
-                  videos={sources.length}
-                  platforms={chosen.length}
-                  postedSoFar={outcomes.length}
-                  posting={posting}
-                  done={done}
-                  disabled={
-                    posting ||
-                    !tiktokReady ||
-                    scheduling ||
-                    sources.length === 0 ||
-                    chosen.length === 0 ||
-                    (editable ? !title.trim() : false)
-                  }
-                  onPublish={() => void publish()}
-                />
+              {onNext && !posting && (done || scheduled) && (
+                <Button onClick={onNext}>Post another video</Button>
               )}
+              {!scheduled &&
+                (!done ||
+                  failures.length > 0 ||
+                  outcomes.some((outcome) => outcome.status === "pending")) && (
+                  <PublishButton
+                    videos={sources.length}
+                    platforms={chosen.length}
+                    postedSoFar={outcomes.length}
+                    posting={posting}
+                    done={done}
+                    disabled={
+                      posting ||
+                      !tiktokReady ||
+                      scheduling ||
+                      sources.length === 0 ||
+                      chosen.length === 0 ||
+                      (editable ? !title.trim() : false)
+                    }
+                    onPublish={() => void publish()}
+                  />
+                )}
               {outcomes.length === 0 && !chosen.includes("tiktok") && (
                 <SchedulePanel
                   accounts={Object.fromEntries(

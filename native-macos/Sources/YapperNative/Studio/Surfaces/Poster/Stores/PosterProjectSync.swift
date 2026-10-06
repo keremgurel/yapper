@@ -1,0 +1,78 @@
+import Foundation
+
+/// Keep the latest saved edit available in both Posters. Debounce editor saves,
+/// share work with selection/publishing, and upload only a changed revision.
+@MainActor
+final class PosterProjectSync: ObservableObject {
+    static let shared = PosterProjectSync()
+    @Published private(set) var status: [UUID: String] = [:]
+    @Published private(set) var errors: [UUID: String] = [:]
+    private var pending: [UUID: Task<Void, Never>] = [:]
+    private var uploads: [String: Task<PosterContentItem, Error>] = [:]
+    private var completed: [String: PosterContentItem] = [:]
+
+    func schedule(_ listing: ProjectListing, delay: Double = 2) {
+        guard !ProjectStore.isTesting, listing.summary.clipCount > 0 else { return }
+        pending[listing.summary.id]?.cancel()
+        pending[listing.summary.id] = Task {
+            do {
+                try await Task.sleep(for: .seconds(delay))
+                _ = try await prepare(listing)
+            } catch is CancellationError { }
+            catch { errors[listing.summary.id] = error.localizedDescription }
+        }
+    }
+
+    func prepare(_ listing: ProjectListing) async throws -> PosterContentItem {
+        guard let userID = StudioAuth.shared.account?.userID else {
+            throw NativeEditorError.exportFailed("Sign in to make this edit available for posting.")
+        }
+        let id = listing.summary.id
+        guard let project = try await ProjectPackageStore(package: listing.package).load() else {
+            throw PosterHandoffError.invalidExport
+        }
+        if let owner = project.studioSource?.userID, owner != userID {
+            throw NativeEditorError.exportFailed("This project belongs to another Yapper account.")
+        }
+        let revision = try PosterProjectRender.revision(project)
+        let key = "\(userID):\(id):\(revision)"
+        if let task = uploads[key] { return try await task.value }
+        if let done = completed[key], done.title == project.name { return done }
+        // The server's one-per-project row is the durable receipt across app launches.
+        if PosterLibraryStore.shared.belongsToCurrentAccount, let saved = PosterLibraryStore.shared.items?.first(where: {
+            $0.sourceUrl == "yapper://project/\(id.uuidString.lowercased())" && $0.editorRevision == revision && $0.submissionId != nil
+        }) {
+            let current: PosterContentItem
+            if saved.title != project.name, let submission = saved.submissionId {
+                current = try await PosterProjectUpload.attach(submissionID: submission, project: project, revision: revision, userID: userID)
+                PosterLibraryStore.shared.upsert(current)
+            } else { current = saved }
+            completed[key] = current
+            return current
+        }
+        errors[id] = nil
+        status[id] = "Preparing latest edit…"
+        let task = Task<PosterContentItem, Error> {
+            defer { status[id] = nil }
+            let file = try await PosterProjectRender.shared.render(listing)
+            try Task.checkCancellation()
+            guard file.deletingPathExtension().lastPathComponent == revision else {
+                throw NativeEditorError.exportFailed("The edit changed while preparing. Select it again to use the latest version.")
+            }
+            guard let latest = try await ProjectPackageStore(package: listing.package).load(),
+                  try PosterProjectRender.revision(latest) == revision else {
+                throw NativeEditorError.exportFailed("The edit changed while preparing. Its latest version will sync after saving.")
+            }
+            status[id] = "Uploading latest edit…"
+            let item = try await PosterProjectUpload.prepare(file, project: project, userID: userID) { progress in
+                Task { @MainActor in self.status[id] = "Uploading latest edit, \(Int(progress * 100))%" }
+            }
+            completed[key] = item
+            PosterLibraryStore.shared.upsert(item)
+            return item
+        }
+        uploads[key] = task
+        defer { uploads[key] = nil }
+        return try await task.value
+    }
+}

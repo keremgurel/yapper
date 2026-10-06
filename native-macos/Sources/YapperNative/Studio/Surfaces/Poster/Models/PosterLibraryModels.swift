@@ -10,6 +10,8 @@ struct PosterContentItem: Codable, Equatable, Identifiable {
     let submissionId: String?
     let transcriptStatus: String?
     let updatedAt: String
+    var sourceUrl: String? = nil
+    var editorRevision: String? = nil
 }
 
 struct PosterContentList: Codable, Equatable {
@@ -48,6 +50,8 @@ struct PosterConnection: Codable, Equatable {
     let externalAccountId: String?
     let status: String
     let updatedAt: String
+    var sourceUrl: String? = nil
+    var editorRevision: String? = nil
 }
 
 struct PosterConnections: Codable, Equatable {

@@ -37,3 +37,27 @@ export function postableVideos(
     }))
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
+
+/** Raw recordings aren't final edits. Uploaded files have their own tab. */
+export function posterLibraryVideos(
+  items: ContentSummary[] | null,
+  source: "yapper" | "uploads",
+): PostableVideo[] {
+  const sorted = [...(items ?? [])].sort((a, b) =>
+    b.updatedAt.localeCompare(a.updatedAt),
+  );
+  const projects = new Set<string>();
+  return postableVideos(
+    sorted.filter((item) => {
+      if (source === "uploads")
+        return item.sourceUrl === "yapper://poster-upload";
+      if (
+        !item.sourceUrl?.startsWith("yapper://project/") ||
+        projects.has(item.sourceUrl)
+      )
+        return false;
+      projects.add(item.sourceUrl);
+      return true;
+    }),
+  );
+}

@@ -17,6 +17,18 @@ final class PosterPublishPrep: ObservableObject {
         preparing = true
         warning = nil
         defer { preparing = false }
+        var submissionID = video.submissionID
+        var contentItemID = video.contentItemID
+        if case let .project(listing) = video.origin {
+            do {
+                let saved = try await PosterProjectSync.shared.prepare(listing)
+                submissionID = saved.submissionId
+                contentItemID = saved.id
+            } catch {
+                warning = error.localizedDescription
+                return
+            }
+        }
         var thumbnailKey: String?
         if cover.image != nil {
             if let png = PosterCoverRenderer.png(cover) {
@@ -30,9 +42,9 @@ final class PosterPublishPrep: ObservableObject {
             title: video.title,
             fallbackTitle: headline.isEmpty ? video.title : headline,
             captions: captions,
-            submissionID: video.submissionID,
+            submissionID: submissionID,
             mediaKey: video.mediaKey,
-            contentItemID: video.contentItemID,
+            contentItemID: contentItemID,
             thumbnailKey: thumbnailKey
         )
         sheet = PosterPublishSheetRequest(targets: [target], platforms: destinations)

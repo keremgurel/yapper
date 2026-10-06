@@ -51,6 +51,10 @@ export async function findPostedMedia(
           and ps.status in ('scheduled', 'running', 'needs_attention')
           and ps.input->>'mediaKey' = pj.media_key
       )
+      and not exists (
+        select 1 from content_items ci join submissions s on s.id = ci.submission_id
+        where ci.user_id = pj.user_id and s.media_key = pj.media_key and ci.editor_revision is not null
+      )
       and (
         exists (select 1 from submissions s where s.user_id = pj.user_id and s.media_key = pj.media_key)
         or exists (select 1 from imported_platform_media i where i.user_id = pj.user_id and i.media_key = pj.media_key)
@@ -64,11 +68,17 @@ export async function findPostedMedia(
 }
 
 /** Protected by the same user lock used by publishing/scheduling writers. */
-function protectedMediaQuery(candidate: PostedMediaCandidate, now: Date) {
+function protectedMediaQuery(
+  candidate: PostedMediaCandidate,
+  now: Date,
+  protectEdit: boolean,
+) {
   const { userId, mediaKey } = candidate;
   return sql`
     select 1 where
-      exists (select 1 from publishing_schedules ps
+      exists (select 1 from content_items ci join submissions s on s.id = ci.submission_id
+        where ${protectEdit} and ci.user_id = ${userId} and s.media_key = ${mediaKey} and ci.editor_revision is not null)
+      or       exists (select 1 from publishing_schedules ps
         where ps.user_id = ${userId} and ps.input->>'mediaKey' = ${mediaKey}
           and ps.status in ('scheduled', 'running', 'needs_attention'))
       or exists (select 1 from publish_jobs pj
@@ -106,7 +116,12 @@ export async function findSupersededMedia(
     select user_id, media_key from ranked
     where position > 1
       and ${mediaKey ? sql`media_key = ${mediaKey}` : sql`true`}
-    order by created_at, media_key
+    union
+    select s.user_id, s.media_key from submissions s
+    where s.media_key like 'u/%/project-%'
+      and ${userId ? sql`s.user_id = ${userId}` : sql`true`}
+      and ${mediaKey ? sql`s.media_key = ${mediaKey}` : sql`true`}
+      and not exists (select 1 from content_items ci where ci.user_id = s.user_id and ci.submission_id = s.id and ci.editor_revision is not null)
     limit ${limit}
   `);
   return rows.rows.map((row) => ({
@@ -154,7 +169,13 @@ export async function releasePostedMedia(
 
     // Discovery is only a snapshot. Re-check after acquiring the locks so a
     // new schedule, retry, or removal of the newer video cannot cause data loss.
-    if ((await tx.execute(protectedMediaQuery(candidate, now))).rows.length)
+    if (
+      (
+        await tx.execute(
+          protectedMediaQuery(candidate, now, reason !== "subscription_lapsed"),
+        )
+      ).rows.length
+    )
       return "skipped";
     if (
       reason === "posted" &&

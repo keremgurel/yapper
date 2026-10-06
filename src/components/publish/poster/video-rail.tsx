@@ -31,7 +31,7 @@ export default function VideoRail({
 }) {
   return (
     <div className="bg-card border-border divide-border/60 divide-y overflow-hidden rounded-xl border">
-      {source === "yapper" ? (
+      {source === "uploads" ? (
         <button
           type="button"
           onClick={onAdd}

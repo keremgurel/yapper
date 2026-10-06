@@ -106,6 +106,7 @@ export function useAddVideo(
             mimeType,
             ext,
             purpose: "recording",
+            surface: "poster",
           }),
         });
         if (!presign.ok) {
@@ -146,11 +147,13 @@ export function useAddVideo(
           );
         }
 
+        const submissionId = regData.submission.id;
+
         // Create the visible library row only after the media is safely stored
         // and registered. A failed upload must never leave a blank orphan idea.
         const linked = await createContent({
           title,
-          submissionId: regData.submission.id,
+          submissionId,
           sourceUrl: "yapper://poster-upload",
           sourceTitle: "Poster upload",
           transcriptStatus: "pending",
@@ -160,36 +163,37 @@ export function useAddVideo(
         // Hear the actual export before writing social copy. The uploaded master
         // stays in R2; the transcriber resolves it through this owner-scoped
         // submission id, so the browser never uploads 100 MB twice.
-        setState("preparing");
-        try {
-          const transcriptResponse = await fetch("/api/transcribe", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ submissionId: regData.submission.id }),
-          });
-          if (!transcriptResponse.ok) throw new Error("transcript_failed");
-          const data = (await transcriptResponse.json()) as {
-            words?: { text?: string }[];
-          };
-          const transcript = (data.words ?? [])
-            .map((word) => word.text ?? "")
-            .join(" ")
-            .replace(/\s+/g, " ")
-            .trim();
-          if (!transcript) throw new Error("transcript_failed");
-          const updated = await patchContent(linked.id, {
-            recordedTranscript: transcript,
-            transcriptStatus: "ready",
-          });
-          onUpdated?.(updated);
-        } catch {
-          setNotice("transcript_failed");
-          const updated = await patchContent(linked.id, {
-            transcriptStatus: "unavailable",
-          }).catch(() => null);
-          if (updated) onUpdated?.(updated);
-        }
         setState("idle");
+        void (async () => {
+          try {
+            const transcriptResponse = await fetch("/api/transcribe", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ submissionId }),
+            });
+            if (!transcriptResponse.ok) throw new Error("transcript_failed");
+            const data = (await transcriptResponse.json()) as {
+              words?: { text?: string }[];
+            };
+            const transcript = (data.words ?? [])
+              .map((word) => word.text ?? "")
+              .join(" ")
+              .replace(/\s+/g, " ")
+              .trim();
+            if (!transcript) throw new Error("transcript_failed");
+            const updated = await patchContent(linked.id, {
+              recordedTranscript: transcript,
+              transcriptStatus: "ready",
+            });
+            onUpdated?.(updated);
+          } catch {
+            setNotice("transcript_failed");
+            const updated = await patchContent(linked.id, {
+              transcriptStatus: "unavailable",
+            }).catch(() => null);
+            if (updated) onUpdated?.(updated);
+          }
+        })();
       } catch (e) {
         const msg = e instanceof Error ? e.message : "failed";
         setError(

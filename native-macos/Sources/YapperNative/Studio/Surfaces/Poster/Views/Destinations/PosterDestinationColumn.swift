@@ -47,12 +47,12 @@ struct PosterDestinationColumn: View {
                     Button { publish(chosen: chosen, captions: captions, cover: cover) } label: {
                         HStack(spacing: 6) {
                             if prep.preparing { ProgressView().controlSize(.mini) }
-                            Text(prep.preparing ? "Preparing" : framePending ? "Preparing thumbnail" : summary.label)
+                            Text(prep.preparing || !video.readyToPublish ? "Preparing video…" : summary.label)
                         }
                         .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(EditorPrimaryButtonStyle())
-                    .disabled(!summary.canPublish || prep.preparing || framePending)
+                    .disabled(!summary.canPublish || prep.preparing || !video.readyToPublish)
                     if summary.blocked > 0 {
                         Text("\(summary.blocked) \(summary.blocked == 1 ? "needs" : "need") a fix first")
                             .font(.system(size: 12)).foregroundStyle(.secondary)
@@ -69,7 +69,7 @@ struct PosterDestinationColumn: View {
     @ViewBuilder
     private func writer(chosen: Set<PublishPlatform>) -> some View {
         let hasOriginal = !(video.sourceCaption ?? "").isEmpty
-        let reading = generator.reading || video.transcriptStatus == "pending"
+        let reading = generator.reading || video.transcriptStatus == "pending" || (video.platform != nil && video.mediaKey == nil)
         VStack(alignment: .leading, spacing: 8) {
             if hasOriginal {
                 Text("Starts with your original caption.").font(.system(size: 12)).foregroundStyle(.secondary)

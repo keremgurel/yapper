@@ -31,7 +31,11 @@ struct PosterVideoStill: View {
             }
         .clipped()
         .task(id: video.id) {
-            guard video.submissionID != nil else { return }
+            if case let .project(listing) = video.origin {
+                frame = await ProjectPosterLoader.shared.poster(for: listing)
+                return
+            }
+            guard video.submissionID != nil || video.previewURL != nil else { return }
             if let cached = await PosterThumbnailCache.shared.cached(video.media) {
                 frame = cached
             } else {

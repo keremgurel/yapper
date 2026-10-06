@@ -10,19 +10,21 @@ struct PosterPublishSheet: View {
     @ObservedObject var connections: PosterConnectionStore
     @ObservedObject var drafts: PosterDraftStore
     let onClose: () -> Void
+    let onNext: () -> Void
 
-    init(request: PosterPublishSheetRequest, connections: PosterConnectionStore, drafts: PosterDraftStore, onClose: @escaping () -> Void) {
+    init(request: PosterPublishSheetRequest, connections: PosterConnectionStore, drafts: PosterDraftStore, onNext: @escaping () -> Void = {}, onClose: @escaping () -> Void) {
         _session = StateObject(wrappedValue: PosterPublishSession(request))
         self.connections = connections
         self.drafts = drafts
         self.onClose = onClose
+        self.onNext = onNext
     }
 
     var body: some View {
         let publishable = connections.publishable
         let chosen = session.chosen(from: publishable)
-        let busy = session.posting || session.scheduling || session.scheduled
-        NativeDrawer(onClose: onClose) {
+        let busy = session.posting || session.scheduling || session.scheduled || !session.outcomes.isEmpty
+        NativeDrawer(onClose: { if !session.posting && !session.scheduling { onClose() } }) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(session.targets.count > 1 ? "Publish \(session.targets.count) videos" : "Publish video")
                     .font(.system(size: 17, weight: .semibold))
@@ -72,7 +74,13 @@ struct PosterPublishSheet: View {
                 Text("\(session.failures) destination\(session.failures == 1 ? "" : "s") failed. Successful posts were not rolled back.")
                     .font(.system(size: 12, weight: .semibold)).foregroundStyle(Color.studioDanger)
             }
-            publishButton(chosen: chosen)
+            if !session.posting && (session.done(chosen) || session.scheduled) {
+                Button("Post another video", action: onNext)
+                    .buttonStyle(EditorPrimaryButtonStyle())
+            }
+            if !session.done(chosen) || session.failures > 0 || session.outcomes.contains(where: { $0.status == .pending }) {
+                publishButton(chosen: chosen)
+            }
             note("YouTube posts go out as public. TikTok follows the review above.")
         }
         .task { if connections.response == nil { await connections.refresh() } }

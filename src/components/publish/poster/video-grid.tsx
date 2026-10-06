@@ -38,22 +38,30 @@ export default function VideoGrid({
   onAdd: () => void;
   onOpen: (video: PosterVideo) => void;
 }) {
-  if (source !== "yapper" && !connected && !loading) {
+  if (source !== "yapper" && source !== "uploads" && !connected && !loading) {
     return <ConnectTile platform={source} />;
   }
   if (loading && videos.length === 0) return <VideoGridSkeleton />;
-  if (source !== "yapper" && videos.length === 0) {
+  if (source !== "uploads" && videos.length === 0) {
     return (
       <EmptyState
         icon={Film}
-        title="Nothing posted here yet"
-        description="Videos you publish to this channel will appear here, ready to send elsewhere."
+        title={
+          source === "yapper"
+            ? "Your edited projects"
+            : "Nothing posted here yet"
+        }
+        description={
+          source === "yapper"
+            ? "The Mac app automatically shows your saved edits. Projects you prepare for publishing there also appear here."
+            : "Videos you publish to this channel will appear here, ready to send elsewhere."
+        }
       />
     );
   }
   return (
     <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
-      {source === "yapper" ? (
+      {source === "uploads" ? (
         <UploadTile
           state={uploadState}
           progress={uploadProgress}

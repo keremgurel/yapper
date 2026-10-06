@@ -21,7 +21,20 @@ struct PosterBanners: View {
             } else if upload.transcriptFailed {
                 warning("The video uploaded, but its transcript could not be prepared. Captions will use the title and your prompt.")
             }
-            if let error = bench.error { warning(error) }
+            if let error = bench.error {
+                HStack(spacing: 12) {
+                    warning(error)
+                    if let active = bench.active {
+                        Button("Try again") { Task { await bench.open(active) } }.buttonStyle(EditorGhostButtonStyle(size: .small))
+                    }
+                }
+            } else if let id = bench.importingID, let active = bench.active, id == active.id {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(active.platform == nil ? "Preparing your latest edit. You can write captions now." : "Preparing the video for posting. You can write captions now.")
+                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                }
+            }
             if let warning = prep.warning { self.warning(warning) }
             if connections.failed {
                 NativeErrorState(message: "Your connected accounts couldn't be refreshed.") {
