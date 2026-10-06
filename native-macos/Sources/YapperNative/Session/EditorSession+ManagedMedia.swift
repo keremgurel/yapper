@@ -25,12 +25,13 @@ extension EditorSession {
                 } catch is CancellationError { break }
                 catch {
                     managedMediaFailures.insert(source.url)
-                    managedMediaStatus = "Couldn’t save \(source.url.lastPathComponent) to Yapper. \(error.localizedDescription)"
+                    managedMediaError = "Couldn’t save \(source.url.lastPathComponent) for \(package.displayName). \(error.localizedDescription)"
+                    managedMediaStatus = managedMediaError
                 }
             }
             managedMediaTask = nil
             managedMediaPackage = nil
-            if managedMediaFailures.isEmpty { managedMediaStatus = nil }
+            managedMediaStatus = managedMediaError
             projectNavigation.noteLibraryChanged()
             // An import may have arrived while a previous copy was running.
             if !Task.isCancelled { saveMediaInBackground() }
@@ -40,11 +41,15 @@ extension EditorSession {
     func retryManagedMedia() {
         guard managedMediaTask == nil else { return }
         managedMediaFailures.removeAll()
+        managedMediaError = nil
         managedMediaStatus = nil
         Task {
             if let package = projectNavigation.currentPackage {
                 do { try await adoptManagedMedia(in: package, projectID: project.id) }
-                catch { managedMediaStatus = error.localizedDescription }
+                catch {
+                    managedMediaError = error.localizedDescription
+                    managedMediaStatus = managedMediaError
+                }
             }
             saveMediaInBackground()
         }
@@ -57,6 +62,7 @@ extension EditorSession {
         managedMediaTask = nil
         managedMediaPackage = nil
         managedMediaFailures.removeAll()
+        managedMediaError = nil
         managedMediaStatus = nil
     }
 }

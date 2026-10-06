@@ -24,9 +24,9 @@ struct ManagedMediaNotice: View {
     var body: some View {
         if let status = session.managedMediaStatus {
             HStack(spacing: 8) {
-                Image(systemName: session.managedMediaFailures.isEmpty ? "arrow.down.doc" : "exclamationmark.triangle")
+                Image(systemName: session.managedMediaTask != nil ? "arrow.down.doc" : "exclamationmark.triangle")
                 Text(status).font(.system(size: 12)).lineLimit(2).frame(maxWidth: 280, alignment: .leading).help(status)
-                if !session.managedMediaFailures.isEmpty {
+                if session.managedMediaTask == nil, session.managedMediaError != nil {
                     Button("Retry") { session.retryManagedMedia() }.buttonStyle(EditorGhostButtonStyle(size: .small))
                 }
             }.foregroundStyle(.secondary).padding(.vertical, 4)

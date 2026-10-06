@@ -109,6 +109,7 @@ final class EditorSession: ObservableObject {
     var managedMediaTask: Task<Void, Never>?
     var managedMediaPackage: ProjectPackage?
     var managedMediaFailures: Set<URL> = []
+    var managedMediaError: String?
 
     @Published private(set) var statusMessage = "Import video to begin"
     @Published private(set) var errorMessage: String?
