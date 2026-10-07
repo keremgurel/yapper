@@ -99,6 +99,7 @@ struct TimelineRulerHeader: View {
     private var seekGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
             .onChanged { value in
+                focusTimelineForKeyboardCommands()
                 session.scrub(to: time(at: value.location.x))
             }
             .onEnded { value in

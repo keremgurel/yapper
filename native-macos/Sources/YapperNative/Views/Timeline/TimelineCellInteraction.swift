@@ -13,11 +13,18 @@ var isTimelineSnapTemporarilyBypassed: Bool {
     NSEvent.modifierFlags.contains(.option)
 }
 
+/// A timeline click ends text editing so its shortcuts target the selected clip.
+@MainActor
+func focusTimelineForKeyboardCommands(in window: NSWindow? = NSApp.keyWindow) {
+    window?.makeFirstResponder(nil)
+}
+
 @MainActor
 func selectTimelineItemFromPointer(
     _ item: TimelineSelectionItem,
     session: EditorSession
 ) {
+    focusTimelineForKeyboardCommands()
     let flags = NSEvent.modifierFlags
     session.selectTimelineItem(
         item,

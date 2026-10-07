@@ -7,8 +7,10 @@ protocol EditorKeyboardCommandScope: AnyObject {
     var editorKeyboardCommandsEnabled: Bool { get }
 }
 
-/// Unmodified keys the editor claims while the timeline is on screen.
+/// Keys the editor claims while the timeline is on screen.
 enum TimelineKeyCommand {
+    case copyAudio
+    case pasteAudio
     case togglePlayback
     case split
     case delete
@@ -31,10 +33,13 @@ enum TimelineKeyCommand {
 /// a look at it, so Space reached the scroll views instead of the transport.
 /// Watching key-down here is what actually makes these keys fire.
 struct TimelineKeyCommandView: NSViewRepresentable {
+    var canHandleCommand: (TimelineKeyCommand) -> Bool = { _ in true }
     let onCommand: (TimelineKeyCommand) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onCommand: onCommand)
+        let coordinator = Coordinator(onCommand: onCommand)
+        coordinator.canHandleCommand = canHandleCommand
+        return coordinator
     }
 
     func makeNSView(context: Context) -> PassthroughView {
@@ -47,6 +52,7 @@ struct TimelineKeyCommandView: NSViewRepresentable {
     func updateNSView(_ nsView: PassthroughView, context: Context) {
         context.coordinator.view = nsView
         context.coordinator.onCommand = onCommand
+        context.coordinator.canHandleCommand = canHandleCommand
     }
 
     static func dismantleNSView(_ nsView: PassthroughView, coordinator: Coordinator) {
@@ -60,6 +66,7 @@ struct TimelineKeyCommandView: NSViewRepresentable {
     @MainActor
     final class Coordinator {
         weak var view: PassthroughView?
+        var canHandleCommand: (TimelineKeyCommand) -> Bool = { _ in true }
         var onCommand: (TimelineKeyCommand) -> Void
         private var monitor: Any?
 
@@ -127,6 +134,10 @@ struct TimelineKeyCommandView: NSViewRepresentable {
             }
             if let field = window.firstResponder as? NSTextField, field.isEditable { return event }
             guard let command = Self.command(for: event) else { return event }
+            if command == .copyAudio,
+               let text = window.firstResponder as? NSTextView,
+               text.selectedRange().length > 0 { return event }
+            guard canHandleCommand(command) else { return event }
             // Consume repeats too: passing Space to a focused button can
             // toggle playback a second time through that control's own action.
             if event.isARepeat { return nil }
@@ -154,6 +165,13 @@ struct TimelineKeyCommandView: NSViewRepresentable {
 
         static func command(for event: NSEvent) -> TimelineKeyCommand? {
             let modifiers = event.modifierFlags
+            if modifiers.intersection([.command, .control, .option, .shift]) == [.command] {
+                switch event.charactersIgnoringModifiers?.lowercased() {
+                case "c": return .copyAudio
+                case "v": return .pasteAudio
+                default: return nil
+                }
+            }
             guard modifiers.intersection([.command, .control]).isEmpty else { return nil }
             // On several layouts [ and ] need Option or Shift. Honor the
             // character actually produced, without stealing Option-letter

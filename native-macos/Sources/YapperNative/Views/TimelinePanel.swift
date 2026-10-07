@@ -191,7 +191,13 @@ struct TimelinePanel: View {
         .background {
             ZStack {
                 Color.editorBackground
-                TimelineKeyCommandView { command in
+                TimelineKeyCommandView(canHandleCommand: { command in
+                    switch command {
+                    case .copyAudio: session.canCopyTimelineAudio
+                    case .pasteAudio: session.canPasteTimelineAudio()
+                    default: true
+                    }
+                }) { command in
                     performKeyCommand(command)
                 }
                 TimelineDragWatchdog {
@@ -217,6 +223,10 @@ struct TimelinePanel: View {
 
     private func performKeyCommand(_ command: TimelineKeyCommand) {
         switch command {
+        case .copyAudio:
+            session.copyTimelineAudio()
+        case .pasteAudio:
+            Task { await session.pasteTimelineAudio() }
         case .togglePlayback:
             session.togglePlayback()
         case .split:
@@ -588,6 +598,7 @@ struct TimelineContent: View, @MainActor Equatable {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.coordinateSpaceName))
             .onChanged { value in
                 if marquee.origin == nil {
+                    focusTimelineForKeyboardCommands()
                     marquee.begin(at: value.startLocation, current: value.location)
                     marqueeBaseSelection = session.timelineSelection
                     marqueeItemFrameTable = marqueeItemFrames(layout: layout)
@@ -1847,6 +1858,15 @@ struct TimelineAudioItem: View {
         // The cell on the timeline is where you are looking at the sound when
         // you decide it is the wrong one.
         .contextMenu {
+            Button("Copy audio") {
+                session.selectAudioLayer(layer.id)
+                session.copyTimelineAudio()
+            }
+            Button("Paste audio at playhead") {
+                Task { await session.pasteTimelineAudio() }
+            }
+            .disabled(!session.canPasteTimelineAudio())
+            Divider()
             Menu {
                 SoundSwapMenu(session: session, layer: layer)
             } label: {
