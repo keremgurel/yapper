@@ -52,7 +52,7 @@ export default function UpNextSection({
           description="Send an idea to the Library and it will show up here."
           action={
             <Button asChild variant="outline" size="sm">
-              <Link href="/studio/ideas">Open Ideas</Link>
+              <Link href="/studio/ideas">Open ideas</Link>
             </Button>
           }
         />

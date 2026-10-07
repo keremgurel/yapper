@@ -28,9 +28,10 @@ No social post or automation was enabled as part of verification.
 ## Verification results
 
 - Web: 2,071 tests across 285 files; lint, formatting, type checking and production build passed.
-- Mac: 1,441 tests across 231 suites passed.
+- Mac: 1,441 tests across 231 suites passed; signed release packaging succeeds.
 - Real Mac capture: 9.48-second portrait take downloaded as H.264 606×1080 with AAC 48 kHz audio.
 - Original transcription reproduction: synthetic 22.05 kHz input now produces 45 timed words and 15 caption cards.
+- Planning: opening and cancelling the native date picker leaves the idea unplanned.
 - Audio-only recording: review offers playback and download without an invalid editor handoff.
 - Manual web draft persists through version switching and reload; 320px actions wrap without clipping.
 - Recorder controls checked in dark/light appearance and at a 1200×830 Mac window.

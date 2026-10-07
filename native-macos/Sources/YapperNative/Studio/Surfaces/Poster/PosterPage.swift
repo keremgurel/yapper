@@ -61,7 +61,7 @@ struct PosterPage: View {
                 content
             }
         }
-        .onGeometryChange(for: CGFloat.self, of: { _ in geometry.size.height }, action: { viewportHeight = $0 })
+        .onChange(of: geometry.size.height, initial: true) { _, height in viewportHeight = height }
         }
         .overlay {
             if dropTargeted {

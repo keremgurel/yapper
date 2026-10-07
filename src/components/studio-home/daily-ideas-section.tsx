@@ -23,7 +23,7 @@ export default function DailyIdeasSection({
       meta={today}
       action={
         <Button asChild variant="ghost" size="sm">
-          <Link href="/studio/ideas">Open Ideas</Link>
+          <Link href="/studio/ideas">Open ideas</Link>
         </Button>
       }
     >
