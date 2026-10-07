@@ -14,12 +14,12 @@ struct RecorderStageView: View {
         let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
         ZStack {
             Color.black
-            if capture.cameraReady {
-                RecorderPreviewView(
-                    session: capture.session,
-                    inputsKey: "\(capture.cameraID ?? "")|\(capture.running)"
-                )
-            } else {
+            RecorderPreviewView(
+                previewLayer: capture.previewLayer,
+                inputsKey: "\(capture.cameraID ?? "")|\(capture.running)"
+            )
+            .opacity(capture.cameraReady ? 1 : 0)
+            if !capture.cameraReady {
                 cameraOff
             }
             if showGuides { RecorderGuidesOverlay() }

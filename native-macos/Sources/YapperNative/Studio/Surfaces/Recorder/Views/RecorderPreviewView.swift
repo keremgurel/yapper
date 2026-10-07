@@ -4,26 +4,24 @@ import SwiftUI
 /// The live camera, mirrored like a mirror and cropped to fill its frame.
 /// The file itself is recorded unmirrored, the same as the web recorder.
 struct RecorderPreviewView: NSViewRepresentable {
-    let session: AVCaptureSession
+    let previewLayer: AVCaptureVideoPreviewLayer
     /// Changes whenever the inputs do, so the new connection gets mirrored.
     var inputsKey: String = ""
 
     func makeNSView(context: Context) -> PreviewHostView {
-        let view = PreviewHostView()
-        view.previewLayer.session = session
-        return view
+        PreviewHostView(previewLayer: previewLayer)
     }
 
     func updateNSView(_ view: PreviewHostView, context: Context) {
-        if view.previewLayer.session !== session { view.previewLayer.session = session }
         view.applyMirroring()
     }
 
     final class PreviewHostView: NSView {
-        let previewLayer = AVCaptureVideoPreviewLayer()
+        let previewLayer: AVCaptureVideoPreviewLayer
 
-        override init(frame: NSRect) {
-            super.init(frame: frame)
+        init(previewLayer: AVCaptureVideoPreviewLayer) {
+            self.previewLayer = previewLayer
+            super.init(frame: .zero)
             wantsLayer = true
             layer = CALayer()
             layer?.backgroundColor = NSColor.black.cgColor

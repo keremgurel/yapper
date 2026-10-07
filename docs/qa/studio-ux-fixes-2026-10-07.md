@@ -35,6 +35,7 @@ No social post or automation was enabled as part of verification.
 - Audio-only recording: review offers playback and download without an invalid editor handoff.
 - Manual web draft persists through version switching and reload; 320px actions wrap without clipping.
 - Recorder controls checked in dark/light appearance and at a 1200×830 Mac window.
+- Final relaunch exposed an intermittent AVFoundation preview/session deadlock during device changes; the capture session now retains one preview layer across readiness changes and view replacement.
 
 Real social publishing, enabling server-paused automations and cross-device phone
 redemption were not performed. Verification does not claim exhaustive accessibility

@@ -8,6 +8,9 @@
 @MainActor
 final class RecorderCaptureSession: ObservableObject {
     let session = AVCaptureSession()
+    // Keep one preview connection for the capture session's lifetime. Releasing
+    // and reattaching layers while inputs change can deadlock AVFoundation.
+    let previewLayer = AVCaptureVideoPreviewLayer()
     let movie = RecorderMovieOutput()
 
     @Published private(set) var cameraOn = true
@@ -42,6 +45,7 @@ final class RecorderCaptureSession: ObservableObject {
     private var lastAccess: RecorderAccess?
 
     init() {
+        previewLayer.session = session
         runtimeObserver = NotificationCenter.default.addObserver(
             forName: AVCaptureSession.runtimeErrorNotification, object: session, queue: .main
         ) { [weak self] _ in
