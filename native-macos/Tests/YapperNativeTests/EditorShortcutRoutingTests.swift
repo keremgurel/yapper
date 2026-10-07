@@ -97,6 +97,56 @@ struct EditorShortcutRoutingTests {
         #expect(calls == 0)
     }
 
+    @Test("audio clipboard shortcuts respect text focus, active editor and availability")
+    func audioClipboardRouting() {
+        let (window, scope, listener) = window()
+        defer { window.close() }
+        var commands: [TimelineKeyCommand] = []
+        let coordinator = TimelineKeyCommandView.Coordinator { commands.append($0) }
+        coordinator.view = listener
+        let copy = event(window, key: 8, text: "c", modifiers: [.command], timestamp: 50_001)
+        let paste = event(window, key: 9, text: "v", modifiers: [.command], timestamp: 50_002)
+        #expect(coordinator.handle(copy) == nil)
+        #expect(coordinator.handle(paste) == nil)
+        #expect(commands == [.copyAudio, .pasteAudio])
+        // Duplicate delivery of one physical paste cannot add a second sound.
+        #expect(coordinator.handle(paste) == nil)
+        #expect(commands.count == 2)
+        coordinator.canHandleCommand = { _ in false }
+        #expect(coordinator.handle(event(window, key: 8, text: "c", modifiers: [.command], timestamp: 50_003)) != nil)
+        coordinator.canHandleCommand = { _ in true }
+        let text = NSTextView(frame: scope.bounds)
+        scope.addSubview(text)
+        window.makeFirstResponder(text)
+        #expect(coordinator.handle(event(window, key: 8, text: "c", modifiers: [.command], timestamp: 50_004)) != nil)
+        #expect(coordinator.handle(event(window, key: 9, text: "v", modifiers: [.command], timestamp: 50_005)) != nil)
+        window.makeFirstResponder(nil)
+        scope.editorKeyboardCommandsEnabled = false
+        #expect(coordinator.handle(event(window, key: 9, text: "v", modifiers: [.command], timestamp: 50_006)) != nil)
+        #expect(commands.count == 2)
+        for modifiers: NSEvent.ModifierFlags in [[], [.command, .shift], [.command, .option], [.control]] {
+            #expect(TimelineKeyCommandView.Coordinator.command(for: event(window, key: 9, text: "v", modifiers: modifiers, timestamp: 50_007)) == nil)
+        }
+    }
+
+    @Test("clicking the timeline releases a search field before clipboard shortcuts")
+    func timelineTakesKeyboardFocus() {
+        let (window, scope, listener) = window()
+        defer { window.close() }
+        let text = NSTextView(frame: scope.bounds)
+        scope.addSubview(text)
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(text)
+        #expect(window.firstResponder === text)
+        var commands: [TimelineKeyCommand] = []
+        let coordinator = TimelineKeyCommandView.Coordinator { commands.append($0) }
+        coordinator.view = listener
+        focusTimelineForKeyboardCommands(in: window)
+        #expect(window.firstResponder !== text)
+        #expect(coordinator.handle(event(window, key: 8, text: "c", modifiers: [.command], timestamp: 60_001)) == nil)
+        #expect(commands == [.copyAudio])
+    }
+
     @Test("brackets generated with Option or Shift work without stealing other modified keys")
     func keyboardLayouts() {
         let (window, _, _) = window()
