@@ -1430,6 +1430,13 @@ private func formatTranscriptTime(_ seconds: Double) -> String {
 
 private struct AudioWorkbench: View {
     @ObservedObject var session: EditorSession
+    @State private var effectSearch = ""
+
+    private var matchingEffects: [SoundEffectDescriptor] {
+        AudioLibraryFilter.entries(
+            AudioEntry.all(saved: []), section: .builtIn, search: effectSearch
+        ).compactMap(\.effect)
+    }
 
     private let columns = [
         GridItem(.adaptive(minimum: 218, maximum: 260), spacing: 8, alignment: .top),
@@ -1466,7 +1473,7 @@ private struct AudioWorkbench: View {
                 Divider().frame(maxWidth: 528)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("SOUND EFFECTS")
+                    Text("Sound effects")
                         .font(.studioCaptionStrong)
                         .foregroundStyle(.secondary)
                     Text("Preview first, then place one at the playhead.")
@@ -1474,10 +1481,25 @@ private struct AudioWorkbench: View {
                         .foregroundStyle(.secondary)
                 }
 
-                // Shelved by what the effect is for, which is how anyone looks
-                // for one: nobody hunts a library this size by name.
+                AudioSearchField(search: $effectSearch, prompt: "Search sound effects")
+                    .frame(maxWidth: 528)
+
+                let matches = matchingEffects
+                if matches.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("No sound effects match your search.")
+                            .font(.studioBodyStrong)
+                        Text("Try a name, description or category, such as pop, cash register or whooshes.")
+                            .font(.studioCaption)
+                            .foregroundStyle(.secondary)
+                        Button("Clear search") { effectSearch = "" }
+                            .buttonStyle(EditorGhostButtonStyle())
+                    }
+                    .frame(maxWidth: 528, alignment: .leading)
+                }
+
                 ForEach(SoundEffectCategory.allCases) { category in
-                    let effects = SoundEffectDescriptor.library(in: category)
+                    let effects = matches.filter { $0.category == category }
                     if !effects.isEmpty {
                         VStack(alignment: .leading, spacing: 7) {
                             Label(category.title, systemImage: category.icon)
