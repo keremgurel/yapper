@@ -27,6 +27,39 @@ describe("thumbnail image input", () => {
 });
 
 describe("Gemini thumbnail generation", () => {
+  it("retains bounded provider diagnostics without creator content or credentials", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "private-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json(
+          {
+            error: {
+              status: "INVALID_ARGUMENT",
+              message: `Unsupported configuration private-key private prompt ZnJhbWU= cmVm ${"x".repeat(1000)}`,
+            },
+          },
+          { status: 400 },
+        ),
+      ),
+    );
+    const error = await generateThumbnail({
+      prompt: "private prompt",
+      frame: "data:image/jpeg;base64,ZnJhbWU=",
+      reference: "data:image/png;base64,cmVm",
+    }).catch((error: Error) => error);
+    expect(error).toBeInstanceOf(Error);
+    const failure = error as Error;
+    expect(failure.message).toBe("thumbnail_400");
+    expect(failure.cause).toMatchObject({ status: "INVALID_ARGUMENT" });
+    const message = (failure.cause as { message: string }).message;
+    expect(message).toHaveLength(500);
+    expect(message).toContain("Unsupported configuration");
+    for (const value of ["private-key", "private prompt", "ZnJhbWU=", "cmVm"]) {
+      expect(message).not.toContain(value);
+    }
+  });
+
   it("labels frame and reference separately and requests a vertical image", async () => {
     vi.stubEnv("GEMINI_API_KEY", "gemini_test");
     const fetchMock = vi.fn().mockResolvedValue(
