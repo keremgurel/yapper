@@ -1431,6 +1431,7 @@ private func formatTranscriptTime(_ seconds: Double) -> String {
 private struct AudioWorkbench: View {
     @ObservedObject var session: EditorSession
     @State private var effectSearch = ""
+    @AppStorage("studioDestination") private var destinationRaw = StudioDestination.home.rawValue
 
     private var matchingEffects: [SoundEffectDescriptor] {
         AudioLibraryFilter.entries(
@@ -1449,7 +1450,7 @@ private struct AudioWorkbench: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Audio")
                             .font(.studioSectionTitle)
-                        Text("Sound effects and imported audio on their own track")
+                        Text("Music and sound effects for your timeline")
                             .font(.studioCaption)
                             .foregroundStyle(.secondary)
                     }
@@ -1467,6 +1468,15 @@ private struct AudioWorkbench: View {
                     selectedLayerEditor(selected)
                     Divider()
                 }
+
+                Button {
+                    session.pausePlayback()
+                    session.stopSoundPreview()
+                    destinationRaw = StudioDestination.audio.rawValue
+                } label: {
+                    Label("Browse audio and set default volumes", systemImage: "music.note.list")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
 
                 WorkbenchSavedAudioShelf(session: session, store: .shared)
 

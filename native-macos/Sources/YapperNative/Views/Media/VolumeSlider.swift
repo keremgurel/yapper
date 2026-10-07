@@ -14,6 +14,8 @@ struct VolumeSlider: View {
     let volume: Double
     let onChange: (Double) -> Void
     let onCommit: () -> Void
+    var maximum: Double = AudioLevel.maximum
+    var accessibilityName = "Volume"
 
     /// Where the handle is while it is being dragged.
     ///
@@ -45,11 +47,12 @@ struct VolumeSlider: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.studioPlain)
+            .accessibilityLabel(shown > 0 ? "Silence \(accessibilityName)" : "Reset \(accessibilityName) to 100%")
             .help(shown > 0 ? "Silence this" : "Back to 100%")
 
             Slider(
                 value: Binding(get: { shown }, set: { newValue in set(newValue) }),
-                in: AudioLevel.minimum ... AudioLevel.maximum,
+                in: AudioLevel.minimum ... maximum,
                 onEditingChanged: { editing in
                     // The one that matters: everything before this was a draft
                     // that never touched the project.
@@ -57,6 +60,8 @@ struct VolumeSlider: View {
                 }
             )
             .controlSize(.small)
+            .accessibilityLabel(accessibilityName)
+            .accessibilityValue("\(AudioLevel.percent(shown)) percent")
 
             field
         }
@@ -72,6 +77,7 @@ struct VolumeSlider: View {
                 )
             )
             .textFieldStyle(.plain)
+            .accessibilityLabel("\(accessibilityName), percent")
             .multilineTextAlignment(.trailing)
             .font(.system(size: 11, weight: .semibold))
             .monospacedDigit()
@@ -102,6 +108,7 @@ struct VolumeSlider: View {
     }
 
     private func set(_ value: Double) {
+        let value = min(maximum, AudioLevel.clamped(value))
         dragging = value
         // A number being dragged is the number the field should show.
         typed = nil

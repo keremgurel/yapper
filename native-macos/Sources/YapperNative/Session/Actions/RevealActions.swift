@@ -111,6 +111,7 @@ extension AppActionRegistry {
                 guard !layers.contains(where: { $0.builtInID == effect.id && abs($0.timelineStart - event.timelineTime) < 0.005 }) else { continue }
                 let layer = ProjectAudioLayer(url: url, name: effect.name, timelineStart: event.timelineTime,
                     duration: min(effect.duration, session.duration - event.timelineTime), sourceDuration: effect.duration,
+                    volume: session.audioLibraryVolumes.volume(for: effect.id),
                     builtInID: effect.id, sourceKind: .builtIn)
                 layers.append(layer)
                 changes.append(.init(targetID: layer.id, property: "sound", before: "", after: "\(effect.name) at \(String(format: "%.3f", event.timelineTime))s"))

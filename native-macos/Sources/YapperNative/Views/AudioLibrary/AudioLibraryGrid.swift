@@ -27,7 +27,7 @@ struct AudioLibraryGrid: View {
             ForEach(groups, id: \.title) { group in
                 VStack(alignment: .leading, spacing: 8) {
                     if groups.count > 1 {
-                        Text(group.title.uppercased())
+                        Text(group.title)
                             .font(.studioCaptionStrong)
                             .foregroundStyle(.secondary)
                     }

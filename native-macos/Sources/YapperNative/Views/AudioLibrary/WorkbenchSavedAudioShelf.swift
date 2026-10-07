@@ -28,11 +28,11 @@ struct WorkbenchSavedAudioShelf: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
-                Text("YOURS")
+                Text("Your music and sounds")
                     .font(.studioCaptionStrong)
                     .foregroundStyle(.secondary)
                 Spacer(minLength: 8)
-                Button("Open library", action: openLibrary)
+                Button("Audio library", action: openLibrary)
                     .buttonStyle(EditorGhostButtonStyle())
             }
 

@@ -76,3 +76,16 @@ The editor stays mounted while moving through the same destinations as the web
 Studio: Home, Brain, Idea Bank, Content Library, Recorder, Editor, Poster,
 Calendar, Automations, Brand, Storage, Dictionary, and Connections. Editor is
 the sole platform substitution: native on Mac and web-backed in the browser.
+
+## Audio library
+
+Open **Audio library** from the editor toolbar, the Studio sidebar, or
+Command-Shift-A. The library has its own **Back to editor** action and accepts
+local audio files through **Import audio** or drag and drop.
+
+Each imported track and bundled sound effect has a **Default volume** slider
+and editable percentage (0–100%). Preferences are saved on this Mac. Previews
+use these levels, including live adjustments during library playback. New
+manual and assistant-created sound layers copy the current default; existing
+clips, replacements, and saved projects retain their individual mix levels.
+Timeline volume controls still allow amplification up to 200%.

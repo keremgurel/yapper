@@ -44,7 +44,8 @@ enum ImportPanels {
         let panel = NSOpenPanel()
         panel.title = "Import audio"
         panel.prompt = "Import"
-        panel.allowedContentTypes = [.audio]
+        panel.allowedContentTypes = [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
+        panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK else { return }
@@ -58,7 +59,8 @@ enum ImportPanels {
         let panel = NSOpenPanel()
         panel.title = "Add to audio library"
         panel.prompt = "Add"
-        panel.allowedContentTypes = [.audio]
+        panel.allowedContentTypes = [.audio, .mp3, .mpeg4Audio, .wav, .aiff]
+        panel.canChooseFiles = true
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         guard panel.runModal() == .OK else { return }
