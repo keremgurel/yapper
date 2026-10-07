@@ -6,6 +6,7 @@ struct TeleprompterOverlayView: View {
     let text: String
     @Binding var settings: TeleprompterSettings
     let scroller: TeleprompterScroller
+    @Environment(\.colorScheme) private var colorScheme
     @GestureState private var drag: PromptDrag?
     @State private var hovered = false
     @FocusState private var focused: Bool
@@ -17,6 +18,9 @@ struct TeleprompterOverlayView: View {
             let frame = drag.map { $0.frame(in: size) } ?? saved
             let active = hovered || focused || drag != nil
             promptBox(frame: frame, saved: saved, in: size, active: active)
+            // Rebuild the mixed AppKit/SwiftUI cursor surface on appearance changes.
+            // Its layout and reading progress are owned outside this identity.
+            .id(colorScheme)
             .position(x: frame.midX, y: frame.midY)
             .transaction { $0.animation = nil }
         }
@@ -168,6 +172,7 @@ private struct TeleprompterTextViewport: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .onPreferenceChange(PromptHeightKey.self) { textHeight = $0 }
         .onChange(of: max(0, textHeight - max(0, size.height - 24)), initial: true) { _, value in
+            guard textHeight > 0 else { return }
             scroller.maxOffset = value
         }
     }
