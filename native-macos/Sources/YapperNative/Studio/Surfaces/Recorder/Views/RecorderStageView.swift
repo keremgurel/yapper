@@ -19,7 +19,7 @@ struct RecorderStageView: View {
                 inputsKey: "\(capture.cameraID ?? "")|\(capture.running)"
             )
             .opacity(capture.cameraReady ? 1 : 0)
-            if !capture.cameraReady {
+            if !capture.cameraReady && prompt.isEmpty {
                 cameraOff
             }
             if showGuides { RecorderGuidesOverlay() }
