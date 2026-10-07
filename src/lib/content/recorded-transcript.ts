@@ -54,7 +54,8 @@ export async function loadRecordedTranscript(
   // Older Poster uploads saved the export's speech in the inspiration field.
   // Only this explicit upload marker makes that field the creator's own video.
   if (
-    item.sourceUrl === "yapper://poster-upload" &&
+    (item.sourceUrl === "yapper://poster-upload" ||
+      item.sourceUrl === "yapper://poster-upload/completed") &&
     item.sourceTranscript?.trim()
   ) {
     return item.sourceTranscript.trim();

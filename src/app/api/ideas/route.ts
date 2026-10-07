@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { repairPostedRecordings } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { parseContentInput } from "@/lib/content/input";
@@ -15,6 +17,7 @@ export const GET = withServerTiming(async (): Promise<Response> => {
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
   const items = await listContentItems(userId);
+  after(() => repairPostedRecordings(userId));
   return Response.json({ items });
 });
 

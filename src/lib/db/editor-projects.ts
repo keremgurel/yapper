@@ -1,6 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { recordingScriptPatch } from "@/lib/content/recording-script";
+import { and, eq, inArray, ne } from "drizzle-orm";
 import { getDb } from "./client";
-import { contentItems, r2Objects, submissions } from "./schema";
+import {
+  contentItems,
+  publishJobs,
+  publishingSchedules,
+  r2Objects,
+  submissions,
+} from "./schema";
 import {
   lockStorageUserWithinTx,
   lockMediaReferenceWithinTx,
@@ -15,7 +22,7 @@ export interface EditorMaster {
   transcript: string;
 }
 
-/** One final master per project; an older upload cannot replace a newer edit. */
+/** One current master per project; retain revisions already sent for publication. */
 export async function saveEditorMaster(userId: string, input: EditorMaster) {
   return getDb().transaction(async (tx) => {
     await lockStorageUserWithinTx(tx, userId);
@@ -44,7 +51,7 @@ export async function saveEditorMaster(userId: string, input: EditorMaster) {
       .limit(1);
     if (!object) throw new Error("media_unavailable");
     const identity = `native-project:${input.projectId}`;
-    const [previous] = await tx
+    const [existing] = await tx
       .select()
       .from(contentItems)
       .where(
@@ -53,7 +60,9 @@ export async function saveEditorMaster(userId: string, input: EditorMaster) {
           eq(contentItems.sourceClientId, identity),
         ),
       )
+      .for("update")
       .limit(1);
+    let previous: typeof existing | undefined = existing;
     if (previous?.editorUpdatedAt && previous.editorUpdatedAt > input.editedAt)
       throw new Error("newer_edit_available");
     if (
@@ -62,6 +71,43 @@ export async function saveEditorMaster(userId: string, input: EditorMaster) {
       previous.title === input.title
     )
       return previous;
+    if (previous && previous.editorRevision !== input.revision) {
+      const [publication] = await tx
+        .select({ id: publishJobs.id })
+        .from(publishJobs)
+        .where(
+          and(
+            eq(publishJobs.userId, userId),
+            eq(publishJobs.contentItemId, previous.id),
+            ne(publishJobs.status, "failed"),
+          ),
+        )
+        .limit(1);
+      const [schedule] = await tx
+        .select({ id: publishingSchedules.id })
+        .from(publishingSchedules)
+        .where(
+          and(
+            eq(publishingSchedules.userId, userId),
+            eq(publishingSchedules.contentItemId, previous.id),
+            inArray(publishingSchedules.status, [
+              "scheduled",
+              "running",
+              "needs_attention",
+            ]),
+          ),
+        )
+        .limit(1);
+      if (previous.status === "posted" || publication || schedule) {
+        // A published/in-flight revision is immutable history. Move only the
+        // latest-master identity, so its publish job still points at its words.
+        await tx
+          .update(contentItems)
+          .set({ sourceClientId: `${identity}:archived:${previous.id}` })
+          .where(eq(contentItems.id, previous.id));
+        previous = undefined;
+      }
+    }
     const values = {
       title: input.title,
       submissionId: input.submissionId,
@@ -69,6 +115,10 @@ export async function saveEditorMaster(userId: string, input: EditorMaster) {
       sourceTitle: "Edited project",
       editorRevision: input.revision,
       editorUpdatedAt: input.editedAt,
+      ...recordingScriptPatch(previous ?? {}, input.transcript),
+      ...(previous?.recordedTranscript !== (input.transcript || null)
+        ? { memoryFingerprint: null, memoryAttemptedAt: null }
+        : {}),
       recordedTranscript: input.transcript || null,
       transcriptStatus: input.transcript
         ? ("ready" as const)

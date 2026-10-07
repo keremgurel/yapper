@@ -64,6 +64,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   const brain = await getBrainContextSafe(userId, {
     surface: "ideate",
+    memoryTask: input.topic ? `Write a new idea: ${input.topic}` : undefined,
     task: [input.topic, input.sourceTitle, input.transcript?.slice(0, 1200)]
       .filter(Boolean)
       .join("\n"),

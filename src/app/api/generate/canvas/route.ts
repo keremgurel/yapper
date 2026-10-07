@@ -107,6 +107,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // and sections of the brain should shape the answer.
   const brain = await getBrainContextSafe(userId, {
     surface: "script",
+    memoryTask: instruction,
     format: input.format,
     task: [instruction, input.title, input.originalNote]
       .filter(Boolean)

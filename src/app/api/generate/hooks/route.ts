@@ -81,6 +81,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // skills that are actually about this idea rather than the top of the list.
   const brain = await getBrainContextSafe(userId, {
     surface: "hooks",
+    memoryTask: `Write hooks: ${input.title ?? ""}\n${input.originalNote ?? ""}`,
     task: [input.title, input.originalNote].filter(Boolean).join("\n"),
     signal: req.signal,
   });

@@ -3,6 +3,12 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   premium: vi.fn(),
   save: vi.fn(),
+  after: vi.fn(),
+  enrich: vi.fn(),
+}));
+vi.mock("next/server", () => ({ after: mocks.after }));
+vi.mock("@/lib/content/recording-memory", () => ({
+  enrichRecording: mocks.enrich,
 }));
 vi.mock("@clerk/nextjs/server", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/billing/gate", () => ({ canUsePremium: mocks.premium }));
@@ -58,6 +64,9 @@ it("uses the session owner and normalizes project identity", async () => {
       )
     ).status,
   ).toBe(200);
+  expect(mocks.after).toHaveBeenCalledTimes(1);
+  await mocks.after.mock.calls[0][0]();
+  expect(mocks.enrich).toHaveBeenCalledWith("owner", "saved");
   expect(mocks.save).toHaveBeenCalledWith("owner", {
     ...body,
     editedAt: new Date(body.editedAt),

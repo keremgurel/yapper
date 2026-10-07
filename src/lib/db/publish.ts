@@ -1,3 +1,4 @@
+import { enrichRecording } from "@/lib/content/recording-memory";
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { encryptToken } from "@/lib/publish/tokens";
 import { getDb } from "./client";
@@ -331,13 +332,22 @@ export async function completePublishJob(
       updatedAt: new Date(),
     })
     .where(eq(publishJobs.id, id))
-    .returning({ contentItemId: publishJobs.contentItemId });
+    .returning({
+      contentItemId: publishJobs.contentItemId,
+      userId: publishJobs.userId,
+    });
   // The idea this video came from has reached the end of the loop.
   if (job?.contentItemId && !result.draft) {
     await db
       .update(contentItems)
       .set({ status: "posted", updatedAt: new Date() })
-      .where(eq(contentItems.id, job.contentItemId));
+      .where(
+        and(
+          eq(contentItems.id, job.contentItemId),
+          eq(contentItems.userId, job.userId),
+        ),
+      );
+    await enrichRecording(job.userId, job.contentItemId);
   }
 }
 

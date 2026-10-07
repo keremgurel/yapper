@@ -160,3 +160,109 @@ it("collects superseded project masters without retiring the latest edit", async
   ]);
   expect(await findWaitingPosterVideo("owner")).toBeNull();
 });
+
+it("keeps published scripts when the same project gets another edit", async () => {
+  const a = await master("u/owner/project-posted.mp4");
+  const b = await master("u/owner/project-new.mp4");
+  const original = await saveEditorMaster("owner", input(a.id));
+  expect(original.script).toBe("The words in the edit.");
+  await db
+    .update(schema.contentItems)
+    .set({ status: "posted" })
+    .where(eq(schema.contentItems.id, original.id));
+  await db.insert(schema.publishJobs).values({
+    userId: "owner",
+    contentItemId: original.id,
+    platform: "youtube",
+    mediaKey: a.mediaKey!,
+    status: "published",
+    updatedAt: old,
+  });
+  const latest = await saveEditorMaster("owner", {
+    ...input(b.id, "b".repeat(64), now),
+    transcript: "The new edit's words.",
+  });
+  expect(latest.id).not.toBe(original.id);
+  expect(latest.script).toBe("The new edit's words.");
+  expect(latest.status).toBe("ready");
+  const [archived] = await db
+    .select()
+    .from(schema.contentItems)
+    .where(eq(schema.contentItems.id, original.id));
+  expect(archived).toMatchObject({
+    status: "posted",
+    script: "The words in the edit.",
+    recordedTranscript: "The words in the edit.",
+    submissionId: a.id,
+  });
+  const { listContentItems } = await import("./content");
+  expect((await listContentItems("owner")).map((i) => i.id)).toEqual(
+    expect.arrayContaining([original.id, latest.id]),
+  );
+  expect(
+    (await listContentItems("owner", { includePosterUploads: true })).map(
+      (i) => i.id,
+    ),
+  ).toEqual([latest.id]);
+  expect(await findPostedMedia(now, 50)).toEqual([
+    { userId: "owner", mediaKey: a.mediaKey },
+  ]);
+  expect(
+    await saveEditorMaster("owner", {
+      ...input(b.id, "b".repeat(64), now),
+      transcript: "The new edit's words.",
+    }),
+  ).toMatchObject({ id: latest.id });
+});
+
+it("keeps a publishing revision separate from a newer editor upload", async () => {
+  const a = await master("u/owner/project-publishing.mp4");
+  const b = await master("u/owner/project-next.mp4");
+  const original = await saveEditorMaster("owner", input(a.id));
+  await db.insert(schema.publishJobs).values({
+    userId: "owner",
+    contentItemId: original.id,
+    platform: "youtube",
+    mediaKey: a.mediaKey!,
+    status: "uploading",
+  });
+  const latest = await saveEditorMaster(
+    "owner",
+    input(b.id, "b".repeat(64), now),
+  );
+  expect(latest.id).not.toBe(original.id);
+  expect(await db.select().from(schema.contentItems)).toHaveLength(2);
+});
+
+it("keeps the scheduled script attached to its scheduled media after a new edit", async () => {
+  const a = await master("u/owner/project-scheduled.mp4");
+  const b = await master("u/owner/project-later.mp4");
+  const original = await saveEditorMaster("owner", input(a.id));
+  await db.insert(schema.publishingSchedules).values({
+    userId: "owner",
+    requestKey: crypto.randomUUID(),
+    requestHash: "hash",
+    entryIndex: 0,
+    platform: "youtube",
+    externalAccountId: "channel",
+    accountLabel: "Channel",
+    title: "Scheduled edit",
+    contentItemId: original.id,
+    input: {
+      mediaKey: a.mediaKey!,
+    } as typeof schema.publishingSchedules.$inferInsert.input,
+    scheduledFor: now,
+    timezone: "UTC",
+  });
+  const latest = await saveEditorMaster("owner", {
+    ...input(b.id, "b".repeat(64), now),
+    transcript: "Later words",
+  });
+  expect(latest.id).not.toBe(original.id);
+  const [scheduled] = await db
+    .select()
+    .from(schema.contentItems)
+    .where(eq(schema.contentItems.id, original.id));
+  expect(scheduled.script).toBe("The words in the edit.");
+  expect(scheduled.submissionId).toBe(a.id);
+});

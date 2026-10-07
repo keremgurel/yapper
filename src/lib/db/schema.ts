@@ -669,6 +669,15 @@ export const contentItems = pgTable(
      * verbatim from the export's transcription. Captions are written from it;
      * the inspiration's transcript above never is. */
     recordedTranscript: text("recorded_transcript"),
+    /** Completed classification input and retry lease; server-owned. */
+    memoryScriptManual: boolean("memory_script_manual")
+      .notNull()
+      .default(false),
+    memoryPillarManual: boolean("memory_pillar_manual")
+      .notNull()
+      .default(false),
+    memoryFingerprint: text("memory_fingerprint"),
+    memoryAttemptedAt: timestamp("memory_attempted_at", { withTimezone: true }),
     /** A faithful summary, for articles and papers that never had dialogue. */
     sourceSummary: text("source_summary"),
     sourceReferenceType: text("source_reference_type"),

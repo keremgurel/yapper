@@ -72,6 +72,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // section, not whatever sits at the top of the brain.
   const context = await getBrainContextSafe(userId, {
     surface: "ideate",
+    memoryTask: `Write a new idea in the ${combination.pillar} pillar`,
     task: [combination.pillar, combination.angle, combination.format]
       .filter(Boolean)
       .join("\n"),

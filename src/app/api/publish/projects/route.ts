@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { enrichRecording } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
 import { canUsePremium } from "@/lib/billing/gate";
 import { saveEditorMaster } from "@/lib/db/editor-projects";
@@ -38,6 +40,7 @@ export async function POST(req: Request): Promise<Response> {
       title: body.title.slice(0, 300),
       transcript: body.transcript.slice(0, 100_000),
     });
+    after(() => enrichRecording(userId, item.id));
     return Response.json({ item });
   } catch (error) {
     const code = error instanceof Error ? error.message : "failed";
