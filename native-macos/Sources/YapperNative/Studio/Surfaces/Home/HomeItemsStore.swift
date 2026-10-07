@@ -1,7 +1,7 @@
 import Foundation
 
 /// The creator's content items, read twice the way the web Home does: the
-/// Library queue for Up next and the Idea Bank for Five for today. A failed
+/// Library queue for Up next and the Ideas for Five for today. A failed
 /// read is kept apart from an empty list.
 @MainActor
 final class HomeItemsStore: ObservableObject {

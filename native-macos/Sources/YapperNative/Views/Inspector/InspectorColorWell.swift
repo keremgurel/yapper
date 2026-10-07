@@ -4,6 +4,7 @@ import SwiftUI
 /// colours worth reaching for first, a hex field for the exact one, an opacity
 /// slider, and the system picker behind "Custom" for everything else.
 struct InspectorColorWell: View {
+    @Environment(\.inspectorControlLabel) private var controlLabel
     let color: StudioColor
     var supportsOpacity = true
     /// `live` is true while a slider or the system picker is streaming, so the
@@ -19,6 +20,8 @@ struct InspectorColorWell: View {
             } label: {
                 swatch
             }
+            .accessibilityLabel("\(controlLabel) color")
+            .accessibilityValue(color.hex)
             .buttonStyle(.studioPlain)
             .popover(isPresented: $isPickerPresented, arrowEdge: .bottom) {
                 InspectorColorPicker(
@@ -83,6 +86,7 @@ private struct InspectorColorPicker: View {
                             ),
                             in: 0 ... 100
                         )
+                        .accessibilityLabel("Color opacity")
                         .controlSize(.small)
                         .tint(Color.yapperOrange)
                         InspectorNumberField(
@@ -117,7 +121,8 @@ private struct InspectorColorPicker: View {
                     supportsOpacity: false
                 )
                 .labelsHidden()
-                .help("Custom colour")
+                .accessibilityLabel("Custom color")
+                .help("Custom color")
             }
         }
         .padding(14)
@@ -145,6 +150,8 @@ private struct InspectorColorPicker: View {
                 }
                 .frame(width: 22, height: 22)
         }
+        .accessibilityLabel("Color \(preset.hex)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .buttonStyle(.studioPlain)
     }
 

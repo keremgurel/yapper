@@ -1,8 +1,5 @@
 import SwiftUI
 
-/// The recording screen: the frame and its controls on the left, the
-/// script, teleprompter and devices on the right. In focus the right side
-/// goes away and the frame takes the whole page.
 struct RecorderCaptureLayout: View {
     let workspace: RecorderWorkspace
     @ObservedObject var capture: RecorderCaptureSession
@@ -15,50 +12,72 @@ struct RecorderCaptureLayout: View {
     let onRecord: () -> Void
 
     var body: some View {
-        if focused {
-            stageColumn(height: nil)
-                .padding(24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.editorBackground)
-        } else {
-            HStack(alignment: .top, spacing: 28) {
-                stageColumn(height: 620)
-                    .frame(maxWidth: .infinity, alignment: .top)
-                VStack(alignment: .leading, spacing: 16) {
-                    RecorderPartialAccessNote(permissions: workspace.permissions)
-                    RecorderScriptPanel(script: script)
-                    RecorderPrompterPanel(store: prompter)
-                    RecorderDevicesPanel(
-                        capture: capture, devices: workspace.devices,
-                        showGuides: $showGuides, locked: locked
-                    )
+        GeometryReader { geometry in
+            HStack(alignment: .top, spacing: 24) {
+                VStack(spacing: 12) {
+                    RecorderStageView(capture: capture, movie: movie, flow: workspace.flow,
+                        prompt: script.promptText, settings: prompter.settings, showGuides: showGuides)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .layoutPriority(-1)
+                    if capture.micOn { RecorderAudioMeter(movie: movie).frame(width: 200) }
+                    if !movie.isRecording {
+                        HStack {
+                            Text(capture.readiness).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                            if !capture.canRecord && !capture.configuring && (capture.cameraOn || capture.micOn) {
+                                Button("Retry devices") { capture.retry() }
+                                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                            }
+                        }
+                    }
+                    if !script.promptText.isEmpty {
+                        RecorderRehearsalControls(scroller: workspace.flow.scroller,
+                            locked: countdown.active || movie.phase == .finishing)
+                    }
+                    RecorderControlBar(capture: capture, movie: movie, countdown: countdown,
+                        onRecord: onRecord, onFinish: workspace.flow.finish)
+                    if focused {
+                        RecorderPrompterPanel(store: prompter, compact: true)
+                        Text("Press F or Escape to leave focus.").font(.system(size: 12)).foregroundStyle(.secondary)
+                    }
                 }
-                .frame(width: 340)
-                .disabled(locked)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !focused {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            RecorderPartialAccessNote(permissions: workspace.permissions)
+                            NativeField(label: "Camera frame") {
+                                RecorderSegmented(options: RecorderFraming.allCases.map { .init(value: $0, label: $0.label) }, selection: $prompter.settings.framing)
+                                    .disabled(locked)
+                            }
+                            Text("Auto uses the camera frame. Other ratios crop the center of the preview and saved video.")
+                                .font(.system(size: 12)).foregroundStyle(.secondary)
+                            RecorderScriptPanel(script: script).disabled(locked)
+                            RecorderPrompterPanel(store: prompter)
+                            RecorderDevicesPanel(capture: capture, devices: workspace.devices,
+                                showGuides: $showGuides, locked: locked)
+                        }
+                    }
+                    .frame(width: min(320, geometry.size.width * 0.38))
+                }
             }
         }
     }
-
     private var locked: Bool { movie.isRecording || countdown.active || movie.phase == .finishing }
+}
 
-    private func stageColumn(height: CGFloat?) -> some View {
-        VStack(spacing: 14) {
-            RecorderStageView(
-                capture: capture, movie: movie, flow: workspace.flow,
-                prompt: script.promptText, settings: prompter.settings, showGuides: showGuides
-            )
-            .frame(height: height)
-            .frame(maxHeight: height == nil ? .infinity : nil)
-            if capture.micOn {
-                RecorderAudioMeter(movie: movie).frame(width: 200)
+private struct RecorderRehearsalControls: View {
+    @ObservedObject var scroller: TeleprompterScroller
+    let locked: Bool
+    var body: some View {
+        HStack(spacing: 12) {
+            Button(scroller.running ? "Pause prompt" : "Play prompt", systemImage: scroller.running ? "pause" : "play") {
+                if scroller.running { scroller.pause() } else { scroller.play() }
             }
-            RecorderControlBar(
-                capture: capture, movie: movie, countdown: countdown,
-                onRecord: onRecord, onFinish: workspace.flow.finish
-            )
-            if focused {
-                Text("Press F or Escape to leave focus.").font(.system(size: 11)).foregroundStyle(.secondary)
-            }
+            Button("Restart prompt", systemImage: "backward.end") { scroller.reset() }
         }
+        .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+        .disabled(locked)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Teleprompter rehearsal")
     }
 }

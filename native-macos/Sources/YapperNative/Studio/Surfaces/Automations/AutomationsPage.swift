@@ -80,6 +80,14 @@ private struct AutomationNotices: View {
             .padding(.horizontal, 16).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.studioFaintFill))
+            HStack {
+                Text("Saving changes updates your rule; it does not restart server checks. Review waiting deliveries in Activity below.")
+                    .font(.system(size: 12)).foregroundStyle(.secondary)
+                Button("Check availability") { Task { await store.refresh() } }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                Button("Review scheduled posts") { StudioNavigation.shared.goTo(.calendar) }
+                    .buttonStyle(EditorGhostButtonStyle(size: .small))
+            }
         }
         if accounts.failed {
             NativeErrorState(message: "Your connected accounts couldn't be loaded.") {

@@ -18,7 +18,10 @@ import {
   THREAD_CONTEXT,
 } from "@/lib/db/content-messages";
 import { getContentItem } from "@/lib/db/content";
-import { describeCanvasActions } from "@/lib/content/canvas-actions";
+import {
+  describeCanvasActions,
+  keyPointsOnly,
+} from "@/lib/content/canvas-actions";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -121,6 +124,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   let result;
   try {
     result = await askCanvas(input, req.signal);
+    if (instruction === "Give me the key points as bullets") {
+      result.actions = keyPointsOnly(result.actions);
+      if (!result.actions.length)
+        throw new Error("No key points returned. Your script was kept.");
+      result.note = "Added key points. Your script was kept.";
+    }
   } catch (error) {
     const detail = error instanceof Error ? error.message : "generate_failed";
     return Response.json({ error: "generate_failed", detail }, { status: 502 });

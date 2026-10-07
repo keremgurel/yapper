@@ -73,7 +73,7 @@ struct RecorderControlBar: View {
     }
 
     private var recordHelp: String {
-        if !movie.isRecording && !capture.canRecord { return "Turn on your camera or mic first" }
+        if !movie.isRecording && !capture.canRecord { return capture.readiness }
         return "\(recordTitle) (Space)"
     }
 }

@@ -40,7 +40,7 @@ export default function InstagramCollectionList({
           </p>
           <p className="text-muted-foreground mt-0.5 text-xs">
             {entryCount} unique saves found
-            {duplicateCount ? ` · ${duplicateCount} already in Idea Bank` : ""}
+            {duplicateCount ? ` · ${duplicateCount} already in Ideas` : ""}
           </p>
         </div>
         <button

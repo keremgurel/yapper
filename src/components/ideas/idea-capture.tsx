@@ -310,7 +310,7 @@ export default function IdeaCapture({
                         ? "Transcribing your thought…"
                         : saving
                           ? "Saving your idea…"
-                          : "⌘D to dictate · ⌘Enter to bank it")}
+                          : "⌘D to dictate · ⌘Enter to save idea")}
                   </p>
                   {captureError && (
                     <button
@@ -380,8 +380,8 @@ export default function IdeaCapture({
               type="button"
               onClick={() => void submit()}
               disabled={!canSubmit || transcribing || saving}
-              aria-label="Add to Idea Bank"
-              title="Add to Idea Bank (⌘Enter)"
+              aria-label="Add to Ideas"
+              title="Add to Ideas (⌘Enter)"
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-white shadow-sm transition-opacity duration-150 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-35"
             >
               {saving ? (

@@ -98,7 +98,7 @@ export default function TeleprompterRecorder({
   const [session, setSession] = useState(0);
   const elapsed = useElapsedSeconds(isRecording && !isPaused, session);
   const [immersive, setImmersive] = useState(false);
-  const [tpOpen, setTpOpen] = useState(false);
+  const [tpOpen, setTpOpen] = useState(true);
   const [showGuides, setShowGuides] = useState(false);
   const hasText = text.trim().length > 0;
   // With no camera and no mic there's nothing to capture — startRecording would
@@ -179,7 +179,9 @@ export default function TeleprompterRecorder({
       const el = e.target as HTMLElement | null;
       if (
         el &&
-        (el.tagName === "INPUT" ||
+        (el.tagName === "BUTTON" ||
+          el.tagName === "SELECT" ||
+          el.tagName === "INPUT" ||
           el.tagName === "TEXTAREA" ||
           el.isContentEditable)
       ) {
@@ -222,125 +224,137 @@ export default function TeleprompterRecorder({
     <div
       className={
         immersive
-          ? "fixed inset-0 z-50 flex items-center justify-center bg-black"
-          : "mx-auto flex w-full max-w-md flex-col items-center px-4 py-6"
+          ? "fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black"
+          : "mx-auto flex w-full max-w-xl flex-col items-center py-4"
       }
     >
       <div
         className={
           immersive
-            ? "relative aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden bg-black"
-            : "relative aspect-[9/16] w-full overflow-hidden rounded-3xl bg-black"
+            ? "relative flex min-h-full w-full max-w-xl flex-col bg-black"
+            : "relative flex w-full flex-col overflow-hidden rounded-2xl bg-black"
         }
       >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="h-full w-full -scale-x-100 object-cover"
-        />
-
-        {showGuides && <RecorderGuides />}
-
-        {hasText && (
-          <TeleprompterOverlay
-            scrollRef={scroll.scrollRef}
-            text={text}
-            fontScale={tp.fontScale}
-            heightPct={tp.heightPct}
-            opacity={tp.opacity}
+        <div className="relative h-[45svh] min-h-60 w-full overflow-hidden">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className="h-full w-full -scale-x-100 object-cover"
           />
-        )}
 
-        {/* Recording indicator with elapsed time (pauses with the recording). */}
-        {isRecording && (
-          <div className="absolute top-4 left-4 z-40 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 backdrop-blur-md">
-            {isPaused ? (
-              <Pause className="h-3 w-3 text-white" />
-            ) : (
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-            )}
-            <span className="font-mono text-xs font-bold text-white">
-              {formatElapsed(elapsed)}
-            </span>
-            {isPaused && (
-              <span className="text-[11px] font-bold text-white/70">
-                Paused
-              </span>
-            )}
-          </div>
-        )}
+          {showGuides && <RecorderGuides />}
 
-        {/* Top-right controls: fullscreen + framing guides. */}
-        <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setImmersive((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70"
-            title={immersive ? "Exit fullscreen" : "Fullscreen"}
-            aria-label={immersive ? "Exit fullscreen" : "Fullscreen"}
-          >
-            {immersive ? (
-              <Minimize2 className="h-4 w-4" />
-            ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowGuides((v) => !v)}
-            aria-pressed={showGuides}
-            className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
-              showGuides
-                ? "bg-white text-black"
-                : "bg-black/50 text-white hover:bg-black/70"
-            }`}
-            title="Framing guides"
-            aria-label="Framing guides"
-          >
-            <Grid3x3 className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Camera / mic picker + flip (hidden while recording). */}
-        {!isRecording && (cameras.length > 0 || mics.length > 0) && (
-          <div className="absolute top-4 left-4 z-50">
-            <RecorderDevices
-              cameras={cameras}
-              mics={mics}
-              videoDeviceId={videoDeviceId}
-              audioDeviceId={audioDeviceId}
-              onSelectCamera={selectVideoDevice}
-              onSelectMic={selectAudioDevice}
-              disabled={count !== null}
+          {hasText && (
+            <TeleprompterOverlay
+              scrollRef={scroll.scrollRef}
+              text={text}
+              fontScale={tp.fontScale}
+              heightPct={tp.heightPct}
+              opacity={tp.opacity}
             />
-          </div>
-        )}
+          )}
 
-        {/* 3-2-1 pre-roll. */}
-        {count !== null && (
-          <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-            <span className="font-mono text-8xl font-black text-white drop-shadow-lg">
-              {count}
-            </span>
-          </div>
-        )}
+          {/* Recording indicator with elapsed time (pauses with the recording). */}
+          {isRecording && (
+            <div className="absolute top-4 left-4 z-40 flex items-center gap-2 rounded-full bg-black/50 px-3 py-1 backdrop-blur-md">
+              {isPaused ? (
+                <Pause className="h-3 w-3 text-white" />
+              ) : (
+                <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+              )}
+              <span className="font-mono text-xs font-bold text-white">
+                {formatElapsed(elapsed)}
+              </span>
+              {isPaused && (
+                <span className="text-[11px] font-bold text-white/70">
+                  Paused
+                </span>
+              )}
+            </div>
+          )}
 
-        {mediaError && (
-          <div className="absolute inset-x-4 top-16 z-40 rounded-lg bg-red-950/80 px-3 py-2 text-xs font-bold text-red-200 backdrop-blur-md">
-            {mediaError}
+          {/* Top-right controls: fullscreen + framing guides. */}
+          <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => setImmersive((v) => !v)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70"
+              title={immersive ? "Exit fullscreen" : "Fullscreen"}
+              aria-label={immersive ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {immersive ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowGuides((v) => !v)}
+              aria-pressed={showGuides}
+              className={`flex h-9 w-9 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
+                showGuides
+                  ? "bg-white text-black"
+                  : "bg-black/50 text-white hover:bg-black/70"
+              }`}
+              title="Framing guides"
+              aria-label="Framing guides"
+            >
+              <Grid3x3 className="h-4 w-4" />
+            </button>
           </div>
-        )}
 
-        {/* Bottom control bar */}
-        <div className="absolute inset-x-0 bottom-0 z-40 flex flex-col items-center gap-3 bg-gradient-to-t from-black/70 to-transparent px-4 pt-10 pb-5">
-          {hasText && !isRecording && count === null && (
+          {/* Camera / mic picker + flip (hidden while recording). */}
+          {!isRecording && (cameras.length > 0 || mics.length > 0) && (
+            <div className="absolute top-4 left-4 z-50">
+              <RecorderDevices
+                cameras={cameras}
+                mics={mics}
+                videoDeviceId={videoDeviceId}
+                audioDeviceId={audioDeviceId}
+                onSelectCamera={selectVideoDevice}
+                onSelectMic={selectAudioDevice}
+                disabled={count !== null}
+              />
+            </div>
+          )}
+
+          {/* 3-2-1 pre-roll. */}
+          {count !== null && (
+            <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
+              <span className="font-mono text-8xl font-black text-white drop-shadow-lg">
+                {count}
+              </span>
+            </div>
+          )}
+
+          {mediaError && (
+            <div className="absolute inset-x-4 top-16 z-40 rounded-lg bg-red-950/80 px-3 py-2 text-xs font-bold text-red-200 backdrop-blur-md">
+              {mediaError}
+            </div>
+          )}
+        </div>
+        {/* Controls have their own space so the prompt remains readable. */}
+        <div className="relative z-40 flex flex-col items-center gap-3 bg-black px-3 py-4">
+          {hasText && count === null && (
             <div className="flex w-full flex-col items-center gap-2">
+              <div className="flex flex-wrap justify-center gap-3 text-xs text-white">
+                <button type="button" onClick={scrollPlay}>
+                  Play prompt
+                </button>
+                <button type="button" onClick={scrollPause}>
+                  Pause prompt
+                </button>
+                <button type="button" onClick={scrollReset}>
+                  Restart prompt
+                </button>
+              </div>
               {tpOpen && (
                 <TeleprompterSettingsPanel settings={tp} onChange={updateTp} />
               )}
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
                 <span className="text-[11px] font-bold text-white/70">
                   Speed
                 </span>
@@ -349,6 +363,8 @@ export default function TeleprompterRecorder({
                     key={preset}
                     type="button"
                     onClick={() => scroll.setWpm(preset)}
+                    aria-pressed={scroll.wpm === preset}
+                    aria-label={`${preset} words per minute`}
                     className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
                       scroll.wpm === preset
                         ? "bg-white text-black"

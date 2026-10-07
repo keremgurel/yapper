@@ -18,10 +18,12 @@ export default function CanvasPhoneSheet({
   onOpenChange,
   itemId,
   beforeOpen,
+  format,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   itemId: string;
+  format?: string;
   beforeOpen: () => Promise<void>;
 }) {
   return (
@@ -34,7 +36,14 @@ export default function CanvasPhoneSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-8">
-          {open && <SendToPhone itemId={itemId} beforeOpen={beforeOpen} />}
+          {open && (
+            <SendToPhone
+              key={format}
+              itemId={itemId}
+              format={format}
+              beforeOpen={beforeOpen}
+            />
+          )}
         </div>
       </SheetContent>
     </Sheet>

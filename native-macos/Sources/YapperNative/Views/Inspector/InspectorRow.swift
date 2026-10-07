@@ -1,6 +1,13 @@
 import SwiftUI
 
 /// The measurements a panel of properties has to agree on.
+private struct InspectorLabelKey: EnvironmentKey { static let defaultValue = "Value" }
+extension EnvironmentValues {
+    var inspectorControlLabel: String {
+        get { self[InspectorLabelKey.self] }
+        set { self[InspectorLabelKey.self] = newValue }
+    }
+}
 enum InspectorMetrics {
     static let labelWidth: CGFloat = 58
 }
@@ -30,7 +37,7 @@ struct InspectorRow<Content: View>: View {
                 .foregroundStyle(.secondary)
                 .frame(width: InspectorMetrics.labelWidth, alignment: .leading)
                 .padding(.top, alignment == .top ? 3 : 0)
-            content
+            content.environment(\.inspectorControlLabel, title)
             Spacer(minLength: 0)
         }
     }
@@ -110,6 +117,7 @@ struct InspectorSegmentedControl<Value: Hashable>: View {
             }
             .contentShape(Rectangle())
         }
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
         .buttonStyle(.studioPlain)
         .clickableCursor()
     }

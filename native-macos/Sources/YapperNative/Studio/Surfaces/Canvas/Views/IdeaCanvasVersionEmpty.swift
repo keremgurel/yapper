@@ -11,16 +11,26 @@ struct IdeaCanvasVersionEmpty: View {
     let writing: Bool
     let error: String?
     var maxWidth: CGFloat = 1440
+    var onCancel: () -> Void = {}
     let onWrite: (IdeaCanvasVersionFormat) -> Void
 
+    @State private var started = Date()
     @State private var from: IdeaCanvasVersionFormat?
 
     private var chosen: IdeaCanvasVersionFormat? { from ?? sources.first }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if writing { placeholder } else { card }
+            if writing {
+                placeholder
+                Button("Stop waiting", action: onCancel).buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    Text("\(Int(context.date.timeIntervalSince(started))) seconds elapsed. Your existing versions are kept.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            } else { card }
         }
+        .onChange(of: writing) { _, value in if value { started = Date() } }
         .frame(maxWidth: 640, alignment: .leading)
         .padding(.top, 32)
         // The same edge as the tabs and every document column above it.
@@ -50,7 +60,7 @@ struct IdeaCanvasVersionEmpty: View {
             VStack(alignment: .leading, spacing: 7) {
                 reads("Uses its \(chosen?.openerLabel.lowercased() ?? "hook"), script and key points")
                 if hasSource { reads("Goes back to the original source for detail the \(chosen?.noun ?? "short") had to cut") }
-                reads("Same cost as drafting an idea, and nothing is charged if it fails")
+                reads("8 credits. Refunded if generation fails.")
             }
             Button {
                 if let chosen { onWrite(chosen) }

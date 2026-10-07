@@ -22,7 +22,7 @@ struct HomePage: View {
                 description: "What's in the pipeline, what to make next, and how your channels are doing."
             ) {
                 Button { StudioNavigation.shared.goTo(.ideas) } label: {
-                    Label("Idea Bank", systemImage: "lightbulb")
+                    Label("Ideas", systemImage: "lightbulb")
                 }
                 .buttonStyle(EditorSecondaryButtonStyle())
                 Button { StudioNavigation.shared.goTo(.editor) } label: {

@@ -4,6 +4,7 @@ import SwiftUI
 /// middle, and the destinations with the one publish button on the right.
 /// Stacks on narrow windows.
 struct PosterBenchView: View {
+    var availableHeight: CGFloat = 540
     let video: PosterVideo
     let source: PosterSource
     let videos: [PosterVideo]
@@ -16,16 +17,16 @@ struct PosterBenchView: View {
 
     var body: some View {
         Group {
-            if width >= 1180 {
+            if width >= 760 {
                 HStack(alignment: .top, spacing: 28) {
-                    rail.frame(width: 240)
-                    cover.frame(maxWidth: .infinity)
-                    destinations.frame(width: 380)
+                    if width >= 1180 { rail.frame(width: 200) }
+                    ScrollView { cover }.frame(maxWidth: .infinity).frame(height: availableHeight)
+                    destinations.frame(width: min(420, width * 0.48), height: availableHeight)
                 }
             } else {
                 VStack(alignment: .leading, spacing: 28) {
                     cover
-                    destinations
+                    destinations.frame(height: availableHeight)
                     rail
                 }
             }

@@ -59,12 +59,22 @@ final class IdeaCanvasAskRunner: ObservableObject {
         case .failure(let failure):
             thread.settle(pendingID, saved: nil)
             error = failure
-        case .success(let reply):
+        case .success(var reply):
+            if trimmed == "Give me the key points as bullets" {
+                reply.actions = IdeaCanvasActions.keyPointsOnly(reply.actions)
+            }
+            guard edited.blocks == before.blocks, edited.hooks == before.hooks else {
+                thread.settle(pendingID, saved: reply.messages)
+                lastReply = "Your writing changed while I was working. The reply is in the conversation; your latest edits were kept."
+                return
+            }
             apply(reply, before: before, to: edited)
             thread.settle(pendingID, saved: reply.messages)
             let said = reply.chirpyMessage?.text
             let changed = reply.actions.isEmpty ? nil : IdeaCanvasActions.describe(reply.actions)
-            lastReply = [said, changed, reply.note].compactMap { $0 }.first { !$0.isEmpty } ?? "Done."
+            lastReply = trimmed == "Give me the key points as bullets"
+                ? (reply.actions.isEmpty ? "No key points were returned. Your script was kept." : "Added key points. Your script was kept.")
+                : [said, changed, reply.note].compactMap { $0 }.first { !$0.isEmpty } ?? "Done."
             undo = reply.actions.isEmpty ? nil : Undo(messageID: reply.chirpyMessage?.id, state: before, body: edited)
         }
     }

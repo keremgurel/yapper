@@ -14,13 +14,21 @@ struct PosterDestinationCard: View {
     var onCopy: () -> Void = {}
     var onGenerateOthers: () -> Void = {}
 
+    @State private var expanded = false
+
     private var done: Bool { [.posted, .scheduled].contains(readiness.state) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 10) {
                 Image(systemName: readiness.platform.symbol).font(.system(size: 13)).foregroundStyle(.secondary)
-                Text(readiness.spec.label).font(.system(size: 13, weight: .semibold))
+                Button { expanded.toggle() } label: {
+                    Label(readiness.spec.label, systemImage: expanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .buttonStyle(.studioPlain)
+                .accessibilityLabel("\(expanded ? "Collapse" : "Edit") \(readiness.spec.label) caption")
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
                 Spacer()
                 NativeChip(text: sending ? "Sending" : readiness.state.label, tone: sending ? .neutral : readiness.state.tone)
                 if !done {
@@ -30,11 +38,13 @@ struct PosterDestinationCard: View {
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
+            if expanded {
             Rectangle().fill(Color.studioLine).frame(height: 1)
             if done {
                 notes.padding(16)
             } else {
                 fields.padding(16)
+            }
             }
         }
         .background(NativeCardBackground(radius: 12))

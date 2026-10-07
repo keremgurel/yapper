@@ -20,10 +20,12 @@ export default function SendToPhone({
   itemId,
   beforeOpen,
   disabled,
+  format,
 }: {
   itemId: string;
   beforeOpen?: () => Promise<void>;
   disabled?: boolean;
+  format?: string;
 }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [url, setUrl] = useState("");
@@ -47,7 +49,9 @@ export default function SendToPhone({
       const res = await fetch("/api/handoff/phone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: `/studio/recorder?item=${itemId}` }),
+        body: JSON.stringify({
+          to: `/studio/recorder?item=${itemId}${format ? `&format=${format}` : ""}`,
+        }),
       });
       if (!res.ok) throw new Error("mint_failed");
       const data = (await res.json()) as {

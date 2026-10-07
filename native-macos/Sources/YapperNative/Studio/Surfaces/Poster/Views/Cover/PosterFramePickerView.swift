@@ -21,10 +21,10 @@ struct PosterFramePickerView: View {
             strip.padding(.horizontal, 16)
 
             HStack(spacing: 6) {
-                stepButton("1s", systemImage: "chevron.left.2", enabled: picker.index > 0) { picker.jump(-1) }
-                stepButton("1f", systemImage: "chevron.left", enabled: picker.index > 0) { picker.step(-1) }
-                stepButton("1f", systemImage: "chevron.right", enabled: picker.index < picker.frameCount - 1) { picker.step(1) }
-                stepButton("1s", systemImage: "chevron.right.2", enabled: picker.index < picker.frameCount - 1) { picker.jump(1) }
+                stepButton("Back 1s", systemImage: "chevron.left.2", enabled: picker.index > 0) { picker.jump(-1) }
+                stepButton("Back 1f", systemImage: "chevron.left", enabled: picker.index > 0) { picker.step(-1) }
+                stepButton("Forward 1f", systemImage: "chevron.right", enabled: picker.index < picker.frameCount - 1) { picker.step(1) }
+                stepButton("Forward 1s", systemImage: "chevron.right.2", enabled: picker.index < picker.frameCount - 1) { picker.jump(1) }
                 Spacer()
                 Text("Frame").font(.system(size: 12)).foregroundStyle(.secondary)
                 TextField(picker.ready ? String(picker.index + 1) : "", text: $enteredFrame)

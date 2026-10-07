@@ -8,7 +8,7 @@ struct HomeDailyIdeasSection: View {
 
     var body: some View {
         NativeSection(title: "Five for today", meta: Date().formatted(.dateTime.month(.abbreviated).day())) {
-            Button("Open Idea Bank") { StudioNavigation.shared.goTo(.ideas) }
+            Button("Open Ideas") { StudioNavigation.shared.goTo(.ideas) }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
         } content: {
             VStack(alignment: .leading, spacing: 8) {

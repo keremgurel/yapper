@@ -13,7 +13,7 @@ extension EditorSession {
             guard let self else { return }
             for (index, source) in pending.enumerated() {
                 if Task.isCancelled { break }
-                managedMediaStatus = "Saving \(package.displayName) to Yapper, \(index + 1) of \(pending.count). Keep the source connected."
+                if project.id == projectID { managedMediaStatus = "Saving \(package.displayName) to Yapper, \(index + 1) of \(pending.count). Keep the source connected." }
                 do {
                     try await ManagedProjectMedia.copy(source, into: package)
                     try Task.checkCancellation()
@@ -24,14 +24,16 @@ extension EditorSession {
                     }
                 } catch is CancellationError { break }
                 catch {
-                    managedMediaFailures.insert(source.url)
-                    managedMediaError = "Couldn’t save \(source.url.lastPathComponent) for \(package.displayName). \(error.localizedDescription)"
-                    managedMediaStatus = managedMediaError
+                    if project.id == projectID {
+                        managedMediaFailures.insert(source.url)
+                        managedMediaError = "Couldn’t save \(source.url.lastPathComponent) for \(package.displayName). \(error.localizedDescription)"
+                        managedMediaStatus = managedMediaError
+                    }
                 }
             }
             managedMediaTask = nil
             managedMediaPackage = nil
-            managedMediaStatus = managedMediaError
+            if project.id == projectID { managedMediaStatus = managedMediaError }
             projectNavigation.noteLibraryChanged()
             // An import may have arrived while a previous copy was running.
             if !Task.isCancelled { saveMediaInBackground() }

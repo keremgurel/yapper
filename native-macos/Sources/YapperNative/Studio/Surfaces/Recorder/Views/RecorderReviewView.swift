@@ -15,8 +15,8 @@ struct RecorderReviewView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 28) {
             NativeVideoPlayer(player: player)
-                .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                .frame(height: 620)
+                .aspectRatio(take.hasVideo ? take.aspectRatio : 3, contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: take.hasVideo ? 480 : 160)
                 .background(Color.black)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
@@ -31,9 +31,10 @@ struct RecorderReviewView: View {
     private var actions: some View {
         NativeSection(title: "Your take", meta: title, card: true) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Edit it now, or keep the file. It stays on this Mac.")
+                Text(take.hasVideo ? "Edit this video or download it. The take stays on this Mac." : "Your audio take is ready to play or download. The video editor needs a video track.")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if take.hasVideo {
                 Button(action: openInEditor) {
                     HStack(spacing: 8) {
                         if opening { ProgressView().controlSize(.small) } else { Image(systemName: "scissors") }
@@ -43,6 +44,7 @@ struct RecorderReviewView: View {
                 }
                 .buttonStyle(EditorPrimaryButtonStyle())
                 .disabled(opening)
+                }
                 HStack(spacing: 8) {
                     Button { player?.pause(); onRetake() } label: {
                         Label("Retake", systemImage: "arrow.counterclockwise").frame(maxWidth: .infinity)
@@ -54,6 +56,7 @@ struct RecorderReviewView: View {
                     }
                     .buttonStyle(EditorSecondaryButtonStyle())
                 }
+                if let warning = take.warning { Text(warning).font(.caption).foregroundStyle(Color.studioDanger) }
                 if let message {
                     Text(message).font(.system(size: 12, weight: .medium)).foregroundStyle(Color.studioDanger)
                         .fixedSize(horizontal: false, vertical: true)

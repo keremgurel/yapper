@@ -467,6 +467,12 @@ private struct StudioTopBar: View {
                     ProgressView().controlSize(.small)
                 }
                 ManagedMediaNotice(session: session)
+                if let url = session.lastExportURL, !session.isBusy {
+                    Menu("Export complete") {
+                        Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                        Button("Continue to Poster") { onNavigate(.poster) }
+                    }.menuStyle(.borderlessButton).fixedSize()
+                }
                 Text(session.statusMessage)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)

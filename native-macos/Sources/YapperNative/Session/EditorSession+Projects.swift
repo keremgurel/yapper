@@ -35,6 +35,10 @@ extension EditorSession {
             return
         }
         await leaveCurrentProject()
+        lastExportURL = nil
+        managedMediaFailures.removeAll()
+        managedMediaError = nil
+        managedMediaStatus = nil
         store = ProjectPackageStore(package: package)
         projectNavigation.noteOpened(package)
         if (try? await store.load()) != nil {
@@ -62,6 +66,9 @@ extension EditorSession {
     /// after the file, with the file already on the timeline.
     func createProject(fromVideos urls: [URL]) async {
         guard let first = urls.first else { return }
+        do {
+            for url in urls { _ = try await MediaProbe.inspect(url: url) }
+        } catch { show(error); return }
         await createProject(named: first.deletingPathExtension().lastPathComponent)
         await importMedia(urls)
     }

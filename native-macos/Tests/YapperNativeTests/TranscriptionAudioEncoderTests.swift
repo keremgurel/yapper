@@ -67,4 +67,16 @@ struct TranscriptionAudioEncoderTests {
         let file = try AVAudioFile(forReading: url)
         #expect(abs(file.fileFormat.sampleRate - 44_100) < 1)
     }
+    @Test("Lower-rate audio encodes without CoreAudio errors", arguments: [16_000, 22_050, 24_000])
+    func lowerRates(sampleRate: Int) throws {
+        let encoded = try TranscriptionAudioEncoder.m4a(pcm: speech(seconds: 2, sampleRate: sampleRate), sampleRate: sampleRate)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("lower-rate-\(UUID()).m4a")
+        try encoded.write(to: url)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let file = try AVAudioFile(forReading: url)
+        #expect(file.fileFormat.sampleRate == Double(sampleRate))
+        #expect(Double(file.length) / file.fileFormat.sampleRate >= 2)
+        #expect(Double(file.length) / file.fileFormat.sampleRate < 2.4)
+    }
+
 }

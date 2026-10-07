@@ -28,7 +28,7 @@ struct HomeUpNextSection: View {
                     title: "Nothing queued to shoot",
                     message: "Send an idea to the Library and it will show up here."
                 ) {
-                    Button("Open Idea Bank") { StudioNavigation.shared.goTo(.ideas) }
+                    Button("Open Ideas") { StudioNavigation.shared.goTo(.ideas) }
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 }
             } else {

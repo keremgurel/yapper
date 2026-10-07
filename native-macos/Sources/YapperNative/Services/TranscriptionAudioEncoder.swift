@@ -52,7 +52,7 @@ enum TranscriptionAudioEncoder {
             AVFormatIDKey: kAudioFormatMPEG4AAC,
             AVSampleRateKey: Double(sampleRate),
             AVNumberOfChannelsKey: 1,
-            AVEncoderBitRateKey: bitRate,
+            AVEncoderBitRateKey: sampleRate <= 16_000 ? 32_000 : sampleRate < 32_000 ? 64_000 : bitRate,
         ]
         guard
             let format = AVAudioFormat(

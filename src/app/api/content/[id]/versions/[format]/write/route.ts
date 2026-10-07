@@ -77,15 +77,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (access.response) return access.response;
   const { reservation } = access;
 
-  const brain = await getBrainContextSafe(userId, {
-    surface: "script",
-    format,
-    task: [item.title, from.title, from.script.slice(0, 1500)]
-      .filter(Boolean)
-      .join("\n"),
-    signal: req.signal,
-  });
   try {
+    const brain = await getBrainContextSafe(userId, {
+      surface: "script",
+      format,
+      task: [item.title, from.title, from.script.slice(0, 1500)]
+        .filter(Boolean)
+        .join("\n"),
+      signal: req.signal,
+    });
     const written = await writeVersion(
       format,
       ideaMaterial(item),

@@ -140,6 +140,7 @@ struct IdeaCanvasScreen: View {
                 writing: versions.writing == current,
                 error: versions.error,
                 maxWidth: maximize.active ? .infinity : 1440,
+                onCancel: { versions.cancelWriting() },
                 onWrite: { from in
                     let target = current
                     Task {

@@ -29,7 +29,7 @@ struct IdeaCanvasMessage: Identifiable, Equatable {
 /// What `POST api/generate/canvas` answers: the actions (parsed against the
 /// block count the ask was made with), Chirpy's note, and the saved exchange.
 struct IdeaCanvasAskReply: Equatable {
-    let actions: [IdeaCanvasAction]
+    var actions: [IdeaCanvasAction]
     let note: String?
     let messages: [IdeaCanvasMessage]?
 

@@ -141,7 +141,7 @@ export default function InstagramImportSheet({
             Import your saved inspiration
           </SheetTitle>
           <SheetDescription className="leading-5">
-            Bring your saved posts and collections into Idea Bank without giving
+            Bring your saved posts and collections into Ideas without giving
             Yapper your Instagram password.
           </SheetDescription>
         </SheetHeader>

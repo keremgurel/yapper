@@ -2,7 +2,8 @@ import Foundation
 
 /// How the teleprompter looks and reads, tuned live. The presets match the
 /// web recorder's so a creator moving between the two finds the same steps.
-struct TeleprompterSettings: Equatable {
+struct TeleprompterSettings: Equatable, Codable {
+    var framing: RecorderFraming = .auto
     var fontScale: Double = 1
     var heightFraction: Double = 0.44
     var shade: Double = 0.75

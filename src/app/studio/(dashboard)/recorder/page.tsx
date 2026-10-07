@@ -11,7 +11,11 @@ export const metadata: Metadata = {
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ item?: string | string[]; idea?: string | string[] }>;
+  searchParams: Promise<{
+    item?: string | string[];
+    format?: string | string[];
+    idea?: string | string[];
+  }>;
 }) {
   const params = await searchParams;
   const requestedItem =
@@ -22,6 +26,9 @@ export default async function Page({
     <RecordClient
       key={`${requestedItem ?? ""}:${legacyIdeaId ?? ""}`}
       requestedItem={requestedItem}
+      requestedFormat={
+        typeof params.format === "string" ? params.format : undefined
+      }
       legacyIdeaId={legacyIdeaId}
     />
   );

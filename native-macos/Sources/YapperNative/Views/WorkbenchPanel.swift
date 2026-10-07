@@ -657,7 +657,7 @@ private struct QuickEditWorkbench: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Quick Edit")
                 .font(.system(size: 15, weight: .bold))
-            Text("AI edits will operate on this native timeline without rebuilding the player between clips.")
+            Text("Choose an edit to remove pauses, tighten your take, or add captions. Your original media is kept.")
                 .font(.studioCaption)
                 .foregroundStyle(.secondary)
 
@@ -1077,7 +1077,7 @@ private struct TranscriptWorkbench: View {
                 ContentUnavailableView(
                     "No transcript yet",
                     systemImage: "doc.text.magnifyingglass",
-                    description: Text("Your take is sent once, whole, to the same accurate service as the web editor.")
+                    description: Text("Transcribe your take to edit by words and generate captions. Your existing timeline is kept.")
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
