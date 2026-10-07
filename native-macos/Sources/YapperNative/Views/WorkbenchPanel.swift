@@ -1648,10 +1648,12 @@ private struct SoundEffectCard: View {
                 Text(effect.name)
                     .font(.studioBodyStrong)
                     .lineLimit(1)
+                    .help(effect.name)
                 Text(effect.detail)
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .help(effect.detail)
             }
             Spacer(minLength: 4)
             Button(action: preview) {
@@ -1680,7 +1682,8 @@ private struct SoundEffectCard: View {
             .help("Add \(effect.name) at playhead")
         }
         .padding(.horizontal, 9)
-        .frame(width: 260, height: 54, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 54)
         .background(Color.raisedBackground)
         .overlay {
             RoundedRectangle(cornerRadius: 8)
