@@ -138,6 +138,7 @@ extension EditorSession {
                     timelineStart: start,
                     duration: min(sound.effect.duration, max(0.02, duration - start)),
                     sourceDuration: sound.effect.duration,
+                    volume: audioLibraryVolumes.volume(for: sound.effect.id),
                     builtInID: sound.effect.id,
                     sourceKind: .builtIn
                 )

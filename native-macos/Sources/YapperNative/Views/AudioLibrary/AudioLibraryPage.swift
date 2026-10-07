@@ -19,6 +19,7 @@ struct AudioLibraryPage: View {
     let onOpenEditor: () -> Void
 
     @StateObject private var preview = SavedAudioPreview()
+    @ObservedObject private var volumes = AudioLibraryVolumes.shared
     @State private var section: AudioLibrarySection = .all
     @State private var search = ""
     @State private var isDropTargeted = false
@@ -75,32 +76,42 @@ struct AudioLibraryPage: View {
         }
         // A preview is a sound playing out of a page that is no longer on
         // screen. Leaving the tab has to end it.
+        .onAppear {
+            session.pausePlayback()
+            session.stopSoundPreview()
+        }
+        .onChange(of: volumes.levels) { _, _ in preview.updateVolume() }
         .onDisappear(perform: preview.stop)
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
                 Text("Audio library")
                     .font(.studioSectionTitle)
-                Text("Everything you can drop on a timeline: yours and Yapper's.")
+                Spacer(minLength: 8)
+                Button(action: onOpenEditor) {
+                    Label("Back to editor", systemImage: "arrow.left")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+                Button(action: importAudio) {
+                    Label("Import audio", systemImage: "square.and.arrow.down")
+                }
+                .buttonStyle(EditorSecondaryButtonStyle())
+                .disabled(store.isRecovering)
+            }
+            HStack(spacing: 16) {
+                Text("Default volumes apply to previews and new clips. Existing clips keep their volume.")
                     .font(.studioCaption)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                AudioSearchField(search: $search)
+                    .frame(width: 210)
             }
-
-            Spacer(minLength: 12)
-
-            AudioSearchField(search: $search)
-                .frame(width: 210)
-
-            Button(action: importAudio) {
-                Label("Import audio", systemImage: "square.and.arrow.down")
-            }
-            .buttonStyle(EditorSecondaryButtonStyle())
-            .disabled(store.isRecovering)
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
     }
 
     @ViewBuilder

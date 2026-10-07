@@ -1,11 +1,6 @@
 import SwiftUI
 
-/// One sound, as a card in the grid.
-///
-/// The whole card is the play button, because auditioning is what a creator
-/// does forty times before placing one, and making that the easy click is the
-/// difference between browsing a library and operating it. Placing it is the
-/// deliberate act, so the plus stays a target of its own.
+/// A sound with separate preview, insertion and persistent default controls.
 struct AudioEntryCard: View {
     let entry: AudioEntry
     let isPlaying: Bool
@@ -25,10 +20,13 @@ struct AudioEntryCard: View {
     @FocusState private var nameFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                icon
-                title
+                Button(action: onToggle) { icon }
+                    .buttonStyle(.borderless)
+                    .disabled(isMissing)
+                    .accessibilityLabel(isPlaying ? "Stop preview of \(entry.name)" : "Preview \(entry.name)")
+                title.help(entry.name)
                 Spacer(minLength: 4)
                 Text(AudioLength.short(entry.duration))
                     .font(.studioCaption)
@@ -44,10 +42,12 @@ struct AudioEntryCard: View {
                 Spacer(minLength: 4)
                 actions
             }
+
+            AudioDefaultVolume(entryID: entry.id, name: entry.name)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 10)
-        .frame(height: 68)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .frame(minHeight: 120)
         .background {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(isHovering ? Color.studioFaintFill : Color.raisedBackground)
@@ -60,11 +60,9 @@ struct AudioEntryCard: View {
                 }
         }
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .onTapGesture { if !isRenaming && !isMissing { onToggle() } }
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.12), value: isHovering)
-        .clickableCursor()
-        .help(isMissing ? "This file is no longer on disk" : "Click to hear it")
+        .help(isMissing ? "This file is no longer on disk" : entry.name)
         .onChange(of: isRenaming) { _, renaming in
             if renaming {
                 draftName = entry.name
@@ -79,10 +77,10 @@ struct AudioEntryCard: View {
     }
 
     private var icon: some View {
-        Image(systemName: isPlaying ? "stop.fill" : entry.icon)
+        Image(systemName: isPlaying ? "stop.fill" : "play.fill")
             .font(.system(size: 10.5, weight: .bold))
             .foregroundStyle(isPlaying ? Color.white : Color.yapperOrange)
-            .frame(width: 22, height: 22)
+            .frame(width: 28, height: 28)
             .background {
                 RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(isPlaying ? Color.yapperOrange : Color.yapperOrange.opacity(0.12))
@@ -111,16 +109,17 @@ struct AudioEntryCard: View {
 
     private var actions: some View {
         HStack(spacing: 4) {
-            if entry.isSaved, isHovering {
+            if entry.isSaved {
                 Menu {
                     savedActions
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 28, height: 28)
                         .contentShape(Rectangle())
                 }
+                .accessibilityLabel("Actions for \(entry.name)")
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
@@ -131,7 +130,7 @@ struct AudioEntryCard: View {
                     Image(systemName: "plus")
                         .font(.system(size: 10.5, weight: .bold))
                         .foregroundStyle(canAddToProject ? Color.white : Color.secondary)
-                        .frame(width: 22, height: 22)
+                        .frame(width: 28, height: 28)
                         .background {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
                                 .fill(
@@ -141,7 +140,8 @@ struct AudioEntryCard: View {
                                 )
                         }
                 }
-                .buttonStyle(.studioPlain)
+                .buttonStyle(.borderless)
+                .accessibilityLabel("Add \(entry.name) to timeline")
                 .clickableCursor()
                 .disabled(!canAddToProject)
                 .help(
