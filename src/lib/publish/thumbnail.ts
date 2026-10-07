@@ -16,6 +16,7 @@ interface InlineImage {
 }
 
 interface GeminiImageResponse {
+  error?: { status?: string; message?: string };
   candidates?: {
     content?: {
       parts?: {
@@ -112,7 +113,26 @@ export async function generateThumbnail(
       signal,
     },
   );
-  if (!response.ok) throw new Error(`thumbnail_${response.status}`);
+  if (!response.ok) {
+    // Keep provider diagnostics on the server, without recording the creator's
+    // images, prompt, or API key. The route returns its public error code only.
+    let message = data.error?.message ?? "";
+    for (const value of [
+      key,
+      input.prompt.trim(),
+      frame?.data,
+      reference?.data,
+    ]) {
+      if (value) message = message.replaceAll(value, "[redacted]");
+    }
+    throw new Error(`thumbnail_${response.status}`, {
+      cause: {
+        model,
+        status: data.error?.status,
+        message: message.slice(0, 500),
+      },
+    });
+  }
 
   const images =
     data.candidates?.flatMap((candidate) =>
