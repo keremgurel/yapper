@@ -76,6 +76,8 @@ export async function generateThumbnail(
     "person with the person from the video frame when both are supplied. " +
     "Keep the reference's text unless the creator requests new wording. " +
     "Render requested text exactly, including punctuation and episode numbers. " +
+    "Keep all text fully inside the canvas with comfortable margins; reflow " +
+    "longer replacement wording as needed while preserving the reference style. " +
     "Without a reference, omit text unless requested. Fill the entire vertical " +
     "canvas; do not put the thumbnail inside a landscape image or add borders.\n\n" +
     roles +
@@ -94,7 +96,7 @@ export async function generateThumbnail(
         model,
         prompt,
         n: 1,
-        size: "1024x1536",
+        size: "1152x2048",
         aspect_ratio: "9:16",
         resolution: "2K",
         quality: "high",

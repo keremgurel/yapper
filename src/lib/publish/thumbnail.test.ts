@@ -69,6 +69,7 @@ describe("Surplus thumbnails", () => {
     const body = JSON.parse(init.body);
     expect(body).toMatchObject({
       model: "gpt-image-2-edit",
+      size: "1152x2048",
       n: 1,
       quality: "high",
       resolution: "2K",
