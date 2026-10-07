@@ -19,7 +19,10 @@ struct RecorderPrompterPanel: View {
                         .accessibilityLabel("Teleprompter text size")
                 }
                 if !compact {
-                row("Height", TeleprompterSettings.heights, $store.settings.heightFraction)
+                Text("Drag the prompt to move it. Drag an edge or corner to resize. Your layout is saved automatically.")
+                    .font(.studioCaption).foregroundStyle(.secondary)
+                Button("Reset position and size") { store.settings.layout = nil; store.settings.heightFraction = 0.44 }
+                    .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 row("Shade", TeleprompterSettings.shades, $store.settings.shade)
                 row("Lead-in", TeleprompterSettings.leadIns, $store.settings.leadInSeconds)
                 }

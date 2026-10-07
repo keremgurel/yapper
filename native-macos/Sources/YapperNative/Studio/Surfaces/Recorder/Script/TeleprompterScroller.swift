@@ -9,7 +9,13 @@ final class TeleprompterScroller: ObservableObject {
     @Published private(set) var running = false
 
     /// How far the text can move before its last line reaches the bottom.
-    var maxOffset: Double = 0
+    var maxOffset: Double = 0 {
+        didSet {
+            // Growing the reading area must not leave the last line offscreen.
+            offset = min(offset, max(0, maxOffset))
+            if running && offset >= maxOffset { pause() }
+        }
+    }
     var pointsPerSecond: Double = 0
 
     private var timer: Timer?
@@ -43,8 +49,8 @@ final class TeleprompterScroller: ObservableObject {
         defer { lastTick = now }
         guard let lastTick else { return }
         offset += pointsPerSecond * (now - lastTick)
-        if maxOffset > 0, offset >= maxOffset {
-            offset = maxOffset
+        if offset >= maxOffset {
+            offset = max(0, maxOffset)
             pause()
         }
     }

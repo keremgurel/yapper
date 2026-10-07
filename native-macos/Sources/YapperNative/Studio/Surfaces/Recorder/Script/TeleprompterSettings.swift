@@ -9,6 +9,13 @@ struct TeleprompterSettings: Equatable, Codable {
     var shade: Double = 0.75
     var leadInSeconds: Int = 3
     var wordsPerMinute: Int = 130
+    // Optional for compatibility with saved settings from before free layout.
+    var layout: TeleprompterLayout?
+
+    var promptLayout: TeleprompterLayout {
+        get { layout ?? TeleprompterLayout(height: heightFraction) }
+        set { layout = newValue }
+    }
 
     struct Option<Value: Hashable & Sendable>: Hashable, Sendable {
         let value: Value

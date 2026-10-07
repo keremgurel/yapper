@@ -19,18 +19,20 @@ final class RecorderWorkspace {
     }
 }
 
-/// The teleprompter's look and pace for this app session.
+/// The teleprompter's look, layout and pace, restored between launches.
 @MainActor
 final class TeleprompterSettingsStore: ObservableObject {
+    private let defaults: UserDefaults
     @Published var settings: TeleprompterSettings {
         didSet {
             if let data = try? JSONEncoder().encode(settings) {
-                UserDefaults.standard.set(data, forKey: "recorder.prompter.settings")
+                defaults.set(data, forKey: "recorder.prompter.settings")
             }
         }
     }
-    init() {
-        settings = UserDefaults.standard.data(forKey: "recorder.prompter.settings")
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        settings = defaults.data(forKey: "recorder.prompter.settings")
             .flatMap { try? JSONDecoder().decode(TeleprompterSettings.self, from: $0) } ?? TeleprompterSettings()
     }
 }
