@@ -7,7 +7,7 @@ struct RecorderStageView: View {
     @ObservedObject var movie: RecorderMovieOutput
     @ObservedObject var flow: RecorderTakeFlow
     let prompt: String
-    let settings: TeleprompterSettings
+    @Binding var settings: TeleprompterSettings
     let showGuides: Bool
 
     var body: some View {
@@ -24,7 +24,7 @@ struct RecorderStageView: View {
             }
             if showGuides { RecorderGuidesOverlay() }
             if !prompt.isEmpty {
-                TeleprompterOverlayView(text: prompt, settings: settings, scroller: flow.scroller)
+                TeleprompterOverlayView(text: prompt, settings: $settings, scroller: flow.scroller)
             }
             RecorderCountdownNumeral(countdown: flow.countdown)
             overlays

@@ -16,7 +16,7 @@ struct RecorderCaptureLayout: View {
             HStack(alignment: .top, spacing: 24) {
                 VStack(spacing: 12) {
                     RecorderStageView(capture: capture, movie: movie, flow: workspace.flow,
-                        prompt: script.promptText, settings: prompter.settings, showGuides: showGuides)
+                        prompt: script.promptText, settings: $prompter.settings, showGuides: showGuides)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .layoutPriority(-1)
                     if capture.micOn { RecorderAudioMeter(movie: movie).frame(width: 200) }

@@ -338,6 +338,17 @@ Pointer transitions last 140–150ms; keyboard changes and Reduce Motion are ins
 Speed and text size remain precise numeric controls on Mac, adjustable during a
 take. Rehearsal play, pause and restart work independently of recording.
 
+On Mac, the prompt is a directly movable and resizable reading area. Drag its
+body to move; each edge and corner resizes with the opposite edge fixed. Track
+the pointer without easing or inertia and persist only the completed gesture.
+Store position and dimensions as preview fractions so focus, window resizing
+and aspect-ratio changes keep the box reachable without replacing its saved
+layout. Keep at least 180×96 points where the preview permits it. The text size
+remains independent of the box size. Neutral outlines and handles appear on
+hover or keyboard focus; reserve a small grip area above the scrolling text.
+Arrow keys move, Shift+arrow keys resize, and the context menu offers the same
+operations without dragging. Reset position and size preserves reading settings.
+
 Use Ideas for the content destination, content versions for short-form/long-form/
 article drafts, publishing formats for distribution intent, and Project context
 for the compact account-context sheet. A planning date does not schedule a post.
