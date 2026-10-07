@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// The AI remix step: a prompt, the selected frame (unless unticked), and
-/// an optional reference thumbnail. Two credits per generation.
+/// an optional reference thumbnail.
 @MainActor
 final class PosterRemixModel: ObservableObject {
     /// The creator's own words; nil means the standard prompt for what is attached.
@@ -65,7 +65,7 @@ final class PosterRemixModel: ObservableObject {
                 "prompt": prompt(usingFrame: frame != nil).trimmingCharacters(in: .whitespacesAndNewlines),
                 "frame": frame.flatMap { PosterImageData.jpegDataURL($0) },
                 "reference": reference.flatMap { PosterImageData.jpegDataURL($0) },
-            ]))
+            ]), timeout: 250)
             guard let image = PosterImageData.image(fromDataURL: result.image) else { throw PosterMessage("") }
             return image
         } catch let failure as PosterHTTPError {

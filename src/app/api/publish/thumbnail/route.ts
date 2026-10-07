@@ -11,7 +11,7 @@ import {
 } from "@/lib/provider-rate-limit";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 240;
 
 export async function POST(req: Request): Promise<Response> {
   const { userId } = await auth();
@@ -32,7 +32,7 @@ export async function POST(req: Request): Promise<Response> {
   if (!prompt || prompt.length > 2000) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
-  if (!process.env.GEMINI_API_KEY) {
+  if (!process.env.SURPLUS_API_KEY) {
     return Response.json({ error: "no_provider" }, { status: 501 });
   }
   const billing = await preflightPaidActionOrResponse(

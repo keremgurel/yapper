@@ -108,6 +108,7 @@ export function providerAllowance(
   if (url.hostname === "api.deepgram.com" && url.pathname === "/v1/listen")
     return 1_000_000;
   if (url.pathname.endsWith("/audio/transcriptions")) return 1_000_000;
+  if (/\/images\/(?:generations|edits)$/.test(url.pathname)) return 1_000_000;
   if (
     url.hostname === "generativelanguage.googleapis.com" &&
     url.pathname.endsWith(":generateContent")
