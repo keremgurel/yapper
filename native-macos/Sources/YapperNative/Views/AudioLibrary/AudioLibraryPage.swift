@@ -90,7 +90,8 @@ struct AudioLibraryPage: View {
 
             Spacer(minLength: 12)
 
-            searchField
+            AudioSearchField(search: $search)
+                .frame(width: 210)
 
             Button(action: importAudio) {
                 Label("Import audio", systemImage: "square.and.arrow.down")
@@ -100,35 +101,6 @@ struct AudioLibraryPage: View {
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 14)
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            TextField("Search sounds", text: $search)
-                .textFieldStyle(.plain)
-                .font(.studioBody)
-                .frame(width: 150)
-            if !search.isEmpty {
-                Button {
-                    search = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.studioPlain)
-                .clickableCursor()
-            }
-        }
-        .padding(.horizontal, 9)
-        .frame(height: 28)
-        .background {
-            Capsule().fill(Color.studioInputBackground)
-                .overlay { Capsule().strokeBorder(Color.studioLine, lineWidth: 1) }
-        }
     }
 
     @ViewBuilder
