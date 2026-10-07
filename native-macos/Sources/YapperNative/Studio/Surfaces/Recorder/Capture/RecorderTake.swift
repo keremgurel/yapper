@@ -7,6 +7,9 @@ struct RecorderTake: Equatable, Identifiable {
     let mimeType: String
     let fileExtension: String
     let sizeBytes: Int
+    var warning: String?
+    var hasVideo = true
+    var aspectRatio: Double = 16.0 / 9
 
     /// A timestamped name for Download, like the web's `yapper-take-...`.
     var suggestedFileName: String {
@@ -25,22 +28,26 @@ struct RecorderTake: Equatable, Identifiable {
 /// the upload and the download are the same container the web recorder
 /// prefers and the editor reads.
 enum RecorderTakeFinisher {
-    static func finish(_ movieURL: URL) async -> RecorderTake? {
+    static func finish(_ movieURL: URL, framing: RecorderFraming = .auto) async -> RecorderTake? {
         let mp4 = movieURL.deletingPathExtension().appendingPathExtension("mp4")
-        if await remux(movieURL, to: mp4) {
+        if await remux(movieURL, to: mp4, framing: framing) {
             try? FileManager.default.removeItem(at: movieURL)
-            return take(at: mp4, mimeType: "video/mp4", ext: "mp4")
+            return await take(at: mp4, mimeType: "video/mp4", ext: "mp4")
         }
         // The QuickTime file is still a good take; keep it rather than lose it.
-        return take(at: movieURL, mimeType: "video/quicktime", ext: "mov")
+        var original = await take(at: movieURL, mimeType: "video/quicktime", ext: "mov")
+        if framing != .auto { original?.warning = "The selected crop could not be saved. This is your original camera frame. Download it or crop it in the editor." }
+        return original
     }
 
-    private static func remux(_ source: URL, to destination: URL) async -> Bool {
+    private static func remux(_ source: URL, to destination: URL, framing: RecorderFraming) async -> Bool {
         try? FileManager.default.removeItem(at: destination)
         let asset = AVURLAsset(url: source)
-        guard let session = AVAssetExportSession(asset: asset, presetName: AVAssetExportPresetPassthrough) else {
+        guard let session = AVAssetExportSession(asset: asset, presetName: framing == .auto ? AVAssetExportPresetPassthrough : AVAssetExportPresetHighestQuality) else {
             return false
         }
+        do { session.videoComposition = try await framing.composition(for: asset) }
+        catch { return false }
         session.shouldOptimizeForNetworkUse = true
         if #available(macOS 15, *) {
             do {
@@ -56,9 +63,15 @@ enum RecorderTakeFinisher {
         return session.status == .completed
     }
 
-    private static func take(at url: URL, mimeType: String, ext: String) -> RecorderTake? {
+    private static func take(at url: URL, mimeType: String, ext: String) async -> RecorderTake? {
         let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
         guard size > 0 else { return nil }
-        return RecorderTake(url: url, mimeType: mimeType, fileExtension: ext, sizeBytes: size)
+        let track = try? await AVURLAsset(url: url).loadTracks(withMediaType: .video).first
+        var ratio = 16.0 / 9
+        if let track, let size = try? await track.load(.naturalSize), let transform = try? await track.load(.preferredTransform) {
+            let bounds = CGRect(origin: .zero, size: size).applying(transform)
+            ratio = abs(bounds.width) / max(1, abs(bounds.height))
+        }
+        return RecorderTake(url: url, mimeType: mimeType, fileExtension: ext, sizeBytes: size, hasVideo: track != nil, aspectRatio: ratio)
     }
 }

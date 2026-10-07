@@ -87,9 +87,9 @@ struct BrainBlock: Codable, Equatable, Identifiable, Sendable {
 
     /// Compact size for the end of a row, in characters.
     var sizeLabel: String {
-        if charCount < 1_000 { return "\(charCount)" }
+        if charCount < 1_000 { return "\(charCount) characters" }
         let thousands = Double(charCount) / 1_000
-        return charCount < 10_000 ? String(format: "%.1fk", thousands) : String(format: "%.0fk", thousands)
+        return charCount < 10_000 ? String(format: "%.1fk characters", thousands) : String(format: "%.0fk characters", thousands)
     }
 }
 

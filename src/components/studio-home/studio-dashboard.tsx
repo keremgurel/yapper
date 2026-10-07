@@ -75,7 +75,7 @@ export default function StudioDashboard() {
           <>
             <Button asChild variant="outline">
               <Link href="/studio/ideas">
-                <Lightbulb className="h-4 w-4" /> Idea Bank
+                <Lightbulb className="h-4 w-4" /> Ideas
               </Link>
             </Button>
             <Button asChild>
@@ -120,7 +120,15 @@ export default function StudioDashboard() {
           ) : (
             <UpNextSection items={pipeline.data} />
           )}
-          <DailyIdeasSection ideas={todaysIdeas} />
+          <DailyIdeasSection
+            ideas={todaysIdeas}
+            destinations={Object.fromEntries(
+              (ideas.data ?? []).map((idea) => [
+                idea.title,
+                `/studio/ideas/${idea.id}`,
+              ]),
+            )}
+          />
         </div>
         <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
           {channelError && !ranked.length ? (

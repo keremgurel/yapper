@@ -61,7 +61,7 @@ export default function ProjectBrainSheet({
       >
         <SheetHeader>
           <div className="flex items-center justify-between gap-3">
-            <SheetTitle>Project brain</SheetTitle>
+            <SheetTitle>Project context</SheetTitle>
             <SaveIndicator state={saveState} />
           </div>
           <SheetDescription>

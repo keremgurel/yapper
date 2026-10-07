@@ -22,5 +22,15 @@ final class RecorderWorkspace {
 /// The teleprompter's look and pace for this app session.
 @MainActor
 final class TeleprompterSettingsStore: ObservableObject {
-    @Published var settings = TeleprompterSettings()
+    @Published var settings: TeleprompterSettings {
+        didSet {
+            if let data = try? JSONEncoder().encode(settings) {
+                UserDefaults.standard.set(data, forKey: "recorder.prompter.settings")
+            }
+        }
+    }
+    init() {
+        settings = UserDefaults.standard.data(forKey: "recorder.prompter.settings")
+            .flatMap { try? JSONDecoder().decode(TeleprompterSettings.self, from: $0) } ?? TeleprompterSettings()
+    }
 }

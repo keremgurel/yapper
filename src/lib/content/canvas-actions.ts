@@ -274,3 +274,23 @@ export function describeCanvasActions(actions: CanvasAction[]): string {
   });
   return parts.join(". ") + ".";
 }
+
+/** The dedicated key-points command is additive even if the model proposes a replacement. */
+export function keyPointsOnly(actions: CanvasAction[]): CanvasAction[] {
+  for (const action of actions) {
+    if (!("block" in action)) continue;
+    const block = action.block;
+    if (
+      (block.kind === "bullets" || block.kind === "steps") &&
+      block.items?.length
+    ) {
+      return [
+        {
+          type: "append",
+          block: { label: "Key points", kind: "bullets", items: block.items },
+        },
+      ];
+    }
+  }
+  return [];
+}

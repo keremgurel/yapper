@@ -16,7 +16,7 @@ struct IdeaCanvasDetails: View {
                     }
                 }
                 if item.status == .ready {
-                    NativeField(label: "Scheduled") {
+                    NativeField(label: "Planned for") {
                         IdeaCanvasScheduleField(scheduledFor: item.scheduledFor) {
                             update(IdeaCanvasPatch(scheduledFor: $0))
                         }
@@ -70,6 +70,8 @@ struct IdeaCanvasPillarMenu: View {
 struct IdeaCanvasScheduleField: View {
     let scheduledFor: String?
     let onChange: (String) -> Void
+    @State private var choosing = false
+    @State private var draft = IdeaCanvasDates.tomorrowMorning()
 
     var body: some View {
         if let date = IdeaCanvasDates.parse(scheduledFor) {
@@ -78,7 +80,17 @@ struct IdeaCanvasScheduleField: View {
                 .datePickerStyle(.compact)
                 .fixedSize()
         } else {
-            Button("Pick a date") { onChange(IdeaCanvasDates.format(IdeaCanvasDates.tomorrowMorning())) }
+            Button("Pick a date") { choosing = true }
+                .popover(isPresented: $choosing) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        DatePicker("Planned for", selection: $draft).datePickerStyle(.graphical)
+                        Text("A planning date does not publish your content.").font(.caption).foregroundStyle(.secondary)
+                        HStack {
+                            Button("Cancel") { choosing = false }
+                            Button("Set planning date") { onChange(IdeaCanvasDates.format(draft)); choosing = false }
+                        }
+                    }.padding(20)
+                }
                 .buttonStyle(EditorSecondaryButtonStyle(size: .small))
         }
     }

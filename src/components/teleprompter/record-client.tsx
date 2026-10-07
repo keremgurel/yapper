@@ -29,13 +29,19 @@ function defaultView(source: PromptSource): TeleprompterView {
  */
 export default function RecordClient({
   requestedItem,
+  requestedFormat,
   legacyIdeaId,
 }: {
   requestedItem?: string;
+  requestedFormat?: string;
   legacyIdeaId?: string;
 }) {
   const [loaded, setLoaded] = useState(false);
-  const [loadError, setLoadError] = useState<"missing" | "load" | null>(null);
+  const [setup, setSetup] = useState(!requestedItem && !legacyIdeaId);
+  const [pastedScript, setPastedScript] = useState("");
+  const [loadError, setLoadError] = useState<
+    "missing" | "version" | "load" | null
+  >(null);
   const [attempt, setAttempt] = useState(0);
   const [source, setSource] = useState<PromptSource | null>(null);
   // The library item id this take is for (enables Save to library). Legacy
@@ -60,8 +66,26 @@ export default function RecordClient({
 
     if (requestedItem) {
       getContent(requestedItem).then(
-        (detail) =>
-          adopt({ ...detail, hooks: hookTexts(detail.hooks) }, detail.id),
+        (detail) => {
+          const version = detail.versions?.find(
+            (entry) => entry.format === requestedFormat,
+          );
+          if (
+            requestedFormat &&
+            requestedFormat !== (detail.leadFormat ?? "short") &&
+            !version
+          ) {
+            if (active) {
+              setLoadError("version");
+              setLoaded(true);
+            }
+            return;
+          }
+          const selected = version
+            ? { ...detail, ...version, title: version.title ?? detail.title }
+            : detail;
+          adopt({ ...selected, hooks: hookTexts(selected.hooks) }, detail.id);
+        },
         (cause: unknown) => {
           if (!active) return;
           setLoadError(
@@ -80,9 +104,56 @@ export default function RecordClient({
     return () => {
       active = false;
     };
-  }, [requestedItem, legacyIdeaId, attempt]);
+  }, [requestedItem, requestedFormat, legacyIdeaId, attempt]);
 
-  if (!loaded) return <div className="min-h-[50vh]" />;
+  if (!loaded)
+    return (
+      <div role="status" className="py-12">
+        Loading recorder…
+      </div>
+    );
+  if (setup)
+    return (
+      <section className="mx-auto flex w-full max-w-3xl flex-col gap-4 py-6">
+        <h1 className="text-[22px] font-semibold">Recorder</h1>
+        <p className="text-muted-foreground">
+          Choose an idea or paste a script to rehearse with the teleprompter.
+        </p>
+        <label className="flex flex-col gap-2 text-sm">
+          Your script
+          <textarea
+            value={pastedScript}
+            onChange={(event) => setPastedScript(event.target.value)}
+            rows={8}
+            className="border-border bg-background rounded-lg border p-3"
+            placeholder="What do you want to say?"
+          />
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <Button
+            disabled={!pastedScript.trim()}
+            onClick={() => {
+              setSource({
+                title: "Pasted script",
+                script: pastedScript,
+                hooks: [],
+              });
+              setView("script");
+              setPhase("picker");
+              setSetup(false);
+            }}
+          >
+            Use this script
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/studio/ideas">Choose an idea</Link>
+          </Button>
+          <Button variant="ghost" onClick={() => setSetup(false)}>
+            Record without a script
+          </Button>
+        </div>
+      </section>
+    );
   if (loadError)
     return (
       <div
@@ -90,18 +161,22 @@ export default function RecordClient({
         className="mx-auto max-w-lg space-y-4 py-16 text-center"
       >
         <h1 className="font-display text-2xl font-bold">
-          {loadError === "missing"
-            ? "This content item is unavailable"
-            : "Your recording script couldn’t be loaded"}
+          {loadError === "version"
+            ? "This version has not been written yet"
+            : loadError === "missing"
+              ? "This content item is unavailable"
+              : "Your recording script couldn’t be loaded"}
         </h1>
         <p className="text-muted-foreground text-sm">
-          {loadError === "missing"
-            ? "It may have been removed, or belong to a different account. Choose a content item from your Library."
-            : "Try again to load the script and keep this take linked to its content item."}
+          {loadError === "version"
+            ? "Return to the idea and write this version, or choose a saved version to record."
+            : loadError === "missing"
+              ? "It may have been removed, or belong to a different account. Choose an item from Ideas."
+              : "Try again to load the script and keep this take linked to its content item."}
         </p>
         <div className="flex justify-center gap-3">
           <Button variant="outline" asChild>
-            <Link href="/studio/library">Open Library</Link>
+            <Link href="/studio/ideas">Open ideas</Link>
           </Button>
           <Button
             onClick={() => {

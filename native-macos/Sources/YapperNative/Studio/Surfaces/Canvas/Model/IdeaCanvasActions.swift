@@ -27,6 +27,19 @@ struct IdeaCanvasState: Equatable {
 }
 
 enum IdeaCanvasActions {
+    /// A named generation button can add only its named field, regardless of the model's action type.
+    static func keyPointsOnly(_ actions: [IdeaCanvasAction]) -> [IdeaCanvasAction] {
+        for action in actions {
+            let input: IdeaCanvasBlockInput
+            switch action {
+            case .replace(_, let block), .insert(_, let block), .append(let block): input = block
+            default: continue
+            }
+            guard input.kind.isList, let items = input.items, !items.isEmpty else { continue }
+            return [.append(block: IdeaCanvasBlockInput(label: "Key points", kind: .bullets, items: items))]
+        }
+        return []
+    }
     static let maxActions = 12
     static let maxLabel = 60
     /// Matches the server's CANVAS_LIMITS.maxText: room for a long-form script.

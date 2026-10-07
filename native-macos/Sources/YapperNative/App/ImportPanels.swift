@@ -18,6 +18,12 @@ enum ImportPanels {
         let panel = NSSavePanel()
         panel.title = "Export video"
         panel.prompt = "Export"
+        if let clip = session.project.clips.first,
+           let source = session.project.media.first(where: { $0.id == clip.mediaID }) {
+            let size = CompositionBuilder.renderSize(sourceWidth: source.width, sourceHeight: source.height,
+                aspectRatio: session.project.selectedAspectRatio)
+            panel.message = "MP4 video · \(Int(size.width)) × \(Int(size.height)) pixels. Change the frame ratio in the preview before exporting."
+        }
         panel.allowedContentTypes = [.mpeg4Movie]
         panel.nameFieldStringValue = "\(session.project.name)-export.mp4"
         guard panel.runModal() == .OK, let url = panel.url else { return }

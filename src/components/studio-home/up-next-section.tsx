@@ -35,7 +35,7 @@ export default function UpNextSection({
       title="Up next"
       action={
         <Button asChild variant="ghost" size="sm">
-          <Link href="/studio/library">Open Library</Link>
+          <Link href="/studio/library">Open ideas</Link>
         </Button>
       }
     >
@@ -52,7 +52,7 @@ export default function UpNextSection({
           description="Send an idea to the Library and it will show up here."
           action={
             <Button asChild variant="outline" size="sm">
-              <Link href="/studio/ideas">Open Idea Bank</Link>
+              <Link href="/studio/ideas">Open Ideas</Link>
             </Button>
           }
         />

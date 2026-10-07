@@ -55,7 +55,7 @@ export default function ItemTable({
   const visible = mobile
     ? columns.filter((key) => columnDef(key).compact)
     : columns;
-  const grid = gridTemplate(visible, false);
+  const grid = mobile ? "24px minmax(0, 1fr)" : gridTemplate(visible, false);
 
   const allSelected =
     rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
@@ -71,6 +71,7 @@ export default function ItemTable({
       <div
         className="bg-muted grid min-h-10 items-center gap-3 border-b px-4 py-1.5"
         style={{ gridTemplateColumns: grid }}
+        data-compact={mobile}
       >
         <button
           type="button"
@@ -91,26 +92,28 @@ export default function ItemTable({
           ) : null}
         </button>
 
-        {visible.map((key) => {
-          const def = columnDef(key);
-          return def.sortable ? (
-            <SortHeader
-              key={key}
-              label={def.label}
-              columnKey={key as ContentSortKey}
-              active={sort.key === key}
-              dir={sort.dir}
-              onToggle={onToggleSort}
-            />
-          ) : (
-            <span
-              key={key}
-              className="text-muted-foreground truncate text-xs font-semibold"
-            >
-              {def.label}
-            </span>
-          );
-        })}
+        {visible
+          .filter((key) => !mobile || key === "title")
+          .map((key) => {
+            const def = columnDef(key);
+            return def.sortable ? (
+              <SortHeader
+                key={key}
+                label={def.label}
+                columnKey={key as ContentSortKey}
+                active={sort.key === key}
+                dir={sort.dir}
+                onToggle={onToggleSort}
+              />
+            ) : (
+              <span
+                key={key}
+                className="text-muted-foreground truncate text-xs font-semibold"
+              >
+                {def.label}
+              </span>
+            );
+          })}
       </div>
 
       {rows.length === 0 ? (
@@ -134,6 +137,7 @@ export default function ItemTable({
                   key={row.id}
                   row={row}
                   columns={visible}
+                  compact={mobile}
                   selected={selectedIds.has(row.id)}
                   onToggleSelect={() => onToggleSelect(row.id)}
                   onOpen={() => onOpen(row.id)}

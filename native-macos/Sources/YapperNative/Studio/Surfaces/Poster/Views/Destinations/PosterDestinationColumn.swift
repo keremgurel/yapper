@@ -23,6 +23,7 @@ struct PosterDestinationColumn: View {
         }
         let summary = PosterPublishSummary(readiness)
 
+        ScrollView {
         VStack(alignment: .leading, spacing: 14) {
             PosterDestinationToggles(
                 chosen: chosen, connected: connected,
@@ -49,6 +50,12 @@ struct PosterDestinationColumn: View {
                     }
                 )
             }
+            PosterCaptionBriefView(value: drafts.brief(video), disabled: generator.generating) {
+                drafts.setBrief($0, for: video)
+            }
+        }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 12) {
             if !chosen.isEmpty {
                 VStack(spacing: 8) {
                     Button { publish(chosen: chosen, captions: captions, cover: cover) } label: {
@@ -66,9 +73,6 @@ struct PosterDestinationColumn: View {
                     }
                 }
                 .nativeCard(padding: 12, radius: 12)
-            }
-            PosterCaptionBriefView(value: drafts.brief(video), disabled: generator.generating) {
-                drafts.setBrief($0, for: video)
             }
         }
     }

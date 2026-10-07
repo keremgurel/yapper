@@ -25,8 +25,8 @@ export default function InstagramImportResult({
         {imported} saved {imported === 1 ? "post" : "posts"} imported
       </h3>
       <p className="text-muted-foreground mt-2 max-w-sm text-sm leading-6">
-        They are now in Idea Bank as original references. Expand only the ones
-        you want Chirpy to analyze.
+        They are now in Ideas as original references. Expand only the ones you
+        want Chirpy to analyze.
       </p>
       {skipped > 0 && (
         <p className="text-muted-foreground mt-2 text-xs">
@@ -35,7 +35,7 @@ export default function InstagramImportResult({
         </p>
       )}
       <Button className="mt-6" onClick={onDone}>
-        View Idea Bank
+        View Ideas
       </Button>
     </div>
   );

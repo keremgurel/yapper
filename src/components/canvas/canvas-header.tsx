@@ -40,13 +40,13 @@ export default function CanvasHeader({
   onAskChirpy: () => void;
 }) {
   return (
-    <header className="border-border flex h-14 shrink-0 items-center gap-2 border-b px-4 lg:px-5">
+    <header className="border-border flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-3 lg:px-5">
       <input
         value={title}
         onChange={(event) => onTitle(event.target.value)}
         placeholder="Untitled"
         aria-label="Title"
-        className="text-foreground placeholder:text-muted-foreground/50 min-w-0 flex-1 bg-transparent text-[15px] font-semibold tracking-[-0.01em] outline-none"
+        className="text-foreground placeholder:text-muted-foreground/50 min-w-0 flex-1 basis-full bg-transparent text-[15px] font-semibold tracking-[-0.01em] outline-none lg:basis-auto"
       />
       <SaveIndicator state={saveState} />
       <Button

@@ -26,14 +26,14 @@ export default function CanvasDetails({
             onChange={(pillarId) => update({ pillarId })}
           />
         </Row>
-        <Row label="Ships as">
+        <Row label="Publishing formats">
           <FormatField
             formats={item.formats}
             onChange={(formats) => update({ formats })}
           />
         </Row>
         {item.status === "ready" && (
-          <Row label="Scheduled">
+          <Row label="Planned for">
             <Input
               type="datetime-local"
               value={toLocalInput(item.scheduledFor)}
@@ -42,8 +42,11 @@ export default function CanvasDetails({
                 if (iso) update({ scheduledFor: iso });
               }}
               className="h-8 w-auto text-xs"
-              aria-label="Scheduled for"
+              aria-label="Planned for"
             />
+            <p className="text-muted-foreground mt-2 text-xs">
+              Planning only. Schedule publication in Poster.
+            </p>
           </Row>
         )}
       </dl>

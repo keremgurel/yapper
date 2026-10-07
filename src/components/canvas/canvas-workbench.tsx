@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import CanvasVersions from "@/components/canvas/canvas-versions";
+import type { VersionFormat } from "@/lib/content/formats";
 import CanvasDocument from "@/components/canvas/canvas-document";
 import CanvasHeader from "@/components/canvas/canvas-header";
 import CanvasMenu from "@/components/canvas/canvas-menu";
@@ -30,7 +32,11 @@ import {
   type CanvasBlock as CanvasBlockDoc,
 } from "@/lib/content/canvas-doc";
 import { noteToBlock } from "@/lib/content/note-to-block";
-import { deleteContent, type ContentSummary } from "@/lib/content/client";
+import {
+  deleteContent,
+  type ContentVersionDetail,
+  type ContentSummary,
+} from "@/lib/content/client";
 import { hookTexts } from "@/lib/content/normalize";
 import { ideaToScript } from "@/lib/inspiration/idea-format";
 import {
@@ -83,6 +89,20 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const { maximized, toggle: toggleMaximized } = useCanvasMaximized();
   const [actionError, setActionError] = useState<string | null>(null);
   const operation = useRef(false);
+  const [selectedVersion, setSelectedVersion] = useState<VersionFormat | null>(
+    null,
+  );
+  const activeVersion = selectedVersion ?? item?.leadFormat ?? "short";
+  const [versionDraft, setVersionDraft] = useState<ContentVersionDetail | null>(
+    null,
+  );
+  const versionFlush = useRef<(() => Promise<void>) | null>(null);
+  const registerVersionFlush = useCallback(
+    (save: (() => Promise<void>) | null) => {
+      versionFlush.current = save;
+    },
+    [],
+  );
 
   const guarded = async (work: () => Promise<void>, failure: string) => {
     if (operation.current) return;
@@ -102,6 +122,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const navigate = (href: string) =>
     guarded(async () => {
       await flush();
+      await versionFlush.current?.();
       router.push(href);
     }, "Your latest edits couldn’t be saved. Try again before leaving.");
 
@@ -128,6 +149,11 @@ export default function CanvasWorkbench({ id }: { id: string }) {
   const askFromChirpy = useCallback(
     async (instruction: string) => {
       if (!item) return null;
+      if (activeVersion !== (item.leadFormat ?? "short")) {
+        return {
+          text: "This version can be edited directly below. Switch to the original version to use Chirpy here.",
+        };
+      }
       const targetIndex = target
         ? blocks.findIndex((block) => block.id === target)
         : -1;
@@ -186,7 +212,18 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         tone: reply.actions.length ? ("done" as const) : undefined,
       };
     },
-    [blocks, chirpy, hooks, item, setBlocks, setHooks, target, thread, update],
+    [
+      activeVersion,
+      blocks,
+      chirpy,
+      hooks,
+      item,
+      setBlocks,
+      setHooks,
+      target,
+      thread,
+      update,
+    ],
   );
 
   const addToPage = (message: CanvasMessage, asked: string) => {
@@ -239,7 +276,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         </p>
         <Button asChild variant="link" className="mt-2 px-0">
           <Link href="/studio/ideas">
-            <ArrowLeft className="h-4 w-4" /> Back to Ideas
+            <ArrowLeft className="h-4 w-4" /> Back to ideas
           </Link>
         </Button>
       </div>
@@ -296,7 +333,11 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         saveState={saveState}
         busy={busy}
         hasRecording={Boolean(item.submissionId)}
-        onRecord={() => void navigate(`/studio/recorder?item=${item.id}`)}
+        onRecord={() =>
+          void navigate(
+            `/studio/recorder?item=${item.id}&format=${activeVersion}`,
+          )
+        }
         onAskChirpy={() => studioChirpy.open()}
         maximized={maximized}
         onToggleMaximized={toggleMaximized}
@@ -314,7 +355,20 @@ export default function CanvasWorkbench({ id }: { id: string }) {
               onCopyScript={() => {
                 void navigator.clipboard
                   .writeText(
-                    ideaToScript({ ...item, hooks: hookTexts(item.hooks) }),
+                    ideaToScript(
+                      versionDraft
+                        ? {
+                            title: versionDraft.title ?? item.title,
+                            hooks: hookTexts(versionDraft.hooks),
+                            script: versionDraft.script,
+                            points: versionDraft.blocks
+                              .filter((block) => block.kind === "bullets")
+                              .flatMap((block) => block.items ?? []),
+                            example: "",
+                            cta: "",
+                          }
+                        : { ...item, hooks: hookTexts(item.hooks) },
+                    ),
                   )
                   .catch(() => {});
               }}
@@ -328,47 +382,63 @@ export default function CanvasWorkbench({ id }: { id: string }) {
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <CanvasDocument
+        <CanvasVersions
+          key={item.id}
           item={item}
-          update={update}
-          blocks={blocks}
-          setBlocks={setBlocks}
-          hooks={hooks}
-          setHooks={setHooks}
-          onAsk={(instruction) => studioChirpy.run(instruction)}
-          onAskBlock={(id) => {
-            const block = blocks.find((entry) => entry.id === id);
-            setTarget(id);
-            studioChirpy.open(`Change the ${block?.label?.trim() || "part"}: `);
-          }}
+          active={activeVersion}
+          onSelect={setSelectedVersion}
+          beforeGenerate={flush}
+          registerFlush={registerVersionFlush}
+          onVersionChange={setVersionDraft}
         >
-          <CanvasThread
-            messages={thread.messages}
-            failed={thread.failed}
-            onClear={() => void thread.clear()}
-            addedIds={addedIds}
-            undoableId={undoable?.messageId ?? null}
-            onAddToPage={addToPage}
-            onUndo={undoLast}
-          />
-          {hasOrigin && (
-            <details className="group">
-              <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-[13px] font-medium select-none">
-                Where this came from
-              </summary>
-              <div className="mt-4">
-                <CanvasReference item={item} update={update} />
-              </div>
-            </details>
-          )}
-        </CanvasDocument>
+          <CanvasDocument
+            item={item}
+            update={update}
+            blocks={blocks}
+            setBlocks={setBlocks}
+            hooks={hooks}
+            setHooks={setHooks}
+            onAsk={(instruction) => studioChirpy.run(instruction)}
+            onAskBlock={(id) => {
+              const block = blocks.find((entry) => entry.id === id);
+              setTarget(id);
+              studioChirpy.open(
+                `Change the ${block?.label?.trim() || "part"}: `,
+              );
+            }}
+          >
+            <CanvasThread
+              messages={thread.messages}
+              failed={thread.failed}
+              onClear={() => void thread.clear()}
+              addedIds={addedIds}
+              undoableId={undoable?.messageId ?? null}
+              onAddToPage={addToPage}
+              onUndo={undoLast}
+            />
+            {hasOrigin && (
+              <details className="group">
+                <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-[13px] font-medium select-none">
+                  Where this came from
+                </summary>
+                <div className="mt-4">
+                  <CanvasReference item={item} update={update} />
+                </div>
+              </details>
+            )}
+          </CanvasDocument>
+        </CanvasVersions>
       </div>
 
       <CanvasPhoneSheet
         open={phoneOpen}
         onOpenChange={setPhoneOpen}
         itemId={item.id}
-        beforeOpen={flush}
+        format={activeVersion}
+        beforeOpen={async () => {
+          await flush();
+          await versionFlush.current?.();
+        }}
       />
     </div>
   );

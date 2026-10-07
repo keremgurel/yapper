@@ -1,5 +1,8 @@
 "use client";
 
+import { Liquid } from "liquid-gooey";
+import { useState } from "react";
+
 import {
   FONT_SCALES,
   HEIGHTS,
@@ -17,17 +20,47 @@ function Seg<T extends number>({
   value: T;
   onChange: (value: T) => void;
 }) {
+  const [animate, setAnimate] = useState(false);
+  const index = Math.max(
+    0,
+    options.findIndex((option) => option.value === value),
+  );
   return (
-    <div className="flex gap-1">
+    <div className="relative isolate flex gap-1">
+      <Liquid
+        fill="#fff"
+        blur={4}
+        contrast={18}
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      >
+        <Liquid.Item effect="move">
+          <div
+            className={
+              animate
+                ? "motion-safe:transition-transform motion-safe:duration-150"
+                : ""
+            }
+            style={{
+              position: "absolute",
+              width: `${100 / options.length}%`,
+              height: "100%",
+              borderRadius: 6,
+              transform: `translateX(${index * 100}%)`,
+            }}
+          />
+        </Liquid.Item>
+      </Liquid>
       {options.map((o) => (
         <button
           key={o.label}
           type="button"
-          onClick={() => onChange(o.value)}
-          className={`min-w-9 flex-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-colors ${
-            value === o.value
-              ? "bg-white text-black"
-              : "bg-white/15 text-white hover:bg-white/25"
+          onClick={(event) => {
+            setAnimate(event.detail !== 0);
+            onChange(o.value);
+          }}
+          aria-pressed={value === o.value}
+          className={`relative z-10 min-w-9 flex-1 rounded-md px-2 py-1.5 text-[11px] font-bold transition-colors ${
+            value === o.value ? "text-black" : "text-white hover:bg-white/15"
           }`}
         >
           {o.label}
@@ -65,7 +98,7 @@ export default function TeleprompterSettingsPanel({
   onChange: (patch: Partial<TeleprompterSettings>) => void;
 }) {
   return (
-    <div className="flex w-60 flex-col gap-3 rounded-xl bg-black/70 p-3 backdrop-blur-md">
+    <div className="flex w-full max-w-sm flex-col gap-3 rounded-xl bg-black/70 p-3 backdrop-blur-md">
       <Row label="Text size">
         <Seg
           options={FONT_SCALES}

@@ -322,3 +322,22 @@ freed: APFS copies can share blocks. Move to Trash is available from project car
 in Editor and Poster; sources travel with the project, and render caches are
 removed. Originals outside Yapper remain untouched. Poster-only uploads use the
 chosen file directly and do not enter the local project library.
+
+## Recorder configuration
+
+Recorder framing offers Auto (default camera frame), 16:9 and 9:16. Explicit
+ratios center-crop both preview and saved media. Preview sizing must leave the
+recording transport visible in the Mac window. Configuration scrolls separately;
+web controls occupy their own space below the preview at narrow widths.
+
+Use Libraries.dev Gooey selectively for the moving background of discrete
+recorder choices. The web uses `liquid-gooey`; SwiftUI draws an equivalent filtered
+selection surface in a Canvas. Labels, focus targets and camera content stay
+outside that effect. Selection is also exposed through accessibility state.
+Pointer transitions last 140–150ms; keyboard changes and Reduce Motion are instant.
+Speed and text size remain precise numeric controls on Mac, adjustable during a
+take. Rehearsal play, pause and restart work independently of recording.
+
+Use Ideas for the content destination, content versions for short-form/long-form/
+article drafts, publishing formats for distribution intent, and Project context
+for the compact account-context sheet. A planning date does not schedule a post.

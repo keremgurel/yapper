@@ -13,6 +13,7 @@ final class RecorderTakeFlow: ObservableObject {
     private let movie: RecorderMovieOutput
     private var leadIn: Task<Void, Never>?
     private var leadInDone = false
+    var framing: RecorderFraming = .auto
 
     init(movie: RecorderMovieOutput) {
         self.movie = movie
@@ -43,7 +44,7 @@ final class RecorderTakeFlow: ObservableObject {
         finishing = true
         Task {
             let url = await movie.stop()
-            let finished = if let url { await RecorderTakeFinisher.finish(url) } else { RecorderTake?.none }
+            let finished = if let url { await RecorderTakeFinisher.finish(url, framing: framing) } else { RecorderTake?.none }
             take = finished
             finishing = false
         }
@@ -58,6 +59,7 @@ final class RecorderTakeFlow: ObservableObject {
 
     /// Leaving the page mid-take: keep what was recorded for review.
     func interrupt() {
+        stopScrolling()
         countdown.cancel()
         if movie.isRecording { finish() }
     }

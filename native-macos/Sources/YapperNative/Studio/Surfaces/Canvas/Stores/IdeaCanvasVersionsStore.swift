@@ -10,6 +10,8 @@ final class IdeaCanvasVersionsStore: ObservableObject {
     @Published private(set) var error: String?
 
     private let itemID: String
+    private var requestTask: Task<IdeaCanvasVersionEnvelope, Error>?
+    func cancelWriting() { requestTask?.cancel() }
 
     init(itemID: String) { self.itemID = itemID }
 
@@ -25,15 +27,22 @@ final class IdeaCanvasVersionsStore: ObservableObject {
         guard writing == nil else { return }
         writing = format
         error = nil
-        defer { writing = nil }
+        defer { writing = nil; requestTask = nil }
         do {
-            let envelope = try await requestWrite(format, from: source)
+            let task = Task { try await self.requestWrite(format, from: source) }
+            requestTask = task
+            let envelope = try await task.value
+            try Task.checkCancellation()
             stores[format] = IdeaCanvasVersionStore(itemID: itemID, version: envelope.version)
             NotificationCenter.default.post(name: .ideaCanvasDidSave, object: itemID)
+        } catch is CancellationError {
+            error = "Stopped waiting. Reopen this idea to check whether the server finished saving the version."
+        } catch let failure as URLError where failure.code == .cancelled {
+            error = "Stopped waiting. Reopen this idea to check whether the server finished saving the version."
         } catch let failure as StudioAPIError where failure.code == "insufficient_credits" {
             error = "You're out of credits for this month."
         } catch {
-            self.error = "The \(format.noun) couldn't be written. Nothing was charged; try again."
+            self.error = "The \(format.noun) couldn't be written. Reopen this idea to check the saved version and your credits before retrying."
         }
     }
 

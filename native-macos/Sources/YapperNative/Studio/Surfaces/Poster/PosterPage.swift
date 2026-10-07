@@ -22,8 +22,10 @@ struct PosterPage: View {
     @ObservedObject private var handoff = PosterHandoff.shared
     @State private var source: PosterSource = .yapper
     @State private var dropTargeted = false
+    @State private var viewportHeight: CGFloat = 740
 
     var body: some View {
+        GeometryReader { geometry in
         NativePage {
             NativePageHeader(
                 title: "Poster",
@@ -58,6 +60,8 @@ struct PosterPage: View {
                 }
                 content
             }
+        }
+        .onGeometryChange(for: CGFloat.self, of: { _ in geometry.size.height }, action: { viewportHeight = $0 })
         }
         .overlay {
             if dropTargeted {
@@ -102,7 +106,7 @@ struct PosterPage: View {
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
             }
         } else if let active = currentActive {
-            PosterBenchView(video: active, source: source, videos: videos, bench: bench, upload: upload,
+            PosterBenchView(availableHeight: max(320, viewportHeight - 210), video: active, source: source, videos: videos, bench: bench, upload: upload,
                             drafts: drafts, connections: connections)
         } else {
             PosterVideoGrid(source: source, videos: videos, loading: sourceLoading, connected: sourceConnected,

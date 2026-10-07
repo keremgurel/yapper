@@ -72,7 +72,7 @@ struct ComposerFooter: View {
         if let error = dictation.error { return error }
         if dictation.transcribing { return "Transcribing your thought…" }
         if actions.saving { return "Saving your idea…" }
-        return "⌘D to dictate · ⌘Return to bank it"
+        return "⌘D to dictate · ⌘Return to save idea"
     }
 
     @ViewBuilder

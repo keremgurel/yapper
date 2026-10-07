@@ -1,3 +1,4 @@
+import type { VersionFormat } from "./formats";
 import type {
   ContentBlock,
   ContentHook,
@@ -36,7 +37,16 @@ export interface ContentSummary {
 }
 
 /** Full row from GET /api/content/[id]. */
+export interface ContentVersionDetail {
+  format: VersionFormat;
+  title: string | null;
+  script: string | null;
+  hooks: ContentHook[];
+  blocks: ContentBlock[];
+}
 export interface ContentDetail extends ContentSummary {
+  leadFormat?: VersionFormat;
+  versions?: ContentVersionDetail[];
   /** Always the normalized shape: the API widens legacy string hooks on read. */
   hooks: ContentHook[];
   blocks: ContentBlock[];

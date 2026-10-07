@@ -3,9 +3,15 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/studio-ui";
 
-/** Five prompts to start from today. Every row lands in the Idea Bank, where
+/** Five prompts to start from today. Every row lands in the Ideas, where
  * the prompt gets captured and shaped. */
-export default function DailyIdeasSection({ ideas }: { ideas: string[] }) {
+export default function DailyIdeasSection({
+  ideas,
+  destinations = {},
+}: {
+  ideas: string[];
+  destinations?: Record<string, string>;
+}) {
   const today = new Intl.DateTimeFormat(undefined, {
     month: "short",
     day: "numeric",
@@ -17,7 +23,7 @@ export default function DailyIdeasSection({ ideas }: { ideas: string[] }) {
       meta={today}
       action={
         <Button asChild variant="ghost" size="sm">
-          <Link href="/studio/ideas">Open Idea Bank</Link>
+          <Link href="/studio/ideas">Open Ideas</Link>
         </Button>
       }
     >
@@ -25,7 +31,7 @@ export default function DailyIdeasSection({ ideas }: { ideas: string[] }) {
         {ideas.map((title, index) => (
           <li key={title}>
             <Link
-              href="/studio/ideas"
+              href={destinations[title] ?? "/studio/ideas"}
               className="hover:bg-muted/60 group -mx-2 flex min-h-10 items-center gap-3 rounded-md px-2 py-1.5 no-underline transition-colors"
             >
               <span className="text-muted-foreground w-5 shrink-0 text-right font-mono text-[11px] tabular-nums">

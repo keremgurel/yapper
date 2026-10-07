@@ -111,6 +111,7 @@ final class EditorSession: ObservableObject {
     var managedMediaFailures: Set<URL> = []
     var managedMediaError: String?
 
+    @Published var lastExportURL: URL?
     @Published private(set) var statusMessage = "Import video to begin"
     @Published private(set) var errorMessage: String?
     @Published private(set) var waveformByMedia: [UUID: [Float]] = [:]
@@ -1221,7 +1222,8 @@ final class EditorSession: ObservableObject {
         statusMessage = "Exporting native composition…"
         do {
             try await exportRunner(exportProject, url)
-            statusMessage = "Exported \(url.lastPathComponent) with audio verified"
+            lastExportURL = url
+            statusMessage = "Exported \(url.lastPathComponent)"
             if revealInFinder { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             return true
         } catch is CancellationError {
@@ -3158,7 +3160,10 @@ final class EditorSession: ObservableObject {
     }
 
     func show(_ error: Error) {
-        errorMessage = error.localizedDescription
+        let failure = error as NSError
+        errorMessage = failure.domain == "com.apple.coreaudio.avfaudio"
+            ? "The audio could not be prepared. Your edits are safe. Retry transcription; if this continues, import a video with AAC audio at 44.1 or 48 kHz."
+            : error.localizedDescription
         statusMessage = "Needs attention"
     }
 

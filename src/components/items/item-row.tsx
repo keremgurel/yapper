@@ -9,13 +9,13 @@ import type { ContentStatus } from "@/lib/db/schema";
 /**
  * One row of the shared item table.
  *
- * Not a `<button>`: the status control inside is itself a button, and
- * button-in-button is invalid HTML. A div with button semantics keeps the row
- * clickable and keyboardable without nesting interactive elements.
+ * Each row groups separate selection, title and status controls. The title is
+ * a real button, so keyboard and assistive technology retain every action.
  */
 export default function ItemRow({
   row,
   columns,
+  compact = false,
   selected,
   onToggleSelect,
   onOpen,
@@ -23,6 +23,7 @@ export default function ItemRow({
   onPost,
 }: {
   row: ContentSummary;
+  compact?: boolean;
   columns: ColumnKey[];
   selected: boolean;
   onToggleSelect: () => void;
@@ -32,17 +33,9 @@ export default function ItemRow({
 }) {
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label={`Open ${row.title.trim() || "untitled idea"}`}
-      title="Open workspace"
+      role="group"
+      aria-label={row.title.trim() || "Untitled idea"}
       onClick={onOpen}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen();
-        }
-      }}
       className={`grid min-h-13 cursor-pointer items-center gap-3 border-b px-4 py-2 text-left transition-colors outline-none last:border-b-0 focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)]/60 focus-visible:ring-inset ${
         selected ? "bg-[color:var(--sg-accent)]/8" : "hover:bg-muted/40"
       }`}
@@ -70,17 +63,36 @@ export default function ItemRow({
       {columns.map((key) => (
         <span
           key={key}
-          className="flex min-w-0 items-center"
+          className={`flex min-w-0 items-center ${compact && key !== "title" ? "col-start-2" : ""}`}
           // The status control is interactive; a click on it must not also
           // open the row.
           onClick={key === "status" ? (e) => e.stopPropagation() : undefined}
         >
-          <ItemCell
-            column={key}
-            row={row}
-            onStatus={onStatus}
-            onPost={onPost}
-          />
+          {key === "title" ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpen();
+              }}
+              aria-label={`Open ${row.title.trim() || "untitled idea"}`}
+              className="focus-visible:ring-ring flex min-w-0 flex-1 items-center rounded text-left outline-none focus-visible:ring-2"
+            >
+              <ItemCell
+                column={key}
+                row={row}
+                onStatus={onStatus}
+                onPost={onPost}
+              />
+            </button>
+          ) : (
+            <ItemCell
+              column={key}
+              row={row}
+              onStatus={onStatus}
+              onPost={onPost}
+            />
+          )}
         </span>
       ))}
     </div>

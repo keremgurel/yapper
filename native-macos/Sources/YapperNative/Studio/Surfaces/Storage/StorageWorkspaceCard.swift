@@ -10,8 +10,8 @@ struct StorageWorkspaceCard: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Written workspace").font(.nativeSectionTitle)
-                    Text("About \(StorageFormat.bytes(workspace.estimatedBytes)) of project, Brain, idea and library records. This is visible for transparency but does not consume your video allowance.")
+                    Text("Saved writing and settings").font(.nativeSectionTitle)
+                    Text("About \(StorageFormat.bytes(workspace.estimatedBytes)) of writing and settings in the cloud. Idea and library counts are separate stored categories; neither uses your video allowance.")
                         .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: 620, alignment: .leading)
@@ -29,7 +29,7 @@ struct StorageWorkspaceCard: View {
                 StorageWorkspaceWell(
                     symbol: "lightbulb",
                     title: StorageFormat.count(workspace.contentIdeas, "idea", "ideas"),
-                    detail: "Idea bank"
+                    detail: "Captured ideas"
                 ) { navigation.goTo(.ideas) }
                 StorageWorkspaceWell(
                     symbol: "books.vertical",

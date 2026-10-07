@@ -4,6 +4,7 @@ import SwiftUI
 /// stays out of the way otherwise. Pairs with `InspectorSlider`, and stands
 /// alone for properties that are a coordinate rather than an amount.
 struct InspectorNumberField: View {
+    @Environment(\.inspectorControlLabel) private var controlLabel
     let value: Double
     let range: ClosedRange<Double>
     var decimals: Int = 0
@@ -15,7 +16,8 @@ struct InspectorNumberField: View {
     @FocusState private var isFocused: Bool
 
     var body: some View {
-        TextField("", text: $text)
+        TextField(controlLabel, text: $text)
+            .accessibilityLabel(controlLabel)
             .textFieldStyle(.plain)
             .font(.system(size: 11, weight: .semibold))
             .monospacedDigit()
@@ -61,6 +63,7 @@ struct InspectorNumberField: View {
 /// A slider with its value spelled out beside it. The slider streams while it is
 /// dragged, so a whole gesture lands as one undo step rather than one per pixel.
 struct InspectorSlider: View {
+    @Environment(\.inspectorControlLabel) private var controlLabel
     let value: Double
     let range: ClosedRange<Double>
     var decimals: Int = 0
@@ -73,6 +76,7 @@ struct InspectorSlider: View {
                 value: Binding(get: { value }, set: onChange),
                 in: range
             )
+            .accessibilityLabel(controlLabel)
             .controlSize(.small)
             .tint(Color.yapperOrange)
 

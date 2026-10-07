@@ -42,7 +42,7 @@ struct BrainDecodingTests {
         #expect(response.blocks.count == 2)
         #expect(response.blocks[0].rows == nil)
         #expect(response.blocks[1].rows?.rows.count == 2)
-        #expect(response.blocks[1].sizeLabel == "12k")
+        #expect(response.blocks[1].sizeLabel == "12k characters")
         #expect(response.blocks[0].shapeDescription == "note")
         #expect(response.blocks[1].shapeDescription == "table, 2 rows, 2 columns")
         let single = try decode(BrainBlockResponse.self, #"{"block":{"id":"b3","title":"Hooks","kind":"list","body":"","items":["Open on the mistake"],"rows":null,"digest":"","usage":"private","tags":[],"sourceLabel":"","sourceUrl":"","charCount":19,"sortOrder":2}}"#)

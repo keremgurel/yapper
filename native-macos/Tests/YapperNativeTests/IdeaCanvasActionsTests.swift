@@ -123,4 +123,13 @@ struct IdeaCanvasActionsTests {
         #expect(IdeaCanvasText.speakingTime(words: 40) == "0:16")
         #expect(IdeaCanvasText.hookKeys(["a", "b", "a"]) == ["a#0", "b#0", "a#1"])
     }
+    @Test func keyPointsCannotReplaceAScript() {
+        let actions: [IdeaCanvasAction] = [
+            .replace(index: 0, block: .init(label: "Key points", kind: .bullets, items: ["A", "B"])),
+            .title("Unexpected rename")
+        ]
+        let scoped = IdeaCanvasActions.keyPointsOnly(actions)
+        #expect(scoped == [.append(block: .init(label: "Key points", kind: .bullets, items: ["A", "B"]))])
+    }
+
 }

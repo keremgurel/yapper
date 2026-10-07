@@ -43,7 +43,7 @@ struct RecorderScriptPanel: View {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title).font(.system(size: 14, weight: .semibold)).lineLimit(2)
-                        Text(script.itemID == nil ? "Pasted here. Saving makes a new library item." : "Saving links the take to this idea.")
+                        Text(script.itemID == nil ? "This script is used for your local take." : "Recording uses this idea’s script. Your take stays on this Mac.")
                             .font(.system(size: 12)).foregroundStyle(.secondary)
                     }
                     Spacer(minLength: 8)
@@ -137,6 +137,7 @@ private struct RecorderViewChoices: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.studioPlain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
                 .disabled(!enabled)
                 .opacity(enabled ? 1 : 0.45)
                 .clickableCursor(enabled: enabled)

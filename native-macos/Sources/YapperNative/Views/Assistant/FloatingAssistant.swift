@@ -135,6 +135,8 @@ struct FloatingAssistant: View {
                 guard !wasDragged else { return }
                 toggle(open: true, in: bounds)
             }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { toggle(open: true, in: bounds) }
             .help("Ask Yapper for an edit · drag to move")
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragging)
             .animation(.easeOut(duration: 0.14), value: isHovering)

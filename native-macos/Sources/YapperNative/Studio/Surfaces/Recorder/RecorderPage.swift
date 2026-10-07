@@ -43,7 +43,7 @@ struct RecorderPage: View {
     private var content: some View {
         if let take = flow.take {
             NativePage() {
-                NativePageHeader(title: "Review your take", description: "Play it back, then edit it or keep the file.")
+                NativePageHeader(title: "Review your take", description: "Play it back and choose what to do next.")
                 RecorderReviewView(
                     take: take, title: script.itemTitle, onRetake: { flow.retake() }
                 )
@@ -56,10 +56,10 @@ struct RecorderPage: View {
         } else if focused {
             layout
         } else {
-            NativePage() {
+            VStack(spacing: 0) {
                 NativePageHeader(
                     title: "Recorder",
-                    description: "Record your take with a scrolling teleprompter, then save it to your library or download it."
+                    description: "Rehearse your script, record a take, then edit the video or download the file."
                 ) {
                     Button { focused = true } label: { Label("Focus", systemImage: "arrow.up.left.and.arrow.down.right") }
                         .buttonStyle(EditorGhostButtonStyle(size: .small))
@@ -67,6 +67,10 @@ struct RecorderPage: View {
                 }
                 layout
             }
+            .padding(24)
+            .frame(maxWidth: 1440)
+            .frame(maxWidth: .infinity)
+            .background(Color.editorBackground)
         }
     }
 
@@ -79,6 +83,8 @@ struct RecorderPage: View {
     }
 
     private func record() {
+        guard !flow.finishing else { return }
+        if !workspace.capture.movie.isRecording { flow.framing = prompter.settings.framing }
         flow.pressRecord(
             canRecord: workspace.capture.canRecord,
             leadInSeconds: prompter.settings.leadInSeconds,

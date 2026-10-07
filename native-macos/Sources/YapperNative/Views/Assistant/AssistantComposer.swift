@@ -80,14 +80,12 @@ struct AssistantComposer: View {
 
     private var controls: some View {
         HStack(spacing: 8) {
-            Text(
-                isEmpty
-                    ? (session.assistantUsesStudioBrain ? "Ask across Studio" : "6 credits to plan · @ names a file")
-                    : "⏎ send · ⇧⏎ new line"
-            )
+            Text(session.assistantUsesStudioBrain && IdeaCanvasFocus.shared.runner != nil
+                 ? "1 credit per idea edit"
+                 : "6 credits to plan · generation costs extra")
                 .font(.system(size: 10.5))
                 .foregroundStyle(.tertiary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
                 // The hint is a label, not a target: clicking it has to reach
                 // the card underneath and put the caret in the text.
                 .allowsHitTesting(false)
@@ -96,7 +94,7 @@ struct AssistantComposer: View {
 
             sendButton
         }
-        .frame(height: 24)
+        .frame(minHeight: 24)
     }
 
     private var sendButton: some View {

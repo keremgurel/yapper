@@ -11,8 +11,11 @@ struct CalendarPage: View {
         NativePage {
             NativePageHeader(
                 title: "Calendar",
-                description: "Plan your content dates and see what's coming next."
-            )
+                description: "Planning dates organize ideas. Scheduled posts are sent by Poster."
+            ) {
+                Button("Plan content", systemImage: "calendar.badge.plus") { StudioNavigation.shared.goTo(.ideas) }
+                    .buttonStyle(EditorSecondaryButtonStyle())
+            }
             ScheduledPublishingSection(store: schedules)
             ContentCalendarView(store: calendar)
         }
