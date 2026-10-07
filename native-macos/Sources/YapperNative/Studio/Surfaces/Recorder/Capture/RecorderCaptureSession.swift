@@ -25,6 +25,7 @@ final class RecorderCaptureSession: ObservableObject {
     /// Something to record: a camera, a microphone, or both.
     var canRecord: Bool { running && !configuring && (cameraReady || micReady) }
     var readiness: String {
+        if !cameraOn && !micOn { return "Camera and microphone are off. Turn either on to record, or rehearse your script." }
         if configuring { return "Starting camera and microphone…" }
         if let problem { return problem }
         if canRecord { return cameraReady ? "Ready to record" : "Audio only. Download your take after recording; the video editor requires a camera." }
@@ -123,7 +124,7 @@ final class RecorderCaptureSession: ObservableObject {
                 self.cameraReady = videoReady
                 self.micReady = audioReady
                 self.sourceRatio = ratio
-                self.problem = failure ?? (isRunning && (videoReady || audioReady) ? nil : "No capture device is ready. Check access and retry.")
+                self.problem = failure ?? ((video == nil && audio == nil) || (isRunning && (videoReady || audioReady)) ? nil : "No capture device is ready. Check access and retry.")
             }
         }
     }

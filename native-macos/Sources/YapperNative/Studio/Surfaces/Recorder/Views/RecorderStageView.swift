@@ -52,7 +52,7 @@ struct RecorderStageView: View {
     private var cameraOff: some View {
         VStack(spacing: 8) {
             Image(systemName: "video.slash").font(.system(size: 22))
-            Text(capture.configuring ? "Preparing devices…" : capture.micReady ? "Audio-only recording is ready." : "Camera preview is unavailable.")
+            Text(!capture.cameraOn && !capture.micOn ? "Camera and microphone are off." : capture.configuring ? "Preparing devices…" : capture.micReady ? "Audio-only recording is ready." : "Camera preview is unavailable.")
                 .font(.system(size: 12, weight: .medium))
         }
         .foregroundStyle(Color.white.opacity(0.65))

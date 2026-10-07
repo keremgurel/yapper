@@ -23,7 +23,7 @@ struct RecorderCaptureLayout: View {
                     if !movie.isRecording {
                         HStack {
                             Text(capture.readiness).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
-                            if !capture.canRecord && !capture.configuring {
+                            if !capture.canRecord && !capture.configuring && (capture.cameraOn || capture.micOn) {
                                 Button("Retry devices") { capture.retry() }
                                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                             }
@@ -47,7 +47,7 @@ struct RecorderCaptureLayout: View {
                             RecorderPartialAccessNote(permissions: workspace.permissions)
                             NativeField(label: "Camera frame") {
                                 RecorderSegmented(options: RecorderFraming.allCases.map { .init(value: $0, label: $0.label) }, selection: $prompter.settings.framing)
-                                    .disabled(locked || !capture.cameraOn)
+                                    .disabled(locked)
                             }
                             Text("Auto uses the camera frame. Other ratios crop the center of the preview and saved video.")
                                 .font(.system(size: 12)).foregroundStyle(.secondary)
