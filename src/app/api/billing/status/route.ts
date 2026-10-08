@@ -1,3 +1,4 @@
+import { creditMeterFor } from "@/lib/billing/credit-meter";
 import { auth } from "@clerk/nextjs/server";
 import { getBillingState } from "@/lib/db/billing";
 import { getBalance } from "@/lib/db/credits";
@@ -31,6 +32,12 @@ export async function GET(): Promise<Response> {
     plan: state?.plan ?? null,
     currentPeriodEnd: state?.currentPeriodEnd ?? null,
     balance,
+    creditMeter: creditMeterFor({
+      balance,
+      plan: state?.plan ?? null,
+      trialing: isTrialing(state),
+      entitled: isEntitled(state),
+    }),
     storageBytes,
     storageQuotaBytes: storageQuotaFor(state),
     train: {

@@ -209,7 +209,7 @@ final class StudioWebCommands: ObservableObject {
     /// Who is signed in, asked of Clerk directly. The web shell used to report
     /// this when a Studio page mounted, but every tab is native now and the
     /// parked page may never report.
-    func accountIdentity() async -> (id: String, name: String?, email: String?)? {
+    func accountIdentity() async -> (id: String, name: String?, email: String?, imageURL: String?)? {
         let result = await runJavaScript(
             """
             let clerk = window.Clerk;
@@ -218,12 +218,12 @@ final class StudioWebCommands: ObservableObject {
             const user = clerk.user;
             if (!user) return null;
             const name = user.fullName || [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username || null;
-            return { id: user.id, name, email: user.primaryEmailAddress?.emailAddress ?? null };
+            return { id: user.id, name, email: user.primaryEmailAddress?.emailAddress ?? null, imageURL: user.imageUrl ?? null };
             """,
             timeout: 3
         )
         guard let payload = result as? [String: Any], let id = payload["id"] as? String else { return nil }
-        return (id, payload["name"] as? String, payload["email"] as? String)
+        return (id, payload["name"] as? String, payload["email"] as? String, payload["imageURL"] as? String)
     }
 
     /// Runs the same Brain-aware Chirpy action as the browser UI, but returns
@@ -234,6 +234,7 @@ final class StudioWebCommands: ObservableObject {
         history: [(author: AssistantMessage.Author, text: String)] = []
     ) async throws -> StudioChirpyReply {
         guard let webView else { throw StudioChirpyBridgeError.webViewUnavailable }
+        defer { NotificationCenter.default.post(name: .studioAccountBalanceChanged, object: nil) }
         let context: [String: Any] = [
             "surface": surface ?? NSNull(),
             "history": history.map { ["author": $0.author.rawValue, "text": $0.text] },

@@ -627,7 +627,8 @@ private struct CloudStudioWebView: NSViewRepresentable {
                     signedIn: signedIn,
                     userID: arguments["userId"] as? String,
                     displayName: arguments["displayName"] as? String,
-                    email: arguments["email"] as? String
+                    email: arguments["email"] as? String,
+                    imageURL: arguments["imageURL"] as? String
                 )
             case "route_changed":
                 guard

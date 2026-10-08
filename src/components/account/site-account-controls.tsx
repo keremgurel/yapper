@@ -3,7 +3,6 @@
 import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
 
 import UserMenu from "@/components/account/user-menu";
-import BillingStatusButton from "@/components/billing/billing-status-button";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -34,10 +33,7 @@ export default function SiteAccountControls({
         )}
       </Show>
       <Show when="signed-in">
-        <span className="hidden sm:inline-flex">
-          <BillingStatusButton />
-        </span>
-        <UserMenu avatarOnly />
+        <UserMenu />
       </Show>
     </>
   );

@@ -357,3 +357,23 @@ operations without dragging. Reset position and size preserves reading settings.
 Use Ideas for the content destination, content versions for short-form/long-form/
 article drafts, publishing formats for distribution intent, and Project context
 for the compact account-context sheet. A planning date does not schedule a post.
+
+### Account and credit indicator
+
+Web and macOS use a single avatar-only account button (44px web hit target,
+40px desktop hit target). A 3px circular track surrounds the photo, with a quiet
+neutral gap. The menu repeats the avatar at 48px and places the name and plan
+beside it. A neutral inset surface holds the exact balance, a thin meter and the
+membership action. Do not add a separate credit pill or name to the header.
+
+The arc measures remaining Studio credits against the trial allocation or the
+plan's per-payment allocation (including legacy weekly memberships). Top-ups
+count toward the balance and values above the allocation clamp to a full ring.
+Unknown allocations stay neutral; zero gets an empty track with a small red mark.
+Never infer zero from an unavailable billing response. Exact numbers remain
+readable and available to screen readers, so color is supplemental.
+
+Use ACL Academy's continuous slider interpolation, reversed for credit health:
+coral at 0%, amber at 50%, green at 100%. Light colors: `#d63b3b`, `#b7791f`,
+`#0e9f6e`; dark: `#ff6b6b`, `#ffc247`, `#34d399`. The server supplies the same
+fraction and colors to both clients. No autonomous AI work is triggered.

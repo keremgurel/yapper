@@ -32,6 +32,9 @@ enum APITransport {
         guard method == "GET" else {
             let data = try await fetch()
             await APIReadCache.shared.clear()
+            await MainActor.run {
+                NotificationCenter.default.post(name: .studioAccountBalanceChanged, object: nil)
+            }
             return data
         }
         return try await APIReadCache.shared.data(for: path, fetch: fetch)

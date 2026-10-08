@@ -8,7 +8,6 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { studioNav } from "@/data/studio-nav";
 import UserMenu from "@/components/account/user-menu";
-import BillingStatusButton from "@/components/billing/billing-status-button";
 import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
 
 function currentTitle(pathname: string): string {
@@ -37,8 +36,7 @@ export default function StudioHeader() {
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <Show when="signed-in">
-            <BillingStatusButton compact glass />
-            <UserMenu avatarOnly />
+            <UserMenu />
           </Show>
           <div className="ml-1 h-8 w-[52px] shrink-0">
             <div className="origin-top-left scale-50">

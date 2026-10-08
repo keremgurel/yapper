@@ -516,6 +516,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           tone: "trouble",
         });
       } finally {
+        window.dispatchEvent(new Event("studio:credits-changed"));
         sending.current = false;
         setWorking(false);
       }

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CreditMeter } from "@/lib/billing/credit-meter";
 import { STUDIO_RESOURCE_KEYS } from "@/lib/client-resource-cache";
 import { useClientResource } from "@/hooks/use-client-resource";
 
@@ -10,6 +11,7 @@ export interface BillingStatus {
   plan: string | null;
   currentPeriodEnd: string | null;
   balance: number;
+  creditMeter?: CreditMeter;
   storageBytes: number;
   storageQuotaBytes: number;
   /** Yapper Train's own subscription and what a feedback session can spend.
@@ -45,11 +47,11 @@ async function fetchBillingStatus(): Promise<BillingStatus | null> {
  * itself in the background.
  */
 export function useBillingStatus(enabled = true) {
-  const { data } = useClientResource(
+  const { data, refresh } = useClientResource(
     STUDIO_RESOURCE_KEYS.billing,
     enabled,
     fetchBillingStatus,
   );
 
-  return { status: data ?? null, loading: data === null };
+  return { status: data ?? null, loading: data === null, refresh };
 }
