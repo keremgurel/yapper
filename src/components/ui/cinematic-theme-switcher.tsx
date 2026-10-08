@@ -1,8 +1,8 @@
 "use client";
 
 import { Sun, Moon } from "lucide-react";
-import { useState, useRef, useSyncExternalStore } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useSyncExternalStore, type MouseEvent } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTheme } from "next-themes";
 
 interface Particle {
@@ -13,6 +13,8 @@ interface Particle {
 
 export default function CinematicThemeSwitcher() {
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const reducedMotion = useReducedMotion();
+  const [animateChange, setAnimateChange] = useState(false);
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -47,8 +49,10 @@ export default function CinematicThemeSwitcher() {
     }, 1000);
   };
 
-  const handleToggle = () => {
-    generateParticles();
+  const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+    const animate = !reducedMotion && event.detail > 0;
+    setAnimateChange(animate);
+    if (animate) generateParticles();
     setTheme(isDark ? "light" : "dark");
   };
 
@@ -62,7 +66,7 @@ export default function CinematicThemeSwitcher() {
 
   return (
     <div className="relative inline-block">
-      <svg className="absolute h-0 w-0">
+      <svg className="absolute h-0 w-0" aria-hidden="true">
         <defs>
           <filter id="grain-light">
             <feTurbulence
@@ -105,9 +109,10 @@ export default function CinematicThemeSwitcher() {
       </svg>
 
       <motion.button
+        type="button"
         ref={toggleRef}
         onClick={handleToggle}
-        className="relative flex h-[64px] w-[104px] cursor-pointer items-center rounded-full p-[6px] transition-all duration-300 focus:outline-none"
+        className="focus-visible:ring-ring relative flex h-[64px] w-[104px] cursor-pointer items-center rounded-full p-[6px] transition-shadow duration-150 focus-visible:ring-4 focus-visible:ring-offset-4 focus-visible:outline-none"
         style={{
           background: isDark
             ? "radial-gradient(ellipse at top left, #1e293b 0%, #0f172a 40%, #020617 100%)"
@@ -149,7 +154,6 @@ export default function CinematicThemeSwitcher() {
         aria-label={`Switch to ${isDark ? "light" : "dark"} mode`}
         role="switch"
         aria-checked={isDark}
-        whileTap={{ scale: 0.98 }}
       >
         <div
           className="pointer-events-none absolute inset-[3px] rounded-full"
@@ -227,11 +231,11 @@ export default function CinematicThemeSwitcher() {
           animate={{
             x: isDark ? 46 : 0,
           }}
-          transition={{
-            type: "spring",
-            stiffness: 300,
-            damping: 20,
-          }}
+          transition={
+            animateChange && !reducedMotion
+              ? { duration: 0.15, ease: "easeOut" }
+              : { duration: 0 }
+          }
         >
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
@@ -242,6 +246,8 @@ export default function CinematicThemeSwitcher() {
             }}
           />
           {isAnimating &&
+            !reducedMotion &&
+            animateChange &&
             particles.map((particle) => (
               <motion.div
                 key={particle.id}

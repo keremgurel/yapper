@@ -269,7 +269,9 @@ cards #ffffff, ink #1b181c and muted ink #6b6570. Keep the system font, 4px
 spacing scale and 1440px content frame with 16/24/32px responsive gutters.
 The sidebar toggle is shell chrome, anchored 8px from the sidebar boundary;
 page title and account controls retain the shared frame. No Project shortcut
-in the header: project context is edited in Brain.
+in the header: project context is edited in Brain. The account trigger shows only
+the profile image; identity details stay in its menu. Reuse the public header’s
+CinematicThemeSwitcher at the same 52×32px display size.
 
 Home orders performance, top content and channels, then the shared Chirpy
 conversation, then the existing queue. Opening Home never sends an AI prompt.
