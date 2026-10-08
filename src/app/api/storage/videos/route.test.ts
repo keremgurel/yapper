@@ -226,3 +226,38 @@ it("shows retry retention for archived exports, not current-project protection",
     retention: "retry",
   });
 });
+
+it.each([
+  ["retry", new Date()],
+  ["cleanup", old],
+] as const)(
+  "shows a posted current export as %s and permits explicit removal",
+  async (retention, updatedAt) => {
+    const [submission] = await db
+      .select()
+      .from(schema.submissions)
+      .where(eq(schema.submissions.userId, "owner"));
+    await db
+      .insert(schema.contentItems)
+      .values({
+        userId: "owner",
+        title: "Posted edit",
+        submissionId: submission.id,
+        sourceClientId: "native-project:project",
+        editorRevision: "a".repeat(64),
+        status: "posted",
+      });
+    await db
+      .insert(schema.publishJobs)
+      .values({
+        userId: "owner",
+        platform: "youtube",
+        mediaKey: "owner/video",
+        status: "published",
+        updatedAt,
+      });
+    const { videos } = await (await GET()).json();
+    expect(videos[0]).toMatchObject({ origin: "editor_export", retention });
+    expect((await DELETE(request("owner/video"))).status).toBe(200);
+  },
+);

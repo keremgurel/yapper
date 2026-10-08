@@ -27,10 +27,11 @@ struct StorageVideoManager: View {
         }
         var retentionLabel: String {
             switch retention {
-            case "editor_current": "Current editor export. Kept until replaced by a newer export."
+            case "editor_current": "Unpublished editor export. Kept until posted or replaced."
             case "scheduled": "Needed by a scheduled post."
             case "publishing": "Publishing is still in progress."
             case "retry": "Kept temporarily for publishing retries."
+            case "cleanup": "Posted. Waiting for automatic cleanup."
             default: "Stored for reuse. You can remove this cloud copy."
             }
         }
@@ -46,7 +47,7 @@ struct StorageVideoManager: View {
                 Spacer()
                 Button("Done") { dismiss() }.buttonStyle(EditorSecondaryButtonStyle())
             }
-            Text("Remove temporary video files from this account. Scripts, transcripts and feedback stay. Current editor exports, scheduled posts and active publishing work are protected.")
+            Text("Remove temporary video files from this account. Scripts, transcripts and feedback stay. Unpublished editor exports, scheduled posts and active publishing work are protected.")
                 .font(.system(size: 13)).foregroundStyle(.secondary)
             if let error { Text(error).font(.system(size: 13)).foregroundStyle(Color.studioDanger) }
             if loading {

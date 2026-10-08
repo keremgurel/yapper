@@ -51,10 +51,6 @@ export async function findPostedMedia(
           and ps.status in ('scheduled', 'running', 'needs_attention')
           and ps.input->>'mediaKey' = pj.media_key
       )
-      and not exists (
-        select 1 from content_items ci join submissions s on s.id = ci.submission_id
-        where ci.user_id = pj.user_id and s.media_key = pj.media_key and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%'
-      )
       and (
         exists (select 1 from submissions s where s.user_id = pj.user_id and s.media_key = pj.media_key)
         or exists (select 1 from imported_platform_media i where i.user_id = pj.user_id and i.media_key = pj.media_key)
@@ -75,11 +71,15 @@ function protectedMediaQuery(
   protectGracePeriods = true,
 ) {
   const { userId, mediaKey } = candidate;
+  // Only unpublished current exports need indefinite protection. Success is
+  // scoped to this physical file; an older export must not retire a fresh one.
   return sql`
     select 1 where
       exists (select 1 from content_items ci join submissions s on s.id = ci.submission_id
-        where ${protectEdit} and ci.user_id = ${userId} and s.media_key = ${mediaKey} and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%')
-      or       exists (select 1 from publishing_schedules ps
+        where ${protectEdit} and ci.user_id = ${userId} and s.media_key = ${mediaKey} and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%'
+          and not exists (select 1 from publish_jobs pj where pj.user_id = ${userId}
+            and pj.media_key = ${mediaKey} and pj.status = 'published'))
+      or exists (select 1 from publishing_schedules ps
         where ps.user_id = ${userId} and ps.input->>'mediaKey' = ${mediaKey}
           and ps.status in ('scheduled', 'running', 'needs_attention'))
       or exists (select 1 from publish_jobs pj

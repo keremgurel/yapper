@@ -7,7 +7,13 @@ export type StoredVideo = {
   title: string;
   origin: "editor_export" | "upload" | "recording" | "import";
   platform: string | null;
-  retention: "editor_current" | "scheduled" | "publishing" | "retry" | "stored";
+  retention:
+    | "editor_current"
+    | "scheduled"
+    | "publishing"
+    | "retry"
+    | "cleanup"
+    | "stored";
 };
 
 /** Same physical objects as the storage totals, including files outside Uploads.
@@ -26,9 +32,13 @@ export async function listStoredVideos(userId: string): Promise<StoredVideo[]> {
           and ps.input->>'mediaKey' = r.media_key and ps.status in ('scheduled', 'running', 'needs_attention')) then 'scheduled'
         when exists (select 1 from publish_jobs pj where pj.user_id = r.user_id
           and pj.media_key = r.media_key and pj.status in ('queued', 'uploading', 'processing')) then 'publishing'
-        when ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%' then 'editor_current'
+        when ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%'
+          and not exists (select 1 from publish_jobs pj where pj.user_id = r.user_id
+            and pj.media_key = r.media_key and pj.status = 'published') then 'editor_current'
         when exists (select 1 from publish_jobs pj where pj.user_id = r.user_id
           and pj.media_key = r.media_key and pj.updated_at >= now() - interval '24 hours') then 'retry'
+        when exists (select 1 from publish_jobs pj where pj.user_id = r.user_id
+          and pj.media_key = r.media_key and pj.status = 'published') then 'cleanup'
         else 'stored' end as retention
     from r2_objects r
     left join lateral (select s.* from submissions s where s.user_id = r.user_id
