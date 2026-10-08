@@ -25,10 +25,12 @@ export default function StudioPlanCards({
   pending: string | null;
   onStart: (key: string) => void;
 }) {
-  const [cadence, setCadence] = useState("month");
-  const plan = STUDIO_PLANS.find((item) => item.cadence === cadence)!;
+  const [selectedCadence, setCadence] = useState<string | null>(null);
   const { isSignedIn } = useAuth();
   const { status } = useBillingStatus(isSignedIn === true);
+  const cadence =
+    selectedCadence ?? (status?.plan === "creator_yearly" ? "year" : "month");
+  const plan = STUDIO_PLANS.find((item) => item.cadence === cadence)!;
   return (
     <article className={styles.membership}>
       <div className={styles.membershipDetails}>
@@ -111,7 +113,9 @@ export default function StudioPlanCards({
           </SignInButton>
         </Show>
         <p className={styles.membershipNote}>
-          {TRIAL_CREDITS} trial credits. Cancel anytime.
+          {status?.entitled
+            ? "Every Studio tool is included in your membership."
+            : `${TRIAL_CREDITS} trial credits. Cancel anytime.`}
         </p>
       </div>
     </article>
