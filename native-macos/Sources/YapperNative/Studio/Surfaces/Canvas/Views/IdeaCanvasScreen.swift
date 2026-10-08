@@ -79,6 +79,17 @@ struct IdeaCanvasScreen: View {
             page
                 .id(current)
         }
+        .environment(\.openURL, OpenURLAction { url in
+            if url.scheme == "yapper", url.host == "project" {
+                titleActions.editOnMac()
+                return .handled
+            }
+            if url.scheme == "yapper", url.host == "poster-upload" {
+                titleActions.crossPost()
+                return .handled
+            }
+            return .systemAction
+        })
         .overlay(alignment: .bottom) {
             if bar.isOpen {
                 IdeaCanvasAskBar(bar: bar, runner: runner, blocks: store.blocks)

@@ -48,22 +48,22 @@ struct IdeaCanvasSourceCard: View {
                     .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.studioRaisedChip))
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(platform?.name ?? url?.host ?? "Reference")
+                Text(sourceName)
                     .font(.system(size: 13, weight: .semibold))
-                if let path = shortLink {
+                if let path = internalSource ? item.title : shortLink {
                     Text(path).font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
             }
             Spacer(minLength: 8)
-            if let url {
-                Link(destination: url) {
-                    Label("Open", systemImage: "arrow.up.right")
-                        .font(.system(size: 12, weight: .medium))
-                }
+            IdeaCanvasSourceLink(item: item)
                 .buttonStyle(EditorSecondaryButtonStyle(size: .mini))
-                .help("Open the original")
-            }
         }
+    }
+
+    private var internalSource: Bool { url?.scheme == "yapper" }
+    private var sourceName: String {
+        if internalSource { return url?.host == "project" ? "Editor project" : "Poster upload" }
+        return platform?.name ?? url?.host ?? "Reference"
     }
 
     /// The link without its scheme or `www.`, e.g. `instagram.com/p/DaDjrBqxfdH`.
@@ -72,5 +72,28 @@ struct IdeaCanvasSourceCard: View {
         let bare = host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
         let path = url.path.hasSuffix("/") ? String(url.path.dropLast()) : url.path
         return bare + path
+    }
+}
+
+/// The canvas intercepts internal links and saves pending edits before opening them.
+struct IdeaCanvasSourceLink: View {
+    let item: IdeaCanvasItem
+
+    @ViewBuilder var body: some View {
+        if let raw = item.sourceUrl, let url = URL(string: raw) {
+            if url.scheme == "yapper", url.host == "project" {
+                Link(destination: url) {
+                    Label("Open project", systemImage: "arrow.up.right")
+                }
+                .help("Open the original editor project on this Mac")
+            } else if url.scheme == "yapper", url.host == "poster-upload" {
+                Link(destination: url) {
+                    Label("Open in Poster", systemImage: "arrow.up.right")
+                }
+            } else if ["https", "http"].contains(url.scheme?.lowercased() ?? "") {
+                Link(destination: url) { Label("Open", systemImage: "arrow.up.right") }
+                    .help("Open the original")
+            }
+        }
     }
 }

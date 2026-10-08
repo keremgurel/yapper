@@ -16,7 +16,7 @@ struct StudioEditorHandoffView: View {
                     Color.black.opacity(0.28).ignoresSafeArea()
                     VStack(spacing: 16) {
                         if let failure {
-                            Label("Couldn’t open the recording", systemImage: "exclamationmark.triangle")
+                            Label("Couldn’t open in the editor", systemImage: "exclamationmark.triangle")
                                 .font(.headline)
                             Text(failure).multilineTextAlignment(.center)
                             HStack {
@@ -29,8 +29,8 @@ struct StudioEditorHandoffView: View {
                                 .buttonStyle(EditorPrimaryButtonStyle())
                             }
                         } else {
-                            ProgressView("Opening your recording…")
-                            Text("Your saved take will open in its own local project.")
+                            ProgressView("Opening in the editor…")
+                            Text("Opening the original project or saved recording.")
                                 .font(.callout).foregroundStyle(.secondary)
                             Button("Cancel") {
                                 if let request = commands.editorRequest { commands.finishEditorRequest(request.id) }

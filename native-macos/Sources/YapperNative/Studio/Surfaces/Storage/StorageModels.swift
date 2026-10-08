@@ -54,6 +54,7 @@ struct StorageUsage: Codable, Equatable {
     let plan: Plan?
     let usedBytes: Double
     let reservedBytes: Double
+    let expiredReservedCount: Int?
     let reservedCount: Int
     let committedBytes: Double
     let quotaBytes: Double

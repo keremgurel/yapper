@@ -46,8 +46,10 @@ struct StorageUsageCard: View {
     }
 
     private var reservedNote: String {
-        let uploads = StorageFormat.count(usage.reservedCount, "in-progress upload", "in-progress uploads")
-        return "\(StorageFormat.bytes(usage.reservedBytes)) is temporarily reserved for \(uploads)."
+        let uploads = StorageFormat.count(usage.reservedCount, "upload reservation", "upload reservations")
+        let expired = usage.expiredReservedCount ?? 0
+        let cleanup = expired > 0 ? " \(expired) expired and awaiting cleanup." : ""
+        return "\(StorageFormat.bytes(usage.reservedBytes)) is held by \(uploads)." + cleanup
     }
 }
 

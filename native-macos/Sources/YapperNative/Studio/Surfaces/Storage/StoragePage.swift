@@ -23,7 +23,7 @@ struct StoragePage: View {
                 if let deleteOn = usage.videosDeleteOn.flatMap({ try? Date($0, strategy: .iso8601) }) {
                     StorageLapseNotice(deleteOn: deleteOn)
                 }
-                Text("Cloud publishing storage counts uploaded media plus space reserved for uploads in progress. Your Mac project files are separate and are not included in this total.")
+                Text("Cloud publishing storage counts uploaded media plus upload reservations, including expired reservations awaiting cleanup. Your Mac project files are separate and are not included in this total.")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
                 Button("Open local projects") { StudioNavigation.shared.goTo(.editor) }
                     .buttonStyle(EditorSecondaryButtonStyle(size: .small))

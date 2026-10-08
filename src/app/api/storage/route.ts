@@ -39,6 +39,7 @@ export async function GET(): Promise<Response> {
     usedBytes,
     reservedBytes: details.reservedBytes,
     reservedCount: details.reservedCount,
+    expiredReservedCount: details.expiredReservedCount,
     committedBytes,
     quotaBytes,
     percent,

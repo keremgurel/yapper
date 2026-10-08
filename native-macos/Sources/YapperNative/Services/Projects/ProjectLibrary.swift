@@ -73,6 +73,13 @@ actor ProjectLibrary {
         return package
     }
 
+    /// Resolve the original timeline by its stable ID, including projects opened
+    /// outside the library. Names and downloaded recording identities are not IDs.
+    func project(id: UUID, recentURLs: [URL] = []) throws -> ProjectPackage? {
+        let packages = try listings().map(\.package) + recentURLs.filter(ProjectPackage.isPackage).map { ProjectPackage(url: $0) }
+        return packages.first { decodeProject(in: $0)?.id == id }
+    }
+
     /// Reopen the latest edited project for this account and this exact take.
     func project(for source: StudioContentSource) throws -> ProjectPackage? {
         for listing in try listings() {

@@ -17,6 +17,7 @@ export interface StorageUsageDetails {
   media: Record<R2ObjectPurpose, { bytes: number; count: number }>;
   reservedBytes: number;
   reservedCount: number;
+  expiredReservedCount: number;
   workspace: {
     estimatedBytes: number;
     projects: number;
@@ -68,6 +69,7 @@ export async function getStorageUsageDetails(
     db
       .select({
         count,
+        expiredCount: sql<number>`count(*) filter (where ${r2Objects.uploadExpiresAt} <= now())::int`,
         bytes: sql<number>`coalesce(sum(${r2Objects.mediaBytes}), 0)::double precision`,
       })
       .from(r2Objects)
@@ -157,6 +159,7 @@ export async function getStorageUsageDetails(
     media,
     reservedBytes: Number(reserved?.bytes ?? 0),
     reservedCount: Number(reserved?.count ?? 0),
+    expiredReservedCount: Number(reserved?.expiredCount ?? 0),
     workspace: {
       estimatedBytes: workspaceRows.reduce(
         (total, row) => total + Number(row?.bytes ?? 0),

@@ -24,10 +24,13 @@ struct StorageMediaSection: View {
                 }
                 .buttonStyle(EditorGhostButtonStyle(size: .small))
             }
+            Text("Editor exports appear in Made in Yapper. Direct uploads appear in Uploads. Cross-post imports come from your connected platforms. Manage videos shows every stored cloud video.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             LazyVGrid(columns: columns, spacing: 12) {
                 StorageMediaTile(
-                    symbol: "film", label: "Uploaded videos",
-                    detail: StorageFormat.count(media.recording.count, "upload", "uploads"),
+                    symbol: "film", label: "Cloud videos",
+                    detail: StorageFormat.count(media.recording.count, "editor export or upload", "editor exports and uploads"),
                     bytes: media.recording.bytes
                 )
                 StorageMediaTile(

@@ -2233,7 +2233,25 @@ final class EditorSession: ObservableObject {
         guard await beginPreparedTimelineEdit() != nil else { throw StudioEditorError.busy }
         defer { endPreparedTimelineEdit() }
         statusMessage = "Opening your Studio recording…"
-        let recording = try await StudioEditorService.resolve(itemID: itemID)
+        let item = try await StudioEditorService.resolveItem(itemID: itemID)
+        try Task.checkCancellation()
+        if let projectID = try item.projectID {
+            if project.id == projectID, projectNavigation.currentPackage != nil {
+                projectNavigation.showsProjectsHome = false
+                statusMessage = "Opened \(project.name)"
+                return
+            }
+            guard let original = try await library.project(id: projectID, recentURLs: RecentProjects.all())
+            else { throw StudioEditorError.projectMissing }
+            try await persist()
+            try Task.checkCancellation()
+            errorMessage = nil
+            await openProject(original)
+            guard project.id == projectID else { throw StudioEditorError.invalidResponse }
+            if let errorMessage { throw NativeEditorError.aiFailed(errorMessage) }
+            return
+        }
+        let recording = try await StudioEditorService.resolveRecording(item: item)
         try Task.checkCancellation()
         if project.studioSource == recording.source, projectNavigation.currentPackage != nil {
             projectNavigation.showsProjectsHome = false
