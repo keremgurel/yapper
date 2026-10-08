@@ -71,6 +71,50 @@ struct StudioEditorTests {
         } catch StudioEditorError.invalidResponse { } catch { Issue.record("Unexpected error: \(error)") }
     }
 
+    @Test func projectReferencesResolveWithoutRequestingOrDownloadingMedia() async throws {
+        let itemID = itemID, projectID = UUID()
+        // The cloud export can already have been cleaned up; the project still opens.
+        let item = try await StudioEditorService.resolveItem(itemID: itemID) { url in
+            #expect(url.path == "/api/content/\(itemID.uuidString.lowercased())")
+            return Data("{\"item\":{\"id\":\"\(itemID)\",\"title\":\"ep14\",\"submissionId\":null,\"sourceUrl\":\"yapper://project/\(projectID)\"}}".utf8)
+        }
+        #expect(try item.projectID == projectID)
+        do {
+            _ = try await StudioEditorService.resolveRecording(item: item) { _ in
+                Issue.record("A project reference must not request cloud video")
+                throw StudioEditorError.invalidResponse
+            }
+            Issue.record("A project reference must not be imported as a recording")
+        } catch StudioEditorError.projectMissing { }
+    }
+
+    @Test func malformedProjectReferencesNeverFallBackToImportingVideo() throws {
+        for url in ["yapper://project/not-a-uuid", "yapper://project/\(UUID())/extra", "yapper://project/\(UUID())?copy=1"] {
+            let item = StudioEditorItem(id: itemID, title: "ep14", submissionId: submissionID, sourceUrl: url)
+            #expect(throws: (any Error).self) { try item.projectID }
+        }
+    }
+
+    @Test func originalProjectLookupIgnoresFlattenedCopiesAndSurvivesRename() async throws {
+        let root = FileManager.default.temporaryDirectory.appending(path: "ProjectSource-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = ProjectLibrary(directory: root)
+        let original = try await library.create(named: "ep14")
+        let timeline = EditorProject(name: "ep14")
+        try await ProjectPackageStore(package: original).save(timeline)
+        let duplicate = try await library.create(named: "ep14")
+        var flattened = EditorProject(name: "ep14")
+        flattened.studioSource = StudioContentSource(userID: "owner", itemID: itemID, submissionID: submissionID)
+        try await ProjectPackageStore(package: duplicate).save(flattened)
+        let renamed = try await library.rename(original, to: "Episode fourteen")
+        #expect(try await library.project(id: timeline.id)?.url.standardizedFileURL.path == renamed.url.standardizedFileURL.path)
+        #expect(try await library.project(id: UUID()) == nil)
+        #expect(try await library.listings().count == 2)
+        // Projects moved outside the default library still resolve through recents.
+        let outsideLibrary = ProjectLibrary(directory: root.appending(path: "Another folder"))
+        #expect(try await outsideLibrary.project(id: timeline.id, recentURLs: [renamed.url]) == renamed)
+    }
+
     @Test func aDownloadedRecordingSurvivesReopenRenameAndCopy() async throws {
         let root = FileManager.default.temporaryDirectory.appending(path: "StudioEditor-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

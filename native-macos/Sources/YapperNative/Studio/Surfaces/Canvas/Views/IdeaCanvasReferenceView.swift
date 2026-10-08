@@ -41,17 +41,10 @@ struct IdeaCanvasReferenceView: View {
     }
 
     @ViewBuilder private var sourceLink: some View {
-        if let raw = item.sourceUrl, let url = URL(string: raw) {
-            Link(destination: url) {
-                HStack(spacing: 4) {
-                    Text(truncate(item.sourceTitle ?? "Open reference", 48))
-                    Image(systemName: "arrow.up.right")
-                }
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-            }
-            .clickableCursor()
-        }
+        IdeaCanvasSourceLink(item: item)
+            .font(.system(size: 12))
+            .foregroundStyle(.secondary)
+            .buttonStyle(.studioPlain)
     }
 
     @ViewBuilder private var inspirationBody: some View {

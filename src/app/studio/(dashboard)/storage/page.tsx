@@ -164,9 +164,11 @@ export default async function StoragePage() {
           </div>
           {details.reservedBytes > 0 ? (
             <p className="mt-4 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-800 dark:text-amber-200">
-              {formatStorageBytes(details.reservedBytes)} is temporarily
-              reserved for {details.reservedCount} in-progress upload
+              {formatStorageBytes(details.reservedBytes)} is temporarily held by{" "}
+              {details.reservedCount} upload reservation
               {details.reservedCount === 1 ? "" : "s"}.
+              {details.expiredReservedCount > 0 &&
+                ` ${details.expiredReservedCount} expired and awaiting cleanup.`}
             </p>
           ) : null}
         </div>
@@ -179,8 +181,8 @@ export default async function StoragePage() {
               Video storage
             </h2>
             <p className="text-muted-foreground mt-0.5 text-xs">
-              One current video, plus files needed for scheduled posts and
-              publishing retries.
+              Editor exports, direct uploads and cross-post imports. These
+              include files outside Poster’s Uploads tab.
             </p>
           </div>
           <Link
@@ -193,8 +195,8 @@ export default async function StoragePage() {
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <BreakdownCard
             icon={Clapperboard}
-            label="Uploaded videos"
-            detail={`${details.media.recording.count} upload${details.media.recording.count === 1 ? "" : "s"}`}
+            label="Cloud videos"
+            detail={`${details.media.recording.count} editor export${details.media.recording.count === 1 ? " or upload" : "s and uploads"}`}
             value={formatStorageBytes(details.media.recording.bytes)}
           />
           <BreakdownCard
@@ -290,8 +292,9 @@ export default async function StoragePage() {
           </p>
           <p>
             Yapper keeps one current video. Scheduled posts keep the files they
-            need. After successful publishing, files are released after the
-            24-hour retry window and the next cleanup run.
+            need. Current editor exports stay until replaced. Other published
+            files are released after the 24-hour retry window and the next
+            cleanup run.
           </p>
           <p>
             This is publishing space, not a video archive. Keep originals on

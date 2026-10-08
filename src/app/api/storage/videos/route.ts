@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
+import { listStoredVideos } from "@/lib/db/storage-videos";
 import { getDb } from "@/lib/db/client";
 import { r2Objects } from "@/lib/db/schema";
 import { releasePostedMedia } from "@/lib/db/posted-media-retention";
@@ -16,14 +17,7 @@ export const runtime = "nodejs";
 export async function GET(): Promise<Response> {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-  const rows = await getDb().execute(sql`
-    select r.media_key as "mediaKey", r.media_bytes::double precision as bytes,
-      coalesce((select s.title from submissions s where s.user_id = r.user_id and s.media_key = r.media_key order by s.created_at desc limit 1),
-        (select i.title from imported_platform_media i where i.user_id = r.user_id and i.media_key = r.media_key limit 1), 'Untitled video') as title
-    from r2_objects r where r.user_id = ${userId} and r.state = 'active' and r.purpose in ('recording', 'import')
-    order by r.created_at desc limit 100
-  `);
-  return Response.json({ videos: rows.rows });
+  return Response.json({ videos: await listStoredVideos(userId) });
 }
 
 export async function DELETE(req: Request): Promise<Response> {

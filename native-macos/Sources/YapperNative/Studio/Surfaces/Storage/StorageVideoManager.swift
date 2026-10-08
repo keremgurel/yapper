@@ -13,7 +13,28 @@ struct StorageVideoManager: View {
         let mediaKey: String
         let title: String
         let bytes: Double
+        let origin: String?
+        let platform: String?
+        let retention: String?
         var id: String { mediaKey }
+        var sourceLabel: String {
+            switch origin {
+            case "editor_export": "Editor export · Made in Yapper"
+            case "upload": "Direct upload · Uploads"
+            case "import": "\(platform?.capitalized ?? "Platform") cross-post import"
+            default: "Recording"
+            }
+        }
+        var retentionLabel: String {
+            switch retention {
+            case "editor_current": "Current editor export. Kept until replaced by a newer export."
+            case "scheduled": "Needed by a scheduled post."
+            case "publishing": "Publishing is still in progress."
+            case "retry": "Kept temporarily for publishing retries."
+            default: "Stored for reuse. You can remove this cloud copy."
+            }
+        }
+        var protected: Bool { ["editor_current", "scheduled", "publishing"].contains(retention ?? "") }
     }
     private struct Reply: Decodable { let videos: [Video] }
     private struct Removal: Encodable { let mediaKey: String }
@@ -25,7 +46,7 @@ struct StorageVideoManager: View {
                 Spacer()
                 Button("Done") { dismiss() }.buttonStyle(EditorSecondaryButtonStyle())
             }
-            Text("Remove temporary video files from this account. Scripts, transcripts and feedback stay. Scheduled posts and active publishing work are protected.")
+            Text("Remove temporary video files from this account. Scripts, transcripts and feedback stay. Current editor exports, scheduled posts and active publishing work are protected.")
                 .font(.system(size: 13)).foregroundStyle(.secondary)
             if let error { Text(error).font(.system(size: 13)).foregroundStyle(Color.studioDanger) }
             if loading {
@@ -36,16 +57,7 @@ struct StorageVideoManager: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(videos) { video in
-                            HStack(spacing: 12) {
-                                Image(systemName: "film")
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(video.title).lineLimit(2)
-                                    Text(StorageFormat.bytes(video.bytes)).font(.system(size: 12)).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button("Remove", role: .destructive) { selected = video }
-                                    .buttonStyle(EditorGhostButtonStyle(size: .small)).disabled(deleting)
-                            }.nativeCard(padding: 14)
+                            StorageVideoRow(video: video, deleting: deleting) { selected = video }
                         }
                     }
                 }.frame(maxHeight: 360)
@@ -87,5 +99,26 @@ struct StorageVideoManager: View {
             await load()
             await StorageStore.shared.refresh()
         } catch { self.error = error.localizedDescription }
+    }
+}
+
+struct StorageVideoRow: View {
+    let video: StorageVideoManager.Video
+    let deleting: Bool
+    let onRemove: () -> Void
+
+    var body: some View {
+HStack(spacing: 12) {
+                                Image(systemName: "film")
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(video.title).lineLimit(2).help(video.title)
+                                    Text("\(StorageFormat.bytes(video.bytes)) · \(video.sourceLabel)").font(.system(size: 12)).foregroundStyle(.secondary)
+                                    Text(video.retentionLabel).font(.system(size: 12)).foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                Spacer()
+                                Button("Remove", role: .destructive) { onRemove() }
+                                    .buttonStyle(EditorGhostButtonStyle(size: .small)).disabled(deleting || video.protected)
+                            }.nativeCard(padding: 14)
     }
 }

@@ -6,6 +6,7 @@ enum StudioEditorError: LocalizedError {
     case invalidResponse
     case downloadFailed
     case busy
+    case projectMissing
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,7 @@ enum StudioEditorError: LocalizedError {
         case .noRecording: "Save a recording to this Library item before opening it in the editor."
         case .invalidResponse: "Studio couldn’t read this recording’s details. Try again."
         case .downloadFailed: "The recording couldn’t be downloaded. Check your connection and try again."
+        case .projectMissing: "The original editor project is not on this Mac. Open its .yapperproj file from Projects if you moved it. Your posted script is still saved; opening this reference will not import another copy of the finished video."
         case .busy: "Finish or cancel the current editor operation, then try opening this recording again."
         }
     }
@@ -25,25 +27,51 @@ struct StudioEditorRecording: Sendable {
     let fileExtension: String
 }
 
+struct StudioEditorItem: Decodable, Sendable {
+    let id: UUID
+    let title: String
+    let submissionId: UUID?
+    let sourceUrl: String?
+
+    var projectID: UUID? {
+        get throws {
+            guard let sourceUrl, let url = URL(string: sourceUrl),
+                  url.scheme == "yapper", url.host == "project" else { return nil }
+            guard url.query == nil, url.fragment == nil,
+                  let id = UUID(uuidString: String(url.path.dropFirst()))
+            else { throw StudioEditorError.invalidResponse }
+            return id
+        }
+    }
+}
+
 enum StudioEditorService {
     typealias Request = @Sendable (URL) async throws -> Data
 
     /// Each route enforces account ownership; signed media is resolved afresh.
     static func resolve(itemID: UUID, request: Request = authenticatedData) async throws -> StudioEditorRecording {
-        struct ContentEnvelope: Decodable {
-            struct Item: Decodable { let id: UUID; let title: String; let submissionId: UUID? }
-            let item: Item
-        }
+        let item = try await resolveItem(itemID: itemID, request: request)
+        return try await resolveRecording(item: item, request: request)
+    }
+
+    static func resolveItem(itemID: UUID, request: Request = authenticatedData) async throws -> StudioEditorItem {
+        struct ContentEnvelope: Decodable { let item: StudioEditorItem }
+        let data = try await request(YapperAPI.url(path: "api/content/\(itemID.uuidString.lowercased())"))
+        guard let content = try? JSONDecoder().decode(ContentEnvelope.self, from: data), content.item.id == itemID
+        else { throw StudioEditorError.invalidResponse }
+        return content.item
+    }
+
+    static func resolveRecording(item: StudioEditorItem, request: Request = authenticatedData) async throws -> StudioEditorRecording {
+        // An editor project reference must never become a flattened download.
+        guard try item.projectID == nil else { throw StudioEditorError.projectMissing }
         struct SubmissionEnvelope: Decodable {
             struct Submission: Decodable { let id: UUID; let userId: String; let mediaKey: String? }
             let submission: Submission
         }
         struct SignedMedia: Decodable { let url: URL }
         let decoder = JSONDecoder()
-        let contentData = try await request(YapperAPI.url(path: "api/content/\(itemID.uuidString.lowercased())"))
-        guard let content = try? decoder.decode(ContentEnvelope.self, from: contentData), content.item.id == itemID
-        else { throw StudioEditorError.invalidResponse }
-        guard let submissionID = content.item.submissionId else { throw StudioEditorError.noRecording }
+        guard let submissionID = item.submissionId else { throw StudioEditorError.noRecording }
         let submissionData = try await request(YapperAPI.url(path: "api/submissions/\(submissionID.uuidString.lowercased())"))
         guard let submission = (try? decoder.decode(SubmissionEnvelope.self, from: submissionData))?.submission,
               submission.id == submissionID, !submission.userId.isEmpty
@@ -58,8 +86,8 @@ enum StudioEditorService {
         let ext = (key as NSString).pathExtension.lowercased()
         guard ["mp4", "mov", "m4v", "webm"].contains(ext) else { throw StudioEditorError.invalidResponse }
         return StudioEditorRecording(
-            source: StudioContentSource(userID: submission.userId, itemID: itemID, submissionID: submissionID),
-            title: content.item.title.isEmpty ? "Studio recording" : content.item.title,
+            source: StudioContentSource(userID: submission.userId, itemID: item.id, submissionID: submissionID),
+            title: item.title.isEmpty ? "Studio recording" : item.title,
             url: signed.url,
             fileExtension: ext
         )
