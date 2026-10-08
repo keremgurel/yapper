@@ -13,7 +13,7 @@ export async function readPublishedMemory(
   plan: MemoryPlan,
 ) {
   if (plan.mode === "none") return [];
-  const speech = sql<string>`coalesce(nullif(btrim(${contentItems.recordedTranscript}), ''), nullif(btrim(${contentItems.script}), ''), (select string_agg(b->>'text', E'\n') from jsonb_array_elements(${contentItems.blocks}) b where b->>'kind' = 'script'), '')`;
+  const speech = sql<string>`case when ${contentItems.recordedTranscript} = '' and ${contentItems.transcriptStatus} = 'ready' then '' else coalesce(nullif(btrim(${contentItems.recordedTranscript}), ''), nullif(btrim(${contentItems.script}), ''), (select string_agg(b->>'text', E'\n') from jsonb_array_elements(${contentItems.blocks}) b where b->>'kind' = 'script'), '') end`;
   const publishedAt = sql<Date>`coalesce((select max(${publishJobs.updatedAt}) from ${publishJobs} where ${publishJobs.contentItemId} = ${contentItems.id} and ${publishJobs.userId} = ${userId} and ${publishJobs.status} = 'published'), ${contentItems.createdAt})`;
   const filter =
     plan.mode === "pillar"

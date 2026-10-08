@@ -449,3 +449,45 @@ it("a stale or foreign publication cannot mark someone else's item as posted", a
   });
   expect((await getContentItem("other", item.id))?.status).toBe("ready");
 });
+
+it("clears an untouched transcript copy when the next completed export has no speech", async () => {
+  const item = await recorded();
+  await enrichRecording("owner", item.id);
+  await updateContentItem("owner", item.id, {
+    recordedTranscript: "",
+    transcriptStatus: "ready",
+  });
+  expect(await getContentItem("owner", item.id)).toMatchObject({
+    script: null,
+    recordedTranscript: "",
+    pillarId: null,
+  });
+  await updateContentItem("owner", item.id, { script: "My unsaid draft" });
+  expect(
+    await readPublishedMemory("owner", projectId, {
+      mode: "title",
+      query: "ep14",
+      limit: 1,
+    }),
+  ).toEqual([]);
+});
+
+it("reclassifies changed speech only when its previous pillar was automatic", async () => {
+  const item = await recorded();
+  await enrichRecording("owner", item.id);
+  await updateContentItem("owner", item.id, {
+    recordedTranscript: "New subject",
+  });
+  expect(await getContentItem("owner", item.id)).toMatchObject({
+    script: "New subject",
+    pillarId: null,
+    memoryFingerprint: null,
+  });
+  await enrichRecording("owner", item.id);
+  expect(mocks.classify).toHaveBeenCalledTimes(2);
+  await updateContentItem("owner", item.id, { pillarId });
+  await updateContentItem("owner", item.id, {
+    recordedTranscript: "Another subject",
+  });
+  expect((await getContentItem("owner", item.id))?.pillarId).toBe(pillarId);
+});

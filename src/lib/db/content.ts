@@ -227,7 +227,16 @@ export async function updateContentItem(
           : {}),
         ...(input.recordedTranscript !== undefined &&
         input.recordedTranscript !== current.recordedTranscript
-          ? { memoryFingerprint: null, memoryAttemptedAt: null }
+          ? {
+              memoryFingerprint: null,
+              memoryAttemptedAt: null,
+              ...(current.memoryFingerprint &&
+              !current.memoryPillarManual &&
+              input.pillar === undefined &&
+              input.pillarId === undefined
+                ? { pillarId: null, pillar: null }
+                : {}),
+            }
           : {}),
         updatedAt: new Date(),
       })

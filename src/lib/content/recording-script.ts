@@ -10,9 +10,9 @@ export function recordingScriptPatch(
     memoryScriptManual?: boolean;
   },
   transcript: string,
-): { script?: string; blocks?: ContentBlock[] } {
+): { script?: string | null; blocks?: ContentBlock[] } {
   const text = transcript.trim();
-  if (!text || item.memoryScriptManual) return {};
+  if (item.memoryScriptManual) return {};
   const previous = item.recordedTranscript?.trim();
   const script = item.script?.trim();
   const blocks = item.blocks ?? [];
@@ -20,8 +20,9 @@ export function recordingScriptPatch(
   const blockText = scriptBlock?.text?.trim();
   if ((script && script !== previous) || (blockText && blockText !== previous))
     return {};
+  if (!text && !previous) return {};
   return {
-    script: text,
+    script: text || null,
     ...(scriptBlock
       ? {
           blocks: blocks.map((block) =>

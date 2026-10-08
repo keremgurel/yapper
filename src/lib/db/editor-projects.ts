@@ -117,7 +117,13 @@ export async function saveEditorMaster(userId: string, input: EditorMaster) {
       editorUpdatedAt: input.editedAt,
       ...recordingScriptPatch(previous ?? {}, input.transcript),
       ...(previous?.recordedTranscript !== (input.transcript || null)
-        ? { memoryFingerprint: null, memoryAttemptedAt: null }
+        ? {
+            memoryFingerprint: null,
+            memoryAttemptedAt: null,
+            ...(previous?.memoryFingerprint && !previous.memoryPillarManual
+              ? { pillarId: null, pillar: null }
+              : {}),
+          }
         : {}),
       recordedTranscript: input.transcript || null,
       transcriptStatus: input.transcript
