@@ -12,7 +12,7 @@ export interface StudioCta {
 
 const TRIAL: StudioCta = {
   label: "Start your free trial",
-  href: "/products/studio/pricing",
+  href: "/pricing",
   member: false,
 };
 const OPEN: StudioCta = {

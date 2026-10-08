@@ -33,7 +33,7 @@ export default function CurrentPlanBanner({ product }: { product: Product }) {
         : "Subscribed";
 
   return (
-    <div className="sg-panel flex flex-wrap items-center justify-between gap-3 p-5">
+    <div className="bg-card flex flex-wrap items-center justify-between gap-5 rounded-2xl border p-6">
       <div>
         <p className="text-lg font-medium">{label}</p>
         {product === "train" ? (
@@ -43,7 +43,7 @@ export default function CurrentPlanBanner({ product }: { product: Product }) {
         ) : (
           <>
             <p className="text-muted-foreground mt-1 text-sm">
-              {status.balance} Studio credits available
+              {status.balance.toLocaleString()} Studio credits available
             </p>
             <p className="text-muted-foreground mt-1 text-sm">
               {formatStorageBytes(status.storageBytes)} of{" "}

@@ -41,7 +41,7 @@ export default function ClosingCta() {
               <ArrowUpRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/products/studio"
+              href="/"
               className="inline-flex items-center gap-2 rounded-xl border border-white/20 px-6 py-3.5 text-[15px] font-semibold text-white/85 no-underline transition-colors hover:bg-white/10"
             >
               Explore Studio

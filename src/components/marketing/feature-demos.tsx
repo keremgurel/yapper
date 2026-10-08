@@ -72,7 +72,7 @@ export default function FeatureDemos() {
         title="Your timeline. Every cut in your hands."
         description="Edit the transcript, refine your timeline, and style captions. Let one-click editing make the first pass."
         href="/features/transcript-video-editor"
-        label="Video editing"
+        label="Text-based video editing"
         palette="peach"
       >
         {(frame, playing) => (

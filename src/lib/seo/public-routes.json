@@ -1,20 +1,15 @@
 {
   "/": {
-    "product": "brand",
-    "sources": ["src/app/page.tsx", "src/components/marketing/home"]
-  },
-  "/pricing": {
-    "product": "brand",
-    "sources": ["src/app/pricing/page.tsx", "src/lib/billing/plans.ts"]
-  },
-  "/products/studio": {
-    "product": "studio",
-    "sources": ["src/app/products/studio/page.tsx"]
-  },
-  "/products/studio/pricing": {
     "product": "studio",
     "sources": [
-      "src/app/products/studio/pricing/page.tsx",
+      "src/app/page.tsx",
+      "src/components/marketing/product-sections.tsx"
+    ]
+  },
+  "/pricing": {
+    "product": "studio",
+    "sources": [
+      "src/app/pricing/page.tsx",
       "src/components/billing/studio-pricing-page.tsx",
       "src/components/billing/studio-plan-cards.tsx",
       "src/lib/billing/plans.ts",
@@ -174,7 +169,7 @@
     "sources": ["src/app/tools/words-per-minute"]
   },
   "/blog": {
-    "product": "train",
+    "product": "studio",
     "sources": ["src/app/blog/page.tsx"]
   },
   "/privacy": {

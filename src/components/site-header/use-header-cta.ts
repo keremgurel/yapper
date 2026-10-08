@@ -3,7 +3,7 @@
 import { useAuth } from "@clerk/nextjs";
 import type { NavLink } from "@/data/site-navigation";
 
-const STUDIO_PRICING = "/products/studio/pricing";
+const STUDIO_PRICING = "/pricing";
 
 /**
  * The header button for the product being viewed. On Studio pages a

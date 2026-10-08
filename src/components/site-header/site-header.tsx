@@ -20,9 +20,8 @@ import NavPanel from "./nav-panel";
 import { useHeaderMenus } from "./use-header-menus";
 
 /**
- * The public header. It reads the product from the URL: brand pages get the
- * two products and pricing, product pages get that product's own menu, its
- * call to action, and one quiet link to the other product.
+ * Studio navigation on the public site; legacy coaching routes keep their
+ * own controls until they move to a separate domain.
  */
 export default function SiteHeader({
   accountControls = true,

@@ -40,7 +40,7 @@ export default function StudioLoopStrip() {
             08
           </span>
           <Link
-            href="/products/studio"
+            href="/"
             className="text-foreground group inline-flex min-w-0 items-center gap-1.5 text-sm font-semibold no-underline"
           >
             See the whole loop

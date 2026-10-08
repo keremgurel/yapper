@@ -2,7 +2,7 @@
  * Studio and Train are sold separately. Each plan and credit pack belongs to
  * one product and fills only that product's wallet.
  *
- * Studio: one Creator membership with three billing cadences. Keeping the
+ * Studio: one Creator membership with monthly or yearly billing. Keeping the
  * capabilities identical makes the decision about commitment, not which parts
  * of the product a creator is allowed to use.
  *
@@ -60,7 +60,8 @@ export interface CreditPack {
 /** A card is collected before the trial starts; the first real charge is day 8. */
 export const TRIAL_DAYS = 7;
 
-export const STUDIO_PLANS: SubscriptionPlan[] = [
+/** Retained for existing subscriptions and renewal webhooks; never sold. */
+export const LEGACY_STUDIO_PLANS: SubscriptionPlan[] = [
   {
     key: "creator_weekly",
     product: "studio",
@@ -76,6 +77,9 @@ export const STUDIO_PLANS: SubscriptionPlan[] = [
     blurb:
       "Maximum flexibility. Pause or cancel whenever your posting rhythm changes.",
   },
+];
+
+export const STUDIO_PLANS: SubscriptionPlan[] = [
   {
     key: "creator_monthly",
     product: "studio",
@@ -200,12 +204,14 @@ export function formatPrice(cents: number) {
 }
 
 export function planByKey(key: string | null | undefined) {
-  return SUBSCRIPTION_PLANS.find((plan) => plan.key === key);
+  return [...SUBSCRIPTION_PLANS, ...LEGACY_STUDIO_PLANS].find(
+    (plan) => plan.key === key,
+  );
 }
 
 export function planByPriceId(priceId: string | null | undefined) {
   if (!priceId) return undefined;
-  return SUBSCRIPTION_PLANS.find(
+  return [...SUBSCRIPTION_PLANS, ...LEGACY_STUDIO_PLANS].find(
     (plan) => plan.priceId && plan.priceId === priceId,
   );
 }

@@ -17,10 +17,10 @@ export const marketingFeatures: MarketingFeature[] = [
   {
     slug: "idea-capture",
     eyebrow: "Ideas",
-    title: "Capture content ideas. Turn them into your next video.",
+    title: "Content ideas that sound like you.",
     shortTitle: "Idea capture",
     description:
-      "Speak a thought, type a note, or drop a reference link. Yapper keeps the original and turns it into something you can actually make.",
+      "Brain brings your voice, references and previous videos into the conversation. Capture a thought or ask for a content idea grounded in what you know, then shape it into a video you can shoot.",
     promise: "A calm inbox for every half-formed idea.",
     accent: "#ff8a2b",
     number: "01",
@@ -45,9 +45,9 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Send the ideas worth making to your content library.",
       },
     ],
-    seoTitle: "Content idea capture & generator for creators",
+    seoTitle: "Content ideas for creators, grounded in your voice",
     seoDescription:
-      "Capture content ideas by voice, text, or link. Yapper organizes and expands every idea into hooks, outlines, and scripts.",
+      "Find content ideas rooted in your voice, references and previous videos. Capture thoughts and shape them into hooks and scripts with Yapper Studio’s Brain.",
   },
   {
     slug: "ai-script-writer",
@@ -55,7 +55,7 @@ export const marketingFeatures: MarketingFeature[] = [
     title: "An AI video script generator that starts with your ideas.",
     shortTitle: "Script writer",
     description:
-      "Build hooks, outlines, talking points, and full scripts from your own ideas and references, not a blank prompt box.",
+      "Turn the idea in your notes into a video you can actually record. Generate hooks, outlines and scripts for Reels, Shorts and TikTok, then make every line sound like you.",
     promise: "Structure when you need it. Your voice when it matters.",
     accent: "#f5b91a",
     number: "02",
@@ -86,10 +86,10 @@ export const marketingFeatures: MarketingFeature[] = [
   {
     slug: "teleprompter-recorder",
     eyebrow: "Record",
-    title: "A teleprompter app that keeps you ready to record.",
+    title: "A teleprompter recorder. Say it the way you meant to.",
     shortTitle: "Teleprompter recorder",
     description:
-      "Keep your script in sight, frame the shot, choose your devices, and capture a clean take in the same workflow.",
+      "Record a talking-head video with your script in view. Set the teleprompter to your pace, choose your camera and microphone, and keep the take with your project.",
     promise: "From script to camera without breaking focus.",
     accent: "#ff5d5d",
     number: "03",
@@ -113,21 +113,22 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Review it and continue directly into the editor.",
       },
     ],
-    seoTitle: "Teleprompter app & video recorder for creators",
+    seoTitle: "Teleprompter recorder for talking-head videos",
     seoDescription:
       "Record creator videos with a built-in teleprompter, camera controls, portrait guides, and a direct path into editing.",
   },
   {
     slug: "transcript-video-editor",
     eyebrow: "Edit",
-    title: "A transcript video editor. Cut the words. Keep the story.",
+    title: "One-click video editing. Keep your best take.",
     shortTitle: "Transcript editor",
     description:
-      "Cut mistakes, retakes, filler words, and dead air by editing a transcript instead of wrestling with a traditional timeline.",
+      "Stop cutting out silences, mistakes and retakes by hand. One-click edit cleans up your recording; text-based video editing lets you refine the cut by selecting words in the transcript.",
     promise: "Video editing that feels like editing a document.",
     accent: "#22d3ee",
     number: "04",
     highlights: [
+      "One-click removal of silences and retakes",
       "Word-level transcript editing",
       "Silence and pause removal",
       "Timeline controls when you want precision",
@@ -149,9 +150,9 @@ export const marketingFeatures: MarketingFeature[] = [
           "Use the timeline for overlays, audio, and precise finishing.",
       },
     ],
-    seoTitle: "Transcript video editor for talking-head videos",
+    seoTitle: "Text-based video editing for talking-head videos",
     seoDescription:
-      "Edit talking-head videos by editing text. Remove mistakes, filler words, silences, and retakes with Yapper's transcript video editor.",
+      "Edit video by editing text. Cut retakes, filler words and pauses from talking-head videos with Yapper Studio’s transcript video editor for Mac.",
   },
   {
     slug: "automatic-captions",
@@ -159,7 +160,7 @@ export const marketingFeatures: MarketingFeature[] = [
     title: "A video caption generator with timing built in.",
     shortTitle: "Automatic captions",
     description:
-      "Generate timed captions from the transcript, style them for the frame, and teach Yapper the names it should always spell correctly.",
+      "Make your video easy to follow with the sound off. Generate timed captions and subtitles from the transcript, style them for the frame, and save the spellings of names you use.",
     promise: "Readable, on-brand captions without the cleanup marathon.",
     accent: "#a78bfa",
     number: "05",
@@ -191,10 +192,10 @@ export const marketingFeatures: MarketingFeature[] = [
   {
     slug: "social-publishing",
     eyebrow: "Publish",
-    title: "A social media scheduler connected to your video.",
+    title: "Your video is ready. Get it out into the world.",
     shortTitle: "Social publishing",
     description:
-      "Prepare the caption, thumbnail, and destination for each platform without rebuilding the same post from scratch.",
+      "Cross-post and schedule a video to multiple connected channels in one go. Set each caption and thumbnail, choose your destinations, and publish now or schedule for later with Poster.",
     promise: "The last mile of publishing, inside the same studio.",
     accent: "#60a5fa",
     number: "07",
@@ -218,7 +219,7 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Publish now or place it into your posting plan.",
       },
     ],
-    seoTitle: "Social media scheduler for video creators",
+    seoTitle: "Cross-post and schedule videos to multiple channels",
     seoDescription:
       "Prepare and publish short-form video across social platforms with per-platform captions, thumbnails, and connected accounts.",
   },

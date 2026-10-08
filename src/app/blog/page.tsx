@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { BlogExplorer } from "@/components/blog/blog-explorer";
 import Breadcrumbs from "@/components/marketing/breadcrumbs";
@@ -40,7 +41,7 @@ export default function BlogPage() {
       <div className="marketing-container">
         <Breadcrumbs
           items={[
-            { label: "Yapper Train", href: "/products/train" },
+            { label: "Home", href: "/" },
             { label: "Speaking guides", href: "/blog" },
           ]}
         />
@@ -50,6 +51,13 @@ export default function BlogPage() {
             Practical routines, prompts and fixes for getting better at
             speaking, each one something you can try in your next practice
             session.
+          </p>
+          <p className="marketing-note">
+            Put a guide into practice with our{" "}
+            <Link href="/tools" className="underline underline-offset-4">
+              free speaking tools
+            </Link>
+            .
           </p>
         </div>
         <BlogExplorer

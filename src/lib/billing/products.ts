@@ -23,7 +23,7 @@ export const PRODUCT_PATHS: Record<
   { pricing: string; afterCheckout: string }
 > = {
   studio: {
-    pricing: "/products/studio/pricing",
+    pricing: "/pricing",
     afterCheckout: "/studio/home?checkout=success",
   },
   train: {

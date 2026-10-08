@@ -60,3 +60,6 @@ next-env.d.ts
 /INTEGRATION_TEST.md
 /.openclaw/
 /memory/
+
+# Raw Search Console query data is local research, not public source.
+/docs/seo/research-*/private/

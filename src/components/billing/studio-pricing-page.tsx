@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ImageIcon, Captions, Mic } from "lucide-react";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import CreditPacks from "@/components/billing/credit-packs";
@@ -8,7 +7,6 @@ import CurrentPlanBanner from "@/components/billing/current-plan-banner";
 import StudioPlanCards from "@/components/billing/studio-plan-cards";
 import CheckoutError from "@/components/billing/checkout-error";
 import PricingFaq from "@/components/billing/pricing-faq";
-import Breadcrumbs from "@/components/marketing/breadcrumbs";
 import { useCheckout } from "@/hooks/use-checkout";
 import { TRIAL_DAYS, TRIAL_CREDITS, packsFor } from "@/lib/billing/plans";
 import styles from "./pricing.module.css";
@@ -40,14 +38,9 @@ const costs = [
 
 const questions = [
   {
-    question: "How do weekly, monthly and yearly differ?",
+    question: "What changes when I pay yearly?",
     answer:
-      "They are the same membership with the same tools and the same 5 GB temporary workspace. The cadence changes how often you pay and how many credits arrive with each payment: 100 a week, 500 a month, or 6,000 once a year.",
-  },
-  {
-    question: "Does a Studio membership include Yapper Train?",
-    answer:
-      "No. Studio and Train are separate products with separate plans. Studio credits pay for Studio’s AI tools only. Train’s speaking practice is free, and its AI feedback has its own plan. One Yapper account signs you in to both.",
+      "You get the same tools and 5 GB temporary workspace. Monthly billing is $24.99 with 500 credits per payment. Yearly billing is $199.99 with all 6,000 credits delivered after the annual payment, saving 33% compared with paying monthly for a year.",
   },
   {
     question: "What can I do without spending credits?",
@@ -80,23 +73,19 @@ export default function StudioPricingPage() {
   const { pending, error, startPlan, startPack } = useCheckout();
   return (
     <MarketingLayout>
-      <section className={styles.hero}>
+      <section className={styles.studioHero}>
         <div className="marketing-container">
-          <Breadcrumbs
-            items={[
-              { label: "Yapper Studio", href: "/products/studio" },
-              { label: "Pricing", href: "/products/studio/pricing" },
-            ]}
-          />
-          <div className={styles.intro}>
-            <h1 className="type-h1">Yapper Studio pricing</h1>
+          <div className={styles.studioIntro}>
+            <h1 className="type-h1">One membership. Every Studio tool.</h1>
             <p>
-              One membership with every Studio tool. Choose how often you pay.
-              Practicing, recording and exporting don’t use credits.
+              Choose monthly or yearly. Recording, manual edits and exporting
+              don’t use credits. Use your included credits when you ask for AI.
             </p>
           </div>
-          <CurrentPlanBanner product="studio" />
-          <StudioPlanCards pending={pending} onStart={startPlan} />
+          <div className={styles.membershipStack}>
+            <CurrentPlanBanner product="studio" />
+            <StudioPlanCards pending={pending} onStart={startPlan} />
+          </div>
           <p className={styles.terms}>
             {TRIAL_DAYS}-day trial with {TRIAL_CREDITS} credits for eligible new
             subscribers. Card required.
@@ -144,16 +133,6 @@ export default function StudioPricingPage() {
         <div className={`marketing-container ${styles.faqLayout}`}>
           <div>
             <h2 className="type-h2">Billing details</h2>
-            <p className="type-description mt-4">
-              Looking for speaking practice instead?
-              <br />
-              <Link
-                href="/products/train/pricing"
-                className="marketing-text-link"
-              >
-                See Yapper Train pricing
-              </Link>
-            </p>
           </div>
           <PricingFaq items={questions} />
         </div>

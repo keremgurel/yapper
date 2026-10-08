@@ -23,12 +23,12 @@ type Status = NonNullable<ReturnType<typeof useBillingStatus>["status"]>;
 function studioMeter(status: Status): Meter {
   return status.entitled
     ? {
-        href: "/products/studio/pricing",
+        href: "/pricing",
         label: `${status.balance.toLocaleString()} credits`,
         member: true,
       }
     : {
-        href: "/products/studio/pricing",
+        href: "/pricing",
         label: "Start free trial",
         member: false,
       };

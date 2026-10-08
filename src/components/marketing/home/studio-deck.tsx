@@ -139,7 +139,7 @@ export default function StudioDeck() {
         <div className={styles.actions}>
           <StudioCtaButton />
           <Button asChild variant="outline">
-            <Link href="/products/studio">How Studio works</Link>
+            <Link href="/">How Studio works</Link>
           </Button>
         </div>
       </div>

@@ -26,14 +26,20 @@ vi.mock("@/lib/stripe", () => ({
   }),
 }));
 import { POST } from "./route";
-import { SUBSCRIPTION_PLANS } from "@/lib/billing/plans";
+import { SUBSCRIPTION_PLANS, LEGACY_STUDIO_PLANS } from "@/lib/billing/plans";
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("STRIPE_WEBHOOK_SECRET", "test");
-  vi.spyOn(SUBSCRIPTION_PLANS[2], "priceId", "get").mockReturnValue("yearly");
-  vi.spyOn(SUBSCRIPTION_PLANS[3], "priceId", "get").mockReturnValue(
-    "train_monthly",
-  );
+  vi.spyOn(
+    SUBSCRIPTION_PLANS.find((plan) => plan.key === "creator_yearly")!,
+    "priceId",
+    "get",
+  ).mockReturnValue("yearly");
+  vi.spyOn(
+    SUBSCRIPTION_PLANS.find((plan) => plan.key === "train_plus_monthly")!,
+    "priceId",
+    "get",
+  ).mockReturnValue("train_monthly");
   mocks.retrieve.mockResolvedValue({ status: "trialing" });
 });
 async function send(type: string, object: unknown) {
@@ -200,4 +206,25 @@ it("a Train Plus checkout never receives the Studio trial credits", async () => 
     metadata: { plan: "train_plus_monthly" },
   });
   expect(mocks.trial).not.toHaveBeenCalled();
+});
+
+it("continues granting credits to an existing weekly subscriber on renewal", async () => {
+  const spy = vi
+    .spyOn(LEGACY_STUDIO_PLANS[0], "priceId", "get")
+    .mockReturnValue("weekly");
+  await send("invoice.paid", {
+    ...invoice,
+    amount_paid: 799,
+    billing_reason: "subscription_cycle",
+    lines: { data: [{ pricing: { price_details: { price: "weekly" } } }] },
+  });
+  expect(mocks.grant).toHaveBeenCalledWith(
+    "owner",
+    100,
+    "subscription_grant",
+    "inv_in_1",
+    expect.anything(),
+    "studio",
+  );
+  spy.mockRestore();
 });

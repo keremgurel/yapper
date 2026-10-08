@@ -437,7 +437,7 @@
 }
 .marketing-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 80px;
   align-items: center;
 }
@@ -4026,6 +4026,10 @@ button.publisher-remix-glass {
 }
 .marketing-feature-hero .type-h1 {
   max-width: 760px;
+}
+.marketing-split > .feature-focused-preview {
+  margin-top: 0;
+  min-width: 0;
 }
 .feature-focused-preview {
   margin-top: 40px;

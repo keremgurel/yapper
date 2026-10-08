@@ -458,3 +458,108 @@
     gap: 36px;
   }
 }
+
+/* Studio uses one membership surface, aligned with the site container. */
+.studioHero {
+  padding: 64px 0;
+}
+.studioIntro {
+  max-width: 800px;
+  margin-bottom: 40px;
+}
+.studioIntro p {
+  margin-top: 20px;
+  color: var(--sg-text-muted);
+  font-size: 18px;
+  line-height: 1.65;
+  max-width: 65ch;
+}
+.membershipStack {
+  display: grid;
+  gap: 32px;
+}
+.membership {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: 64px;
+  padding: 40px;
+  border: 1px solid var(--sg-border);
+  border-radius: 20px;
+  background: var(--sg-surface);
+}
+.membershipDetails > p {
+  margin-top: 16px;
+  line-height: 1.6;
+  color: var(--sg-text-muted);
+}
+.membership .planFeatures {
+  gap: 18px;
+  margin-top: 32px;
+}
+.membership .planFeatures li {
+  font-size: 15px;
+  line-height: 1.5;
+  align-items: flex-start;
+}
+.membership .planFeatures svg {
+  margin-top: 3px;
+}
+.membershipCheckout {
+  align-self: start;
+}
+.membershipCheckout .billingToggle {
+  width: 100%;
+}
+.membershipCheckout .billingToggle button {
+  flex: 1;
+}
+.membershipPrice {
+  min-height: 162px;
+  padding: 24px 0;
+}
+.membershipPrice .price {
+  border: 0;
+  padding: 0;
+}
+.membershipPrice .price strong {
+  font-size: 40px;
+}
+.membershipPrice p,
+.membershipNote {
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 8px;
+}
+.membershipNote {
+  text-align: center;
+  margin-top: 14px;
+}
+@media (max-width: 767px) {
+  .studioHero {
+    padding: 40px 0 48px;
+  }
+  .studioIntro {
+    margin-bottom: 32px;
+  }
+  .studioIntro p {
+    font-size: 16px;
+  }
+  .membership {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    padding: 24px;
+  }
+  .membershipCheckout {
+    grid-row: 1;
+    border-bottom: 1px solid var(--sg-border);
+    padding-bottom: 24px;
+  }
+  .membershipCheckout .billingToggle button {
+    padding-inline: 8px;
+  }
+  .membershipCheckout .billingToggle span {
+    display: block;
+    margin-left: 0;
+  }
+}

@@ -7,7 +7,7 @@ const siteGraph = [
     url: SITE,
     name: "Yapper",
     description:
-      "Yapper Train for speaking practice. Yapper Studio for content creation.",
+      "Yapper Studio for ideas, scripts, recording, video editing and publishing.",
     publisher: { "@id": `${SITE}/#organization` },
     inLanguage: "en",
   },
@@ -21,9 +21,9 @@ const siteGraph = [
 const products = {
   studio: {
     "@type": "SoftwareApplication",
-    "@id": `${SITE}/products/studio#software`,
+    "@id": `${SITE}/#software`,
     name: "Yapper Studio",
-    url: `${SITE}/products/studio`,
+    url: SITE,
     applicationCategory: "MultimediaApplication",
     description:
       "A content creation workflow for ideas, scripts, recording, transcript editing, captions, and publishing preparation.",

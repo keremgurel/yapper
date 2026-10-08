@@ -32,9 +32,9 @@ const PRODUCTS = [
       "Save an idea, script it, record with a teleprompter, edit by transcript and publish. Try it free for 7 days.",
     primary: {
       label: "Start your free trial",
-      href: "/products/studio/pricing",
+      href: "/pricing",
     },
-    secondary: { label: "How Studio works", href: "/products/studio" },
+    secondary: { label: "How Studio works", href: "/" },
     Demo: StudioWalkthrough,
   },
 ] as const;
