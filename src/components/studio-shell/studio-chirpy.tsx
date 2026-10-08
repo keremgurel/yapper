@@ -11,6 +11,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
+import { GlassButton } from "@glass-sdk/liquid-glass";
+import {
+  StudioGlassScene,
+  StudioGlassSurface,
+} from "@/components/studio-ui/liquid-glass";
 import { useUser } from "@clerk/nextjs";
 import { CheckCircle2, Loader2, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
@@ -92,6 +98,7 @@ export interface ChirpyCanvasTools {
 }
 
 interface StudioChirpyValue {
+  registerHomeHost: (host: HTMLDivElement | null) => void;
   open: (prompt?: string) => void;
   /** Opens the panel and sends this straight away. */
   run: (prompt: string) => void;
@@ -166,10 +173,17 @@ export function useStudioChirpy(): StudioChirpyValue {
   return value;
 }
 
+/** Mount the shared conversation here without sending a prompt or stealing focus. */
+export function HomeChirpy() {
+  const { registerHomeHost } = useStudioChirpy();
+  return <div ref={registerHomeHost} className="min-w-0 scroll-mt-20" />;
+}
+
 export default function StudioChirpy({ children }: { children: ReactNode }) {
   const { isSignedIn } = useUser();
   const pathname = usePathname();
   const router = useRouter();
+  const [homeHost, registerHomeHost] = useState<HTMLDivElement | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChirpyMessage[]>([]);
@@ -178,6 +192,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const brainTools = useRef<ChirpyBrainTools | null>(null);
   const canvasTools = useRef<ChirpyCanvasTools | null>(null);
   const nextID = useRef(1);
+  const conversationEnd = useRef<HTMLDivElement>(null);
+  const launcher = useRef<HTMLButtonElement>(null);
   const sending = useRef(false);
   const [focusRequest, setFocusRequest] = useState(0);
 
@@ -204,6 +220,15 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     if (prompt) setDraft(prompt);
     setFocusRequest((count) => count + 1);
   }, []);
+
+  const close = useCallback(() => {
+    setIsOpen(false);
+    requestAnimationFrame(() => launcher.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    conversationEnd.current?.scrollIntoView({ block: "nearest" });
+  }, [messages, working]);
 
   const registerBrainTools = useCallback((tools: ChirpyBrainTools | null) => {
     brainTools.current = tools;
@@ -235,12 +260,12 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       }
       if (event.key === "Escape" && isOpen) {
         event.preventDefault();
-        setIsOpen(false);
+        close();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   const addKnowledge = useCallback(async (block: NewBrainBlock) => {
     const tools = brainTools.current;
@@ -524,7 +549,13 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ open, run, registerBrainTools, registerCanvasTools }),
+    () => ({
+      open,
+      run,
+      registerBrainTools,
+      registerCanvasTools,
+      registerHomeHost,
+    }),
     [open, run, registerBrainTools, registerCanvasTools],
   );
 
@@ -537,206 +568,227 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         ? "happy"
         : "idle";
 
+  const inline = pathname === "/studio/home" && homeHost !== null;
+  const panel = (
+    <StudioGlassSurface
+      render={<section aria-label="Chat with Chirpy" />}
+      sceneClassName="rounded-[20px]"
+      className={
+        inline
+          ? "grid min-h-[240px] w-full grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden"
+          : "pointer-events-auto grid h-[min(600px,calc(100svh-2rem))] w-[min(560px,calc(100vw-2rem))] grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden shadow-xl"
+      }
+    >
+      <header className="flex h-[46px] items-center gap-2.5 px-3">
+        <Chirpy expression={expression} talking={working} size={30} />
+        <div className="min-w-0">
+          <h2 className="text-xs font-bold">Chirpy</h2>
+          <p className="text-muted-foreground truncate text-[11px]">
+            {working
+              ? "Working on it…"
+              : inline
+                ? "What would you like to work on?"
+                : routeLabel(pathname)}
+          </p>
+        </div>
+        {!inline && (
+          <button
+            type="button"
+            aria-label="Put Chirpy back in the corner"
+            onClick={close}
+            className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto grid size-6 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+          >
+            <X className="size-3.5" aria-hidden="true" />
+          </button>
+        )}
+      </header>
+
+      <div className="bg-border/60" />
+
+      <div
+        className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-3"
+        style={{ maxHeight: inline ? 400 : undefined }}
+        aria-live="polite"
+      >
+        {messages.length === 0 ? (
+          <div className="mt-auto">
+            <p className="text-muted-foreground mb-2.5 text-[11px]">
+              {pathname.startsWith("/studio/brain")
+                ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
+                : "Ask for help with an idea, a script, or your next post."}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {openers(pathname).map((opener) => (
+                <GlassButton
+                  key={opener}
+                  type="button"
+                  onClick={() => {
+                    setDraft(opener);
+                    setFocusRequest((count) => count + 1);
+                  }}
+                  className="px-3 text-xs"
+                >
+                  {opener}
+                </GlassButton>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <ol className="space-y-3">
+            {messages.map((message) => (
+              <li key={message.id}>
+                {message.author === "you" ? (
+                  <div className="flex justify-end">
+                    <p className="bg-muted border-border max-w-[82%] rounded-xl border px-2.5 py-2 text-sm break-words whitespace-pre-wrap">
+                      {message.text}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-2">
+                    <Chirpy
+                      expression={message.tone === "trouble" ? "oops" : "happy"}
+                      size={22}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <div className="min-w-0 pt-0.5">
+                      <p
+                        className={`text-sm break-words whitespace-pre-wrap ${
+                          message.tone === "trouble"
+                            ? "text-[color:var(--sg-accent-strong)]"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {message.text}
+                      </p>
+                      {message.notes?.length ? (
+                        <ul className="text-muted-foreground mt-1.5 space-y-1 text-[11px]">
+                          {message.notes.map((note) => (
+                            <li
+                              key={note}
+                              className="flex items-center gap-1.5"
+                            >
+                              <CheckCircle2
+                                className="size-3 text-emerald-600"
+                                aria-hidden="true"
+                              />
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {message.brandColors !== undefined ? (
+                        <div className="border-border bg-card mt-2 rounded-lg border p-2.5">
+                          <div
+                            className="flex flex-wrap gap-1.5"
+                            aria-label="Saved brand colors"
+                          >
+                            {message.brandColors.map((color, index) => (
+                              <span
+                                key={color}
+                                className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[11px]"
+                              >
+                                <span
+                                  className="size-3.5 rounded-sm border border-black/15"
+                                  style={{ backgroundColor: color }}
+                                  aria-hidden="true"
+                                />
+                                {color}
+                                {index === 0 ? " · Primary" : ""}
+                              </span>
+                            ))}
+                          </div>
+                          <Link
+                            href="/studio/brand"
+                            className="mt-2 inline-block text-xs font-semibold underline underline-offset-2"
+                          >
+                            Open brand kit
+                          </Link>
+                        </div>
+                      ) : null}
+                      {message.suggestions?.length ? (
+                        <div className="mt-2 space-y-1.5">
+                          {message.suggestions.map((suggestion) => (
+                            <div
+                              key={suggestion.title}
+                              className="bg-muted/70 rounded-lg p-2"
+                            >
+                              <p className="text-[11px] font-semibold">
+                                {suggestion.title}
+                              </p>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="mt-1.5 h-7 text-[11px]"
+                                onClick={() => void saveSuggestion(suggestion)}
+                              >
+                                Add to knowledge
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+            {working ? (
+              <li className="flex items-center gap-2">
+                <Chirpy expression="yap" talking size={22} />
+                <Loader2
+                  className="text-muted-foreground size-3.5 animate-spin"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">Chirpy is working</span>
+              </li>
+            ) : null}
+          </ol>
+        )}
+        <div ref={conversationEnd} />
+      </div>
+
+      <ChirpyComposer
+        focusRequest={focusRequest}
+        draft={draft}
+        onDraft={setDraft}
+        working={working}
+        placeholder={
+          pathname.startsWith("/studio/brain")
+            ? "Ask Chirpy to change your Brain…"
+            : "Message Chirpy…"
+        }
+        onSend={(text) => void send(text)}
+      />
+    </StudioGlassSurface>
+  );
   return (
     <StudioChirpyContext.Provider value={value}>
       {children}
-
       {isSignedIn && !isNativeShell ? (
-        <div className="pointer-events-none fixed right-4 bottom-4 z-[60]">
-          {isOpen ? (
-            <section
-              aria-label="Ask Yapper"
-              className="bg-background/95 border-border motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 pointer-events-auto grid h-[min(600px,calc(100svh-2rem))] w-[min(560px,calc(100vw-2rem))] origin-bottom-right grid-rows-[46px_1px_minmax(0,1fr)_auto] overflow-hidden rounded-2xl border shadow-[0_18px_60px_rgba(20,16,13,0.3)] backdrop-blur-xl motion-safe:duration-200"
-            >
-              <header className="flex h-[46px] items-center gap-2.5 px-3">
-                <Chirpy expression={expression} talking={working} size={30} />
-                <div className="min-w-0">
-                  <h2 className="text-xs font-bold">Ask Yapper</h2>
-                  <p className="text-muted-foreground truncate text-[11px]">
-                    {working
-                      ? "Working on it…"
-                      : `Yapper · ${routeLabel(pathname)}`}
-                  </p>
-                </div>
-                <button
+        inline ? (
+          createPortal(panel, homeHost)
+        ) : (
+          <div className="pointer-events-none fixed right-4 bottom-4 z-[60]">
+            {isOpen ? (
+              panel
+            ) : (
+              <StudioGlassScene className="rounded-full">
+                <GlassButton
                   type="button"
-                  aria-label="Put Chirpy back in the corner"
-                  onClick={() => setIsOpen(false)}
-                  className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto grid size-6 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+                  size="icon-lg"
+                  ref={launcher}
+                  aria-label="Ask Chirpy"
+                  title="Ask Chirpy · ⌘K"
+                  onClick={() => open()}
+                  className="pointer-events-auto size-[62px]"
                 >
-                  <X className="size-3.5" aria-hidden="true" />
-                </button>
-              </header>
-
-              <div className="bg-border/60" />
-
-              <div
-                className="flex min-h-0 flex-col justify-end gap-3 overflow-y-auto px-3 py-2.5"
-                aria-live="polite"
-              >
-                {messages.length === 0 ? (
-                  <div className="mt-auto">
-                    <p className="text-muted-foreground mb-2.5 text-[11px]">
-                      {pathname.startsWith("/studio/brain")
-                        ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
-                        : "Ask for help, or start something anywhere in Studio."}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {openers(pathname).map((opener) => (
-                        <button
-                          key={opener}
-                          type="button"
-                          onClick={() => void send(opener)}
-                          className="border-border bg-card text-muted-foreground hover:text-foreground hover:border-foreground/25 rounded-md border px-2 py-1 text-[11px] transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-                        >
-                          {opener}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <ol className="space-y-3">
-                    {messages.map((message) => (
-                      <li key={message.id}>
-                        {message.author === "you" ? (
-                          <div className="flex justify-end">
-                            <p className="bg-muted border-border max-w-[82%] rounded-xl border px-2.5 py-2 text-xs whitespace-pre-wrap">
-                              {message.text}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="flex items-start gap-2">
-                            <Chirpy
-                              expression={
-                                message.tone === "trouble" ? "oops" : "happy"
-                              }
-                              size={22}
-                              className="mt-0.5 shrink-0"
-                            />
-                            <div className="min-w-0 pt-0.5">
-                              <p
-                                className={`text-xs whitespace-pre-wrap ${
-                                  message.tone === "trouble"
-                                    ? "text-[color:var(--sg-accent-strong)]"
-                                    : "text-foreground"
-                                }`}
-                              >
-                                {message.text}
-                              </p>
-                              {message.notes?.length ? (
-                                <ul className="text-muted-foreground mt-1.5 space-y-1 text-[11px]">
-                                  {message.notes.map((note) => (
-                                    <li
-                                      key={note}
-                                      className="flex items-center gap-1.5"
-                                    >
-                                      <CheckCircle2
-                                        className="size-3 text-emerald-600"
-                                        aria-hidden="true"
-                                      />
-                                      {note}
-                                    </li>
-                                  ))}
-                                </ul>
-                              ) : null}
-                              {message.brandColors !== undefined ? (
-                                <div className="border-border bg-card mt-2 rounded-lg border p-2.5">
-                                  <div
-                                    className="flex flex-wrap gap-1.5"
-                                    aria-label="Saved brand colors"
-                                  >
-                                    {message.brandColors.map((color, index) => (
-                                      <span
-                                        key={color}
-                                        className="border-border inline-flex items-center gap-1.5 rounded-md border px-1.5 py-1 text-[11px]"
-                                      >
-                                        <span
-                                          className="size-3.5 rounded-sm border border-black/15"
-                                          style={{ backgroundColor: color }}
-                                          aria-hidden="true"
-                                        />
-                                        {color}
-                                        {index === 0 ? " · Primary" : ""}
-                                      </span>
-                                    ))}
-                                  </div>
-                                  <Link
-                                    href="/studio/brand"
-                                    className="mt-2 inline-block text-xs font-semibold underline underline-offset-2"
-                                  >
-                                    Open brand kit
-                                  </Link>
-                                </div>
-                              ) : null}
-                              {message.suggestions?.length ? (
-                                <div className="mt-2 space-y-1.5">
-                                  {message.suggestions.map((suggestion) => (
-                                    <div
-                                      key={suggestion.title}
-                                      className="bg-muted/70 rounded-lg p-2"
-                                    >
-                                      <p className="text-[11px] font-semibold">
-                                        {suggestion.title}
-                                      </p>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="mt-1.5 h-7 text-[11px]"
-                                        onClick={() =>
-                                          void saveSuggestion(suggestion)
-                                        }
-                                      >
-                                        Add to Knowledge
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                    {working ? (
-                      <li className="flex items-center gap-2">
-                        <Chirpy expression="yap" talking size={22} />
-                        <Loader2
-                          className="text-muted-foreground size-3.5 animate-spin"
-                          aria-hidden="true"
-                        />
-                        <span className="sr-only">Chirpy is working</span>
-                      </li>
-                    ) : null}
-                  </ol>
-                )}
-              </div>
-
-              <ChirpyComposer
-                focusRequest={focusRequest}
-                draft={draft}
-                onDraft={setDraft}
-                working={working}
-                placeholder={
-                  pathname.startsWith("/studio/brain")
-                    ? "Ask Yapper to change your Brain…"
-                    : "Ask Yapper anything…"
-                }
-                onSend={(text) => void send(text)}
-              />
-            </section>
-          ) : (
-            <button
-              type="button"
-              aria-label="Ask Chirpy"
-              title="Ask Chirpy · ⌘K"
-              onClick={() => open()}
-              className="sg-glass pointer-events-auto grid size-[62px] place-items-center rounded-full border-[color:var(--sg-accent)]/30 shadow-[0_6px_20px_rgba(28,23,19,0.24)] transition-transform hover:scale-[1.035] focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none"
-            >
-              <Chirpy expression={expression} talking={working} size={46} />
-            </button>
-          )}
-        </div>
+                  <Chirpy expression={expression} talking={working} size={46} />
+                </GlassButton>
+              </StudioGlassScene>
+            )}
+          </div>
+        )
       ) : null}
     </StudioChirpyContext.Provider>
   );

@@ -29,7 +29,11 @@ const item =
  * useUser/useClerk so it stays a plain component styled to our design system.
  * Shows the user's name when Clerk has it (enable Name at sign-up in the Clerk
  * dashboard), otherwise falls back to the email handle. */
-export default function UserMenu() {
+export default function UserMenu({
+  avatarOnly = false,
+}: {
+  avatarOnly?: boolean;
+}) {
   const { user } = useUser();
   const { signOut, openUserProfile } = useClerk();
   if (!user) return null;
@@ -43,7 +47,7 @@ export default function UserMenu() {
         <button
           type="button"
           aria-label={`Account menu for ${name}`}
-          className="account-shimmer-trigger border-border bg-card hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full border p-1 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none sm:py-1 sm:pr-2.5 sm:pl-1"
+          className={`account-shimmer-trigger border-border bg-card hover:bg-muted focus-visible:ring-ring flex items-center gap-2 rounded-full border p-1 shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none ${avatarOnly ? "" : "sm:py-1 sm:pr-2.5 sm:pl-1"}`}
         >
           <span className="account-shimmer block h-7 w-7 shrink-0 rounded-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -53,10 +57,14 @@ export default function UserMenu() {
               className="h-7 w-7 rounded-full object-cover"
             />
           </span>
-          <span className="text-foreground hidden max-w-[130px] truncate text-[13px] font-bold sm:block">
-            {name}
-          </span>
-          <ChevronDown className="text-foreground/60 hidden h-3.5 w-3.5 sm:block" />
+          {!avatarOnly && (
+            <>
+              <span className="text-foreground hidden max-w-[130px] truncate text-[13px] font-bold sm:block">
+                {name}
+              </span>
+              <ChevronDown className="text-foreground/60 hidden h-3.5 w-3.5 sm:block" />
+            </>
+          )}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent

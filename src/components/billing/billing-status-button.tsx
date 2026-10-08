@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { GlassButton } from "@glass-sdk/liquid-glass";
+import { StudioGlassScene } from "@/components/studio-ui/liquid-glass";
 import { usePathname } from "next/navigation";
 import { Coins, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -57,8 +59,10 @@ function trainMeter(status: Status): Meter {
  */
 export default function BillingStatusButton({
   compact = false,
+  glass = false,
 }: {
   compact?: boolean;
+  glass?: boolean;
 }) {
   const pathname = usePathname();
   const { status, loading } = useBillingStatus();
@@ -68,6 +72,33 @@ export default function BillingStatusButton({
       ? trainMeter(status)
       : studioMeter(status);
 
+  const contents = (
+    <>
+      {meter.member ? (
+        <Coins className="h-3.5 w-3.5" aria-hidden="true" />
+      ) : (
+        <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+      )}
+      <span className={compact ? "hidden text-xs sm:inline" : "text-xs"}>
+        {meter.label}
+      </span>
+    </>
+  );
+  if (glass)
+    return (
+      <StudioGlassScene className="shrink-0 rounded-full">
+        <GlassButton
+          nativeButton={false}
+          role="link"
+          render={<Link href={meter.href} />}
+          aria-label={meter.label}
+          title={meter.label}
+          className="min-w-9 gap-2 px-2.5 no-underline"
+        >
+          {contents}
+        </GlassButton>
+      </StudioGlassScene>
+    );
   return (
     <Button
       asChild
@@ -85,14 +116,7 @@ export default function BillingStatusButton({
         aria-label={meter.label}
         title={meter.label}
       >
-        {meter.member ? (
-          <Coins className="h-3.5 w-3.5" aria-hidden="true" />
-        ) : (
-          <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
-        )}
-        <span className={compact ? "hidden text-xs sm:inline" : "text-xs"}>
-          {meter.label}
-        </span>
+        {contents}
       </Link>
     </Button>
   );
