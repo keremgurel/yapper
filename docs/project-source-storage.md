@@ -13,16 +13,19 @@ Storage totals count active cloud objects, not the contents of the Poster
 Uploads tab. Editor exports belong to Made in Yapper; direct Poster uploads
 belong to Uploads; cross-post imports come from connected platform posts.
 `GET /api/storage/videos` lists the same active recording/import objects as the
-breakdown, with an origin, platform, and retention reason. Current editor
+breakdown, with an origin, platform, and retention reason. Unpublished editor
 exports, scheduled posts, and active publishing cannot be removed through the
 manager. Explicit removal of other cloud copies keeps written work.
 
-Current editor exports remain until replaced. Other successfully published
-media becomes eligible for cleanup after the retry window. Unpublished imports
-can remain available for reuse. Expired upload reservations remain counted until
+Successfully published media, including the current editor export, becomes
+eligible for cleanup after all attempts finish and the 24-hour retry window
+expires. Active schedules and publishing jobs still protect the file. The daily
+lifecycle worker removes the cloud video while preserving the local project,
+script, transcript, pillar, and posting history. Posting again uploads a fresh
+export from the local project. Explicit removal can waive the retry window.
+Unpublished imports can remain available for reuse. Expired upload reservations remain counted until
 the existing lifecycle worker releases them; Storage labels these as awaiting
-cleanup rather than calling them in-progress uploads. This change does not
-alter retention, delete media, or alter quota accounting.
+cleanup rather than calling them in-progress uploads.
 
 Validation includes original project lookup after renaming and moving outside
 the library, rejecting malformed project links and implicit downloads, and

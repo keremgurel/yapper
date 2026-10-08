@@ -129,9 +129,17 @@ it("cannot attach another user's master or a deleted master", async () => {
   );
 });
 
-it("keeps the latest final edit after posting, outside the temporary upload slot", async () => {
+it("releases a posted current export and reattaches a fresh upload without losing its writing", async () => {
   const source = await master("u/owner/project-current.mp4");
-  await saveEditorMaster("owner", input(source.id));
+  const idea = await saveEditorMaster("owner", input(source.id));
+  await db
+    .update(schema.users)
+    .set({ storageBytes: 100 })
+    .where(eq(schema.users.id, "owner"));
+  await db
+    .update(schema.contentItems)
+    .set({ status: "posted", pillar: "Ship log" })
+    .where(eq(schema.contentItems.id, idea.id));
   await db.insert(schema.publishJobs).values({
     userId: "owner",
     platform: "youtube",
@@ -140,14 +148,56 @@ it("keeps the latest final edit after posting, outside the temporary upload slot
     updatedAt: old,
   });
   expect(await findWaitingPosterVideo("owner")).toBeNull();
-  expect(await findPostedMedia(now, 50)).toEqual([]);
+  expect(await findPostedMedia(now, 50)).toEqual([
+    { userId: "owner", mediaKey: source.mediaKey },
+  ]);
   expect(
     await releasePostedMedia(
       { userId: "owner", mediaKey: source.mediaKey! },
       "posted",
       now,
     ),
+  ).toBe("released");
+  const [saved] = await db
+    .select()
+    .from(schema.contentItems)
+    .where(eq(schema.contentItems.id, idea.id));
+  expect(saved).toMatchObject({
+    status: "posted",
+    script: "The words in the edit.",
+    recordedTranscript: "The words in the edit.",
+    pillar: "Ship log",
+    sourceUrl: idea.sourceUrl,
+    submissionId: null,
+  });
+  expect(
+    (
+      await db.select().from(schema.users).where(eq(schema.users.id, "owner"))
+    )[0].storageBytes,
+  ).toBe(0);
+  expect((await db.select().from(schema.r2Objects))[0].state).toBe(
+    "delete_pending",
+  );
+  await expect(saveEditorMaster("owner", input(source.id))).rejects.toThrow(
+    "bad_submission",
+  );
+  const fresh = await master("u/owner/project-repost.mp4");
+  expect(await saveEditorMaster("owner", input(fresh.id))).toMatchObject({
+    id: idea.id,
+    status: "posted",
+    script: saved.script,
+    pillar: saved.pillar,
+    submissionId: fresh.id,
+  });
+  // Historical success for the old key cannot retire an as-yet unposted upload.
+  expect(
+    await releasePostedMedia(
+      { userId: "owner", mediaKey: fresh.mediaKey! },
+      "posted",
+      now,
+    ),
   ).toBe("skipped");
+  expect(await findPostedMedia(now, 50)).toEqual([]);
 });
 
 it("collects superseded project masters without retiring the latest edit", async () => {

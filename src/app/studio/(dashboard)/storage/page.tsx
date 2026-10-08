@@ -292,9 +292,8 @@ export default async function StoragePage() {
           </p>
           <p>
             Yapper keeps one current video. Scheduled posts keep the files they
-            need. Current editor exports stay until replaced. Other published
-            files are released after the 24-hour retry window and the next
-            cleanup run.
+            need. Published files, including editor exports, are released after
+            the 24-hour retry window and the next cleanup run.
           </p>
           <p>
             This is publishing space, not a video archive. Keep originals on

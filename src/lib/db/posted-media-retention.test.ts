@@ -8,6 +8,8 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import * as schema from "./schema";
 import {
   findSupersededMedia,
+  findPostedMedia,
+  releasePostedMediaBatch,
   releasePostedMedia,
   releaseSupersededMediaBatch,
 } from "./posted-media-retention";
@@ -366,3 +368,75 @@ it("an account-scoped worker cannot claim another account's queued deletions", a
     )[0].state,
   ).toBe("delete_pending");
 });
+
+async function currentExport(key = "u/owner/project-current.mp4") {
+  const source = await video(key);
+  await db.insert(schema.contentItems).values({
+    userId: "owner",
+    title: "Current edit",
+    submissionId: source.id,
+    sourceClientId: "native-project:project",
+    editorRevision: "a".repeat(64),
+    script: "Saved script",
+    recordedTranscript: "Spoken words",
+    pillar: "Ship log",
+  });
+  return { userId: "owner", mediaKey: key };
+}
+
+it("automatically deletes a posted current export once its last destination's retry window expires", async () => {
+  const candidate = await currentExport();
+  await publish(candidate.mediaKey, "published");
+  await publish(candidate.mediaKey, "failed", now);
+  expect(await findPostedMedia(now, 50)).toEqual([]);
+  expect(await releasePostedMedia(candidate, "posted", now)).toBe("skipped");
+  const later = new Date(now.getTime() + 24 * 60 * 60 * 1000 + 1);
+  expect(await releasePostedMediaBatch(later)).toEqual({
+    released: 1,
+    failed: 0,
+  });
+  expect(await releasePostedMediaBatch(later)).toEqual({
+    released: 0,
+    failed: 0,
+  });
+  await processR2LifecycleBatch();
+  expect(remove).toHaveBeenCalledExactlyOnceWith(
+    candidate.mediaKey,
+    expect.any(AbortSignal),
+  );
+  expect((await db.select().from(schema.contentItems))[0]).toMatchObject({
+    script: "Saved script",
+    recordedTranscript: "Spoken words",
+    pillar: "Ship log",
+    submissionId: null,
+  });
+  expect(await db.select().from(schema.publishJobs)).toHaveLength(2);
+});
+
+it.each(["scheduled", "running", "needs_attention", "uploading"] as const)(
+  "keeps a posted current export for %s work created after discovery",
+  async (status) => {
+    const candidate = await currentExport();
+    await publish(candidate.mediaKey, "published");
+    expect(await findPostedMedia(now, 50)).toEqual([candidate]);
+    if (status === "uploading") await publish(candidate.mediaKey, status);
+    else await schedule(candidate.mediaKey, status);
+    expect(await releasePostedMedia(candidate, "posted", now)).toBe("skipped");
+    expect(await releasePostedMedia(candidate, "user_requested", now)).toBe(
+      "skipped",
+    );
+  },
+);
+
+it.each(["unposted", "failed"])(
+  "keeps a %s current export without a successful publication",
+  async (status) => {
+    const candidate = await currentExport();
+    if (status === "failed") await publish(candidate.mediaKey, "failed");
+    expect(await findPostedMedia(now, 50)).toEqual([]);
+    expect(await releasePostedMedia(candidate, "posted", now)).toBe("skipped");
+    expect(await releasePostedMedia(candidate, "user_requested", now)).toBe(
+      "skipped",
+    );
+  },
+);
