@@ -12,7 +12,6 @@ import { studioNav } from "@/data/studio-nav";
 import UserMenu from "@/components/account/user-menu";
 import BillingStatusButton from "@/components/billing/billing-status-button";
 import StudioContentFrame from "@/components/studio-shell/studio-content-frame";
-import ProjectBrainButton from "@/components/project/project-brain-button";
 
 function currentTitle(pathname: string): string {
   const match = studioNav.find(
@@ -36,8 +35,8 @@ export default function StudioHeader() {
 
   return (
     <div className="bg-background/80 sticky top-[var(--site-header,3.5rem)] z-20 flex h-12 shrink-0 items-center border-b px-4 backdrop-blur-md sm:px-6 lg:px-8">
-      <StudioContentFrame className="flex min-w-0 items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
+      <SidebarTrigger className="absolute left-2" />
+      <StudioContentFrame className="flex min-w-0 items-center gap-2 pl-8">
         <Separator
           orientation="vertical"
           className="mr-1 data-[orientation=vertical]:h-5"
@@ -47,8 +46,7 @@ export default function StudioHeader() {
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
           <Show when="signed-in">
-            <ProjectBrainButton />
-            <BillingStatusButton compact />
+            <BillingStatusButton compact glass />
             <UserMenu />
           </Show>
           <button

@@ -51,7 +51,7 @@ export default function ViewBar({ views }: { views: LibraryViewsState }) {
 
   return (
     <div className="mb-4">
-      <div className="border-border flex flex-wrap items-center gap-1 border-b pb-px">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {loading ? (
           <div className="flex items-center gap-2 px-1 pb-2" aria-hidden>
             <Skeleton className="h-4 w-20" />

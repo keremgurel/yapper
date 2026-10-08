@@ -3,7 +3,8 @@ import StudioDashboard from "@/components/studio-home/studio-dashboard";
 
 export const metadata: Metadata = {
   title: "Home",
-  description: "Channel performance, top content, and daily content ideas.",
+  description:
+    "Channel performance, top content, and a conversation with Chirpy.",
   robots: { index: false },
 };
 

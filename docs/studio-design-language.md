@@ -254,3 +254,30 @@ The specific things that made it look bad. All banned:
 | `Toolbar`                 | `children, end?`                                               | Filter/view-control row above a table or board.                                             |
 | `Section`                 | re-export of `workbench/section.tsx`                           | In-page section headers, lead or quiet.                                                     |
 | `RailRow`                 | re-export of `workbench/rail-row.tsx`                          | Inline label/value rows in side rails.                                                      |
+
+## Studio glass controls (October 2026)
+
+This update supersedes the older opaque-only and glass-only-for-overlays rules
+for these specific surfaces. Use `@glass-sdk/liquid-glass` for saved-view tabs,
+the Ideas capture surface, the Chirpy conversation and launcher, and the Studio
+credit button. `StudioGlassScene` supplies a bounded neutral backdrop, current
+theme and no elastic motion. `StudioGlassSurface` shares the readable fallback.
+Do not wrap entire pages or tables in glass. Other surfaces stay quiet and opaque.
+
+Light canvas is #fafafa, sunken surfaces #f2f2f4, alternate gray #f0f0f2,
+cards #ffffff, ink #1b181c and muted ink #6b6570. Keep the system font, 4px
+spacing scale and 1440px content frame with 16/24/32px responsive gutters.
+The sidebar toggle is shell chrome, anchored 8px from the sidebar boundary;
+page title and account controls retain the shared frame. No Project shortcut
+in the header: project context is edited in Brain.
+
+Home orders performance, top content and channels, then the shared Chirpy
+conversation, then the existing queue. Opening Home never sends an AI prompt.
+Suggested conversation starters only fill the draft; sending is explicit.
+The former Five for today recommendation section is removed, along with its
+unfiltered saved-title selection and extra ideas request.
+
+Tabs use Base UI keyboard navigation. Glass controls keep visible focus,
+readable disabled states and neutral fallback surfaces without WebGPU, under
+reduced transparency and in forced colors. Sent messages remain in the same
+conversation when navigating between Home and the floating assistant.

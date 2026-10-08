@@ -1,7 +1,8 @@
 "use client";
 
 import { Columns3, Plus, Table2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { GlassButton, GlassTabs } from "@glass-sdk/liquid-glass";
+import { StudioGlassScene } from "@/components/studio-ui/liquid-glass";
 import type { LibraryView } from "@/lib/views/client";
 
 /**
@@ -28,43 +29,41 @@ export default function ViewTabs({
   onAdd: () => void;
   busy?: boolean;
 }) {
-  // Plain buttons with aria-current rather than role="tablist": the ARIA tabs
-  // pattern demands roving tabindex and arrow-key movement, and claiming the
-  // role without them is worse than not claiming it.
   return (
-    <nav aria-label="Saved views" className="flex flex-wrap items-center gap-1">
-      {views.map((view) => {
-        const active = view.id === activeId;
-        const Icon = view.kind === "board" ? Columns3 : Table2;
-        return (
-          <button
-            key={view.id}
-            type="button"
-            aria-current={active ? "true" : undefined}
-            onClick={() => onSelect(view.id)}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 px-2.5 py-1.5 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none ${
-              active
-                ? "border-foreground text-foreground"
-                : "text-muted-foreground hover:text-foreground border-transparent"
-            }`}
-          >
-            <Icon aria-hidden className="h-3.5 w-3.5" />
-            {view.name}
-          </button>
-        );
-      })}
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onAdd}
-        disabled={busy}
-        className="text-muted-foreground h-7 px-2"
-        aria-label="New view"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </Button>
-    </nav>
+    <div className="flex max-w-full min-w-0 items-center gap-2">
+      <div className="min-w-0 overflow-x-auto p-1">
+        <StudioGlassScene className="w-max rounded-full">
+          <GlassTabs
+            aria-label="Saved views"
+            value={activeId}
+            onValueChange={(id) => {
+              if (typeof id === "string") onSelect(id);
+            }}
+            items={views.map((view) => {
+              const Icon = view.kind === "board" ? Columns3 : Table2;
+              return {
+                value: view.id,
+                label: (
+                  <span className="flex items-center gap-1.5 whitespace-nowrap">
+                    <Icon aria-hidden className="size-3.5" />
+                    {view.name}
+                  </span>
+                ),
+              };
+            })}
+          />
+        </StudioGlassScene>
+      </div>
+      <StudioGlassScene className="shrink-0 rounded-full">
+        <GlassButton
+          size="icon"
+          onClick={onAdd}
+          disabled={busy}
+          aria-label="New view"
+        >
+          <Plus className="size-4" aria-hidden />
+        </GlassButton>
+      </StudioGlassScene>
+    </div>
   );
 }

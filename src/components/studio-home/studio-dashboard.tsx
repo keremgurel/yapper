@@ -9,11 +9,10 @@ import { PageHeader } from "@/components/studio-ui";
 import { useConnections } from "@/hooks/use-connections";
 import { publishPlatforms } from "@/lib/db/schema";
 import ChannelsSection from "@/components/studio-home/channels-section";
-import DailyIdeasSection from "@/components/studio-home/daily-ideas-section";
+import { HomeChirpy } from "@/components/studio-shell/studio-chirpy";
 import PerformanceBand from "@/components/studio-home/performance-band";
 import TopContentSection from "@/components/studio-home/top-content-section";
 import UpNextSection from "@/components/studio-home/up-next-section";
-import { dailyIdeas } from "@/components/studio-home/daily-ideas";
 import { rankVideos } from "@/components/studio-home/rank-videos";
 import { isChannelConnected } from "@/components/studio-home/connection-state";
 import {
@@ -21,11 +20,10 @@ import {
   failedChannels,
   joinPlatformNames,
 } from "@/components/studio-home/channel-health";
-import { useBankIdeas } from "@/components/studio-home/use-bank-ideas";
 import { useChannelVideos } from "@/components/studio-home/use-channel-videos";
 import { usePipelineItems } from "@/components/studio-home/use-pipeline-items";
 
-/** Composition root for Home. Data comes from three one-concern hooks; every
+/** Composition root for Home. Data comes from the channel and pipeline hooks; every
  * section is render-only, so this file only wires them together. */
 export default function StudioDashboard() {
   const { isSignedIn } = useUser();
@@ -38,7 +36,6 @@ export default function StudioDashboard() {
   const channelResource = useChannelVideos(!!isSignedIn);
   const channels = channelResource.data;
   const pipeline = usePipelineItems(!!isSignedIn);
-  const ideas = useBankIdeas(!!isSignedIn);
 
   const ranked = useMemo(() => rankVideos(channels), [channels]);
   const totalViews = ranked.reduce((sum, video) => sum + video.viewCount, 0);
@@ -48,7 +45,6 @@ export default function StudioDashboard() {
   const connectedCount = publishPlatforms.filter((platform) =>
     isChannelConnected(platform, channels, connections),
   ).length;
-  const todaysIdeas = dailyIdeas(ideas.data ?? [], ranked[0]);
   const failed = failedChannels(channels);
   const channelError = failed.length > 0;
   // Numbers from the channels that did load still count; only when nothing
@@ -56,12 +52,10 @@ export default function StudioDashboard() {
   const performanceUnavailable =
     allChannelsFailed(channels) || Boolean(connectionsError);
   const pipelineError = pipeline.data === null && Boolean(pipeline.error);
-  const ideasError = ideas.data === null && Boolean(ideas.error);
   const refresh = () => {
     void Promise.allSettled([
       channelResource.refresh(),
       pipeline.refresh(),
-      ideas.refresh(),
       refreshConnections(),
     ]);
   };
@@ -87,14 +81,14 @@ export default function StudioDashboard() {
         }
       />
       <div className="space-y-8">
-        {(channelError || pipelineError || ideasError || connectionsError) && (
+        {(channelError || pipelineError || connectionsError) && (
           <div
             role="alert"
             className="border-border bg-card flex flex-wrap items-center gap-3 rounded-xl border p-4 text-sm"
           >
             <p>
-              {pipelineError || ideasError || connectionsError
-                ? "Some Studio data couldn’t be loaded. Refresh to check your channels, Library and ideas again."
+              {pipelineError || connectionsError
+                ? "Some Studio data couldn’t be loaded. Refresh to check your channels and Library again."
                 : `${joinPlatformNames(failed)} couldn’t be loaded just now, so ${failed.length === 1 ? "its" : "their"} posts are left out below. Refresh to try again, or reconnect in Connections if it keeps happening.`}
             </p>
             <Button size="sm" variant="outline" onClick={refresh}>
@@ -112,25 +106,6 @@ export default function StudioDashboard() {
           connectedCount={connectedCount}
         />
         <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
-          {pipelineError ? (
-            <p className="text-muted-foreground text-sm">
-              Your Library queue couldn’t be loaded. Use Refresh above to try
-              again.
-            </p>
-          ) : (
-            <UpNextSection items={pipeline.data} />
-          )}
-          <DailyIdeasSection
-            ideas={todaysIdeas}
-            destinations={Object.fromEntries(
-              (ideas.data ?? []).map((idea) => [
-                idea.title,
-                `/studio/ideas/${idea.id}`,
-              ]),
-            )}
-          />
-        </div>
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,3fr)_minmax(320px,2fr)]">
           {channelError && !ranked.length ? (
             <p className="text-muted-foreground text-sm">
               Channel performance is unavailable. Use Refresh above to try
@@ -146,6 +121,15 @@ export default function StudioDashboard() {
             unavailable={Boolean(connectionsError)}
           />
         </div>
+        <HomeChirpy />
+        {pipelineError ? (
+          <p className="text-muted-foreground text-sm">
+            Your Library queue couldn’t be loaded. Use Refresh above to try
+            again.
+          </p>
+        ) : (
+          <UpNextSection items={pipeline.data} />
+        )}
       </div>
     </div>
   );
