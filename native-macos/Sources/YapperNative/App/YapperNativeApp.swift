@@ -86,6 +86,12 @@ struct YapperNativeApp: App {
                 .disabled(!session.canRedo || session.isBusy || session.isExporting)
             }
             CommandGroup(after: .toolbar) {
+                Button("Audio library") {
+                    session.pausePlayback()
+                    UserDefaults.standard.set(StudioDestination.audio.rawValue, forKey: "studioDestination")
+                }
+                .keyboardShortcut("a", modifiers: [.command, .shift])
+
                 Button(session.isAssistantOpen ? "Hide Yapper" : "Ask Yapper") {
                     session.toggleAssistant()
                 }

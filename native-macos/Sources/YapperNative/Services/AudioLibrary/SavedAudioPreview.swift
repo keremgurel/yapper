@@ -16,6 +16,13 @@ final class SavedAudioPreview: ObservableObject {
     @Published private(set) var playingID: String?
 
     private var sound: NSSound?
+    private let volumes: AudioLibraryVolumes
+
+    init(volumes: AudioLibraryVolumes = .shared) {
+        self.volumes = volumes
+    }
+
+    var playingVolume: Float? { sound?.volume }
     private var end: Task<Void, Never>?
 
     func toggle(id: String, at url: URL, duration: Double) {
@@ -32,6 +39,7 @@ final class SavedAudioPreview: ObservableObject {
         // auditioned.
         guard let sound = NSSound(contentsOf: url, byReference: true) else { return }
         self.sound = sound
+        sound.volume = Float(volumes.volume(for: id))
         sound.play()
         playingID = id
         // So the button offers a play again once the sound is over, rather than
@@ -41,6 +49,11 @@ final class SavedAudioPreview: ObservableObject {
             guard !Task.isCancelled, let self, playingID == id else { return }
             clear()
         }
+    }
+
+    func updateVolume() {
+        guard let playingID else { return }
+        sound?.volume = Float(volumes.volume(for: playingID))
     }
 
     func stop() {

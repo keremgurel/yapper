@@ -203,6 +203,7 @@ final class EditorSession: ObservableObject {
     /// be put somewhere else.
     let faceDetectionService = FaceDetectionService()
     let soundEffectService = SoundEffectService.shared
+    let audioLibraryVolumes: AudioLibraryVolumes
     private var soundPreview: NSSound?
     private var soundPreviewEnd: Task<Void, Never>?
     private var timeObserver: Any?
@@ -264,6 +265,7 @@ final class EditorSession: ObservableObject {
         transcriptionRunner: TranscriptionRunner? = nil,
         exportRunner: @escaping NativeExportRunner = ExportService.export,
         generatedAssetRoot: URL? = nil,
+        audioLibraryVolumes: AudioLibraryVolumes = .shared,
         generatedOverlayRequest: @escaping @MainActor (String, [String: Any]) async throws -> [String: Any] = GeneratedOverlayService.request
     ) {
         let restoresProjectLibrary = store == nil
@@ -273,6 +275,7 @@ final class EditorSession: ObservableObject {
         self.exportRunner = exportRunner
         self.generatedOverlayRequest = generatedOverlayRequest
         self.generatedAssetRoot = generatedAssetRoot
+        self.audioLibraryVolumes = audioLibraryVolumes
         isTimelineSnappingEnabled = UserDefaults.standard.object(forKey: "timelineSnappingEnabled") as? Bool ?? true
         audioWaveforms = AudioWaveformStore(service: waveformService)
         player.automaticallyWaitsToMinimizeStalling = false
@@ -1440,6 +1443,7 @@ final class EditorSession: ObservableObject {
             let url = try await soundEffectService.fileURL(for: effect)
             soundPreview?.stop()
             soundPreview = NSSound(contentsOf: url, byReference: true)
+            soundPreview?.volume = Float(audioLibraryVolumes.volume(for: effect.id))
             soundPreview?.play()
             previewingSoundID = effect.id
             // Cleared when it finishes on its own, so the button goes back to

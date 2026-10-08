@@ -32,9 +32,10 @@ enum PosterHTTP {
     }
 
     nonisolated(nonsending) static func post<T: Decodable>(
-        _ path: String, body: [String: Any], headers: [String: String] = [:], as type: T.Type = T.self
+        _ path: String, body: [String: Any], headers: [String: String] = [:],
+        timeout: TimeInterval? = nil, as type: T.Type = T.self
     ) async throws -> T {
-        try decode(await send(path, method: "POST", body: body, headers: headers))
+        try decode(await send(path, method: "POST", body: body, headers: headers, timeout: timeout))
     }
 
     nonisolated(nonsending) static func patch<T: Decodable>(_ path: String, body: [String: Any], as type: T.Type = T.self) async throws -> T {
@@ -42,11 +43,13 @@ enum PosterHTTP {
     }
 
     nonisolated(nonsending) static func send(
-        _ path: String, method: String, body: [String: Any]?, headers: [String: String] = [:]
+        _ path: String, method: String, body: [String: Any]?, headers: [String: String] = [:],
+        timeout: TimeInterval? = nil
     ) async throws -> Data {
         let payload = try body.map { try JSONSerialization.data(withJSONObject: $0) }
         do {
             return try await APITransport.send(path, method: method) { request in
+                if let timeout { request.timeoutInterval = timeout }
                 for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
                 if let payload {
                     request.httpBody = payload

@@ -33,6 +33,7 @@ extension EditorSession {
             timelineStart: start,
             duration: layerDuration,
             sourceDuration: item.duration,
+            volume: audioLibraryVolumes.volume(for: item.id.uuidString),
             sourceKind: .saved,
             sourceFingerprint: fingerprint,
             savedAudioID: item.id,

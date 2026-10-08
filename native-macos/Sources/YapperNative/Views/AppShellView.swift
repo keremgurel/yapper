@@ -484,6 +484,15 @@ private struct StudioTopBar: View {
                         .buttonStyle(EditorSecondaryButtonStyle(size: .small))
                 }
                 Button {
+                    onNavigate(.audio)
+                } label: {
+                    Label("Audio library", systemImage: "music.note.list")
+                        .fixedSize()
+                }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                .help("Browse music and sound effects, import audio, and set default volumes")
+
+                Button {
                     ImportPanels.openMedia(for: session)
                 } label: {
                     Label("Import", systemImage: "plus")

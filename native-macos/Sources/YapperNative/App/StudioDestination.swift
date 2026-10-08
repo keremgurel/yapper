@@ -44,7 +44,7 @@ enum StudioDestination: String, CaseIterable, Identifiable {
         case .ideas: "Ideas"
         case .recorder: "Recorder"
         case .editor: "Editor"
-        case .audio: "Audio"
+        case .audio: "Audio library"
         case .poster: "Poster"
         case .calendar: "Calendar"
         case .automations: "Automations"
