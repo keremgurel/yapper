@@ -1,12 +1,13 @@
+import { after } from "next/server";
+import {
+  enrichRecording,
+  hydrateRecording,
+} from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 import { getDb } from "@/lib/db/client";
-import {
-  deleteContentItem,
-  getContentItem,
-  updateContentItem,
-} from "@/lib/db/content";
+import { deleteContentItem, updateContentItem } from "@/lib/db/content";
 import { submissions } from "@/lib/db/schema";
 import { parseContentInput } from "@/lib/content/input";
 import {
@@ -30,8 +31,9 @@ export async function GET(_req: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
   const { id } = await params;
-  const item = await getContentItem(userId, id);
+  const item = await hydrateRecording(userId, id);
   if (!item) return Response.json({ error: "not_found" }, { status: 404 });
+  after(() => enrichRecording(userId, id));
   // Legacy rows are widened here, so no client has to know the old shape.
   const versions = await listContentVersions(userId, id);
   return Response.json({
@@ -107,6 +109,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const item = await updateContentItem(userId, id, input);
   if (!item) return Response.json({ error: "not_found" }, { status: 404 });
+  if (
+    input.recordedTranscript !== undefined ||
+    input.submissionId !== undefined ||
+    input.status === "posted"
+  ) {
+    after(() => enrichRecording(userId, id));
+  }
   return Response.json({ item });
 }
 

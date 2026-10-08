@@ -53,7 +53,7 @@ export async function findPostedMedia(
       )
       and not exists (
         select 1 from content_items ci join submissions s on s.id = ci.submission_id
-        where ci.user_id = pj.user_id and s.media_key = pj.media_key and ci.editor_revision is not null
+        where ci.user_id = pj.user_id and s.media_key = pj.media_key and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%'
       )
       and (
         exists (select 1 from submissions s where s.user_id = pj.user_id and s.media_key = pj.media_key)
@@ -78,7 +78,7 @@ function protectedMediaQuery(
   return sql`
     select 1 where
       exists (select 1 from content_items ci join submissions s on s.id = ci.submission_id
-        where ${protectEdit} and ci.user_id = ${userId} and s.media_key = ${mediaKey} and ci.editor_revision is not null)
+        where ${protectEdit} and ci.user_id = ${userId} and s.media_key = ${mediaKey} and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%')
       or       exists (select 1 from publishing_schedules ps
         where ps.user_id = ${userId} and ps.input->>'mediaKey' = ${mediaKey}
           and ps.status in ('scheduled', 'running', 'needs_attention'))
@@ -122,7 +122,7 @@ export async function findSupersededMedia(
     where s.media_key like 'u/%/project-%'
       and ${userId ? sql`s.user_id = ${userId}` : sql`true`}
       and ${mediaKey ? sql`s.media_key = ${mediaKey}` : sql`true`}
-      and not exists (select 1 from content_items ci where ci.user_id = s.user_id and ci.submission_id = s.id and ci.editor_revision is not null)
+      and not exists (select 1 from content_items ci where ci.user_id = s.user_id and ci.submission_id = s.id and ci.editor_revision is not null and coalesce(ci.source_client_id, '') not like 'native-project:%:archived:%')
     limit ${limit}
   `);
   return rows.rows.map((row) => ({

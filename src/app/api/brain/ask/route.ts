@@ -59,6 +59,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   // specific section by name, so the whole last turn is the routing signal.
   const context = await getBrainContextSafe(userId, {
     surface: "chat",
+    memoryTask: messages.findLast((message) => message.role === "user")
+      ?.content,
     task: messages
       .slice(-2)
       .map((message) => message.content)

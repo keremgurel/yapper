@@ -83,6 +83,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   // how this script should be written.
   const brain = await getBrainContextSafe(userId, {
     surface: "script",
+    memoryTask: `Write a script: ${input.title ?? ""}\n${input.originalNote ?? ""}`,
     task: [
       input.title,
       ...(input.hooks ?? []),

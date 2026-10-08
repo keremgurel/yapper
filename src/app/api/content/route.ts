@@ -1,3 +1,5 @@
+import { after } from "next/server";
+import { repairPostedRecordings } from "@/lib/content/recording-memory";
 import { auth } from "@clerk/nextjs/server";
 import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
@@ -21,6 +23,7 @@ export const GET = withServerTiming(
     const items = await listContentItems(userId, {
       includePosterUploads: poster,
     });
+    after(() => repairPostedRecordings(userId));
     return Response.json({ items });
   },
 );

@@ -1,3 +1,4 @@
+import { recordingScriptPatch } from "@/lib/content/recording-script";
 import type { VersionFormat } from "@/lib/content/formats";
 import {
   and,
@@ -60,10 +61,14 @@ export async function listContentItems(
   options: { includePosterUploads?: boolean; stage?: ContentStage } = {},
 ) {
   const owned = options.includePosterUploads
-    ? eq(contentItems.userId, userId)
+    ? and(
+        eq(contentItems.userId, userId),
+        sql`coalesce(${contentItems.sourceClientId}, '') not like 'native-project:%:archived:%'`,
+      )
     : and(
         eq(contentItems.userId, userId),
         or(
+          eq(contentItems.status, "posted"),
           isNull(contentItems.sourceUrl),
           and(
             ne(contentItems.sourceUrl, "yapper://poster-upload"),
@@ -183,12 +188,62 @@ export async function updateContentItem(
   id: string,
   input: ContentItemInput,
 ) {
-  const [row] = await getDb()
-    .update(contentItems)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)))
-    .returning();
-  return row ?? null;
+  return getDb().transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(contentItems)
+      .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)))
+      .for("update")
+      .limit(1);
+    if (!current) return null;
+    const changedScript =
+      input.script !== undefined && input.script !== current.script;
+    const changedScriptBlock =
+      input.blocks !== undefined &&
+      JSON.stringify(input.blocks.filter((b) => b.kind === "script")) !==
+        JSON.stringify(current.blocks.filter((b) => b.kind === "script"));
+    const memoryScriptManual =
+      current.memoryScriptManual || changedScript || changedScriptBlock;
+    const speech =
+      typeof input.recordedTranscript === "string"
+        ? recordingScriptPatch(
+            {
+              ...current,
+              ...input,
+              recordedTranscript: current.recordedTranscript,
+              memoryScriptManual,
+            },
+            input.recordedTranscript,
+          )
+        : {};
+    const [row] = await tx
+      .update(contentItems)
+      .set({
+        ...input,
+        ...speech,
+        memoryScriptManual,
+        ...(input.pillarId !== undefined || input.pillar !== undefined
+          ? { memoryPillarManual: true }
+          : {}),
+        ...(input.recordedTranscript !== undefined &&
+        input.recordedTranscript !== current.recordedTranscript
+          ? {
+              memoryFingerprint: null,
+              memoryAttemptedAt: null,
+              ...(current.memoryFingerprint &&
+              !current.memoryPillarManual &&
+              input.pillar === undefined &&
+              input.pillarId === undefined
+                ? { pillarId: null, pillar: null }
+                : {}),
+            }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(contentItems.id, id), eq(contentItems.userId, userId)))
+      .returning();
+    return row ?? null;
+  });
 }
 
 export async function deleteContentItem(

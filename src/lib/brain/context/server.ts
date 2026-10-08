@@ -1,3 +1,4 @@
+import { publishedMemoryContext } from "./published-memory";
 import type { VersionFormat } from "@/lib/content/formats";
 import { listBrainBlocks, listBrainChunks } from "@/lib/db/project-brain";
 import { listPillars } from "@/lib/db/project-pillars";
@@ -129,6 +130,9 @@ async function loadSnapshot(
 }
 
 export interface BrainContextOptions {
+  /** Current creator request only; never source transcripts or assistant history.
+   * Omit to make zero queries/calls for published scripts. */
+  memoryTask?: string;
   surface: BrainSurface;
   /** What is being written. Selection reads it; leaving it out is fine. */
   task?: string;
@@ -192,11 +196,23 @@ export async function getBrainContext(
     },
   );
 
+  const memory =
+    options.useModel === false
+      ? { section: "", used: [] }
+      : await publishedMemoryContext(
+          userId,
+          project.id,
+          options.memoryTask,
+          options.signal,
+        );
   return {
     projectId: project.id,
-    section: compiled.section,
+    section: compiled.section + memory.section,
     pillarNames: snapshot.pillars.map((p) => p.name).filter(Boolean),
-    used: compiled.used,
+    used: {
+      ...compiled.used,
+      context: [...compiled.used.context, ...memory.used],
+    },
   };
 }
 

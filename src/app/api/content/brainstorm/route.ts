@@ -71,6 +71,8 @@ export async function POST(req: NextRequest): Promise<Response> {
   // Read server-side: a client must not be able to claim a different voice.
   const context = await getBrainContextSafe(userId, {
     surface: "ideate",
+    memoryTask: messages.findLast((message) => message.role === "user")
+      ?.content,
     // The clip being riffed on plus what has just been said about it. The last
     // turn matters more than the first, which is why only the tail is sent.
     task: [clip.title, ...messages.slice(-3).map((message) => message.content)]

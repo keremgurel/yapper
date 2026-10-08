@@ -74,6 +74,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   // that will be refused never spends a provider call on routing.
   const brain = await getBrainContextSafe(userId, {
     surface: "expand",
+    memoryTask: input.transcript
+      ? `Develop this idea: ${input.transcript}`
+      : undefined,
     format,
     task: [
       input.source?.title,
