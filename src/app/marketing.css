@@ -4860,3 +4860,10 @@ button.publisher-remix-glass {
   --sg-surface-sunken: #f4f4f5;
   --sg-bg-2: #ececee;
 }
+
+/* Keep all account/navigation controls reachable at narrow phone widths. */
+@media (max-width: 400px) {
+  .site-product-name {
+    display: none;
+  }
+}

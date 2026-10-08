@@ -379,10 +379,6 @@ private struct StudioTopBar: View {
     let toggleSidebar: () -> Void
     let toggleTheme: () -> Void
     @AppStorage("editorLayoutMode") private var layoutModeRaw = EditorLayoutMode.tallPreview.rawValue
-    /// How much room the bar has, in steps, so the badge can decide whether its
-    /// name fits rather than being clipped when it does not.
-    @State private var barWidth: CGFloat = 1_200
-
     private var layoutMode: EditorLayoutMode {
         EditorLayoutMode(rawValue: layoutModeRaw) ?? .tallPreview
     }
@@ -515,28 +511,15 @@ private struct StudioTopBar: View {
                 name: auth.accountName,
                 email: auth.account?.email,
                 onNavigate: onNavigate,
-                // The editor's own controls take the middle of this bar, so on a
-                // narrow window the badge is what gets squeezed. It gives up its
-                // name at a width it chooses rather than being cut off mid-word.
-                showsName: barWidth >= 980
+                imageURL: auth.account?.imageURL,
+                userID: auth.account?.userID
             )
+            .onChange(of: session.isBusy) { _, busy in
+                if !busy { Task { await StudioBilling.shared.refresh(userID: auth.account?.userID) } }
+            }
         }
         .padding(.horizontal, 10)
         .frame(height: 46)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear { barWidth = proxy.size.width }
-                    .onChange(of: proxy.size.width) { _, width in
-                        // In steps: the badge only cares which side of 980 it is
-                        // on, and a state write per frame of a window resize is
-                        // the whole editor rebuilt per frame. See PaneSizeStep.
-                        let stepped = PaneSizeStep.rounded(width, step: 40)
-                        guard stepped != barWidth else { return }
-                        barWidth = stepped
-                    }
-            }
-        }
         // The same tone as the sidebar, not a material: chrome is one
         // continuous surface across the top of the window, and `.regularMaterial`
         // resolved to a grey that belongs to no token in the ramp.

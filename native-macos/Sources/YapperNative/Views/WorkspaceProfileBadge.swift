@@ -1,14 +1,7 @@
 import SwiftUI
+import Combine
 
-/// The account badge at the top right: the web's own, with its shimmer.
-///
-/// A button and a popover rather than a `Menu`, and that is the whole reason it
-/// looks like anything at all. A macOS `Menu` flattens whatever label you hand
-/// it down to the text inside: the avatar's circle, the pill, the border and
-/// the shadow were all thrown away and what reached the screen was the two
-/// letters from inside the avatar next to a chevron AppKit drew itself. A
-/// button keeps every pixel of its label, so the badge here is the badge that
-/// renders.
+/// One compact account control, with the exact credit balance inside.
 struct WorkspaceProfileBadge: View {
     let name: String
     var email: String? = nil
@@ -17,66 +10,45 @@ struct WorkspaceProfileBadge: View {
     /// owns the session. See `StudioWebCommands`.
     var onManageAccount: () -> Void = { StudioWebCommands.shared.manageAccount() }
     var onSignOut: () -> Void = { StudioWebCommands.shared.signOut() }
-    /// The avatar identifies the account when the bar is too tight for its name.
-    var showsName = true
+    var imageURL: URL? = nil
+    var userID: String? = nil
+    @ObservedObject private var billing = StudioBilling.shared
 
     @State private var isHovering = false
     @State private var isOpen = false
 
-    /// One letter, like the web's. Two initials made a monogram of a name the
-    /// badge is already showing in full beside it.
-    private var initial: String {
-        String(name.first ?? "Y").uppercased()
-    }
+    private var snapshot: StudioBillingSnapshot? { billing.snapshot(for: userID) }
 
     var body: some View {
         Button {
             isOpen.toggle()
+            if isOpen { Task { await billing.refresh(userID: userID) } }
         } label: {
-            HStack(spacing: 8) {
-                AccountShimmerAvatar(initials: initial, diameter: 24, isSweeping: isHovering)
-                if showsName {
-                    Text(name)
-                        .font(.system(size: 12.5, weight: .semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8.5, weight: .bold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.leading, 4)
-            .padding(.trailing, showsName ? 10 : 7)
-            .frame(height: 34)
-            .background {
-                Capsule(style: .continuous)
-                    .fill(isHovering ? Color.studioFaintFill : Color.raisedBackground)
-                    .overlay {
-                        Capsule(style: .continuous)
-                            .strokeBorder(
-                                isHovering ? Color.studioLineStrong : Color.studioLine,
-                                lineWidth: 1
-                            )
-                    }
-                    .shadow(
-                        color: .black.opacity(isHovering ? 0.16 : 0.08),
-                        radius: isHovering ? 5 : 2,
-                        y: 1
-                    )
-            }
-            .contentShape(Capsule(style: .continuous))
+            CreditAvatar(name: name, imageURL: imageURL, meter: snapshot?.creditMeter, diameter: 34)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(isHovering ? Color.studioFaintFill : Color.clear))
+                .contentShape(Circle())
         }
         .buttonStyle(.studioPlain)
         .clickableCursor()
         .onHover { isHovering = $0 }
         .animation(.easeOut(duration: 0.14), value: isHovering)
-        .help(name)
+        .task(id: userID) { await billing.refresh(userID: userID) }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await billing.refresh(userID: userID) }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .studioAccountBalanceChanged).debounce(for: .milliseconds(500), scheduler: RunLoop.main)) { _ in
+            Task { await billing.refresh(userID: userID) }
+        }
+        .help(snapshot.map { "\($0.balance.formatted()) credits left" } ?? name)
         .accessibilityLabel("Account: \(name)")
+        .accessibilityValue(snapshot.map { "\($0.balance.formatted()) credits left" } ?? "Balance unavailable")
         .popover(isPresented: $isOpen, arrowEdge: .bottom) {
             WorkspaceProfileMenu(
                 name: name,
                 email: email,
+                imageURL: imageURL,
+                snapshot: snapshot,
                 onNavigate: { destination in
                     isOpen = false
                     onNavigate(destination)
@@ -98,27 +70,56 @@ struct WorkspaceProfileBadge: View {
 private struct WorkspaceProfileMenu: View {
     let name: String
     let email: String?
+    let imageURL: URL?
+    let snapshot: StudioBillingSnapshot?
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.openURL) private var openURL
     let onNavigate: (StudioDestination) -> Void
     let onManageAccount: () -> Void
     let onSignOut: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(name)
-                .font(.system(size: 11, weight: .bold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            HStack(spacing: 10) {
+                CreditAvatar(name: name, imageURL: imageURL, meter: snapshot?.creditMeter, diameter: 48)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                    Text(snapshot?.creditMeter?.planLabel ?? "Account")
+                        .font(.system(size: 11)).foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }.padding(12)
 
-            if let email {
-                Text(email)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .padding(.horizontal, 10)
-                    .padding(.bottom, 4)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Credits").fontWeight(.semibold)
+                    Spacer()
+                    Text(snapshot.map { "\($0.balance.formatted()) left" } ?? "Balance unavailable")
+                        .foregroundStyle(.secondary).monospacedDigit()
+                }.font(.system(size: 12))
+                GeometryReader { proxy in
+                    Capsule().fill(Color.primary.opacity(0.1))
+                        .overlay(alignment: .leading) {
+                            if let fraction = snapshot?.creditMeter?.clampedFraction {
+                                Capsule().fill(creditColor(snapshot?.creditMeter, scheme: colorScheme))
+                                    .frame(width: proxy.size.width * fraction)
+                            }
+                        }
+                }.frame(height: 5).accessibilityHidden(true)
+                if let allowance = snapshot?.creditMeter?.allowance {
+                    Text("\(allowance.formatted()) included per \(snapshot?.creditMeter?.planLabel == "Studio trial" ? "trial" : "billing period"). Extra credits count too.")
+                        .font(.system(size: 10)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+                Button(snapshot?.entitled == true ? "Manage membership & credits" : "Explore membership") {
+                    openURL(URL(string: "https://ypr.app/pricing")!)
+                }
+                .buttonStyle(EditorSecondaryButtonStyle(size: .small))
+                .frame(maxWidth: .infinity)
             }
+            .padding(12)
+            .background(Color.studioFaintFill, in: RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
 
             row("Brain", "brain", .brain)
             row("Ideas", "lightbulb", .ideas)
@@ -142,7 +143,7 @@ private struct WorkspaceProfileMenu: View {
             )
         }
         .padding(.bottom, 6)
-        .frame(width: 210)
+        .frame(width: 288)
     }
 
     private func row(

@@ -55,6 +55,11 @@ describe("GET /api/billing/status", () => {
       entitled: true,
       plan: "creator_monthly",
       balance: 88,
+      creditMeter: {
+        allowance: 500,
+        fraction: 0.176,
+        planLabel: "Studio Creator · monthly",
+      },
       storageBytes: 3 * 1024 * 1024 * 1024,
       storageQuotaBytes: 5 * 1024 * 1024 * 1024,
     });

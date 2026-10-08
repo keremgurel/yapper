@@ -31,13 +31,14 @@ final class StudioAuth: ObservableObject {
         signedIn: Bool,
         userID: String? = nil,
         displayName: String? = nil,
-        email: String? = nil
+        email: String? = nil,
+        imageURL: String? = nil
     ) {
         reportedByWeb = true
         // Replace the entire identity on every report, including reports from
         // older web builds without profile fields. Never retain another user's label.
         account = signedIn
-            ? StudioAccountIdentity(userID: userID, displayName: displayName, email: email)
+            ? StudioAccountIdentity(userID: userID, displayName: displayName, email: email, imageURL: imageURL)
             : nil
         isSignedIn = signedIn
         if signedIn { stopWatching() }
@@ -73,7 +74,7 @@ final class StudioAuth: ObservableObject {
             if reportedByWeb || account != nil { return }
             if let identity = await StudioWebCommands.shared.accountIdentity() {
                 if !reportedByWeb {
-                    account = StudioAccountIdentity(userID: identity.id, displayName: identity.name, email: identity.email)
+                    account = StudioAccountIdentity(userID: identity.id, displayName: identity.name, email: identity.email, imageURL: identity.imageURL)
                 }
                 return
             }
@@ -149,8 +150,9 @@ struct StudioAccountIdentity: Equatable {
     let userID: String
     let displayName: String
     let email: String?
+    let imageURL: URL?
 
-    init?(userID: String?, displayName: String?, email: String?) {
+    init?(userID: String?, displayName: String?, email: String?, imageURL: String? = nil) {
         func nonempty(_ value: String?) -> String? {
             guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
                   !value.isEmpty else { return nil }
@@ -158,6 +160,7 @@ struct StudioAccountIdentity: Equatable {
         }
         guard let userID = nonempty(userID) else { return nil }
         self.userID = userID
+        self.imageURL = imageURL.flatMap(URL.init(string:)).flatMap { $0.scheme == "https" ? $0 : nil }
         self.email = nonempty(email)
         self.displayName = nonempty(displayName)
             ?? self.email?.split(separator: "@").first.map(String.init)
