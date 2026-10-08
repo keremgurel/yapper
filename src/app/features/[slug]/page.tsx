@@ -56,9 +56,9 @@ export default async function FeaturePage({
             description: feature.seoDescription,
             about: {
               "@type": "SoftwareApplication",
-              "@id": `${SITE_URL}/products/studio#software`,
+              "@id": `${SITE_URL}/#software`,
               name: "Yapper Studio",
-              url: `${SITE_URL}/products/studio`,
+              url: SITE_URL,
             },
           }),
         }}
@@ -67,7 +67,7 @@ export default async function FeaturePage({
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              { label: "Yapper Studio", href: "/products/studio" },
+              { label: "Yapper Studio", href: "/" },
               { label: "Features", href: "/features" },
               { label: feature.shortTitle, href: `/features/${slug}` },
             ]}
@@ -147,13 +147,10 @@ export default async function FeaturePage({
                 {getMarketingFeature(relatedSlug)!.shortTitle}
               </Link>
             ))}
-            <Link href="/products/studio" className="marketing-text-link">
+            <Link href="/" className="marketing-text-link">
               Explore the full Studio workflow
             </Link>
-            <Link
-              href="/products/studio/pricing"
-              className="marketing-text-link"
-            >
+            <Link href="/pricing" className="marketing-text-link">
               Studio pricing
             </Link>
           </div>

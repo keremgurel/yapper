@@ -37,7 +37,7 @@ export default function SiteAccountControls({
         <span className="hidden sm:inline-flex">
           <BillingStatusButton />
         </span>
-        <UserMenu />
+        <UserMenu avatarOnly />
       </Show>
     </>
   );

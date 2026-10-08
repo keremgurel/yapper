@@ -40,12 +40,16 @@ beforeEach(() => {
   mocks.createSession.mockResolvedValue({
     url: "https://checkout.stripe.test",
   });
-  vi.spyOn(SUBSCRIPTION_PLANS[1], "priceId", "get").mockReturnValue(
-    "price_monthly",
-  );
-  vi.spyOn(SUBSCRIPTION_PLANS[3], "priceId", "get").mockReturnValue(
-    "price_train",
-  );
+  vi.spyOn(
+    SUBSCRIPTION_PLANS.find((plan) => plan.key === "creator_monthly")!,
+    "priceId",
+    "get",
+  ).mockReturnValue("price_monthly");
+  vi.spyOn(
+    SUBSCRIPTION_PLANS.find((plan) => plan.key === "train_plus_monthly")!,
+    "priceId",
+    "get",
+  ).mockReturnValue("price_train");
   vi.spyOn(CREDIT_PACKS[0], "priceId", "get").mockReturnValue("price_pack");
 });
 
@@ -170,7 +174,16 @@ describe("Each product checks out on its own", () => {
     await POST(request({ plan: "creator_monthly" }));
     expect(mocks.getBillingState).toHaveBeenCalledWith("user_test", "studio");
     expect(mocks.createSession.mock.calls[0][0].cancel_url).toBe(
-      "https://yapper.test/products/studio/pricing?checkout=cancel",
+      "https://yapper.test/pricing?checkout=cancel",
     );
+  });
+});
+
+describe("Retired plans", () => {
+  it("rejects a weekly checkout before contacting Stripe", async () => {
+    const response = await POST(request({ plan: "creator_weekly" }));
+    expect(response.status).toBe(400);
+    expect(mocks.createCustomer).not.toHaveBeenCalled();
+    expect(mocks.createSession).not.toHaveBeenCalled();
   });
 });

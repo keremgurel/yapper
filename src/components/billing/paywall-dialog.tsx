@@ -25,13 +25,13 @@ const COPY: Record<
     title: "Start your free trial to use AI",
     body: `Scripts, transcription, one-click edits, thumbnails and captions use AI. Your ${TRIAL_DAYS}-day trial includes ${TRIAL_CREDITS} credits, and you can cancel before it ends.`,
     action: "Start free trial",
-    href: "/products/studio/pricing",
+    href: "/pricing",
   },
   insufficient_credits: {
     title: "You're out of credits",
     body: "That action needs more credits than you have left. Add a credit pack, or wait for the credits that come with your next payment.",
     action: "Add credits",
-    href: "/products/studio/pricing#credits",
+    href: "/pricing#credits",
   },
 };
 

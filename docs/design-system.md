@@ -19,7 +19,9 @@ devices, system-ui elsewhere), as defined in `globals.css`.
 
 ## Public website direction
 
-Yapper Train is speaking practice; Yapper Studio is content creation. The public site
+Ypr.app presents Yapper Studio only. The homepage is `/`, pricing is `/pricing`,
+and existing blog URLs remain available. Coaching routes remain usable until
+their separate domain is ready, but are not promoted in Studio navigation. The public site
 uses compact product navigation, clear explanatory text, and examples of the
 creator's work. Keep Chirpy. Public hero and waitlist actions reuse the silver GlassyButton from the training hero. Page
 surfaces remain quiet; no ornamental gradients, glows, or colored accent rails.
@@ -39,7 +41,10 @@ tokens. Dark page canvases are pure black (#000); elevated surfaces stay distinc
 Menus support pointer, touch, keyboard, Escape, and focus return. Mobile
 navigation uses one disclosure level. Interaction motion is brief and respects
 reduced motion. Examples are labeled as examples, never customer evidence.
-Studio availability is private testing; primary conversion is its waitlist.
+Studio offers a 7-day trial. Pricing presents one membership with a monthly/yearly
+selector and one shared feature list. Use a neutral bordered surface, 32px between
+the account summary and membership, and 64px above the pricing intro (40px mobile).
+Keep every section aligned to the shared outer container; never add nested gutters.
 
 - `.type-display` and `.type-h1`: one route title or hero headline
 - `.type-h2`: major section heading

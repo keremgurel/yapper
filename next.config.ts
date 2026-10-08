@@ -25,9 +25,14 @@ const nextConfig: NextConfig = {
       },
       // Product overviews. /studio was the first Studio landing page;
       // /studio/* is the signed-in workspace and is not touched by this rule.
-      { source: "/studio", destination: "/products/studio", permanent: true },
-      // The brand homepage introduces both products, so the separate
-      // comparison page was folded into it.
+      { source: "/studio", destination: "/", permanent: true },
+      // Studio is the public site's only product. Preserve old links and queries.
+      { source: "/products/studio", destination: "/", permanent: true },
+      {
+        source: "/products/studio/pricing",
+        destination: "/pricing",
+        permanent: true,
+      },
       { source: "/products", destination: "/", permanent: true },
       {
         source: "/products/yapper",

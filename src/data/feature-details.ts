@@ -12,7 +12,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     preview: "Idea",
     heading: "Start with the thought you already had.",
     explanation:
-      "A voice note, a few rough sentences, or a reference link can be the beginning of a video. Keep the original thought attached as you develop the angle and decide what to make.",
+      "Brain keeps your voice, point of view, references and previous videos in context. Add what matters to you and connect your social profile, then ask for ideas you can actually shoot. Keep the original thought attached as you explore an angle in Lab and turn it into a script.",
     availability:
       "Idea capture is included in every Studio membership and in the 7-day free trial.",
     questions: [
@@ -32,7 +32,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     preview: "Script",
     heading: "Structure for your point. Room for your voice.",
     explanation:
-      "Start with your own idea and references. Develop hook options, arrange the talking points, then edit a full draft before recording. The script stays connected to the source, so you can keep refining the point.",
+      "Use the AI video script generator for a short tutorial, a product explanation or a story you want to share. Start with your idea and references, compare hooks, then edit the draft into words you would actually say. Your script stays connected to its source and ready for the teleprompter.",
     availability:
       "Script generation uses Studio credits. Each membership payment includes credits, and the pricing page lists what each action costs.",
     questions: [
@@ -72,7 +72,7 @@ export const featureDetails: Record<string, FeatureDetail> = {
     preview: "Edit",
     heading: "Find the moment by finding the words.",
     explanation:
-      "Read through the timed transcript to locate a false start or repeated thought. Cut the unwanted words, then use timeline controls for the edits that need a closer look. Add captions before exporting the finished take.",
+      "Start with one-click edit to remove silences and repeated attempts. Review the result, then use text-based video editing to select any words you want to cut. Keep the timeline for precise finishing and add captions before exporting.",
     availability:
       "Editing uses Yapper Studio’s native Mac editor. A browser-only editor, Windows release, and mobile editor are not being offered here.",
     questions: [

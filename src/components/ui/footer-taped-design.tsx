@@ -1,36 +1,30 @@
 import Link from "next/link";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 
-// One column per product, so a visitor can tell which links belong to which.
 const columns = [
   {
-    title: "Yapper Train",
+    title: "Studio",
     links: [
-      ["Overview", "/products/train"],
-      ["Speaking exercises", "/training"],
-      ["Random topic generator", "/training/random-topic-generator"],
-      ["Interview practice", "/training/interview-prep"],
-      ["AI feedback", "/products/train/ai-feedback"],
-      ["Train pricing", "/products/train/pricing"],
+      ["Overview", "/"],
+      ["All features", "/features"],
+      ["Pricing", "/pricing"],
     ],
   },
   {
-    title: "Yapper Studio",
+    title: "Create",
     links: [
-      ["Overview", "/products/studio"],
-      ["All features", "/features"],
       ["AI script writer", "/features/ai-script-writer"],
       ["Teleprompter recorder", "/features/teleprompter-recorder"],
       ["Transcript video editor", "/features/transcript-video-editor"],
-      ["Studio pricing", "/products/studio/pricing"],
+      ["Automatic captions", "/features/automatic-captions"],
     ],
   },
   {
     title: "Resources",
     links: [
-      ["Speaking guides", "/blog"],
-      ["Free tools", "/tools"],
-      ["Pricing", "/pricing"],
+      ["Blog", "/blog"],
+      ["Content calendar", "/features/content-calendar"],
+      ["Social publishing", "/features/social-publishing"],
     ],
   },
 ];
@@ -46,9 +40,9 @@ export function Component() {
               yapper
             </Link>
             <p className="site-footer-description">
-              Find your voice.
+              From idea
               <br />
-              Make something with it.
+              to posted video.
             </p>
           </div>
           {columns.map((column) => (

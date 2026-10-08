@@ -3,7 +3,11 @@ import type { NextRequest } from "next/server";
 import { getBillingState, setStripeCustomerId } from "@/lib/db/billing";
 import { ensureUser } from "@/lib/db/users";
 import { getStripe, stripeConfigured } from "@/lib/stripe";
-import { CREDIT_PACKS, planByKey, TRIAL_DAYS } from "@/lib/billing/plans";
+import {
+  CREDIT_PACKS,
+  SUBSCRIPTION_PLANS,
+  TRIAL_DAYS,
+} from "@/lib/billing/plans";
 import { isEntitled } from "@/lib/billing/entitlement";
 import { PRODUCT_PATHS } from "@/lib/billing/products";
 
@@ -29,7 +33,9 @@ export async function POST(req: NextRequest): Promise<Response> {
     plan?: string;
     pack?: string;
   };
-  const plan = planByKey(body.plan);
+  const plan = SUBSCRIPTION_PLANS.find(
+    (candidate) => candidate.key === body.plan,
+  );
   const pack = CREDIT_PACKS.find((p) => p.key === body.pack);
   if (!plan && !pack) {
     return Response.json({ error: "bad_request" }, { status: 400 });

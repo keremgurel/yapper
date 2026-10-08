@@ -19,7 +19,7 @@ export default function FeaturesPage() {
         <div className="marketing-container">
           <Breadcrumbs
             items={[
-              { label: "Yapper Studio", href: "/products/studio" },
+              { label: "Yapper Studio", href: "/" },
               { label: "Features", href: "/features" },
             ]}
           />
@@ -30,10 +30,7 @@ export default function FeaturesPage() {
           </p>
           <p className="marketing-note">
             Try every feature free for 7 days.
-            <Link
-              href="/products/studio/pricing"
-              className="underline underline-offset-4"
-            >
+            <Link href="/pricing" className="underline underline-offset-4">
               See plans
             </Link>
             .

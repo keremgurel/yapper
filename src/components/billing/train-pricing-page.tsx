@@ -108,10 +108,7 @@ export default function TrainPricingPage() {
             <p className="type-description mt-4">
               Making videos instead?
               <br />
-              <Link
-                href="/products/studio/pricing"
-                className="marketing-text-link"
-              >
+              <Link href="/pricing" className="marketing-text-link">
                 See Yapper Studio pricing
               </Link>
             </p>

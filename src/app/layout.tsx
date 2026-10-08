@@ -17,9 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = getSiteUrl();
-const title = "Yapper: speaking practice and a video studio";
+const title = "Yapper Studio: from idea to posted video";
 const description =
-  "Yapper makes two separate products: Yapper Train for speaking practice and Yapper Studio for making and publishing video.";
+  "Capture ideas, write scripts, record, edit and publish videos with Yapper Studio.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

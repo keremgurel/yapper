@@ -2,9 +2,8 @@ import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 
 /**
- * The public site has three contexts. The brand pages introduce both
- * products; once a visitor is inside a product, the header only talks about
- * that product and offers one quiet link to the other.
+ * The public site is Studio. Legacy coaching routes retain their own
+ * navigation and billing context until the coaching domain is ready.
  */
 export type SiteContext = "brand" | "studio" | "train";
 
@@ -43,7 +42,6 @@ const TRAIN_PREFIXES = [
   "/training",
   "/freestyle-speech",
   "/tools",
-  "/blog",
   "/progress",
   "/history",
 ];
@@ -55,10 +53,10 @@ function under(pathname: string, prefixes: string[]) {
 }
 
 export function siteContextFor(pathname: string | null): SiteContext {
-  if (!pathname) return "brand";
+  if (!pathname) return "studio";
   if (under(pathname, STUDIO_PREFIXES)) return "studio";
   if (under(pathname, TRAIN_PREFIXES)) return "train";
-  return "brand";
+  return "studio";
 }
 
 export const trainPractice: NavColumn[] = [
@@ -101,23 +99,23 @@ const studioFeatures: NavColumn[] = featureGroups.map((group) => ({
 export const siteNavigation: Record<SiteContext, SiteNavigation> = {
   brand: {
     items: [
-      { label: "Studio", href: "/products/studio" },
-      { label: "Train", href: "/products/train" },
+      { label: "Studio", href: "/" },
+      { label: "Blog", href: "/blog" },
       { label: "Pricing", href: "/pricing" },
     ],
   },
   studio: {
-    product: { label: "Studio", href: "/products/studio" },
+    product: { label: "Studio", href: "/" },
     items: [
       {
         label: "Features",
         columns: studioFeatures,
         footer: { label: "All Studio features", href: "/features" },
       },
-      { label: "Pricing", href: "/products/studio/pricing" },
+      { label: "Pricing", href: "/pricing" },
+      { label: "Blog", href: "/blog" },
     ],
-    cta: { label: "Start free trial", href: "/products/studio/pricing" },
-    switchTo: { label: "Yapper Train", href: "/products/train" },
+    cta: { label: "Start free trial", href: "/pricing" },
   },
   train: {
     product: { label: "Train", href: "/products/train" },
@@ -132,6 +130,6 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
       { label: "Pricing", href: "/products/train/pricing" },
     ],
     cta: { label: "Start practicing", href: "/training" },
-    switchTo: { label: "Yapper Studio", href: "/products/studio" },
+    switchTo: { label: "Yapper Studio", href: "/" },
   },
 };

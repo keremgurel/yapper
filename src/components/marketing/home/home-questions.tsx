@@ -39,7 +39,7 @@ export default function HomeQuestions() {
             <summary>Can I use Yapper Studio now?</summary>
             <p>
               Yes. Studio is open to everyone, with a 7-day free trial.
-              <Link href="/products/studio/pricing" className="underline">
+              <Link href="/pricing" className="underline">
                 See Studio plans
               </Link>
               .

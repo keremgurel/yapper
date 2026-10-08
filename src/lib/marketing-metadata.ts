@@ -33,7 +33,7 @@ export function marketingMetadata(
           url: "/og.png",
           width: 1200,
           height: 630,
-          alt: "Yapper Train and Yapper Studio",
+          alt: "Yapper Studio: from idea to posted video",
         },
       ],
     },

@@ -25,7 +25,9 @@ BASE = (sys.argv[1] if len(sys.argv) > 1 else 'http://localhost:3000').rstrip('/
 
 # source -> the single hop it must make. A chain or a wrong target fails.
 REDIRECTS = {
-    '/studio': '/products/studio',
+    '/studio': '/',
+    '/products/studio': '/',
+    '/products/studio/pricing': '/pricing',
     '/products': '/',
     '/products/yapper': '/products/train',
     '/features/creator-feedback': '/products/train/ai-feedback',
