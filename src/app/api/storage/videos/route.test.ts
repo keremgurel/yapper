@@ -237,25 +237,21 @@ it.each([
       .select()
       .from(schema.submissions)
       .where(eq(schema.submissions.userId, "owner"));
-    await db
-      .insert(schema.contentItems)
-      .values({
-        userId: "owner",
-        title: "Posted edit",
-        submissionId: submission.id,
-        sourceClientId: "native-project:project",
-        editorRevision: "a".repeat(64),
-        status: "posted",
-      });
-    await db
-      .insert(schema.publishJobs)
-      .values({
-        userId: "owner",
-        platform: "youtube",
-        mediaKey: "owner/video",
-        status: "published",
-        updatedAt,
-      });
+    await db.insert(schema.contentItems).values({
+      userId: "owner",
+      title: "Posted edit",
+      submissionId: submission.id,
+      sourceClientId: "native-project:project",
+      editorRevision: "a".repeat(64),
+      status: "posted",
+    });
+    await db.insert(schema.publishJobs).values({
+      userId: "owner",
+      platform: "youtube",
+      mediaKey: "owner/video",
+      status: "published",
+      updatedAt,
+    });
     const { videos } = await (await GET()).json();
     expect(videos[0]).toMatchObject({ origin: "editor_export", retention });
     expect((await DELETE(request("owner/video"))).status).toBe(200);
