@@ -64,6 +64,23 @@ Do not use monospace for marketing labels, feature names, navigation, or
 decorative interface copy. Monospace is reserved for code, timecodes, file
 metadata, and technical data.
 
+## Authentication
+
+`/sign-in` and `/sign-up` use a shared branded shell with the marketing container,
+system typography, theme switch and semantic surfaces. A 1100px inner layout
+pairs a quiet workflow introduction with a 400px form on desktop. Below 900px,
+show the form alone; retain the shared outer gutters and allow natural scrolling.
+Five soft, solid workflow tiles echo the homepage's Brainstorm, Script, Record,
+Edit and Crosspost sequence. No decorative card surrounds the form.
+
+Use Clerk's maintained components with the shadcn base theme and scoped appearance
+classes. Inputs and authentication buttons have 52px targets, 16px input text and
+visible keyboard focus. The primary action reuses the shared titanium variant.
+Clerk handles configured identity providers, verification, recovery and account
+switching. Auth pages are public with noindex metadata; Studio and its API keep
+their existing authentication gates. Preserve Clerk's return URL, with Studio
+home as the fallback. Native handoff pages retain their separate flow.
+
 ## Buttons
 
 All standard actions use `Button` from `src/components/ui/button.tsx`.
