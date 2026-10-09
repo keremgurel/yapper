@@ -240,8 +240,9 @@ text. Resting state is frozen; animate only on mouse hover and never under
 reduced motion. Keep the label present and dimensions stable before shader load.
 The homepage eyebrow is just “Private beta”, without a second product label.
 
-The Studio tab selection has a persistent clear glass lens with one fine neutral
-rim, separate from the faint Gooey underlay. No blue-grey tint, double bevel,
+The Studio tab selection uses the Liquid Glass SDK in a bounded scene with a
+clear refracting lens and one fine neutral rim. Keep the existing capsule shape,
+equal tab widths, icons, labels, and responsive dimensions. No blue-grey tint, double bevel,
 opaque fill or bright highlight strips. Pointer-down compresses it; a
 horizontal drag tracks directly, with subtle liquid stretch. Release snaps to
 the projected tab and commits selection; cancellation restores the current tab.
@@ -377,3 +378,22 @@ Use ACL Academy's continuous slider interpolation, reversed for credit health:
 coral at 0%, amber at 50%, green at 100%. Light colors: `#d63b3b`, `#b7791f`,
 `#0e9f6e`; dark: `#ff6b6b`, `#ffc247`, `#34d399`. The server supplies the same
 fraction and colors to both clients. No autonomous AI work is triggered.
+
+### Studio Chirpy
+
+Use the shared floating conversation on every Studio route. Home opens it on
+entry without moving keyboard focus; other routes start with it closed. A
+manual close lasts until the next route visit. Keep the mascot below the panel
+as a persistent toggle, with the same position and glass surface in both states.
+Drafts and conversation history survive closing and navigation. The panel has
+its own scroll area and fits above the toggle on narrow and short viewports.
+
+Chirpy reacts to real interaction: curious on hover, focus, or a nonempty draft;
+a wink on pointer press; talking while working; happy or concerned after a
+result. Pointer press feedback is brief and respects reduced motion. Typing
+changes the expression without a repeating animation or per-keystroke motion.
+
+Inside Chirpy, use solid contrast buttons: black with white text in light mode,
+white with black text in dark mode. Keep glass on the enclosing panel and
+mascot toggle only. The message textarea starts at 88px (three rows) and grows
+to 220px before scrolling internally.

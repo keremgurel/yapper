@@ -7,7 +7,13 @@ import {
   useMotionValue,
   useReducedMotion,
 } from "framer-motion";
-import { Liquid } from "liquid-gooey";
+import {
+  GlassContent,
+  GlassScene,
+  GlassSurface,
+} from "@glass-sdk/liquid-glass";
+import { useTheme } from "next-themes";
+import "@glass-sdk/liquid-glass/styles.css";
 import type { LucideIcon } from "lucide-react";
 
 export interface GlassTab<T extends string> {
@@ -52,6 +58,7 @@ export default function GlassTabs<T extends string>({
   label: string;
   className?: string;
 }) {
+  const { resolvedTheme } = useTheme();
   const root = useRef<HTMLDivElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const gesture = useRef<Gesture | null>(null);
@@ -138,8 +145,11 @@ export default function GlassTabs<T extends string>({
   };
 
   return (
-    <div
+    <GlassScene
       ref={root}
+      material="regular"
+      appearance={resolvedTheme === "dark" ? "dark" : "light"}
+      motion="none"
       className={`studio-showcase-tabs ${className}`}
       style={{ ["--studio-tab-count" as string]: tabs.length }}
       role="tablist"
@@ -218,32 +228,19 @@ export default function GlassTabs<T extends string>({
         if (gesture.current && !gesture.current.dragging) finish(event, true);
       }}
     >
+      <GlassContent aria-hidden="true" className="studio-tabs-backdrop" />
       <div className="studio-tab-lens-track" aria-hidden="true">
-        {reduce === false && slot > 0 && (
-          <Liquid
-            className="studio-tab-goo"
-            fill="var(--studio-lens-goo)"
-            blur={4}
-            contrast={22}
-            shadow="none"
-          >
-            <Liquid.Item
-              effect="move"
-              style={{ position: "absolute", inset: 0 }}
-              move={{ stretch: 0.42, trail: 0.28, wobble: 0.25 }}
-            >
-              <motion.div
-                className="studio-tab-goo-shape"
-                style={{ x, width: slot || `${100 / tabs.length}%` }}
-              />
-            </Liquid.Item>
-          </Liquid>
-        )}
         <motion.div
           className="studio-tab-lens"
           style={{ x, width: slot || `${100 / tabs.length}%` }}
         >
-          <div className="studio-tab-lens-surface" />
+          <GlassSurface
+            className="studio-tab-lens-surface"
+            material="clear"
+            radius="capsule"
+            refraction={18}
+            interactive={false}
+          />
         </motion.div>
       </div>
       {tabs.map(({ value: tab, label: tabLabel, Icon }, at) => (
@@ -287,6 +284,6 @@ export default function GlassTabs<T extends string>({
           <span>{tabLabel}</span>
         </button>
       ))}
-    </div>
+    </GlassScene>
   );
 }
