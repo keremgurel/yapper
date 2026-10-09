@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Clapperboard } from "lucide-react";
+import { Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip, EmptyState, Section, statusTone } from "@/components/studio-ui";
-import type { ContentSummary } from "@/lib/content/client";
+import type { ItemSummary } from "@/lib/ideas/client";
 import type { ContentStatus } from "@/lib/db/schema";
 import { itemTitle } from "@/components/studio-home/item-title";
 import { upNextItems } from "@/components/studio-home/up-next";
+import PipelineBar from "@/components/studio-home/pipeline-bar";
 
 const STATUS_LABEL: Record<ContentStatus, string> = {
   captured: "Captured",
@@ -21,12 +22,21 @@ function scheduledLabel(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** The answer to "what should I work on now": unposted library items, dated
- * work first. Render-only; the parent owns loading. */
+/** The answer to "what do I work on now": the pipeline at a glance, then the
+ * next five ideas, dated work first. A fresh capture lands at the top and
+ * says so while Yapper is still shaping it. Render-only. */
 export default function UpNextSection({
   items,
+  shaping,
+  failed,
+  onRetry,
 }: {
-  items: ContentSummary[] | null;
+  /** Null while the first load is in flight. */
+  items: ItemSummary[] | null;
+  /** Ideas Yapper is still turning into a script. */
+  shaping: Set<string>;
+  failed: boolean;
+  onRetry: () => void;
 }) {
   const queue = items === null ? null : upNextItems(items);
 
@@ -34,51 +44,70 @@ export default function UpNextSection({
     <Section
       title="Up next"
       action={
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/studio/library">Open ideas</Link>
-        </Button>
+        items?.length ? (
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/studio/ideas">All ideas</Link>
+          </Button>
+        ) : null
       }
     >
-      {queue === null ? (
+      {failed ? (
+        <div className="flex flex-wrap items-center gap-3 py-2 text-sm">
+          <p className="text-muted-foreground">Your ideas didn’t load.</p>
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      ) : queue === null ? (
         <div aria-hidden className="space-y-2 py-1">
+          <div className="bg-muted mb-4 h-2 animate-pulse rounded-full" />
           {[0, 1, 2].map((row) => (
             <div key={row} className="bg-muted h-9 animate-pulse rounded-md" />
           ))}
         </div>
       ) : queue.length === 0 ? (
         <EmptyState
-          icon={Clapperboard}
-          title="Nothing queued to shoot"
-          description="Send an idea to the Library and it will show up here."
-          action={
-            <Button asChild variant="outline" size="sm">
-              <Link href="/studio/ideas">Open ideas</Link>
-            </Button>
+          icon={Lightbulb}
+          title={items?.length ? "Everything’s posted" : "No ideas yet"}
+          description={
+            items?.length
+              ? "Capture the next one above and it lands here."
+              : "Capture one above. It shows up here with a script started."
           }
         />
       ) : (
-        <ul className="divide-border/60 divide-y">
-          {queue.map((item) => (
-            <li key={item.id}>
-              <Link
-                href={`/studio/library/${item.id}`}
-                className="hover:bg-muted/60 -mx-2 flex min-h-10 items-center gap-3 rounded-md px-2 no-underline transition-colors"
-              >
-                <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
-                  {itemTitle(item)}
-                </span>
-                {item.status === "ready" && item.scheduledFor && (
-                  <span className="text-muted-foreground font-mono text-xs tabular-nums">
-                    {scheduledLabel(item.scheduledFor)}
+        <>
+          <PipelineBar items={items ?? []} />
+          <ul className="divide-border/60 divide-y">
+            {queue.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={`/studio/library/${item.id}`}
+                  className="hover:bg-muted/60 -mx-2 flex min-h-11 items-center gap-3 rounded-md px-2 no-underline transition-colors"
+                >
+                  <span className="text-foreground min-w-0 flex-1 truncate text-sm font-medium">
+                    {itemTitle(item)}
                   </span>
-                )}
-                <Chip tone={statusTone(item.status)} pill>
-                  {STATUS_LABEL[item.status]}
-                </Chip>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  {shaping.has(item.id) ? (
+                    <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+                      <Loader2 aria-hidden className="size-3 animate-spin" />
+                      <span className="sr-only sm:not-sr-only">
+                        Writing a script…
+                      </span>
+                    </span>
+                  ) : item.status === "ready" && item.scheduledFor ? (
+                    <span className="text-muted-foreground shrink-0 font-mono text-xs tabular-nums">
+                      {scheduledLabel(item.scheduledFor)}
+                    </span>
+                  ) : null}
+                  <Chip tone={statusTone(item.status)} pill>
+                    {STATUS_LABEL[item.status]}
+                  </Chip>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
     </Section>
   );
