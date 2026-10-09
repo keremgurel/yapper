@@ -25,7 +25,12 @@ to https://speakingpractice.ai/. The public wordmark stands alone: do not add a
 redundant “Studio” product label or divider beside it. Legacy public coaching
 routes redirect to the training site. The public site
 uses compact product navigation, clear explanatory text, and examples of the
-creator's work. Keep Chirpy. Public hero and waitlist actions reuse the silver GlassyButton from the training hero. Page
+creator's work. Keep Chirpy. The public site defaults to light mode and retains
+a manual light/dark toggle. Public Studio entry actions use the shared Button's
+`titanium` variant: dark graphite metal on light pages, light aluminum on dark
+pages. Label them “Access Studio” and link directly to `/studio/home`. The
+homepage hero and closing section each have one action; the signed-out header
+has one Studio entry button. Page
 surfaces remain quiet; no ornamental gradients, glows, or colored accent rails.
 
 The public `.marketing-site` type scale is 40–64px for the homepage headline,
@@ -64,6 +69,7 @@ metadata, and technical data.
 All standard actions use `Button` from `src/components/ui/button.tsx`.
 
 - `default`: primary Yapper action
+- `titanium`: public Studio entry, graphite in light mode and aluminum in dark
 - `contrast`: high-contrast action on artwork or cinematic surfaces
 - `outline`: secondary action
 - `ghost`: tertiary action in toolbars and menus

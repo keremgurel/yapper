@@ -81,6 +81,6 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
       { label: "Pricing", href: "/pricing" },
       { label: "Blog", href: "/blog" },
     ],
-    cta: { label: "Start free trial", href: "/pricing" },
+    cta: { label: "Access Studio", href: "/studio/home" },
   },
 };

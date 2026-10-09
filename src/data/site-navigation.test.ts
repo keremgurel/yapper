@@ -20,7 +20,10 @@ describe("Studio public site", () => {
     const links = siteNavigation.studio.items.filter((item) => !isPanel(item));
     expect(links).toContainEqual({ label: "Pricing", href: "/pricing" });
     expect(links).toContainEqual({ label: "Blog", href: "/blog" });
-    expect(siteNavigation.studio.cta?.href).toBe("/pricing");
+    expect(siteNavigation.studio.cta).toEqual({
+      label: "Access Studio",
+      href: "/studio/home",
+    });
     expect(siteNavigation.studio.switchTo).toBeUndefined();
     expect(siteNavigation.studio.product).toBeUndefined();
   });
