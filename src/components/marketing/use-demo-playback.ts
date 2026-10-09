@@ -1,12 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+
+const motionQuery = "(prefers-reduced-motion: reduce)";
+const serverMotionPreference = () => false;
+const motionPreference = () => window.matchMedia(motionQuery).matches;
+function subscribeMotionPreference(update: () => void) {
+  const query = window.matchMedia(motionQuery);
+  query.addEventListener("change", update);
+  return () => query.removeEventListener("change", update);
+}
 
 /** Marketing sequences run only on screen, in a foreground tab. */
 export function useDemoPlayback(frameCount = 6, interval = 1800) {
   const ref = useRef<HTMLDivElement>(null);
-  const reduced = useReducedMotion();
+  // Use the same first frame for SSR and hydration, then apply the preference.
+  const reduced = useSyncExternalStore(
+    subscribeMotionPreference,
+    motionPreference,
+    serverMotionPreference,
+  );
   const [visible, setVisible] = useState(false);
   const [frame, setFrame] = useState(0);
   const active = visible && reduced === false;
