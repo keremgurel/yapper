@@ -2,7 +2,7 @@
 
 Aim for about 2–3 minutes plus necessary processing. Start with the shared short introduction.
 
-Before filming: Facebook credentials and a successful test connection still need configuration. Use an authorized test user who can publish to the chosen Page, and have one existing Page Reel. The original 1080 × 1920, 30 fps, 15–20 second sample works within Yapper's current constraints. The new Reel will be public on the Page.
+Before filming: Facebook authorization opens; selecting the demo Page and successfully testing its publishing flow are still required. Use an authorized test user who can publish to the chosen Page, and have one existing Page Reel. The original 1080 × 1920, 30 fps, 15–20 second sample works within Yapper's current constraints. The new Reel will be public on the Page.
 
 ## 1. Connect Facebook
 

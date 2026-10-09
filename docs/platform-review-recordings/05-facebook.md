@@ -6,7 +6,7 @@ File: `05-facebook-page-connect-publish.mp4`. About 3–4 minutes plus processin
 
 ## Before filming — setup still required
 
-Facebook production credentials are currently missing, so the connection is not ready to film. Configure them and verify the complete flow first. Use an authorized app-role test user who manages the intended Page and can create content there. Have an existing Page Reel for the read-permission segment. The sample 1080 × 1920, 30 fps, 15–20 second clip fits Yapper's current Reel preflight constraints.
+Facebook authorization now opens, but the demo Page has not been selected and the required Page API test calls are incomplete. Finish the connection and verify the complete flow first. Use an authorized app-role test user who manages the intended Page and can create content there. Have an existing Page Reel for the read-permission segment. The sample 1080 × 1920, 30 fps, 15–20 second clip fits Yapper's current Reel preflight constraints.
 
 Each user connects their Facebook account and chooses a Page they manage. This integration publishes **public Page Reels**; use a Page on which you are comfortable making the sample public.
 

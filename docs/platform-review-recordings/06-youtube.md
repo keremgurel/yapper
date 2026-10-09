@@ -8,7 +8,7 @@ File: `06-youtube-oauth-library-upload.mp4`. About 4–5 minutes plus processing
 
 Use the integration connected to Google project `yapper-502200`. Its domain and branding are verified; the YouTube scopes are not yet verified. Use a channel you control with an existing video. Sign into Google off camera, disconnect YouTube in Yapper, and start recording before clicking Connect.
 
-**Current UI limitation:** Poster requests public visibility automatically. There is no YouTube privacy or made-for-kids selector. Do not invent that step. Use a sample you are comfortable making public. YouTube may restrict actual visibility; show the value in Studio. OAuth verification does not establish approval of the separate public-upload compliance audit.
+Use the deployed web Poster with visibility and audience controls. The native Mac Poster still needs equivalent controls. Show the actual visibility in YouTube Studio. The current [videos.insert reference](https://developers.google.com/youtube/v3/docs/videos/insert) says unverified API projects are not restricted to private uploads; do not claim that public uploading automatically requires a separate audit.
 
 The Google form asks for a YouTube demo link covering every OAuth client assigned to this project. Before submission, inventory those clients and append any other active client's actual authorization flow. Showing the Mac wrapper alone does not prove an unseen client was tested.
 
@@ -54,11 +54,11 @@ This use appears in the prepared scope explanation. If it cannot be demonstrated
 
 ## 5. Original video and copy
 
-**Do:** Return to **Poster → Made in Yapper**. Select and play the camera-check clip, then choose only YouTube. Set its title to `Three checks before recording` and review the prepared description. If Poster requires a cover, choose a frame from the video. Click **Publish to 1 destination** and show the intended channel in the final sheet.
+**Do:** Return to **Poster → Made in Yapper**. Select and play the camera-check clip, then choose only YouTube. Set its title to `Three checks before recording` and review the prepared description. If Poster requires a cover, choose a frame from the video. Click **Publish to 1 destination** and show the intended channel in the final sheet. Open the Private, Unlisted and Public choices, choose Unlisted, and truthfully answer the made-for-kids and altered/synthetic-media questions.
 
 **Say:**
 
-> “I choose an original video I recorded, review the preview, and edit the title and description. I select only my connected YouTube channel. This version of Poster requests public visibility, as shown in the posting notice.”
+> “I choose an original video I recorded, review the preview, and edit the title and description. I select only my connected YouTube channel. I choose Unlisted visibility and review the audience and altered-media settings before uploading.”
 
 ## 6. Upload and actual visibility
 
@@ -72,9 +72,7 @@ This use appears in the prepared scope explanation. If it cannot be demonstrated
 
 > “Here is the uploaded video in YouTube Studio. Its title and description match what I reviewed in Yapper. YouTube Studio shows its actual visibility here.”
 
-If its visibility is Private, add:
-
-> “YouTube has kept this upload private. I am showing that actual result; public upload approval is a separate requirement.”
+If the actual visibility differs from the requested setting, investigate before recording the final demonstration. Do not narrate the unexpected result as an approval requirement.
 
 ## 7. Disconnect and close
 
