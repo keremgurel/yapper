@@ -16,6 +16,6 @@ It needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` in `.env.local` (gi
 
 Search Console for `sc-domain:ypr.app` is read through the helper in the celpip-practice repo (`marketing/organic/seo/gsc_query.py`). Past pulls and their limits are in `docs/seo/`.
 
-# Pronunciation scoring
+# Speaking practice
 
-Train feedback scores pronunciation and intonation with Azure Speech, in the browser, using a short-lived token from `/api/training/speech-token`. It needs `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` in `.env.local` and in Vercel (resource `yapper-speech` in resource group `yapper-dev-rg`, region `eastus`). Without them the report simply has no pronunciation section. The code is in `src/lib/pronunciation/`.
+Yapper Train moved to its own product on October 9, 2026: speakingpractice.ai, repo `keremgurel/speaking-practice` (Cloudflare Workers). Its practice stage, feedback and Azure pronunciation scoring live there now. ypr.app 301s the old practice URLs to it; `/history` stays here because it is Studio's video manager.

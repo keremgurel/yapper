@@ -67,12 +67,12 @@ export function TrainingCta() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild>
-            <Link href="/training/random-topic-generator">
+            <Link href="https://speakingpractice.ai/">
               Start a practice session
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/training">Browse practice</Link>
+            <Link href="https://speakingpractice.ai/">Browse practice</Link>
           </Button>
         </div>
       </div>

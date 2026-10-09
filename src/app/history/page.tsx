@@ -3,7 +3,7 @@ import TrainingHeader from "@/components/training/training-header";
 import HistoryView from "@/components/history/history-view";
 
 export const metadata: Metadata = {
-  title: "Your sessions",
+  title: "Your videos",
   robots: { index: false, follow: false },
 };
 

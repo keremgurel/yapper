@@ -33,7 +33,7 @@ export default function ClosingCta() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/training"
+              href="https://speakingpractice.ai/"
               className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 text-[15px] font-semibold text-white no-underline transition-opacity hover:opacity-90"
               style={{ background: "var(--sg-accent)" }}
             >
