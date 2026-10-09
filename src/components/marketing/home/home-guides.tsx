@@ -1,9 +1,9 @@
 import { getAllBlogPosts } from "@/lib/blog";
 import GuidesRail from "./guides-rail";
 
-// The guides people arrive at most from search first, then the rest of the
-// practice set.
+// Start with a creator workflow, then preserve the established speaking guides.
 const SLUGS = [
+  "how-to-generate-content-ideas",
   "1-minute-speech-topics",
   "impromptu-speaking-practice",
   "how-to-practice-public-speaking-alone",

@@ -48,7 +48,13 @@ export async function BlogPostShell({
       <div className="marketing-container">
         <Breadcrumbs
           items={[
-            { label: "Speaking guides", href: "/blog" },
+            {
+              label:
+                post.category === "Content creation"
+                  ? "Guides"
+                  : "Speaking guides",
+              href: "/blog",
+            },
             { label: post.title, href: `/blog/${post.slug}` },
           ]}
         />
@@ -71,7 +77,7 @@ export async function BlogPostShell({
         <div className={articleStyles.layout}>
           <article className="min-w-0">
             <div className={articleStyles.prose}>{content}</div>
-            <PostPractice />
+            <PostPractice creator={post.category === "Content creation"} />
           </article>
           <PostToc headings={post.headings} />
         </div>
