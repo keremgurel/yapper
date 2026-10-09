@@ -52,7 +52,12 @@ export default function ScriptEditor({
               <Sparkles className="h-3 w-3" /> Ask
             </Button>
             {!words && (
-              <Button type="button" size="xs" onClick={onWrite}>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={onWrite}
+              >
                 Write it for me
               </Button>
             )}
