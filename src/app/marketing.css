@@ -2751,7 +2751,7 @@
   background: transparent;
 }
 .editor-demo-edit-overlay .feature-edit {
-  background: color-mix(in srgb, var(--sg-surface) 82%, transparent);
+  background: color-mix(in srgb, var(--sg-surface) 96%, transparent);
   backdrop-filter: blur(26px) saturate(120%);
   -webkit-backdrop-filter: blur(26px) saturate(120%);
   border: 1px solid var(--sg-border-strong);
