@@ -19,9 +19,11 @@ devices, system-ui elsewhere), as defined in `globals.css`.
 
 ## Public website direction
 
-Ypr.app presents Yapper Studio only. The homepage is `/`, pricing is `/pricing`,
-and existing blog URLs remain available. Coaching routes remain usable until
-their separate domain is ready, but are not promoted in Studio navigation. The public site
+Ypr.app presents the Yapper content creation product only. The homepage is `/`,
+pricing is `/pricing`, and existing blog URLs remain available. Training has moved
+to https://speakingpractice.ai/. The public wordmark stands alone: do not add a
+redundant “Studio” product label or divider beside it. Legacy coaching routes
+retain their existing controls but are not promoted in Yapper navigation. The public site
 uses compact product navigation, clear explanatory text, and examples of the
 creator's work. Keep Chirpy. Public hero and waitlist actions reuse the silver GlassyButton from the training hero. Page
 surfaces remain quiet; no ornamental gradients, glows, or colored accent rails.

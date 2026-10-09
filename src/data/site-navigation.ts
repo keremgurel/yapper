@@ -2,8 +2,8 @@ import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 
 /**
- * The public site is Studio. Legacy coaching routes retain their own
- * navigation and billing context until the coaching domain is ready.
+ * Yapper is the content creation product. Training has moved to
+ * speakingpractice.ai; legacy routes retain their existing billing context.
  */
 export type SiteContext = "brand" | "studio" | "train";
 
@@ -105,7 +105,6 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
     ],
   },
   studio: {
-    product: { label: "Studio", href: "/" },
     items: [
       {
         label: "Features",
