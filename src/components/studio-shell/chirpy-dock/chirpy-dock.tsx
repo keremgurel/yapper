@@ -3,9 +3,13 @@
 import { forwardRef, type ReactNode } from "react";
 import type { ChirpyExpression } from "@/components/brand/chirpy";
 import {
+  DOCK_INSET,
+  DOCK_SCALE,
   facing,
   panelFrame,
 } from "@/components/studio-shell/chirpy-dock/chirpy-anchor";
+import styles from "@/components/studio-shell/chirpy-dock/chirpy-dock.module.css";
+import { usePresence } from "@/components/studio-shell/chirpy-dock/use-presence";
 import ChirpyGreetingBubble from "@/components/studio-shell/chirpy-dock/chirpy-greeting-bubble";
 import ChirpyLauncher, {
   LAUNCHER_SIZE,
@@ -15,6 +19,9 @@ import { useChirpyGreeting } from "@/components/studio-shell/chirpy-dock/use-chi
 import { useViewport } from "@/components/studio-shell/chirpy-dock/use-viewport";
 
 const BIRD = { width: LAUNCHER_SIZE, height: LAUNCHER_SIZE };
+/** How big the open panel wants to be; smaller windows shrink it. */
+const PANEL = { width: 720, height: 760 };
+const PANEL_EXIT_MS = 180;
 
 /**
  * Where Chirpy lives on screen: the draggable bird, its one-time hello on
@@ -40,22 +47,23 @@ const ChirpyDock = forwardRef<
   const viewport = useViewport();
   const drag = useChirpyDrag(BIRD, viewport);
   const greeting = useChirpyGreeting(greetHere && !open);
+  const presence = usePresence(open, PANEL_EXIT_MS);
   const anchor = drag.anchor;
   if (!viewport || !anchor) return null;
 
   const side = facing(anchor, BIRD, viewport);
-  const frame = panelFrame(
-    anchor,
-    BIRD,
-    { width: Math.min(560, viewport.width - 32), height: 600 },
-    viewport,
-  );
+  const frame = panelFrame(anchor, BIRD, PANEL, viewport);
+  // Open, the bird flies into the panel's top-left corner and shrinks to an
+  // avatar there; closed, it flies back to wherever the creator put it.
+  const bird = open
+    ? `translate(${frame.x + DOCK_INSET}px, ${frame.y + DOCK_INSET}px) scale(${DOCK_SCALE})`
+    : `translate(${anchor.x}px, ${anchor.y}px)`;
   const greetingOnScreen =
     greeting.phase === "showing" || greeting.phase === "leaving";
 
   return (
     <>
-      {open ? (
+      {presence.shown ? (
         <div
           className="pointer-events-none fixed top-0 left-0 z-[60]"
           style={{
@@ -64,16 +72,19 @@ const ChirpyDock = forwardRef<
             transform: `translate(${frame.x}px, ${frame.y}px)`,
           }}
         >
-          {panel}
+          <div
+            className={`${styles.panel} h-full w-full`}
+            data-leaving={presence.leaving || undefined}
+            style={{ transformOrigin: frame.origin }}
+          >
+            {panel}
+          </div>
         </div>
       ) : null}
       <div
-        className="pointer-events-none fixed top-0 left-0 z-[61]"
-        style={{
-          width: BIRD.width,
-          height: BIRD.height,
-          transform: `translate(${anchor.x}px, ${anchor.y}px)`,
-        }}
+        className={`${styles.bird} pointer-events-none fixed top-0 left-0 z-[61]`}
+        data-dragging={drag.dragging || undefined}
+        style={{ width: BIRD.width, height: BIRD.height, transform: bird }}
       >
         <ChirpyLauncher
           ref={ref}

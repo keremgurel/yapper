@@ -22,24 +22,25 @@ describe("chirpy anchor", () => {
 });
 
 describe("panelFrame", () => {
-  it("opens above a bird in the bottom right, sharing its right edge", () => {
+  it("grows up and left out of a bird in the bottom right corner", () => {
     const frame = panelFrame({ x: 1192, y: 712 }, bird, panel, desktop);
     expect(frame.x + frame.width).toBe(1192 + 72);
-    expect(frame.y + frame.height).toBeLessThanOrEqual(712 - 12);
+    expect(frame.y + frame.height).toBe(712 + 72);
+    expect(frame.origin).toBe("right bottom");
   });
 
-  it("opens below a bird near the top and shrinks to fit, never covering it", () => {
-    const frame = panelFrame({ x: 205, y: 160 }, bird, panel, desktop);
-    expect(frame.x).toBe(205);
-    expect(frame.y).toBe(160 + 72 + 12);
-    expect(frame.y + frame.height).toBeLessThanOrEqual(800 - 16);
+  it("grows down and right out of a bird near the top left", () => {
+    const frame = panelFrame({ x: 40, y: 40 }, bird, panel, desktop);
+    expect(frame).toMatchObject({ x: 40, y: 40, origin: "left top" });
   });
 
-  it("sits beside the bird when neither side is tall enough", () => {
-    const frame = panelFrame({ x: 40, y: 260 }, bird, panel, {
-      width: 1280,
-      height: 600,
+  it("shrinks to fit a small window", () => {
+    const frame = panelFrame({ x: 300, y: 500 }, bird, panel, {
+      width: 375,
+      height: 640,
     });
-    expect(frame.x).toBe(40 + 72 + 12);
+    expect(frame.width).toBe(375 - 32);
+    expect(frame.x).toBe(16);
+    expect(frame.y + frame.height).toBeLessThanOrEqual(640 - 16);
   });
 });

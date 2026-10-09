@@ -1,20 +1,37 @@
+import { BarChart3 } from "lucide-react";
+import { EmptyState } from "@/components/studio-ui";
 import type { ItemSummary } from "@/lib/ideas/client";
 import HomeCapture from "@/components/studio-home/home-capture";
+import PostingRhythm from "@/components/studio-home/posting-rhythm";
+import PostsRail from "@/components/studio-home/posts-rail";
 import SetupTrack from "@/components/studio-home/setup-track";
-import TopPostsRail from "@/components/studio-home/top-posts-rail";
+import StatsBand from "@/components/studio-home/stats-band";
 import UpNextSection from "@/components/studio-home/up-next-section";
+import type { ChannelStats } from "@/components/studio-home/channel-stats";
 import type { RankedVideo } from "@/components/studio-home/rank-videos";
 import type { SetupStep } from "@/components/studio-home/setup-steps";
 
-/** Home's layout, render-only: one calm column with capture on top, setup
- * while it is unfinished, the queue, then the best posts once a channel is
- * connected. StudioDashboard decides what goes in it. */
+export interface HomeChannels {
+  /** Null while channel history loads. */
+  ranked: RankedVideo[] | null;
+  stats: ChannelStats | null;
+  weeks: number[] | null;
+  missing: string;
+}
+
+/**
+ * Home's layout, render-only, at the shared Studio width. Capture across the
+ * top, setup while it is unfinished, then two columns: how the channels are
+ * doing on the left, what to work on next on the right. Without a connected
+ * channel the queue takes the whole width. StudioDashboard decides what goes
+ * in it.
+ */
 export default function HomeView({
   title,
   onCapture,
   setup,
   ideas,
-  posts,
+  channels,
 }: {
   title: string;
   onCapture: (text: string) => Promise<void>;
@@ -27,10 +44,22 @@ export default function HomeView({
     onRetry: () => void;
   };
   /** Null until a channel is connected. */
-  posts: { ranked: RankedVideo[] | null; missing: string } | null;
+  channels: HomeChannels | null;
 }) {
+  // A brand-new creator's empty queue would only repeat setup's first step.
+  const queue =
+    setup && ideas.items?.length === 0 ? null : (
+      <UpNextSection
+        items={ideas.items}
+        shaping={ideas.shaping}
+        failed={ideas.failed}
+        onRetry={ideas.onRetry}
+      />
+    );
+  const posted = Boolean(channels?.ranked?.length);
+
   return (
-    <div className="mx-auto w-full max-w-[880px] space-y-8 pb-24">
+    <div className="w-full space-y-8 pb-24">
       <header>
         <h1 className="font-display text-foreground min-h-8 text-[22px] font-bold tracking-[-0.01em]">
           {title}
@@ -46,20 +75,43 @@ export default function HomeView({
 
       {setup ? <SetupTrack steps={setup} /> : null}
 
-      {/* A brand-new creator's empty queue would only repeat setup's first
-          step, so it waits for the first idea. */}
-      {setup && ideas.items?.length === 0 ? null : (
-        <UpNextSection
-          items={ideas.items}
-          shaping={ideas.shaping}
-          failed={ideas.failed}
-          onRetry={ideas.onRetry}
-        />
+      {channels ? (
+        <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+          {channels.ranked?.length === 0 ? (
+            // Connected, nothing posted yet: a row of zeros would read as
+            // failure, so say where the numbers will come from.
+            <div className="bg-card border-border min-w-0 self-start rounded-xl border">
+              <EmptyState
+                icon={BarChart3}
+                title="Your numbers start with your first post"
+                description={
+                  channels.missing
+                    ? `${channels.missing} didn’t load. Refresh to try again.`
+                    : "Views, your typical post and your posting rhythm show up here once you publish."
+                }
+              />
+            </div>
+          ) : (
+            <div className="min-w-0 space-y-8">
+              <StatsBand stats={channels.stats} missing={channels.missing} />
+              <PostsRail
+                ranked={channels.ranked}
+                typical={channels.stats?.typical ?? 0}
+              />
+              {posted && channels.stats && channels.weeks ? (
+                <PostingRhythm
+                  weeks={channels.weeks}
+                  thisWeek={channels.stats.postsThisWeek}
+                  usual={channels.stats.usualPerWeek}
+                />
+              ) : null}
+            </div>
+          )}
+          <div className="min-w-0">{queue}</div>
+        </div>
+      ) : (
+        queue
       )}
-
-      {posts ? (
-        <TopPostsRail ranked={posts.ranked} missing={posts.missing} />
-      ) : null}
     </div>
   );
 }

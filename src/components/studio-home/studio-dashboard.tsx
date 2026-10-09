@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useConnections } from "@/hooks/use-connections";
 import { useIdeaBank } from "@/hooks/use-idea-bank";
@@ -8,6 +8,10 @@ import { publishPlatforms } from "@/lib/db/schema";
 import HomeView from "@/components/studio-home/home-view";
 import { greeting } from "@/components/studio-home/greeting";
 import { rankVideos } from "@/components/studio-home/rank-videos";
+import {
+  channelStats,
+  weeklyPosts,
+} from "@/components/studio-home/channel-stats";
 import { setupSteps } from "@/components/studio-home/setup-steps";
 import { isChannelConnected } from "@/components/studio-home/connection-state";
 import {
@@ -25,7 +29,8 @@ import { useLocalHour } from "@/components/studio-home/use-local-hour";
  * It reshapes itself around where the creator is. A new account sees the
  * composer, a three-step setup and an empty queue that points back at the
  * composer. A set-up account never sees setup again; it gets its queue and
- * its best posts. Channel numbers appear only once a channel is connected.
+ * its numbers and posts. Channel numbers appear only once a channel is
+ * connected.
  * This file only decides; HomeView draws.
  */
 export default function StudioDashboard() {
@@ -37,9 +42,22 @@ export default function StudioDashboard() {
   const channels = channelResource.data;
   const brain = useBrainStarted(!!isSignedIn);
 
-  const ranked = useMemo(
-    () => (channels === null ? null : rankVideos(channels)),
+  // One clock per visit, so the numbers do not shift while the page is open.
+  const [now] = useState(() => Date.now());
+  // Every channel failing leaves nothing to rank; partial failures still
+  // count what did load.
+  const shown = useMemo(
+    () =>
+      channels === null
+        ? null
+        : allChannelsFailed(channels)
+          ? []
+          : rankVideos(channels),
     [channels],
+  );
+  const stats = useMemo(
+    () => (shown === null ? null : channelStats(shown, now)),
+    [shown, now],
   );
   const connectedCount = publishPlatforms.filter((platform) =>
     isChannelConnected(platform, channels, connections),
@@ -72,10 +90,12 @@ export default function StudioDashboard() {
         failed: ideas.loadFailed,
         onRetry: () => void ideas.refresh(),
       }}
-      posts={
+      channels={
         connectedCount > 0
           ? {
-              ranked: allChannelsFailed(channels) ? [] : ranked,
+              ranked: shown,
+              stats,
+              weeks: shown === null ? null : weeklyPosts(shown, now),
               missing: joinPlatformNames(failed),
             }
           : null

@@ -19,7 +19,6 @@ export interface ChirpySize {
 /** Close enough to the edge to feel docked, far enough that the shadow and
  * the grab area never fall off the window. */
 export const CHIRPY_MARGIN = 16;
-const GAP = 12;
 
 export function clampToViewport(
   point: ChirpyPoint,
@@ -70,55 +69,41 @@ export function facing(
   };
 }
 
-/** Shortest the panel may get before it moves beside the bird instead. */
-const MIN_PANEL_HEIGHT = 360;
+/** Where the bird sits once it has flown into the open panel's corner, and
+ * how small it gets there. */
+export const DOCK_INSET = 8;
+export const DOCK_SCALE = 44 / 72;
 
 /**
- * Where the open panel goes and how tall it is. It opens out of the bird on
- * whichever side, above or below, has more room, sharing the bird's edge
- * nearest the window side, and shrinks to that room. When neither side has
- * enough height it sits beside the bird at full height instead, so it never
- * covers the bird it came out of.
+ * Where the open panel goes. It grows out of the bird's own corner: a bird on
+ * the right half shares the panel's right edge, a bird low on the screen
+ * shares its bottom edge, so the panel covers the spot the bird was in and
+ * the bird flies a short way into its top-left corner. Always inside the
+ * window, shrinking only when the window is smaller than the panel.
  */
 export function panelFrame(
   anchor: ChirpyPoint,
   bird: ChirpySize,
   desired: ChirpySize,
   bounds: ChirpySize,
-): ChirpyPoint & ChirpySize {
+): ChirpyPoint & ChirpySize & { origin: string } {
   const side = facing(anchor, bird, bounds);
-  const above = anchor.y - GAP - CHIRPY_MARGIN;
-  const below = bounds.height - (anchor.y + bird.height + GAP) - CHIRPY_MARGIN;
-  const room = Math.max(above, below);
-
-  if (room >= Math.min(desired.height, MIN_PANEL_HEIGHT)) {
-    const height = Math.min(desired.height, room);
-    const point = clampToViewport(
-      {
-        x: side.right ? anchor.x + bird.width - desired.width : anchor.x,
-        y:
-          above >= below
-            ? anchor.y - GAP - height
-            : anchor.y + bird.height + GAP,
-      },
-      { width: desired.width, height },
-      bounds,
-    );
-    return { ...point, width: desired.width, height };
-  }
-
+  const width = Math.min(desired.width, bounds.width - 2 * CHIRPY_MARGIN);
   const height = Math.min(desired.height, bounds.height - 2 * CHIRPY_MARGIN);
   const point = clampToViewport(
     {
-      x: side.right
-        ? anchor.x - GAP - desired.width
-        : anchor.x + bird.width + GAP,
-      y: anchor.y + bird.height / 2 - height / 2,
+      x: side.right ? anchor.x + bird.width - width : anchor.x,
+      y: side.bottom ? anchor.y + bird.height - height : anchor.y,
     },
-    { width: desired.width, height },
+    { width, height },
     bounds,
   );
-  return { ...point, width: desired.width, height };
+  return {
+    ...point,
+    width,
+    height,
+    origin: `${side.right ? "right" : "left"} ${side.bottom ? "bottom" : "top"}`,
+  };
 }
 
 const STORAGE_KEY = "yapper:chirpy-anchor";

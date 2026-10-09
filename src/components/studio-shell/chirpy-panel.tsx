@@ -2,7 +2,6 @@
 
 import { X } from "lucide-react";
 import { StudioGlassSurface } from "@/components/studio-ui/liquid-glass";
-import { Chirpy, type ChirpyExpression } from "@/components/brand/chirpy";
 import { Button } from "@/components/ui/button";
 import type { BlockSuggestion } from "@/lib/brain/client";
 import ChirpyComposer from "@/components/studio-shell/chirpy-composer";
@@ -22,7 +21,6 @@ function introFor(pathname: string): string {
  * the composer. Render-only; StudioChirpy owns the conversation. */
 export default function ChirpyPanel({
   pathname,
-  expression,
   working,
   messages,
   draft,
@@ -34,7 +32,6 @@ export default function ChirpyPanel({
   onClose,
 }: {
   pathname: string;
-  expression: ChirpyExpression;
   working: boolean;
   messages: ChirpyMessage[];
   draft: string;
@@ -49,14 +46,16 @@ export default function ChirpyPanel({
   return (
     <StudioGlassSurface
       render={<section id="chirpy-panel" aria-label="Chat with Chirpy" />}
-      sceneClassName="rounded-[20px]"
+      sceneClassName="h-full rounded-[20px]"
       className="pointer-events-auto grid h-full w-full grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden shadow-xl"
     >
-      <header className="flex h-[46px] items-center gap-2.5 px-3">
-        <Chirpy expression={expression} talking={working} size={30} />
+      <header className="flex h-[60px] items-center gap-3 pr-3 pl-2">
+        {/* The launcher flies into this corner when the panel opens and is
+            the avatar here, so the header only keeps its place. */}
+        <span aria-hidden className="size-11 shrink-0" />
         <div className="min-w-0">
-          <h2 className="text-xs font-bold">Chirpy</h2>
-          <p className="text-muted-foreground truncate text-[11px]">
+          <h2 className="text-sm font-bold">Chirpy</h2>
+          <p className="text-muted-foreground truncate text-xs">
             {working
               ? "Working on it…"
               : draft.trim()
