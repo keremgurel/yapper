@@ -28,7 +28,7 @@ export default function GuidesRail({ guides }: { guides: RailGuide[] }) {
       <div className="marketing-container">
         <div className={styles.heading}>
           <div>
-            <h2 className="type-h2">Guides for getting better at speaking</h2>
+            <h2 className="type-h2">Guides for creating and speaking</h2>
             <p className="type-description">
               Practical routines you can do alone, with topics and drills to use
               straight away.
@@ -65,7 +65,7 @@ export default function GuidesRail({ guides }: { guides: RailGuide[] }) {
         ))}
         <li className={styles.all}>
           <Link href="/blog">
-            <h3>All speaking guides</h3>
+            <h3>All guides</h3>
             <ArrowRight size={22} aria-hidden="true" />
           </Link>
         </li>

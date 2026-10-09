@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type PointerEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type PointerEvent,
+} from "react";
 import {
   animate,
   motion,
@@ -15,6 +22,10 @@ import {
 import { useTheme } from "next-themes";
 import "@glass-sdk/liquid-glass/styles.css";
 import type { LucideIcon } from "lucide-react";
+
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 export interface GlassTab<T extends string> {
   value: T;
@@ -59,6 +70,11 @@ export default function GlassTabs<T extends string>({
   className?: string;
 }) {
   const { resolvedTheme } = useTheme();
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    clientSnapshot,
+    serverSnapshot,
+  );
   const root = useRef<HTMLDivElement>(null);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const gesture = useRef<Gesture | null>(null);
@@ -148,7 +164,7 @@ export default function GlassTabs<T extends string>({
     <GlassScene
       ref={root}
       material="regular"
-      appearance={resolvedTheme === "dark" ? "dark" : "light"}
+      appearance={hydrated && resolvedTheme === "dark" ? "dark" : "light"}
       motion="none"
       className={`studio-showcase-tabs ${className}`}
       style={{ ["--studio-tab-count" as string]: tabs.length }}

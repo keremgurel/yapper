@@ -3,7 +3,11 @@
     "product": "studio",
     "sources": [
       "src/app/page.tsx",
-      "src/components/marketing/product-sections.tsx"
+      "src/components/marketing/product-sections.tsx",
+      "src/components/marketing/home/project-stack.tsx",
+      "src/components/marketing/home/project-stack.module.css",
+      "src/components/marketing/home/home-guides.tsx",
+      "src/components/marketing/home/guides-rail.tsx"
     ]
   },
   "/pricing": {

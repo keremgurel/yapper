@@ -10,7 +10,7 @@ type FeatureDetail = {
 export const featureDetails: Record<string, FeatureDetail> = {
   "idea-capture": {
     preview: "Idea",
-    heading: "Start with the thought you already had.",
+    heading: "A content ideas generator with your context.",
     explanation:
       "Brain keeps your voice, point of view, references and previous videos in context. Add what matters to you and connect your social profile, then ask for ideas you can actually shoot. Keep the original thought attached as you explore an angle in Lab and turn it into a script.",
     availability:
@@ -54,17 +54,17 @@ export const featureDetails: Record<string, FeatureDetail> = {
     explanation:
       "Bring the script into the recorder and choose a readable text size and scroll pace. Check the camera and microphone before a take, then keep the recording with the project you are making.",
     availability:
-      "Camera and microphone access require your permission. Dedicated mobile apps are not available yet.",
+      "Recording and editing use the native Mac app. Camera and microphone access require your permission. A mobile app with teleprompter recording, scan-to-phone handoff and the full Studio editor is coming soon. Windows is not available yet.",
     questions: [
       {
-        question: "Can I change the teleprompter speed?",
+        question: "How do I read a teleprompter naturally on my Mac?",
         answer:
-          "Yes. Adjust the scroll speed and text size to a pace and size you can comfortably read.",
+          "Write in short sentences you would actually say, or use key talking points. Adjust the scroll speed and text size before recording, then do a short test take. Leave room for pauses instead of trying to keep up with a dense script.",
       },
       {
         question: "Is this a free public teleprompter?",
         answer:
-          "The Studio recorder is included in every Studio membership and the 7-day free trial. Yapper Train’s separate speaking practice tools are free.",
+          "The Mac teleprompter recorder is included in every Studio membership and the 7-day free trial. Recording does not use AI credits.",
       },
     ],
   },
