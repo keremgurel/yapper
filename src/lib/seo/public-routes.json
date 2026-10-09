@@ -3,7 +3,11 @@
     "product": "studio",
     "sources": [
       "src/app/page.tsx",
-      "src/components/marketing/product-sections.tsx"
+      "src/components/marketing/product-sections.tsx",
+      "src/components/marketing/home/project-stack.tsx",
+      "src/components/marketing/home/project-stack.module.css",
+      "src/components/marketing/home/home-guides.tsx",
+      "src/components/marketing/home/guides-rail.tsx"
     ]
   },
   "/pricing": {
@@ -18,10 +22,7 @@
   },
   "/features": {
     "product": "studio",
-    "sources": [
-      "src/app/features/page.tsx",
-      "src/data/marketing-navigation.ts"
-    ]
+    "sources": ["src/app/features/page.tsx", "src/data/marketing-navigation.ts"]
   },
   "/features/idea-capture": {
     "product": "studio",
@@ -89,20 +90,14 @@
   },
   "/blog": {
     "product": "studio",
-    "sources": [
-      "src/app/blog/page.tsx"
-    ]
+    "sources": ["src/app/blog/page.tsx"]
   },
   "/privacy": {
     "product": "brand",
-    "sources": [
-      "src/app/privacy/page.tsx"
-    ]
+    "sources": ["src/app/privacy/page.tsx"]
   },
   "/terms": {
     "product": "brand",
-    "sources": [
-      "src/app/terms/page.tsx"
-    ]
+    "sources": ["src/app/terms/page.tsx"]
   }
 }

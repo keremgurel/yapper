@@ -45,7 +45,7 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Send the ideas worth making to your content library.",
       },
     ],
-    seoTitle: "Content ideas for creators, grounded in your voice",
+    seoTitle: "Content ideas generator grounded in your voice",
     seoDescription:
       "Find content ideas rooted in your voice, references and previous videos. Capture thoughts and shape them into hooks and scripts with Yapper Studio’s Brain.",
   },
@@ -86,7 +86,7 @@ export const marketingFeatures: MarketingFeature[] = [
   {
     slug: "teleprompter-recorder",
     eyebrow: "Record",
-    title: "A teleprompter recorder. Say it the way you meant to.",
+    title: "A teleprompter for Mac. Still sound like yourself.",
     shortTitle: "Teleprompter recorder",
     description:
       "Record a talking-head video with your script in view. Set the teleprompter to your pace, choose your camera and microphone, and keep the take with your project.",
@@ -113,9 +113,9 @@ export const marketingFeatures: MarketingFeature[] = [
         description: "Review it and continue directly into the editor.",
       },
     ],
-    seoTitle: "Teleprompter recorder for talking-head videos",
+    seoTitle: "Teleprompter for Mac with video recording",
     seoDescription:
-      "Record creator videos with a built-in teleprompter, camera controls, portrait guides, and a direct path into editing.",
+      "Record on your Mac with a scrolling teleprompter, adjustable pace and camera controls. Keep your script, take and edit together in Yapper Studio.",
   },
   {
     slug: "transcript-video-editor",

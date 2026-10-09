@@ -100,7 +100,7 @@ export const workflowSteps: WorkflowStep[] = [
     title: "Build everything the post needs",
     description:
       "Create platform-ready titles and captions, generate thumbnail options, and prepare the finished video for every destination without rebuilding the post.",
-    href: "/products/train/ai-feedback",
+    href: "/features/social-publishing",
     accent: "#34d399",
     backdrop:
       "radial-gradient(circle at 78% 18%, #34d399 0, transparent 38%), radial-gradient(circle at 18% 82%, #8b5cf6 0, transparent 42%), #132b2a",

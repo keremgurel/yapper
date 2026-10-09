@@ -11,7 +11,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { createPortal } from "react-dom";
 import { GlassButton } from "@glass-sdk/liquid-glass";
 import {
   StudioGlassScene,
@@ -98,7 +97,6 @@ export interface ChirpyCanvasTools {
 }
 
 interface StudioChirpyValue {
-  registerHomeHost: (host: HTMLDivElement | null) => void;
   open: (prompt?: string) => void;
   /** Opens the panel and sends this straight away. */
   run: (prompt: string) => void;
@@ -129,6 +127,7 @@ function ideaTextFrom(command: string): string {
 }
 
 function routeLabel(pathname: string): string {
+  if (pathname === "/studio/home") return "What would you like to work on?";
   if (pathname.startsWith("/studio/ideas")) return "Ideas";
   if (pathname.startsWith("/studio/brain")) return "Brain";
   if (pathname.startsWith("/studio/library")) return "Canvas";
@@ -137,7 +136,55 @@ function routeLabel(pathname: string): string {
   return "Studio";
 }
 
-function openers(pathname: string): string[] {
+function openers(pathname: string): { label: string; prompt: string }[] {
+  if (pathname === "/studio/home") {
+    return [
+      {
+        label: "Cross-post a video",
+        prompt:
+          "Help me prepare a video for cross-posting. Ask which video and channels, then help me adapt the captions and plan the publishing steps.",
+      },
+      {
+        label: "Capture an idea",
+        prompt:
+          "Help me capture a new idea. Ask me what it’s about, then help me shape it into an idea I can save.",
+      },
+      {
+        label: "Find content ideas",
+        prompt:
+          "Suggest five fresh content ideas based on my Brain, audience, and content pillars. Give each one a specific angle and opening hook.",
+      },
+      {
+        label: "Organize my Brain",
+        prompt:
+          "Review my Brain knowledge for gaps, overlap, and outdated context. Suggest specific changes that would make it more useful for creating content.",
+      },
+      {
+        label: "Write a script",
+        prompt:
+          "Help me turn an idea into a script in my voice. Ask which idea, format, and length I have in mind.",
+      },
+      {
+        label: "Improve a hook",
+        prompt:
+          "Help me make a stronger opening hook. Ask for my current hook or topic, then give me five alternatives that fit my audience.",
+      },
+      {
+        label: "Repurpose content",
+        prompt:
+          "Help me turn existing content into something new. Ask what I want to repurpose, then suggest clips, posts, or follow-up ideas.",
+      },
+      {
+        label: "Plan my week",
+        prompt:
+          "Help me plan a week of content around my Brain and content pillars. Ask how often I want to post and which channels I’m focusing on.",
+      },
+    ];
+  }
+  return routeOpeners(pathname).map((prompt) => ({ label: prompt, prompt }));
+}
+
+function routeOpeners(pathname: string): string[] {
   if (pathname.startsWith("/studio/library")) {
     return [
       "Write the script",
@@ -173,18 +220,14 @@ export function useStudioChirpy(): StudioChirpyValue {
   return value;
 }
 
-/** Mount the shared conversation here without sending a prompt or stealing focus. */
-export function HomeChirpy() {
-  const { registerHomeHost } = useStudioChirpy();
-  return <div ref={registerHomeHost} className="min-w-0 scroll-mt-20" />;
-}
-
 export default function StudioChirpy({ children }: { children: ReactNode }) {
   const { isSignedIn } = useUser();
   const pathname = usePathname();
   const router = useRouter();
-  const [homeHost, registerHomeHost] = useState<HTMLDivElement | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [previousPathname, setPreviousPathname] = useState(pathname);
+  const [isOpen, setIsOpen] = useState(pathname === "/studio/home");
+  const [mascotHovered, setMascotHovered] = useState(false);
+  const [mascotPressed, setMascotPressed] = useState(false);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState<ChirpyMessage[]>([]);
   const [working, setWorking] = useState(false);
@@ -196,6 +239,16 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const launcher = useRef<HTMLButtonElement>(null);
   const sending = useRef(false);
   const [focusRequest, setFocusRequest] = useState(0);
+
+  // Apply the route default only on entry. Closing Home stays closed until
+  // the next visit, and automatic opening never focuses the composer.
+  if (previousPathname !== pathname) {
+    setPreviousPathname(pathname);
+    setIsOpen(pathname === "/studio/home");
+    setFocusRequest(0);
+    setMascotHovered(false);
+    setMascotPressed(false);
+  }
 
   const append = useCallback(
     (message: Omit<ChirpyMessage, "id">) =>
@@ -254,8 +307,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         event.key.toLowerCase() === "k"
       ) {
         event.preventDefault();
-        setIsOpen((current) => !current);
-        setFocusRequest((count) => count + 1);
+        if (isOpen) close();
+        else open();
         return;
       }
       if (event.key === "Escape" && isOpen) {
@@ -265,7 +318,7 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isOpen, close]);
+  }, [isOpen, close, open]);
 
   const addKnowledge = useCallback(async (block: NewBrainBlock) => {
     const tools = brainTools.current;
@@ -555,7 +608,6 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
       run,
       registerBrainTools,
       registerCanvasTools,
-      registerHomeHost,
     }),
     [open, run, registerBrainTools, registerCanvasTools],
   );
@@ -563,22 +615,20 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const lastTone = messages.at(-1)?.tone;
   const expression: ChirpyExpression = working
     ? "yap"
-    : lastTone === "trouble"
-      ? "oops"
-      : lastTone === "done"
-        ? "happy"
-        : "idle";
-
-  const inline = pathname === "/studio/home" && homeHost !== null;
+    : mascotPressed
+      ? "wink"
+      : draft.trim() || mascotHovered
+        ? "curious"
+        : lastTone === "trouble"
+          ? "oops"
+          : lastTone === "done"
+            ? "happy"
+            : "idle";
   const panel = (
     <StudioGlassSurface
-      render={<section aria-label="Chat with Chirpy" />}
+      render={<section id="chirpy-panel" aria-label="Chat with Chirpy" />}
       sceneClassName="rounded-[20px]"
-      className={
-        inline
-          ? "grid min-h-[240px] w-full grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden"
-          : "pointer-events-auto grid h-[min(600px,calc(100svh-2rem))] w-[min(560px,calc(100vw-2rem))] grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden shadow-xl"
-      }
+      className="pointer-events-auto grid h-[min(600px,calc(100dvh-7rem))] w-[min(560px,calc(100vw-2rem))] grid-rows-[auto_1px_minmax(0,1fr)_auto] overflow-hidden shadow-xl"
     >
       <header className="flex h-[46px] items-center gap-2.5 px-3">
         <Chirpy expression={expression} talking={working} size={30} />
@@ -587,50 +637,57 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
           <p className="text-muted-foreground truncate text-[11px]">
             {working
               ? "Working on it…"
-              : inline
-                ? "What would you like to work on?"
+              : draft.trim()
+                ? "Ready when you are"
                 : routeLabel(pathname)}
           </p>
         </div>
-        {!inline && (
-          <button
-            type="button"
-            aria-label="Put Chirpy back in the corner"
-            onClick={close}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto grid size-6 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
-          >
-            <X className="size-3.5" aria-hidden="true" />
-          </button>
-        )}
+        <button
+          type="button"
+          aria-label="Put Chirpy back in the corner"
+          onClick={close}
+          className="text-muted-foreground hover:bg-muted hover:text-foreground ml-auto grid size-6 place-items-center rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:outline-none"
+        >
+          <X className="size-3.5" aria-hidden="true" />
+        </button>
       </header>
 
       <div className="bg-border/60" />
 
       <div
         className="flex min-h-0 flex-col gap-3 overflow-y-auto px-4 py-3"
-        style={{ maxHeight: inline ? 400 : undefined }}
         aria-live="polite"
       >
         {messages.length === 0 ? (
-          <div className="mt-auto">
+          <div className="mt-auto shrink-0">
             <p className="text-muted-foreground mb-2.5 text-[11px]">
-              {pathname.startsWith("/studio/brain")
-                ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
-                : "Ask for help with an idea, a script, or your next post."}
+              {pathname === "/studio/home"
+                ? "From a quick idea to your next post. Pick a starting point, then make it yours."
+                : pathname.startsWith("/studio/brain")
+                  ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
+                  : "Ask for help with an idea, a script, or your next post."}
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              className={
+                pathname === "/studio/home"
+                  ? "grid grid-cols-2 gap-1.5"
+                  : "flex flex-wrap gap-1.5"
+              }
+            >
               {openers(pathname).map((opener) => (
-                <GlassButton
-                  key={opener}
+                <Button
+                  key={opener.label}
+                  variant="contrast"
+                  size="sm"
                   type="button"
                   onClick={() => {
-                    setDraft(opener);
+                    setDraft(opener.prompt);
                     setFocusRequest((count) => count + 1);
                   }}
-                  className="px-3 text-xs"
+                  className="h-auto min-h-9 px-3 py-2 text-xs whitespace-normal"
                 >
-                  {opener}
-                </GlassButton>
+                  {opener.label}
+                </Button>
               ))}
             </div>
           </div>
@@ -719,8 +776,8 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
-                                className="mt-1.5 h-7 text-[11px]"
+                                variant="contrast"
+                                className="mt-1.5 text-xs"
                                 onClick={() => void saveSuggestion(suggestion)}
                               >
                                 Add to knowledge
@@ -767,29 +824,46 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
     <StudioChirpyContext.Provider value={value}>
       {children}
       {isSignedIn && !isNativeShell ? (
-        inline ? (
-          createPortal(panel, homeHost)
-        ) : (
-          <div className="pointer-events-none fixed right-4 bottom-4 z-[60]">
-            {isOpen ? (
-              panel
-            ) : (
-              <StudioGlassScene className="rounded-full">
-                <GlassButton
-                  type="button"
-                  size="icon-lg"
-                  ref={launcher}
-                  aria-label="Ask Chirpy"
-                  title="Ask Chirpy · ⌘K"
-                  onClick={() => open()}
-                  className="pointer-events-auto size-[62px]"
-                >
-                  <Chirpy expression={expression} talking={working} size={46} />
-                </GlassButton>
-              </StudioGlassScene>
-            )}
-          </div>
-        )
+        <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex flex-col items-end gap-3">
+          {isOpen ? panel : null}
+          <StudioGlassScene className="rounded-full">
+            <GlassButton
+              type="button"
+              size="icon-lg"
+              ref={launcher}
+              aria-label={isOpen ? "Close Chirpy" : "Ask Chirpy"}
+              aria-expanded={isOpen}
+              aria-controls={isOpen ? "chirpy-panel" : undefined}
+              title={isOpen ? "Close Chirpy · ⌘K" : "Ask Chirpy · ⌘K"}
+              onClick={() => {
+                setMascotPressed(false);
+                if (isOpen) close();
+                else open();
+              }}
+              onPointerEnter={() => setMascotHovered(true)}
+              onPointerLeave={() => {
+                setMascotHovered(false);
+                setMascotPressed(false);
+              }}
+              onPointerDown={() => setMascotPressed(true)}
+              onPointerUp={() => setMascotPressed(false)}
+              onPointerCancel={() => setMascotPressed(false)}
+              onFocus={() => setMascotHovered(true)}
+              onBlur={() => {
+                setMascotHovered(false);
+                setMascotPressed(false);
+              }}
+              className="pointer-events-auto size-[62px]! rounded-full! motion-safe:transition-transform motion-safe:duration-150 motion-safe:active:scale-95"
+            >
+              <Chirpy
+                expression={expression}
+                talking={working}
+                size={46}
+                className="size-[46px]!"
+              />
+            </GlassButton>
+          </StudioGlassScene>
+        </div>
       ) : null}
     </StudioChirpyContext.Provider>
   );

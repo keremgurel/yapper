@@ -3888,32 +3888,21 @@ button.publisher-remix-glass {
 
 /* Clear selection lens: neutral transmission with a single fine rim. */
 .studio-showcase-tabs {
-  --studio-lens-goo: #fff;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   overflow: visible;
 }
-.dark .studio-showcase-tabs {
-  --studio-lens-goo: #fff;
+.studio-tabs-backdrop {
+  border-radius: inherit;
+  background: inherit;
+  pointer-events: none;
 }
 .studio-tab-lens-track {
   position: absolute;
   inset: 5px;
   pointer-events: none;
   z-index: 0;
-}
-.studio-tab-goo {
-  position: absolute !important;
-  inset: 0;
-  opacity: 0.035;
-}
-.studio-tab-goo-shape {
-  position: absolute;
-  top: -5px;
-  left: 0;
-  height: calc(100% + 10px);
-  border-radius: 23px;
 }
 .studio-tab-lens {
   position: absolute;
@@ -4011,9 +4000,6 @@ button.publisher-remix-glass {
   }
 }
 @media (forced-colors: active) {
-  .studio-tab-goo {
-    display: none;
-  }
   .studio-tab-lens-surface {
     background: Canvas;
     border: 2px solid Highlight;
