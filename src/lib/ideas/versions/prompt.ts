@@ -1,6 +1,7 @@
 import type { VersionFormat } from "@/lib/content/formats";
 import { undash } from "@/lib/text/undash";
 import type { PromptContext } from "@/lib/ideas/expand-prompt";
+import { RECREATION_RULES } from "@/lib/ideas/recreation-rules";
 import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 
 /**
@@ -73,7 +74,7 @@ const SHARED_RULES =
 
 const SHAPES: Record<VersionFormat, string> = {
   short:
-    '{"title":"<=8 words","alternatives":["3 to 5 hooks: one spoken sentence each, different mechanisms, the first is the one to use"],' +
+    '{"title":"<=8 words","alternatives":["3 to 5 hooks: one spoken sentence each, the first is the one to use; for a recreation it keeps the reference\'s own opening claim"],' +
     '"script":"everything said AFTER the hook","keyPoints":["3 to 5 bullets"]',
   long:
     '{"title":"the best video title, <=70 characters","alternatives":["the same title plus 2 more options, the best first"],' +
@@ -88,11 +89,9 @@ const FORMAT_RULES: Record<VersionFormat, string> = {
   short:
     "- The hook is spoken first and the script continues from it. Never " +
     "restate or paraphrase a hook in the script.\n" +
-    "- 80 to 130 spoken words after the hook (about 35 to 55 seconds). A story " +
-    "or a multi-step explainer may run up to the reference's own length or " +
-    "220 words.\n" +
+    RECREATION_RULES +
     "- The script's first line says where this is going in one short sentence.\n" +
-    "- One idea. Include one specific takeaway a viewer would send to a friend.\n" +
+    "- One topic. Include one specific takeaway a viewer would send to a friend.\n" +
     "- End on the payoff. No outro, no recap.\n" +
     "- Spoken words only: no headers, bullets, or stage directions.\n",
   long:
