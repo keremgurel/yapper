@@ -33,7 +33,7 @@ Train.
 
 There is no card trial and no top-up. The free first session is the trial.
 
-A feedback session is one recorded attempt that is transcribed, scored on five dimensions and coached. Train Plus is unlimited, the same model speaking-coach uses, decided on October 2. A subscriber's session costs no credits and writes no ledger entry. The plan itself is the entitlement.
+A feedback session is one recorded attempt that is transcribed, scored on five dimensions and coached. Train Plus is unlimited, the same model celpip-practice uses, decided on October 2. A subscriber's session costs no credits and writes no ledger entry. The plan itself is the entitlement.
 
 Fair use: a subscriber can run 30 sessions per UTC day (`TRAIN_FAIR_USE_DAILY_SESSIONS`). The number is not shown on the pricing page, which says only that automated or abusive use may be limited. Speaking-coach uses the same ceiling; its heaviest observed user-week was 27 grades.
 

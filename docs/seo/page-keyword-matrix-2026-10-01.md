@@ -4,7 +4,7 @@ One row per public page. Evidence comes from [the research record](research-2026
 
 Every canonical is self-referencing on `https://ypr.app` and every page is indexable unless stated. Titles get " | Yapper" appended unless they already name the brand. Rendered headings for each page are saved in `research-2026-10-01/local-headings.json`.
 
-Content Optimizer: pending for every page. Semrush was not reachable on October 1 (see the research record). No scores exist and none are claimed. When access returns, follow speaking-coach's process: import the signed-out page, check the import against the rendered page, save settings before taking a baseline, record accepted and rejected suggestions with reasons, and treat the score as a diagnostic.
+Content Optimizer: pending for every page. Semrush was not reachable on October 1 (see the research record). No scores exist and none are claimed. When access returns, follow celpip-practice's process: import the signed-out page, check the import against the rendered page, save settings before taking a baseline, record accepted and rejected suggestions with reasons, and treat the score as a diagnostic.
 
 Priority: P1 is where evidence shows reachable demand that the product can serve today. P2 has demand but a mismatch (gated product, strong incumbents). P3 is kept accurate and not pursued.
 
