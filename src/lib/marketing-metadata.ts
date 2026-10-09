@@ -33,7 +33,7 @@ export function marketingMetadata(
           url: "/og-studio.png",
           width: 1200,
           height: 630,
-          alt: "Yapper Studio. Everything you need to create content, with a transcript video editor preview.",
+          alt: "Yapper Studio. Everything you need to create content at 10x speed. Brainstorm, Script, Record, Edit, Crosspost.",
         },
       ],
     },

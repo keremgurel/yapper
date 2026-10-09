@@ -6,21 +6,24 @@ The distinct URL lets crawlers fetch the Studio artwork without reusing the
 old `/og.png` image cache. Platforms may still cache previously shared URLs.
 
 The artwork was made with the built-in image generation tool, then resized
-and compressed with Sharp. It is an illustrative product composition, not
-a screenshot or customer testimonial.
+and compressed with Sharp. It illustrates the five stages of the creator
+workflow in colored tiles.
 
 ## Generation brief
 
 Create a clean Yapper Studio link-preview image that matches the homepage:
-an almost-white background, black system-sans typography, quiet gray
-supporting copy, generous margins, and a single front-facing video editor
-below the headline. Use the exact headline “Everything you need” / “to
-create content.”, the wordmark “yapper studio”, the URL “ypr.app”, and the
-supporting line “Ideas. Scripts. Recording. Editing. Publishing.” The editor
-combines a transcript, a creator speaking to camera, and a muted blue-gray
-timeline. Keep the main headline legible at thumbnail size. Avoid the old
-orange sphere, speech-practice messaging, rainbow colors, ornamental
-gradients, floating badges, device frames, and watermarks.
+an almost-white background, black system-sans typography, generous margins,
+the wordmark “yapper studio”, and the URL “ypr.app”. Use the exact three-line
+headline “Everything you need” / “to create content” / “at 10x speed.” Below
+it, arrange five equally sized rounded tiles with matching label baselines:
+“Brainstorm” on lilac with an idea bulb and conversation bubbles, “Script”
+on sky blue with a script sheet, “Record” on apricot with a camera, “Edit”
+on sage with scissors and a timeline, and “Crosspost” on butter yellow with
+an outgoing arrow connected to YouTube, Instagram and TikTok. Use coherent,
+restrained tactile illustrations. Keep the headline and labels legible at
+thumbnail size. Avoid extra copy, the old orange sphere, speech-practice
+messaging, saturated rainbow backgrounds, ornamental glows, floating badges,
+device frames, and watermarks.
 
 ## Updating it
 
