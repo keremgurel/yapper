@@ -51,7 +51,7 @@ export const PLATFORMS: Record<PublishPlatform, PlatformSpec> = {
       clientId: "YOUTUBE_CLIENT_ID",
       clientSecret: "YOUTUBE_CLIENT_SECRET",
     },
-    postMeaning: "Posts a public Short.",
+    postMeaning: "Uploads a video with the visibility and audience you choose.",
   },
   tiktok: {
     id: "tiktok",
