@@ -22,7 +22,9 @@ const base = () => ({
       input: {
         mediaKey: "user_test/video.mp4",
         title: "Reviewed title",
-        privacyStatus: "public",
+        privacyStatus: "unlisted",
+        selfDeclaredMadeForKids: false,
+        containsSyntheticMedia: true,
       },
     },
   ],
@@ -39,6 +41,11 @@ describe("scheduling input", () => {
     const parsed = await readScheduleInput(request(base()));
     expect(parsed.scheduledFor.toISOString()).toBe("2026-09-05T15:00:00.000Z");
     expect(parsed.timezone).toBe("Europe/Istanbul");
+    expect(parsed.targets[0].input).toMatchObject({
+      privacyStatus: "unlisted",
+      selfDeclaredMadeForKids: false,
+      containsSyntheticMedia: true,
+    });
     expect(parsed.targets[0].input.mediaKey).toBe("user_test/video.mp4");
   });
   it.each([

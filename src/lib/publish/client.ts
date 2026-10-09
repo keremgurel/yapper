@@ -104,6 +104,8 @@ export interface CrossPostInput {
   /** R2 key of a custom thumbnail/cover image, if the user picked one. */
   thumbnailKey?: string;
   privacyStatus?: "private" | "unlisted" | "public";
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
 }
 
 export interface InstagramPostInput {

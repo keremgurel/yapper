@@ -41,6 +41,11 @@ import SourceList from "@/components/publish/sheet/source-list";
 import TikTokPostReview, { type TikTokReview } from "./tiktok-post-review";
 import type { CrossPostTarget } from "./compose/types";
 
+import YouTubeSettingsFields, {
+  INITIAL_YOUTUBE_SETTINGS,
+  type YouTubeSettings,
+} from "./youtube-settings";
+
 export type { CrossPostTarget } from "./compose/types";
 
 function postSource(
@@ -50,6 +55,7 @@ function postSource(
   idempotencyKey: string,
   tiktokReview?: TikTokReview,
   expectedAccountId?: string,
+  youtubeSettings?: YouTubeSettings,
 ) {
   const { title, body } = outgoingCopy(source, platform, override);
   if (platform === "youtube") {
@@ -61,7 +67,10 @@ function postSource(
         description: body || undefined,
         contentItemId: source.contentItemId,
         thumbnailKey: source.thumbnailKey,
-        privacyStatus: "public",
+        privacyStatus: youtubeSettings?.privacyStatus ?? "private",
+        selfDeclaredMadeForKids:
+          youtubeSettings?.selfDeclaredMadeForKids ?? undefined,
+        containsSyntheticMedia: youtubeSettings?.containsSyntheticMedia,
       },
       idempotencyKey,
     );
@@ -145,6 +154,9 @@ export default function CrossPostSheet({
     single?.initialTitle ?? single?.title ?? "",
   );
   const [caption, setCaption] = useState(single?.initialDescription ?? "");
+  const [youtubeSettings, setYouTubeSettings] = useState(
+    INITIAL_YOUTUBE_SETTINGS,
+  );
   const [posting, setPosting] = useState(false);
   const [scheduling, setScheduling] = useState(false);
   const operation = useRef(false);
@@ -199,12 +211,24 @@ export default function CrossPostSheet({
     });
   };
 
+  const youtubeDescriptionTooLong =
+    chosen.includes("youtube") &&
+    sources.some(
+      (source) =>
+        new TextEncoder().encode(outgoingCopy(source, "youtube", editable).body)
+          .byteLength > 5000,
+    );
+  const youtubeReady =
+    !chosen.includes("youtube") ||
+    (youtubeSettings.selfDeclaredMadeForKids !== null &&
+      !youtubeDescriptionTooLong);
   const tiktokReady =
     !chosen.includes("tiktok") ||
     sources.every((source) => tiktokReviews[source.id]?.ready);
 
   const publish = async () => {
     if (
+      !youtubeReady ||
       !tiktokReady ||
       operation.current ||
       scheduled ||
@@ -231,6 +255,7 @@ export default function CrossPostSheet({
             tiktokReviews[source.id],
             connections?.find((connection) => connection.platform === platform)
               ?.externalAccountId ?? undefined,
+            youtubeSettings,
           ),
         (result) => {
           finished.push({
@@ -338,6 +363,22 @@ export default function CrossPostSheet({
                 }
               />
 
+              {youtubeDescriptionTooLong && (
+                <p role="alert" className="text-destructive text-xs">
+                  Shorten the YouTube description to 5,000 bytes or fewer before
+                  posting or scheduling.
+                </p>
+              )}
+              {chosen.includes("youtube") && (
+                <YouTubeSettingsFields
+                  value={youtubeSettings}
+                  onChange={setYouTubeSettings}
+                  disabled={
+                    posting || scheduling || scheduled || outcomes.length > 0
+                  }
+                />
+              )}
+
               {chosen.includes("tiktok") &&
                 sources.map((source) => (
                   <TikTokPostReview
@@ -382,6 +423,7 @@ export default function CrossPostSheet({
                     done={done}
                     disabled={
                       posting ||
+                      !youtubeReady ||
                       !tiktokReady ||
                       scheduling ||
                       sources.length === 0 ||
@@ -402,8 +444,10 @@ export default function CrossPostSheet({
                   sources={sources}
                   platforms={chosen}
                   override={editable}
+                  youtubeSettings={youtubeSettings}
                   disabled={
                     posting ||
+                    !youtubeReady ||
                     !tiktokReady ||
                     scheduling ||
                     sources.length === 0 ||
@@ -418,8 +462,7 @@ export default function CrossPostSheet({
                 />
               )}
               <p className="text-muted-foreground text-center text-xs">
-                YouTube posts are requested as public. For TikTok, review the
-                audience and posting method above.
+                For TikTok, review the audience and posting method above.
               </p>
             </>
           )}

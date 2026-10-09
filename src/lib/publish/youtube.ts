@@ -24,6 +24,8 @@ export interface YouTubeUploadInput {
   description?: string;
   tags?: string[];
   privacyStatus?: "private" | "unlisted" | "public";
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
 }
 
 export interface YouTubeUploadResult {
@@ -65,8 +67,9 @@ async function startSession(
       categoryId: "22",
     },
     status: {
-      privacyStatus: input.privacyStatus ?? "public",
-      selfDeclaredMadeForKids: false,
+      privacyStatus: input.privacyStatus ?? "private",
+      selfDeclaredMadeForKids: input.selfDeclaredMadeForKids,
+      containsSyntheticMedia: input.containsSyntheticMedia,
     },
   };
   const { response, text } = await fetchBoundedText(

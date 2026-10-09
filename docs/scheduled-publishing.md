@@ -3,8 +3,8 @@
 Studio's Calendar dates remain planning dates. Sending is armed only through
 **Cross-post → Schedule for later**, after choosing the video, copy, cover,
 destination accounts, and a local time. Each destination receives its own
-immutable saved request. YouTube requests the chosen privacy setting (public
-in the current sheet); Instagram publishes a Reel; TikTok receives a draft
+immutable saved request. YouTube saves the chosen privacy, audience, and synthetic-media settings (the
+sheet defaults visibility to Private and requires an audience choice); Instagram publishes a Reel; TikTok receives a draft
 that the creator finishes in TikTok. Platform processing and worker load can
 delay completion beyond the selected time.
 

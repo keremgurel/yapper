@@ -53,6 +53,12 @@ export async function readYouTubePublishRequest(request: Request) {
     }
     tags = body.tags as string[];
   }
+  for (const field of ["selfDeclaredMadeForKids", "containsSyntheticMedia"]) {
+    if (body[field] !== undefined && typeof body[field] !== "boolean")
+      throw new RequestBodyError("invalid_body");
+  }
+  if (description && new TextEncoder().encode(description).byteLength > 5000)
+    throw new RequestBodyError("invalid_body");
   const privacy = body.privacyStatus;
   if (
     privacy !== undefined &&
@@ -67,6 +73,10 @@ export async function readYouTubePublishRequest(request: Request) {
     title,
     description,
     tags,
+    selfDeclaredMadeForKids: body.selfDeclaredMadeForKids as
+      | boolean
+      | undefined,
+    containsSyntheticMedia: body.containsSyntheticMedia as boolean | undefined,
     privacyStatus: privacy as "private" | "unlisted" | "public" | undefined,
   };
 }

@@ -9,9 +9,12 @@ import { useCrossPost } from "@/hooks/use-cross-post";
 import { useThumbnailUpload } from "@/hooks/use-thumbnail-upload";
 import ComposeActions from "./compose-actions";
 import ThumbnailPicker from "./thumbnail-picker";
+import YouTubeSettingsFields, {
+  INITIAL_YOUTUBE_SETTINGS,
+} from "../youtube-settings";
 import type { CrossPostTarget } from "./types";
 
-/** Compose a public YouTube post: title + description, with an opt-in AI draft
+/** Compose a YouTube upload: title + description, with an opt-in AI draft
  * that can match the user's past captions. */
 export default function YouTubeCompose({
   item,
@@ -20,6 +23,9 @@ export default function YouTubeCompose({
   item: CrossPostTarget;
   onDone: () => void;
 }) {
+  const [youtubeSettings, setYouTubeSettings] = useState(
+    INITIAL_YOUTUBE_SETTINGS,
+  );
   const [title, setTitle] = useState(item.initialTitle ?? item.title);
   const [description, setDescription] = useState(item.initialDescription ?? "");
   const [matchStyle, setMatchStyle] = useState(false);
@@ -27,6 +33,9 @@ export default function YouTubeCompose({
   const [genError, setGenError] = useState<string | null>(null);
   const { state, error, result, post } = useCrossPost();
   const busy = state === "posting";
+  const descriptionBytes = new TextEncoder().encode(
+    description.trim(),
+  ).byteLength;
   const thumb = useThumbnailUpload({
     key: item.thumbnailKey,
     previewUrl: item.thumbnailPreviewUrl,
@@ -62,7 +71,9 @@ export default function YouTubeCompose({
   };
 
   const onPost = () => {
-    if (!title.trim() || busy) return;
+    const audience = youtubeSettings.selfDeclaredMadeForKids;
+    if (!title.trim() || busy || audience === null || descriptionBytes > 5000)
+      return;
     void post((idempotencyKey) =>
       crossPostToYouTube(
         {
@@ -72,7 +83,8 @@ export default function YouTubeCompose({
           description: description.trim() || undefined,
           contentItemId: item.contentItemId,
           thumbnailKey: thumb.thumbnailKey ?? undefined,
-          privacyStatus: "public",
+          ...youtubeSettings,
+          selfDeclaredMadeForKids: audience,
         },
         idempotencyKey,
       ),
@@ -82,7 +94,7 @@ export default function YouTubeCompose({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-muted-foreground text-xs">
-        Publishes directly to your channel as a public video.
+        Uploads to your channel with the visibility and audience you choose.
       </p>
 
       <div className="border-border flex flex-col gap-2 rounded-lg border p-3">
@@ -150,6 +162,19 @@ export default function YouTubeCompose({
         />
       </label>
 
+      {descriptionBytes > 5000 && (
+        <p role="alert" className="text-destructive text-xs">
+          Shorten the description: YouTube allows 5,000 bytes, including emoji
+          and accented characters.
+        </p>
+      )}
+
+      <YouTubeSettingsFields
+        value={youtubeSettings}
+        onChange={setYouTubeSettings}
+        disabled={busy || state === "done"}
+      />
+
       <ThumbnailPicker
         previewUrl={thumb.previewUrl}
         uploading={thumb.uploading}
@@ -166,7 +191,11 @@ export default function YouTubeCompose({
         postLabel="Post to YouTube"
         onPost={onPost}
         onDone={onDone}
-        disabled={!title.trim()}
+        disabled={
+          !title.trim() ||
+          youtubeSettings.selfDeclaredMadeForKids === null ||
+          descriptionBytes > 5000
+        }
       />
     </div>
   );
