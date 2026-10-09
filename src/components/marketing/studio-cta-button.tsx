@@ -3,10 +3,8 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 import { Button } from "@/components/ui/button";
-import { useStudioCta } from "@/hooks/use-studio-cta";
 
-/** The primary Studio button on marketing pages: open Studio for members,
- * start the trial for everyone else. */
+/** One consistent entry point into Studio from the public website. */
 export default function StudioCtaButton({
   size,
   className,
@@ -16,11 +14,10 @@ export default function StudioCtaButton({
   className?: string;
   onClick?: () => void;
 }) {
-  const cta = useStudioCta();
   return (
-    <Button asChild size={size} className={className}>
-      <Link href={cta.href} onClick={onClick}>
-        {cta.label}
+    <Button asChild variant="titanium" size={size} className={className}>
+      <Link href="/studio/home" onClick={onClick}>
+        Access Studio
       </Link>
     </Button>
   );

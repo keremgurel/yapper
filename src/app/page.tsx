@@ -7,7 +7,6 @@ import ProjectStack from "@/components/marketing/home/project-stack";
 import HomeGuides from "@/components/marketing/home/home-guides";
 import { StudioStart } from "@/components/marketing/product-sections";
 import StudioCtaButton from "@/components/marketing/studio-cta-button";
-import { Button } from "@/components/ui/button";
 import { marketingMetadata } from "@/lib/marketing-metadata";
 import HomeJsonLd, { ProductJsonLd } from "@/app/home-json-ld";
 
@@ -38,9 +37,6 @@ export default function HomePage() {
               </p>
               <div className="marketing-actions">
                 <StudioCtaButton size="lg" />
-                <Button asChild size="lg" variant="outline">
-                  <Link href="/features">See all features</Link>
-                </Button>
               </div>
               <p className="marketing-note">
                 7 days free. $24.99 monthly or $199.99 yearly. Cancel anytime.

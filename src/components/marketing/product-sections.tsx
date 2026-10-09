@@ -33,8 +33,7 @@ export function WorkflowLinks() {
   );
 }
 
-/** The closing call to action on Studio pages: start the trial, or open
- * Studio and look around first. */
+/** The closing invitation to access Studio. */
 export function StudioStart() {
   return (
     <section id="start" className="marketing-section marketing-rule">

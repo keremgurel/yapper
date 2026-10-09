@@ -13,17 +13,21 @@ import { Button } from "@/components/ui/button";
  */
 export default function SiteAccountControls({
   showSignup = true,
+  showSignIn = true,
 }: {
   showSignup?: boolean;
+  showSignIn?: boolean;
 }) {
   return (
     <>
       <Show when="signed-out">
-        <SignInButton mode="modal">
-          <Button type="button" size="sm" variant="ghost">
-            Sign in
-          </Button>
-        </SignInButton>
+        {showSignIn && (
+          <SignInButton mode="modal">
+            <Button type="button" size="sm" variant="ghost">
+              Sign in
+            </Button>
+          </SignInButton>
+        )}
         {showSignup && (
           <SignUpButton mode="modal">
             <Button type="button" size="sm" className="hidden sm:inline-flex">

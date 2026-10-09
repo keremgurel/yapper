@@ -8,7 +8,6 @@ import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
 import SiteAccountControls from "@/components/account/site-account-controls";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import { Button } from "@/components/ui/button";
-import { useHeaderCta } from "./use-header-cta";
 import {
   isPanel,
   siteContextFor,
@@ -30,7 +29,7 @@ export default function SiteHeader({
   const pathname = usePathname();
   const context = siteContextFor(pathname);
   const navigation = siteNavigation[context];
-  const cta = useHeaderCta(navigation.cta);
+  const cta = navigation.cta;
   const {
     root,
     panel,
@@ -113,9 +112,16 @@ export default function SiteHeader({
               <ArrowUpRight size={13} aria-hidden="true" />
             </Link>
           )}
-          {accountControls && <SiteAccountControls showSignup={false} />}
+          {accountControls && (
+            <SiteAccountControls showSignup={false} showSignIn={!cta} />
+          )}
           {cta && (
-            <Button asChild size="sm" className="site-header-cta">
+            <Button
+              asChild
+              variant="titanium"
+              size="sm"
+              className="site-header-cta"
+            >
               <Link href={cta.href} onClick={close}>
                 {cta.label}
               </Link>

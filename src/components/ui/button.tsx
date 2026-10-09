@@ -10,6 +10,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "btn-accent-metal",
+        titanium: "btn-accent-metal btn-titanium-metal",
         contrast:
           "bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200",
         destructive:
