@@ -22,6 +22,6 @@ describe("Studio public site", () => {
     expect(links).toContainEqual({ label: "Blog", href: "/blog" });
     expect(siteNavigation.studio.cta?.href).toBe("/pricing");
     expect(siteNavigation.studio.switchTo).toBeUndefined();
-    expect(siteNavigation.studio.product?.href).toBe("/");
+    expect(siteNavigation.studio.product).toBeUndefined();
   });
 });

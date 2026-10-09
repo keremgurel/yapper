@@ -2,7 +2,7 @@ import { featureGroups } from "@/data/marketing-navigation";
 import { marketingFeatures } from "@/data/marketing-features";
 
 /**
- * The public site is Studio. Speaking practice moved to speakingpractice.ai.
+ * Yapper is the content creation product. Training lives at speakingpractice.ai.
  */
 export type SiteContext = "brand" | "studio";
 
@@ -72,7 +72,6 @@ export const siteNavigation: Record<SiteContext, SiteNavigation> = {
     ],
   },
   studio: {
-    product: { label: "Studio", href: "/" },
     items: [
       {
         label: "Features",
