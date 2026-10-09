@@ -58,35 +58,29 @@ const nextConfig: NextConfig = {
         destination: "/blog/:path+",
         statusCode: 301,
       },
-      // Straight to the final URL, so no old link takes two hops.
-      {
-        source: "/freestyle",
-        destination: "/freestyle-speech",
-        statusCode: 301,
-      },
-      {
-        source: "/freestyle/",
-        destination: "/freestyle-speech",
-        statusCode: 301,
-      },
-      {
-        source: "/freestyle-speech/",
-        destination: "/freestyle-speech",
-        statusCode: 301,
-      },
-      // The topic generator moved under /training so every practice tool lives
-      // in one place. The old top-level URL is the one that ranks and the one
-      // every published blog post links to, so it keeps a permanent redirect.
-      {
-        source: "/random-topic-generator",
-        destination: "/training/random-topic-generator",
-        statusCode: 301,
-      },
-      {
-        source: "/random-topic-generator/",
-        destination: "/training/random-topic-generator",
-        statusCode: 301,
-      },
+      // Speaking practice moved to its own site on October 9, 2026. Every
+      // old practice URL goes there in one hop; the words per minute tool
+      // keeps its own page.
+      ...[
+        "/freestyle",
+        "/freestyle-speech",
+        "/random-topic-generator",
+        "/training",
+        "/training/:path*",
+        "/products/train",
+        "/products/train/:path*",
+        "/progress",
+        "/progress/:path*",
+      ].map((source) => ({
+        source,
+        destination: "https://speakingpractice.ai/",
+        statusCode: 301 as const,
+      })),
+      ...["/tools", "/tools/words-per-minute"].map((source) => ({
+        source,
+        destination: "https://speakingpractice.ai/words-per-minute",
+        statusCode: 301 as const,
+      })),
       {
         source: "/:path*",
         has: [{ type: "host", value: "www.ypr.app" }],

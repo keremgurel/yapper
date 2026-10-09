@@ -24,7 +24,6 @@ const CALLERS = [
   "lib/inspiration/web-resource.ts",
   "lib/publish/caption.ts",
   "lib/studio/scene/scene-model-call.ts",
-  "lib/training-feedback/coach.ts",
   "lib/voice/derive.ts",
 ] as const;
 

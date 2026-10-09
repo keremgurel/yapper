@@ -15,7 +15,6 @@ import { AuroraSection } from "./sections/aurora-section";
 import { GlassSection } from "./sections/glass-section";
 import { ButtonSection } from "./sections/button-section";
 import { FaqSection } from "./sections/faq-section";
-import { ControlsSection } from "./sections/controls-section";
 import { SurfaceSection } from "./sections/surface-section";
 import { MascotSection } from "./sections/mascot-section";
 
@@ -44,7 +43,6 @@ export function StyleGuideClient() {
       <GlassSection />
       <ButtonSection />
       <FaqSection />
-      <ControlsSection />
       <SurfaceSection />
       <MascotSection />
       <footer

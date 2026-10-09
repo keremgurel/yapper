@@ -22,9 +22,7 @@ export default function PostPractice({
       <Button asChild>
         <Link
           href={
-            creator
-              ? "/features/idea-capture"
-              : "/training/random-topic-generator"
+            creator ? "/features/idea-capture" : "https://speakingpractice.ai/"
           }
         >
           {creator ? "Explore Studio ideas" : "Get a topic"}

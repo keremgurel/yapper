@@ -13,10 +13,8 @@ describe("Studio public site", () => {
   ])("uses Studio navigation at %s", (path) => {
     expect(siteContextFor(path)).toBe("studio");
   });
-  it("keeps legacy coaching routes in their billing context", () => {
-    expect(siteContextFor("/products/train/ai-feedback")).toBe("train");
-    expect(siteContextFor("/training/interview-prep")).toBe("train");
-    expect(siteContextFor("/trainingwheels")).toBe("studio");
+  it("treats the video manager as Studio", () => {
+    expect(siteContextFor("/history")).toBe("studio");
   });
   it("has one pricing destination and keeps the blog discoverable", () => {
     const links = siteNavigation.studio.items.filter((item) => !isPanel(item));

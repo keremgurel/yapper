@@ -54,7 +54,10 @@ export default function BlogPage() {
           </p>
           <p className="marketing-note">
             Put a guide into practice with our{" "}
-            <Link href="/tools" className="underline underline-offset-4">
+            <Link
+              href="https://speakingpractice.ai/"
+              className="underline underline-offset-4"
+            >
               free speaking tools
             </Link>
             .

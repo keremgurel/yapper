@@ -20,8 +20,7 @@ import NavPanel from "./nav-panel";
 import { useHeaderMenus } from "./use-header-menus";
 
 /**
- * Yapper navigation on the public site. Training lives at speakingpractice.ai;
- * legacy coaching routes retain their own controls.
+ * Yapper navigation on the public site. Training lives at speakingpractice.ai.
  */
 export default function SiteHeader({
   accountControls = true,
