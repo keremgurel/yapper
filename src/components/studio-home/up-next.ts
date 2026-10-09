@@ -1,11 +1,14 @@
-import type { ContentSummary } from "@/lib/content/client";
+import type { ContentStatus } from "@/lib/db/schema";
+
+type Queued = {
+  status: ContentStatus;
+  scheduledFor: string | null;
+  updatedAt: string;
+};
 
 /** The rows Home surfaces first: dated work in date order, then the most
  * recently touched drafts. Posted items are finished and stay out. */
-export function upNextItems(
-  items: ContentSummary[],
-  limit = 5,
-): ContentSummary[] {
+export function upNextItems<T extends Queued>(items: T[], limit = 5): T[] {
   const active = items.filter((item) => item.status !== "posted");
   const dated = active
     .filter((item) => item.status === "ready" && item.scheduledFor)
