@@ -29,7 +29,7 @@
 /* The shelf starts on the page gutter and runs off the right edge, so it is
    obvious there is more to the side. */
 .rail {
-  --gutter: max(20px, calc((100vw - 1360px) / 2 + 32px));
+  --gutter: 20px;
   display: flex;
   gap: 16px;
   padding: 4px var(--gutter) 20px;
@@ -122,5 +122,16 @@
 @media (max-width: 640px) {
   .arrows {
     display: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .rail {
+    --gutter: 24px;
+  }
+}
+@media (min-width: 1024px) {
+  .rail {
+    --gutter: max(32px, calc((100% - 1360px) / 2 + 32px));
   }
 }

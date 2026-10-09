@@ -1,6 +1,11 @@
 "use client";
 
-import { useId, useState, type CSSProperties } from "react";
+import {
+  useId,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+} from "react";
 import Image from "next/image";
 import { Check, ArrowUpRight, RotateCcw, Send, Sparkles } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -11,6 +16,9 @@ import { useDemoPlayback } from "./use-demo-playback";
 
 const PUBLISH_FRAMES = 18;
 const PUBLISH_FRAME_MS = 1500;
+const subscribeHydration = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 /** How long one full pass of this demo takes. */
 export const PUBLISH_DEMO_MS = PUBLISH_FRAMES * PUBLISH_FRAME_MS;
 
@@ -55,6 +63,11 @@ export function PublishingScene({
 }) {
   const id = useId();
   const { resolvedTheme } = useTheme();
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    clientSnapshot,
+    serverSnapshot,
+  );
   const generating = frame >= 1 && frame < 4;
   const written = frame >= 4;
   const remixing = frame >= 5 && frame < 8;
@@ -223,7 +236,7 @@ export function PublishingScene({
             size="sm"
             colorVariant="ocean"
             active={playing && preparing}
-            theme={resolvedTheme === "dark" ? "dark" : "light"}
+            theme={hydrated && resolvedTheme === "dark" ? "dark" : "light"}
             strength={0.6}
           >
             <button
