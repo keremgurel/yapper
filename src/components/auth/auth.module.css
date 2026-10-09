@@ -1,0 +1,285 @@
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--sg-bg);
+  color: var(--sg-text);
+}
+
+.header {
+  display: flex;
+  min-height: 88px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.themeSwitch {
+  width: 52px;
+  height: 32px;
+}
+
+.main {
+  flex: 1;
+  display: grid;
+  align-items: center;
+  padding-block: 72px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  align-items: center;
+  gap: clamp(64px, 8vw, 128px);
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+}
+
+.product {
+  margin-bottom: 24px;
+  color: var(--sg-text-muted);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.headline {
+  font-size: clamp(40px, 4.3vw, 56px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin-top: 24px;
+  color: var(--sg-text-muted);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.workflow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 460px;
+  margin-top: 48px;
+  list-style: none;
+  padding: 0;
+}
+
+.workflow li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: 100%;
+  border-radius: 20px;
+}
+.tile[data-tone="idea"] {
+  background: #e7ddfa;
+  color: #594576;
+}
+.tile[data-tone="script"] {
+  background: #dceafa;
+  color: #415873;
+}
+.tile[data-tone="record"] {
+  background: #f6dfcb;
+  color: #80533e;
+}
+.tile[data-tone="edit"] {
+  background: #dceadf;
+  color: #405e4b;
+}
+.tile[data-tone="publish"] {
+  background: #f4edc9;
+  color: #6a5b29;
+}
+
+.form {
+  min-width: 0;
+  width: 100%;
+}
+
+.root,
+.cardBox {
+  width: 100%;
+  max-width: none;
+}
+
+.cardBox,
+.card {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.card {
+  padding: 0;
+  gap: 28px;
+}
+
+.formHeader {
+  text-align: left;
+  gap: 12px;
+}
+
+.title {
+  color: var(--sg-text);
+  font-size: 32px;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+}
+
+.subtitle {
+  color: var(--sg-text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.socialButton {
+  min-height: 52px;
+  border: 1px solid var(--sg-border-strong);
+  border-radius: 10px;
+  background: var(--sg-surface);
+  color: var(--sg-text);
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.socialButton:hover {
+  background: var(--sg-surface-sunken);
+}
+
+/* The monochrome Apple asset must follow the page's CSS-variable theme. */
+.appleIcon {
+  filter: brightness(0);
+}
+
+:global(.dark) .appleIcon {
+  filter: brightness(0) invert(1);
+}
+
+.input {
+  min-height: 52px;
+  padding-inline: 16px;
+  border: 1px solid var(--sg-border-strong);
+  background: var(--sg-surface);
+  color: var(--sg-text);
+  border-radius: 10px;
+  font-size: 16px;
+  box-shadow: none;
+}
+
+.label {
+  color: var(--sg-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.primary {
+  width: 100%;
+  min-height: 52px;
+  text-transform: none;
+}
+
+.clerkFooter {
+  margin-top: 28px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.footerAction {
+  justify-content: flex-start;
+  padding: 0;
+  margin-bottom: 24px;
+  background: transparent;
+}
+
+.textLink {
+  color: var(--sg-text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.divider {
+  background: var(--sg-border);
+}
+
+.dividerText {
+  color: var(--sg-text-muted);
+  font-size: 13px;
+}
+
+.loading {
+  min-height: 400px;
+  display: grid;
+  place-items: center;
+  color: var(--sg-text-muted);
+  font-size: 15px;
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 24px;
+  font-size: 13px;
+  color: var(--sg-text-muted);
+}
+
+.footer nav {
+  display: flex;
+  gap: 24px;
+}
+
+.page a:focus-visible,
+.input:focus-visible,
+.socialButton:focus-visible {
+  outline: 2px solid var(--sg-text);
+  outline-offset: 4px;
+}
+
+@media (max-width: 899px) {
+  .layout {
+    display: block;
+    max-width: 400px;
+  }
+  .story {
+    display: none;
+  }
+  .main {
+    padding-block: 48px 64px;
+  }
+}
+
+@media (max-width: 479px) {
+  .header {
+    min-height: 80px;
+  }
+  .main {
+    align-items: start;
+    padding-block: 48px;
+  }
+  .title {
+    font-size: 30px;
+  }
+  .footer {
+    font-size: 12px;
+    gap: 16px;
+  }
+  .footer nav {
+    gap: 16px;
+  }
+}

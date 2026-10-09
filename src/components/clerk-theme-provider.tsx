@@ -17,7 +17,12 @@ export default function ClerkThemeProvider({
   const { resolvedTheme } = useTheme();
   return (
     <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/studio/home"
+      signUpFallbackRedirectUrl="/studio/home"
       appearance={{
+        cssLayerName: "clerk",
         theme: resolvedTheme === "dark" ? dark : undefined,
         variables: { colorPrimary: "#06b6d4" },
       }}

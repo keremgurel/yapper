@@ -38,27 +38,33 @@ const isProtectedApi = createRouteMatcher([
 // Authentication belongs only in front of Studio and routes that call Clerk's
 // server helpers. Marketing, blog, and free-practice pages stay fully static,
 // so crawler traffic cannot spend Fluid CPU merely by hitting a cached page.
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedApi(request)) {
+export default clerkMiddleware(
+  async (auth, request) => {
+    if (isProtectedApi(request)) {
+      await auth.protect();
+      return;
+    }
+
+    if (!isStudioPage(request) || isNativeAuthHandoff(request)) return;
+
+    // The native shell renders its own sign-in handoff, then establishes a real
+    // Clerk session before it can call any protected API. Let that signed-out
+    // shell render; the web version always redirects to Clerk first.
+    const nativeShell = request.headers
+      .get("user-agent")
+      ?.includes("YapperStudioNative/");
+    if (nativeShell) return;
+
     await auth.protect();
-    return;
-  }
-
-  if (!isStudioPage(request) || isNativeAuthHandoff(request)) return;
-
-  // The native shell renders its own sign-in handoff, then establishes a real
-  // Clerk session before it can call any protected API. Let that signed-out
-  // shell render; the web version always redirects to Clerk first.
-  const nativeShell = request.headers
-    .get("user-agent")
-    ?.includes("YapperStudioNative/");
-  if (nativeShell) return;
-
-  await auth.protect();
-});
+  },
+  { signInUrl: "/sign-in", signUpUrl: "/sign-up" },
+);
 
 export const config = {
   matcher: [
+    // Public Clerk pages need context for verification and callback steps.
+    "/sign-in/:path*",
+    "/sign-up/:path*",
     // /studio itself is a static marketing page; authenticated tools are below it.
     "/studio/:path+",
     "/api/admin/:path*",
