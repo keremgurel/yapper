@@ -45,4 +45,13 @@ describe("parseExpandIdeaInput", () => {
       }),
     ).toBeNull();
   });
+
+  it("clips a long reference title instead of refusing the idea", () => {
+    const caption = "NEW APP STORE CONNECT FEATURE ".repeat(20);
+    const input = parseExpandIdeaInput({
+      transcript: "make our own version",
+      source: { url: "https://www.instagram.com/reel/x/", title: caption },
+    });
+    expect(input?.source?.title).toBe(caption.slice(0, 300));
+  });
 });
