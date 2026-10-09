@@ -50,8 +50,10 @@ export default function IdeasPage() {
     loadFailed,
     refreshFailed,
     sourceUrls,
+    analysisErrors,
     capture,
     importInstagramSaves,
+    retry: retryAnalysis,
     refresh,
     patchRow,
   } = useIdeaBank();
@@ -164,6 +166,26 @@ export default function IdeasPage() {
             </button>
           </p>
         )}
+        {[...analysisErrors].map((id) => (
+          <div
+            key={id}
+            role="alert"
+            className="text-destructive mb-3 flex items-center gap-3 text-sm"
+          >
+            <p>
+              Chirpy couldn’t write the first pass for{" "}
+              {items.find((row) => row.id === id)?.title || "your new idea"}.
+              Your note and the reference are saved.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => retryAnalysis(id)}
+            >
+              Retry
+            </Button>
+          </div>
+        ))}
         {Object.entries(statusErrors).map(([id, retry]) => (
           <div
             key={id}

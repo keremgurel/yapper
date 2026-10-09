@@ -9,6 +9,9 @@ const REFERENCE_TYPES = new Set<ReferenceContentType>([
   "web-resource",
 ]);
 const MAX_TOTAL_PROMPT_CHARS = 40_000;
+// Matches the stored source title. A reference's title is often its whole
+// caption (Instagram reels run long), so it is clipped rather than refused.
+const SOURCE_TITLE_MAX = 300;
 
 const boundedString = (value: unknown, max: number): string | undefined =>
   typeof value === "string" && value.trim() && value.length <= max
@@ -34,7 +37,10 @@ export function parseExpandIdeaInput(value: unknown): IdeaInput | null {
       return null;
     const candidate = raw.source as Record<string, unknown>;
     const sourceUrl = boundedString(candidate.url, 2_048);
-    const title = boundedString(candidate.title, 300);
+    const title =
+      typeof candidate.title === "string" && candidate.title.trim()
+        ? candidate.title.slice(0, SOURCE_TITLE_MAX)
+        : undefined;
     const sourceTranscript = boundedString(candidate.transcript, 30_000);
     const summary = boundedString(candidate.summary, 4_000);
     const platform = boundedString(candidate.platform, 30);
