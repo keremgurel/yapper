@@ -37,55 +37,69 @@ describe("youtubeSnippetText", () => {
 });
 
 describe("uploadYouTubeVideo", () => {
-  it("requests public publishing by default", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "youtube-upload-test-"));
-    const filePath = join(directory, "video.mp4");
-    await writeFile(filePath, new Uint8Array([1, 2, 3, 4]));
-    let uploadedBytes: number[] = [];
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce(
-        new Response(null, {
-          status: 200,
-          headers: { location: "https://upload.example/session" },
-        }),
-      )
-      .mockImplementationOnce(async (_url, init: RequestInit) => {
-        uploadedBytes = Array.from(
-          new Uint8Array(await new Response(init.body).arrayBuffer()),
+  it.each([undefined, "private", "unlisted", "public"] as const)(
+    "preserves visibility %s and audience disclosures",
+    async (privacyStatus) => {
+      const directory = await mkdtemp(join(tmpdir(), "youtube-upload-test-"));
+      const filePath = join(directory, "video.mp4");
+      await writeFile(filePath, new Uint8Array([1, 2, 3, 4]));
+      let uploadedBytes: number[] = [];
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(null, {
+            status: 200,
+            headers: { location: "https://upload.example/session" },
+          }),
+        )
+        .mockImplementationOnce(async (_url, init: RequestInit) => {
+          uploadedBytes = Array.from(
+            new Uint8Array(await new Response(init.body).arrayBuffer()),
+          );
+          return Response.json({ id: "video-1" }, { status: 200 });
+        });
+      vi.stubGlobal("fetch", fetchMock);
+
+      try {
+        await uploadYouTubeVideo(
+          {
+            accessToken: "token",
+            filePath,
+            byteLength: 4,
+            contentType: "video/mp4",
+            title: "Review video",
+            privacyStatus,
+            selfDeclaredMadeForKids: true,
+            containsSyntheticMedia: true,
+          },
+          createPublishWorkflow(new AbortController().signal),
         );
-        return Response.json({ id: "video-1" }, { status: 200 });
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+
+      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      const metadata = JSON.parse(String(init.body)) as {
+        status: {
+          privacyStatus: string;
+          selfDeclaredMadeForKids: boolean;
+          containsSyntheticMedia: boolean;
+        };
+      };
+      expect(metadata.status).toEqual({
+        privacyStatus: privacyStatus ?? "private",
+        selfDeclaredMadeForKids: true,
+        containsSyntheticMedia: true,
       });
-    vi.stubGlobal("fetch", fetchMock);
-
-    try {
-      await uploadYouTubeVideo(
-        {
-          accessToken: "token",
-          filePath,
-          byteLength: 4,
-          contentType: "video/mp4",
-          title: "Public video",
-        },
-        createPublishWorkflow(new AbortController().signal),
-      );
-    } finally {
-      await rm(directory, { recursive: true, force: true });
-    }
-
-    const init = fetchMock.mock.calls[0][1] as RequestInit;
-    const metadata = JSON.parse(String(init.body)) as {
-      status: { privacyStatus: string };
-    };
-    expect(metadata.status.privacyStatus).toBe("public");
-    const upload = fetchMock.mock.calls[1][1] as RequestInit;
-    expect(upload.headers).toMatchObject({
-      "Content-Length": "4",
-      "Content-Range": "bytes 0-3/4",
-      "Content-Type": "video/mp4",
-    });
-    expect(uploadedBytes).toEqual([1, 2, 3, 4]);
-  });
+      const upload = fetchMock.mock.calls[1][1] as RequestInit;
+      expect(upload.headers).toMatchObject({
+        "Content-Length": "4",
+        "Content-Range": "bytes 0-3/4",
+        "Content-Type": "video/mp4",
+      });
+      expect(uploadedBytes).toEqual([1, 2, 3, 4]);
+    },
+  );
 
   it("resumes the same session after an ambiguous provider failure", async () => {
     const directory = await mkdtemp(join(tmpdir(), "youtube-resume-test-"));

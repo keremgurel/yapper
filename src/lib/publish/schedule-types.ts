@@ -20,6 +20,8 @@ export interface ScheduledPublishInput {
   tags?: string[];
   caption?: string;
   privacyStatus?: "private" | "unlisted" | "public";
+  selfDeclaredMadeForKids?: boolean;
+  containsSyntheticMedia?: boolean;
   thumbnailKey?: string;
 }
 

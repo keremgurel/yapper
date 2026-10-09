@@ -121,7 +121,9 @@ export async function publishYouTube(
           title,
           description: body.description,
           tags: body.tags,
-          privacyStatus: body.privacyStatus ?? "public",
+          privacyStatus: body.privacyStatus ?? "private",
+          selfDeclaredMadeForKids: body.selfDeclaredMadeForKids,
+          containsSyntheticMedia: body.containsSyntheticMedia,
         },
         workflow,
       );

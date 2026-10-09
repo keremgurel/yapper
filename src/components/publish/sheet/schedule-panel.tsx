@@ -19,6 +19,8 @@ import {
   schedulePosts,
 } from "@/lib/publish/schedule-client";
 
+import type { YouTubeSettings } from "../youtube-settings";
+
 export default function SchedulePanel({
   sources,
   platforms,
@@ -27,6 +29,7 @@ export default function SchedulePanel({
   onScheduled,
   onBusy,
   accounts,
+  youtubeSettings,
 }: {
   sources: CrossPostTarget[];
   platforms: PublishPlatform[];
@@ -35,6 +38,7 @@ export default function SchedulePanel({
   onScheduled: () => void;
   onBusy: (busy: boolean) => void;
   accounts: Partial<Record<PublishPlatform, string>>;
+  youtubeSettings: YouTubeSettings;
 }) {
   const [open, setOpen] = useState(false);
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -103,7 +107,9 @@ export default function SchedulePanel({
                   ? {
                       title: copy.title,
                       description: copy.body,
-                      privacyStatus: "public",
+                      ...youtubeSettings,
+                      selfDeclaredMadeForKids:
+                        youtubeSettings.selfDeclaredMadeForKids ?? undefined,
                     }
                   : platform === "instagram" || platform === "facebook"
                     ? { caption: copy.body || copy.title }

@@ -20,6 +20,34 @@ describe("bounded publish requests", () => {
     ).resolves.toMatchObject({ title: "Video", tags: ["one"] });
   });
 
+  it("preserves explicit audience disclosures and enforces the UTF-8 limit", async () => {
+    await expect(
+      readYouTubePublishRequest(
+        request({
+          title: "Video",
+          privacyStatus: "unlisted",
+          selfDeclaredMadeForKids: false,
+          containsSyntheticMedia: true,
+          description: "é".repeat(2500),
+        }),
+      ),
+    ).resolves.toMatchObject({
+      privacyStatus: "unlisted",
+      selfDeclaredMadeForKids: false,
+      containsSyntheticMedia: true,
+    });
+    await expect(
+      readYouTubePublishRequest(
+        request({ title: "Video", description: "é".repeat(2501) }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_body" });
+    await expect(
+      readYouTubePublishRequest(
+        request({ title: "Video", selfDeclaredMadeForKids: "false" }),
+      ),
+    ).rejects.toMatchObject({ code: "invalid_body" });
+  });
+
   it("rejects malformed field types before provider work", async () => {
     await expect(
       readYouTubePublishRequest(request({ title: { value: "Video" } })),

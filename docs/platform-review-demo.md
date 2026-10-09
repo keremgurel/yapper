@@ -1,6 +1,6 @@
 # Yapper review demos — one recording per platform
 
-Four recordings: TikTok, Instagram, Facebook, and YouTube. Each starts with the same short app overview, then shows only that platform's complete integration. This replaces the earlier six-recording plan.
+Four platform scripts: TikTok, Instagram, Facebook, and YouTube. The TikTok recording has already been submitted; record another only if its review requests updated evidence. Each starts with the same short app overview, then shows only that platform's complete integration. This replaces the earlier six-recording plan.
 
 ## Shared opening — about 20 seconds
 
@@ -41,9 +41,9 @@ The main sequence is: connect → show the account and relevant data → preview
 
 ## Before filming
 
-Use the original camera-check sample and preparation notes in [Setup](platform-review-recordings/00-setup.md). Facebook still needs configured credentials and a successful test flow. TikTok needs the sandbox and a private test account for Direct Post. Rehearse each actual publish; no successful authenticated end-to-end publication has been confirmed in this work yet.
+Use the original camera-check sample and preparation notes in [Setup](platform-review-recordings/00-setup.md). Facebook authorization now opens, but Page selection and a successful end-to-end test remain pending. TikTok needs the sandbox and a private test account for Direct Post. Rehearse each actual publish; no successful authenticated end-to-end publication has been confirmed in this work yet.
 
-YouTube currently requests public visibility automatically; show the actual result in YouTube Studio. Its UI has no audience/privacy selector. Keep failures and pending results out of success narration, and label processing time cuts.
+Use the deployed web Poster for YouTube: select visibility and audience before uploading, then verify the actual result in YouTube Studio. The native Mac Poster still needs equivalent controls; do not use it for this review demonstration. Keep failures and pending results out of success narration, and label processing time cuts.
 
 One complete TikTok demo is permitted; multiple files are optional. Its requested products/scopes still need visible demonstrations. [TikTok review guidelines](https://developers.tiktok.com/docs/en/our-guidelines-app-review-guidelines)
 
