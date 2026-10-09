@@ -48,10 +48,10 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/og.png",
+        url: "/og-studio.png",
         width: 1200,
         height: 630,
-        alt: "Yapper Studio: from idea to posted video",
+        alt: "Yapper Studio. Everything you need to create content, with a transcript video editor preview.",
       },
     ],
   },
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     description,
     creator: "@ypr.app",
     site: "@ypr.app",
-    images: ["/og.png"],
+    images: ["/og-studio.png"],
   },
   icons: {
     icon: "/favicon.ico",

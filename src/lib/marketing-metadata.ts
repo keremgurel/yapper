@@ -30,10 +30,10 @@ export function marketingMetadata(
       siteName: "Yapper",
       images: [
         {
-          url: "/og.png",
+          url: "/og-studio.png",
           width: 1200,
           height: 630,
-          alt: "Yapper Studio: from idea to posted video",
+          alt: "Yapper Studio. Everything you need to create content, with a transcript video editor preview.",
         },
       ],
     },
@@ -41,7 +41,7 @@ export function marketingMetadata(
       card: "summary_large_image",
       title,
       description,
-      images: ["/og.png"],
+      images: ["/og-studio.png"],
     },
   };
 }
