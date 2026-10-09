@@ -2,14 +2,11 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { siteContextFor } from "@/data/site-navigation";
-import { TRAINING_FEEDBACK_CREDITS } from "@/lib/db/constants";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { creditMeterFor } from "@/lib/billing/credit-meter";
 import CreditAvatar, { creditMeterStyle } from "./credit-avatar";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { Clock, LogOut, Settings, TrendingUp, HardDrive } from "lucide-react";
+import { LogOut, Settings, HardDrive } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,8 +23,6 @@ export default function UserMenu() {
   const { user } = useUser();
   const { signOut, openUserProfile } = useClerk();
   const { status, refresh } = useBillingStatus(!!user);
-  const pathname = usePathname();
-  const isTrain = siteContextFor(pathname) === "train";
   useEffect(() => {
     if (!user) return;
     const update = () => {
@@ -135,15 +130,6 @@ export default function UserMenu() {
           </DropdownMenuItem>
         </div>
 
-        {isTrain && status?.train && (
-          <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-            <Link href="/products/train/pricing">
-              {status.train.unlimited
-                ? "Train Plus · unlimited feedback"
-                : `${Math.floor(status.train.balance / TRAINING_FEEDBACK_CREDITS)} Train feedback sessions left`}
-            </Link>
-          </DropdownMenuItem>
-        )}
         <DropdownMenuSeparator className="bg-border" />
 
         <DropdownMenuItem
@@ -159,23 +145,6 @@ export default function UserMenu() {
             Storage
           </Link>
         </DropdownMenuItem>
-        {isTrain && (
-          <>
-            <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-              <Link href="/history" className="no-underline">
-                <Clock className="h-4 w-4" />
-                Recorded sessions
-              </Link>
-            </DropdownMenuItem>
-
-            <DropdownMenuItem asChild className={`${item} hover:bg-muted`}>
-              <Link href="/progress" className="no-underline">
-                <TrendingUp className="h-4 w-4" />
-                Your progress
-              </Link>
-            </DropdownMenuItem>
-          </>
-        )}
 
         <DropdownMenuSeparator className="bg-border" />
 

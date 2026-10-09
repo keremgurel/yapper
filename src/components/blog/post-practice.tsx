@@ -14,7 +14,7 @@ export default function PostPractice() {
         </p>
       </div>
       <Button asChild>
-        <Link href="/training/random-topic-generator">Get a topic</Link>
+        <Link href="https://speakingpractice.ai/">Get a topic</Link>
       </Button>
     </aside>
   );
