@@ -243,7 +243,7 @@ The homepage eyebrow is just “Private beta”, without a second product label.
 The Studio tab selection uses the Liquid Glass SDK in a bounded scene with a
 clear refracting lens and one fine neutral rim. Keep the existing capsule shape,
 equal tab widths, icons, labels, and responsive dimensions. No blue-grey tint, double bevel,
-opaque fill or bright highlight strips. Pointer-down lifts the lens; a
+opaque fill or bright highlight strips. Pointer-down compresses it; a
 horizontal drag tracks directly, with subtle liquid stretch. Release snaps to
 the projected tab and commits selection; cancellation restores the current tab.
 Vertical touch movement remains page scrolling. Click and keyboard selection
