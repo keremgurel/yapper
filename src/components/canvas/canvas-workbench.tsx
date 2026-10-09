@@ -417,7 +417,7 @@ export default function CanvasWorkbench({ id }: { id: string }) {
               onUndo={undoLast}
             />
             {hasOrigin && (
-              <details className="group">
+              <details open className="group">
                 <summary className="text-muted-foreground hover:text-foreground cursor-pointer list-none text-[13px] font-medium select-none">
                   Where this came from
                 </summary>

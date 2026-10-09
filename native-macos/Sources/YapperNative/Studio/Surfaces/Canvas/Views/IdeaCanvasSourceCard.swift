@@ -2,9 +2,11 @@ import SwiftUI
 
 /// The video or page this idea came from, near the top of the side column:
 /// its platform, its title, a way to open it, and whether the idea is still
-/// only borrowed. The full transcript stays in "Where this came from".
+/// only borrowed, and what it actually says: the transcript, a few lines by
+/// default and the whole thing a click away.
 struct IdeaCanvasSourceCard: View {
     let item: IdeaCanvasItem
+    @State private var expanded = false
 
     private var platform: LinkPlatform? { item.sourceUrl.flatMap(LinkPlatform.init(url:)) }
     private var url: URL? { item.sourceUrl.flatMap(URL.init(string:)) }
@@ -22,6 +24,7 @@ struct IdeaCanvasSourceCard: View {
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                transcriptBlock
                 if borrowedOnly {
                     Text("This is someone else's video with nothing of yours in it yet. Add your own note below and it becomes semi-original.")
                         .font(.system(size: 12))
@@ -33,6 +36,38 @@ struct IdeaCanvasSourceCard: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.studioFaintFill))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.studioLine, lineWidth: 1))
+        }
+    }
+
+    private var transcript: String? {
+        let value = item.sourceTranscript?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return value.isEmpty ? nil : value
+    }
+
+    @ViewBuilder private var transcriptBlock: some View {
+        if let transcript {
+            VStack(alignment: .leading, spacing: 8) {
+                Rectangle().fill(Color.studioLine).frame(height: 1)
+                Text("Transcript · \(transcript.split(whereSeparator: \.isWhitespace).count) words")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                Text(transcript)
+                    .font(.system(size: 13)).lineSpacing(3)
+                    .foregroundStyle(Color.primary.opacity(0.85))
+                    .lineLimit(expanded ? nil : 6)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                Button(expanded ? "Show less" : "Show full transcript") {
+                    withAnimation(.snappy(duration: 0.18)) { expanded.toggle() }
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+                .buttonStyle(.studioPlain)
+                .clickableCursor()
+            }
+        } else if item.transcriptStatus == "pending" {
+            Text("Fetching the transcript. It shows up here when it lands.")
+                .font(.system(size: 12)).foregroundStyle(.secondary)
         }
     }
 

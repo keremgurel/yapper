@@ -52,9 +52,9 @@ describe("buildVersionMessages", () => {
     expect(adapted.user).toContain("He ran campaigns for Amex.");
   });
 
-  it("keeps shorts to 80 to 130 words and ending on the payoff", () => {
+  it("scales shorts to the reference and ends on the payoff", () => {
     const { system } = buildVersionMessages("short", material, null, context);
-    expect(system).toContain("80 to 130 spoken words");
+    expect(system).toContain("match the reference's own spoken length");
     expect(system).toContain("End on the payoff");
   });
 });

@@ -1,3 +1,4 @@
+import { RECREATION_RULES } from "@/lib/ideas/recreation-rules";
 import { TEACHING_RULES } from "@/lib/ideas/teaching-rules";
 import type {
   IdeaExpansion,
@@ -48,7 +49,7 @@ export function buildExpandMessages(
     '"pillar":"best-fit pillar or null",' +
     '"format":"specific creative format, e.g. audio-led reaction sketch",' +
     '"summary":"the content direction: 2-4 sentences on what this piece is, what carries it, and the angle for THIS creator",' +
-    '"hooks":["3 to 5 opening lines, each one spoken sentence, different mechanisms; the first is the one the creator will use"],' +
+    '"hooks":["3 to 5 opening lines, each one spoken sentence, the first is the one the creator will use; for a recreation it keeps the reference\'s own opening claim"],' +
     '"script":"everything said AFTER the hook, in the creator\'s voice: the words said aloud, or the dialogue and cues if the format is a sketch; newlines allowed",' +
     '"sections":[{"label":"only when this reference genuinely needs one more block, e.g. Beat-by-beat for a sketch",' +
     '"kind":"paragraph|bullets|steps",' +
@@ -69,10 +70,8 @@ export function buildExpandMessages(
     "a visual gag). Never add key points, research, or a breakdown of the " +
     "reference: the creator asks for those on the page when they want them.\n" +
     "- The script is a real first draft the creator could shoot: their angle, " +
-    "their voice, 80 to 130 spoken words (about 35 to 55 seconds). A story or " +
-    "a multi-step explainer may run as long as it needs, up to the reference's " +
-    "own length or 220 words, and shorter when the format is shorter by " +
-    "nature. No headers, " +
+    "their voice, at the length the rules below set, and shorter when the " +
+    "format is shorter by nature. No headers, " +
     "no bullet formatting, no stage directions unless the format is a sketch. " +
     "Never use em dashes or en dashes.\n" +
     "- The script's first line tells the viewer where this is going in one " +
@@ -80,7 +79,7 @@ export function buildExpandMessages(
     "- Each beat turns or follows from the last (a 'but' or a 'so'), never a " +
     "flat 'and then'. Say it the way a person would; never force the words " +
     "'therefore' or 'but' into a line.\n" +
-    "- Plain words, one idea per video. Include one specific takeaway a " +
+    "- Plain words, one topic per video. Include one specific takeaway a " +
     "viewer would send to a friend.\n" +
     "- End on the payoff. No outro, no recap, no 'that's it'.\n" +
     "- The hook is spoken first and the script continues from it. The script's " +
@@ -100,6 +99,7 @@ export function buildExpandMessages(
     "own words or the context block below support; otherwise attribute it " +
     "('he built a prompt that...') or turn it into an instruction.\n" +
     TEACHING_RULES +
+    RECREATION_RULES +
     "- For a recreation, separate the source's reusable mechanism from the new " +
     "topic. Preserve reactions, pauses, escalation, and audio cues when those " +
     "are the point.\n" +
