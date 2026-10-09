@@ -203,7 +203,7 @@ Per-user quota metered in Postgres → iCloud-style "delete or upgrade".
    authoritative, or key-holding runs server-side (feedback, generation, video).
 4. **Measure, then price.** Every AI call logs its real token/API cost per run so
    Billing sets credits/prices on data, not guesses.
-5. **Reuse speaking-coach.** Port its grader client — one OpenAI-compatible SDK
+5. **Reuse celpip-practice.** Port its grader client — one OpenAI-compatible SDK
    through the **Surplus** gateway (serves GPT/Gemini/Claude cheap) with
    native-provider fallback, plus its JSON-recovery + refund-on-failure patterns.
 

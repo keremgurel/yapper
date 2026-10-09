@@ -14,7 +14,7 @@ node scripts/posthog-query.mjs "select event, count() from events where timestam
 
 It needs `POSTHOG_PERSONAL_API_KEY` and `POSTHOG_PROJECT_ID` in `.env.local` (gitignored, never commit the key). The script only sends SELECT queries. If either value is empty, ask the user to fill it in; do not look for the key elsewhere.
 
-Search Console for `sc-domain:ypr.app` is read through the helper in the speaking-coach repo (`marketing/organic/seo/gsc_query.py`). Past pulls and their limits are in `docs/seo/`.
+Search Console for `sc-domain:ypr.app` is read through the helper in the celpip-practice repo (`marketing/organic/seo/gsc_query.py`). Past pulls and their limits are in `docs/seo/`.
 
 # Pronunciation scoring
 

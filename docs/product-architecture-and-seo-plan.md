@@ -88,7 +88,7 @@ The homepage carries `WebSite` and `Organization`. Each product overview carries
 
 ## Sitemap and lastmod
 
-The sitemap is built from one registry, `src/lib/seo/public-routes.json`, plus blog posts. It contains canonical 200 pages only. `lastmod` is the date of the last git commit that touched the files that render each page, written by `npm run seo:lastmod` into a committed file, the same method speaking-coach uses. Blog posts use their published date. `priority` and `changefreq` were removed because Google ignores them.
+The sitemap is built from one registry, `src/lib/seo/public-routes.json`, plus blog posts. It contains canonical 200 pages only. `lastmod` is the date of the last git commit that touched the files that render each page, written by `npm run seo:lastmod` into a committed file, the same method celpip-practice uses. Blog posts use their published date. `priority` and `changefreq` were removed because Google ignores them.
 
 The generated dates currently read October 1 for every page because the changes are uncommitted and the generator was run with `--allow-dirty`. Run it again after committing.
 
