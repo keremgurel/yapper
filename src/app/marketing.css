@@ -3888,135 +3888,80 @@ button.publisher-remix-glass {
 
 /* Clear selection lens: neutral transmission with a single fine rim. */
 .studio-showcase-tabs {
-  --studio-lens-goo: #fff;
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
   overflow: visible;
 }
-.dark .studio-showcase-tabs {
-  --studio-lens-goo: #fff;
-}
-.studio-tab-lens-track {
-  position: absolute;
-  inset: 5px;
+.studio-tabs-backdrop {
+  border-radius: inherit;
+  background: inherit;
   pointer-events: none;
-  z-index: 0;
 }
-.studio-tab-goo {
-  position: absolute !important;
-  inset: 0;
-  opacity: 0.035;
-}
-.studio-tab-goo-shape {
-  position: absolute;
-  top: -5px;
-  left: 0;
-  height: calc(100% + 10px);
-  border-radius: 23px;
-}
-.studio-tab-lens {
-  position: absolute;
-  left: 0;
-  top: 0;
+.studio-tabs-root {
+  grid-column: 1 / -1;
+  min-width: 0;
   height: 100%;
-  will-change: transform;
 }
-/* On the light capsule a clear lens disappears, so it carries a light tint
-   of the ink color. The dark capsule already shows its rim. */
-.studio-tab-lens-surface {
-  position: absolute;
-  inset: -3px -1px;
-  border-radius: 999px;
-  background: rgb(38 35 49 / 0.075);
-  border: 1px solid rgb(38 35 49 / 0.1);
+.studio-showcase-tabs .studio-tabs-list {
+  display: grid;
+  grid-template-columns: repeat(var(--studio-tab-count, 5), minmax(0, 1fr));
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  touch-action: pan-y;
+}
+.studio-tabs-selection {
+  background: rgb(255 255 255 / 0.3);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.35),
-    inset 0 -1px 0 rgb(0 0 0 / 0.06),
-    0 2px 6px rgb(0 0 0 / 0.06);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  transform: scale(1);
-  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+    inset 0 0 0 1px rgb(0 0 0 / 0.12),
+    0 2px 8px rgb(0 0 0 / 0.08);
+  backdrop-filter: blur(6px) saturate(140%);
 }
-.dark .studio-tab-lens-surface {
-  background: rgb(255 255 255 / 0.06);
-  border-color: rgb(255 255 255 / 0.3);
+.dark .studio-tabs-selection {
+  background: rgb(255 255 255 / 0.1);
   box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    inset 0 -1px 0 rgb(255 255 255 / 0.04),
-    0 2px 6px rgb(0 0 0 / 0.08);
+    inset 0 0 0 1px rgb(255 255 255 / 0.3),
+    0 2px 8px rgb(0 0 0 / 0.16);
 }
-.studio-showcase-tabs[data-pressed="true"] .studio-tab-lens-surface {
-  transform: scale(0.965, 1.035);
-}
-.studio-showcase-tabs[data-dragging="true"] .studio-tab-lens-surface {
-  transform: scale(1.055, 1.055);
-}
-.studio-showcase-tabs[data-dragging="true"],
-.studio-showcase-tabs[data-dragging="true"] button {
-  cursor: grabbing;
-}
-.studio-showcase-tabs button {
-  gap: 7px;
-  font-weight: 500;
-}
+.studio-showcase-tabs button,
 .studio-showcase-tabs button[aria-selected="true"] {
   font-weight: 500;
 }
-.studio-showcase-tabs button[data-preview="true"] {
-  color: var(--sg-text);
-  text-shadow: 0 1px 1px rgb(255 255 255 / 0.2);
-}
-.dark .studio-showcase-tabs button[data-preview="true"] {
-  color: #fff;
-  text-shadow: 0 1px 3px rgb(0 0 0 / 0.55);
+.studio-showcase-tabs .lg-tab-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  white-space: nowrap;
 }
 .studio-showcase-tabs button svg {
   display: block;
 }
 @media (max-width: 767px) {
-  .studio-tab-lens-track {
-    inset: 4px;
-  }
-  .studio-tab-lens-surface {
-    inset: -2px 0;
-    border-radius: 999px;
-  }
   .studio-showcase-tabs button {
-    gap: 4px;
     font-size: 11px;
   }
+  .studio-showcase-tabs .lg-tab-label {
+    gap: 4px;
+  }
   .studio-showcase-tabs button svg {
-    display: block;
     width: 13px;
     height: 13px;
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .studio-tab-lens-surface {
-    transition: none;
-  }
-  .studio-showcase-tabs[data-pressed="true"] .studio-tab-lens-surface,
-  .studio-showcase-tabs[data-dragging="true"] .studio-tab-lens-surface {
-    transform: none;
-  }
-}
 @media (prefers-reduced-transparency: reduce) {
-  .studio-tab-lens-surface,
-  .dark .studio-tab-lens-surface {
+  .studio-tabs-selection,
+  .dark .studio-tabs-selection {
     background: var(--sg-surface-raised);
     backdrop-filter: none;
-    -webkit-backdrop-filter: none;
   }
 }
 @media (forced-colors: active) {
-  .studio-tab-goo {
-    display: none;
-  }
-  .studio-tab-lens-surface {
+  .studio-tabs-selection {
     background: Canvas;
-    border: 2px solid Highlight;
+    outline: 2px solid Highlight;
   }
 }
 

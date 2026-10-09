@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/studio-ui";
 import { useConnections } from "@/hooks/use-connections";
 import { publishPlatforms } from "@/lib/db/schema";
 import ChannelsSection from "@/components/studio-home/channels-section";
-import { HomeChirpy } from "@/components/studio-shell/studio-chirpy";
 import PerformanceBand from "@/components/studio-home/performance-band";
 import TopContentSection from "@/components/studio-home/top-content-section";
 import UpNextSection from "@/components/studio-home/up-next-section";
@@ -121,7 +120,6 @@ export default function StudioDashboard() {
             unavailable={Boolean(connectionsError)}
           />
         </div>
-        <HomeChirpy />
         {pipelineError ? (
           <p className="text-muted-foreground text-sm">
             Your Library queue couldn’t be loaded. Use Refresh above to try

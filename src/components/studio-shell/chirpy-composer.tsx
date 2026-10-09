@@ -3,6 +3,7 @@
 import VoiceSurface from "@/components/common/voice-surface";
 
 import { ArrowUp, Loader2, Mic, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import VoiceWaveform from "@/components/common/voice-waveform";
 import { useDictationCaret } from "@/components/ideas/use-dictation-caret";
@@ -12,7 +13,7 @@ import {
 } from "@/components/ideas/use-recording-timer";
 import { useVoiceCapture } from "@/hooks/use-voice-capture";
 
-const MIN_HEIGHT = 40;
+const MIN_HEIGHT = 88;
 const MAX_HEIGHT = 220;
 
 /**
@@ -62,7 +63,11 @@ export default function ChirpyComposer({
   }, [draft]);
 
   useEffect(() => {
-    if (focusRequest > 0) composer.current?.focus();
+    if (focusRequest <= 0) return;
+    // Glass finishes placing its content after mount. Focus once it is in
+    // the document, and only for an explicit open or suggested prompt.
+    const frame = requestAnimationFrame(() => composer.current?.focus());
+    return () => cancelAnimationFrame(frame);
   }, [focusRequest]);
 
   useEffect(() => {
@@ -121,7 +126,7 @@ export default function ChirpyComposer({
             ref={composer}
             name="chirpy-message"
             value={draft}
-            rows={1}
+            rows={3}
             onChange={(event) => onDraft(event.target.value)}
             onSelect={dictation.remember}
             onKeyUp={dictation.remember}
@@ -137,7 +142,7 @@ export default function ChirpyComposer({
             }}
             placeholder={placeholder}
             aria-label="Message Chirpy"
-            className="text-foreground placeholder:text-muted-foreground max-h-[220px] min-h-10 resize-none bg-transparent px-2.5 pt-2.5 text-base leading-relaxed outline-none sm:text-sm"
+            className="text-foreground placeholder:text-muted-foreground max-h-[220px] min-h-[88px] resize-none bg-transparent px-2.5 pt-2.5 text-base leading-relaxed outline-none sm:text-sm"
           />
           <div className="text-muted-foreground flex items-center gap-2 px-2 pb-1 text-[11px]">
             {recording ? (
@@ -186,18 +191,20 @@ export default function ChirpyComposer({
                 </button>
               </>
             )}
-            <button
+            <Button
               type="submit"
+              variant="contrast"
+              size="icon-xs"
               aria-label={recording ? "Send what I said" : "Send"}
               disabled={!canSend}
-              className="grid size-7 shrink-0 place-items-center rounded-full bg-[color:var(--sg-accent)] text-black transition-opacity focus-visible:ring-2 focus-visible:ring-[color:var(--sg-accent)] focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-30"
+              className="size-7 rounded-full disabled:cursor-default disabled:opacity-30"
             >
               {working ? (
                 <Loader2 className="size-3 animate-spin" aria-hidden="true" />
               ) : (
                 <ArrowUp className="size-3.5" aria-hidden="true" />
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </form>
