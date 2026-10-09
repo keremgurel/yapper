@@ -2,6 +2,9 @@ import Link from "next/link";
 import MarketingLayout from "@/components/marketing/marketing-layout";
 import StudioPreview from "@/components/marketing/studio-preview";
 import FeaturePreview from "@/components/marketing/feature-preview";
+import HomeGuides from "@/components/marketing/home/home-guides";
+import FeatureStack from "@/components/marketing/home/feature-stack";
+import stackStyles from "@/components/marketing/home/feature-stack.module.css";
 import { StudioStart } from "@/components/marketing/product-sections";
 import StudioCtaButton from "@/components/marketing/studio-cta-button";
 import { Button } from "@/components/ui/button";
@@ -47,115 +50,122 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <section className="marketing-section marketing-rule">
-        <div className="marketing-container marketing-split">
-          <FeaturePreview slug="transcript-video-editor" />
-          <div>
-            <p className="type-label mb-4">One-click editing</p>
-            <h2 className="type-h2">
-              You did the talking.
-              <br />
-              Let Studio do the cutting.
-            </h2>
-            <p className="type-description">
-              No more spending hours cutting out silences, mistakes and retakes.
-              One-click edit cleans up the recording so your best take comes
-              through as continuous talk. Review the cut, adjust what you want
-              and add captions.
-            </p>
-            <p className="type-description mt-4">
-              Want more control? Text-based video editing lets you remove a
-              sentence by selecting its words. The timeline is there for the
-              finishing touches.
-            </p>
-            <Link
-              className="marketing-text-link mt-7"
-              href="/features/transcript-video-editor"
-            >
-              Explore one-click video editing
-            </Link>
-          </div>
+      <div className="marketing-section marketing-rule">
+        <div className="marketing-container">
+          <FeatureStack>
+            <section className={stackStyles.card}>
+              <div className={stackStyles.content}>
+                <FeaturePreview slug="transcript-video-editor" />
+                <div>
+                  <p className="type-label mb-4">One-click editing</p>
+                  <h2 className="type-h2">
+                    Full edit with one click.
+                    <br />
+                    Hours of time back.
+                  </h2>
+                  <p className="type-description">
+                    No more spending hours cutting out silences, mistakes and
+                    retakes. One-click edit cleans up the recording so your best
+                    take comes through as continuous talk. Review the cut,
+                    adjust what you want and add captions.
+                  </p>
+                  <p className="type-description mt-4">
+                    Want more control? Text-based video editing lets you remove
+                    a sentence by selecting its words. The timeline is there for
+                    the finishing touches.
+                  </p>
+                  <Link
+                    className="marketing-text-link mt-7"
+                    href="/features/transcript-video-editor"
+                  >
+                    Explore one-click video editing
+                  </Link>
+                </div>
+              </div>
+            </section>
+            <section className={stackStyles.card}>
+              <div className={stackStyles.content}>
+                <div>
+                  <p className="type-label mb-4">Brain, Ideas and Lab</p>
+                  <h2 className="type-h2">
+                    The next idea should
+                    <br />
+                    sound like you.
+                  </h2>
+                  <p className="type-description">
+                    Brain gets to know your voice, your point of view and the
+                    content you’ve already made. Add your references and connect
+                    your social profile. Your previous videos become context for
+                    ideas rooted in how you think and speak.
+                  </p>
+                  <p className="type-description mt-4">
+                    Ask for ideas you can actually shoot. Explore the angle in
+                    Lab, find the hook and turn it into a script or talking
+                    points. You choose when to bring in AI.
+                  </p>
+                  <Link
+                    className="marketing-text-link mt-7"
+                    href="/features/idea-capture"
+                  >
+                    Find your next content idea
+                  </Link>
+                </div>
+                <FeaturePreview slug="idea-capture" />
+              </div>
+            </section>
+            <section className={stackStyles.card}>
+              <div className={stackStyles.content}>
+                <FeaturePreview slug="teleprompter-recorder" />
+                <div>
+                  <p className="type-label mb-4">Teleprompter recorder</p>
+                  <h2 className="type-h2">
+                    Never forget what to say.
+                    <br />
+                    While sounding natural.
+                  </h2>
+                  <p className="type-description">
+                    Keep your script or key talking points on screen while you
+                    talk to the camera. Set a comfortable pace, stay on track
+                    and leave room for a natural delivery. Prefer to freestyle?
+                    Record without it.
+                  </p>
+                  <Link
+                    className="marketing-text-link mt-7"
+                    href="/features/teleprompter-recorder"
+                  >
+                    Record with a teleprompter
+                  </Link>
+                </div>
+              </div>
+            </section>
+            <section className={stackStyles.card}>
+              <div className={stackStyles.content}>
+                <div>
+                  <p className="type-label mb-4">Poster</p>
+                  <h2 className="type-h2">
+                    One click schedule.
+                    <br />
+                    Crossposted to all your socials.
+                  </h2>
+                  <p className="type-description">
+                    Cross-post and schedule your video to multiple connected
+                    channels in one go. Choose the destinations, set each
+                    caption and thumbnail, then publish now or pick a time. Your
+                    posting plan stays connected to the video you just made.
+                  </p>
+                  <Link
+                    className="marketing-text-link mt-7"
+                    href="/features/social-publishing"
+                  >
+                    Explore cross-posting and scheduling
+                  </Link>
+                </div>
+                <FeaturePreview slug="social-publishing" />
+              </div>
+            </section>
+          </FeatureStack>
         </div>
-      </section>
-      <section className="marketing-section marketing-rule">
-        <div className="marketing-container marketing-split">
-          <div>
-            <p className="type-label mb-4">Brain, Ideas and Lab</p>
-            <h2 className="type-h2">
-              The next idea should
-              <br />
-              sound like you.
-            </h2>
-            <p className="type-description">
-              Brain gets to know your voice, your point of view and the content
-              you’ve already made. Add your references and connect your social
-              profile. Your previous videos become context for ideas rooted in
-              how you think and speak.
-            </p>
-            <p className="type-description mt-4">
-              Ask for ideas you can actually shoot. Explore the angle in Lab,
-              find the hook and turn it into a script or talking points. You
-              choose when to bring in AI.
-            </p>
-            <Link
-              className="marketing-text-link mt-7"
-              href="/features/idea-capture"
-            >
-              Find your next content idea
-            </Link>
-          </div>
-          <FeaturePreview slug="idea-capture" />
-        </div>
-      </section>
-      <section className="marketing-section marketing-rule">
-        <div className="marketing-container marketing-split">
-          <FeaturePreview slug="teleprompter-recorder" />
-          <div>
-            <p className="type-label mb-4">Teleprompter recorder</p>
-            <h2 className="type-h2">
-              Know what to say.
-              <br />
-              Still sound like yourself.
-            </h2>
-            <p className="type-description">
-              Keep your script or key talking points on screen while you talk to
-              the camera. Set a comfortable pace, stay on track and leave room
-              for a natural delivery. Prefer to freestyle? Record without it.
-            </p>
-            <Link
-              className="marketing-text-link mt-7"
-              href="/features/teleprompter-recorder"
-            >
-              Record with a teleprompter
-            </Link>
-          </div>
-        </div>
-      </section>
-      <section className="marketing-section marketing-rule">
-        <div className="marketing-container marketing-split">
-          <div>
-            <p className="type-label mb-4">Poster</p>
-            <h2 className="type-h2">
-              Make it once.
-              <br />
-              Get it onto your channels.
-            </h2>
-            <p className="type-description">
-              Cross-post and schedule your video to multiple connected channels
-              in one go. Choose the destinations, set each caption and
-              thumbnail, then publish now or pick a time. Your posting plan
-              stays connected to the video you just made.
-            </p>
-            <Link
-              className="marketing-text-link mt-7"
-              href="/features/social-publishing"
-            >
-              Explore cross-posting and scheduling
-            </Link>
-          </div>
-          <FeaturePreview slug="social-publishing" />
-        </div>
-      </section>
+      </div>
       <section className="marketing-section marketing-rule">
         <div className="marketing-container">
           <div className="marketing-availability">
@@ -166,6 +176,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <HomeGuides />
       <StudioStart />
     </MarketingLayout>
   );

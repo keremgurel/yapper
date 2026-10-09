@@ -19,7 +19,9 @@ export default function GuidesRail({ guides }: { guides: RailGuide[] }) {
   const scroll = (direction: 1 | -1) =>
     rail.current?.scrollBy({
       left: direction * rail.current.clientWidth * 0.8,
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "instant"
+        : "smooth",
     });
   return (
     <section className="marketing-section marketing-rule">
