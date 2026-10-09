@@ -397,3 +397,10 @@ Inside Chirpy, use solid contrast buttons: black with white text in light mode,
 white with black text in dark mode. Keep glass on the enclosing panel and
 mascot toggle only. The message textarea starts at 88px (three rows) and grows
 to 220px before scrolling internally.
+
+Home offers eight compact starting points in a two-column grid: cross-posting,
+capturing ideas, finding content ideas, organizing Brain knowledge, scripts,
+hooks, repurposing, and weekly planning. Each label fills a fuller editable
+prompt and focuses the composer; it never sends automatically. Prompts ask for
+missing context before planning work. Keep all starters reachable by scrolling
+when the composer grows on a short viewport.
