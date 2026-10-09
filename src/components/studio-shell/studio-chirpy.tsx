@@ -136,7 +136,55 @@ function routeLabel(pathname: string): string {
   return "Studio";
 }
 
-function openers(pathname: string): string[] {
+function openers(pathname: string): { label: string; prompt: string }[] {
+  if (pathname === "/studio/home") {
+    return [
+      {
+        label: "Cross-post a video",
+        prompt:
+          "Help me prepare a video for cross-posting. Ask which video and channels, then help me adapt the captions and plan the publishing steps.",
+      },
+      {
+        label: "Capture an idea",
+        prompt:
+          "Help me capture a new idea. Ask me what it’s about, then help me shape it into an idea I can save.",
+      },
+      {
+        label: "Find content ideas",
+        prompt:
+          "Suggest five fresh content ideas based on my Brain, audience, and content pillars. Give each one a specific angle and opening hook.",
+      },
+      {
+        label: "Organize my Brain",
+        prompt:
+          "Review my Brain knowledge for gaps, overlap, and outdated context. Suggest specific changes that would make it more useful for creating content.",
+      },
+      {
+        label: "Write a script",
+        prompt:
+          "Help me turn an idea into a script in my voice. Ask which idea, format, and length I have in mind.",
+      },
+      {
+        label: "Improve a hook",
+        prompt:
+          "Help me make a stronger opening hook. Ask for my current hook or topic, then give me five alternatives that fit my audience.",
+      },
+      {
+        label: "Repurpose content",
+        prompt:
+          "Help me turn existing content into something new. Ask what I want to repurpose, then suggest clips, posts, or follow-up ideas.",
+      },
+      {
+        label: "Plan my week",
+        prompt:
+          "Help me plan a week of content around my Brain and content pillars. Ask how often I want to post and which channels I’m focusing on.",
+      },
+    ];
+  }
+  return routeOpeners(pathname).map((prompt) => ({ label: prompt, prompt }));
+}
+
+function routeOpeners(pathname: string): string[] {
   if (pathname.startsWith("/studio/library")) {
     return [
       "Write the script",
@@ -611,26 +659,34 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
         aria-live="polite"
       >
         {messages.length === 0 ? (
-          <div className="mt-auto">
+          <div className="mt-auto shrink-0">
             <p className="text-muted-foreground mb-2.5 text-[11px]">
-              {pathname.startsWith("/studio/brain")
-                ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
-                : "Ask for help with an idea, a script, or your next post."}
+              {pathname === "/studio/home"
+                ? "From a quick idea to your next post. Pick a starting point, then make it yours."
+                : pathname.startsWith("/studio/brain")
+                  ? "Change what Yapper knows, add context, or start something elsewhere in Studio."
+                  : "Ask for help with an idea, a script, or your next post."}
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div
+              className={
+                pathname === "/studio/home"
+                  ? "grid grid-cols-2 gap-1.5"
+                  : "flex flex-wrap gap-1.5"
+              }
+            >
               {openers(pathname).map((opener) => (
                 <Button
-                  key={opener}
+                  key={opener.label}
                   variant="contrast"
                   size="sm"
                   type="button"
                   onClick={() => {
-                    setDraft(opener);
+                    setDraft(opener.prompt);
                     setFocusRequest((count) => count + 1);
                   }}
-                  className="px-3 text-xs"
+                  className="h-auto min-h-9 px-3 py-2 text-xs whitespace-normal"
                 >
-                  {opener}
+                  {opener.label}
                 </Button>
               ))}
             </div>
