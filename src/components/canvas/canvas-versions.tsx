@@ -5,7 +5,8 @@ import { useAutosave } from "@/hooks/use-autosave";
 import type { ContentPatch } from "@/lib/content/client";
 import { Button } from "@/components/ui/button";
 import type { ContentDetail, ContentVersionDetail } from "@/lib/content/client";
-import { type VersionFormat, VERSION_FORMATS } from "@/lib/content/formats";
+import type { VersionFormat } from "@/lib/content/formats";
+import CanvasVersionTabs from "@/components/canvas/canvas-version-tabs";
 import { hookTexts } from "@/lib/content/normalize";
 
 /** Saved versions use the same API as Mac. Each writer owns only its version. */
@@ -80,37 +81,28 @@ export default function CanvasVersions({
   };
   return (
     <>
-      <div
-        className="border-border flex flex-wrap gap-2 border-b px-4 py-3"
-        aria-label="Content versions"
-      >
-        {VERSION_FORMATS.map((format) => (
-          <Button
-            key={format}
-            size="sm"
-            variant={active === format ? "default" : "ghost"}
-            aria-pressed={active === format}
-            disabled={working}
-            onClick={() => {
-              void (async () => {
-                try {
-                  await beforeGenerate();
-                  await editorFlush.current?.();
-                  onSelect(format);
-                } catch {
-                  setNotice("Save failed. Retry before switching versions.");
-                }
-              })();
-            }}
-          >
-            {format === "short"
-              ? "Short-form"
-              : format === "long"
-                ? "Long-form"
-                : "Article"}
-          </Button>
-        ))}
-      </div>
+      <CanvasVersionTabs
+        lead={lead}
+        written={
+          new Set<VersionFormat>([
+            lead,
+            ...versions.map((entry) => entry.format),
+          ])
+        }
+        active={active}
+        disabled={working}
+        onSelect={(format) => {
+          void (async () => {
+            try {
+              await beforeGenerate();
+              await editorFlush.current?.();
+              onSelect(format);
+            } catch {
+              setNotice("Save failed. Retry before switching versions.");
+            }
+          })();
+        }}
+      />
       {active === lead ? (
         children
       ) : version ? (
@@ -140,14 +132,20 @@ export default function CanvasVersions({
             Uses the original version and source material. 8 credits, refunded
             if generation fails.
           </p>
-          <Button disabled={working} onClick={() => void generate()}>
-            {working ? "Writing…" : "Write this version"}
-          </Button>
-          {working && (
-            <Button variant="outline" onClick={() => abort.current?.abort()}>
-              Stop waiting
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              disabled={working}
+              onClick={() => void generate()}
+            >
+              {working ? "Writing…" : "Write this version"}
             </Button>
-          )}
+            {working && (
+              <Button variant="ghost" onClick={() => abort.current?.abort()}>
+                Stop waiting
+              </Button>
+            )}
+          </div>
         </section>
       )}
       {notice && (
