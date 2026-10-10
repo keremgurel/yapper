@@ -4853,3 +4853,35 @@ button.publisher-remix-glass {
     display: none;
   }
 }
+
+/* The same capsule at toolbar size, for Studio's saved views. Labels are user
+   names, so they truncate inside their equal slot instead of stretching it. */
+.studio-showcase-tabs.studio-showcase-tabs-compact {
+  width: min(100%, calc(var(--studio-tab-count, 5) * 136px));
+  height: 44px;
+  margin: 0;
+  padding: 4px;
+  border-radius: 999px;
+}
+.studio-showcase-tabs-compact .studio-tab-lens-track {
+  inset: 4px;
+}
+.studio-showcase-tabs.studio-showcase-tabs-compact button {
+  height: 34px;
+  min-height: 0;
+  min-width: 0;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+}
+.studio-showcase-tabs-compact .studio-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.studio-showcase-tabs-compact button svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}

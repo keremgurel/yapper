@@ -5,7 +5,23 @@ import {
   studioHostRedirects,
 } from "./src/lib/routing/studio-host";
 
+// Local-only: swap Clerk for a stub that is always signed in as one test
+// user, so signed-in screens can be driven on localhost without an account.
+// Never on a production build; scripts/validate-deploy-env.mjs refuses it too.
+const fakeAuth =
+  process.env.YAPPER_FAKE_AUTH === "1" && process.env.NODE_ENV !== "production";
+
 const nextConfig: NextConfig = {
+  ...(fakeAuth
+    ? {
+        turbopack: {
+          resolveAlias: {
+            "@clerk/nextjs": "@/dev/fake-clerk/client",
+            "@clerk/nextjs/server": "@/dev/fake-clerk/server",
+          },
+        },
+      }
+    : {}),
   async headers() {
     return studioHostHeaders(studioHost(process.env));
   },

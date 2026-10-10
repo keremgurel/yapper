@@ -22,85 +22,36 @@
   flex: 1;
   display: grid;
   align-items: center;
-  padding-block: 72px;
+  padding-block: 32px 48px;
 }
 
+/* Both columns sit on the page container's edges, the same ones the header
+   logo and the footer links use. */
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
   align-items: center;
-  gap: clamp(64px, 8vw, 128px);
+  gap: clamp(48px, 6vw, 96px);
   width: 100%;
-  max-width: 1100px;
-  margin-inline: auto;
 }
 
-.product {
-  margin-bottom: 24px;
-  color: var(--sg-text-muted);
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.headline {
-  font-size: clamp(40px, 4.3vw, 56px);
-  font-weight: 600;
-  line-height: 1.08;
-  letter-spacing: -0.04em;
+.story {
+  min-width: 0;
 }
 
 .description {
-  margin-top: 24px;
+  margin-bottom: 40px;
   color: var(--sg-text-muted);
-  font-size: 17px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
-.workflow {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
-  max-width: 460px;
-  margin-top: 48px;
-  list-style: none;
-  padding: 0;
-}
-
-.workflow li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.tile {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 1;
-  width: 100%;
-  border-radius: 20px;
-}
-.tile[data-tone="idea"] {
-  background: #e7ddfa;
-  color: #594576;
-}
-.tile[data-tone="script"] {
-  background: #dceafa;
-  color: #415873;
-}
-.tile[data-tone="record"] {
-  background: #f6dfcb;
-  color: #80533e;
-}
-.tile[data-tone="edit"] {
-  background: #dceadf;
-  color: #405e4b;
-}
-.tile[data-tone="publish"] {
-  background: #f4edc9;
-  color: #6a5b29;
+.headline {
+  margin-bottom: 12px;
+  font-size: clamp(28px, 2.6vw, 36px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
 }
 
 .form {
@@ -146,6 +97,7 @@
 }
 
 .socialButton {
+  position: relative;
   min-height: 52px;
   border: 1px solid var(--sg-border-strong);
   border-radius: 10px;
@@ -158,6 +110,18 @@
 
 .socialButton:hover {
   background: var(--sg-surface-sunken);
+}
+
+/* Clerk floats "Last used" over the button's corner, where the card clips
+   it. Inside the button, on the right, it has room. Two classes outrank
+   Clerk's one. */
+.socialButton .lastUsed {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  left: auto;
+  transform: translateY(-50%);
+  margin: 0;
 }
 
 /* The monochrome Apple asset must follow the page's CSS-variable theme. */
@@ -251,10 +215,11 @@
   outline-offset: 4px;
 }
 
-@media (max-width: 899px) {
+@media (max-width: 1023px) {
   .layout {
     display: block;
     max-width: 400px;
+    margin-inline: auto;
   }
   .story {
     display: none;

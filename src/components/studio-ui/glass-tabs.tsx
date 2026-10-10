@@ -47,7 +47,8 @@ type Gesture = {
 };
 
 /**
- * The glass capsule tab control: a clear lens that slides between equal
+ * The glass capsule tab control, shared by the site hero and Studio toolbars
+ * (add `studio-showcase-tabs-compact` for the toolbar size): a clear lens that slides between equal
  * slots, follows a horizontal drag, and commits on release. Click and arrow
  * keys work too, and reduced motion makes every move immediate.
  */
@@ -63,8 +64,9 @@ export default function GlassTabs<T extends string>({
   tabs: readonly GlassTab<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** One shared panel id, or a function when each tab has its own panel. */
-  panelId: string | ((value: T) => string);
+  /** One shared panel id, or a function when each tab has its own panel.
+   * Omit it when the tabs switch the page below rather than a panel. */
+  panelId?: string | ((value: T) => string);
   id: string;
   label: string;
   className?: string;
@@ -121,6 +123,22 @@ export default function GlassTabs<T extends string>({
         velocity,
       });
   };
+  // Follow a value set from outside (an autoplaying demo, a view the page
+  // just created). Clicks and drags already moved the lens themselves.
+  useEffect(() => {
+    if (gesture.current || !slot || index < 0) return;
+    if (Math.abs(x.get() - index * slot) < 0.5) return;
+    animation.current?.stop();
+    if (reduce !== false) x.set(index * slot);
+    else
+      animation.current = animate(x, index * slot, {
+        type: "spring",
+        stiffness: 440,
+        damping: 36,
+        mass: 0.8,
+      });
+  }, [index, slot, reduce, x]);
+
   const clear = () => {
     gesture.current = null;
     setPressed(false);
@@ -270,7 +288,7 @@ export default function GlassTabs<T extends string>({
           type="button"
           role="tab"
           aria-selected={value === tab}
-          aria-controls={typeof panelId === "string" ? panelId : panelId(tab)}
+          aria-controls={typeof panelId === "function" ? panelId(tab) : panelId}
           id={`${id}-${tab}`}
           tabIndex={value === tab ? 0 : -1}
           onClick={(event) => {
@@ -297,7 +315,7 @@ export default function GlassTabs<T extends string>({
           }}
         >
           {Icon && <Icon size={16} />}
-          <span>{tabLabel}</span>
+          <span className="studio-tab-label">{tabLabel}</span>
         </button>
       ))}
     </GlassScene>
