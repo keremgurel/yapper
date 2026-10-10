@@ -3,8 +3,8 @@
  * agent or a developer can drive signed-in Studio screens on localhost without
  * a Clerk account. See docs/local-fake-auth.md.
  */
-if (process.env.NODE_ENV === "production") {
-  throw new Error("fake auth must never load in a production build");
+if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+  throw new Error("fake auth must never load outside a local dev server");
 }
 
 export const FAKE_USER = {

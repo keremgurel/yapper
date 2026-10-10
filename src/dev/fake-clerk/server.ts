@@ -58,10 +58,20 @@ export function createRouteMatcher(patterns: string[]) {
     regexes.some((r) => r.test(req.nextUrl.pathname));
 }
 
+const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/** Refuses any request not addressed to this machine. The dev server should
+ * also be bound to 127.0.0.1 (see docs/local-fake-auth.md); this is the second
+ * lock, so a server started without `-H` still turns LAN visitors away. */
 export function clerkMiddleware(
   handler?: (a: FakeAuth, req: NextRequest) => unknown,
 ) {
   return async (req: NextRequest) => {
+    if (!LOOPBACK.has(req.nextUrl.hostname)) {
+      return new NextResponse("Fake auth only answers on localhost", {
+        status: 403,
+      });
+    }
     await handler?.(auth, req);
     return NextResponse.next();
   };

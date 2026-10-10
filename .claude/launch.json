@@ -16,7 +16,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 22 && YAPPER_FAKE_AUTH=1 npx next dev -p 3112"
+        "source ~/.nvm/nvm.sh && nvm use 22 && YAPPER_FAKE_AUTH=1 npx next dev -H 127.0.0.1 -p 3112"
       ],
       "port": 3112,
       "autoPort": false
