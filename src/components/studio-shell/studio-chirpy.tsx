@@ -517,7 +517,6 @@ export default function StudioChirpy({ children }: { children: ReactNode }) {
   const panel = (
     <ChirpyPanel
       pathname={pathname}
-      expression={expression}
       working={working}
       messages={messages}
       draft={draft}

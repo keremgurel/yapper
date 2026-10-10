@@ -65,7 +65,8 @@ const ChirpyLauncher = forwardRef<
         }}
         onPointerDown={(event: React.PointerEvent<HTMLElement>) => {
           setPressed(true);
-          drag.onPointerDown(event);
+          // Docked in the open panel it is a close button, not a handle.
+          if (!open) drag.onPointerDown(event);
         }}
         onPointerMove={drag.onPointerMove}
         onPointerUp={(event: React.PointerEvent<HTMLElement>) => {
@@ -82,7 +83,7 @@ const ChirpyLauncher = forwardRef<
           setPressed(false);
         }}
         className={`pointer-events-auto size-[72px]! touch-none rounded-full! select-none ${
-          dragging ? "cursor-grabbing" : "cursor-grab"
+          open ? "cursor-pointer" : dragging ? "cursor-grabbing" : "cursor-grab"
         } motion-safe:transition-transform motion-safe:duration-150 ${
           dragging ? "scale-105" : "motion-safe:active:scale-95"
         }`}
