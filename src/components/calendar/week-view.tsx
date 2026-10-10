@@ -1,6 +1,7 @@
 "use client";
 
 import type { ContentSummary } from "@/lib/content/client";
+import type { PostedGroup } from "@/lib/content/posted-days";
 import { dayKey, sameDay, weekDays } from "@/lib/content/calendar";
 import CalendarDayCell from "./calendar-day-cell";
 
@@ -8,12 +9,14 @@ import CalendarDayCell from "./calendar-day-cell";
 export default function WeekView({
   focus,
   byDay,
+  postedByDay,
   today,
   onOpenItem,
   onDropDay,
 }: {
   focus: Date;
   byDay: Map<string, ContentSummary[]>;
+  postedByDay: Map<string, PostedGroup[]>;
   today: Date;
   onOpenItem: (id: string) => void;
   onDropDay: (id: string, day: Date) => void;
@@ -39,6 +42,7 @@ export default function WeekView({
             <CalendarDayCell
               day={day}
               items={byDay.get(dayKey(day)) ?? []}
+              posted={postedByDay.get(dayKey(day)) ?? []}
               inMonth
               isToday={isToday}
               dense={false}

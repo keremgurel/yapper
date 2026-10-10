@@ -6,6 +6,7 @@ import { dayKey } from "@/lib/content/calendar";
 import { demoIdeas } from "./demo-content";
 
 const noop = () => {};
+const noPosts = new Map();
 const focus = new Date(2026, 9, 1);
 const items = demoIdeas.map((idea, index) => ({
   ...idea,
@@ -32,6 +33,7 @@ export default function CalendarPreview() {
             focus={focus}
             today={focus}
             byDay={byDay}
+            postedByDay={noPosts}
             onOpenItem={noop}
             onDropDay={noop}
           />

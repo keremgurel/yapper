@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import type { ContentSummary } from "@/lib/content/client";
+import type { PostedGroup } from "@/lib/content/posted-days";
 import CalendarPostChip from "./calendar-post-chip";
+import CalendarPostedList from "./calendar-posted-list";
 
-/** A single day in the grid: its date, the posts scheduled on it, and a drop
- * target for drag-to-reschedule. `dense` (month view) caps the visible chips;
+/** A single day in the grid: its date, the posts scheduled on it, what already
+ * went out that day, and a drop target for drag-to-reschedule. `dense` (month view) caps the visible chips;
  * `showDate` is off in week view, where the column header carries the date. */
 export default function CalendarDayCell({
   day,
   items,
+  posted,
   inMonth,
   isToday,
   dense,
@@ -19,6 +22,7 @@ export default function CalendarDayCell({
 }: {
   day: Date;
   items: ContentSummary[];
+  posted: PostedGroup[];
   inMonth: boolean;
   isToday: boolean;
   dense: boolean;
@@ -45,7 +49,7 @@ export default function CalendarDayCell({
         const id = e.dataTransfer.getData("text/plain");
         if (id) onDropDay(id, day);
       }}
-      className={`flex flex-col gap-1 border-r border-b p-1.5 ${
+      className={`flex min-w-0 flex-col gap-1 border-r border-b p-1.5 ${
         dense ? "min-h-24" : "min-h-[26rem]"
       } ${inMonth ? "" : "bg-muted/20"} ${
         over ? "ring-2 ring-[color:var(--sg-accent)] ring-inset" : ""
@@ -80,6 +84,7 @@ export default function CalendarDayCell({
           </span>
         )}
       </div>
+      <CalendarPostedList groups={posted} dense={dense} />
     </div>
   );
 }
