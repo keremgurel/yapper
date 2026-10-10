@@ -3,17 +3,10 @@ import { Lightbulb, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Chip, EmptyState, Section, statusTone } from "@/components/studio-ui";
 import type { ItemSummary } from "@/lib/ideas/client";
-import type { ContentStatus } from "@/lib/db/schema";
 import { itemTitle } from "@/components/studio-home/item-title";
 import { upNextItems } from "@/components/studio-home/up-next";
 import PipelineBar from "@/components/studio-home/pipeline-bar";
-
-const STATUS_LABEL: Record<ContentStatus, string> = {
-  captured: "Captured",
-  drafting: "Drafting",
-  ready: "Ready",
-  posted: "Posted",
-};
+import { STATUS_LABEL } from "@/lib/content/status-label";
 
 function scheduledLabel(iso: string): string {
   return new Intl.DateTimeFormat(undefined, {

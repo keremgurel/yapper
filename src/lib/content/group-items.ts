@@ -2,6 +2,7 @@ import { CONTENT_FORMATS } from "@/lib/content/formats";
 import type { ContentSummary } from "@/lib/content/client";
 import type { LibraryGrouping } from "@/lib/db/schema";
 import { contentStatuses } from "@/lib/db/schema";
+import { STATUS_LABEL } from "@/lib/content/status-label";
 
 export interface ItemGroup {
   /** Stable key for React and for drop targets. */
@@ -9,13 +10,6 @@ export interface ItemGroup {
   label: string;
   items: ContentSummary[];
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  captured: "Captured",
-  drafting: "Drafting",
-  ready: "Ready",
-  posted: "Posted",
-};
 
 /** Rows that match every active filter. Absent or empty filters do not narrow
  * anything, so a brand-new view shows the whole surface. */
