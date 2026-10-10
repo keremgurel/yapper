@@ -18,6 +18,7 @@ import {
 import CalendarHeader from "./calendar-header";
 import MonthView from "./month-view";
 import WeekView from "./week-view";
+import { usePostedDays } from "./use-posted-days";
 
 /** The content calendar: scheduled library items laid out by day, month or
  * week, with drag-to-reschedule. Owns the wiring (data + nav + reschedule); the
@@ -47,6 +48,7 @@ export default function ContentCalendar() {
     [patchRow],
   );
   const { view, setView, focus, next, prev, today } = useCalendarNav();
+  const postedByDay = usePostedDays(!!isSignedIn);
 
   const byDay = useMemo(
     () => bucketByDay(items ?? [], (i) => i.scheduledFor),
@@ -123,6 +125,7 @@ export default function ContentCalendar() {
         <MonthView
           focus={focus}
           byDay={byDay}
+          postedByDay={postedByDay}
           today={now}
           onOpenItem={openItem}
           onDropDay={reschedule}
@@ -131,12 +134,13 @@ export default function ContentCalendar() {
         <WeekView
           focus={focus}
           byDay={byDay}
+          postedByDay={postedByDay}
           today={now}
           onOpenItem={openItem}
           onDropDay={reschedule}
         />
       )}
-      {byDay.size === 0 ? (
+      {byDay.size === 0 && postedByDay.size === 0 ? (
         <div className="text-muted-foreground mt-6 flex flex-col items-center gap-2 py-10 text-center text-sm">
           <CalendarDays className="h-6 w-6" />
           <p className="text-foreground font-semibold">Nothing scheduled yet</p>
@@ -147,8 +151,8 @@ export default function ContentCalendar() {
         </div>
       ) : (
         <p className="text-muted-foreground mt-3 text-xs">
-          Drag a post to another day to reschedule it. These are planning dates;
-          they do not publish your video on their own.
+          Drag a planned post to another day to reschedule it. Outlined badges
+          are posts already live on your channels.
         </p>
       )}
     </div>
