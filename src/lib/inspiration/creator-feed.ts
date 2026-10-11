@@ -1,4 +1,9 @@
 import { scrapeCreator, type CreatorScrape } from "./apify";
+import { getDiscoveryAccess } from "./business-discovery-access";
+import {
+  fetchBusinessDiscovery,
+  linkedInstagramId,
+} from "./business-discovery";
 import { fetchYouTubeCreator } from "./youtube-data-api";
 import type { Platform } from "./types";
 import { getFreshAccessToken } from "@/lib/publish/connection";
@@ -13,16 +18,65 @@ import { getFreshAccessToken } from "@/lib/publish/connection";
  */
 export const CREATOR_FEED_LIMIT = 24;
 
+/** YouTube's Data API, under the `youtube.readonly` scope already held for
+ * publishing. Null when the user has not connected it or the API declines. */
+async function viaYouTubeApi(
+  userId: string,
+  url: string,
+): Promise<CreatorScrape | null> {
+  try {
+    const token = await getFreshAccessToken(userId, "youtube");
+    return await fetchYouTubeCreator(url, token, CREATOR_FEED_LIMIT);
+  } catch (e) {
+    console.warn(
+      "[inspiration] youtube api unavailable, falling back to scrape",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
+/** Meta's Business Discovery, asked through the user's Facebook connection
+ * and its linked Instagram account. Null when that connection lacks the
+ * Instagram scopes or Meta declines (personal or age-gated targets). */
+async function viaBusinessDiscovery(
+  userId: string,
+  url: string,
+  handle: string | undefined,
+): Promise<CreatorScrape | null> {
+  if (!handle) return null;
+  try {
+    const access = await getDiscoveryAccess(userId);
+    if (!access) return null;
+    const igUserId = await linkedInstagramId(
+      access.userToken,
+      access.selectedPageId,
+    );
+    return await fetchBusinessDiscovery(
+      igUserId,
+      access.userToken,
+      handle,
+      url,
+      CREATOR_FEED_LIMIT,
+    );
+  } catch (e) {
+    console.warn(
+      "[inspiration] business discovery unavailable, falling back to scrape",
+      e instanceof Error ? e.message : e,
+    );
+    return null;
+  }
+}
+
 /**
  * A creator's recent feed, from the cheapest source that can serve it.
  *
- * YouTube's Data API answers for any public channel under the
- * `youtube.readonly` scope we already hold for publishing: free, sub-second,
- * and unbreakable by markup changes. Instagram and TikTok have no equivalent,
- * since their APIs only ever describe the token holder's own account, so those
- * go to metered scraping. YouTube falls back to the scraper too when the user
- * has not connected it or the API declines, so a missing connection costs
- * money but never the feature.
+ * YouTube's Data API answers for any public channel, and Instagram's Business
+ * Discovery for any professional account, both free and unbreakable by markup
+ * changes. TikTok has no equivalent, so it always goes to metered scraping.
+ * The free sources fall back to the scraper when the user has not connected
+ * them or the API declines, so a missing connection costs money but never the
+ * feature.
  */
 export async function fetchCreatorFeed(
   userId: string,
@@ -30,16 +84,11 @@ export async function fetchCreatorFeed(
   url: string,
   handle: string | undefined,
 ): Promise<CreatorScrape> {
-  if (platform === "youtube") {
-    try {
-      const token = await getFreshAccessToken(userId, "youtube");
-      return await fetchYouTubeCreator(url, token, CREATOR_FEED_LIMIT);
-    } catch (e) {
-      console.warn(
-        "[inspiration] youtube api unavailable, falling back to scrape",
-        e instanceof Error ? e.message : e,
-      );
-    }
-  }
-  return scrapeCreator(platform, url, handle, CREATOR_FEED_LIMIT);
+  const free =
+    platform === "youtube"
+      ? await viaYouTubeApi(userId, url)
+      : platform === "instagram"
+        ? await viaBusinessDiscovery(userId, url, handle)
+        : null;
+  return free ?? scrapeCreator(platform, url, handle, CREATOR_FEED_LIMIT);
 }
