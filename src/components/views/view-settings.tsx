@@ -19,6 +19,7 @@ import { ALL_COLUMN_KEYS } from "@/lib/content/columns";
 import { CONTENT_FORMATS } from "@/lib/content/formats";
 import { contentStatuses, type LibraryGrouping } from "@/lib/db/schema";
 import type { LibraryView, ViewDraft } from "@/lib/views/client";
+import { STATUS_LABEL } from "@/lib/content/status-label";
 
 const GROUPINGS: { value: LibraryGrouping | null; label: string }[] = [
   { value: null, label: "None" },
@@ -26,13 +27,6 @@ const GROUPINGS: { value: LibraryGrouping | null; label: string }[] = [
   { value: "pillar", label: "Pillar" },
   { value: "format", label: "Format" },
 ];
-
-const STATUS_LABEL: Record<string, string> = {
-  drafted: "Drafted",
-  planned: "Planned",
-  scheduled: "Scheduled",
-  posted: "Posted",
-};
 
 function Field({
   label,
@@ -215,7 +209,7 @@ export default function ViewSettings({
               groupLabel="Filter by status"
               options={contentStatuses.map((status) => ({
                 id: status,
-                label: STATUS_LABEL[status] ?? status,
+                label: STATUS_LABEL[status],
                 tone: statusTone(status),
               }))}
               selected={filterFor("status")}

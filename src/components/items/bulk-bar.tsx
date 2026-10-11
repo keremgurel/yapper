@@ -14,13 +14,7 @@ import {
 import { usePillars } from "@/hooks/use-pillars";
 import type { ContentStatus } from "@/lib/db/schema";
 import { contentStatuses } from "@/lib/db/schema";
-
-const STATUS_LABEL: Record<ContentStatus, string> = {
-  captured: "Captured",
-  drafting: "Drafting",
-  ready: "Ready",
-  posted: "Posted",
-};
+import { STATUS_LABEL } from "@/lib/content/status-label";
 
 /**
  * The multi-select action bar, shared by both surfaces.

@@ -1,7 +1,7 @@
 "use client";
 
 import { FileText, Lightbulb, Send, Video, Scissors } from "lucide-react";
-import GlassTabs from "./glass-tabs";
+import GlassTabs from "@/components/studio-ui/glass-tabs";
 import type { PreviewStep } from "./studio-preview";
 
 const tabs = [

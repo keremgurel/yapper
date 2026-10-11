@@ -33,6 +33,7 @@ const appearance: NonNullable<ComponentProps<typeof SignIn>["appearance"]> = {
     headerTitle: styles.title,
     headerSubtitle: styles.subtitle,
     socialButtonsBlockButton: styles.socialButton,
+    lastAuthenticationStrategyBadge: styles.lastUsed,
     socialButtonsProviderIcon__apple: styles.appleIcon,
     formFieldInput: styles.input,
     formFieldLabel: styles.label,

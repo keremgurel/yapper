@@ -1,16 +1,8 @@
 import Link from "next/link";
-import { Lightbulb, FileText, Video, Scissors, Send } from "lucide-react";
 import { ChirpyMark } from "@/components/brand/chirpy-mark";
 import CinematicThemeSwitcher from "@/components/ui/cinematic-theme-switcher";
+import StepStack from "./step-stack/step-stack";
 import styles from "./auth.module.css";
-
-const workflow = [
-  { label: "Brainstorm", icon: Lightbulb, tone: "idea" },
-  { label: "Script", icon: FileText, tone: "script" },
-  { label: "Record", icon: Video, tone: "record" },
-  { label: "Edit", icon: Scissors, tone: "edit" },
-  { label: "Crosspost", icon: Send, tone: "publish" },
-];
 
 export default function AuthShell({ children }: { children: React.ReactNode }) {
   return (
@@ -30,27 +22,11 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
       <main className={`marketing-container ${styles.main}`}>
         <div className={styles.layout}>
           <section className={styles.story} aria-label="Yapper Studio">
-            <p className={styles.product}>Yapper Studio</p>
-            <p className={styles.headline}>
-              From first idea
-              <br />
-              to posted video.
-            </p>
+            <p className={styles.headline}>From first idea to posted video.</p>
             <p className={styles.description}>
-              A place for your ideas to become something.
-              <br />
-              Script, record, edit and share. All together.
+              Script, record, edit and post, all in one place.
             </p>
-            <ol className={styles.workflow} aria-label="Your creative workflow">
-              {workflow.map(({ label, icon: Icon, tone }) => (
-                <li key={label}>
-                  <span className={styles.tile} data-tone={tone}>
-                    <Icon size={28} strokeWidth={1.5} aria-hidden="true" />
-                  </span>
-                  <span>{label}</span>
-                </li>
-              ))}
-            </ol>
+            <StepStack />
           </section>
           <section className={styles.form} aria-label="Access your studio">
             {children}

@@ -1,5 +1,10 @@
 import { Buffer } from "node:buffer";
 
+// Fake auth signs every visitor in as one test user. It is for localhost only.
+if (process.env.YAPPER_FAKE_AUTH) {
+  throw new Error("YAPPER_FAKE_AUTH must never be set for a build");
+}
+
 if (process.env.VERCEL === "1") {
   const secret = process.env.RATE_LIMIT_SUBJECT_SECRET;
   if (!secret || Buffer.byteLength(secret, "utf8") < 32) {
