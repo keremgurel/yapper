@@ -11,6 +11,9 @@ import {
   fetchCreatorFeed,
 } from "@/lib/inspiration/creator-feed";
 import { rankByOutlier } from "@/lib/inspiration/outliers";
+import { scrapeCacheKey } from "@/lib/inspiration/scrape-cache-key";
+import type { CreatorScrape } from "@/lib/inspiration/apify";
+import { readScrapeCache, writeScrapeCache } from "@/lib/db/scrape-cache";
 import {
   guardProviderIngress,
   guardProviderSpend,
@@ -18,6 +21,11 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+/** A creator's feed is shared across users for this long. Twelve hours keeps
+ * view counts honest while a popular creator costs one scrape, not one per
+ * user. */
+const FEED_CACHE_MS = 12 * 60 * 60 * 1000;
 
 /** Fetch a creator's recent feed and return it ranked with outlier flags.
  * Best-effort: on any failure we return an empty feed with a note rather than
@@ -73,7 +81,16 @@ export async function POST(req: Request) {
   const { reservation } = access;
 
   try {
-    const scrape = await fetchCreatorFeed(userId, platform, url, handle);
+    const cacheKey = scrapeCacheKey("creator", url);
+    const cached = await readScrapeCache<CreatorScrape>(
+      cacheKey,
+      FEED_CACHE_MS,
+    );
+    const scrape =
+      cached ?? (await fetchCreatorFeed(userId, platform, url, handle));
+    if (!cached && scrape.videos.length > 0) {
+      await writeScrapeCache(cacheKey, scrape);
+    }
     const videos = rankByOutlier(scrape.videos).slice(0, CREATOR_FEED_LIMIT);
     return NextResponse.json({
       name: scrape.name,

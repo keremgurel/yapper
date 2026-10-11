@@ -1378,3 +1378,19 @@ export const providerSpendWindows = pgTable("provider_spend_windows", {
     .notNull()
     .defaultNow(),
 });
+
+/** Results of paid scrapes and transcriptions of public posts, keyed by the
+ * normalized URL. Shared across users: a public Reel's transcript is the same
+ * whoever pastes it, so the second paste costs no Apify or Deepgram call.
+ * Holds public content only, never anything tied to an account. */
+export const scrapeCache = pgTable(
+  "scrape_cache",
+  {
+    key: text("key").primaryKey(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("scrape_cache_created_idx").on(t.createdAt)],
+);
