@@ -13,7 +13,7 @@ import {
   youtubeId,
 } from "@/lib/inspiration/platform";
 import { resolveMetadata } from "@/lib/inspiration/oembed";
-import { scrapeCacheKey } from "@/lib/inspiration/scrape-cache-key";
+import { referenceCacheKey } from "@/lib/inspiration/scrape-cache-key";
 import { readScrapeCache, writeScrapeCache } from "@/lib/db/scrape-cache";
 import {
   resolveInstagramMedia,
@@ -103,9 +103,7 @@ export async function POST(req: Request) {
     // Instagram needs a direct media URL before Deepgram can hear the Reel.
     // A video someone already resolved skips the scraper and Deepgram.
     const cacheKey =
-      kind === "video" && !isWebResource
-        ? scrapeCacheKey("resolve", url)
-        : null;
+      kind === "video" && !isWebResource ? referenceCacheKey(url) : null;
     const cached = await readScrapeCache<SourceDetails>(
       cacheKey,
       TRANSCRIPT_CACHE_MS,
