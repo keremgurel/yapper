@@ -13,6 +13,8 @@ import {
   youtubeId,
 } from "@/lib/inspiration/platform";
 import { resolveMetadata } from "@/lib/inspiration/oembed";
+import { scrapeCacheKey } from "@/lib/inspiration/scrape-cache-key";
+import { readScrapeCache, writeScrapeCache } from "@/lib/db/scrape-cache";
 import {
   resolveInstagramMedia,
   resolveTikTokMedia,
@@ -32,6 +34,10 @@ import {
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
+
+/** A public video's words do not change, so a transcript is reused this long
+ * across every user who pastes the same post. */
+const TRANSCRIPT_CACHE_MS = 30 * 24 * 60 * 60 * 1000;
 
 interface SourceDetails {
   title?: string;
@@ -95,15 +101,26 @@ export async function POST(req: Request) {
   try {
     // Card metadata and source analysis are independent, so start both together.
     // Instagram needs a direct media URL before Deepgram can hear the Reel.
-    const sourceDetailsPromise: Promise<SourceDetails> = isWebResource
-      ? resolveWrittenReference(url, req.signal)
-      : kind === "video" && platform === "youtube"
-        ? resolveYouTubeReference(url)
-        : kind === "video" && platform === "instagram"
-          ? resolveInstagramReference(url)
-          : kind === "video" && platform === "tiktok"
-            ? resolveTikTokReference(url)
-            : Promise.resolve({ transcript: null });
+    // A video someone already resolved skips the scraper and Deepgram.
+    const cacheKey =
+      kind === "video" && !isWebResource
+        ? scrapeCacheKey("resolve", url)
+        : null;
+    const cached = await readScrapeCache<SourceDetails>(
+      cacheKey,
+      TRANSCRIPT_CACHE_MS,
+    );
+    const sourceDetailsPromise: Promise<SourceDetails> = cached
+      ? Promise.resolve(cached)
+      : isWebResource
+        ? resolveWrittenReference(url, req.signal)
+        : kind === "video" && platform === "youtube"
+          ? resolveYouTubeReference(url)
+          : kind === "video" && platform === "instagram"
+            ? resolveInstagramReference(url)
+            : kind === "video" && platform === "tiktok"
+              ? resolveTikTokReference(url)
+              : Promise.resolve({ transcript: null });
     const metadataPromise: Promise<Partial<ResolvedLink>> = isWebResource
       ? Promise.resolve({})
       : resolveMetadata(platform, url);
@@ -111,6 +128,9 @@ export async function POST(req: Request) {
       metadataPromise,
       sourceDetailsPromise,
     ]);
+    if (!cached && sourceDetails.transcript?.trim()) {
+      await writeScrapeCache(cacheKey, sourceDetails);
+    }
 
     const handleLabel = handle ? `@${handle}` : undefined;
 

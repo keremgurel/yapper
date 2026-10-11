@@ -274,6 +274,13 @@
       "when": 1791417600000,
       "tag": "0038_recording_memory",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791756672250,
+      "tag": "0039_scrape_cache",
+      "breakpoints": true
     }
   ]
 }

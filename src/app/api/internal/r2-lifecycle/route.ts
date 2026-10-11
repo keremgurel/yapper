@@ -7,6 +7,7 @@ import {
 import { processR2LifecycleBatch } from "@/lib/db/r2-lifecycle";
 import { reconcileR2Inventory } from "@/lib/db/r2-reconciliation";
 import { cleanupExpiredRateLimitBuckets } from "@/lib/db/rate-limit";
+import { pruneScrapeCache } from "@/lib/db/scrape-cache";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -17,6 +18,8 @@ const ROUTE_BUDGET_MS = 45_000;
 const DEFAULT_BATCH_SIZE = 2_000;
 const MAX_BATCH_SIZE = 5_000;
 const RATE_LIMIT_CLEANUP_BATCH_SIZE = 500;
+// Matches the longest TTL a reader uses (pasted-video transcripts).
+const SCRAPE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 function authorized(request: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -77,6 +80,12 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     inventoryFailed = true;
     console.error("[maintenance] R2 inventory reconciliation failed", error);
+  }
+
+  try {
+    await pruneScrapeCache(SCRAPE_CACHE_MAX_AGE_MS);
+  } catch (error) {
+    console.error("[maintenance] scrape cache prune failed", error);
   }
 
   const result = await processR2LifecycleBatch({
