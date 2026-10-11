@@ -11,7 +11,7 @@ import {
   fetchCreatorFeed,
 } from "@/lib/inspiration/creator-feed";
 import { rankByOutlier } from "@/lib/inspiration/outliers";
-import { scrapeCacheKey } from "@/lib/inspiration/scrape-cache-key";
+import { creatorCacheKey } from "@/lib/inspiration/scrape-cache-key";
 import type { CreatorScrape } from "@/lib/inspiration/apify";
 import { readScrapeCache, writeScrapeCache } from "@/lib/db/scrape-cache";
 import {
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   const { reservation } = access;
 
   try {
-    const cacheKey = scrapeCacheKey("creator", url);
+    const cacheKey = creatorCacheKey(url);
     const cached = await readScrapeCache<CreatorScrape>(
       cacheKey,
       FEED_CACHE_MS,

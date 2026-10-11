@@ -101,7 +101,7 @@ describe("POST /api/inspiration/creator shared feed cache", () => {
 
     expect(response.status).toBe(200);
     expect(mocks.readCache).toHaveBeenCalledWith(
-      "creator:tiktok.com/@someone",
+      "creator:tiktok:someone",
       expect.any(Number),
     );
     expect(mocks.fetchCreatorFeed).not.toHaveBeenCalled();
@@ -116,9 +116,18 @@ describe("POST /api/inspiration/creator shared feed cache", () => {
 
     expect(mocks.fetchCreatorFeed).toHaveBeenCalledTimes(1);
     expect(mocks.writeCache).toHaveBeenCalledWith(
-      "creator:tiktok.com/@someone",
+      "creator:tiktok:someone",
       feed,
     );
+  });
+
+  it("never reads or writes the cache for a YouTube channel", async () => {
+    mocks.fetchCreatorFeed.mockResolvedValue(feed);
+
+    await post("https://www.youtube.com/@someone");
+
+    expect(mocks.readCache).toHaveBeenCalledWith(null, expect.any(Number));
+    expect(mocks.writeCache).toHaveBeenCalledWith(null, feed);
   });
 
   it("does not store an empty feed", async () => {
