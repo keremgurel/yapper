@@ -26,7 +26,7 @@ export type BillingPeriod = "month" | "year";
 /** Temporary publishing workspace, identical for every billing cadence.
  * This is concurrent capacity, never a weekly/monthly allocation or archive. */
 export const TEMPORARY_STORAGE_BYTES = 5 * 1024 * 1024 * 1024;
-export const TRIAL_CREDITS = 30;
+export const TRIAL_CREDITS = 100;
 
 export interface SubscriptionPlan {
   key: PlanKey;
@@ -88,7 +88,7 @@ export const STUDIO_PLANS: SubscriptionPlan[] = [
     cadence: "month",
     cadenceLabel: "per month",
     priceId: process.env.STRIPE_PRICE_CREATOR_MONTHLY ?? "",
-    includedCredits: 500,
+    includedCredits: 1000,
     storageBytes: TEMPORARY_STORAGE_BYTES,
     priceLabel: "$24.99",
     storageLabel: "5 GB temporary workspace",
@@ -103,11 +103,11 @@ export const STUDIO_PLANS: SubscriptionPlan[] = [
     cadence: "year",
     cadenceLabel: "per year",
     priceId: process.env.STRIPE_PRICE_CREATOR_YEARLY ?? "",
-    includedCredits: 6000,
+    includedCredits: 12000,
     storageBytes: TEMPORARY_STORAGE_BYTES,
     priceLabel: "$199.99",
     storageLabel: "5 GB temporary workspace",
-    blurb: "Pay once for a year. All 6,000 credits arrive after payment.",
+    blurb: "Pay once for a year. All 12,000 credits arrive after payment.",
     badge: "Save 33%",
   },
 ];

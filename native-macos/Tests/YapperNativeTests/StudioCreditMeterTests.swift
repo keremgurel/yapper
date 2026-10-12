@@ -11,6 +11,14 @@ final class StudioCreditMeterTests: XCTestCase {
         let old = try JSONDecoder().decode(StudioBillingSnapshot.self, from: Data(##"{"balance":42,"entitled":true}"##.utf8))
         XCTAssertEqual(old.balance, 42)
         XCTAssertNil(old.creditMeter)
+        XCTAssertNil(old.packs)
+    }
+
+    func testPacksDecodeAndOpenTheirOwnCheckout() throws {
+        let data = Data(##"{"balance":10,"entitled":true,"packs":[{"key":"credits_300","credits":300,"priceLabel":"$19"}]}"##.utf8)
+        let pack = try XCTUnwrap(JSONDecoder().decode(StudioBillingSnapshot.self, from: data).packs?.first)
+        XCTAssertEqual(pack.credits, 300)
+        XCTAssertEqual(pack.checkoutURL?.absoluteString, "https://ypr.app/pricing?buy=credits_300#credits")
     }
 
     func testProfilePhotoOnlyAcceptsHTTPSAndCanBeCleared() {

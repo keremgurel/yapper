@@ -61,7 +61,7 @@ const invoice = {
   parent: { subscription_details: { metadata: { creditGrantVersion: "2" } } },
   lines: { data: [{ pricing: { price_details: { price: "yearly" } } }] },
 };
-it("annual free trial gets 30 credits, never the 6000 annual allotment", async () => {
+it("annual free trial gets 100 credits, never the 12000 annual allotment", async () => {
   expect(
     (
       await send("checkout.session.completed", {
@@ -74,7 +74,7 @@ it("annual free trial gets 30 credits, never the 6000 annual allotment", async (
       })
     ).status,
   ).toBe(200);
-  expect(mocks.trial).toHaveBeenCalledWith("owner", 30);
+  expect(mocks.trial).toHaveBeenCalledWith("owner", 100);
   expect(mocks.grant).not.toHaveBeenCalled();
 });
 it("paid checkout defers the full allotment to its paid invoice", async () => {
@@ -89,7 +89,7 @@ it("paid checkout defers the full allotment to its paid invoice", async () => {
   await send("invoice.paid", invoice);
   expect(mocks.grant).toHaveBeenCalledWith(
     "owner",
-    6000,
+    12000,
     "subscription_grant",
     "inv_in_1",
     expect.anything(),
@@ -131,7 +131,7 @@ it("credits a checkout opened before deployment with the legacy deduplication ke
   });
   expect(mocks.grant).toHaveBeenCalledWith(
     "owner",
-    6000,
+    12000,
     "subscription_grant",
     "sess_cs_legacy",
     expect.anything(),

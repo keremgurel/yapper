@@ -4691,15 +4691,6 @@ button.publisher-remix-glass {
 .pricing-credit-costs span {
   color: var(--sg-text-muted);
 }
-.pricing-pack {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  border: 1px solid var(--sg-border);
-  padding: 20px;
-  border-radius: 10px;
-}
 .pricing-studio {
   display: flex;
   justify-content: space-between;
@@ -4728,10 +4719,6 @@ button.publisher-remix-glass {
   }
   .train-price-details dd {
     text-align: left;
-  }
-  .pricing-pack {
-    flex-direction: column;
-    align-items: start;
   }
 }
 @media (max-width: 767px) {
@@ -4782,10 +4769,6 @@ button.publisher-remix-glass {
   }
   .train-price-details > div {
     flex-direction: row;
-  }
-  .pricing-pack {
-    flex-direction: row;
-    align-items: center;
   }
   .pricing-trial {
     text-align: left;

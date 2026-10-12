@@ -1,0 +1,205 @@
+/* Credit top-up: a tank on one side, the pack choice on the other. */
+.panel {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 56px;
+  padding: 40px;
+  border: 1px solid var(--sg-border);
+  border-radius: 20px;
+  background: var(--sg-surface);
+}
+.gauge {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 28px;
+}
+.tank {
+  position: relative;
+  flex: none;
+  width: 112px;
+  height: 248px;
+  border-radius: 28px;
+  overflow: hidden;
+  background: var(--sg-surface-sunken);
+  box-shadow:
+    inset 0 0 0 1px var(--sg-border),
+    inset 0 10px 24px -18px rgba(0, 0, 0, 0.35);
+}
+.added,
+.held {
+  position: absolute;
+  inset: auto 0 0 0;
+}
+.added {
+  top: 0;
+  background: linear-gradient(
+    180deg,
+    var(--sg-accent) 0%,
+    var(--sg-accent-strong) 100%
+  );
+  clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+}
+.held {
+  background: color-mix(in srgb, var(--sg-text) 22%, var(--sg-surface-sunken));
+  border-top: 1px solid color-mix(in srgb, var(--sg-text) 30%, transparent);
+  transition: height 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ticks {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 22%;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--sg-text) 22%, transparent) 0 1px,
+    transparent 1px
+  );
+  background-size: 100% 25%;
+  background-position: bottom;
+}
+.readout {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 4px;
+  min-width: 0;
+}
+.readout strong {
+  font-size: clamp(40px, 4.4vw, 56px);
+  line-height: 1;
+  font-weight: 550;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.readout span {
+  color: var(--sg-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+.pick {
+  display: grid;
+  gap: 24px;
+  align-content: center;
+  min-width: 0;
+}
+.choices {
+  display: grid;
+  gap: 8px;
+}
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 72px;
+  padding: 14px 18px;
+  border: 1px solid var(--sg-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--sg-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease;
+}
+.choice:hover {
+  border-color: var(--sg-border-strong);
+}
+.choice:focus-visible {
+  outline: 2px solid var(--sg-text);
+  outline-offset: 3px;
+}
+.choice[aria-checked="true"] {
+  border-color: var(--sg-accent);
+  background: color-mix(in srgb, var(--sg-accent) 6%, var(--sg-surface));
+}
+.dot {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--sg-border-strong);
+  transition:
+    border-color 150ms ease,
+    border-width 150ms ease;
+}
+.choice[aria-checked="true"] .dot {
+  border: 5px solid var(--sg-accent);
+}
+.choiceText {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.choiceName {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sg-accent-strong);
+  background: color-mix(in srgb, var(--sg-accent) 14%, transparent);
+}
+.choiceCovers {
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.choicePrice {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  flex: none;
+}
+.choicePrice strong {
+  font-size: 18px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+.choicePrice span {
+  color: var(--sg-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.buy {
+  display: grid;
+  gap: 10px;
+}
+.buyNote {
+  color: var(--sg-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+@media (max-width: 900px) {
+  .panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    padding: 24px;
+  }
+  .gauge {
+    justify-content: flex-start;
+  }
+  .tank {
+    width: 88px;
+    height: 176px;
+    border-radius: 22px;
+  }
+}
+@media (max-width: 420px) {
+  .choice {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+}

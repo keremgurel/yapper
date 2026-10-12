@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { Pool } from "pg";
+import { PAID_ACTIONS } from "@/lib/billing/paid-actions";
 import { withPlanLedger } from "./ledger";
 import type { PlanInput } from "./protocol";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
@@ -54,7 +55,7 @@ it("serializes duplicate model calls and charges once, including retries after c
     [user, request.executionID],
   );
   expect(ledger.rows).toHaveLength(1);
-  expect(ledger.rows[0].delta).toBe(-6);
+  expect(ledger.rows[0].delta).toBe(-PAID_ACTIONS.chirpy_plan.credits);
   await expect(
     withPlanLedger(user, { ...request, revision: 2 }, generate),
   ).rejects.toThrow("execution_conflict");

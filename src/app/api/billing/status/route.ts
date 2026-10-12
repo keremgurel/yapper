@@ -6,6 +6,7 @@ import { getStorageBytes } from "@/lib/db/users";
 import { isEntitled, isTrialing } from "@/lib/billing/entitlement";
 import { storageQuotaFor } from "@/lib/billing/storage";
 import { getTrainSpendable } from "@/lib/db/train-wallet";
+import { packsFor } from "@/lib/billing/plans";
 
 export const runtime = "nodejs";
 
@@ -40,6 +41,12 @@ export async function GET(): Promise<Response> {
     }),
     storageBytes,
     storageQuotaBytes: storageQuotaFor(state),
+    // The Mac app offers these as one-click top-ups in its account menu.
+    packs: packsFor("studio").map(({ key, credits, priceLabel }) => ({
+      key,
+      credits,
+      priceLabel,
+    })),
     train: {
       entitled: isEntitled(train),
       status: train?.subscriptionStatus ?? null,

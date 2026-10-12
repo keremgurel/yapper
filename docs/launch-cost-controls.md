@@ -6,9 +6,10 @@ prices in `unit-economics-and-pricing.md` and `public-billing-design.md`.
 ## What the customer buys
 
 Membership prices stay $7.99/week, $24.99/month, or $199.99/year. They buy the
-same features with different payment schedules. Paid invoices add 100, 500 or
-6,000 credits respectively. Annual credits arrive after annual payment, not in
-a free trial. The first card-backed trial adds 30 credits once per account;
+same features with different payment schedules. Paid invoices add 100, 1,000 or
+12,000 credits respectively (the weekly plan is legacy and no longer sold).
+Annual credits arrive after annual payment, not in a free trial. The first
+card-backed trial adds 100 credits once per account;
 opening another checkout cannot earn another grant. The separate welcome grant
 still covers one practice feedback. Paid credits and existing balances are not
 removed by this change. There are no automatic top-ups or metered overage bills.
@@ -26,21 +27,34 @@ need to free space before uploading more.
 
 ## Pricing the expensive actions
 
+Repriced October 12, 2026. At 500 credits a month and 60 credits an overlay,
+the monthly plan covered about two videos with overlays, so a creator posting
+a few times a week ran dry in the first week. Allowances doubled (1,000 a
+month, 12,000 a year, 100 in the trial) and the actions that charged many
+times their provider cost came down. A finished video (script, about six
+minutes transcribed, 1-Click Edit, overlay planning, two overlays, thumbnail,
+caption) is now 107 credits, so the monthly plan covers about nine. Its
+provider cost at list is roughly $0.75, so nine of them is about $7 against
+$24.99, or $16.67 a month on yearly. `FINISHED_VIDEO_CREDITS` in
+`src/lib/billing/credit-equivalents.ts` computes it from the catalog, and the
+pricing page shows it. Credit packs stay $9, $19 and $49, all above the plan's
+own per-credit rate, which a test checks.
+
 | Action                              |                                 Credits |
 | ----------------------------------- | --------------------------------------: |
-| Chirpy action planning              |                                       6 |
+| Chirpy action planning              |                                       2 |
 | Brain setup                         |                                       8 |
 | Training feedback                   |                                       3 |
 | Transcription                       | 4 per started 3 minutes; max 60 minutes |
 | Transcript cleanup                  |                                       8 |
 | Media placement                     |                                       4 |
 | Reference analysis / idea expansion |                                       8 |
-| Creator feed analysis               |                                      20 |
+| Creator feed analysis               |                                      12 |
 | Thumbnail generation                |                                      12 |
-| Overlay planning                    |                                      20 |
-| Overlay design or revision          |                            60 per scene |
-| Generated overlay image             |                                  8 each |
-| Overlay retiming                    |                                      20 |
+| Overlay planning                    |                                      10 |
+| Overlay design or revision          |                            30 per scene |
+| Generated overlay image             |                                  6 each |
+| Overlay retiming                    |                                       4 |
 
 Duration for editor transcription is read from the owned media container before
 billing, rather than trusting the client's duration header. Chunk overlap and
@@ -54,8 +68,9 @@ poor margins, which is why the company-wide cutoff below is also required.
 At the lowest plan revenue per credit ($199.99 / 6,000 = $0.03333 gross), a
 12-credit thumbnail brings in about $0.40 against Google's published $0.101
 2K image output price, before input costs, payment fees, tax effects and other
-operating costs. A 60-credit overlay brings in about $2 gross to cover its
-multiple reasoning and QA calls. These are pricing cushions, not a guaranteed
+operating costs. A 30-credit overlay brings in about $1 gross against a typical
+$0.23 (one design pass plus one rendered check) and a worst case near $1.19
+(three checks with repairs). These are pricing cushions, not a guaranteed
 margin on every retry-heavy request. Keep measured provider invoices in the
 operating forecast; do not assume discounted model credits will always exist.
 

@@ -12,11 +12,30 @@ struct StudioCreditMeter: Decodable, Equatable {
     }
 }
 
+/// A one-time credit pack the account menu offers as a one-click top-up.
+struct StudioCreditPack: Decodable, Equatable, Identifiable {
+    let key: String
+    let credits: Int
+    let priceLabel: String
+
+    var id: String { key }
+
+    /// The pricing page starts this pack's checkout for a signed-in member,
+    /// so the top-up is one click here and one confirmation at Stripe.
+    var checkoutURL: URL? {
+        var components = URLComponents(string: "https://ypr.app/pricing")
+        components?.queryItems = [URLQueryItem(name: "buy", value: key)]
+        components?.fragment = "credits"
+        return components?.url
+    }
+}
+
 struct StudioBillingSnapshot: Decodable, Equatable {
     let balance: Int
     let entitled: Bool
     // Optional so the native app also works against an older server build.
     let creditMeter: StudioCreditMeter?
+    let packs: [StudioCreditPack]?
 }
 
 /// Shared display-only balance. Refresh on account changes, foreground, opening

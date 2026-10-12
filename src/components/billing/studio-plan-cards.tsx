@@ -7,6 +7,7 @@ import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBillingStatus } from "@/hooks/use-billing-status";
 import { STUDIO_PLANS, TRIAL_CREDITS, TRIAL_DAYS } from "@/lib/billing/plans";
+import { finishedVideos } from "@/lib/billing/credit-equivalents";
 import styles from "./pricing.module.css";
 
 const FEATURES = [
@@ -31,6 +32,8 @@ export default function StudioPlanCards({
   const cadence =
     selectedCadence ?? (status?.plan === "creator_yearly" ? "year" : "month");
   const plan = STUDIO_PLANS.find((item) => item.cadence === cadence)!;
+  const monthlyCredits =
+    cadence === "year" ? plan.includedCredits / 12 : plan.includedCredits;
   return (
     <article className={styles.membership}>
       <div className={styles.membershipDetails}>
@@ -78,10 +81,14 @@ export default function StudioPlanCards({
           </div>
           <p>
             {plan.includedCredits.toLocaleString()} credits after each{" "}
-            {cadence === "year" ? "yearly" : "monthly"} payment.
+            {cadence === "year" ? "yearly" : "monthly"} payment, about{" "}
+            {finishedVideos(monthlyCredits)} finished videos a month.
           </p>
           {cadence === "year" && (
-            <p>Paid yearly. All 6,000 credits arrive at once.</p>
+            <p>
+              Paid yearly. All {plan.includedCredits.toLocaleString()} credits
+              arrive at once.
+            </p>
           )}
         </div>
         <Show when="signed-in">
